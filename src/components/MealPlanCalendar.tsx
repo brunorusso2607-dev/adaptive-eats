@@ -1,9 +1,16 @@
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, CalendarDays, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -97,48 +104,48 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         </Button>
       </div>
 
-      {/* Week Selector - Show only if multiple weeks exist */}
-      {availableWeeks.length > 1 && (
-        <div className="flex items-center gap-2">
-          <CalendarDays className="w-4 h-4 text-muted-foreground" />
-          <div className="flex gap-2 flex-wrap">
-            {availableWeeks.map((week) => (
-              <Button
-                key={week}
-                variant={selectedWeek === week ? "default" : "outline"}
-                size="sm"
-                className={cn(
-                  "transition-all",
-                  selectedWeek === week && "gradient-primary border-0"
-                )}
-                onClick={() => {
-                  setSelectedWeek(week);
-                  setSelectedDay(0);
-                }}
-              >
-                Semana {week}
-              </Button>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Navigation Row - Week Dropdown + Day Selector */}
+      <div className="flex items-center gap-3">
+        {/* Week Dropdown */}
+        {availableWeeks.length > 1 && (
+          <Select
+            value={selectedWeek.toString()}
+            onValueChange={(value) => {
+              setSelectedWeek(Number(value));
+              setSelectedDay(0);
+            }}
+          >
+            <SelectTrigger className="w-[130px] bg-background">
+              <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Semana" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border">
+              {availableWeeks.map((week) => (
+                <SelectItem key={week} value={week.toString()}>
+                  Semana {week}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
 
-      {/* Day Selector */}
-      <div className="flex items-center gap-2">
+        {/* Day Selector */}
         <Button
           variant="outline"
           size="icon"
           onClick={() => setSelectedDay(Math.max(0, selectedDay - 1))}
           disabled={selectedDay === 0}
+          className="shrink-0"
         >
           <ChevronLeft className="w-4 h-4" />
         </Button>
         
-        <div className="flex-1 flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+        <div className="flex-1 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
           {DAY_NAMES.map((day, index) => (
             <Button
               key={day}
               variant={selectedDay === index ? "default" : "outline"}
+              size="sm"
               className={cn(
                 "shrink-0 transition-all",
                 selectedDay === index && "gradient-primary border-0"
@@ -155,6 +162,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           size="icon"
           onClick={() => setSelectedDay(Math.min(6, selectedDay + 1))}
           disabled={selectedDay === 6}
+          className="shrink-0"
         >
           <ChevronRight className="w-4 h-4" />
         </Button>

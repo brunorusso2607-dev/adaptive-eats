@@ -400,6 +400,8 @@ export default function Dashboard() {
                   setShowList(null);
                 }}
               />
+            ) : showMealPlan ? (
+              <MealPlanSection onBack={() => setShowMealPlan(false)} />
             ) : (
             <>
               {/* Home Principal - 5 Opções */}
@@ -716,7 +718,10 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Plano Semanal */}
-                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                  <Card 
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    onClick={() => setShowMealPlan(true)}
+                  >
                     <CardContent className="p-5 text-center space-y-3">
                       <div className="w-12 h-12 mx-auto bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
                         <Calendar className="w-6 h-6 text-blue-500" />

@@ -58,10 +58,19 @@ export default function Auth() {
         throw new Error(data.error);
       }
 
-      // If we got an action link, redirect to it (this will log the user in)
-      if (data.actionLink) {
-        toast.success("Verificado! Redirecionando...");
-        window.location.href = data.actionLink;
+      // If we got a tokenHash, verify it to log the user in
+      if (data.tokenHash && data.type) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: data.tokenHash,
+          type: data.type,
+        });
+
+        if (verifyError) {
+          throw new Error("Erro ao verificar login. Tente novamente.");
+        }
+
+        toast.success("Login realizado com sucesso!");
+        navigate("/dashboard");
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao fazer login";

@@ -26,8 +26,8 @@ const DIETARY_LABELS: Record<string, string> = {
 
 const GOAL_LABELS: Record<string, string> = {
   emagrecer: "emagrecer (foco em saciedade e déficit calórico)",
-  manter: "manter peso",
-  ganhar_peso: "ganhar peso (maior densidade calórica)",
+  manter: "manter peso (calorias de manutenção)",
+  ganhar_peso: "ganhar peso/massa muscular (superávit calórico e proteína alta)",
 };
 
 const CALORIE_LABELS: Record<string, string> = {
@@ -100,12 +100,14 @@ serve(async (req) => {
     // Modo Kids special prompt
     const isKidsMode = profile.context === "modo_kids";
     
-    // Modo Emagrecimento
+    // Weight goal modes
     const isWeightLossMode = profile.goal === "emagrecer";
+    const isWeightGainMode = profile.goal === "ganhar_peso";
+    const hasWeightGoal = isWeightLossMode || isWeightGainMode;
     
     // Calculate personalized macros if weight data is available
-    let personalizedMacros = null;
-    if (isWeightLossMode && profile.weight_current && profile.height && profile.age && profile.sex) {
+    let personalizedMacros: { targetCalories: number; protein: number; mode: string } | null = null;
+    if (hasWeightGoal && profile.weight_current && profile.height && profile.age && profile.sex) {
       // Mifflin-St Jeor Formula
       let tmb: number;
       if (profile.sex === "male") {
@@ -119,10 +121,20 @@ serve(async (req) => {
       };
       const factor = activityFactors[profile.activity_level] || 1.55;
       const get = Math.round(tmb * factor);
-      const targetCalories = Math.max(get - 500, profile.sex === "male" ? 1500 : 1200);
-      const protein = Math.round((profile.weight_goal || profile.weight_current) * 2);
       
-      personalizedMacros = { targetCalories, protein };
+      let targetCalories: number;
+      let protein: number;
+      
+      if (isWeightLossMode) {
+        targetCalories = Math.max(get - 500, profile.sex === "male" ? 1500 : 1200);
+        protein = Math.round((profile.weight_goal || profile.weight_current) * 2);
+      } else {
+        // Weight gain mode
+        targetCalories = get + 400;
+        protein = Math.round((profile.weight_goal || profile.weight_current) * 2.2);
+      }
+      
+      personalizedMacros = { targetCalories, protein, mode: isWeightLossMode ? "lose" : "gain" };
       logStep("Personalized macros calculated", personalizedMacros);
     }
     
@@ -155,11 +167,28 @@ ${personalizedMacros
 - Adicione um campo "satiety_tip" com dica de saciedade
 - Adicione um campo "satiety_score" de 1-10 (quanto maior, mais saciante)
 - Inclua ingredientes termogênicos quando possível (gengibre, pimenta, canela)` : "";
+
+    const weightGainInstructions = isWeightGainMode ? `
+MODO GANHO DE PESO/MASSA ATIVO - REGRAS ESPECIAIS:
+- PRIORIZE receitas com ALTA DENSIDADE CALÓRICA e nutritiva
+- Use fontes de proteína de qualidade (frango, carne, ovos, peixe, leguminosas)
+- Inclua carboidratos complexos (arroz, batata, macarrão integral, aveia)
+- Adicione gorduras saudáveis (azeite, abacate, castanhas, pasta de amendoim)
+- AUMENTE porções de proteína e carboidratos
+${personalizedMacros 
+  ? `- META CALÓRICA PERSONALIZADA: ${personalizedMacros.targetCalories} kcal/dia - adapte a receita para ~${Math.round(personalizedMacros.targetCalories / 3)} kcal por refeição
+- META DE PROTEÍNA: ${personalizedMacros.protein}g por dia - inclua ~${Math.round(personalizedMacros.protein / 3)}g por refeição`
+  : `- Calorias por porção: 550-700 kcal (superávit calórico controlado)
+- Proteína alta: mínimo 35g por porção`}
+- Inclua snacks calóricos saudáveis
+- Adicione um campo "muscle_tip" com dica para ganho de massa
+- Adicione um campo "calorie_density_score" de 1-10 (quanto maior, mais calórico)` : "";
     
     const systemPrompt = `Você é um nutricionista e chef especializado em receitas personalizadas.
 Você DEVE gerar receitas com valores nutricionais REAIS e PRECISOS baseados em tabelas nutricionais.
 ${kidsInstructions}
 ${weightLossInstructions}
+${weightGainInstructions}
 
 REGRAS ABSOLUTAS - NUNCA VIOLAR:
 1. INTOLERÂNCIAS: ${intolerancesStr}
@@ -191,18 +220,20 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
   "prep_time": ${isKidsMode ? 20 : 30},
   "complexity": "${isKidsMode ? "rapida" : profile.recipe_complexity}",
   "servings": ${profile.context === "familia" ? 4 : isKidsMode ? 3 : 2},
-  "calories": ${isKidsMode ? 400 : isWeightLossMode ? 380 : 450},
-  "protein": ${isWeightLossMode ? 30 : 25.5},
-  "carbs": ${isWeightLossMode ? 25 : 35.2},
-  "fat": ${isWeightLossMode ? 12 : 18.3}${isWeightLossMode ? `,
+  "calories": ${isKidsMode ? 400 : isWeightLossMode ? 380 : isWeightGainMode ? 600 : 450},
+  "protein": ${isWeightLossMode ? 30 : isWeightGainMode ? 40 : 25.5},
+  "carbs": ${isWeightLossMode ? 25 : isWeightGainMode ? 60 : 35.2},
+  "fat": ${isWeightLossMode ? 12 : isWeightGainMode ? 22 : 18.3}${isWeightLossMode ? `,
   "satiety_score": 8,
-  "satiety_tip": "Dica de saciedade para ajudar no emagrecimento"` : ""}
+  "satiety_tip": "Dica de saciedade para ajudar no emagrecimento"` : isWeightGainMode ? `,
+  "calorie_density_score": 8,
+  "muscle_tip": "Dica para ganho de massa muscular"` : ""}
 }
 
 IMPORTANTE:
 - calories, protein, carbs, fat são POR PORÇÃO
 - Use valores nutricionais REAIS baseados nos ingredientes
-- prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}${isWeightLossMode ? "\n- satiety_score de 1-10 baseado na composição (fibras + proteínas = maior score)\n- satiety_tip: uma dica prática de como a receita ajuda na saciedade" : ""}
+- prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}${isWeightLossMode ? "\n- satiety_score de 1-10 baseado na composição (fibras + proteínas = maior score)\n- satiety_tip: uma dica prática de como a receita ajuda na saciedade" : ""}${isWeightGainMode ? "\n- calorie_density_score de 1-10 baseado na densidade calórica\n- muscle_tip: uma dica prática para maximizar ganho muscular" : ""}
 - Responda APENAS com o JSON, sem texto adicional`;
 
     const userPrompt = type === "automatica"
@@ -258,7 +289,9 @@ IMPORTANTE:
                   carbs: { type: "number", description: "Carbohydrates in grams per serving" },
                   fat: { type: "number", description: "Fat in grams per serving" },
                   satiety_score: { type: "number", description: "Satiety score from 1-10 (only for weight loss mode)" },
-                  satiety_tip: { type: "string", description: "Satiety tip for weight loss (only for weight loss mode)" }
+                  satiety_tip: { type: "string", description: "Satiety tip for weight loss (only for weight loss mode)" },
+                  calorie_density_score: { type: "number", description: "Calorie density score from 1-10 (only for weight gain mode)" },
+                  muscle_tip: { type: "string", description: "Muscle gain tip (only for weight gain mode)" }
                 },
                 required: ["name", "description", "ingredients", "instructions", "prep_time", "complexity", "servings", "calories", "protein", "carbs", "fat"]
               }
@@ -306,6 +339,7 @@ IMPORTANTE:
         input_ingredients: ingredients || null,
         is_kids_mode: isKidsMode,
         is_weight_loss_mode: isWeightLossMode,
+        is_weight_gain_mode: isWeightGainMode,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

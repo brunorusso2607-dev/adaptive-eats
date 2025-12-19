@@ -3,12 +3,13 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User } from "lucide-react";
 import { toast } from "sonner";
-import type { User } from "@supabase/supabase-js";
+import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
 import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
+import UserAccountMenu from "@/components/UserAccountMenu";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 
 type Recipe = {
@@ -55,7 +56,7 @@ type SubscriptionInfo = {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
@@ -314,14 +315,15 @@ export default function Dashboard() {
             </div>
             <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
             <span className="text-sm text-muted-foreground hidden sm:block">
               {user?.email}
             </span>
-            <Button variant="ghost" size="sm" onClick={handleLogout}>
-              <LogOut className="w-4 h-4 mr-2" />
-              Sair
-            </Button>
+            <UserAccountMenu 
+              user={user} 
+              subscription={subscription} 
+              onLogout={handleLogout} 
+            />
           </div>
         </div>
       </header>

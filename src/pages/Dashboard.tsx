@@ -7,6 +7,7 @@ import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
+import RecipeList from "@/components/RecipeList";
 
 type Recipe = {
   name: string;
@@ -60,6 +61,7 @@ export default function Dashboard() {
   const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
   const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
   const [showRecipe, setShowRecipe] = useState(false);
+  const [showList, setShowList] = useState<"history" | "favorites" | null>(null);
 
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
@@ -290,6 +292,16 @@ export default function Dashboard() {
                 )}
                 isGenerating={isGeneratingRecipe}
               />
+            ) : showList ? (
+              <RecipeList
+                type={showList}
+                onBack={() => setShowList(null)}
+                onSelectRecipe={(recipe) => {
+                  setGeneratedRecipe(recipe);
+                  setShowRecipe(true);
+                  setShowList(null);
+                }}
+              />
             ) : (
             <>
               {/* Home Principal - 5 Opções */}
@@ -379,7 +391,10 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Favoritas */}
-                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                  <Card 
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    onClick={() => setShowList("favorites")}
+                  >
                     <CardContent className="p-5 text-center space-y-3">
                       <div className="w-12 h-12 mx-auto bg-rose-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
                         <Heart className="w-6 h-6 text-rose-500" />
@@ -396,7 +411,10 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Histórico */}
-                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                  <Card 
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    onClick={() => setShowList("history")}
+                  >
                     <CardContent className="p-5 text-center space-y-3">
                       <div className="w-12 h-12 mx-auto bg-purple-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
                         <History className="w-6 h-6 text-purple-500" />

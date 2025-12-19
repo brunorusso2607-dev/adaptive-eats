@@ -63,8 +63,8 @@ serve(async (req) => {
     const requestBody = await req.json();
     // Limit days to 7 max to ensure AI can generate all recipes reliably
     const daysCount = Math.min(requestBody.daysCount || 7, 7);
-    const { planName, startDate, existingPlanId } = requestBody;
-    logStep("Request received", { planName, startDate, daysCount, existingPlanId });
+    const { planName, startDate, existingPlanId, weekNumber } = requestBody;
+    logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber });
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
@@ -370,7 +370,8 @@ NÃO peça mais informações. Apenas gere o plano completo.`;
         recipe_fat: Number(meal.recipe_fat) || 0,
         recipe_prep_time: Math.round(Number(meal.recipe_prep_time) || 30),
         recipe_ingredients: meal.recipe_ingredients || [],
-        recipe_instructions: meal.recipe_instructions || []
+        recipe_instructions: meal.recipe_instructions || [],
+        week_number: weekNumber || 1
       }))
     );
 

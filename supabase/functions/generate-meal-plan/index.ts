@@ -284,8 +284,10 @@ Cada dia deve ter 4 refeições completas com ingredientes e instruções.`;
     }
 
     if (!mealPlanData || !mealPlanData.days || !Array.isArray(mealPlanData.days)) {
-      logStep("Invalid meal plan data structure", { data: JSON.stringify(mealPlanData).slice(0, 200) });
-      throw new Error("A IA não retornou um plano alimentar válido. Tente novamente.");
+      const dataPreview = mealPlanData ? JSON.stringify(mealPlanData).slice(0, 200) : "undefined";
+      const contentPreview = aiData.choices?.[0]?.message?.content?.slice(0, 200) || "no content";
+      logStep("Invalid meal plan data structure", { dataPreview, contentPreview });
+      throw new Error("A IA não retornou um plano alimentar válido. Por favor, tente novamente.");
     }
 
     logStep("Meal plan parsed", { daysCount: mealPlanData.days?.length });

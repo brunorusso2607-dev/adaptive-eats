@@ -256,14 +256,38 @@ Cada dia deve ter 4 refeições completas com ingredientes e instruções.`;
     }
 
     const aiData = await response.json();
-    logStep("AI response received");
+    logStep("AI response received", { hasToolCalls: !!aiData.choices?.[0]?.message?.tool_calls });
 
+    let mealPlanData;
+    
+    // Try to get response from tool_calls first
     const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "generate_meal_plan") {
-      throw new Error("Invalid AI response format");
+    if (toolCall && toolCall.function.name === "generate_meal_plan") {
+      mealPlanData = JSON.parse(toolCall.function.arguments);
+      logStep("Parsed from tool_calls");
+    } else {
+      // Fallback: try to parse from content if tool_calls not available
+      const content = aiData.choices?.[0]?.message?.content;
+      if (content) {
+        logStep("Trying to parse from content", { contentLength: content.length });
+        try {
+          // Try to extract JSON from content
+          const jsonMatch = content.match(/\{[\s\S]*\}/);
+          if (jsonMatch) {
+            mealPlanData = JSON.parse(jsonMatch[0]);
+            logStep("Parsed from content");
+          }
+        } catch (parseError) {
+          logStep("Failed to parse content", { error: String(parseError) });
+        }
+      }
     }
 
-    const mealPlanData = JSON.parse(toolCall.function.arguments);
+    if (!mealPlanData || !mealPlanData.days || !Array.isArray(mealPlanData.days)) {
+      logStep("Invalid meal plan data structure", { data: JSON.stringify(mealPlanData).slice(0, 200) });
+      throw new Error("A IA não retornou um plano alimentar válido. Tente novamente.");
+    }
+
     logStep("Meal plan parsed", { daysCount: mealPlanData.days?.length });
 
     // Calculate dates

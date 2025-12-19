@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   Scale, Ruler, Calendar, User, Activity, Target, 
-  TrendingDown, TrendingUp, Minus, Flame, Beef, Wheat, Loader2, Check, X
+  TrendingDown, TrendingUp, Minus, Flame, Beef, Wheat, Loader2, Check, X, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ type WeightGoalData = {
 type WeightGoalSetupProps = {
   onClose: () => void;
   onSave: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
+  onGeneratePlan?: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   initialData?: Partial<WeightGoalData>;
 };
 
@@ -124,7 +125,7 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   };
 }
 
-export default function WeightGoalSetup({ onClose, onSave, initialData }: WeightGoalSetupProps) {
+export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initialData }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [data, setData] = useState<WeightGoalData>({
     weight_current: initialData?.weight_current || null,
@@ -180,7 +181,41 @@ export default function WeightGoalSetup({ onClose, onSave, initialData }: Weight
 
   const modeInfo = getModeInfo();
 
-  const handleSave = async () => {
+  const saveToDatabase = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Não autenticado");
+
+    // Map mode to goal enum
+    const goalMap = {
+      lose: "emagrecer" as const,
+      gain: "ganhar_peso" as const,
+      maintain: "manter" as const,
+    };
+
+    const updateData = {
+      weight_current: Number(data.weight_current),
+      weight_goal: Number(data.weight_goal),
+      height: Number(data.height),
+      age: Number(data.age),
+      sex: data.sex,
+      activity_level: data.activity_level,
+      goal: goalMap[calculations!.mode],
+    };
+
+    console.log("Saving data:", updateData);
+
+    const { error } = await supabase
+      .from("profiles")
+      .update(updateData)
+      .eq("id", session.user.id);
+
+    if (error) {
+      console.error("Supabase error:", error);
+      throw error;
+    }
+  };
+
+  const handleSaveOnly = async () => {
     if (!isComplete || !calculations) {
       toast.error("Preencha todos os campos");
       return;
@@ -188,40 +223,30 @@ export default function WeightGoalSetup({ onClose, onSave, initialData }: Weight
     
     setIsSaving(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) throw new Error("Não autenticado");
-
-      // Map mode to goal enum
-      const goalMap = {
-        lose: "emagrecer" as const,
-        gain: "ganhar_peso" as const,
-        maintain: "manter" as const,
-      };
-
-      const updateData = {
-        weight_current: Number(data.weight_current),
-        weight_goal: Number(data.weight_goal),
-        height: Number(data.height),
-        age: Number(data.age),
-        sex: data.sex,
-        activity_level: data.activity_level,
-        goal: goalMap[calculations.mode],
-      };
-
-      console.log("Saving data:", updateData);
-
-      const { error } = await supabase
-        .from("profiles")
-        .update(updateData)
-        .eq("id", session.user.id);
-
-      if (error) {
-        console.error("Supabase error:", error);
-        throw error;
-      }
-
+      await saveToDatabase();
       toast.success("Dados salvos com sucesso!");
       onSave({ ...data, calculations });
+    } catch (error) {
+      console.error("Error saving:", error);
+      toast.error("Erro ao salvar dados");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleGeneratePlan = async () => {
+    if (!isComplete || !calculations) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+    
+    setIsSaving(true);
+    try {
+      await saveToDatabase();
+      toast.success("Dados salvos! Vamos criar seu plano alimentar.");
+      if (onGeneratePlan) {
+        onGeneratePlan({ ...data, calculations });
+      }
     } catch (error) {
       console.error("Error saving:", error);
       toast.error("Erro ao salvar dados");
@@ -516,11 +541,14 @@ export default function WeightGoalSetup({ onClose, onSave, initialData }: Weight
 
       {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={onClose} className="h-12">
-          Cancelar
+        <Button variant="outline" onClick={handleSaveOnly} disabled={!isComplete || isSaving} className="h-12">
+          {isSaving ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          ) : null}
+          Não gerar e salvar
         </Button>
         <Button
-          onClick={handleSave}
+          onClick={handleGeneratePlan}
           disabled={!isComplete || isSaving}
           className={cn(
             "h-12 border-0",
@@ -532,9 +560,9 @@ export default function WeightGoalSetup({ onClose, onSave, initialData }: Weight
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
           ) : (
-            <Check className="w-4 h-4 mr-2" />
+            <Sparkles className="w-4 h-4 mr-2" />
           )}
-          Salvar Plano
+          Gerar Plano Alimentar
         </Button>
       </div>
     </div>

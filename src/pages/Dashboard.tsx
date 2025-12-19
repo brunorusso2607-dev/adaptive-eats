@@ -8,6 +8,8 @@ import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
 import RecipeList from "@/components/RecipeList";
+import WeightLossSetup, { calculateMacros } from "@/components/WeightLossSetup";
+import { Beef, Wheat } from "lucide-react";
 
 type Recipe = {
   name: string;
@@ -61,6 +63,15 @@ export default function Dashboard() {
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [userContext, setUserContext] = useState<string | null>(null);
   const [userGoal, setUserGoal] = useState<string | null>(null);
+  const [showWeightLossSetup, setShowWeightLossSetup] = useState(false);
+  const [weightData, setWeightData] = useState<{
+    weight_current: number | null;
+    weight_goal: number | null;
+    height: number | null;
+    age: number | null;
+    sex: "male" | "female" | null;
+    activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
+  } | null>(null);
   
   // Recipe generation state
   const [ingredients, setIngredients] = useState("");
@@ -72,7 +83,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, context, goal")
+      .select("onboarding_completed, context, goal, weight_current, weight_goal, height, age, sex, activity_level")
       .eq("id", userId)
       .maybeSingle();
     
@@ -82,6 +93,16 @@ export default function Dashboard() {
       setOnboardingCompleted(true);
       setUserContext(data?.context || "individual");
       setUserGoal(data?.goal || "manter");
+      if (data?.weight_current) {
+        setWeightData({
+          weight_current: data.weight_current,
+          weight_goal: data.weight_goal,
+          height: data.height,
+          age: data.age,
+          sex: data.sex as "male" | "female" | null,
+          activity_level: (data.activity_level as any) || "moderate",
+        });
+      }
     }
   };
 
@@ -322,7 +343,24 @@ export default function Dashboard() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : isSubscribed ? (
-            showRecipe && generatedRecipe ? (
+            showWeightLossSetup ? (
+              <WeightLossSetup
+                onClose={() => setShowWeightLossSetup(false)}
+                onSave={(data) => {
+                  setWeightData({
+                    weight_current: data.weight_current,
+                    weight_goal: data.weight_goal,
+                    height: data.height,
+                    age: data.age,
+                    sex: data.sex,
+                    activity_level: data.activity_level,
+                  });
+                  setUserGoal("emagrecer");
+                  setShowWeightLossSetup(false);
+                }}
+                initialData={weightData || undefined}
+              />
+            ) : showRecipe && generatedRecipe ? (
               <RecipeResult
                 recipe={generatedRecipe}
                 onBack={() => setShowRecipe(false)}
@@ -423,32 +461,95 @@ export default function Dashboard() {
                           </div>
                           <div>
                             <h3 className="font-display font-bold text-foreground">🔥 Modo Emagrecimento Ativo!</h3>
-                            <p className="text-xs text-muted-foreground">Receitas com foco em saciedade e déficit calórico</p>
+                            <p className="text-xs text-muted-foreground">
+                              {weightData?.weight_current 
+                                ? `${weightData.weight_current}kg → ${weightData.weight_goal}kg` 
+                                : "Receitas com foco em saciedade e déficit calórico"}
+                            </p>
                           </div>
                         </div>
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={toggleWeightLossMode}
-                          className="border-green-400/50 text-green-600 hover:bg-green-50"
-                        >
-                          Desativar
-                        </Button>
-                      </div>
-                      <div className="grid grid-cols-3 gap-2 mt-3">
-                        <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-green-600">~0.5kg</p>
-                          <p className="text-xs text-muted-foreground">por semana*</p>
-                        </div>
-                        <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-green-600">~2kg</p>
-                          <p className="text-xs text-muted-foreground">por mês*</p>
-                        </div>
-                        <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                          <p className="text-lg font-bold text-green-600">300-450</p>
-                          <p className="text-xs text-muted-foreground">kcal/porção</p>
+                        <div className="flex gap-2">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setShowWeightLossSetup(true)}
+                            className="border-green-400/50 text-green-600 hover:bg-green-50"
+                          >
+                            {weightData?.weight_current ? "Editar" : "Configurar"}
+                          </Button>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={toggleWeightLossMode}
+                            className="border-green-400/50 text-green-600 hover:bg-green-50"
+                          >
+                            Desativar
+                          </Button>
                         </div>
                       </div>
+                      
+                      {weightData?.weight_current ? (
+                        <>
+                          {/* Personalized Data */}
+                          {(() => {
+                            const calcs = calculateMacros(weightData);
+                            if (!calcs) return null;
+                            return (
+                              <>
+                                <div className="grid grid-cols-4 gap-2 mt-3">
+                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                    <p className="text-lg font-bold text-green-600">{calcs.targetCalories}</p>
+                                    <p className="text-xs text-muted-foreground">kcal/dia</p>
+                                  </div>
+                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                    <p className="text-lg font-bold text-red-500">{calcs.protein}g</p>
+                                    <p className="text-xs text-muted-foreground">Proteína</p>
+                                  </div>
+                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                    <p className="text-lg font-bold text-amber-500">{calcs.carbs}g</p>
+                                    <p className="text-xs text-muted-foreground">Carbos</p>
+                                  </div>
+                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                    <p className="text-lg font-bold text-green-500">{calcs.fat}g</p>
+                                    <p className="text-xs text-muted-foreground">Gordura</p>
+                                  </div>
+                                </div>
+                                <div className="mt-3 bg-white/40 dark:bg-white/5 rounded-lg p-3">
+                                  <div className="flex justify-between text-sm">
+                                    <span>Perda estimada: <strong className="text-green-600">~{calcs.weeklyLoss}kg/semana</strong></span>
+                                    <span>Meta em: <strong className="text-green-600">~{calcs.weeksToGoal} semanas</strong></span>
+                                  </div>
+                                </div>
+                              </>
+                            );
+                          })()}
+                        </>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-3 gap-2 mt-3">
+                            <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                              <p className="text-lg font-bold text-green-600">~0.5kg</p>
+                              <p className="text-xs text-muted-foreground">por semana*</p>
+                            </div>
+                            <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                              <p className="text-lg font-bold text-green-600">~2kg</p>
+                              <p className="text-xs text-muted-foreground">por mês*</p>
+                            </div>
+                            <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                              <p className="text-lg font-bold text-green-600">300-450</p>
+                              <p className="text-xs text-muted-foreground">kcal/porção</p>
+                            </div>
+                          </div>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => setShowWeightLossSetup(true)}
+                            className="w-full mt-3 text-green-600 hover:bg-green-50"
+                          >
+                            👆 Configure seu peso para metas personalizadas
+                          </Button>
+                        </>
+                      )}
                       <p className="text-xs text-muted-foreground mt-2 text-center">
                         *Estimativa baseada em déficit calórico saudável. Resultados variam individualmente.
                       </p>

@@ -16,6 +16,8 @@ export type Database = {
     Tables: {
       profiles: {
         Row: {
+          activity_level: string | null
+          age: number | null
           calorie_goal: Database["public"]["Enums"]["calorie_goal"] | null
           context: Database["public"]["Enums"]["user_context"] | null
           created_at: string | null
@@ -24,15 +26,21 @@ export type Database = {
             | null
           email: string | null
           goal: Database["public"]["Enums"]["user_goal"] | null
+          height: number | null
           id: string
           intolerances: string[] | null
           onboarding_completed: boolean | null
           recipe_complexity:
             | Database["public"]["Enums"]["recipe_complexity"]
             | null
+          sex: string | null
           updated_at: string | null
+          weight_current: number | null
+          weight_goal: number | null
         }
         Insert: {
+          activity_level?: string | null
+          age?: number | null
           calorie_goal?: Database["public"]["Enums"]["calorie_goal"] | null
           context?: Database["public"]["Enums"]["user_context"] | null
           created_at?: string | null
@@ -41,15 +49,21 @@ export type Database = {
             | null
           email?: string | null
           goal?: Database["public"]["Enums"]["user_goal"] | null
+          height?: number | null
           id: string
           intolerances?: string[] | null
           onboarding_completed?: boolean | null
           recipe_complexity?:
             | Database["public"]["Enums"]["recipe_complexity"]
             | null
+          sex?: string | null
           updated_at?: string | null
+          weight_current?: number | null
+          weight_goal?: number | null
         }
         Update: {
+          activity_level?: string | null
+          age?: number | null
           calorie_goal?: Database["public"]["Enums"]["calorie_goal"] | null
           context?: Database["public"]["Enums"]["user_context"] | null
           created_at?: string | null
@@ -58,13 +72,17 @@ export type Database = {
             | null
           email?: string | null
           goal?: Database["public"]["Enums"]["user_goal"] | null
+          height?: number | null
           id?: string
           intolerances?: string[] | null
           onboarding_completed?: boolean | null
           recipe_complexity?:
             | Database["public"]["Enums"]["recipe_complexity"]
             | null
+          sex?: string | null
           updated_at?: string | null
+          weight_current?: number | null
+          weight_goal?: number | null
         }
         Relationships: []
       }

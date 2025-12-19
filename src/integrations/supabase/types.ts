@@ -14,6 +14,98 @@ export type Database = {
   }
   public: {
     Tables: {
+      meal_plan_items: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          id: string
+          is_favorite: boolean
+          meal_plan_id: string
+          meal_type: string
+          recipe_calories: number
+          recipe_carbs: number
+          recipe_fat: number
+          recipe_ingredients: Json
+          recipe_instructions: Json
+          recipe_name: string
+          recipe_prep_time: number
+          recipe_protein: number
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          id?: string
+          is_favorite?: boolean
+          meal_plan_id: string
+          meal_type: string
+          recipe_calories?: number
+          recipe_carbs?: number
+          recipe_fat?: number
+          recipe_ingredients?: Json
+          recipe_instructions?: Json
+          recipe_name: string
+          recipe_prep_time?: number
+          recipe_protein?: number
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          id?: string
+          is_favorite?: boolean
+          meal_plan_id?: string
+          meal_type?: string
+          recipe_calories?: number
+          recipe_carbs?: number
+          recipe_fat?: number
+          recipe_ingredients?: Json
+          recipe_instructions?: Json
+          recipe_name?: string
+          recipe_prep_time?: number
+          recipe_protein?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_plan_items_meal_plan_id_fkey"
+            columns: ["meal_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_plans: {
+        Row: {
+          created_at: string
+          end_date: string
+          id: string
+          is_active: boolean
+          name: string
+          start_date: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          end_date: string
+          id?: string
+          is_active?: boolean
+          name: string
+          start_date: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          end_date?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          start_date?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null

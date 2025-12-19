@@ -14,7 +14,60 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      profiles: {
+        Row: {
+          calorie_goal: Database["public"]["Enums"]["calorie_goal"] | null
+          context: Database["public"]["Enums"]["user_context"] | null
+          created_at: string | null
+          dietary_preference:
+            | Database["public"]["Enums"]["dietary_preference"]
+            | null
+          email: string | null
+          goal: Database["public"]["Enums"]["user_goal"] | null
+          id: string
+          intolerances: string[] | null
+          onboarding_completed: boolean | null
+          recipe_complexity:
+            | Database["public"]["Enums"]["recipe_complexity"]
+            | null
+          updated_at: string | null
+        }
+        Insert: {
+          calorie_goal?: Database["public"]["Enums"]["calorie_goal"] | null
+          context?: Database["public"]["Enums"]["user_context"] | null
+          created_at?: string | null
+          dietary_preference?:
+            | Database["public"]["Enums"]["dietary_preference"]
+            | null
+          email?: string | null
+          goal?: Database["public"]["Enums"]["user_goal"] | null
+          id: string
+          intolerances?: string[] | null
+          onboarding_completed?: boolean | null
+          recipe_complexity?:
+            | Database["public"]["Enums"]["recipe_complexity"]
+            | null
+          updated_at?: string | null
+        }
+        Update: {
+          calorie_goal?: Database["public"]["Enums"]["calorie_goal"] | null
+          context?: Database["public"]["Enums"]["user_context"] | null
+          created_at?: string | null
+          dietary_preference?:
+            | Database["public"]["Enums"]["dietary_preference"]
+            | null
+          email?: string | null
+          goal?: Database["public"]["Enums"]["user_goal"] | null
+          id?: string
+          intolerances?: string[] | null
+          onboarding_completed?: boolean | null
+          recipe_complexity?:
+            | Database["public"]["Enums"]["recipe_complexity"]
+            | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +76,11 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      calorie_goal: "reduzir" | "manter" | "aumentar" | "definir_depois"
+      dietary_preference: "comum" | "vegetariana" | "vegana" | "low_carb"
+      recipe_complexity: "rapida" | "equilibrada" | "elaborada"
+      user_context: "individual" | "familia" | "modo_kids"
+      user_goal: "emagrecer" | "manter" | "ganhar_peso"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +207,12 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      calorie_goal: ["reduzir", "manter", "aumentar", "definir_depois"],
+      dietary_preference: ["comum", "vegetariana", "vegana", "low_carb"],
+      recipe_complexity: ["rapida", "equilibrada", "elaborada"],
+      user_context: ["individual", "familia", "modo_kids"],
+      user_goal: ["emagrecer", "manter", "ganhar_peso"],
+    },
   },
 } as const

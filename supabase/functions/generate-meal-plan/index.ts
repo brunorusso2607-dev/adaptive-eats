@@ -60,7 +60,10 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    const { planName, startDate, daysCount = 7 } = await req.json();
+    const requestBody = await req.json();
+    // Limit days to 7 max to ensure AI can generate all recipes reliably
+    const daysCount = Math.min(requestBody.daysCount || 7, 7);
+    const { planName, startDate } = requestBody;
     logStep("Request received", { planName, startDate, daysCount });
 
     // Fetch user profile
@@ -157,9 +160,9 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
   ]
 }`;
 
-    const userPrompt = `Gere um plano alimentar completo para ${daysCount} dias começando ${startDate ? `em ${startDate}` : 'hoje'}.
-Inclua receitas variadas, saborosas e que se encaixem no meu perfil nutricional.
-Cada dia deve ter 4 refeições completas com ingredientes e instruções.`;
+    const userPrompt = `Gere AGORA um plano alimentar completo para ${daysCount} dias.
+Use a ferramenta generate_meal_plan e retorne o JSON com todas as ${daysCount * 4} receitas.
+NÃO peça mais informações. Apenas gere o plano completo.`;
 
     logStep("Calling Lovable AI for meal plan generation");
 
@@ -170,7 +173,7 @@ Cada dia deve ter 4 refeições completas com ingredientes e instruções.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },

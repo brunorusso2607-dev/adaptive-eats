@@ -1,17 +1,17 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   Scale, Ruler, Calendar, User, Activity, Target, 
-  TrendingDown, Flame, Beef, Wheat, Loader2, Check, X
+  TrendingDown, TrendingUp, Minus, Flame, Beef, Wheat, Loader2, Check, X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
-type WeightLossData = {
+type WeightGoalData = {
   weight_current: number | null;
   weight_goal: number | null;
   height: number | null;
@@ -20,21 +20,22 @@ type WeightLossData = {
   activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
 };
 
-type WeightLossSetupProps = {
+type WeightGoalSetupProps = {
   onClose: () => void;
-  onSave: (data: WeightLossData & { calculations: MacroCalculations }) => void;
-  initialData?: Partial<WeightLossData>;
+  onSave: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
+  initialData?: Partial<WeightGoalData>;
 };
 
-type MacroCalculations = {
+export type MacroCalculations = {
   tmb: number;
   get: number;
   targetCalories: number;
   protein: number;
   carbs: number;
   fat: number;
-  weeklyLoss: number;
+  weeklyChange: number;
   weeksToGoal: number;
+  mode: "lose" | "gain" | "maintain";
 };
 
 const ACTIVITY_LEVELS = [
@@ -45,7 +46,7 @@ const ACTIVITY_LEVELS = [
   { id: "very_active", label: "Muito Ativo", description: "Exercício intenso diário", factor: 1.9 },
 ];
 
-export function calculateMacros(data: WeightLossData): MacroCalculations | null {
+export function calculateMacros(data: WeightGoalData): MacroCalculations | null {
   if (!data.weight_current || !data.weight_goal || !data.height || !data.age || !data.sex) {
     return null;
   }
@@ -64,31 +65,51 @@ export function calculateMacros(data: WeightLossData): MacroCalculations | null 
   // Total Daily Energy Expenditure
   const get = Math.round(tmb * activityFactor);
   
-  // Target calories (500 kcal deficit for ~0.5kg/week loss)
-  const deficit = 500;
-  const targetCalories = Math.max(get - deficit, data.sex === "male" ? 1500 : 1200); // Minimum safe calories
+  // Detect mode based on weight difference
+  const weightDiff = data.weight_goal - data.weight_current;
+  let mode: "lose" | "gain" | "maintain";
+  let targetCalories: number;
+  let protein: number;
   
-  // Macro distribution for weight loss
-  // Protein: 2g per kg of goal weight (to preserve muscle)
-  const protein = Math.round(data.weight_goal * 2);
+  if (weightDiff < -1) {
+    // Weight loss mode
+    mode = "lose";
+    const deficit = 500; // 500 kcal deficit for ~0.5kg/week loss
+    targetCalories = Math.max(get - deficit, data.sex === "male" ? 1500 : 1200);
+    protein = Math.round(data.weight_goal * 2); // 2g/kg of goal weight
+  } else if (weightDiff > 1) {
+    // Weight gain mode
+    mode = "gain";
+    const surplus = 400; // 400 kcal surplus for ~0.4kg/week gain
+    targetCalories = get + surplus;
+    protein = Math.round(data.weight_goal * 2.2); // 2.2g/kg for muscle synthesis
+  } else {
+    // Maintain mode
+    mode = "maintain";
+    targetCalories = get;
+    protein = Math.round(data.weight_current * 1.6); // 1.6g/kg for maintenance
+  }
+  
+  // Macro distribution
   const proteinCalories = protein * 4;
   
-  // Fat: 25% of calories
-  const fatCalories = targetCalories * 0.25;
+  // Fat: 25% for weight loss, 30% for gain/maintain
+  const fatPercent = mode === "lose" ? 0.25 : 0.30;
+  const fatCalories = targetCalories * fatPercent;
   const fat = Math.round(fatCalories / 9);
   
   // Carbs: remaining calories
   const carbCalories = targetCalories - proteinCalories - fatCalories;
   const carbs = Math.round(carbCalories / 4);
   
-  // Weekly loss estimation (500 kcal deficit = ~0.5kg/week)
-  const actualDeficit = get - targetCalories;
-  const weeklyLoss = Math.round((actualDeficit * 7 / 7700) * 10) / 10; // 7700 kcal = 1kg fat
+  // Weekly change estimation
+  const calorieChange = Math.abs(get - targetCalories);
+  const weeklyChange = Math.round((calorieChange * 7 / 7700) * 10) / 10;
   
   // Weeks to reach goal
-  const weightToLose = data.weight_current - data.weight_goal;
-  const weeksToGoal = weightToLose > 0 && weeklyLoss > 0 
-    ? Math.ceil(weightToLose / weeklyLoss) 
+  const weightToChange = Math.abs(weightDiff);
+  const weeksToGoal = weightToChange > 1 && weeklyChange > 0 
+    ? Math.ceil(weightToChange / weeklyChange) 
     : 0;
 
   return {
@@ -98,14 +119,15 @@ export function calculateMacros(data: WeightLossData): MacroCalculations | null 
     protein,
     carbs,
     fat,
-    weeklyLoss,
+    weeklyChange,
     weeksToGoal,
+    mode,
   };
 }
 
-export default function WeightLossSetup({ onClose, onSave, initialData }: WeightLossSetupProps) {
+export default function WeightGoalSetup({ onClose, onSave, initialData }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
-  const [data, setData] = useState<WeightLossData>({
+  const [data, setData] = useState<WeightGoalData>({
     weight_current: initialData?.weight_current || null,
     weight_goal: initialData?.weight_goal || null,
     height: initialData?.height || null,
@@ -116,6 +138,47 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
 
   const calculations = calculateMacros(data);
   const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex;
+
+  const getModeInfo = () => {
+    if (!calculations) return null;
+    switch (calculations.mode) {
+      case "lose":
+        return {
+          icon: TrendingDown,
+          label: "Emagrecimento",
+          color: "green",
+          gradient: "from-green-500 to-emerald-500",
+          bgGradient: "from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30",
+          borderColor: "border-green-400/50",
+          textColor: "text-green-600",
+          changeLabel: "Perda estimada",
+        };
+      case "gain":
+        return {
+          icon: TrendingUp,
+          label: "Ganho de Peso",
+          color: "blue",
+          gradient: "from-blue-500 to-indigo-500",
+          bgGradient: "from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30",
+          borderColor: "border-blue-400/50",
+          textColor: "text-blue-600",
+          changeLabel: "Ganho estimado",
+        };
+      case "maintain":
+        return {
+          icon: Minus,
+          label: "Manutenção",
+          color: "amber",
+          gradient: "from-amber-500 to-orange-500",
+          bgGradient: "from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30",
+          borderColor: "border-amber-400/50",
+          textColor: "text-amber-600",
+          changeLabel: "Peso estável",
+        };
+    }
+  };
+
+  const modeInfo = getModeInfo();
 
   const handleSave = async () => {
     if (!isComplete || !calculations) {
@@ -128,6 +191,13 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
 
+      // Map mode to goal enum
+      const goalMap = {
+        lose: "emagrecer" as const,
+        gain: "ganhar_peso" as const,
+        maintain: "manter" as const,
+      };
+
       const updateData = {
         weight_current: Number(data.weight_current),
         weight_goal: Number(data.weight_goal),
@@ -135,7 +205,7 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
         age: Number(data.age),
         sex: data.sex,
         activity_level: data.activity_level,
-        goal: "emagrecer" as const,
+        goal: goalMap[calculations.mode],
       };
 
       console.log("Saving data:", updateData);
@@ -165,11 +235,14 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
-            <TrendingDown className="w-5 h-5 text-white" />
+          <div className={cn(
+            "w-10 h-10 rounded-xl flex items-center justify-center",
+            modeInfo ? `bg-gradient-to-r ${modeInfo.gradient}` : "bg-gradient-to-r from-primary to-primary/80"
+          )}>
+            {modeInfo ? <modeInfo.icon className="w-5 h-5 text-white" /> : <Target className="w-5 h-5 text-white" />}
           </div>
           <div>
-            <h2 className="font-display text-xl font-bold text-foreground">Configurar Emagrecimento</h2>
+            <h2 className="font-display text-xl font-bold text-foreground">Meta de Peso Personalizada</h2>
             <p className="text-sm text-muted-foreground">Cálculos baseados na fórmula Mifflin-St Jeor</p>
           </div>
         </div>
@@ -284,7 +357,7 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
             {ACTIVITY_LEVELS.map((level) => (
               <button
                 key={level.id}
-                onClick={() => setData({ ...data, activity_level: level.id as WeightLossData["activity_level"] })}
+                onClick={() => setData({ ...data, activity_level: level.id as WeightGoalData["activity_level"] })}
                 className={cn(
                   "w-full p-3 rounded-xl border-2 text-left transition-all flex items-center justify-between",
                   data.activity_level === level.id
@@ -306,12 +379,12 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
       </div>
 
       {/* Calculations Preview */}
-      {calculations && isComplete && (
-        <Card className="border-2 border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30">
+      {calculations && isComplete && modeInfo && (
+        <Card className={cn("border-2", modeInfo.borderColor, `bg-gradient-to-r ${modeInfo.bgGradient}`)}>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">
-              <TrendingDown className="w-5 h-5 text-green-500" />
-              Seu Plano Personalizado
+              <modeInfo.icon className={cn("w-5 h-5", modeInfo.textColor)} />
+              Seu Plano: {modeInfo.label}
             </CardTitle>
             <CardDescription>Baseado nos seus dados e na fórmula Mifflin-St Jeor</CardDescription>
           </CardHeader>
@@ -320,12 +393,16 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
             <div className="grid grid-cols-2 gap-3">
               <div className="bg-white/60 dark:bg-white/10 rounded-xl p-3 text-center">
                 <p className="text-xs text-muted-foreground mb-1">Meta Diária</p>
-                <p className="text-2xl font-bold text-green-600">{calculations.targetCalories}</p>
+                <p className={cn("text-2xl font-bold", modeInfo.textColor)}>{calculations.targetCalories}</p>
                 <p className="text-xs text-muted-foreground">kcal/dia</p>
               </div>
               <div className="bg-white/60 dark:bg-white/10 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Perda Estimada</p>
-                <p className="text-2xl font-bold text-green-600">~{calculations.weeklyLoss}kg</p>
+                <p className="text-xs text-muted-foreground mb-1">{modeInfo.changeLabel}</p>
+                {calculations.mode === "maintain" ? (
+                  <p className={cn("text-2xl font-bold", modeInfo.textColor)}>—</p>
+                ) : (
+                  <p className={cn("text-2xl font-bold", modeInfo.textColor)}>~{calculations.weeklyChange}kg</p>
+                )}
                 <p className="text-xs text-muted-foreground">por semana</p>
               </div>
             </div>
@@ -349,29 +426,39 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
               </div>
             </div>
 
-            {/* Timeline */}
-            <div className="bg-white/60 dark:bg-white/10 rounded-xl p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{data.weight_current}kg → {data.weight_goal}kg</span>
-                <span className="text-sm text-green-600 font-bold">
-                  ~{calculations.weeksToGoal} semanas
-                </span>
+            {/* Timeline - only show for lose/gain */}
+            {calculations.mode !== "maintain" && (
+              <div className="bg-white/60 dark:bg-white/10 rounded-xl p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-sm font-medium">{data.weight_current}kg → {data.weight_goal}kg</span>
+                  <span className={cn("text-sm font-bold", modeInfo.textColor)}>
+                    ~{calculations.weeksToGoal} semanas
+                  </span>
+                </div>
+                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                  <div className={cn("h-2 rounded-full bg-gradient-to-r", modeInfo.gradient)} style={{ width: "10%" }} />
+                </div>
+                <p className="text-xs text-muted-foreground mt-2 text-center">
+                  {calculations.weeksToGoal > 0 && (
+                    <>Aproximadamente {Math.ceil(calculations.weeksToGoal / 4)} meses para atingir sua meta</>
+                  )}
+                </p>
               </div>
-              <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                <div className="bg-gradient-to-r from-green-500 to-emerald-500 h-2 rounded-full" style={{ width: "10%" }} />
-              </div>
-              <p className="text-xs text-muted-foreground mt-2 text-center">
-                {calculations.weeksToGoal > 0 && (
-                  <>Aproximadamente {Math.ceil(calculations.weeksToGoal / 4)} meses para atingir sua meta</>
-                )}
-              </p>
-            </div>
+            )}
 
             {/* Metabolism Info */}
             <div className="text-xs text-muted-foreground space-y-1 bg-white/40 dark:bg-white/5 p-3 rounded-lg">
               <p>📊 <strong>TMB (Taxa Metabólica Basal):</strong> {calculations.tmb} kcal/dia</p>
               <p>🔥 <strong>GET (Gasto Energético Total):</strong> {calculations.get} kcal/dia</p>
-              <p>📉 <strong>Déficit calórico:</strong> {calculations.get - calculations.targetCalories} kcal/dia</p>
+              {calculations.mode === "lose" && (
+                <p>📉 <strong>Déficit calórico:</strong> {calculations.get - calculations.targetCalories} kcal/dia</p>
+              )}
+              {calculations.mode === "gain" && (
+                <p>📈 <strong>Superávit calórico:</strong> {calculations.targetCalories - calculations.get} kcal/dia</p>
+              )}
+              {calculations.mode === "maintain" && (
+                <p>⚖️ <strong>Calorias de manutenção:</strong> {calculations.get} kcal/dia</p>
+              )}
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
@@ -389,7 +476,12 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
         <Button
           onClick={handleSave}
           disabled={!isComplete || isSaving}
-          className="h-12 bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 border-0"
+          className={cn(
+            "h-12 border-0",
+            modeInfo 
+              ? `bg-gradient-to-r ${modeInfo.gradient} hover:opacity-90` 
+              : "bg-gradient-to-r from-primary to-primary/80"
+          )}
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />

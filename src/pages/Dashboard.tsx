@@ -8,8 +8,8 @@ import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
 import RecipeList from "@/components/RecipeList";
-import WeightLossSetup, { calculateMacros } from "@/components/WeightLossSetup";
-import { Beef, Wheat } from "lucide-react";
+import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
+import { Beef, Wheat, TrendingUp } from "lucide-react";
 
 type Recipe = {
   name: string;
@@ -344,7 +344,7 @@ export default function Dashboard() {
             </div>
           ) : isSubscribed ? (
             showWeightLossSetup ? (
-              <WeightLossSetup
+              <WeightGoalSetup
                 onClose={() => setShowWeightLossSetup(false)}
                 onSave={(data) => {
                   setWeightData({
@@ -355,7 +355,14 @@ export default function Dashboard() {
                     sex: data.sex,
                     activity_level: data.activity_level,
                   });
-                  setUserGoal("emagrecer");
+                  // Goal is now set automatically based on weight difference
+                  if (data.calculations.mode === "lose") {
+                    setUserGoal("emagrecer");
+                  } else if (data.calculations.mode === "gain") {
+                    setUserGoal("ganhar_peso");
+                  } else {
+                    setUserGoal("manter");
+                  }
                   setShowWeightLossSetup(false);
                 }}
                 initialData={weightData || undefined}
@@ -516,7 +523,7 @@ export default function Dashboard() {
                                 </div>
                                 <div className="mt-3 bg-white/40 dark:bg-white/5 rounded-lg p-3">
                                   <div className="flex justify-between text-sm">
-                                    <span>Perda estimada: <strong className="text-green-600">~{calcs.weeklyLoss}kg/semana</strong></span>
+                                    <span>Mudança estimada: <strong className="text-green-600">~{calcs.weeklyChange}kg/semana</strong></span>
                                     <span>Meta em: <strong className="text-green-600">~{calcs.weeksToGoal} semanas</strong></span>
                                   </div>
                                 </div>

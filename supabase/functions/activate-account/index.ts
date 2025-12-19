@@ -27,51 +27,6 @@ serve(async (req) => {
 
     logStep("Activating account", { email, sessionId });
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-      apiVersion: "2025-08-27.basil",
-    });
-
-    // Verify the checkout session if provided
-    if (sessionId) {
-      const session = await stripe.checkout.sessions.retrieve(sessionId);
-      logStep("Session retrieved", { 
-        sessionEmail: session.customer_email,
-        status: session.payment_status 
-      });
-
-      // Verify email matches the session
-      if (session.customer_email && session.customer_email.toLowerCase() !== email.toLowerCase()) {
-        throw new Error("Email não corresponde ao usado no pagamento");
-      }
-    }
-
-    // Check if customer exists in Stripe with active subscription
-    const customers = await stripe.customers.list({ email, limit: 1 });
-    
-    if (customers.data.length === 0) {
-      throw new Error("Nenhum pagamento encontrado para este email. Por favor, faça sua assinatura primeiro.");
-    }
-
-    const customerId = customers.data[0].id;
-    logStep("Customer found", { customerId });
-
-    // Check for active subscription
-    const subscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "all",
-      limit: 1,
-    });
-
-    const hasActiveOrTrial = subscriptions.data.some(
-      (sub: { status: string }) => sub.status === "active" || sub.status === "trialing"
-    );
-
-    if (!hasActiveOrTrial) {
-      throw new Error("Nenhuma assinatura ativa encontrada. Por favor, faça sua assinatura primeiro.");
-    }
-
-    logStep("Active subscription confirmed");
-
     // Create Supabase admin client
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -79,40 +34,133 @@ serve(async (req) => {
       { auth: { persistSession: false } }
     );
 
-    // Generate a random password (user won't need it since we'll create a session)
-    const tempPassword = crypto.randomUUID();
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
+      apiVersion: "2025-08-27.basil",
+    });
 
-    // Try to create user, or get existing one
-    let userId: string;
-    
-    // First check if user exists
+    let customerId: string | null = null;
+    let hasValidSubscription = false;
+
+    // Verify the checkout session if provided (user just paid)
+    if (sessionId) {
+      try {
+        const session = await stripe.checkout.sessions.retrieve(sessionId);
+        logStep("Session retrieved", { 
+          sessionEmail: session.customer_email,
+          customerFromSession: session.customer,
+          status: session.payment_status 
+        });
+
+        // Get customer from session
+        if (session.customer) {
+          customerId = typeof session.customer === 'string' ? session.customer : session.customer.id;
+          
+          // Check subscription from this customer
+          const subscriptions = await stripe.subscriptions.list({
+            customer: customerId,
+            status: "all",
+            limit: 1,
+          });
+          
+          hasValidSubscription = subscriptions.data.some(
+            (sub: { status: string }) => sub.status === "active" || sub.status === "trialing"
+          );
+          
+          logStep("Subscription check from session", { customerId, hasValidSubscription });
+        }
+      } catch (sessionError) {
+        logStep("Session retrieval failed, will check by email", { error: String(sessionError) });
+      }
+    }
+
+    // If no valid subscription from session, check by email
+    if (!hasValidSubscription) {
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      logStep("Customer search by email", { found: customers.data.length });
+      
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        
+        const subscriptions = await stripe.subscriptions.list({
+          customer: customerId,
+          status: "all",
+          limit: 1,
+        });
+
+        hasValidSubscription = subscriptions.data.some(
+          (sub: { status: string }) => sub.status === "active" || sub.status === "trialing"
+        );
+        
+        logStep("Subscription check by email", { customerId, hasValidSubscription });
+      }
+    }
+
+    // Check if user already exists in Supabase
     const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
     const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    
+    logStep("Existing user check", { exists: !!existingUser, userId: existingUser?.id });
 
+    // If user exists and has valid subscription OR if user exists (allow login for existing users)
     if (existingUser) {
-      userId = existingUser.id;
-      logStep("Existing user found", { userId });
-    } else {
-      // Create new user with auto-confirm
-      const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      // User already exists - generate login link
+      const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
+        type: "magiclink",
         email,
-        password: tempPassword,
-        email_confirm: true, // Auto-confirm email
-        user_metadata: {
-          stripe_customer_id: customerId,
+        options: {
+          redirectTo: `${req.headers.get("origin")}/dashboard`,
         },
       });
 
-      if (createError) {
-        logStep("Error creating user", { error: createError.message });
-        throw new Error("Erro ao criar conta. Por favor, tente novamente.");
+      if (linkError) {
+        logStep("Error generating link for existing user", { error: linkError.message });
+        throw new Error("Erro ao gerar link de acesso.");
       }
 
-      userId = newUser.user.id;
-      logStep("New user created", { userId });
+      logStep("Magic link generated for existing user", { userId: existingUser.id });
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          userId: existingUser.id,
+          actionLink: linkData.properties?.action_link,
+        }),
+        {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        }
+      );
     }
 
-    // Generate a magic link for the user (this creates a session token)
+    // User doesn't exist - need valid subscription to create account
+    if (!hasValidSubscription) {
+      throw new Error("Nenhum pagamento encontrado para este email. Por favor, faça sua assinatura primeiro.");
+    }
+
+    logStep("Creating new user with valid subscription");
+
+    // Generate a random password (user won't need it)
+    const tempPassword = crypto.randomUUID();
+
+    // Create new user with auto-confirm
+    const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: tempPassword,
+      email_confirm: true,
+      user_metadata: {
+        stripe_customer_id: customerId,
+      },
+    });
+
+    if (createError) {
+      logStep("Error creating user", { error: createError.message });
+      throw new Error("Erro ao criar conta. Por favor, tente novamente.");
+    }
+
+    const userId = newUser.user.id;
+    logStep("New user created", { userId });
+
+    // Generate a magic link for the new user
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
       type: "magiclink",
       email,
@@ -126,17 +174,13 @@ serve(async (req) => {
       throw new Error("Erro ao gerar link de acesso.");
     }
 
-    logStep("Magic link generated", { userId });
-
-    // Return the verification token from the link
-    const token = linkData.properties?.hashed_token;
-    const actionLink = linkData.properties?.action_link;
+    logStep("Magic link generated for new user", { userId });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         userId,
-        actionLink, // This is the full magic link URL
+        actionLink: linkData.properties?.action_link,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

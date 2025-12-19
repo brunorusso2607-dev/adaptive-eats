@@ -63,8 +63,8 @@ serve(async (req) => {
     const requestBody = await req.json();
     // Limit days to 7 max to ensure AI can generate all recipes reliably
     const daysCount = Math.min(requestBody.daysCount || 7, 7);
-    const { planName, startDate } = requestBody;
-    logStep("Request received", { planName, startDate, daysCount });
+    const { planName, startDate, existingPlanId } = requestBody;
+    logStep("Request received", { planName, startDate, daysCount, existingPlanId });
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
@@ -300,33 +300,67 @@ NÃO peça mais informações. Apenas gere o plano completo.`;
     const endDate = new Date(start);
     endDate.setDate(endDate.getDate() + daysCount - 1);
 
-    // Create meal plan in database
-    const { data: mealPlan, error: planError } = await supabaseClient
-      .from("meal_plans")
-      .insert({
-        user_id: user.id,
-        name: planName || `Plano ${start.toLocaleDateString('pt-BR')}`,
-        start_date: start.toISOString().split('T')[0],
-        end_date: endDate.toISOString().split('T')[0],
-        is_active: true
-      })
-      .select()
-      .single();
+    let mealPlanIdToUse = existingPlanId;
+    let mealPlan;
 
-    if (planError) throw new Error(`Error creating meal plan: ${planError.message}`);
-    logStep("Meal plan created", { planId: mealPlan.id });
+    // Use existing plan or create a new one
+    if (existingPlanId) {
+      // Verify the plan exists and belongs to user
+      const { data: existingPlan, error: fetchError } = await supabaseClient
+        .from("meal_plans")
+        .select("*")
+        .eq("id", existingPlanId)
+        .eq("user_id", user.id)
+        .single();
 
-    // Deactivate other plans
-    await supabaseClient
-      .from("meal_plans")
-      .update({ is_active: false })
-      .eq("user_id", user.id)
-      .neq("id", mealPlan.id);
+      if (fetchError || !existingPlan) {
+        throw new Error("Plano alimentar não encontrado");
+      }
+
+      // Update the end_date if this week extends beyond
+      const newEndDate = endDate.toISOString().split('T')[0];
+      if (newEndDate > existingPlan.end_date) {
+        await supabaseClient
+          .from("meal_plans")
+          .update({ end_date: newEndDate, updated_at: new Date().toISOString() })
+          .eq("id", existingPlanId);
+      }
+
+      mealPlan = existingPlan;
+      mealPlanIdToUse = existingPlan.id;
+      logStep("Using existing meal plan", { planId: mealPlanIdToUse });
+    } else {
+      // Create new meal plan
+      const { data: newPlan, error: planError } = await supabaseClient
+        .from("meal_plans")
+        .insert({
+          user_id: user.id,
+          name: planName || `Plano ${start.toLocaleDateString('pt-BR')}`,
+          start_date: start.toISOString().split('T')[0],
+          end_date: endDate.toISOString().split('T')[0],
+          is_active: true
+        })
+        .select()
+        .single();
+
+      if (planError) throw new Error(`Error creating meal plan: ${planError.message}`);
+      
+      mealPlan = newPlan;
+      mealPlanIdToUse = newPlan.id;
+      logStep("Meal plan created", { planId: mealPlanIdToUse });
+
+      // Deactivate other plans
+      await supabaseClient
+        .from("meal_plans")
+        .update({ is_active: false })
+        .eq("user_id", user.id)
+        .neq("id", mealPlanIdToUse);
+    }
 
     // Insert meal plan items - ensure numeric fields are properly typed
     const items = mealPlanData.days.flatMap((day: any) =>
       day.meals.map((meal: any) => ({
-        meal_plan_id: mealPlan.id,
+        meal_plan_id: mealPlanIdToUse,
         day_of_week: Math.round(Number(day.day_index) || 0),
         meal_type: meal.meal_type,
         recipe_name: meal.recipe_name,
@@ -350,6 +384,7 @@ NÃO peça mais informações. Apenas gere o plano completo.`;
     return new Response(JSON.stringify({
       success: true,
       mealPlan: {
+        id: mealPlanIdToUse,
         ...mealPlan,
         items: items
       }

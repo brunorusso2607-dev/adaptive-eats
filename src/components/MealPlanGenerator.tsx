@@ -1,57 +1,164 @@
-import { useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from "react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Calendar, Loader2, Sparkles, ArrowLeft, CalendarDays } from "lucide-react";
+import { Calendar, Loader2, Sparkles, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { format, addDays, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type MealPlanGeneratorProps = {
   onClose: () => void;
   onPlanGenerated: () => void;
 };
 
+type WeekStatus = "pending" | "generating" | "completed";
+
+interface WeekInfo {
+  weekNumber: number;
+  startDate: Date;
+  endDate: Date;
+  status: WeekStatus;
+}
+
 export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlanGeneratorProps) {
   const [planName, setPlanName] = useState("");
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [weekNumber, setWeekNumber] = useState<1 | 2 | 3 | 4>(1);
+  const [endDate, setEndDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 27); // Default 4 weeks (28 days)
+    return date.toISOString().split('T')[0];
+  });
   const [isGenerating, setIsGenerating] = useState(false);
+  const [weeks, setWeeks] = useState<WeekInfo[]>([]);
+  const [currentWeekIndex, setCurrentWeekIndex] = useState(0);
+  const [showContinueDialog, setShowContinueDialog] = useState(false);
+  const [mealPlanId, setMealPlanId] = useState<string | null>(null);
 
-  const handleGenerate = async () => {
-    if (!planName.trim()) {
-      toast.error("Digite um nome para o plano");
-      return;
+  // Calculate weeks when dates change
+  useEffect(() => {
+    const start = new Date(startDate);
+    const end = new Date(endDate);
+    const totalDays = differenceInDays(end, start) + 1;
+    const numWeeks = Math.ceil(totalDays / 7);
+    
+    const newWeeks: WeekInfo[] = [];
+    for (let i = 0; i < numWeeks; i++) {
+      const weekStart = addDays(start, i * 7);
+      const weekEnd = addDays(weekStart, 6);
+      // Don't go past the end date
+      const actualEnd = weekEnd > end ? end : weekEnd;
+      
+      newWeeks.push({
+        weekNumber: i + 1,
+        startDate: weekStart,
+        endDate: actualEnd,
+        status: "pending"
+      });
     }
+    setWeeks(newWeeks);
+    setCurrentWeekIndex(0);
+  }, [startDate, endDate]);
+
+  const formatDateRange = (start: Date, end: Date) => {
+    return `${format(start, "dd/MM", { locale: ptBR })} a ${format(end, "dd/MM", { locale: ptBR })}`;
+  };
+
+  const generateWeek = async (weekIndex: number, existingPlanId?: string) => {
+    const week = weeks[weekIndex];
+    if (!week) return;
 
     setIsGenerating(true);
+    setWeeks(prev => prev.map((w, i) => 
+      i === weekIndex ? { ...w, status: "generating" } : w
+    ));
+
     try {
+      const daysInWeek = differenceInDays(week.endDate, week.startDate) + 1;
+      
       const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
         body: {
-          planName: `${planName} - Semana ${weekNumber}`,
-          startDate,
-          daysCount: 7
+          planName: `${planName} - Semana ${week.weekNumber}`,
+          startDate: week.startDate.toISOString().split('T')[0],
+          daysCount: daysInWeek,
+          existingPlanId: existingPlanId || mealPlanId
         }
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast.success(`Plano "${planName} - Semana ${weekNumber}" gerado com sucesso!`);
-      onPlanGenerated();
+      // Save the plan ID for subsequent weeks
+      if (data.mealPlan?.id && !mealPlanId) {
+        setMealPlanId(data.mealPlan.id);
+      }
+
+      setWeeks(prev => prev.map((w, i) => 
+        i === weekIndex ? { ...w, status: "completed" } : w
+      ));
+
+      toast.success(`Semana ${week.weekNumber} gerada com sucesso!`);
+
+      // Check if there are more weeks to generate
+      const nextWeekIndex = weekIndex + 1;
+      if (nextWeekIndex < weeks.length) {
+        setCurrentWeekIndex(nextWeekIndex);
+        setShowContinueDialog(true);
+      } else {
+        // All weeks completed
+        toast.success(`Plano "${planName}" completo!`);
+        onPlanGenerated();
+      }
     } catch (error) {
       console.error("Error generating meal plan:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao gerar plano alimentar");
+      setWeeks(prev => prev.map((w, i) => 
+        i === weekIndex ? { ...w, status: "pending" } : w
+      ));
     } finally {
       setIsGenerating(false);
     }
   };
 
+  const handleStartGeneration = () => {
+    if (!planName.trim()) {
+      toast.error("Digite um nome para o plano");
+      return;
+    }
+    generateWeek(0);
+  };
+
+  const handleContinue = () => {
+    setShowContinueDialog(false);
+    generateWeek(currentWeekIndex);
+  };
+
+  const handleStopHere = () => {
+    setShowContinueDialog(false);
+    toast.success(`Plano "${planName}" parcialmente criado!`);
+    onPlanGenerated();
+  };
+
+  const completedWeeks = weeks.filter(w => w.status === "completed").length;
+  const totalWeeks = weeks.length;
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        <Button variant="ghost" size="icon" onClick={onClose} disabled={isGenerating}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <div>
@@ -67,67 +174,90 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             <Label htmlFor="planName">Nome do Plano</Label>
             <Input
               id="planName"
-              placeholder="Ex: Minha Semana Saudável"
+              placeholder="Ex: Janeiro 2026"
               value={planName}
               onChange={(e) => setPlanName(e.target.value)}
-              disabled={isGenerating}
+              disabled={isGenerating || completedWeeks > 0}
             />
           </div>
 
-          {/* Start Date */}
-          <div className="space-y-2">
-            <Label htmlFor="startDate">Data de Início</Label>
-            <Input
-              id="startDate"
-              type="date"
-              value={startDate}
-              onChange={(e) => setStartDate(e.target.value)}
-              disabled={isGenerating}
-            />
-          </div>
-
-          {/* Week Selection */}
-          <div className="space-y-3">
-            <Label>Qual Semana Gerar?</Label>
-            <div className="grid grid-cols-4 gap-3">
-              {[1, 2, 3, 4].map((week) => (
-                <Button
-                  key={week}
-                  type="button"
-                  variant={weekNumber === week ? "default" : "outline"}
-                  className={weekNumber === week ? "gradient-primary border-0" : ""}
-                  onClick={() => setWeekNumber(week as 1 | 2 | 3 | 4)}
-                  disabled={isGenerating}
-                >
-                  <CalendarDays className="w-4 h-4 mr-2" />
-                  Semana {week}
-                </Button>
-              ))}
+          {/* Date Range */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="startDate">Data de Início</Label>
+              <Input
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                disabled={isGenerating || completedWeeks > 0}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="endDate">Data Final</Label>
+              <Input
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                disabled={isGenerating || completedWeeks > 0}
+              />
             </div>
           </div>
+
+          {/* Weeks Preview */}
+          {weeks.length > 0 && (
+            <div className="space-y-3">
+              <Label>Semanas do Plano ({totalWeeks} semanas)</Label>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {weeks.map((week, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border text-center text-sm transition-all ${
+                      week.status === "completed"
+                        ? "bg-emerald-500/20 border-emerald-500/50 text-emerald-700 dark:text-emerald-300"
+                        : week.status === "generating"
+                        ? "bg-primary/20 border-primary/50 animate-pulse"
+                        : "bg-muted/50 border-border"
+                    }`}
+                  >
+                    <div className="font-medium flex items-center justify-center gap-1">
+                      {week.status === "completed" && <CheckCircle2 className="w-3 h-3" />}
+                      {week.status === "generating" && <Loader2 className="w-3 h-3 animate-spin" />}
+                      Semana {week.weekNumber}
+                    </div>
+                    <div className="text-xs text-muted-foreground mt-1">
+                      {formatDateRange(week.startDate, week.endDate)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Generate Button */}
           <Button
             className="w-full gradient-primary border-0 text-lg py-6"
-            onClick={handleGenerate}
-            disabled={isGenerating || !planName.trim()}
+            onClick={handleStartGeneration}
+            disabled={isGenerating || !planName.trim() || completedWeeks > 0}
           >
             {isGenerating ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Gerando Semana {weekNumber}...
+                Gerando Semana {weeks.find(w => w.status === "generating")?.weekNumber || 1}...
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5 mr-2" />
-                Gerar Plano com IA
+                Começar a Gerar ({totalWeeks} semanas)
               </>
             )}
           </Button>
 
           {isGenerating && (
             <p className="text-sm text-muted-foreground text-center animate-pulse">
-              ⏳ Isso pode levar até 30 segundos...
+              ⏳ Isso pode levar até 30 segundos por semana...
             </p>
           )}
         </CardContent>
@@ -141,17 +271,48 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
               <Calendar className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
             </div>
             <div>
-              <h4 className="font-semibold text-foreground">O que será gerado?</h4>
+              <h4 className="font-semibold text-foreground">Como funciona?</h4>
               <ul className="text-sm text-muted-foreground mt-1 space-y-1">
-                <li>• 7 dias de refeições completas</li>
+                <li>• O plano será gerado semana a semana</li>
+                <li>• Após cada semana, você pode continuar ou parar</li>
                 <li>• 4 refeições por dia (café, almoço, lanche, jantar)</li>
-                <li>• Receitas variadas e diferentes a cada dia</li>
-                <li>• Adaptado às suas preferências e metas</li>
+                <li>• Receitas variadas adaptadas ao seu perfil</li>
               </ul>
             </div>
           </div>
         </CardContent>
       </Card>
+
+      {/* Continue Dialog */}
+      <AlertDialog open={showContinueDialog} onOpenChange={setShowContinueDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="w-5 h-5 text-emerald-500" />
+              Semana {currentWeekIndex} criada!
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {currentWeekIndex < weeks.length && weeks[currentWeekIndex] && (
+                <>
+                  Deseja gerar a <strong>Semana {weeks[currentWeekIndex].weekNumber}</strong> ({formatDateRange(weeks[currentWeekIndex].startDate, weeks[currentWeekIndex].endDate)})?
+                  <br /><br />
+                  <span className="text-muted-foreground">
+                    Progresso: {completedWeeks} de {totalWeeks} semanas geradas
+                  </span>
+                </>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={handleStopHere}>
+              Parar por aqui
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={handleContinue} className="gradient-primary">
+              Gerar próxima semana
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

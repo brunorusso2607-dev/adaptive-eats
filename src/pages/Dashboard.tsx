@@ -3,9 +3,25 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Camera, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
+import RecipeResult from "@/components/RecipeResult";
+
+type Recipe = {
+  name: string;
+  description: string;
+  ingredients: { item: string; quantity: string; unit: string }[];
+  instructions: string[];
+  prep_time: number;
+  complexity: "rapida" | "equilibrada" | "elaborada";
+  servings: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  input_ingredients?: string | null;
+};
 
 const plans = {
   essencial: {
@@ -38,6 +54,12 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  
+  // Recipe generation state
+  const [ingredients, setIngredients] = useState("");
+  const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
+  const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
+  const [showRecipe, setShowRecipe] = useState(false);
 
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
@@ -50,6 +72,35 @@ export default function Dashboard() {
       navigate("/onboarding");
     } else {
       setOnboardingCompleted(true);
+    }
+  };
+
+  const generateRecipe = async (type: "com_ingredientes" | "automatica") => {
+    if (type === "com_ingredientes" && !ingredients.trim()) {
+      toast.error("Digite alguns ingredientes primeiro");
+      return;
+    }
+
+    setIsGeneratingRecipe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-recipe", {
+        body: { 
+          type,
+          ingredients: type === "com_ingredientes" ? ingredients : null,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      setGeneratedRecipe(data.recipe);
+      setShowRecipe(true);
+      setIngredients("");
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
+    } finally {
+      setIsGeneratingRecipe(false);
     }
   };
 
@@ -213,6 +264,14 @@ export default function Dashboard() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : isSubscribed ? (
+            showRecipe && generatedRecipe ? (
+              <RecipeResult
+                recipe={generatedRecipe}
+                onBack={() => setShowRecipe(false)}
+                onGenerateAnother={() => generateRecipe(generatedRecipe.input_ingredients ? "com_ingredientes" : "automatica")}
+                isGenerating={isGeneratingRecipe}
+              />
+            ) : (
             <>
               {/* Home Principal - 5 Opções */}
               <div className="space-y-6">
@@ -235,11 +294,23 @@ export default function Dashboard() {
                     <div className="flex gap-2">
                       <input 
                         type="text" 
+                        value={ingredients}
+                        onChange={(e) => setIngredients(e.target.value)}
                         placeholder="Ex: frango, batata, cebola..."
                         className="flex-1 px-4 py-3 rounded-xl border border-border bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        disabled={isGeneratingRecipe}
+                        onKeyDown={(e) => e.key === "Enter" && generateRecipe("com_ingredientes")}
                       />
-                      <Button className="gradient-primary border-0 px-6">
-                        <Sparkles className="w-5 h-5" />
+                      <Button 
+                        className="gradient-primary border-0 px-6"
+                        onClick={() => generateRecipe("com_ingredientes")}
+                        disabled={isGeneratingRecipe}
+                      >
+                        {isGeneratingRecipe ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Sparkles className="w-5 h-5" />
+                        )}
                       </Button>
                     </div>
                   </CardContent>
@@ -248,10 +319,17 @@ export default function Dashboard() {
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Gerar Receita Automática */}
-                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                  <Card 
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    onClick={() => !isGeneratingRecipe && generateRecipe("automatica")}
+                  >
                     <CardContent className="p-5 text-center space-y-3">
                       <div className="w-12 h-12 mx-auto gradient-accent rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Zap className="w-6 h-6 text-accent-foreground" />
+                        {isGeneratingRecipe ? (
+                          <Loader2 className="w-6 h-6 text-accent-foreground animate-spin" />
+                        ) : (
+                          <Zap className="w-6 h-6 text-accent-foreground" />
+                        )}
                       </div>
                       <div>
                         <h3 className="font-display font-bold text-foreground">
@@ -341,6 +419,7 @@ export default function Dashboard() {
                 </Card>
               </div>
             </>
+            )
           ) : (
             <>
               {/* Plans */}
@@ -448,14 +527,14 @@ export default function Dashboard() {
                 <Card className="glass-card border-border/50 opacity-60">
                   <CardContent className="p-6 text-center space-y-4">
                     <div className="w-16 h-16 mx-auto bg-muted rounded-2xl flex items-center justify-center">
-                      <Camera className="w-8 h-8 text-muted-foreground" />
+                      <UtensilsCrossed className="w-8 h-8 text-muted-foreground" />
                     </div>
                     <div>
                       <h3 className="font-display text-lg font-bold text-foreground">
-                        Escanear Ingredientes
+                        Gerar Receitas
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Tire uma foto e deixe a IA identificar
+                        Receitas personalizadas com IA
                       </p>
                     </div>
                     <Button variant="secondary" disabled className="w-full">
@@ -471,10 +550,10 @@ export default function Dashboard() {
                     </div>
                     <div>
                       <h3 className="font-display text-lg font-bold text-foreground">
-                        Gerar Receitas com IA
+                        Plano Semanal
                       </h3>
                       <p className="text-sm text-muted-foreground mt-1">
-                        Receitas personalizadas em segundos
+                        Organize sua semana alimentar
                       </p>
                     </div>
                     <Button variant="secondary" disabled className="w-full">

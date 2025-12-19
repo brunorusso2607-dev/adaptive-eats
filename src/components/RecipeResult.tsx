@@ -28,6 +28,7 @@ type Recipe = {
   carbs: number;
   fat: number;
   input_ingredients?: string | null;
+  is_kids_mode?: boolean;
 };
 
 type RecipeResultProps = {
@@ -95,6 +96,8 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
     }
   };
 
+  const isKidsMode = recipe.is_kids_mode;
+
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
       {/* Header */}
@@ -103,67 +106,117 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h2 className="font-display text-xl font-bold text-foreground flex-1">
-          Receita Gerada
+          {isKidsMode ? "🎉 Receita Divertida!" : "Receita Gerada"}
         </h2>
+        {isKidsMode && (
+          <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-xs font-bold rounded-full animate-pulse">
+            👶 Modo Kids
+          </span>
+        )}
       </div>
 
       {/* Recipe Card */}
-      <Card className="glass-card border-primary/20 overflow-hidden">
-        <div className="h-2 gradient-primary" />
+      <Card className={cn(
+        "glass-card overflow-hidden",
+        isKidsMode 
+          ? "border-2 border-pink-400/50 shadow-[0_0_30px_-5px_rgba(236,72,153,0.3)]" 
+          : "border-primary/20"
+      )}>
+        <div className={cn(
+          "h-3",
+          isKidsMode 
+            ? "bg-gradient-to-r from-pink-400 via-yellow-400 to-green-400" 
+            : "gradient-primary h-2"
+        )} />
         <CardHeader className="pb-3">
-          <CardTitle className="font-display text-2xl">{recipe.name}</CardTitle>
-          <p className="text-muted-foreground text-sm">{recipe.description}</p>
+          <CardTitle className={cn(
+            "font-display",
+            isKidsMode ? "text-3xl" : "text-2xl"
+          )}>
+            {recipe.name}
+          </CardTitle>
+          <p className={cn(
+            "text-sm",
+            isKidsMode ? "text-foreground/80 text-base" : "text-muted-foreground"
+          )}>
+            {recipe.description}
+          </p>
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Meta Info */}
-          <div className="flex flex-wrap gap-4 text-sm">
+          <div className={cn(
+            "flex flex-wrap gap-4 text-sm",
+            isKidsMode && "bg-gradient-to-r from-pink-50 to-yellow-50 dark:from-pink-950/30 dark:to-yellow-950/30 p-3 rounded-xl"
+          )}>
             <div className="flex items-center gap-1.5">
-              <Clock className="w-4 h-4 text-muted-foreground" />
-              <span>{recipe.prep_time} min</span>
+              <Clock className={cn("w-4 h-4", isKidsMode ? "text-pink-500" : "text-muted-foreground")} />
+              <span>{isKidsMode ? `⚡ ${recipe.prep_time} min` : `${recipe.prep_time} min`}</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Users className="w-4 h-4 text-muted-foreground" />
-              <span>{recipe.servings} porções</span>
+              <Users className={cn("w-4 h-4", isKidsMode ? "text-yellow-500" : "text-muted-foreground")} />
+              <span>{isKidsMode ? `👨‍👩‍👧 ${recipe.servings} porções` : `${recipe.servings} porções`}</span>
             </div>
-            <div className={cn("flex items-center gap-1.5", COMPLEXITY_LABELS[recipe.complexity].color)}>
+            <div className={cn("flex items-center gap-1.5", isKidsMode ? "text-green-500" : COMPLEXITY_LABELS[recipe.complexity].color)}>
               <ChefHat className="w-4 h-4" />
-              <span>{COMPLEXITY_LABELS[recipe.complexity].label}</span>
+              <span>{isKidsMode ? "Super Fácil! 🌟" : COMPLEXITY_LABELS[recipe.complexity].label}</span>
             </div>
           </div>
 
-          {/* Nutrition */}
+          {/* Nutrition - Kids version is more colorful and playful */}
           <div className="grid grid-cols-4 gap-2">
-            <div className="bg-orange-500/10 rounded-xl p-3 text-center">
-              <Flame className="w-5 h-5 text-orange-500 mx-auto mb-1" />
+            <div className={cn(
+              "rounded-xl p-3 text-center transition-transform hover:scale-105",
+              isKidsMode ? "bg-gradient-to-b from-orange-400/20 to-orange-500/10" : "bg-orange-500/10"
+            )}>
+              <Flame className={cn("w-5 h-5 mx-auto mb-1", isKidsMode ? "text-orange-400" : "text-orange-500")} />
               <p className="text-lg font-bold">{recipe.calories}</p>
-              <p className="text-xs text-muted-foreground">kcal</p>
+              <p className="text-xs text-muted-foreground">{isKidsMode ? "🔥 kcal" : "kcal"}</p>
             </div>
-            <div className="bg-red-500/10 rounded-xl p-3 text-center">
-              <Beef className="w-5 h-5 text-red-500 mx-auto mb-1" />
+            <div className={cn(
+              "rounded-xl p-3 text-center transition-transform hover:scale-105",
+              isKidsMode ? "bg-gradient-to-b from-red-400/20 to-red-500/10" : "bg-red-500/10"
+            )}>
+              <Beef className={cn("w-5 h-5 mx-auto mb-1", isKidsMode ? "text-red-400" : "text-red-500")} />
               <p className="text-lg font-bold">{recipe.protein}g</p>
-              <p className="text-xs text-muted-foreground">Proteína</p>
+              <p className="text-xs text-muted-foreground">{isKidsMode ? "💪 Força" : "Proteína"}</p>
             </div>
-            <div className="bg-amber-500/10 rounded-xl p-3 text-center">
-              <Wheat className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+            <div className={cn(
+              "rounded-xl p-3 text-center transition-transform hover:scale-105",
+              isKidsMode ? "bg-gradient-to-b from-amber-400/20 to-amber-500/10" : "bg-amber-500/10"
+            )}>
+              <Wheat className={cn("w-5 h-5 mx-auto mb-1", isKidsMode ? "text-amber-400" : "text-amber-500")} />
               <p className="text-lg font-bold">{recipe.carbs}g</p>
-              <p className="text-xs text-muted-foreground">Carbos</p>
+              <p className="text-xs text-muted-foreground">{isKidsMode ? "⚡ Energia" : "Carbos"}</p>
             </div>
-            <div className="bg-green-500/10 rounded-xl p-3 text-center">
-              <Droplet className="w-5 h-5 text-green-500 mx-auto mb-1" />
+            <div className={cn(
+              "rounded-xl p-3 text-center transition-transform hover:scale-105",
+              isKidsMode ? "bg-gradient-to-b from-green-400/20 to-green-500/10" : "bg-green-500/10"
+            )}>
+              <Droplet className={cn("w-5 h-5 mx-auto mb-1", isKidsMode ? "text-green-400" : "text-green-500")} />
               <p className="text-lg font-bold">{recipe.fat}g</p>
-              <p className="text-xs text-muted-foreground">Gordura</p>
+              <p className="text-xs text-muted-foreground">{isKidsMode ? "🥑 Bom" : "Gordura"}</p>
             </div>
           </div>
 
           {/* Ingredients */}
-          <div>
+          <div className={cn(
+            isKidsMode && "bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 p-4 rounded-xl"
+          )}>
             <h3 className="font-display font-bold text-foreground mb-3 flex items-center gap-2">
-              🥗 Ingredientes
+              {isKidsMode ? "🛒 O que vamos precisar:" : "🥗 Ingredientes"}
             </h3>
             <ul className="space-y-2">
               {recipe.ingredients.map((ing, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-sm">
-                  <span className="w-2 h-2 bg-primary rounded-full shrink-0" />
+                <li key={idx} className={cn(
+                  "flex items-center gap-2 text-sm",
+                  isKidsMode && "text-base"
+                )}>
+                  <span className={cn(
+                    "w-2 h-2 rounded-full shrink-0",
+                    isKidsMode 
+                      ? ["bg-pink-400", "bg-yellow-400", "bg-green-400", "bg-blue-400", "bg-purple-400"][idx % 5]
+                      : "bg-primary"
+                  )} />
                   <span>
                     <span className="font-medium">{ing.quantity} {ing.unit}</span> de {ing.item}
                   </span>
@@ -173,21 +226,36 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
           </div>
 
           {/* Instructions */}
-          <div>
+          <div className={cn(
+            isKidsMode && "bg-gradient-to-r from-green-50 to-teal-50 dark:from-green-950/30 dark:to-teal-950/30 p-4 rounded-xl"
+          )}>
             <h3 className="font-display font-bold text-foreground mb-3 flex items-center gap-2">
-              👨‍🍳 Modo de Preparo
+              {isKidsMode ? "👨‍🍳 Vamos cozinhar!" : "👨‍🍳 Modo de Preparo"}
             </h3>
             <ol className="space-y-3">
               {recipe.instructions.map((step, idx) => (
                 <li key={idx} className="flex gap-3 text-sm">
-                  <span className="w-6 h-6 bg-primary/20 text-primary rounded-full flex items-center justify-center shrink-0 text-xs font-bold">
-                    {idx + 1}
+                  <span className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center shrink-0 text-sm font-bold",
+                    isKidsMode 
+                      ? "bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-base" 
+                      : "bg-primary/20 text-primary w-6 h-6 text-xs"
+                  )}>
+                    {isKidsMode ? ["1️⃣", "2️⃣", "3️⃣", "4️⃣", "5️⃣", "6️⃣", "7️⃣", "8️⃣"][idx] || idx + 1 : idx + 1}
                   </span>
-                  <span className="pt-0.5">{step}</span>
+                  <span className={cn("pt-0.5", isKidsMode && "text-base")}>{step}</span>
                 </li>
               ))}
             </ol>
           </div>
+
+          {/* Kids mode fun message */}
+          {isKidsMode && (
+            <div className="text-center p-4 bg-gradient-to-r from-pink-100 to-yellow-100 dark:from-pink-950/50 dark:to-yellow-950/50 rounded-xl">
+              <p className="text-lg font-bold text-foreground">🎉 Parabéns, chefinho!</p>
+              <p className="text-sm text-muted-foreground">Você está pronto para fazer uma receita deliciosa!</p>
+            </div>
+          )}
         </CardContent>
       </Card>
 

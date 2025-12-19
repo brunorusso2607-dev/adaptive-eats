@@ -97,8 +97,25 @@ serve(async (req) => {
         }).join(", ")
       : "nenhuma restrição";
 
+    // Modo Kids special prompt
+    const isKidsMode = profile.context === "modo_kids";
+    
+    const kidsInstructions = isKidsMode ? `
+MODO KIDS ATIVO - REGRAS ESPECIAIS:
+- Nomes DIVERTIDOS e criativos (ex: "Macarrão Arco-Íris", "Bolinho do Astronauta", "Pizza do Dino")
+- Descrições com emojis e linguagem amigável para crianças
+- Receitas SIMPLES com no máximo 6-8 ingredientes
+- Tempo de preparo CURTO (máximo 25 minutos)
+- Sabores suaves e familiares (evitar temperos fortes)
+- Ingredientes coloridos e visualmente atrativos
+- Instruções simples que uma criança poderia ajudar
+- Calorias adequadas para crianças (300-500 kcal por porção)
+- Apresentação divertida (formas, cores, decorações simples)
+- SEMPRE usar complexity "rapida" no Modo Kids` : "";
+    
     const systemPrompt = `Você é um nutricionista e chef especializado em receitas personalizadas.
 Você DEVE gerar receitas com valores nutricionais REAIS e PRECISOS baseados em tabelas nutricionais.
+${kidsInstructions}
 
 REGRAS ABSOLUTAS - NUNCA VIOLAR:
 1. INTOLERÂNCIAS: ${intolerancesStr}
@@ -111,27 +128,26 @@ REGRAS ABSOLUTAS - NUNCA VIOLAR:
 
 4. META CALÓRICA: ${CALORIE_LABELS[profile.calorie_goal]}
 
-5. COMPLEXIDADE: ${COMPLEXITY_LABELS[profile.recipe_complexity]}
+5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 minutos) - OBRIGATÓRIO no Modo Kids" : COMPLEXITY_LABELS[profile.recipe_complexity]}
 
-6. CONTEXTO: ${profile.context === "familia" ? "receita para família (4 porções)" : profile.context === "modo_kids" ? "receita para crianças (sabores suaves, apresentação divertida)" : "receita individual (2 porções)"}
+6. CONTEXTO: ${profile.context === "familia" ? "receita para família (4 porções)" : isKidsMode ? "MODO KIDS: receita divertida para crianças (2-3 porções), nomes criativos, emojis na descrição!" : "receita individual (2 porções)"}
 
 FORMATO DE RESPOSTA (JSON VÁLIDO):
 {
-  "name": "Nome da Receita",
-  "description": "Breve descrição em 1 frase",
+  "name": "${isKidsMode ? "Nome DIVERTIDO e criativo (ex: Macarrão Arco-Íris 🌈)" : "Nome da Receita"}",
+  "description": "${isKidsMode ? "Descrição curta e divertida COM EMOJIS para crianças!" : "Breve descrição em 1 frase"}",
   "ingredients": [
     {"item": "nome do ingrediente", "quantity": "quantidade", "unit": "unidade"},
     ...
   ],
   "instructions": [
-    "Passo 1...",
-    "Passo 2...",
+    "${isKidsMode ? "Passo simples que uma criança poderia ajudar..." : "Passo 1..."}",
     ...
   ],
-  "prep_time": 30,
-  "complexity": "${profile.recipe_complexity}",
-  "servings": ${profile.context === "familia" ? 4 : 2},
-  "calories": 450,
+  "prep_time": ${isKidsMode ? 20 : 30},
+  "complexity": "${isKidsMode ? "rapida" : profile.recipe_complexity}",
+  "servings": ${profile.context === "familia" ? 4 : isKidsMode ? 3 : 2},
+  "calories": ${isKidsMode ? 400 : 450},
   "protein": 25.5,
   "carbs": 35.2,
   "fat": 18.3
@@ -140,7 +156,7 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
 IMPORTANTE:
 - calories, protein, carbs, fat são POR PORÇÃO
 - Use valores nutricionais REAIS baseados nos ingredientes
-- prep_time em minutos
+- prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}
 - Responda APENAS com o JSON, sem texto adicional`;
 
     const userPrompt = type === "automatica"
@@ -240,6 +256,7 @@ IMPORTANTE:
       recipe: {
         ...recipe,
         input_ingredients: ingredients || null,
+        is_kids_mode: isKidsMode,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

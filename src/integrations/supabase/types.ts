@@ -30,6 +30,7 @@ export type Database = {
           recipe_name: string
           recipe_prep_time: number
           recipe_protein: number
+          week_number: number
         }
         Insert: {
           created_at?: string
@@ -46,6 +47,7 @@ export type Database = {
           recipe_name: string
           recipe_prep_time?: number
           recipe_protein?: number
+          week_number?: number
         }
         Update: {
           created_at?: string
@@ -62,6 +64,7 @@ export type Database = {
           recipe_name?: string
           recipe_prep_time?: number
           recipe_protein?: number
+          week_number?: number
         }
         Relationships: [
           {

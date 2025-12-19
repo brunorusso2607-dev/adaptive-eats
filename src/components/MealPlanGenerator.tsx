@@ -90,10 +90,11 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       
       const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
         body: {
-          planName: `${planName} - Semana ${week.weekNumber}`,
+          planName: planName || `Plano ${format(new Date(startDate), "MMMM yyyy", { locale: ptBR })}`,
           startDate: week.startDate.toISOString().split('T')[0],
           daysCount: daysInWeek,
-          existingPlanId: existingPlanId || mealPlanId
+          existingPlanId: existingPlanId || mealPlanId,
+          weekNumber: week.weekNumber
         }
       });
 

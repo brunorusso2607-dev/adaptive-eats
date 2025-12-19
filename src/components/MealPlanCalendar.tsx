@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Flame, Beef, Wheat, Heart, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Flame, Beef, Wheat, Heart, X, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Ingredient = { item: string; quantity: string; unit: string };
@@ -20,6 +20,7 @@ type MealPlanItem = {
   recipe_ingredients: Ingredient[];
   recipe_instructions: string[];
   is_favorite: boolean;
+  week_number?: number;
 };
 
 type MealPlan = {
@@ -49,9 +50,22 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
 
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite }: MealPlanCalendarProps) {
   const [selectedDay, setSelectedDay] = useState(0);
+  
+  // Get unique weeks from the items
+  const availableWeeks = useMemo(() => {
+    const weeks = [...new Set(mealPlan.items.map(item => item.week_number || 1))].sort((a, b) => a - b);
+    return weeks.length > 0 ? weeks : [1];
+  }, [mealPlan.items]);
+
+  const [selectedWeek, setSelectedWeek] = useState(availableWeeks[0] || 1);
+
+  // Filter items by selected week
+  const weekItems = useMemo(() => {
+    return mealPlan.items.filter(item => (item.week_number || 1) === selectedWeek);
+  }, [mealPlan.items, selectedWeek]);
 
   const getDayMeals = (dayIndex: number) => {
-    return mealPlan.items.filter(item => item.day_of_week === dayIndex);
+    return weekItems.filter(item => item.day_of_week === dayIndex);
   };
 
   const getDayTotals = (dayIndex: number) => {
@@ -81,6 +95,32 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           <X className="w-5 h-5" />
         </Button>
       </div>
+
+      {/* Week Selector - Show only if multiple weeks exist */}
+      {availableWeeks.length > 1 && (
+        <div className="flex items-center gap-2">
+          <CalendarDays className="w-4 h-4 text-muted-foreground" />
+          <div className="flex gap-2 flex-wrap">
+            {availableWeeks.map((week) => (
+              <Button
+                key={week}
+                variant={selectedWeek === week ? "default" : "outline"}
+                size="sm"
+                className={cn(
+                  "transition-all",
+                  selectedWeek === week && "gradient-primary border-0"
+                )}
+                onClick={() => {
+                  setSelectedWeek(week);
+                  setSelectedDay(0);
+                }}
+              >
+                Semana {week}
+              </Button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Day Selector */}
       <div className="flex items-center gap-2">

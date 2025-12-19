@@ -71,6 +71,7 @@ export default function Dashboard() {
     age: number | null;
     sex: "male" | "female" | null;
     activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
+    goal_mode: "lose" | "gain" | "maintain" | null;
   } | null>(null);
   
   // Recipe generation state
@@ -94,6 +95,12 @@ export default function Dashboard() {
       setUserContext(data?.context || "individual");
       setUserGoal(data?.goal || "manter");
       if (data?.weight_current) {
+        const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
+          if (goal === "emagrecer") return "lose";
+          if (goal === "ganhar_peso") return "gain";
+          if (goal === "manter") return "maintain";
+          return null;
+        };
         setWeightData({
           weight_current: data.weight_current,
           weight_goal: data.weight_goal,
@@ -101,6 +108,7 @@ export default function Dashboard() {
           age: data.age,
           sex: data.sex as "male" | "female" | null,
           activity_level: (data.activity_level as any) || "moderate",
+          goal_mode: goalToMode(data.goal || "manter"),
         });
       }
     }
@@ -354,8 +362,9 @@ export default function Dashboard() {
                     age: data.age,
                     sex: data.sex,
                     activity_level: data.activity_level,
+                    goal_mode: data.calculations.mode,
                   });
-                  // Goal is now set automatically based on weight difference
+                  // Goal is set based on user selection
                   if (data.calculations.mode === "lose") {
                     setUserGoal("emagrecer");
                   } else if (data.calculations.mode === "gain") {

@@ -12,12 +12,13 @@ const logStep = (step: string, details?: any) => {
 };
 
 const DAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-const MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar"];
+const MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 const MEAL_LABELS: Record<string, string> = {
   cafe_manha: "Café da Manhã",
   almoco: "Almoço",
   lanche: "Lanche da Tarde",
-  jantar: "Jantar"
+  jantar: "Jantar",
+  ceia: "Ceia"
 };
 
 const DIETARY_LABELS: Record<string, string> = {
@@ -129,10 +130,10 @@ PERFIL DO USUÁRIO:
 
 REGRAS ABSOLUTAS:
 1. Gere exatamente ${daysCount} dias de refeições
-2. Cada dia deve ter 4 refeições: ${MEAL_TYPES.map(m => MEAL_LABELS[m]).join(", ")}
+2. Cada dia deve ter 5 refeições: ${MEAL_TYPES.map(m => MEAL_LABELS[m]).join(", ")}
 3. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
 4. Respeite TODAS as intolerâncias alimentares
-5. Distribua as calorias: Café 20%, Almoço 35%, Lanche 15%, Jantar 30%
+5. Distribua as calorias: Café 20%, Almoço 30%, Lanche 10%, Jantar 30%, Ceia 10%
 6. Cada receita deve ter ingredientes e instruções completas
 
 FORMATO DE RESPOSTA (JSON VÁLIDO):
@@ -161,7 +162,7 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
 }`;
 
     const userPrompt = `Gere AGORA um plano alimentar completo para ${daysCount} dias.
-Use a ferramenta generate_meal_plan e retorne o JSON com todas as ${daysCount * 4} receitas.
+Use a ferramenta generate_meal_plan e retorne o JSON com todas as ${daysCount * 5} receitas (5 refeições por dia).
 NÃO peça mais informações. Apenas gere o plano completo.`;
 
     logStep("Calling Lovable AI for meal plan generation");

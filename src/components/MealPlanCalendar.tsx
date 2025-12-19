@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Flame, Beef, Wheat, Heart, X, CalendarDays } from "lucide-react";
+import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type Ingredient = { item: string; quantity: string; unit: string };
@@ -46,6 +46,7 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   almoco: { icon: UtensilsCrossed, label: "Almoço", color: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
   lanche: { icon: Cookie, label: "Lanche", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
   jantar: { icon: Moon, label: "Jantar", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
+  ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
 
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite }: MealPlanCalendarProps) {
@@ -191,7 +192,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
       {/* Meals List */}
       <div className="space-y-4">
-        {["cafe_manha", "almoco", "lanche", "jantar"].map((mealType) => {
+        {["cafe_manha", "almoco", "lanche", "jantar", "ceia"].map((mealType) => {
           const meal = currentDayMeals.find(m => m.meal_type === mealType);
           const config = MEAL_CONFIG[mealType];
           const Icon = config.icon;

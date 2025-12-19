@@ -31,7 +31,8 @@ const MEAL_LABELS: Record<string, string> = {
   cafe_manha: "Café da Manhã",
   almoco: "Almoço",
   lanche: "Lanche da Tarde",
-  jantar: "Jantar"
+  jantar: "Jantar",
+  ceia: "Ceia"
 };
 
 export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: MealRecipeDetailProps) {

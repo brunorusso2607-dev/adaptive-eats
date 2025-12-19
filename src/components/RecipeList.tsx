@@ -1,11 +1,22 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Clock, Flame, Heart, Loader2, ChefHat } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Heart, Loader2, ChefHat, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 type RecipeFromDB = {
   id: string;
@@ -105,6 +116,23 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
     }
   };
 
+  const deleteRecipe = async (recipeId: string) => {
+    try {
+      const { error } = await supabase
+        .from("recipes")
+        .delete()
+        .eq("id", recipeId);
+
+      if (error) throw error;
+
+      setRecipes(prev => prev.filter(r => r.id !== recipeId));
+      toast.success("Receita deletada com sucesso");
+    } catch (error) {
+      console.error("Error deleting recipe:", error);
+      toast.error("Erro ao deletar receita");
+    }
+  };
+
   const handleSelectRecipe = (recipe: RecipeFromDB) => {
     const formattedRecipe: Recipe = {
       name: recipe.name,
@@ -190,24 +218,54 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
                       </span>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="shrink-0"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleFavorite(recipe.id, recipe.is_favorite);
-                    }}
-                  >
-                    <Heart 
-                      className={cn(
-                        "w-5 h-5 transition-colors",
-                        recipe.is_favorite 
-                          ? "text-rose-500 fill-rose-500" 
-                          : "text-muted-foreground"
-                      )} 
-                    />
-                  </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleFavorite(recipe.id, recipe.is_favorite);
+                      }}
+                    >
+                      <Heart 
+                        className={cn(
+                          "w-5 h-5 transition-colors",
+                          recipe.is_favorite 
+                            ? "text-rose-500 fill-rose-500" 
+                            : "text-muted-foreground"
+                        )} 
+                      />
+                    </Button>
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Deletar receita?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja deletar "{recipe.name}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction
+                            onClick={() => deleteRecipe(recipe.id)}
+                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          >
+                            Deletar
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </div>
                 </div>
               </CardContent>
             </Card>

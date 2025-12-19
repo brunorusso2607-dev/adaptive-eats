@@ -15,7 +15,7 @@ type MealPlanGeneratorProps = {
 export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlanGeneratorProps) {
   const [planName, setPlanName] = useState("");
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [daysCount, setDaysCount] = useState<7 | 14 | 30>(7);
+  const [weekNumber, setWeekNumber] = useState<1 | 2 | 3 | 4>(1);
   const [isGenerating, setIsGenerating] = useState(false);
 
   const handleGenerate = async () => {
@@ -28,16 +28,16 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
     try {
       const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
         body: {
-          planName,
+          planName: `${planName} - Semana ${weekNumber}`,
           startDate,
-          daysCount
+          daysCount: 7
         }
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast.success(`Plano "${planName}" gerado com sucesso!`);
+      toast.success(`Plano "${planName} - Semana ${weekNumber}" gerado com sucesso!`);
       onPlanGenerated();
     } catch (error) {
       console.error("Error generating meal plan:", error);
@@ -86,25 +86,21 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             />
           </div>
 
-          {/* Duration */}
+          {/* Week Selection */}
           <div className="space-y-3">
-            <Label>Duração do Plano</Label>
-            <div className="grid grid-cols-3 gap-3">
-              {[
-                { days: 7, label: "1 Semana" },
-                { days: 14, label: "2 Semanas" },
-                { days: 30, label: "1 Mês" },
-              ].map(({ days, label }) => (
+            <Label>Qual Semana Gerar?</Label>
+            <div className="grid grid-cols-4 gap-3">
+              {[1, 2, 3, 4].map((week) => (
                 <Button
-                  key={days}
+                  key={week}
                   type="button"
-                  variant={daysCount === days ? "default" : "outline"}
-                  className={daysCount === days ? "gradient-primary border-0" : ""}
-                  onClick={() => setDaysCount(days as 7 | 14 | 30)}
+                  variant={weekNumber === week ? "default" : "outline"}
+                  className={weekNumber === week ? "gradient-primary border-0" : ""}
+                  onClick={() => setWeekNumber(week as 1 | 2 | 3 | 4)}
                   disabled={isGenerating}
                 >
                   <CalendarDays className="w-4 h-4 mr-2" />
-                  {label}
+                  Semana {week}
                 </Button>
               ))}
             </div>
@@ -119,7 +115,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             {isGenerating ? (
               <>
                 <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                Gerando {daysCount} dias de receitas...
+                Gerando Semana {weekNumber}...
               </>
             ) : (
               <>
@@ -147,7 +143,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             <div>
               <h4 className="font-semibold text-foreground">O que será gerado?</h4>
               <ul className="text-sm text-muted-foreground mt-1 space-y-1">
-                <li>• {daysCount} dias de refeições completas</li>
+                <li>• 7 dias de refeições completas</li>
                 <li>• 4 refeições por dia (café, almoço, lanche, jantar)</li>
                 <li>• Receitas variadas e diferentes a cada dia</li>
                 <li>• Adaptado às suas preferências e metas</li>

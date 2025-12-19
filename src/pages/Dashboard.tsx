@@ -37,6 +37,21 @@ export default function Dashboard() {
   const [isCheckingSubscription, setIsCheckingSubscription] = useState<string | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
+  const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+
+  const checkOnboarding = async (userId: string) => {
+    const { data } = await supabase
+      .from("profiles")
+      .select("onboarding_completed")
+      .eq("id", userId)
+      .maybeSingle();
+    
+    if (data && !data.onboarding_completed) {
+      navigate("/onboarding");
+    } else {
+      setOnboardingCompleted(true);
+    }
+  };
 
   const checkSubscription = async () => {
     try {
@@ -62,8 +77,11 @@ export default function Dashboard() {
         navigate("/auth");
       } else {
         setIsLoading(false);
-        // Check subscription when user logs in
-        setTimeout(() => checkSubscription(), 0);
+        // Check onboarding and subscription when user logs in
+        setTimeout(() => {
+          checkOnboarding(session.user.id);
+          checkSubscription();
+        }, 0);
       }
     });
 
@@ -73,8 +91,11 @@ export default function Dashboard() {
         navigate("/auth");
       } else {
         setIsLoading(false);
-        // Check subscription on initial load
-        setTimeout(() => checkSubscription(), 0);
+        // Check onboarding and subscription on initial load
+        setTimeout(() => {
+          checkOnboarding(session.user.id);
+          checkSubscription();
+        }, 0);
       }
     });
 

@@ -104,10 +104,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         </Button>
       </div>
 
-      {/* Navigation Row - Week Dropdown + Day Selector */}
-      <div className="flex items-center gap-3">
+      {/* Navigation Row - Two Dropdowns */}
+      <div className="flex items-start gap-4">
         {/* Week Dropdown */}
-        {availableWeeks.length > 1 && (
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Semana
+          </label>
           <Select
             value={selectedWeek.toString()}
             onValueChange={(value) => {
@@ -115,8 +118,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
               setSelectedDay(0);
             }}
           >
-            <SelectTrigger className="w-[130px] bg-background">
-              <CalendarDays className="w-4 h-4 mr-2 text-muted-foreground" />
+            <SelectTrigger className="w-[140px] bg-background">
               <SelectValue placeholder="Semana" />
             </SelectTrigger>
             <SelectContent className="bg-background border">
@@ -127,45 +129,29 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
               ))}
             </SelectContent>
           </Select>
-        )}
-
-        {/* Day Selector */}
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setSelectedDay(Math.max(0, selectedDay - 1))}
-          disabled={selectedDay === 0}
-          className="shrink-0"
-        >
-          <ChevronLeft className="w-4 h-4" />
-        </Button>
-        
-        <div className="flex-1 flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
-          {DAY_NAMES.map((day, index) => (
-            <Button
-              key={day}
-              variant={selectedDay === index ? "default" : "outline"}
-              size="sm"
-              className={cn(
-                "shrink-0 transition-all",
-                selectedDay === index && "gradient-primary border-0"
-              )}
-              onClick={() => setSelectedDay(index)}
-            >
-              {day}
-            </Button>
-          ))}
         </div>
-        
-        <Button
-          variant="outline"
-          size="icon"
-          onClick={() => setSelectedDay(Math.min(6, selectedDay + 1))}
-          disabled={selectedDay === 6}
-          className="shrink-0"
-        >
-          <ChevronRight className="w-4 h-4" />
-        </Button>
+
+        {/* Day Dropdown */}
+        <div className="space-y-1.5">
+          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+            Dia
+          </label>
+          <Select
+            value={selectedDay.toString()}
+            onValueChange={(value) => setSelectedDay(Number(value))}
+          >
+            <SelectTrigger className="w-[140px] bg-background">
+              <SelectValue placeholder="Dia" />
+            </SelectTrigger>
+            <SelectContent className="bg-background border">
+              {DAY_NAMES.map((day, index) => (
+                <SelectItem key={day} value={index.toString()}>
+                  {day}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
 
       {/* Day Summary */}

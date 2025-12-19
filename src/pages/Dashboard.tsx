@@ -126,15 +126,15 @@ export default function Dashboard() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
     
-    const newGoal = userGoal === "emagrecer" ? "manter" : "emagrecer";
+    // Desativar o modo atual
     const { error } = await supabase
       .from("profiles")
-      .update({ goal: newGoal })
+      .update({ goal: "manter" })
       .eq("id", session.user.id);
     
     if (!error) {
-      setUserGoal(newGoal);
-      toast.success(newGoal === "emagrecer" ? "🔥 Modo Emagrecimento ativado!" : "Modo Emagrecimento desativado");
+      setUserGoal("manter");
+      toast.success("Meta de peso desativada");
     }
   };
 
@@ -457,21 +457,36 @@ export default function Dashboard() {
                   </Card>
                 )}
 
-                {/* Modo Emagrecimento Banner - quando ativo */}
-                {userGoal === "emagrecer" && (
-                  <Card className="glass-card border-2 border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 overflow-hidden">
+                {/* Meta de Peso Banner - quando ativo (emagrecer ou ganhar peso) */}
+                {(userGoal === "emagrecer" || userGoal === "ganhar_peso") && (
+                  <Card className={`glass-card border-2 overflow-hidden ${
+                    userGoal === "ganhar_peso" 
+                      ? "border-blue-400/50 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
+                      : "border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30"
+                  }`}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
-                            <TrendingDown className="w-5 h-5 text-white" />
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                            userGoal === "ganhar_peso"
+                              ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                              : "bg-gradient-to-r from-green-500 to-emerald-500"
+                          }`}>
+                            {userGoal === "ganhar_peso" 
+                              ? <TrendingUp className="w-5 h-5 text-white" />
+                              : <TrendingDown className="w-5 h-5 text-white" />
+                            }
                           </div>
                           <div>
-                            <h3 className="font-display font-bold text-foreground">🔥 Modo Emagrecimento Ativo!</h3>
+                            <h3 className="font-display font-bold text-foreground">
+                              {userGoal === "ganhar_peso" ? "💪 Modo Ganho de Peso Ativo!" : "🔥 Modo Emagrecimento Ativo!"}
+                            </h3>
                             <p className="text-xs text-muted-foreground">
                               {weightData?.weight_current 
                                 ? `${weightData.weight_current}kg → ${weightData.weight_goal}kg` 
-                                : "Receitas com foco em saciedade e déficit calórico"}
+                                : userGoal === "ganhar_peso"
+                                  ? "Receitas com foco em calorias e proteínas"
+                                  : "Receitas com foco em saciedade e déficit calórico"}
                             </p>
                           </div>
                         </div>
@@ -480,7 +495,11 @@ export default function Dashboard() {
                             variant="outline" 
                             size="sm" 
                             onClick={() => setShowWeightLossSetup(true)}
-                            className="border-green-400/50 text-green-600 hover:bg-green-50"
+                            className={`${
+                              userGoal === "ganhar_peso"
+                                ? "border-blue-400/50 text-blue-600 hover:bg-blue-50"
+                                : "border-green-400/50 text-green-600 hover:bg-green-50"
+                            }`}
                           >
                             {weightData?.weight_current ? "Editar" : "Configurar"}
                           </Button>
@@ -488,7 +507,11 @@ export default function Dashboard() {
                             variant="outline" 
                             size="sm" 
                             onClick={toggleWeightLossMode}
-                            className="border-green-400/50 text-green-600 hover:bg-green-50"
+                            className={`${
+                              userGoal === "ganhar_peso"
+                                ? "border-blue-400/50 text-blue-600 hover:bg-blue-50"
+                                : "border-green-400/50 text-green-600 hover:bg-green-50"
+                            }`}
                           >
                             Desativar
                           </Button>
@@ -501,11 +524,12 @@ export default function Dashboard() {
                           {(() => {
                             const calcs = calculateMacros(weightData);
                             if (!calcs) return null;
+                            const accentColor = userGoal === "ganhar_peso" ? "text-blue-600" : "text-green-600";
                             return (
                               <>
                                 <div className="grid grid-cols-4 gap-2 mt-3">
                                   <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                    <p className="text-lg font-bold text-green-600">{calcs.targetCalories}</p>
+                                    <p className={`text-lg font-bold ${accentColor}`}>{calcs.targetCalories}</p>
                                     <p className="text-xs text-muted-foreground">kcal/dia</p>
                                   </div>
                                   <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
@@ -523,8 +547,8 @@ export default function Dashboard() {
                                 </div>
                                 <div className="mt-3 bg-white/40 dark:bg-white/5 rounded-lg p-3">
                                   <div className="flex justify-between text-sm">
-                                    <span>Mudança estimada: <strong className="text-green-600">~{calcs.weeklyChange}kg/semana</strong></span>
-                                    <span>Meta em: <strong className="text-green-600">~{calcs.weeksToGoal} semanas</strong></span>
+                                    <span>Mudança estimada: <strong className={accentColor}>~{calcs.weeklyChange}kg/semana</strong></span>
+                                    <span>Meta em: <strong className={accentColor}>~{calcs.weeksToGoal} semanas</strong></span>
                                   </div>
                                 </div>
                               </>
@@ -534,31 +558,50 @@ export default function Dashboard() {
                       ) : (
                         <>
                           <div className="grid grid-cols-3 gap-2 mt-3">
-                            <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                              <p className="text-lg font-bold text-green-600">~0.5kg</p>
-                              <p className="text-xs text-muted-foreground">por semana*</p>
-                            </div>
-                            <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                              <p className="text-lg font-bold text-green-600">~2kg</p>
-                              <p className="text-xs text-muted-foreground">por mês*</p>
-                            </div>
-                            <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                              <p className="text-lg font-bold text-green-600">300-450</p>
-                              <p className="text-xs text-muted-foreground">kcal/porção</p>
-                            </div>
+                            {userGoal === "ganhar_peso" ? (
+                              <>
+                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                  <p className="text-lg font-bold text-blue-600">~0.3kg</p>
+                                  <p className="text-xs text-muted-foreground">por semana*</p>
+                                </div>
+                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                  <p className="text-lg font-bold text-blue-600">~1.2kg</p>
+                                  <p className="text-xs text-muted-foreground">por mês*</p>
+                                </div>
+                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                  <p className="text-lg font-bold text-blue-600">600-800</p>
+                                  <p className="text-xs text-muted-foreground">kcal/porção</p>
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                  <p className="text-lg font-bold text-green-600">~0.5kg</p>
+                                  <p className="text-xs text-muted-foreground">por semana*</p>
+                                </div>
+                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                  <p className="text-lg font-bold text-green-600">~2kg</p>
+                                  <p className="text-xs text-muted-foreground">por mês*</p>
+                                </div>
+                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                                  <p className="text-lg font-bold text-green-600">300-450</p>
+                                  <p className="text-xs text-muted-foreground">kcal/porção</p>
+                                </div>
+                              </>
+                            )}
                           </div>
                           <Button 
                             variant="ghost" 
                             size="sm" 
                             onClick={() => setShowWeightLossSetup(true)}
-                            className="w-full mt-3 text-green-600 hover:bg-green-50"
+                            className={`w-full mt-3 ${userGoal === "ganhar_peso" ? "text-blue-600 hover:bg-blue-50" : "text-green-600 hover:bg-green-50"}`}
                           >
                             👆 Configure seu peso para metas personalizadas
                           </Button>
                         </>
                       )}
                       <p className="text-xs text-muted-foreground mt-2 text-center">
-                        *Estimativa baseada em déficit calórico saudável. Resultados variam individualmente.
+                        *Estimativa baseada em {userGoal === "ganhar_peso" ? "superávit calórico saudável" : "déficit calórico saudável"}. Resultados variam individualmente.
                       </p>
                     </CardContent>
                   </Card>
@@ -618,29 +661,42 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Modo Emagrecimento Toggle */}
+                  {/* Meta de Peso Toggle */}
                   <Card 
                     className={`glass-card transition-all cursor-pointer group ${
-                      userGoal === "emagrecer" 
-                        ? "border-2 border-green-400/50 bg-gradient-to-b from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30" 
-                        : "border-border/50 hover:border-green-400/30"
+                      (userGoal === "emagrecer" || userGoal === "ganhar_peso")
+                        ? userGoal === "ganhar_peso"
+                          ? "border-2 border-blue-400/50 bg-gradient-to-b from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
+                          : "border-2 border-green-400/50 bg-gradient-to-b from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30"
+                        : "border-border/50 hover:border-primary/30"
                     }`}
-                    onClick={toggleWeightLossMode}
+                    onClick={() => setShowWeightLossSetup(true)}
                   >
                     <CardContent className="p-5 text-center space-y-3">
                       <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                        userGoal === "emagrecer" 
-                          ? "bg-gradient-to-r from-green-500 to-emerald-500" 
-                          : "bg-green-500/20"
+                        userGoal === "ganhar_peso"
+                          ? "bg-gradient-to-r from-blue-500 to-indigo-500"
+                          : userGoal === "emagrecer"
+                            ? "bg-gradient-to-r from-green-500 to-emerald-500"
+                            : "bg-primary/20"
                       }`}>
-                        <TrendingDown className={`w-6 h-6 ${userGoal === "emagrecer" ? "text-white" : "text-green-500"}`} />
+                        {userGoal === "ganhar_peso" 
+                          ? <TrendingUp className="w-6 h-6 text-white" />
+                          : userGoal === "emagrecer"
+                            ? <TrendingDown className="w-6 h-6 text-white" />
+                            : <TrendingDown className="w-6 h-6 text-primary" />
+                        }
                       </div>
                       <div>
                         <h3 className="font-display font-bold text-foreground">
-                          Emagrecer
+                          Meta de Peso
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
-                          {userGoal === "emagrecer" ? "✅ Ativo" : "Foco em saciedade"}
+                          {userGoal === "emagrecer" 
+                            ? "✅ Emagrecendo" 
+                            : userGoal === "ganhar_peso" 
+                              ? "✅ Ganhando peso"
+                              : "Emagrecer ou ganhar"}
                         </p>
                       </div>
                     </CardContent>

@@ -117,13 +117,20 @@ serve(async (req) => {
         throw new Error("Erro ao gerar link de acesso.");
       }
 
-      logStep("Magic link generated for existing user", { userId: existingUser.id });
+      // Extract token_hash and type from the action link
+      const actionLink = linkData.properties?.action_link;
+      const url = new URL(actionLink);
+      const tokenHash = url.searchParams.get("token_hash");
+      const type = url.searchParams.get("type");
+
+      logStep("Magic link generated for existing user", { userId: existingUser.id, hasTokenHash: !!tokenHash });
 
       return new Response(
         JSON.stringify({ 
           success: true, 
           userId: existingUser.id,
-          actionLink: linkData.properties?.action_link,
+          tokenHash,
+          type,
         }),
         {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -174,13 +181,20 @@ serve(async (req) => {
       throw new Error("Erro ao gerar link de acesso.");
     }
 
-    logStep("Magic link generated for new user", { userId });
+    // Extract token_hash and type from the action link
+    const actionLink = linkData.properties?.action_link;
+    const url = new URL(actionLink);
+    const tokenHash = url.searchParams.get("token_hash");
+    const type = url.searchParams.get("type");
+
+    logStep("Magic link generated for new user", { userId, hasTokenHash: !!tokenHash });
 
     return new Response(
       JSON.stringify({ 
         success: true, 
         userId,
-        actionLink: linkData.properties?.action_link,
+        tokenHash,
+        type,
       }),
       {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -11,6 +11,8 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+type GoalMode = "lose" | "gain" | "maintain";
+
 type WeightGoalData = {
   weight_current: number | null;
   weight_goal: number | null;
@@ -18,6 +20,7 @@ type WeightGoalData = {
   age: number | null;
   sex: "male" | "female" | null;
   activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
+  goal_mode: GoalMode | null;
 };
 
 type WeightGoalSetupProps = {
@@ -47,7 +50,7 @@ const ACTIVITY_LEVELS = [
 ];
 
 export function calculateMacros(data: WeightGoalData): MacroCalculations | null {
-  if (!data.weight_current || !data.weight_goal || !data.height || !data.age || !data.sex) {
+  if (!data.weight_current || !data.weight_goal || !data.height || !data.age || !data.sex || !data.goal_mode) {
     return null;
   }
 
@@ -65,27 +68,23 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   // Total Daily Energy Expenditure
   const get = Math.round(tmb * activityFactor);
   
-  // Detect mode based on weight difference
-  const weightDiff = data.weight_goal - data.weight_current;
-  let mode: "lose" | "gain" | "maintain";
+  // Use the user-selected goal mode
+  const mode = data.goal_mode;
   let targetCalories: number;
   let protein: number;
   
-  if (weightDiff < -1) {
+  if (mode === "lose") {
     // Weight loss mode
-    mode = "lose";
     const deficit = 500; // 500 kcal deficit for ~0.5kg/week loss
     targetCalories = Math.max(get - deficit, data.sex === "male" ? 1500 : 1200);
     protein = Math.round(data.weight_goal * 2); // 2g/kg of goal weight
-  } else if (weightDiff > 1) {
+  } else if (mode === "gain") {
     // Weight gain mode
-    mode = "gain";
     const surplus = 400; // 400 kcal surplus for ~0.4kg/week gain
     targetCalories = get + surplus;
     protein = Math.round(data.weight_goal * 2.2); // 2.2g/kg for muscle synthesis
   } else {
     // Maintain mode
-    mode = "maintain";
     targetCalories = get;
     protein = Math.round(data.weight_current * 1.6); // 1.6g/kg for maintenance
   }
@@ -107,9 +106,9 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   const weeklyChange = Math.round((calorieChange * 7 / 7700) * 10) / 10;
   
   // Weeks to reach goal
-  const weightToChange = Math.abs(weightDiff);
-  const weeksToGoal = weightToChange > 1 && weeklyChange > 0 
-    ? Math.ceil(weightToChange / weeklyChange) 
+  const weightDiff = Math.abs(data.weight_goal - data.weight_current);
+  const weeksToGoal = weightDiff > 1 && weeklyChange > 0 
+    ? Math.ceil(weightDiff / weeklyChange) 
     : 0;
 
   return {
@@ -134,10 +133,11 @@ export default function WeightGoalSetup({ onClose, onSave, initialData }: Weight
     age: initialData?.age || null,
     sex: initialData?.sex || null,
     activity_level: initialData?.activity_level || "moderate",
+    goal_mode: initialData?.goal_mode || null,
   });
 
   const calculations = calculateMacros(data);
-  const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex;
+  const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex && data.goal_mode;
 
   const getModeInfo = () => {
     if (!calculations) return null;
@@ -253,6 +253,52 @@ export default function WeightGoalSetup({ onClose, onSave, initialData }: Weight
 
       {/* Form */}
       <div className="grid gap-4">
+        {/* Goal Mode Selection */}
+        <div className="space-y-2">
+          <Label className="flex items-center gap-2">
+            <Target className="w-4 h-4 text-muted-foreground" />
+            Qual é o seu objetivo?
+          </Label>
+          <div className="grid grid-cols-3 gap-3">
+            <button
+              onClick={() => setData({ ...data, goal_mode: "lose" })}
+              className={cn(
+                "p-4 rounded-xl border-2 text-center transition-all",
+                data.goal_mode === "lose"
+                  ? "border-green-500 bg-green-50 dark:bg-green-950/30"
+                  : "border-border hover:border-green-400/50"
+              )}
+            >
+              <TrendingDown className={cn("w-6 h-6 mx-auto mb-2", data.goal_mode === "lose" ? "text-green-600" : "text-muted-foreground")} />
+              <span className="font-medium text-sm">Emagrecer</span>
+            </button>
+            <button
+              onClick={() => setData({ ...data, goal_mode: "maintain" })}
+              className={cn(
+                "p-4 rounded-xl border-2 text-center transition-all",
+                data.goal_mode === "maintain"
+                  ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
+                  : "border-border hover:border-amber-400/50"
+              )}
+            >
+              <Minus className={cn("w-6 h-6 mx-auto mb-2", data.goal_mode === "maintain" ? "text-amber-600" : "text-muted-foreground")} />
+              <span className="font-medium text-sm">Manter</span>
+            </button>
+            <button
+              onClick={() => setData({ ...data, goal_mode: "gain" })}
+              className={cn(
+                "p-4 rounded-xl border-2 text-center transition-all",
+                data.goal_mode === "gain"
+                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
+                  : "border-border hover:border-blue-400/50"
+              )}
+            >
+              <TrendingUp className={cn("w-6 h-6 mx-auto mb-2", data.goal_mode === "gain" ? "text-blue-600" : "text-muted-foreground")} />
+              <span className="font-medium text-sm">Ganhar Peso</span>
+            </button>
+          </div>
+        </div>
+
         {/* Weight Row */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">

@@ -16,6 +16,7 @@ const logStep = (step: string, details?: any) => {
 const PRICE_TO_PLAN: Record<string, string> = {
   "price_1RVVjnRuiGbcMYaJUJERpDlW": "essencial",
   "price_1RVVk4RuiGbcMYaJclJuGdvq": "premium",
+  "price_1Sg9ODCh4FnxqOQFkKsIJZOX": "premium", // Add the price from the subscription
 };
 
 serve(async (req) => {
@@ -63,41 +64,55 @@ serve(async (req) => {
     const customerId = customers.data[0].id;
     logStep("Found Stripe customer", { customerId });
 
+    // Get all subscriptions for this customer
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
-      status: "active",
-      limit: 1,
+      limit: 10,
     });
 
-    // Also check for trialing subscriptions
-    const trialingSubscriptions = await stripe.subscriptions.list({
-      customer: customerId,
-      status: "trialing",
-      limit: 1,
+    logStep("Retrieved subscriptions", { 
+      count: subscriptions.data.length,
+      subscriptions: subscriptions.data.map((s: { id: string; status: string; current_period_end?: number; trial_end?: number | null }) => ({ 
+        id: s.id, 
+        status: s.status,
+        current_period_end: s.current_period_end,
+        trial_end: s.trial_end
+      }))
     });
 
-    const allSubs = [...subscriptions.data, ...trialingSubscriptions.data];
-    const hasActiveSub = allSubs.length > 0;
+    // Filter for active or trialing subscriptions
+    const activeSubs = subscriptions.data.filter((s: { status: string }) => 
+      s.status === 'active' || s.status === 'trialing'
+    );
+
+    const hasActiveSub = activeSubs.length > 0;
     
     let plan: string | null = null;
     let subscriptionEnd: string | null = null;
     let status: string | null = null;
 
     if (hasActiveSub) {
-      const subscription = allSubs[0];
-      subscriptionEnd = new Date(subscription.current_period_end * 1000).toISOString();
+      const subscription = activeSubs[0];
       status = subscription.status;
       
       // Get the price ID to determine the plan
       const priceId = subscription.items.data[0]?.price?.id;
-      plan = PRICE_TO_PLAN[priceId] || null;
+      plan = PRICE_TO_PLAN[priceId] || "essencial"; // Default to essencial if unknown
+      
+      // Handle subscription end date safely
+      const endTimestamp = subscription.current_period_end || subscription.trial_end;
+      if (endTimestamp && typeof endTimestamp === 'number') {
+        subscriptionEnd = new Date(endTimestamp * 1000).toISOString();
+      }
       
       logStep("Active subscription found", { 
         subscriptionId: subscription.id, 
         status,
         priceId,
         plan,
-        endDate: subscriptionEnd 
+        endDate: subscriptionEnd,
+        current_period_end: subscription.current_period_end,
+        trial_end: subscription.trial_end
       });
     } else {
       logStep("No active subscription found");

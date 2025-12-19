@@ -163,6 +163,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       {/* Day Summary */}
       <Card className="glass-card border-primary/20">
         <CardContent className="p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+            Consumo de {DAY_NAMES[selectedDay]}
+          </p>
           <div className="flex items-center justify-between gap-4 flex-wrap">
             <div className="flex items-center gap-2">
               <Flame className="w-5 h-5 text-orange-500" />

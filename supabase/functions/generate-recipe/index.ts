@@ -100,6 +100,9 @@ serve(async (req) => {
     // Modo Kids special prompt
     const isKidsMode = profile.context === "modo_kids";
     
+    // Modo Emagrecimento
+    const isWeightLossMode = profile.goal === "emagrecer";
+    
     const kidsInstructions = isKidsMode ? `
 MODO KIDS ATIVO - REGRAS ESPECIAIS:
 - Nomes DIVERTIDOS e criativos (ex: "Macarrão Arco-Íris", "Bolinho do Astronauta", "Pizza do Dino")
@@ -112,10 +115,25 @@ MODO KIDS ATIVO - REGRAS ESPECIAIS:
 - Calorias adequadas para crianças (300-500 kcal por porção)
 - Apresentação divertida (formas, cores, decorações simples)
 - SEMPRE usar complexity "rapida" no Modo Kids` : "";
+
+    const weightLossInstructions = isWeightLossMode ? `
+MODO EMAGRECIMENTO ATIVO - REGRAS ESPECIAIS:
+- PRIORIZE ingredientes com ALTO PODER DE SACIEDADE (fibras, proteínas, água)
+- Use vegetais volumosos (brócolis, couve-flor, abobrinha, folhas verdes)
+- Inclua proteínas magras (frango, peixe, ovos, leguminosas)
+- Adicione fibras (aveia, chia, linhaça, legumes)
+- EVITE carboidratos refinados e açúcares
+- Calorias por porção: 300-450 kcal (déficit calórico controlado)
+- Proteína alta: mínimo 25g por porção
+- Prefira métodos de cocção: grelhado, assado, cozido no vapor
+- Adicione um campo "satiety_tip" com dica de saciedade
+- Adicione um campo "satiety_score" de 1-10 (quanto maior, mais saciante)
+- Inclua ingredientes termogênicos quando possível (gengibre, pimenta, canela)` : "";
     
     const systemPrompt = `Você é um nutricionista e chef especializado em receitas personalizadas.
 Você DEVE gerar receitas com valores nutricionais REAIS e PRECISOS baseados em tabelas nutricionais.
 ${kidsInstructions}
+${weightLossInstructions}
 
 REGRAS ABSOLUTAS - NUNCA VIOLAR:
 1. INTOLERÂNCIAS: ${intolerancesStr}
@@ -147,16 +165,18 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
   "prep_time": ${isKidsMode ? 20 : 30},
   "complexity": "${isKidsMode ? "rapida" : profile.recipe_complexity}",
   "servings": ${profile.context === "familia" ? 4 : isKidsMode ? 3 : 2},
-  "calories": ${isKidsMode ? 400 : 450},
-  "protein": 25.5,
-  "carbs": 35.2,
-  "fat": 18.3
+  "calories": ${isKidsMode ? 400 : isWeightLossMode ? 380 : 450},
+  "protein": ${isWeightLossMode ? 30 : 25.5},
+  "carbs": ${isWeightLossMode ? 25 : 35.2},
+  "fat": ${isWeightLossMode ? 12 : 18.3}${isWeightLossMode ? `,
+  "satiety_score": 8,
+  "satiety_tip": "Dica de saciedade para ajudar no emagrecimento"` : ""}
 }
 
 IMPORTANTE:
 - calories, protein, carbs, fat são POR PORÇÃO
 - Use valores nutricionais REAIS baseados nos ingredientes
-- prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}
+- prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}${isWeightLossMode ? "\n- satiety_score de 1-10 baseado na composição (fibras + proteínas = maior score)\n- satiety_tip: uma dica prática de como a receita ajuda na saciedade" : ""}
 - Responda APENAS com o JSON, sem texto adicional`;
 
     const userPrompt = type === "automatica"
@@ -210,7 +230,9 @@ IMPORTANTE:
                   calories: { type: "number", description: "Calories per serving" },
                   protein: { type: "number", description: "Protein in grams per serving" },
                   carbs: { type: "number", description: "Carbohydrates in grams per serving" },
-                  fat: { type: "number", description: "Fat in grams per serving" }
+                  fat: { type: "number", description: "Fat in grams per serving" },
+                  satiety_score: { type: "number", description: "Satiety score from 1-10 (only for weight loss mode)" },
+                  satiety_tip: { type: "string", description: "Satiety tip for weight loss (only for weight loss mode)" }
                 },
                 required: ["name", "description", "ingredients", "instructions", "prep_time", "complexity", "servings", "calories", "protein", "carbs", "fat"]
               }
@@ -257,6 +279,7 @@ IMPORTANTE:
         ...recipe,
         input_ingredients: ingredients || null,
         is_kids_mode: isKidsMode,
+        is_weight_loss_mode: isWeightLossMode,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -23,6 +23,9 @@ type Recipe = {
   fat: number;
   input_ingredients?: string | null;
   is_kids_mode?: boolean;
+  is_weight_loss_mode?: boolean;
+  satiety_score?: number;
+  satiety_tip?: string;
 };
 
 const plans = {
@@ -57,6 +60,7 @@ export default function Dashboard() {
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [userContext, setUserContext] = useState<string | null>(null);
+  const [userGoal, setUserGoal] = useState<string | null>(null);
   
   // Recipe generation state
   const [ingredients, setIngredients] = useState("");
@@ -68,7 +72,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, context")
+      .select("onboarding_completed, context, goal")
       .eq("id", userId)
       .maybeSingle();
     
@@ -77,6 +81,7 @@ export default function Dashboard() {
     } else {
       setOnboardingCompleted(true);
       setUserContext(data?.context || "individual");
+      setUserGoal(data?.goal || "manter");
     }
   };
 
@@ -93,6 +98,22 @@ export default function Dashboard() {
     if (!error) {
       setUserContext(newContext);
       toast.success(newContext === "modo_kids" ? "🎉 Modo Kids ativado!" : "Modo Kids desativado");
+    }
+  };
+
+  const toggleWeightLossMode = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
+    const newGoal = userGoal === "emagrecer" ? "manter" : "emagrecer";
+    const { error } = await supabase
+      .from("profiles")
+      .update({ goal: newGoal })
+      .eq("id", session.user.id);
+    
+    if (!error) {
+      setUserGoal(newGoal);
+      toast.success(newGoal === "emagrecer" ? "🔥 Modo Emagrecimento ativado!" : "Modo Emagrecimento desativado");
     }
   };
 
@@ -391,6 +412,50 @@ export default function Dashboard() {
                   </Card>
                 )}
 
+                {/* Modo Emagrecimento Banner - quando ativo */}
+                {userGoal === "emagrecer" && (
+                  <Card className="glass-card border-2 border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-r from-green-500 to-emerald-500 rounded-xl flex items-center justify-center">
+                            <TrendingDown className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <h3 className="font-display font-bold text-foreground">🔥 Modo Emagrecimento Ativo!</h3>
+                            <p className="text-xs text-muted-foreground">Receitas com foco em saciedade e déficit calórico</p>
+                          </div>
+                        </div>
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={toggleWeightLossMode}
+                          className="border-green-400/50 text-green-600 hover:bg-green-50"
+                        >
+                          Desativar
+                        </Button>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 mt-3">
+                        <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                          <p className="text-lg font-bold text-green-600">~0.5kg</p>
+                          <p className="text-xs text-muted-foreground">por semana*</p>
+                        </div>
+                        <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                          <p className="text-lg font-bold text-green-600">~2kg</p>
+                          <p className="text-xs text-muted-foreground">por mês*</p>
+                        </div>
+                        <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                          <p className="text-lg font-bold text-green-600">300-450</p>
+                          <p className="text-xs text-muted-foreground">kcal/porção</p>
+                        </div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2 text-center">
+                        *Estimativa baseada em déficit calórico saudável. Resultados variam individualmente.
+                      </p>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Gerar Receita Automática */}
@@ -440,6 +505,34 @@ export default function Dashboard() {
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
                           {userContext === "modo_kids" ? "✅ Ativo" : "Receitas divertidas"}
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Modo Emagrecimento Toggle */}
+                  <Card 
+                    className={`glass-card transition-all cursor-pointer group ${
+                      userGoal === "emagrecer" 
+                        ? "border-2 border-green-400/50 bg-gradient-to-b from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30" 
+                        : "border-border/50 hover:border-green-400/30"
+                    }`}
+                    onClick={toggleWeightLossMode}
+                  >
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
+                        userGoal === "emagrecer" 
+                          ? "bg-gradient-to-r from-green-500 to-emerald-500" 
+                          : "bg-green-500/20"
+                      }`}>
+                        <TrendingDown className={`w-6 h-6 ${userGoal === "emagrecer" ? "text-white" : "text-green-500"}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Emagrecer
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {userGoal === "emagrecer" ? "✅ Ativo" : "Foco em saciedade"}
                         </p>
                       </div>
                     </CardContent>

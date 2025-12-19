@@ -68,6 +68,63 @@ export type Database = {
         }
         Relationships: []
       }
+      recipes: {
+        Row: {
+          calories: number
+          carbs: number
+          complexity: Database["public"]["Enums"]["recipe_complexity"]
+          created_at: string | null
+          description: string | null
+          fat: number
+          id: string
+          ingredients: Json
+          input_ingredients: string | null
+          instructions: Json
+          is_favorite: boolean
+          name: string
+          prep_time: number
+          protein: number
+          servings: number
+          user_id: string
+        }
+        Insert: {
+          calories?: number
+          carbs?: number
+          complexity?: Database["public"]["Enums"]["recipe_complexity"]
+          created_at?: string | null
+          description?: string | null
+          fat?: number
+          id?: string
+          ingredients?: Json
+          input_ingredients?: string | null
+          instructions?: Json
+          is_favorite?: boolean
+          name: string
+          prep_time?: number
+          protein?: number
+          servings?: number
+          user_id: string
+        }
+        Update: {
+          calories?: number
+          carbs?: number
+          complexity?: Database["public"]["Enums"]["recipe_complexity"]
+          created_at?: string | null
+          description?: string | null
+          fat?: number
+          id?: string
+          ingredients?: Json
+          input_ingredients?: string | null
+          instructions?: Json
+          is_favorite?: boolean
+          name?: string
+          prep_time?: number
+          protein?: number
+          servings?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

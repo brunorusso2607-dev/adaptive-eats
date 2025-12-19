@@ -10,6 +10,7 @@ import RecipeResult from "@/components/RecipeResult";
 import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
+import MealPlanSection from "@/components/MealPlanSection";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 
 type Recipe = {
@@ -81,6 +82,7 @@ export default function Dashboard() {
   const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
   const [showRecipe, setShowRecipe] = useState(false);
   const [showList, setShowList] = useState<"history" | "favorites" | null>(null);
+  const [showMealPlan, setShowMealPlan] = useState(false);
 
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase

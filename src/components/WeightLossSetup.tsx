@@ -118,27 +118,37 @@ export default function WeightLossSetup({ onClose, onSave, initialData }: Weight
   const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex;
 
   const handleSave = async () => {
-    if (!isComplete || !calculations) return;
+    if (!isComplete || !calculations) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
     
     setIsSaving(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
 
+      const updateData = {
+        weight_current: Number(data.weight_current),
+        weight_goal: Number(data.weight_goal),
+        height: Number(data.height),
+        age: Number(data.age),
+        sex: data.sex,
+        activity_level: data.activity_level,
+        goal: "emagrecer" as const,
+      };
+
+      console.log("Saving data:", updateData);
+
       const { error } = await supabase
         .from("profiles")
-        .update({
-          weight_current: data.weight_current,
-          weight_goal: data.weight_goal,
-          height: data.height,
-          age: data.age,
-          sex: data.sex,
-          activity_level: data.activity_level,
-          goal: "emagrecer", // Automatically set goal to weight loss
-        })
+        .update(updateData)
         .eq("id", session.user.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Supabase error:", error);
+        throw error;
+      }
 
       toast.success("Dados salvos com sucesso!");
       onSave({ ...data, calculations });

@@ -75,8 +75,13 @@ export default function Dashboard() {
     }
   };
 
-  const generateRecipe = async (type: "com_ingredientes" | "automatica") => {
-    if (type === "com_ingredientes" && !ingredients.trim()) {
+  // Track the last used ingredients for "Gerar Outra"
+  const [lastUsedIngredients, setLastUsedIngredients] = useState<string | null>(null);
+
+  const generateRecipe = async (type: "com_ingredientes" | "automatica", useLastIngredients = false) => {
+    const ingredientsToUse = useLastIngredients ? lastUsedIngredients : ingredients;
+    
+    if (type === "com_ingredientes" && !ingredientsToUse?.trim()) {
       toast.error("Digite alguns ingredientes primeiro");
       return;
     }
@@ -86,15 +91,26 @@ export default function Dashboard() {
       const { data, error } = await supabase.functions.invoke("generate-recipe", {
         body: { 
           type,
-          ingredients: type === "com_ingredientes" ? ingredients : null,
+          ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
         },
       });
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      setGeneratedRecipe(data.recipe);
+      // Store the recipe with the input ingredients for "Gerar Outra"
+      const recipeWithIngredients = {
+        ...data.recipe,
+        input_ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
+      };
+      
+      setGeneratedRecipe(recipeWithIngredients);
       setShowRecipe(true);
+      
+      // Save ingredients for "Gerar Outra" and clear input
+      if (type === "com_ingredientes") {
+        setLastUsedIngredients(ingredientsToUse);
+      }
       setIngredients("");
     } catch (error) {
       console.error("Error generating recipe:", error);
@@ -268,7 +284,10 @@ export default function Dashboard() {
               <RecipeResult
                 recipe={generatedRecipe}
                 onBack={() => setShowRecipe(false)}
-                onGenerateAnother={() => generateRecipe(generatedRecipe.input_ingredients ? "com_ingredientes" : "automatica")}
+                onGenerateAnother={() => generateRecipe(
+                  generatedRecipe.input_ingredients ? "com_ingredientes" : "automatica",
+                  true // Use last ingredients when generating another
+                )}
                 isGenerating={isGeneratingRecipe}
               />
             ) : (

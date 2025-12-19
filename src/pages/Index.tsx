@@ -184,12 +184,14 @@ export default function Index() {
             </p>
             
             <div className="pt-4">
-              <Link to="/auth?mode=signup">
-                <Button size="lg" className="gradient-primary border-0 rounded-full px-10 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-                  Começar Gratuitamente
-                  <ArrowRight className="ml-2 w-5 h-5" />
-                </Button>
-              </Link>
+              <Button 
+                size="lg" 
+                className="gradient-primary border-0 rounded-full px-10 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+                onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Começar Gratuitamente
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </Button>
             </div>
           </div>
         </div>
@@ -445,20 +447,10 @@ export default function Index() {
           <Button 
             size="lg" 
             className="gradient-primary border-0 rounded-full px-12 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-            onClick={() => handleStartCheckout("premium")}
-            disabled={loadingPlan !== null}
+            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            {loadingPlan ? (
-              <>
-                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                Carregando...
-              </>
-            ) : (
-              <>
-                Começar Gratuitamente
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </>
-            )}
+            Começar Gratuitamente
+            <ArrowRight className="ml-2 w-5 h-5" />
           </Button>
         </div>
       </section>

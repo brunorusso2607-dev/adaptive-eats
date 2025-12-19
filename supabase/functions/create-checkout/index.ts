@@ -1,5 +1,6 @@
-import Stripe from "https://esm.sh/stripe@14.21.0";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
+import Stripe from "https://esm.sh/stripe@18.5.0";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -16,7 +17,7 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CREATE-CHECKOUT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
-Deno.serve(async (req) => {
+serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -24,26 +25,7 @@ Deno.serve(async (req) => {
   try {
     logStep("Function started");
 
-    const supabaseClient = createClient(
-      Deno.env.get("SUPABASE_URL") ?? "",
-      Deno.env.get("SUPABASE_ANON_KEY") ?? ""
-    );
-
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) {
-      throw new Error("No authorization header");
-    }
-
-    const token = authHeader.replace("Bearer ", "");
-    const { data: { user }, error: userError } = await supabaseClient.auth.getUser(token);
-
-    if (userError || !user) {
-      throw new Error("Invalid user");
-    }
-
-    logStep("User authenticated", { userId: user.id, email: user.email });
-
-    const { returnUrl, plan = "premium" } = await req.json();
+    const { returnUrl, plan = "premium", email } = await req.json();
     
     // Validate plan
     const priceId = PRICE_IDS[plan as keyof typeof PRICE_IDS];
@@ -51,31 +33,27 @@ Deno.serve(async (req) => {
       throw new Error(`Invalid plan: ${plan}`);
     }
 
-    logStep("Plan selected", { plan, priceId });
+    logStep("Plan selected", { plan, priceId, email });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
-      apiVersion: "2023-10-16",
+      apiVersion: "2025-08-27.basil",
     });
 
-    // Check if customer exists
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
-    let customerId: string;
-
-    if (customers.data.length > 0) {
-      customerId = customers.data[0].id;
-      logStep("Existing customer found", { customerId });
-    } else {
-      const customer = await stripe.customers.create({
-        email: user.email,
-        metadata: { supabase_user_id: user.id },
-      });
-      customerId = customer.id;
-      logStep("New customer created", { customerId });
+    // Check if customer exists by email
+    let customerId: string | undefined;
+    
+    if (email) {
+      const customers = await stripe.customers.list({ email, limit: 1 });
+      if (customers.data.length > 0) {
+        customerId = customers.data[0].id;
+        logStep("Existing customer found", { customerId });
+      }
     }
 
     // Create checkout session with 7-day trial
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      customer_email: customerId ? undefined : email,
       payment_method_types: ["card"],
       line_items: [
         {
@@ -87,7 +65,8 @@ Deno.serve(async (req) => {
       subscription_data: {
         trial_period_days: 7,
       },
-      success_url: `${returnUrl}?success=true`,
+      // Redirect to activation page after payment
+      success_url: `${returnUrl}/ativar?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${returnUrl}?canceled=true`,
     });
 

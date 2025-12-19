@@ -22,6 +22,7 @@ type Recipe = {
   carbs: number;
   fat: number;
   input_ingredients?: string | null;
+  is_kids_mode?: boolean;
 };
 
 const plans = {

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -56,6 +56,7 @@ export default function Dashboard() {
   const [subscription, setSubscription] = useState<SubscriptionInfo | null>(null);
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
+  const [userContext, setUserContext] = useState<string | null>(null);
   
   // Recipe generation state
   const [ingredients, setIngredients] = useState("");
@@ -67,7 +68,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed")
+      .select("onboarding_completed, context")
       .eq("id", userId)
       .maybeSingle();
     
@@ -75,6 +76,23 @@ export default function Dashboard() {
       navigate("/onboarding");
     } else {
       setOnboardingCompleted(true);
+      setUserContext(data?.context || "individual");
+    }
+  };
+
+  const toggleKidsMode = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
+    const newContext = userContext === "modo_kids" ? "individual" : "modo_kids";
+    const { error } = await supabase
+      .from("profiles")
+      .update({ context: newContext })
+      .eq("id", session.user.id);
+    
+    if (!error) {
+      setUserContext(newContext);
+      toast.success(newContext === "modo_kids" ? "🎉 Modo Kids ativado!" : "Modo Kids desativado");
     }
   };
 
@@ -348,6 +366,31 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
+                {/* Modo Kids Banner - quando ativo */}
+                {userContext === "modo_kids" && (
+                  <Card className="glass-card border-2 border-pink-400/50 bg-gradient-to-r from-pink-50 to-yellow-50 dark:from-pink-950/30 dark:to-yellow-950/30 overflow-hidden">
+                    <CardContent className="p-4 flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-yellow-500 rounded-xl flex items-center justify-center animate-pulse">
+                          <Baby className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-display font-bold text-foreground">👶 Modo Kids Ativo!</h3>
+                          <p className="text-xs text-muted-foreground">Receitas divertidas para crianças</p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={toggleKidsMode}
+                        className="border-pink-400/50 text-pink-600 hover:bg-pink-50"
+                      >
+                        Desativar
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">
                   {/* Gerar Receita Automática */}
@@ -369,6 +412,34 @@ export default function Dashboard() {
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
                           Surpreenda-me!
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Modo Kids Toggle */}
+                  <Card 
+                    className={`glass-card transition-all cursor-pointer group ${
+                      userContext === "modo_kids" 
+                        ? "border-2 border-pink-400/50 bg-gradient-to-b from-pink-50 to-yellow-50 dark:from-pink-950/30 dark:to-yellow-950/30" 
+                        : "border-border/50 hover:border-pink-400/30"
+                    }`}
+                    onClick={toggleKidsMode}
+                  >
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
+                        userContext === "modo_kids" 
+                          ? "bg-gradient-to-r from-pink-500 to-yellow-500" 
+                          : "bg-pink-500/20"
+                      }`}>
+                        <Baby className={`w-6 h-6 ${userContext === "modo_kids" ? "text-white" : "text-pink-500"}`} />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Modo Kids
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {userContext === "modo_kids" ? "✅ Ativo" : "Receitas divertidas"}
                         </p>
                       </div>
                     </CardContent>

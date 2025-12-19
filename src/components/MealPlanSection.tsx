@@ -1,12 +1,13 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Plus, Loader2, Trash2, Eye } from "lucide-react";
+import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealPlanGenerator from "./MealPlanGenerator";
 import MealPlanCalendar from "./MealPlanCalendar";
 import MealRecipeDetail from "./MealRecipeDetail";
+import ShoppingList from "./ShoppingList";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,8 +46,12 @@ type MealPlan = {
   items: MealPlanItem[];
 };
 
-export default function MealPlanSection() {
-  const [view, setView] = useState<"list" | "create" | "calendar" | "recipe">("list");
+type MealPlanSectionProps = {
+  onBack?: () => void;
+};
+
+export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
+  const [view, setView] = useState<"list" | "create" | "calendar" | "recipe" | "shopping">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
@@ -196,11 +201,28 @@ export default function MealPlanSection() {
     );
   }
 
+  if (view === "shopping" && selectedPlan) {
+    return (
+      <ShoppingList
+        mealPlan={selectedPlan}
+        onBack={() => {
+          setSelectedPlan(null);
+          setView("list");
+        }}
+      />
+    );
+  }
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
+          {onBack && (
+            <Button variant="ghost" size="icon" onClick={onBack}>
+              <ArrowLeft className="w-5 h-5" />
+            </Button>
+          )}
           <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center">
             <Calendar className="w-7 h-7 text-primary-foreground" />
           </div>
@@ -211,10 +233,27 @@ export default function MealPlanSection() {
             </p>
           </div>
         </div>
-        <Button className="gradient-primary border-0" onClick={() => setView("create")}>
-          <Plus className="w-4 h-4 mr-2" />
-          Novo Plano
-        </Button>
+        <div className="flex items-center gap-2">
+          {mealPlans.some(p => p.is_active) && (
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                const activePlan = mealPlans.find(p => p.is_active);
+                if (activePlan) {
+                  setSelectedPlan(activePlan);
+                  setView("shopping");
+                }
+              }}
+            >
+              <ShoppingCart className="w-4 h-4 mr-2" />
+              Lista de Compras
+            </Button>
+          )}
+          <Button className="gradient-primary border-0" onClick={() => setView("create")}>
+            <Plus className="w-4 h-4 mr-2" />
+            Novo Plano
+          </Button>
+        </div>
       </div>
 
       {/* Plans List */}

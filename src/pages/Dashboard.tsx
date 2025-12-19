@@ -83,6 +83,7 @@ export default function Dashboard() {
   const [showRecipe, setShowRecipe] = useState(false);
   const [showList, setShowList] = useState<"history" | "favorites" | null>(null);
   const [showMealPlan, setShowMealPlan] = useState(false);
+  const [hasMealPlan, setHasMealPlan] = useState(false);
 
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
@@ -211,6 +212,16 @@ export default function Dashboard() {
     }
   };
 
+  const checkMealPlans = async (userId: string) => {
+    const { data } = await supabase
+      .from("meal_plans")
+      .select("id")
+      .eq("user_id", userId)
+      .limit(1);
+    
+    setHasMealPlan(data && data.length > 0);
+  };
+
   useEffect(() => {
     const { data: { subscription: authSub } } = supabase.auth.onAuthStateChange((event, session) => {
       setUser(session?.user ?? null);
@@ -222,6 +233,7 @@ export default function Dashboard() {
         setTimeout(() => {
           checkOnboarding(session.user.id);
           checkSubscription();
+          checkMealPlans(session.user.id);
         }, 0);
       }
     });
@@ -236,6 +248,7 @@ export default function Dashboard() {
         setTimeout(() => {
           checkOnboarding(session.user.id);
           checkSubscription();
+          checkMealPlans(session.user.id);
         }, 0);
       }
     });
@@ -739,8 +752,8 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Plano Semanal - Só aparece se personalizou metas de peso */}
-                  {(userGoal === "emagrecer" || userGoal === "ganhar_peso") && (
+                  {/* Plano Semanal - Só aparece se tem plano criado */}
+                  {hasMealPlan && (
                     <Card 
                       className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
                       onClick={() => setShowMealPlan(true)}

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Camera, Sparkles, Crown, Loader2, Star, Check, ExternalLink } from "lucide-react";
+import { ChefHat, LogOut, Camera, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap } from "lucide-react";
 import { toast } from "sonner";
 import type { User } from "@supabase/supabase-js";
 
@@ -214,72 +214,132 @@ export default function Dashboard() {
             </div>
           ) : isSubscribed ? (
             <>
-              {/* Active Plan Features */}
-              <div className="grid md:grid-cols-2 gap-6">
-                <Card className="glass-card border-2 border-primary/30 shadow-glow">
-                  <CardContent className="p-6 text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto gradient-primary rounded-2xl flex items-center justify-center">
-                      <Camera className="w-8 h-8 text-primary-foreground" />
+              {/* Home Principal - 5 Opções */}
+              <div className="space-y-6">
+                {/* Opção Principal: Gerar Receita com Ingredientes */}
+                <Card className="glass-card border-2 border-primary/30 shadow-glow overflow-hidden">
+                  <CardContent className="p-6 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center shrink-0">
+                        <UtensilsCrossed className="w-7 h-7 text-primary-foreground" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="font-display text-lg font-bold text-foreground">
+                          Gerar Receita com Ingredientes
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Digite os ingredientes que você tem em casa
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-display text-lg font-bold text-foreground">
-                        Escanear Ingredientes
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Tire uma foto e deixe a IA identificar
-                      </p>
+                    <div className="flex gap-2">
+                      <input 
+                        type="text" 
+                        placeholder="Ex: frango, batata, cebola..."
+                        className="flex-1 px-4 py-3 rounded-xl border border-border bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      />
+                      <Button className="gradient-primary border-0 px-6">
+                        <Sparkles className="w-5 h-5" />
+                      </Button>
                     </div>
-                    <Button className="w-full gradient-primary border-0">
-                      <Camera className="mr-2 h-5 w-5" />
-                      Escanear Agora
-                    </Button>
                   </CardContent>
                 </Card>
 
-                <Card className="glass-card border-2 border-primary/30 shadow-glow">
-                  <CardContent className="p-6 text-center space-y-4">
-                    <div className="w-16 h-16 mx-auto gradient-accent rounded-2xl flex items-center justify-center">
-                      <Sparkles className="w-8 h-8 text-accent-foreground" />
+                {/* Grid de Opções */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Gerar Receita Automática */}
+                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto gradient-accent rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Zap className="w-6 h-6 text-accent-foreground" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Receita Automática
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Surpreenda-me!
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Plano Semanal */}
+                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Calendar className="w-6 h-6 text-blue-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Plano Semanal
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Sua rotina alimentar
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Favoritas */}
+                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto bg-rose-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Heart className="w-6 h-6 text-rose-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Favoritas
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Suas receitas salvas
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Histórico */}
+                  <Card className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group">
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto bg-purple-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <History className="w-6 h-6 text-purple-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Histórico
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Receitas anteriores
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Info do Plano */}
+                <Card className="glass-card border-border/30">
+                  <CardContent className="p-4 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      {activePlan === "premium" ? (
+                        <Crown className="w-5 h-5 text-accent" />
+                      ) : (
+                        <Star className="w-5 h-5 text-muted-foreground" />
+                      )}
+                      <span className="text-sm font-medium">Plano {plans[activePlan!]?.name}</span>
+                      {subscription?.status === "trialing" && (
+                        <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
+                          Trial
+                        </span>
+                      )}
                     </div>
-                    <div>
-                      <h3 className="font-display text-lg font-bold text-foreground">
-                        Gerar Receitas com IA
-                      </h3>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Receitas personalizadas em segundos
-                      </p>
-                    </div>
-                    <Button className="w-full gradient-accent border-0">
-                      <Sparkles className="mr-2 h-5 w-5" />
-                      Gerar Receitas
-                    </Button>
+                    <span className="text-xs text-muted-foreground">
+                      {subscription?.subscription_end && 
+                        `até ${new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}`
+                      }
+                    </span>
                   </CardContent>
                 </Card>
               </div>
-
-              {/* Current Plan Info */}
-              <Card className="glass-card border-border/50">
-                <CardHeader>
-                  <CardTitle className="font-display text-lg flex items-center gap-2">
-                    {activePlan === "premium" ? (
-                      <Crown className="w-5 h-5 text-accent" />
-                    ) : (
-                      <Star className="w-5 h-5 text-muted-foreground" />
-                    )}
-                    Seu Plano: {plans[activePlan!]?.name}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <ul className="grid grid-cols-2 gap-2">
-                    {plans[activePlan!]?.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm">
-                        <Check className="w-4 h-4 text-primary" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                </CardContent>
-              </Card>
             </>
           ) : (
             <>

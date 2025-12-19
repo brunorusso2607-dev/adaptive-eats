@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   ChefHat, Clock, Flame, Users, ArrowLeft, RefreshCw, 
-  Heart, Save, Check, Loader2, Beef, Wheat, Droplet
+  Heart, Save, Check, Loader2, Beef, Wheat, Droplet, TrendingDown, Leaf
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -29,6 +29,9 @@ type Recipe = {
   fat: number;
   input_ingredients?: string | null;
   is_kids_mode?: boolean;
+  is_weight_loss_mode?: boolean;
+  satiety_score?: number;
+  satiety_tip?: string;
 };
 
 type RecipeResultProps = {
@@ -97,6 +100,7 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
   };
 
   const isKidsMode = recipe.is_kids_mode;
+  const isWeightLossMode = recipe.is_weight_loss_mode;
 
   return (
     <div className="space-y-6 animate-in fade-in duration-300">
@@ -106,11 +110,16 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h2 className="font-display text-xl font-bold text-foreground flex-1">
-          {isKidsMode ? "🎉 Receita Divertida!" : "Receita Gerada"}
+          {isKidsMode ? "🎉 Receita Divertida!" : isWeightLossMode ? "🔥 Receita Saudável" : "Receita Gerada"}
         </h2>
         {isKidsMode && (
           <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-xs font-bold rounded-full animate-pulse">
             👶 Modo Kids
+          </span>
+        )}
+        {isWeightLossMode && !isKidsMode && (
+          <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full">
+            🔥 Emagrecer
           </span>
         )}
       </div>
@@ -197,6 +206,50 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
               <p className="text-xs text-muted-foreground">{isKidsMode ? "🥑 Bom" : "Gordura"}</p>
             </div>
           </div>
+
+          {/* Satiety Score - Weight Loss Mode */}
+          {isWeightLossMode && recipe.satiety_score && (
+            <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30 rounded-xl p-4 border border-green-200/50 dark:border-green-800/30">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Leaf className="w-5 h-5 text-green-500" />
+                  <h3 className="font-display font-bold text-foreground">Índice de Saciedade</h3>
+                </div>
+                <div className="flex items-center gap-1">
+                  {[...Array(10)].map((_, i) => (
+                    <div
+                      key={i}
+                      className={cn(
+                        "w-2.5 h-6 rounded-sm transition-all",
+                        i < (recipe.satiety_score || 0)
+                          ? "bg-gradient-to-t from-green-500 to-emerald-400"
+                          : "bg-gray-200 dark:bg-gray-700"
+                      )}
+                    />
+                  ))}
+                  <span className="ml-2 font-bold text-green-600">{recipe.satiety_score}/10</span>
+                </div>
+              </div>
+              {recipe.satiety_tip && (
+                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-3">
+                  <p className="text-sm text-foreground flex items-start gap-2">
+                    <TrendingDown className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+                    <span><strong>Dica:</strong> {recipe.satiety_tip}</span>
+                  </p>
+                </div>
+              )}
+              <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
+                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                  <p className="font-bold text-green-600">~0.5kg/semana</p>
+                  <p className="text-muted-foreground">Perda estimada*</p>
+                </div>
+                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
+                  <p className="font-bold text-green-600">Déficit saudável</p>
+                  <p className="text-muted-foreground">300-500 kcal/dia</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Ingredients */}
           <div className={cn(

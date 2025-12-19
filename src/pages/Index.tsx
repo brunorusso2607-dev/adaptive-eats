@@ -125,8 +125,8 @@ export default function Index() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Open checkout in new tab
-      window.open(data.url, "_blank");
+      // Redirect to checkout
+      window.location.href = data.url;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao iniciar checkout";
       toast.error(message);

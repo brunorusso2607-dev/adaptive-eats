@@ -378,6 +378,28 @@ export default function Dashboard() {
                   }
                   setShowWeightLossSetup(false);
                 }}
+                onGeneratePlan={(data) => {
+                  setWeightData({
+                    weight_current: data.weight_current,
+                    weight_goal: data.weight_goal,
+                    height: data.height,
+                    age: data.age,
+                    sex: data.sex,
+                    activity_level: data.activity_level,
+                    goal_mode: data.calculations.mode,
+                  });
+                  // Goal is set based on user selection
+                  if (data.calculations.mode === "lose") {
+                    setUserGoal("emagrecer");
+                  } else if (data.calculations.mode === "gain") {
+                    setUserGoal("ganhar_peso");
+                  } else {
+                    setUserGoal("manter");
+                  }
+                  setShowWeightLossSetup(false);
+                  // Navigate to meal plan section to create first plan
+                  setShowMealPlan(true);
+                }}
                 initialData={weightData || undefined}
               />
             ) : showRecipe && generatedRecipe ? (
@@ -717,25 +739,27 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Plano Semanal */}
-                  <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
-                    onClick={() => setShowMealPlan(true)}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className="w-12 h-12 mx-auto bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Calendar className="w-6 h-6 text-blue-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Plano Semanal
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Sua rotina alimentar
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/* Plano Semanal - Só aparece se personalizou metas de peso */}
+                  {(userGoal === "emagrecer" || userGoal === "ganhar_peso") && (
+                    <Card 
+                      className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                      onClick={() => setShowMealPlan(true)}
+                    >
+                      <CardContent className="p-5 text-center space-y-3">
+                        <div className="w-12 h-12 mx-auto bg-blue-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                          <Calendar className="w-6 h-6 text-blue-500" />
+                        </div>
+                        <div>
+                          <h3 className="font-display font-bold text-foreground">
+                            Plano Semanal
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Sua rotina alimentar
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Favoritas */}
                   <Card 

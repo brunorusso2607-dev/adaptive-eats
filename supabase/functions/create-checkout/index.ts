@@ -6,12 +6,24 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Price IDs from Stripe
+const PRICE_IDS = {
+  essencial: "price_1Sg9N6Ch4FnxqOQFbN0RhBzy",
+  premium: "price_1Sg9ODCh4FnxqOQFkKsIJZOX",
+};
+
+const logStep = (step: string, details?: Record<string, unknown>) => {
+  console.log(`[CREATE-CHECKOUT] ${step}`, details ? JSON.stringify(details) : "");
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
+    logStep("Function started");
+
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_ANON_KEY") ?? ""
@@ -29,7 +41,17 @@ Deno.serve(async (req) => {
       throw new Error("Invalid user");
     }
 
-    const { returnUrl } = await req.json();
+    logStep("User authenticated", { userId: user.id, email: user.email });
+
+    const { returnUrl, plan = "premium" } = await req.json();
+    
+    // Validate plan
+    const priceId = PRICE_IDS[plan as keyof typeof PRICE_IDS];
+    if (!priceId) {
+      throw new Error(`Invalid plan: ${plan}`);
+    }
+
+    logStep("Plan selected", { plan, priceId });
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") ?? "", {
       apiVersion: "2023-10-16",
@@ -41,12 +63,14 @@ Deno.serve(async (req) => {
 
     if (customers.data.length > 0) {
       customerId = customers.data[0].id;
+      logStep("Existing customer found", { customerId });
     } else {
       const customer = await stripe.customers.create({
         email: user.email,
         metadata: { supabase_user_id: user.id },
       });
       customerId = customer.id;
+      logStep("New customer created", { customerId });
     }
 
     // Create checkout session with 7-day trial
@@ -55,15 +79,7 @@ Deno.serve(async (req) => {
       payment_method_types: ["card"],
       line_items: [
         {
-          price_data: {
-            currency: "brl",
-            product_data: {
-              name: "ReceitAI Premium",
-              description: "Acesso completo a todas as funcionalidades do ReceitAI",
-            },
-            unit_amount: 1900, // R$19.00
-            recurring: { interval: "month" },
-          },
+          price: priceId,
           quantity: 1,
         },
       ],
@@ -74,6 +90,8 @@ Deno.serve(async (req) => {
       success_url: `${returnUrl}?success=true`,
       cancel_url: `${returnUrl}?canceled=true`,
     });
+
+    logStep("Checkout session created", { sessionId: session.id });
 
     return new Response(JSON.stringify({ url: session.url }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

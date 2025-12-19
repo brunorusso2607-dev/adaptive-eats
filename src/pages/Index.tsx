@@ -1,8 +1,11 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChefHat, Sparkles, Clock, Heart, Camera, Check, ArrowRight, X, Crown, Star, Quote } from "lucide-react";
+import { ChefHat, Sparkles, Clock, Heart, Camera, Check, ArrowRight, X, Crown, Star, Quote, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 // Testimonial images
 import testimonial1 from "@/assets/testimonial-1.jpg";
@@ -107,6 +110,31 @@ const plans = {
 };
 
 export default function Index() {
+  const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
+
+  const handleStartCheckout = async (plan: "essencial" | "premium") => {
+    setLoadingPlan(plan);
+    try {
+      const { data, error } = await supabase.functions.invoke("create-checkout", {
+        body: { 
+          returnUrl: window.location.origin,
+          plan,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      // Open checkout in new tab
+      window.open(data.url, "_blank");
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Erro ao iniciar checkout";
+      toast.error(message);
+    } finally {
+      setLoadingPlan(null);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
@@ -318,11 +346,24 @@ export default function Index() {
                   ))}
                 </ul>
                 
-                <Link to={`/auth?mode=signup&plan=essencial`} className="block pt-2">
-                  <Button size="lg" variant="outline" className="w-full rounded-full">
-                    Começar 7 dias grátis
+                <div className="pt-2">
+                  <Button 
+                    size="lg" 
+                    variant="outline" 
+                    className="w-full rounded-full"
+                    onClick={() => handleStartCheckout("essencial")}
+                    disabled={loadingPlan !== null}
+                  >
+                    {loadingPlan === "essencial" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Carregando...
+                      </>
+                    ) : (
+                      "Começar 7 dias grátis"
+                    )}
                   </Button>
-                </Link>
+                </div>
               </CardContent>
             </Card>
 
@@ -366,12 +407,26 @@ export default function Index() {
                   ))}
                 </ul>
                 
-                <Link to={`/auth?mode=signup&plan=premium`} className="block pt-2">
-                  <Button size="lg" className="w-full gradient-primary border-0 rounded-full shadow-glow">
-                    Começar 7 dias grátis
-                    <ArrowRight className="ml-2 w-4 h-4" />
+                <div className="pt-2">
+                  <Button 
+                    size="lg" 
+                    className="w-full gradient-primary border-0 rounded-full shadow-glow"
+                    onClick={() => handleStartCheckout("premium")}
+                    disabled={loadingPlan !== null}
+                  >
+                    {loadingPlan === "premium" ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Carregando...
+                      </>
+                    ) : (
+                      <>
+                        Começar 7 dias grátis
+                        <ArrowRight className="ml-2 w-4 h-4" />
+                      </>
+                    )}
                   </Button>
-                </Link>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -387,12 +442,24 @@ export default function Index() {
           <p className="text-muted-foreground text-lg mb-8">
             Junte-se a milhares de pessoas que já descobriram a alegria de cozinhar com inteligência artificial
           </p>
-          <Link to="/auth?mode=signup">
-            <Button size="lg" className="gradient-primary border-0 rounded-full px-12 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]">
-              Começar Gratuitamente
-              <ArrowRight className="ml-2 w-5 h-5" />
-            </Button>
-          </Link>
+          <Button 
+            size="lg" 
+            className="gradient-primary border-0 rounded-full px-12 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
+            onClick={() => handleStartCheckout("premium")}
+            disabled={loadingPlan !== null}
+          >
+            {loadingPlan ? (
+              <>
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                Carregando...
+              </>
+            ) : (
+              <>
+                Começar Gratuitamente
+                <ArrowRight className="ml-2 w-5 h-5" />
+              </>
+            )}
+          </Button>
         </div>
       </section>
 

@@ -103,6 +103,29 @@ serve(async (req) => {
     // Modo Emagrecimento
     const isWeightLossMode = profile.goal === "emagrecer";
     
+    // Calculate personalized macros if weight data is available
+    let personalizedMacros = null;
+    if (isWeightLossMode && profile.weight_current && profile.height && profile.age && profile.sex) {
+      // Mifflin-St Jeor Formula
+      let tmb: number;
+      if (profile.sex === "male") {
+        tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) + 5;
+      } else {
+        tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) - 161;
+      }
+      
+      const activityFactors: Record<string, number> = {
+        sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9
+      };
+      const factor = activityFactors[profile.activity_level] || 1.55;
+      const get = Math.round(tmb * factor);
+      const targetCalories = Math.max(get - 500, profile.sex === "male" ? 1500 : 1200);
+      const protein = Math.round((profile.weight_goal || profile.weight_current) * 2);
+      
+      personalizedMacros = { targetCalories, protein };
+      logStep("Personalized macros calculated", personalizedMacros);
+    }
+    
     const kidsInstructions = isKidsMode ? `
 MODO KIDS ATIVO - REGRAS ESPECIAIS:
 - Nomes DIVERTIDOS e criativos (ex: "Macarrão Arco-Íris", "Bolinho do Astronauta", "Pizza do Dino")
@@ -123,8 +146,11 @@ MODO EMAGRECIMENTO ATIVO - REGRAS ESPECIAIS:
 - Inclua proteínas magras (frango, peixe, ovos, leguminosas)
 - Adicione fibras (aveia, chia, linhaça, legumes)
 - EVITE carboidratos refinados e açúcares
-- Calorias por porção: 300-450 kcal (déficit calórico controlado)
-- Proteína alta: mínimo 25g por porção
+${personalizedMacros 
+  ? `- META CALÓRICA PERSONALIZADA: ${personalizedMacros.targetCalories} kcal/dia - adapte a receita para ~${Math.round(personalizedMacros.targetCalories / 3)} kcal por refeição
+- META DE PROTEÍNA: ${personalizedMacros.protein}g por dia - inclua ~${Math.round(personalizedMacros.protein / 3)}g por refeição`
+  : `- Calorias por porção: 300-450 kcal (déficit calórico controlado)
+- Proteína alta: mínimo 25g por porção`}
 - Prefira métodos de cocção: grelhado, assado, cozido no vapor
 - Adicione um campo "satiety_tip" com dica de saciedade
 - Adicione um campo "satiety_score" de 1-10 (quanto maior, mais saciante)

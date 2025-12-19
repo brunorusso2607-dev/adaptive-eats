@@ -318,20 +318,20 @@ Cada dia deve ter 4 refeições completas com ingredientes e instruções.`;
       .eq("user_id", user.id)
       .neq("id", mealPlan.id);
 
-    // Insert meal plan items
+    // Insert meal plan items - ensure numeric fields are properly typed
     const items = mealPlanData.days.flatMap((day: any) =>
       day.meals.map((meal: any) => ({
         meal_plan_id: mealPlan.id,
-        day_of_week: day.day_index,
+        day_of_week: Math.round(Number(day.day_index) || 0),
         meal_type: meal.meal_type,
         recipe_name: meal.recipe_name,
-        recipe_calories: meal.recipe_calories,
-        recipe_protein: meal.recipe_protein,
-        recipe_carbs: meal.recipe_carbs,
-        recipe_fat: meal.recipe_fat,
-        recipe_prep_time: meal.recipe_prep_time,
-        recipe_ingredients: meal.recipe_ingredients,
-        recipe_instructions: meal.recipe_instructions
+        recipe_calories: Math.round(Number(meal.recipe_calories) || 0),
+        recipe_protein: Number(meal.recipe_protein) || 0,
+        recipe_carbs: Number(meal.recipe_carbs) || 0,
+        recipe_fat: Number(meal.recipe_fat) || 0,
+        recipe_prep_time: Math.round(Number(meal.recipe_prep_time) || 30),
+        recipe_ingredients: meal.recipe_ingredients || [],
+        recipe_instructions: meal.recipe_instructions || []
       }))
     );
 

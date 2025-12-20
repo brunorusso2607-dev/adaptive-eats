@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, Dumbbell } from "lucide-react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -863,6 +863,26 @@ export default function Dashboard() {
                         </h3>
                         <p className="text-xs text-muted-foreground mt-1">
                           Receitas anteriores
+                        </p>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  {/* Treino */}
+                  <Card 
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    onClick={() => toast.info("Módulo de Treino em breve!")}
+                  >
+                    <CardContent className="p-5 text-center space-y-3">
+                      <div className="w-12 h-12 mx-auto bg-orange-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                        <Dumbbell className="w-6 h-6 text-orange-500" />
+                      </div>
+                      <div>
+                        <h3 className="font-display font-bold text-foreground">
+                          Treino
+                        </h3>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Exercícios com GIFs
                         </p>
                       </div>
                     </CardContent>

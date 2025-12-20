@@ -4,9 +4,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Button } from "@/components/ui/button";
 import { 
   Salad, UtensilsCrossed, Wheat, Coffee, Cake, GlassWater, Cookie,
-  Globe, Clock, Flame, ChevronRight, ArrowLeft, Check
+  Globe, Clock, Flame, ChevronRight, ArrowLeft, Check, Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useFilteredRecipeCategories } from "@/hooks/useFilteredRecipeCategories";
 
 // Filtros opcionais (Etapa 1)
 const FILTERS = {
@@ -33,66 +34,13 @@ const FILTERS = {
   },
 };
 
-// Categorias de receita (Etapa 2)
+// Tipo exportado para compatibilidade
 export type RecipeCategory = {
   id: string;
   name: string;
   emoji: string;
-  icon: React.ComponentType<{ className?: string }>;
   subcategories: string[];
 };
-
-const RECIPE_CATEGORIES: RecipeCategory[] = [
-  {
-    id: "entradas",
-    name: "Entradas & Leves",
-    emoji: "🥗",
-    icon: Salad,
-    subcategories: ["Saladas", "Molhos para salada", "Pastas e patês", "Antepastos", "Sopas leves", "Caldos", "Cremes frios"],
-  },
-  {
-    id: "principais",
-    name: "Pratos Principais",
-    emoji: "🍽️",
-    icon: UtensilsCrossed,
-    subcategories: ["Prato principal tradicional", "Pratos fitness", "Pratos low carb", "Pratos vegetarianos", "Pratos veganos", "Pratos proteicos (high protein)", "Pratos rápidos (até 15 min)", "Pratos elaborados / gourmet"],
-  },
-  {
-    id: "acompanhamentos",
-    name: "Acompanhamentos",
-    emoji: "🍚",
-    icon: Wheat,
-    subcategories: ["Arroz e grãos", "Legumes refogados", "Purês", "Farofas", "Massas", "Cuscuz", "Quinoa e derivados"],
-  },
-  {
-    id: "cafe_lanches",
-    name: "Café da Manhã & Lanches",
-    emoji: "🍳",
-    icon: Coffee,
-    subcategories: ["Café da manhã", "Lanches rápidos", "Lanches fitness", "Panquecas", "Ovos e omeletes", "Sanduíches", "Tapiocas"],
-  },
-  {
-    id: "sobremesas",
-    name: "Sobremesas",
-    emoji: "🍰",
-    icon: Cake,
-    subcategories: ["Sobremesas tradicionais", "Sobremesas fitness", "Sobremesas low carb", "Sobremesas sem açúcar", "Sobremesas veganas", "Bolos", "Tortas doces", "Doces gelados"],
-  },
-  {
-    id: "bebidas",
-    name: "Bebidas",
-    emoji: "🧃",
-    icon: GlassWater,
-    subcategories: ["Sucos naturais", "Vitaminas e smoothies", "Shakes proteicos", "Chás", "Bebidas funcionais", "Bebidas detox"],
-  },
-  {
-    id: "snacks",
-    name: "Snacks & Petiscos",
-    emoji: "🍟",
-    icon: Cookie,
-    subcategories: ["Petiscos rápidos", "Snacks saudáveis", "Snacks low carb", "Petiscos de forno", "Petiscos de airfryer", "Finger foods"],
-  },
-];
 
 export type SelectedFilters = {
   culinaria?: string;
@@ -117,6 +65,9 @@ export default function RecipeCategorySheet({
   const [expandedFilter, setExpandedFilter] = useState<string>("");
   const [expandedCategory, setExpandedCategory] = useState<string>("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
+  
+  // Usa o hook para buscar categorias filtradas pelo perfil
+  const { categories: filteredCategories, isLoading: isCategoriesLoading, profile } = useFilteredRecipeCategories();
 
   const handleFilterSelect = (filterId: string, option: string) => {
     setSelectedFilters(prev => {
@@ -267,51 +218,66 @@ export default function RecipeCategorySheet({
                 );
               })}
             </Accordion>
+          ) : isCategoriesLoading ? (
+            // Loading state
+            <div className="flex flex-col items-center justify-center py-12 gap-3">
+              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Carregando categorias...</p>
+            </div>
           ) : (
-            // Etapa 2: Categorias
-            <Accordion 
-              type="single" 
-              collapsible 
-              value={expandedCategory}
-              onValueChange={setExpandedCategory}
-              className="space-y-2"
-            >
-              {RECIPE_CATEGORIES.map((category) => (
-                <AccordionItem 
-                  key={category.id} 
-                  value={category.id}
-                  className="border rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm data-[state=open]:border-primary/50 data-[state=open]:shadow-md transition-all"
-                >
-                  <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 [&[data-state=open]]:bg-primary/5">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg">
-                        {category.emoji}
+            // Etapa 2: Categorias filtradas pelo perfil
+            <div className="space-y-3">
+              {profile && (
+                <div className="bg-primary/5 rounded-xl p-3 mb-4">
+                  <p className="text-xs text-muted-foreground text-center">
+                    📋 Categorias personalizadas para seu perfil
+                  </p>
+                </div>
+              )}
+              <Accordion 
+                type="single" 
+                collapsible 
+                value={expandedCategory}
+                onValueChange={setExpandedCategory}
+                className="space-y-2"
+              >
+                {filteredCategories.map((category) => (
+                  <AccordionItem 
+                    key={category.id} 
+                    value={category.id}
+                    className="border rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm data-[state=open]:border-primary/50 data-[state=open]:shadow-md transition-all"
+                  >
+                    <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 [&[data-state=open]]:bg-primary/5">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg">
+                          {category.emoji}
+                        </div>
+                        <span className="font-medium text-left">{category.name}</span>
                       </div>
-                      <span className="font-medium text-left">{category.name}</span>
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-2 pb-2">
-                    <div className="grid grid-cols-1 gap-1 pt-2">
-                      {category.subcategories.map((sub) => (
-                        <Button
-                          key={sub}
-                          variant="ghost"
-                          className={cn(
-                            "justify-between h-auto py-3 px-4 rounded-xl text-left font-normal",
-                            "hover:bg-primary/10 hover:text-primary transition-colors"
-                          )}
-                          onClick={() => handleSubcategoryClick(category.name, sub)}
-                          disabled={isLoading}
-                        >
-                          <span>{sub}</span>
-                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
-                        </Button>
-                      ))}
-                    </div>
-                  </AccordionContent>
-                </AccordionItem>
-              ))}
-            </Accordion>
+                    </AccordionTrigger>
+                    <AccordionContent className="px-2 pb-2">
+                      <div className="grid grid-cols-1 gap-1 pt-2">
+                        {category.subcategories.map((sub) => (
+                          <Button
+                            key={sub.name}
+                            variant="ghost"
+                            className={cn(
+                              "justify-between h-auto py-3 px-4 rounded-xl text-left font-normal",
+                              "hover:bg-primary/10 hover:text-primary transition-colors"
+                            )}
+                            onClick={() => handleSubcategoryClick(category.name, sub.name)}
+                            disabled={isLoading}
+                          >
+                            <span>{sub.name}</span>
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                          </Button>
+                        ))}
+                      </div>
+                    </AccordionContent>
+                  </AccordionItem>
+                ))}
+              </Accordion>
+            </div>
           )}
         </div>
 

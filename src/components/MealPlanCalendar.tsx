@@ -20,6 +20,7 @@ import {
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMonthWeeks, formatWeekRange, type WeekInfo, type DayInfo } from "@/hooks/useMonthWeeks";
+import IngredientTagInput from "@/components/IngredientTagInput";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -48,12 +49,18 @@ type MealPlan = {
   items: MealPlanItem[];
 };
 
+type UserProfile = {
+  intolerances?: string[] | null;
+  dietary_preference?: string | null;
+};
+
 type MealPlanCalendarProps = {
   mealPlan: MealPlan;
   onClose: () => void;
   onSelectMeal: (meal: MealPlanItem) => void;
   onToggleFavorite: (mealId: string) => void;
   onMealUpdated?: (updatedMeal: MealPlanItem) => void;
+  userProfile?: UserProfile | null;
 };
 
 const DAY_NAMES_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
@@ -67,13 +74,13 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
 
-export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated }: MealPlanCalendarProps) {
+export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, userProfile }: MealPlanCalendarProps) {
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; meal: MealPlanItem | null; mealType: string }>({
     open: false,
     meal: null,
     mealType: "",
   });
-  const [ingredients, setIngredients] = useState("");
+  const [ingredientTags, setIngredientTags] = useState<string[]>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Use the current month for dynamic weeks calculation
@@ -177,7 +184,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         body: {
           mealItemId: regenerateDialog.meal.id,
           mealType: regenerateDialog.mealType,
-          ingredients: mode === "with_ingredients" ? ingredients : null,
+          ingredients: mode === "with_ingredients" ? ingredientTags.join(", ") : null,
           mode,
         },
       });
@@ -197,7 +204,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         }
 
         setRegenerateDialog({ open: false, meal: null, mealType: "" });
-        setIngredients("");
+        setIngredientTags([]);
       } else {
         throw new Error(response.data?.error || "Erro desconhecido");
       }
@@ -455,7 +462,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       {/* Regenerate Dialog */}
       <Dialog open={regenerateDialog.open} onOpenChange={(open) => {
         setRegenerateDialog({ open, meal: regenerateDialog.meal, mealType: regenerateDialog.mealType });
-        if (!open) setIngredients("");
+        if (!open) setIngredientTags([]);
       }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
@@ -487,27 +494,28 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
               <div className="flex-1 h-px bg-border" />
             </div>
             
-            {/* Input de ingredientes */}
-            <div className="flex gap-2">
-              <input 
-                type="text" 
-                value={ingredients}
-                onChange={(e) => setIngredients(e.target.value)}
-                placeholder="Ex: frango, batata, cebola..."
-                className="flex-1 px-4 py-3 rounded-xl border border-border bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+            {/* Input de ingredientes com sugestões dinâmicas */}
+            <div className="space-y-3">
+              <IngredientTagInput
+                value={ingredientTags}
+                onChange={setIngredientTags}
+                placeholder="Digite um ingrediente..."
                 disabled={isRegenerating}
-                onKeyDown={(e) => e.key === "Enter" && ingredients.trim() && handleRegenerate("with_ingredients")}
+                onSubmit={() => ingredientTags.length > 0 && handleRegenerate("with_ingredients")}
+                userProfile={userProfile}
               />
+              
               <Button 
-                className="gradient-primary border-0 px-6"
+                className="w-full gradient-primary border-0"
                 onClick={() => handleRegenerate("with_ingredients")}
-                disabled={isRegenerating || !ingredients.trim()}
+                disabled={isRegenerating || ingredientTags.length === 0}
               >
                 {isRegenerating ? (
-                  <Loader2 className="w-5 h-5 animate-spin" />
+                  <Loader2 className="w-5 h-5 animate-spin mr-2" />
                 ) : (
-                  <Sparkles className="w-5 h-5" />
+                  <Sparkles className="w-5 h-5 mr-2" />
                 )}
+                Gerar com ingredientes
               </Button>
             </div>
             

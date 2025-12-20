@@ -103,12 +103,18 @@ const hasPlanForNextMonth = (plans: MealPlan[]) => {
   });
 };
 
+type UserProfile = {
+  intolerances?: string[] | null;
+  dietary_preference?: string | null;
+};
+
 export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   const [view, setView] = useState<"list" | "create" | "calendar" | "recipe" | "shopping">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealPlanItem | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   // Swipe to close with visual feedback
   const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
@@ -203,8 +209,27 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     }
   };
 
+  const fetchUserProfile = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const { data: profile, error } = await supabase
+        .from("profiles")
+        .select("intolerances, dietary_preference")
+        .eq("id", session.user.id)
+        .single();
+
+      if (error) throw error;
+      setUserProfile(profile);
+    } catch (error) {
+      console.error("Error fetching user profile:", error);
+    }
+  };
+
   useEffect(() => {
     fetchMealPlans();
+    fetchUserProfile();
   }, []);
 
   const handleDeletePlan = async (planId: string) => {
@@ -339,6 +364,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
         onSelectMeal={handleSelectMeal}
         onToggleFavorite={handleToggleFavorite}
         onMealUpdated={handleMealUpdated}
+        userProfile={userProfile}
       />
     );
   }

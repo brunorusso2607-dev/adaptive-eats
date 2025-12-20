@@ -14,6 +14,7 @@ import MealPlanSection from "@/components/MealPlanSection";
 import IngredientTagInput from "@/components/IngredientTagInput";
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
+import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -96,6 +97,7 @@ export default function Dashboard() {
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
+  const [showFoodAnalyzer, setShowFoodAnalyzer] = useState(false);
   
   // User profile for ingredient validation
   const [userProfile, setUserProfile] = useState<{
@@ -403,10 +405,11 @@ export default function Dashboard() {
     setShowWeightLossSetup(false);
     setShowWeightHistory(false);
     setShowProfileSheet(false);
+    setShowFoodAnalyzer(false);
   };
 
   // Check if we're in a sub-view that needs a back button
-  const isInSubView = mobileActiveTab !== "home" || showMealPlan || showList || showProfileSheet;
+  const isInSubView = mobileActiveTab !== "home" || showMealPlan || showList || showProfileSheet || showFoodAnalyzer;
 
   if (isLoading) {
     return (
@@ -428,6 +431,7 @@ export default function Dashboard() {
     setShowWeightLossSetup(false);
     setShowWeightHistory(false);
     setShowProfileSheet(false);
+    setShowFoodAnalyzer(false);
     
     if (tab === "meal-plan") {
       setShowMealPlan(true);
@@ -442,6 +446,10 @@ export default function Dashboard() {
     if (tab === "profile") {
       setShowProfileSheet(true);
     }
+    
+    if (tab === "scan") {
+      setShowFoodAnalyzer(true);
+    }
   };
   
   // Determine back button type: X for modal-like views, arrow for section views
@@ -449,7 +457,7 @@ export default function Dashboard() {
     if (mobileActiveTab === "profile" || mobileActiveTab === "favorites" || showProfileSheet || showList) {
       return "x";
     }
-    if (mobileActiveTab === "meal-plan" || showMealPlan) {
+    if (mobileActiveTab === "meal-plan" || showMealPlan || mobileActiveTab === "scan" || showFoodAnalyzer) {
       return "arrow";
     }
     return null;
@@ -612,6 +620,8 @@ export default function Dashboard() {
               />
             ) : showMealPlan ? (
               <MealPlanSection onBack={() => setShowMealPlan(false)} />
+            ) : showFoodAnalyzer ? (
+              <FoodPhotoAnalyzer />
             ) : showWeightHistory && weightData?.weight_goal ? (
               <WeightHistoryChart 
                 onBack={() => setShowWeightHistory(false)}

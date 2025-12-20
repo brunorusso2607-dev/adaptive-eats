@@ -103,6 +103,31 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
   const isGainingWeight = weightDiff > 0;
   const isLosingWeight = weightDiff < 0;
 
+  // CRITICAL: Check for contradictory goal vs weight combination FIRST
+  // These are logical errors that should block other validations
+  
+  // "Emagrecer" but goal weight is >= current weight
+  if (data.goal_mode === "lose" && data.weight_goal >= data.weight_current) {
+    risks.push({
+      level: "danger",
+      title: "Objetivo contraditório",
+      message: `Para emagrecer, o peso desejado (${data.weight_goal}kg) precisa ser menor que o peso atual (${data.weight_current}kg).`,
+      suggestion: "Ajuste o peso desejado para um valor menor ou mude o objetivo para 'Ganhar Peso'.",
+    });
+    return risks; // Return early - no other validations make sense
+  }
+
+  // "Ganhar Peso" but goal weight is <= current weight
+  if (data.goal_mode === "gain" && data.weight_goal <= data.weight_current) {
+    risks.push({
+      level: "danger",
+      title: "Objetivo contraditório",
+      message: `Para ganhar peso, o peso desejado (${data.weight_goal}kg) precisa ser maior que o peso atual (${data.weight_current}kg).`,
+      suggestion: "Ajuste o peso desejado para um valor maior ou mude o objetivo para 'Emagrecer'.",
+    });
+    return risks; // Return early - no other validations make sense
+  }
+
   // DANGER: Goal weight leads to obesity for sedentary person
   if (data.goal_mode === "gain" && goalCategory.startsWith("obese") && isSedentaryOrLight) {
     risks.push({
@@ -143,7 +168,7 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
     });
   }
 
-  // WARNING: Extreme weight change
+  // WARNING: Extreme weight change (only if goal is valid)
   if (Math.abs(weightDiff) > 20) {
     risks.push({
       level: "warning",

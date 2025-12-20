@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, Mail, Loader2, CheckCircle, Download, MoreVertical, ArrowRight, Share, PlusSquare } from "lucide-react";
+import { ChefHat, Mail, Loader2, CheckCircle, Download, MoreVertical, ArrowRight, Share, PlusSquare, Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
@@ -28,12 +28,17 @@ export default function Activate() {
   const [showInstallButton, setShowInstallButton] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
+  const [isIOSNotSafari, setIsIOSNotSafari] = useState(false);
 
-  // Detect platform and listen for PWA install prompt
+  // Detect platform and browser
   useEffect(() => {
     const userAgent = navigator.userAgent.toLowerCase();
-    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+    const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
+    const isSafari = /safari/.test(userAgent) && !/chrome|crios|fxios|edgios|opera/.test(userAgent);
+    
+    setIsIOS(isIOSDevice);
     setIsAndroid(/android/.test(userAgent));
+    setIsIOSNotSafari(isIOSDevice && !isSafari);
 
     const handler = (e: Event) => {
       e.preventDefault();
@@ -47,6 +52,15 @@ export default function Activate() {
       window.removeEventListener("beforeinstallprompt", handler);
     };
   }, []);
+
+  const copyLinkToClipboard = async () => {
+    try {
+      await navigator.clipboard.writeText(window.location.origin + "/dashboard");
+      toast.success("Link copiado! Cole no Safari para instalar.");
+    } catch {
+      toast.error("Não foi possível copiar o link");
+    }
+  };
 
   const handleInstallPWA = async () => {
     if (!deferredPrompt) {
@@ -149,8 +163,42 @@ export default function Activate() {
               </div>
             )}
 
-            {/* iOS Instructions */}
-            {isIOS && (
+            {/* iOS in non-Safari browser - Show warning to open in Safari */}
+            {isIOSNotSafari && (
+              <div className="space-y-4">
+                <div className="bg-amber-500/10 rounded-xl p-4 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+                      <ExternalLink className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-amber-600 dark:text-amber-400">
+                        Abra no Safari para instalar
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        No iOS, apenas o Safari permite adicionar apps à tela inicial
+                      </p>
+                    </div>
+                  </div>
+                  
+                  <Button 
+                    onClick={copyLinkToClipboard}
+                    variant="outline"
+                    className="w-full border-amber-500/50 text-amber-600 dark:text-amber-400"
+                  >
+                    <Copy className="w-4 h-4 mr-2" />
+                    Copiar link para abrir no Safari
+                  </Button>
+                  
+                  <p className="text-xs text-muted-foreground text-center">
+                    Depois de copiar, abra o Safari e cole o link na barra de endereço
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* iOS in Safari - Show installation steps */}
+            {isIOS && !isIOSNotSafari && (
               <div className="space-y-4">
                 <div className="bg-secondary/50 rounded-xl p-4 space-y-5">
                   <p className="text-sm font-semibold text-center">
@@ -214,12 +262,6 @@ export default function Activate() {
                     </div>
                   </div>
                 </div>
-
-                <div className="text-center bg-amber-500/10 rounded-lg p-3">
-                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
-                    ⚠️ Use o Safari para instalar. Outros navegadores não suportam no iOS.
-                  </p>
-                </div>
               </div>
             )}
 
@@ -228,7 +270,7 @@ export default function Activate() {
               <div className="space-y-4">
                 <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
                   <p className="text-sm font-semibold text-center mb-4">
-                    Siga os passos para instalar:
+                    Siga os 2 passos para instalar:
                   </p>
                   
                   {/* Step 1 */}
@@ -239,10 +281,13 @@ export default function Activate() {
                     <div className="flex-1">
                       <p className="text-sm font-medium">Toque no menu do navegador</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        Os 3 pontinhos no canto superior direito
+                        Os 3 pontinhos (⋮) no canto superior direito do Chrome
                       </p>
-                      <div className="mt-2 flex items-center justify-center p-3 bg-background/50 rounded-lg">
-                        <MoreVertical className="w-8 h-8 text-primary" />
+                      <div className="mt-2 flex items-center justify-center p-4 bg-background/50 rounded-lg">
+                        <div className="flex flex-col items-center gap-1">
+                          <MoreVertical className="w-8 h-8 text-primary" />
+                          <span className="text-xs text-muted-foreground">Menu</span>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -253,13 +298,26 @@ export default function Activate() {
                       2
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Selecione "Instalar app" ou</p>
-                      <div className="mt-2 flex items-center gap-2 p-3 bg-background/50 rounded-lg">
-                        <Download className="w-6 h-6 text-primary" />
-                        <span className="text-sm font-medium">Adicionar à tela inicial</span>
+                      <p className="text-sm font-medium">Toque em uma das opções:</p>
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg border border-primary/30">
+                          <Download className="w-5 h-5 text-primary" />
+                          <span className="text-sm font-medium">"Instalar aplicativo"</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center">ou</p>
+                        <div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg border border-border/50">
+                          <PlusSquare className="w-5 h-5 text-muted-foreground" />
+                          <span className="text-sm">"Adicionar à tela inicial"</span>
+                        </div>
                       </div>
                     </div>
                   </div>
+                </div>
+                
+                <div className="text-center bg-emerald-500/10 rounded-lg p-3">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
+                    ✓ Funciona no Chrome, Samsung Internet, Edge e outros navegadores
+                  </p>
                 </div>
               </div>
             )}

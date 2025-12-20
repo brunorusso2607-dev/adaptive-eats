@@ -331,31 +331,40 @@ export default function Dashboard() {
             </div>
             <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
           </div>
-          <div className="flex items-center gap-1.5 sm:gap-2">
+          <div className="flex items-center gap-2 sm:gap-3">
             {/* Kids Mode Toggle */}
             {isSubscribed && activePlan === "premium" && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={toggleKidsMode}
+              <div 
                 className={cn(
-                  "relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl transition-all",
+                  "flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full cursor-pointer transition-all",
                   userContext === "modo_kids" 
-                    ? "bg-pink-500/20 text-pink-600 dark:text-pink-400 hover:bg-pink-500/30" 
-                    : "hover:bg-muted"
+                    ? "bg-pink-500/20" 
+                    : "bg-muted/50 hover:bg-muted"
                 )}
-                title={userContext === "modo_kids" ? "Desativar Modo Kids" : "Ativar Modo Kids"}
+                onClick={toggleKidsMode}
               >
                 <Baby className={cn(
-                  "w-5 h-5 transition-transform",
-                  userContext === "modo_kids" && "scale-110"
+                  "w-4 h-4",
+                  userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
                 )} />
-                {userContext === "modo_kids" && (
-                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-pink-500 rounded-full border-2 border-background" />
-                )}
-              </Button>
+                <span className={cn(
+                  "text-xs font-medium hidden sm:inline",
+                  userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
+                )}>
+                  Modo Kids
+                </span>
+                <div className={cn(
+                  "relative w-8 h-5 rounded-full transition-colors",
+                  userContext === "modo_kids" ? "bg-pink-500" : "bg-muted-foreground/30"
+                )}>
+                  <div className={cn(
+                    "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
+                    userContext === "modo_kids" ? "translate-x-3.5" : "translate-x-0.5"
+                  )} />
+                </div>
+              </div>
             )}
-            <span className="text-sm text-muted-foreground hidden sm:block">
+            <span className="text-sm text-muted-foreground hidden md:block">
               {user?.email}
             </span>
             <UserAccountMenu 
@@ -507,30 +516,6 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-                {/* Modo Kids Banner - quando ativo */}
-                {userContext === "modo_kids" && (
-                  <Card className="glass-card border-2 border-pink-400/50 bg-gradient-to-r from-pink-50 to-yellow-50 dark:from-pink-950/30 dark:to-yellow-950/30 overflow-hidden">
-                    <CardContent className="p-4 flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-r from-pink-500 to-yellow-500 rounded-xl flex items-center justify-center animate-pulse">
-                          <Baby className="w-5 h-5 text-white" />
-                        </div>
-                        <div>
-                          <h3 className="font-display font-bold text-foreground">👶 Modo Kids Ativo!</h3>
-                          <p className="text-xs text-muted-foreground">Receitas divertidas para crianças</p>
-                        </div>
-                      </div>
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={toggleKidsMode}
-                        className="border-pink-400/50 text-pink-600 hover:bg-pink-50"
-                      >
-                        Desativar
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )}
 
                 {/* Meta de Peso Banner - quando ativo (emagrecer ou ganhar peso) */}
                 {(userGoal === "emagrecer" || userGoal === "ganhar_peso") && (
@@ -708,33 +693,6 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Modo Kids Toggle */}
-                  <Card 
-                    className={`glass-card transition-all cursor-pointer group ${
-                      userContext === "modo_kids" 
-                        ? "border-2 border-pink-400/50 bg-gradient-to-b from-pink-50 to-yellow-50 dark:from-pink-950/30 dark:to-yellow-950/30" 
-                        : "border-border/50 hover:border-pink-400/30"
-                    }`}
-                    onClick={toggleKidsMode}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                        userContext === "modo_kids" 
-                          ? "bg-gradient-to-r from-pink-500 to-yellow-500" 
-                          : "bg-pink-500/20"
-                      }`}>
-                        <Baby className={`w-6 h-6 ${userContext === "modo_kids" ? "text-white" : "text-pink-500"}`} />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Modo Kids
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {userContext === "modo_kids" ? "✅ Ativo" : "Receitas divertidas"}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
 
                   {/* Meta de Peso Toggle */}
                   <Card 

@@ -170,7 +170,19 @@ export default function Dashboard() {
   // Track the last used ingredients for "Gerar Outra"
   const [lastUsedIngredients, setLastUsedIngredients] = useState<string | null>(null);
 
-  const generateRecipe = async (type: "com_ingredientes" | "automatica", useLastIngredients = false, categoryContext?: { category: string; subcategory: string }) => {
+  const generateRecipe = async (
+    type: "com_ingredientes" | "automatica", 
+    useLastIngredients = false, 
+    categoryContext?: { 
+      category: string; 
+      subcategory: string;
+      filters?: {
+        culinaria?: string;
+        tempo?: string;
+        metodo?: string;
+      };
+    }
+  ) => {
     const ingredientsToUse = useLastIngredients ? lastUsedIngredients : ingredients.join(", ");
     
     if (type === "com_ingredientes" && (!ingredientsToUse || ingredientsToUse.trim() === "")) {
@@ -213,8 +225,8 @@ export default function Dashboard() {
     }
   };
 
-  const handleCategorySelect = (category: string, subcategory: string) => {
-    generateRecipe("automatica", false, { category, subcategory });
+  const handleCategorySelect = (category: string, subcategory: string, filters?: { culinaria?: string; tempo?: string; metodo?: string }) => {
+    generateRecipe("automatica", false, { category, subcategory, filters });
   };
 
   const checkSubscription = async () => {

@@ -46,8 +46,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -85,8 +85,9 @@ serve(async (req) => {
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
 
-    const intolerancesStr = profile.intolerances?.length > 0 && !profile.intolerances.includes("nenhuma")
-      ? profile.intolerances.join(", ")
+    const intolerancesList = profile.intolerances || [];
+    const intolerancesStr = intolerancesList.length > 0 && !intolerancesList.includes("nenhuma")
+      ? intolerancesList.join(", ")
       : "nenhuma";
 
     // Calculate target calories for this meal type
@@ -156,104 +157,67 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
     {"item": "ingrediente", "quantity": "100", "unit": "g"}
   ],
   "recipe_instructions": ["Passo 1...", "Passo 2..."]
-}`;
+}
+
+IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
 
     const userPrompt = `Crie uma nova receita para ${mealLabel}. ${ingredientsPrompt || "Surpreenda-me com algo delicioso!"}`;
 
-    logStep("Calling AI for recipe generation");
+    logStep("Calling Google Gemini API for recipe generation");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call Google Gemini API directly
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
+        contents: [
           {
-            type: "function",
-            function: {
-              name: "generate_recipe",
-              description: "Generate a single recipe",
-              parameters: {
-                type: "object",
-                properties: {
-                  recipe_name: { type: "string" },
-                  recipe_calories: { type: "number" },
-                  recipe_protein: { type: "number" },
-                  recipe_carbs: { type: "number" },
-                  recipe_fat: { type: "number" },
-                  recipe_prep_time: { type: "number" },
-                  recipe_ingredients: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        item: { type: "string" },
-                        quantity: { type: "string" },
-                        unit: { type: "string" }
-                      },
-                      required: ["item", "quantity", "unit"]
-                    }
-                  },
-                  recipe_instructions: {
-                    type: "array",
-                    items: { type: "string" }
-                  }
-                },
-                required: ["recipe_name", "recipe_calories", "recipe_protein", "recipe_carbs", "recipe_fat", "recipe_prep_time", "recipe_ingredients", "recipe_instructions"]
-              }
-            }
+            role: "user",
+            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
           }
         ],
-        tool_choice: { type: "function", function: { name: "generate_recipe" } },
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      logStep("Google API error", { status: response.status, error: errorText });
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns segundos." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos esgotados. Entre em contato com o suporte." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      logStep("AI gateway error", { status: response.status, error: errorText });
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`Google API error: ${response.status}`);
     }
 
     const aiData = await response.json();
     logStep("AI response received");
 
+    // Extract content from Gemini response
+    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) {
+      throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
+    }
+
     let recipeData;
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall && toolCall.function.name === "generate_recipe") {
-      recipeData = JSON.parse(toolCall.function.arguments);
-      logStep("Parsed from tool_calls");
-    } else {
-      const content = aiData.choices?.[0]?.message?.content;
-      if (content) {
-        try {
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            recipeData = JSON.parse(jsonMatch[0]);
-            logStep("Parsed from content");
-          }
-        } catch (parseError) {
-          logStep("Failed to parse content", { error: String(parseError) });
-        }
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        recipeData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in response");
       }
+    } catch (parseError) {
+      logStep("Parse error", { error: String(parseError), content: content.slice(0, 200) });
+      throw new Error("Não foi possível processar a receita. Tente novamente.");
     }
 
     if (!recipeData || !recipeData.recipe_name) {

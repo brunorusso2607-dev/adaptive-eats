@@ -86,13 +86,32 @@ type HealthRisk = {
 
 /**
  * Calculate the maximum realistic muscular weight for a person
- * Based on research: even elite bodybuilders rarely exceed certain BMI limits
- * Men: max muscular BMI ~28-30 (we use 28 as realistic for non-athletes)
- * Women: max muscular BMI ~24-26 (we use 25 as realistic)
+ * Adjusted based on activity level - athletes can carry more muscle mass
+ * 
+ * For very active/active people (athletes, bodybuilders):
+ * - Men: BMI up to 32-33 is achievable with significant muscle mass
+ * - Women: BMI up to 28-29 is achievable with significant muscle mass
+ * 
+ * For sedentary/moderate activity:
+ * - Men: BMI ~28 is realistic maximum for natural muscle
+ * - Women: BMI ~25 is realistic maximum
  */
-function getMaxRealisticMuscularWeight(heightCm: number, sex: "male" | "female" | null): number {
+function getMaxRealisticMuscularWeight(
+  heightCm: number, 
+  sex: "male" | "female" | null,
+  activityLevel: string
+): number {
   const heightM = heightCm / 100;
-  const maxMuscularBMI = sex === "male" ? 28 : 25;
+  const isHighlyActive = activityLevel === "active" || activityLevel === "very_active";
+  
+  let maxMuscularBMI: number;
+  if (sex === "male") {
+    // Athletes/bodybuilders can reach higher BMI with muscle
+    maxMuscularBMI = isHighlyActive ? 32 : 28;
+  } else {
+    maxMuscularBMI = isHighlyActive ? 28 : 25;
+  }
+  
   return Math.round(maxMuscularBMI * heightM * heightM);
 }
 
@@ -124,10 +143,11 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
   const isSedentaryOrLight = data.activity_level === "sedentary" || data.activity_level === "light";
   const weightDiff = data.weight_goal - data.weight_current;
   
-  // Calculate realistic limits based on sex and height
-  const maxMuscularWeight = getMaxRealisticMuscularWeight(data.height, data.sex);
+  // Calculate realistic limits based on sex, height, and activity level
+  const maxMuscularWeight = getMaxRealisticMuscularWeight(data.height, data.sex, data.activity_level);
   const healthyRange = getHealthyWeightRange(data.height);
   const sexLabel = data.sex === "female" ? "uma mulher" : data.sex === "male" ? "um homem" : "uma pessoa";
+  const isHighlyActive = data.activity_level === "active" || data.activity_level === "very_active";
 
   // CRITICAL: Check for contradictory goal vs weight combination FIRST
   
@@ -153,28 +173,35 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
     return risks;
   }
 
-  // CRITICAL: Check if goal weight exceeds realistic muscular limits
-  // This is the most important check - even for very active people
+  // Check if goal weight exceeds realistic muscular limits
   if (data.goal_mode === "gain" && data.weight_goal > maxMuscularWeight) {
     
-    // Severe obesity (BMI 35+) - absolutely dangerous, impossible as muscle
-    if (goalBMI >= 35) {
+    // Severe obesity (BMI 40+) - absolutely dangerous regardless of activity
+    if (goalBMI >= 40) {
       risks.push({
         level: "danger",
-        title: "Peso fisicamente impossível como músculo",
-        message: `Para ${sexLabel} de ${data.height}cm, ${data.weight_goal}kg (IMC ${goalBMI.toFixed(1)}) é obesidade severa. Mesmo atletas de elite não ultrapassam ~${maxMuscularWeight}kg nessa altura.`,
-        suggestion: `Peso máximo saudável: ~${healthyRange.max}kg. Atletas muito musculosos: até ~${maxMuscularWeight}kg.`,
+        title: "Peso fisicamente impossível",
+        message: `Para ${sexLabel} de ${data.height}cm, ${data.weight_goal}kg (IMC ${goalBMI.toFixed(1)}) excede limites saudáveis mesmo para atletas de elite.`,
+        suggestion: `Peso máximo atlético sugerido: ~${maxMuscularWeight}kg.`,
       });
-      return risks; // So severe that other validations don't make sense
+      return risks;
     }
     
-    // Obesity (BMI 30-35) - still dangerous
-    if (goalBMI >= 30) {
+    // For highly active people, BMI 30-40 is just a warning (could be muscle)
+    if (isHighlyActive) {
       risks.push({
-        level: "danger",
-        title: "Risco de obesidade",
-        message: `${data.weight_goal}kg = IMC ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Para ${sexLabel} de ${data.height}cm, peso muscular máximo realista é ~${maxMuscularWeight}kg.`,
-        suggestion: `Meta sugerida: até ${maxMuscularWeight}kg (atlético) ou ${healthyRange.max}kg (saudável).`,
+        level: "warning",
+        title: "Peso elevado para sua altura",
+        message: `${data.weight_goal}kg (IMC ${goalBMI.toFixed(1)}) é alto, mas pode ser alcançável com massa muscular significativa.`,
+        suggestion: `Acompanhe com profissional de saúde. Meta atlética sugerida: ~${maxMuscularWeight}kg.`,
+      });
+    } else {
+      // For sedentary/moderate, BMI 30+ is still a danger (likely fat, not muscle)
+      risks.push({
+        level: goalBMI >= 35 ? "danger" : "warning",
+        title: goalBMI >= 35 ? "Risco de obesidade" : "Atenção ao peso",
+        message: `${data.weight_goal}kg = IMC ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Sem exercício intenso, é difícil atingir esse peso com músculo.`,
+        suggestion: `Aumente a atividade física ou ajuste a meta para ~${maxMuscularWeight}kg.`,
       });
     }
   }

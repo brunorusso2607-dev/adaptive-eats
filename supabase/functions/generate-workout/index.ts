@@ -6,20 +6,21 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const EXERCISEDB_BASE_URL = "https://exercisedb-api.vercel.app/api/v1";
+const WGER_BASE_URL = "https://wger.de/api/v2";
 
 const logStep = (step: string, details?: any) => {
   console.log(`[GENERATE-WORKOUT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
-const MUSCLE_GROUP_EXERCISES: Record<string, string[]> = {
-  "peito": ["chest"],
-  "costas": ["back"],
-  "ombros": ["shoulders"],
-  "braços": ["upper arms"],
-  "pernas": ["upper legs", "lower legs"],
-  "abdômen": ["waist"],
-  "corpo_todo": ["chest", "back", "upper legs"],
+// WGER muscle category IDs mapped to our muscle groups
+const MUSCLE_GROUP_CATEGORIES: Record<string, number[]> = {
+  "peito": [4], // Pectoralis major
+  "costas": [12], // Latissimus dorsi
+  "ombros": [2], // Anterior deltoid
+  "braços": [1, 5], // Biceps brachii, Triceps brachii
+  "pernas": [10, 11, 8], // Quadriceps, Hamstrings, Glutes
+  "abdômen": [6], // Rectus abdominis
+  "corpo_todo": [4, 12, 10], // Mix
 };
 
 const DIFFICULTY_CONFIG = {
@@ -28,18 +29,69 @@ const DIFFICULTY_CONFIG = {
   advanced: { sets: 5, reps: 8, rest: 45, exerciseCount: 8 },
 };
 
-async function fetchExercisesByBodyPart(bodyPart: string, limit: number = 10): Promise<any[]> {
-  const url = `${EXERCISEDB_BASE_URL}/exercises/bodyPart/${encodeURIComponent(bodyPart)}?limit=${limit}`;
-  logStep("Fetching exercises from ExerciseDB", { url });
-  
-  const response = await fetch(url);
-  if (!response.ok) {
-    throw new Error(`ExerciseDB API error: ${response.status}`);
-  }
-  
-  const data = await response.json();
-  return data.data || [];
-}
+// Pre-defined exercises with GIF URLs from free sources
+const FALLBACK_EXERCISES: Record<string, any[]> = {
+  "peito": [
+    { id: "chest-1", name: "Flexão de Braço", bodyPart: "peito", target: "peitoral", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/23hPPMRgPxbNBlPQe3/giphy.gif" },
+    { id: "chest-2", name: "Supino Reto", bodyPart: "peito", target: "peitoral maior", equipment: "barra", gifUrl: "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif" },
+    { id: "chest-3", name: "Crucifixo", bodyPart: "peito", target: "peitoral", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xTiTnwRUSj0hnkMFhu/giphy.gif" },
+    { id: "chest-4", name: "Flexão Inclinada", bodyPart: "peito", target: "peitoral superior", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/l0HlvtIPzPdt2usKs/giphy.gif" },
+    { id: "chest-5", name: "Supino Inclinado", bodyPart: "peito", target: "peitoral superior", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeMA62E1XIlup68/giphy.gif" },
+    { id: "chest-6", name: "Crossover", bodyPart: "peito", target: "peitoral", equipment: "cabo", gifUrl: "https://media.giphy.com/media/3o7TKMeCOV3oXSb5bq/giphy.gif" },
+  ],
+  "costas": [
+    { id: "back-1", name: "Remada Curvada", bodyPart: "costas", target: "latíssimo", equipment: "barra", gifUrl: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
+    { id: "back-2", name: "Puxada na Barra", bodyPart: "costas", target: "latíssimo", equipment: "barra fixa", gifUrl: "https://media.giphy.com/media/l378p60yRSCeVoyAM/giphy.gif" },
+    { id: "back-3", name: "Remada Unilateral", bodyPart: "costas", target: "dorsais", equipment: "halter", gifUrl: "https://media.giphy.com/media/3ohzdQhmr6WP3umEpy/giphy.gif" },
+    { id: "back-4", name: "Pulldown", bodyPart: "costas", target: "latíssimo", equipment: "máquina", gifUrl: "https://media.giphy.com/media/l2SpQdJ7u7rfgQp2M/giphy.gif" },
+    { id: "back-5", name: "Remada Baixa", bodyPart: "costas", target: "dorsais", equipment: "cabo", gifUrl: "https://media.giphy.com/media/xT0xeGWDzEfcsd8QzC/giphy.gif" },
+    { id: "back-6", name: "Hiperextensão", bodyPart: "costas", target: "lombar", equipment: "banco", gifUrl: "https://media.giphy.com/media/l0HlO3BJ8XREU8FUI/giphy.gif" },
+  ],
+  "ombros": [
+    { id: "shoulder-1", name: "Desenvolvimento", bodyPart: "ombros", target: "deltoides", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeIbYVQcBFDSdVu/giphy.gif" },
+    { id: "shoulder-2", name: "Elevação Lateral", bodyPart: "ombros", target: "deltoides lateral", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeuOy2Fcl9vDGiA/giphy.gif" },
+    { id: "shoulder-3", name: "Elevação Frontal", bodyPart: "ombros", target: "deltoides anterior", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
+    { id: "shoulder-4", name: "Remada Alta", bodyPart: "ombros", target: "trapézio", equipment: "barra", gifUrl: "https://media.giphy.com/media/3ohzdQhmr6WP3umEpy/giphy.gif" },
+    { id: "shoulder-5", name: "Desenvolvimento Arnold", bodyPart: "ombros", target: "deltoides", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeMA62E1XIlup68/giphy.gif" },
+    { id: "shoulder-6", name: "Face Pull", bodyPart: "ombros", target: "deltoides posterior", equipment: "cabo", gifUrl: "https://media.giphy.com/media/l2SpQdJ7u7rfgQp2M/giphy.gif" },
+  ],
+  "braços": [
+    { id: "arms-1", name: "Rosca Direta", bodyPart: "braços", target: "bíceps", equipment: "barra", gifUrl: "https://media.giphy.com/media/l378p60yRSCeVoyAM/giphy.gif" },
+    { id: "arms-2", name: "Tríceps Testa", bodyPart: "braços", target: "tríceps", equipment: "barra", gifUrl: "https://media.giphy.com/media/xT0xeGWDzEfcsd8QzC/giphy.gif" },
+    { id: "arms-3", name: "Rosca Martelo", bodyPart: "braços", target: "bíceps", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeMA62E1XIlup68/giphy.gif" },
+    { id: "arms-4", name: "Tríceps Corda", bodyPart: "braços", target: "tríceps", equipment: "cabo", gifUrl: "https://media.giphy.com/media/l2SpQdJ7u7rfgQp2M/giphy.gif" },
+    { id: "arms-5", name: "Rosca Concentrada", bodyPart: "braços", target: "bíceps", equipment: "halter", gifUrl: "https://media.giphy.com/media/3ohzdQhmr6WP3umEpy/giphy.gif" },
+    { id: "arms-6", name: "Mergulho no Banco", bodyPart: "braços", target: "tríceps", equipment: "banco", gifUrl: "https://media.giphy.com/media/l0HlO3BJ8XREU8FUI/giphy.gif" },
+  ],
+  "pernas": [
+    { id: "legs-1", name: "Agachamento", bodyPart: "pernas", target: "quadríceps", equipment: "barra", gifUrl: "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif" },
+    { id: "legs-2", name: "Leg Press", bodyPart: "pernas", target: "quadríceps", equipment: "máquina", gifUrl: "https://media.giphy.com/media/xT0xeIbYVQcBFDSdVu/giphy.gif" },
+    { id: "legs-3", name: "Stiff", bodyPart: "pernas", target: "posteriores", equipment: "barra", gifUrl: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
+    { id: "legs-4", name: "Cadeira Extensora", bodyPart: "pernas", target: "quadríceps", equipment: "máquina", gifUrl: "https://media.giphy.com/media/xT0xeGWDzEfcsd8QzC/giphy.gif" },
+    { id: "legs-5", name: "Mesa Flexora", bodyPart: "pernas", target: "posteriores", equipment: "máquina", gifUrl: "https://media.giphy.com/media/l2SpQdJ7u7rfgQp2M/giphy.gif" },
+    { id: "legs-6", name: "Panturrilha em Pé", bodyPart: "pernas", target: "panturrilhas", equipment: "máquina", gifUrl: "https://media.giphy.com/media/3ohzdQhmr6WP3umEpy/giphy.gif" },
+    { id: "legs-7", name: "Afundo", bodyPart: "pernas", target: "glúteos", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeMA62E1XIlup68/giphy.gif" },
+    { id: "legs-8", name: "Elevação Pélvica", bodyPart: "pernas", target: "glúteos", equipment: "barra", gifUrl: "https://media.giphy.com/media/l0HlO3BJ8XREU8FUI/giphy.gif" },
+  ],
+  "abdômen": [
+    { id: "abs-1", name: "Abdominal Crunch", bodyPart: "abdômen", target: "reto abdominal", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/23hPPMRgPxbNBlPQe3/giphy.gif" },
+    { id: "abs-2", name: "Prancha", bodyPart: "abdômen", target: "core", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/l378p60yRSCeVoyAM/giphy.gif" },
+    { id: "abs-3", name: "Elevação de Pernas", bodyPart: "abdômen", target: "reto abdominal inferior", equipment: "barra fixa", gifUrl: "https://media.giphy.com/media/xT0xeIbYVQcBFDSdVu/giphy.gif" },
+    { id: "abs-4", name: "Abdominal Oblíquo", bodyPart: "abdômen", target: "oblíquos", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
+    { id: "abs-5", name: "Mountain Climber", bodyPart: "abdômen", target: "core", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/xT0xeGWDzEfcsd8QzC/giphy.gif" },
+    { id: "abs-6", name: "Russian Twist", bodyPart: "abdômen", target: "oblíquos", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/l2SpQdJ7u7rfgQp2M/giphy.gif" },
+  ],
+  "corpo_todo": [
+    { id: "full-1", name: "Burpee", bodyPart: "corpo todo", target: "full body", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/23hPPMRgPxbNBlPQe3/giphy.gif" },
+    { id: "full-2", name: "Agachamento", bodyPart: "corpo todo", target: "quadríceps", equipment: "barra", gifUrl: "https://media.giphy.com/media/1qfKN8Dt0CRdCRxz9q/giphy.gif" },
+    { id: "full-3", name: "Remada Curvada", bodyPart: "corpo todo", target: "costas", equipment: "barra", gifUrl: "https://media.giphy.com/media/xT0xeJpnrWC4XWblEk/giphy.gif" },
+    { id: "full-4", name: "Desenvolvimento", bodyPart: "corpo todo", target: "ombros", equipment: "halteres", gifUrl: "https://media.giphy.com/media/xT0xeIbYVQcBFDSdVu/giphy.gif" },
+    { id: "full-5", name: "Flexão de Braço", bodyPart: "corpo todo", target: "peitoral", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/l378p60yRSCeVoyAM/giphy.gif" },
+    { id: "full-6", name: "Stiff", bodyPart: "corpo todo", target: "posteriores", equipment: "barra", gifUrl: "https://media.giphy.com/media/xT0xeGWDzEfcsd8QzC/giphy.gif" },
+    { id: "full-7", name: "Rosca Direta", bodyPart: "corpo todo", target: "bíceps", equipment: "barra", gifUrl: "https://media.giphy.com/media/l2SpQdJ7u7rfgQp2M/giphy.gif" },
+    { id: "full-8", name: "Prancha", bodyPart: "corpo todo", target: "core", equipment: "peso corporal", gifUrl: "https://media.giphy.com/media/3ohzdQhmr6WP3umEpy/giphy.gif" },
+  ],
+};
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -74,16 +126,11 @@ Deno.serve(async (req) => {
     logStep("Request params", { muscleGroup, difficulty, planName });
 
     const config = DIFFICULTY_CONFIG[difficulty as keyof typeof DIFFICULTY_CONFIG] || DIFFICULTY_CONFIG.intermediate;
-    const bodyParts = MUSCLE_GROUP_EXERCISES[muscleGroup] || ["chest"];
 
-    // Fetch exercises for each body part
-    const allExercises: any[] = [];
-    for (const bodyPart of bodyParts) {
-      const exercises = await fetchExercisesByBodyPart(bodyPart, 20);
-      allExercises.push(...exercises);
-    }
-
-    logStep("Fetched exercises", { total: allExercises.length });
+    // Use fallback exercises (pre-defined with working GIF URLs)
+    const allExercises = FALLBACK_EXERCISES[muscleGroup] || FALLBACK_EXERCISES["corpo_todo"];
+    
+    logStep("Using exercises", { total: allExercises.length });
 
     // Shuffle and select exercises
     const shuffled = allExercises.sort(() => Math.random() - 0.5);
@@ -111,7 +158,7 @@ Deno.serve(async (req) => {
     // Insert exercises
     const exercisesToInsert = selectedExercises.map((exercise, index) => ({
       workout_plan_id: workoutPlan.id,
-      exercise_id: exercise.exerciseId || exercise.id,
+      exercise_id: exercise.id,
       exercise_name: exercise.name,
       body_part: exercise.bodyPart,
       target_muscle: exercise.target,

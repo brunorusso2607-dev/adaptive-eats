@@ -751,46 +751,27 @@ export default function Dashboard() {
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">
 
-                  {/* Meta de Peso Toggle */}
-                  <Card 
-                    className={`glass-card transition-all cursor-pointer group ${
-                      (userGoal === "emagrecer" || userGoal === "ganhar_peso")
-                        ? userGoal === "ganhar_peso"
-                          ? "border-2 border-blue-400/50 bg-gradient-to-b from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
-                          : "border-2 border-green-400/50 bg-gradient-to-b from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30"
-                        : "border-border/50 hover:border-primary/30"
-                    }`}
-                    onClick={() => setShowWeightLossSetup(true)}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className={`w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform ${
-                        userGoal === "ganhar_peso"
-                          ? "bg-gradient-to-r from-blue-500 to-indigo-500"
-                          : userGoal === "emagrecer"
-                            ? "bg-gradient-to-r from-green-500 to-emerald-500"
-                            : "bg-primary/20"
-                      }`}>
-                        {userGoal === "ganhar_peso" 
-                          ? <TrendingUp className="w-6 h-6 text-white" />
-                          : userGoal === "emagrecer"
-                            ? <TrendingDown className="w-6 h-6 text-white" />
-                            : <TrendingDown className="w-6 h-6 text-primary" />
-                        }
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Meta de Peso
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {userGoal === "emagrecer" 
-                            ? "✅ Emagrecendo" 
-                            : userGoal === "ganhar_peso" 
-                              ? "✅ Ganhando peso"
-                              : "Emagrecer ou ganhar"}
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/* Meta de Peso Toggle - só aparece quando não há meta ativa */}
+                  {userGoal !== "emagrecer" && userGoal !== "ganhar_peso" && (
+                    <Card 
+                      className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                      onClick={() => setShowWeightLossSetup(true)}
+                    >
+                      <CardContent className="p-5 text-center space-y-3">
+                        <div className="w-12 h-12 mx-auto bg-primary/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                          <TrendingDown className="w-6 h-6 text-primary" />
+                        </div>
+                        <div>
+                          <h3 className="font-display font-bold text-foreground">
+                            Meta de Peso
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Emagrecer ou ganhar
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Plano Semanal - Só aparece se tem plano criado */}
                   {hasMealPlan && (

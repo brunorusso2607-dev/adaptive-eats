@@ -83,7 +83,33 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return weeks.length > 0 ? weeks : [1];
   }, [mealPlan.items]);
 
-  const [selectedWeek, setSelectedWeek] = useState(availableWeeks[0] || 1);
+  // Check if a week is entirely in the past
+  const isWeekInPast = (weekNumber: number) => {
+    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
+    
+    // Calculate the last day of this week
+    const weekStartOffset = (weekNumber - 1) * 7;
+    const weekEndDate = new Date(startDate);
+    weekEndDate.setDate(startDate.getDate() + weekStartOffset + 6); // Last day of the week
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    return weekEndDate < today;
+  };
+
+  // Find the first non-past week
+  const firstActiveWeek = useMemo(() => {
+    for (const week of availableWeeks) {
+      if (!isWeekInPast(week)) {
+        return week;
+      }
+    }
+    return availableWeeks[availableWeeks.length - 1] || 1;
+  }, [availableWeeks, mealPlan.start_date]);
+
+  const [selectedWeek, setSelectedWeek] = useState(firstActiveWeek);
 
   // Calculate dates for Mon-Sun of the selected display week
   const getWeekDates = useMemo(() => {
@@ -296,11 +322,19 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             <SelectValue placeholder="Semana" />
           </SelectTrigger>
           <SelectContent className="bg-background border">
-            {availableWeeks.map((week) => (
-              <SelectItem key={week} value={week.toString()}>
-                Semana {week}
-              </SelectItem>
-            ))}
+            {availableWeeks.map((week) => {
+              const isPast = isWeekInPast(week);
+              return (
+                <SelectItem 
+                  key={week} 
+                  value={week.toString()}
+                  disabled={isPast}
+                  className={cn(isPast && "opacity-50")}
+                >
+                  Semana {week} {isPast && "(passada)"}
+                </SelectItem>
+              );
+            })}
           </SelectContent>
         </Select>
       </div>

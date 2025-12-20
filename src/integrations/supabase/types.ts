@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       meal_plan_items: {
         Row: {
+          completed_at: string | null
           created_at: string
           day_of_week: number
           id: string
@@ -33,6 +34,7 @@ export type Database = {
           week_number: number
         }
         Insert: {
+          completed_at?: string | null
           created_at?: string
           day_of_week: number
           id?: string
@@ -50,6 +52,7 @@ export type Database = {
           week_number?: number
         }
         Update: {
+          completed_at?: string | null
           created_at?: string
           day_of_week?: number
           id?: string
@@ -78,32 +81,38 @@ export type Database = {
       }
       meal_plans: {
         Row: {
+          completion_percentage: number | null
           created_at: string
           end_date: string
           id: string
           is_active: boolean
           name: string
           start_date: string
+          status: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          completion_percentage?: number | null
           created_at?: string
           end_date: string
           id?: string
           is_active?: boolean
           name: string
           start_date: string
+          status?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          completion_percentage?: number | null
           created_at?: string
           end_date?: string
           id?: string
           is_active?: boolean
           name?: string
           start_date?: string
+          status?: string | null
           updated_at?: string
           user_id?: string
         }

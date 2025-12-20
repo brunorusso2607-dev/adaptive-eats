@@ -55,7 +55,7 @@ type MealPlanCalendarProps = {
   onMealUpdated?: (updatedMeal: MealPlanItem) => void;
 };
 
-const DAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
+const DAY_NAMES_BY_INDEX = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
 
 const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: string }> = {
   cafe_manha: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
@@ -244,8 +244,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           Dia
         </label>
         <div className="grid grid-cols-7 gap-1 sm:gap-2">
-          {DAY_NAMES.map((dayName, index) => {
-            const date = getWeekDates[index];
+          {getWeekDates.map((date, index) => {
+            const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
+            const dayName = DAY_NAMES_BY_INDEX[dayOfWeek];
             const dayNumber = date.getDate();
             const isSelected = selectedDay === index;
             const status = getDayStatus(index);
@@ -292,7 +293,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       <Card className="glass-card border-primary/20">
         <CardContent className="p-3 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground mb-2 sm:mb-3 uppercase tracking-wide">
-            Consumo de {DAY_NAMES[selectedDay]}
+            Consumo de {DAY_NAMES_BY_INDEX[getWeekDates[selectedDay]?.getDay() ?? 0]}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
             <div className="flex items-center gap-1.5 sm:gap-2">

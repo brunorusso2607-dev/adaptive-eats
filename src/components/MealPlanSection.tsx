@@ -178,6 +178,29 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   }
 
   if (view === "calendar" && selectedPlan) {
+    const handleMealUpdated = (updatedMeal: MealPlanItem) => {
+      // Update the meal in the selected plan
+      setSelectedPlan(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          items: prev.items.map(item => 
+            item.id === updatedMeal.id ? updatedMeal : item
+          )
+        };
+      });
+      // Also update in the main list
+      setMealPlans(prev => prev.map(plan => {
+        if (plan.id !== selectedPlan.id) return plan;
+        return {
+          ...plan,
+          items: plan.items.map(item => 
+            item.id === updatedMeal.id ? updatedMeal : item
+          )
+        };
+      }));
+    };
+
     return (
       <MealPlanCalendar
         mealPlan={selectedPlan}
@@ -187,6 +210,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
         }}
         onSelectMeal={handleSelectMeal}
         onToggleFavorite={handleToggleFavorite}
+        onMealUpdated={handleMealUpdated}
       />
     );
   }

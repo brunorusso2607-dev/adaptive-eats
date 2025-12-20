@@ -201,11 +201,11 @@ Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:
   ]
 }`;
 
-    logStep("Calling Google Gemini 2.0 Flash");
+    logStep("Calling Google Gemini 2.5 Flash-Lite");
 
-    // Call Google Gemini API - using gemini-2.0-flash (15 RPM, 1500 RPD free tier)
+    // Call Google Gemini API - using gemini-2.5-flash-lite
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

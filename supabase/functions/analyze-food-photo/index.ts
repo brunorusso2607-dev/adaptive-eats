@@ -47,37 +47,38 @@ serve(async (req) => {
       ? imageBase64.split(',')[1] 
       : imageBase64;
 
-    const systemPrompt = `Você é um nutricionista especializado em análise visual de alimentos.
-Analise a imagem do prato de comida e forneça uma estimativa dos valores nutricionais.
+    const systemPrompt = `Atue como um nutricionista digital especializado em análise visual de alimentos. Sua tarefa é analisar a imagem enviada e fornecer uma estimativa nutricional detalhada.
 
-INSTRUÇÕES:
-1. Identifique cada alimento visível no prato
-2. Estime a quantidade aproximada em gramas de cada item
-3. Calcule os macronutrientes totais baseado em tabelas nutricionais reais
-4. Seja conservador nas estimativas - é melhor subestimar que superestimar
+Siga este passo a passo internamente:
 
-IMPORTANTE:
-- Considere que você NÃO consegue ver ingredientes escondidos (óleo usado no preparo, molhos por baixo, etc.)
-- Avise se a imagem não for clara ou se os alimentos forem difíceis de identificar
-- Use valores nutricionais médios de tabelas brasileiras (TACO)
+1. Identifique cada item visível no prato.
+2. Estime o volume/porção de cada item com base na proporção do prato e talheres.
+3. Calcule as calorias e macronutrientes (Proteínas, Carboidratos e Gorduras) para cada item.
 
-FORMATO DE RESPOSTA (JSON VÁLIDO):
+Formato de Saída (Obrigatório em JSON):
 {
-  "foods": [
-    {"name": "nome do alimento", "estimated_grams": 100, "calories": 150, "protein": 10, "carbs": 15, "fat": 5}
+  "alimentos": [
+    {
+      "item": "nome do alimento",
+      "porcao_estimada": "quantidade em g ou ml",
+      "calorias": 0,
+      "macros": {
+        "proteinas": 0,
+        "carboidratos": 0,
+        "gorduras": 0
+      }
+    }
   ],
-  "totals": {
-    "calories": 450,
-    "protein": 30,
-    "carbs": 45,
-    "fat": 15
+  "total_geral": {
+    "calorias_totais": 0,
+    "proteinas_totais": 0,
+    "carboidratos_totais": 0,
+    "gorduras_totais": 0
   },
-  "confidence": "alta/media/baixa",
-  "notes": "Observações sobre a análise (ingredientes que podem estar escondidos, incertezas, etc.)",
-  "meal_type": "café da manhã/almoço/jantar/lanche"
+  "observacoes": "Menção a possíveis ingredientes ocultos como óleos ou temperos."
 }
 
-Responda APENAS com o JSON, sem texto adicional.`;
+Responda apenas o JSON. Se a imagem não for de comida, retorne: {"erro": "Não foi possível identificar alimentos na imagem."}`;
 
     logStep("Calling Google Gemini API with image");
 
@@ -144,10 +145,14 @@ Responda APENAS com o JSON, sem texto adicional.`;
       throw new Error("Não foi possível analisar a imagem. Tente com uma foto mais clara.");
     }
 
+    // Check for error response from AI
+    if (analysis.erro) {
+      throw new Error(analysis.erro);
+    }
+
     logStep("Analysis complete", { 
-      totalCalories: analysis.totals?.calories,
-      confidence: analysis.confidence,
-      foodCount: analysis.foods?.length 
+      totalCalories: analysis.total_geral?.calorias_totais,
+      foodCount: analysis.alimentos?.length 
     });
 
     return new Response(JSON.stringify({

@@ -1,31 +1,30 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, CheckCircle2 } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { cn } from "@/lib/utils";
 
 type FoodItem = {
-  name: string;
-  estimated_grams: number;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  item: string;
+  porcao_estimada: string;
+  calorias: number;
+  macros: {
+    proteinas: number;
+    carboidratos: number;
+    gorduras: number;
+  };
 };
 
 type FoodAnalysis = {
-  foods: FoodItem[];
-  totals: {
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
+  alimentos: FoodItem[];
+  total_geral: {
+    calorias_totais: number;
+    proteinas_totais: number;
+    carboidratos_totais: number;
+    gorduras_totais: number;
   };
-  confidence: "alta" | "media" | "baixa";
-  notes: string;
-  meal_type: string;
+  observacoes: string;
 };
 
 export default function FoodPhotoAnalyzer() {
@@ -93,23 +92,6 @@ export default function FoodPhotoAnalyzer() {
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
-  const getConfidenceColor = (confidence: string) => {
-    switch (confidence) {
-      case "alta": return "text-green-500";
-      case "media": return "text-yellow-500";
-      case "baixa": return "text-red-500";
-      default: return "text-muted-foreground";
-    }
-  };
-
-  const getConfidenceIcon = (confidence: string) => {
-    switch (confidence) {
-      case "alta": return <CheckCircle2 className="w-4 h-4" />;
-      case "media": return <AlertCircle className="w-4 h-4" />;
-      case "baixa": return <AlertCircle className="w-4 h-4" />;
-      default: return null;
-    }
-  };
 
   return (
     <div className="space-y-4">
@@ -225,37 +207,28 @@ export default function FoodPhotoAnalyzer() {
               {/* Total macros card */}
               <Card className="glass-card border-primary/20">
                 <CardHeader className="pb-2">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">Total Estimado</CardTitle>
-                    <div className={cn("flex items-center gap-1 text-sm", getConfidenceColor(analysis.confidence))}>
-                      {getConfidenceIcon(analysis.confidence)}
-                      <span>Confiança {analysis.confidence}</span>
-                    </div>
-                  </div>
-                  {analysis.meal_type && (
-                    <p className="text-sm text-muted-foreground capitalize">{analysis.meal_type}</p>
-                  )}
+                  <CardTitle className="text-lg">Total Estimado</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <div className="grid grid-cols-4 gap-2">
                     <div className="text-center p-3 rounded-lg bg-orange-500/10">
                       <Flame className="w-5 h-5 mx-auto mb-1 text-orange-500" />
-                      <p className="text-xl font-bold text-foreground">{analysis.totals.calories}</p>
+                      <p className="text-xl font-bold text-foreground">{analysis.total_geral.calorias_totais}</p>
                       <p className="text-xs text-muted-foreground">kcal</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-red-500/10">
                       <Beef className="w-5 h-5 mx-auto mb-1 text-red-500" />
-                      <p className="text-xl font-bold text-foreground">{analysis.totals.protein}g</p>
+                      <p className="text-xl font-bold text-foreground">{analysis.total_geral.proteinas_totais}g</p>
                       <p className="text-xs text-muted-foreground">proteína</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-amber-500/10">
                       <Wheat className="w-5 h-5 mx-auto mb-1 text-amber-500" />
-                      <p className="text-xl font-bold text-foreground">{analysis.totals.carbs}g</p>
+                      <p className="text-xl font-bold text-foreground">{analysis.total_geral.carboidratos_totais}g</p>
                       <p className="text-xs text-muted-foreground">carbos</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-500/10">
                       <Droplets className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-                      <p className="text-xl font-bold text-foreground">{analysis.totals.fat}g</p>
+                      <p className="text-xl font-bold text-foreground">{analysis.total_geral.gorduras_totais}g</p>
                       <p className="text-xs text-muted-foreground">gordura</p>
                     </div>
                   </div>
@@ -268,19 +241,19 @@ export default function FoodPhotoAnalyzer() {
                   <CardTitle className="text-base">Alimentos Identificados</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {analysis.foods.map((food, index) => (
+                  {analysis.alimentos.map((food, index) => (
                     <div
                       key={index}
                       className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                     >
                       <div>
-                        <p className="font-medium text-foreground">{food.name}</p>
-                        <p className="text-xs text-muted-foreground">~{food.estimated_grams}g</p>
+                        <p className="font-medium text-foreground">{food.item}</p>
+                        <p className="text-xs text-muted-foreground">{food.porcao_estimada}</p>
                       </div>
                       <div className="text-right">
-                        <p className="font-semibold text-foreground">{food.calories} kcal</p>
+                        <p className="font-semibold text-foreground">{food.calorias} kcal</p>
                         <p className="text-xs text-muted-foreground">
-                          P:{food.protein}g C:{food.carbs}g G:{food.fat}g
+                          P:{food.macros.proteinas}g C:{food.macros.carboidratos}g G:{food.macros.gorduras}g
                         </p>
                       </div>
                     </div>
@@ -289,12 +262,12 @@ export default function FoodPhotoAnalyzer() {
               </Card>
 
               {/* Notes */}
-              {analysis.notes && (
+              {analysis.observacoes && (
                 <Card className="glass-card border-yellow-500/20">
                   <CardContent className="p-4">
                     <div className="flex gap-2">
                       <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-muted-foreground">{analysis.notes}</p>
+                      <p className="text-sm text-muted-foreground">{analysis.observacoes}</p>
                     </div>
                   </CardContent>
                 </Card>

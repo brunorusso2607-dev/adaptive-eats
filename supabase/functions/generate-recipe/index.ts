@@ -64,8 +64,8 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    const { ingredients, type } = await req.json();
-    logStep("Request received", { type, ingredients });
+    const { ingredients, type, categoryContext } = await req.json();
+    logStep("Request received", { type, ingredients, categoryContext });
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
@@ -237,9 +237,14 @@ IMPORTANTE:
 - prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}${isWeightLossMode ? "\n- satiety_score de 1-10 baseado na composição (fibras + proteínas = maior score)\n- satiety_tip: uma dica prática de como a receita ajuda na saciedade" : ""}${isWeightGainMode ? "\n- calorie_density_score de 1-10 baseado na densidade calórica\n- muscle_tip: uma dica prática para maximizar ganho muscular" : ""}
 - Responda APENAS com o JSON, sem texto adicional`;
 
-    const userPrompt = type === "automatica"
-      ? "Gere uma receita saudável e deliciosa que se encaixe no meu perfil."
-      : `Gere uma receita usando estes ingredientes: ${ingredients}. Pode adicionar outros ingredientes básicos se necessário.`;
+    let userPrompt: string;
+    if (categoryContext && categoryContext.category && categoryContext.subcategory) {
+      userPrompt = `Gere uma receita da categoria "${categoryContext.category}" - tipo "${categoryContext.subcategory}". A receita deve ser autêntica e representativa dessa categoria/tipo específico.`;
+    } else if (type === "automatica") {
+      userPrompt = "Gere uma receita saudável e deliciosa que se encaixe no meu perfil.";
+    } else {
+      userPrompt = `Gere uma receita usando estes ingredientes: ${ingredients}. Pode adicionar outros ingredientes básicos se necessário.`;
+    }
 
     logStep("Calling Google Gemini API");
 

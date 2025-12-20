@@ -13,6 +13,7 @@ import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
 import IngredientTagInput from "@/components/IngredientTagInput";
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
+import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -94,6 +95,7 @@ export default function Dashboard() {
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
   const [showProfileSheet, setShowProfileSheet] = useState(false);
+  const [showCategorySheet, setShowCategorySheet] = useState(false);
   
   
   // PWA install state
@@ -168,7 +170,7 @@ export default function Dashboard() {
   // Track the last used ingredients for "Gerar Outra"
   const [lastUsedIngredients, setLastUsedIngredients] = useState<string | null>(null);
 
-  const generateRecipe = async (type: "com_ingredientes" | "automatica", useLastIngredients = false) => {
+  const generateRecipe = async (type: "com_ingredientes" | "automatica", useLastIngredients = false, categoryContext?: { category: string; subcategory: string }) => {
     const ingredientsToUse = useLastIngredients ? lastUsedIngredients : ingredients.join(", ");
     
     if (type === "com_ingredientes" && (!ingredientsToUse || ingredientsToUse.trim() === "")) {
@@ -182,6 +184,7 @@ export default function Dashboard() {
         body: { 
           type,
           ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
+          categoryContext: categoryContext || null,
         },
       });
 
@@ -208,6 +211,10 @@ export default function Dashboard() {
     } finally {
       setIsGeneratingRecipe(false);
     }
+  };
+
+  const handleCategorySelect = (category: string, subcategory: string) => {
+    generateRecipe("automatica", false, { category, subcategory });
   };
 
   const checkSubscription = async () => {
@@ -608,11 +615,11 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    {/* Botão Surpreenda-me */}
+                    {/* Botão Surpreenda-me - Abre o Sheet */}
                     <Button
                       variant="outline"
                       className="w-full gradient-accent border-0 text-accent-foreground hover:opacity-90"
-                      onClick={() => !isGeneratingRecipe && generateRecipe("automatica")}
+                      onClick={() => setShowCategorySheet(true)}
                       disabled={isGeneratingRecipe}
                     >
                       {isGeneratingRecipe ? (
@@ -622,6 +629,14 @@ export default function Dashboard() {
                       )}
                       Surpreenda-me!
                     </Button>
+                    
+                    {/* Sheet de Categorias */}
+                    <RecipeCategorySheet
+                      open={showCategorySheet}
+                      onOpenChange={setShowCategorySheet}
+                      onSelectCategory={handleCategorySelect}
+                      isLoading={isGeneratingRecipe}
+                    />
                     
                     {/* Divisor */}
                     <div className="flex items-center gap-3">

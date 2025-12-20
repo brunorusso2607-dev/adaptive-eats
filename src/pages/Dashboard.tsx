@@ -410,38 +410,6 @@ export default function Dashboard() {
             <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Kids Mode Toggle */}
-            {isSubscribed && activePlan === "premium" && (
-              <div 
-                className={cn(
-                  "flex items-center gap-2 px-2 sm:px-3 py-1.5 rounded-full cursor-pointer transition-all",
-                  userContext === "modo_kids" 
-                    ? "bg-pink-500/20" 
-                    : "bg-muted/50 hover:bg-muted"
-                )}
-                onClick={toggleKidsMode}
-              >
-                <Baby className={cn(
-                  "w-4 h-4",
-                  userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
-                )} />
-                <span className={cn(
-                  "text-xs font-medium hidden sm:inline",
-                  userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-muted-foreground"
-                )}>
-                  Modo Kids
-                </span>
-                <div className={cn(
-                  "relative w-8 h-5 rounded-full transition-colors",
-                  userContext === "modo_kids" ? "bg-pink-500" : "bg-muted-foreground/30"
-                )}>
-                  <div className={cn(
-                    "absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform",
-                    userContext === "modo_kids" ? "translate-x-3.5" : "translate-x-0.5"
-                  )} />
-                </div>
-              </div>
-            )}
             
             {/* Install App Button */}
             {showInstallButton && !isAppInstalled && (
@@ -889,24 +857,61 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Histórico - Versão compacta no mobile, card completo no desktop */}
-                  <button 
-                    className="md:hidden flex items-center gap-3 p-3 w-full glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
-                    onClick={() => setShowList("history")}
-                  >
-                    <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
-                      <History className="w-5 h-5 text-purple-500" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-display font-semibold text-foreground text-sm">
-                        Histórico
-                      </h3>
-                      <p className="text-xs text-muted-foreground">
-                        Receitas anteriores
-                      </p>
-                    </div>
-                  </button>
+                  {/* Histórico e Modo Kids - Versão compacta no mobile */}
+                  <div className="md:hidden flex gap-2">
+                    <button 
+                      className="flex items-center gap-3 p-3 flex-1 glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
+                      onClick={() => setShowList("history")}
+                    >
+                      <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                        <History className="w-5 h-5 text-purple-500" />
+                      </div>
+                      <div className="text-left">
+                        <h3 className="font-display font-semibold text-foreground text-sm">
+                          Histórico
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          Receitas anteriores
+                        </p>
+                      </div>
+                    </button>
+
+                    {/* Modo Kids - Mobile */}
+                    {isSubscribed && activePlan === "premium" && (
+                      <button 
+                        className={cn(
+                          "flex items-center gap-3 p-3 flex-1 glass-card transition-all rounded-xl",
+                          userContext === "modo_kids" 
+                            ? "border-pink-500/50 bg-pink-500/10" 
+                            : "border-border/50 hover:border-primary/30"
+                        )}
+                        onClick={toggleKidsMode}
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-lg flex items-center justify-center",
+                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-pink-500/10"
+                        )}>
+                          <Baby className={cn(
+                            "w-5 h-5",
+                            userContext === "modo_kids" ? "text-pink-500" : "text-pink-400"
+                          )} />
+                        </div>
+                        <div className="text-left flex-1">
+                          <h3 className={cn(
+                            "font-display font-semibold text-sm",
+                            userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-foreground"
+                          )}>
+                            Modo Kids
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {userContext === "modo_kids" ? "Ativado" : "Desativado"}
+                          </p>
+                        </div>
+                      </button>
+                    )}
+                  </div>
                   
+                  {/* Histórico - Card desktop */}
                   <Card 
                     className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group hidden md:block"
                     onClick={() => setShowList("history")}
@@ -925,6 +930,42 @@ export default function Dashboard() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Modo Kids - Card desktop */}
+                  {isSubscribed && activePlan === "premium" && (
+                    <Card 
+                      className={cn(
+                        "glass-card transition-all cursor-pointer group hidden md:block",
+                        userContext === "modo_kids" 
+                          ? "border-pink-500/50 bg-pink-500/5" 
+                          : "border-border/50 hover:border-primary/30"
+                      )}
+                      onClick={toggleKidsMode}
+                    >
+                      <CardContent className="p-5 text-center space-y-3">
+                        <div className={cn(
+                          "w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform",
+                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-pink-500/10"
+                        )}>
+                          <Baby className={cn(
+                            "w-6 h-6",
+                            userContext === "modo_kids" ? "text-pink-500" : "text-pink-400"
+                          )} />
+                        </div>
+                        <div>
+                          <h3 className={cn(
+                            "font-display font-bold",
+                            userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-foreground"
+                          )}>
+                            Modo Kids
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {userContext === "modo_kids" ? "✓ Ativado" : "Toque para ativar"}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
                 </div>
 

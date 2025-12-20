@@ -264,8 +264,8 @@ IMPORTANTE:
 
     logStep("Calling Google Gemini API");
 
-    // Call Google Gemini API - using gemini-2.5-flash-lite for best free tier quota
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    // Call Google Gemini API - using gemini-2.0-flash (15 RPM, 1500 RPD free tier)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

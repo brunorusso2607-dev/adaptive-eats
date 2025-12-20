@@ -39,6 +39,8 @@ type UserAccountMenuProps = {
   user: SupabaseUser | null;
   subscription: SubscriptionInfo | null;
   onLogout: () => void;
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 };
 
 const LABELS = {
@@ -104,13 +106,23 @@ const INTOLERANCES_LABELS: Record<string, string> = {
   hipertensao: "Hipertensão",
 };
 
-export default function UserAccountMenu({ user, subscription, onLogout }: UserAccountMenuProps) {
+export default function UserAccountMenu({ user, subscription, onLogout, externalOpen, onExternalOpenChange }: UserAccountMenuProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  // Use external control if provided, otherwise use internal state
+  const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
+  const setIsOpen = (open: boolean) => {
+    if (onExternalOpenChange) {
+      onExternalOpenChange(open);
+    } else {
+      setInternalOpen(open);
+    }
+  };
 
   useEffect(() => {
     if (isOpen && user) {

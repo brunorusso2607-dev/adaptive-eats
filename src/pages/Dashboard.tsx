@@ -93,6 +93,7 @@ export default function Dashboard() {
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
+  const [showProfileSheet, setShowProfileSheet] = useState(false);
   
   
   // PWA install state
@@ -380,6 +381,7 @@ export default function Dashboard() {
     setShowList(null);
     setShowWeightLossSetup(false);
     setShowWeightHistory(false);
+    setShowProfileSheet(false);
     
     if (tab === "meal-plan") {
       setShowMealPlan(true);
@@ -389,6 +391,10 @@ export default function Dashboard() {
     
     if (tab === "favorites") {
       setShowList("favorites");
+    }
+    
+    if (tab === "profile") {
+      setShowProfileSheet(true);
     }
   };
 
@@ -456,7 +462,14 @@ export default function Dashboard() {
             <UserAccountMenu 
               user={user} 
               subscription={subscription} 
-              onLogout={handleLogout} 
+              onLogout={handleLogout}
+              externalOpen={showProfileSheet}
+              onExternalOpenChange={(open) => {
+                setShowProfileSheet(open);
+                if (!open && mobileActiveTab === "profile") {
+                  setMobileActiveTab("home");
+                }
+              }}
             />
           </div>
         </div>

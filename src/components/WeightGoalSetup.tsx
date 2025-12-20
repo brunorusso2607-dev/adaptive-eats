@@ -128,22 +128,24 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
     return risks; // Return early - no other validations make sense
   }
 
-  // DANGER: Goal weight leads to obesity for sedentary person
-  if (data.goal_mode === "gain" && goalCategory.startsWith("obese") && isSedentaryOrLight) {
+  // DANGER: Goal weight leads to obesity (any activity level)
+  if (data.goal_mode === "gain" && goalCategory.startsWith("obese")) {
     risks.push({
       level: "danger",
       title: "Risco de obesidade",
-      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Ganhar peso sem exercício regular aumenta gordura corporal, não massa muscular.`,
-      suggestion: "Considere aumentar seu nível de atividade física para pelo menos 'Moderado' antes de buscar ganho de peso.",
+      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Este peso é considerado obesidade e pode trazer riscos à saúde.`,
+      suggestion: isSedentaryOrLight 
+        ? "Considere um peso meta menor e aumente seu nível de atividade física."
+        : "Considere um peso meta que resulte em IMC abaixo de 30.",
     });
   }
 
-  // DANGER: Goal weight leads to overweight for sedentary
-  if (data.goal_mode === "gain" && goalCategory === "overweight" && data.activity_level === "sedentary") {
+  // WARNING: Goal weight leads to overweight for sedentary
+  if (data.goal_mode === "gain" && goalCategory === "overweight" && isSedentaryOrLight) {
     risks.push({
       level: "warning",
-      title: "Atenção: Ganho sem exercício",
-      message: `IMC projetado de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Sem atividade física, o ganho de peso tende a ser principalmente gordura.`,
+      title: "Atenção: Risco de sobrepeso",
+      message: `IMC projetado de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Sem atividade física regular, o ganho tende a ser principalmente gordura.`,
       suggestion: "Inicie exercícios de força para que o ganho seja de massa muscular.",
     });
   }

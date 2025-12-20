@@ -48,8 +48,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -82,8 +82,9 @@ serve(async (req) => {
     });
 
     // Build intolerances string
-    const intolerancesStr = profile.intolerances?.length > 0 && !profile.intolerances.includes("nenhuma")
-      ? profile.intolerances.join(", ")
+    const intolerancesList = profile.intolerances || [];
+    const intolerancesStr = intolerancesList.length > 0 && !intolerancesList.includes("nenhuma")
+      ? intolerancesList.join(", ")
       : "nenhuma";
 
     // Calculate personalized macros if weight data is available
@@ -159,138 +160,75 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
       ]
     }
   ]
-}`;
+}
+
+IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
 
     const userPrompt = `Gere AGORA um plano alimentar completo para ${daysCount} dias.
-Use a ferramenta generate_meal_plan e retorne o JSON com todas as ${daysCount * 5} receitas (5 refeições por dia).
+Retorne o JSON com todas as ${daysCount * 5} receitas (5 refeições por dia).
 NÃO peça mais informações. Apenas gere o plano completo.`;
 
-    logStep("Calling Lovable AI for meal plan generation");
+    logStep("Calling Google Gemini API for meal plan generation");
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call Google Gemini API directly
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        tools: [
+        contents: [
           {
-            type: "function",
-            function: {
-              name: "generate_meal_plan",
-              description: "Generate a weekly meal plan with recipes",
-              parameters: {
-                type: "object",
-                properties: {
-                  days: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        day_index: { type: "number" },
-                        day_name: { type: "string" },
-                        meals: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              meal_type: { type: "string", enum: MEAL_TYPES },
-                              recipe_name: { type: "string" },
-                              recipe_calories: { type: "number" },
-                              recipe_protein: { type: "number" },
-                              recipe_carbs: { type: "number" },
-                              recipe_fat: { type: "number" },
-                              recipe_prep_time: { type: "number" },
-                              recipe_ingredients: {
-                                type: "array",
-                                items: {
-                                  type: "object",
-                                  properties: {
-                                    item: { type: "string" },
-                                    quantity: { type: "string" },
-                                    unit: { type: "string" }
-                                  },
-                                  required: ["item", "quantity", "unit"]
-                                }
-                              },
-                              recipe_instructions: {
-                                type: "array",
-                                items: { type: "string" }
-                              }
-                            },
-                            required: ["meal_type", "recipe_name", "recipe_calories", "recipe_protein", "recipe_carbs", "recipe_fat", "recipe_prep_time", "recipe_ingredients", "recipe_instructions"]
-                          }
-                        }
-                      },
-                      required: ["day_index", "day_name", "meals"]
-                    }
-                  }
-                },
-                required: ["days"]
-              }
-            }
+            role: "user",
+            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
           }
         ],
-        tool_choice: { type: "function", function: { name: "generate_meal_plan" } },
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 8192,
+        }
       }),
     });
 
     if (!response.ok) {
+      const errorText = await response.text();
+      logStep("Google API error", { status: response.status, error: errorText });
+      
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns segundos." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos esgotados. Entre em contato com o suporte." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      const errorText = await response.text();
-      logStep("AI gateway error", { status: response.status, error: errorText });
-      throw new Error(`AI gateway error: ${response.status}`);
+      throw new Error(`Google API error: ${response.status}`);
     }
 
     const aiData = await response.json();
-    logStep("AI response received", { hasToolCalls: !!aiData.choices?.[0]?.message?.tool_calls });
+    logStep("AI response received");
+
+    // Extract content from Gemini response
+    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!content) {
+      logStep("No content in response", { aiData: JSON.stringify(aiData).slice(0, 500) });
+      throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
+    }
 
     let mealPlanData;
-    
-    // Try to get response from tool_calls first
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (toolCall && toolCall.function.name === "generate_meal_plan") {
-      mealPlanData = JSON.parse(toolCall.function.arguments);
-      logStep("Parsed from tool_calls");
-    } else {
-      // Fallback: try to parse from content if tool_calls not available
-      const content = aiData.choices?.[0]?.message?.content;
-      if (content) {
-        logStep("Trying to parse from content", { contentLength: content.length });
-        try {
-          // Try to extract JSON from content
-          const jsonMatch = content.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            mealPlanData = JSON.parse(jsonMatch[0]);
-            logStep("Parsed from content");
-          }
-        } catch (parseError) {
-          logStep("Failed to parse content", { error: String(parseError) });
-        }
+    try {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        mealPlanData = JSON.parse(jsonMatch[0]);
+      } else {
+        throw new Error("No JSON found in response");
       }
+    } catch (parseError) {
+      logStep("Parse error", { error: String(parseError), content: content.slice(0, 300) });
+      throw new Error("Não foi possível processar o plano alimentar. Tente novamente.");
     }
 
     if (!mealPlanData || !mealPlanData.days || !Array.isArray(mealPlanData.days)) {
       const dataPreview = mealPlanData ? JSON.stringify(mealPlanData).slice(0, 200) : "undefined";
-      const contentPreview = aiData.choices?.[0]?.message?.content?.slice(0, 200) || "no content";
-      logStep("Invalid meal plan data structure", { dataPreview, contentPreview });
+      logStep("Invalid meal plan data structure", { dataPreview });
       throw new Error("A IA não retornou um plano alimentar válido. Por favor, tente novamente.");
     }
 

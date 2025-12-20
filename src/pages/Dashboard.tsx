@@ -586,7 +586,7 @@ export default function Dashboard() {
                     </div>
                     
                     {/* Input de ingredientes com tags */}
-                    <div className="flex gap-2 items-end">
+                    <div className="flex flex-col sm:flex-row gap-2">
                       <div className="flex-1">
                         <IngredientTagInput
                           value={ingredients}
@@ -597,14 +597,17 @@ export default function Dashboard() {
                         />
                       </div>
                       <Button 
-                        className="gradient-primary border-0 px-6 h-12 shrink-0"
+                        className="gradient-primary border-0 h-12 w-full sm:w-auto sm:px-6 shrink-0"
                         onClick={() => generateRecipe("com_ingredientes")}
                         disabled={isGeneratingRecipe || ingredients.length === 0}
                       >
                         {isGeneratingRecipe ? (
                           <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
-                          <Sparkles className="w-5 h-5" />
+                          <>
+                            <Sparkles className="w-5 h-5 mr-2 sm:mr-0" />
+                            <span className="sm:hidden">Gerar Receita</span>
+                          </>
                         )}
                       </Button>
                     </div>

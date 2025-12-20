@@ -100,7 +100,6 @@ export default function FoodPhotoAnalyzer() {
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
-  };
 
 
   return (

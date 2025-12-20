@@ -150,8 +150,8 @@ export default function Activate() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Android / Chrome - Show install button */}
-            {(showInstallButton || isAndroid) && !isIOS && (
+            {/* Android / Chrome - Show install button when prompt is available */}
+            {showInstallButton && !isIOS && (
               <div className="space-y-4">
                 <Button 
                   onClick={handleInstallPWA}
@@ -265,8 +265,8 @@ export default function Activate() {
               </div>
             )}
 
-            {/* Android manual instructions (fallback) */}
-            {isAndroid && !showInstallButton && (
+            {/* Android manual instructions (when prompt is not available) */}
+            {isAndroid && !showInstallButton && !isIOS && (
               <div className="space-y-4">
                 <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
                   <p className="text-sm font-semibold text-center mb-4">

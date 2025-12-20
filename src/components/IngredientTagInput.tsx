@@ -316,6 +316,116 @@ const COMMON_INGREDIENTS = [
   "raspas de limão", "raspas de laranja", "zest",
 ];
 
+// Categorização de ingredientes por tipo para filtragem inteligente
+const MEAT_INGREDIENTS = new Set([
+  // Aves
+  "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "file de frango",
+  "frango desfiado", "frango inteiro", "moela", "coração de frango", "fígado de frango",
+  "peru", "peito de peru", "chester", "pato", "codorna",
+  // Bovinos
+  "carne", "carne moída", "carne bovina", "patinho", "patinho moído", "alcatra", "picanha",
+  "contra filé", "filé mignon", "maminha", "fraldinha", "acém", "músculo", "cupim",
+  "costela", "costela bovina", "t-bone", "coxão mole", "coxão duro", "lagarto", "paleta",
+  "ossobuco", "rabo", "rabada", "mocotó", "carne seca", "carne de sol", "charque",
+  "bife", "bife de fígado", "fígado bovino", "bucho", "dobradinha", "língua bovina",
+  // Suínos
+  "carne de porco", "lombo", "lombo de porco", "pernil", "bisteca", "costela de porco",
+  "barriga de porco", "pancetta", "bacon", "toucinho", "torresmo", "linguiça",
+  "linguiça calabresa", "linguiça toscana", "linguiça de frango", "linguiça portuguesa",
+  "paio", "chouriço", "salsicha", "salsicha frankfurt", "salsicha viena",
+  "presunto", "presunto parma", "presunto serrano", "copa", "salame", "mortadela",
+  "tender", "leitão", "pernil defumado",
+]);
+
+const FISH_SEAFOOD_INGREDIENTS = new Set([
+  // Peixes
+  "peixe", "filé de peixe", "salmão", "filé de salmão", "salmão defumado", "salmão fresco",
+  "atum", "atum em lata", "atum fresco", "tilápia", "filé de tilápia", "bacalhau",
+  "bacalhau dessalgado", "sardinha", "sardinha em lata", "sardinha fresca", "merluza",
+  "pescada", "pescada amarela", "robalo", "dourado", "pintado", "tambaqui", "pacu",
+  "pirarucu", "truta", "linguado", "badejo", "namorado", "corvina", "tainha",
+  "anchova", "cavalinha", "arenque", "carpa",
+  // Frutos do Mar
+  "camarão", "camarão rosa", "camarão cinza", "camarão seco", "camarão grande", "camarão médio",
+  "lagosta", "lagostim", "lula", "anéis de lula", "polvo", "marisco", "mexilhão", "ostra",
+  "vieira", "siri", "caranguejo", "casquinha de siri", "sururu", "camarão descascado",
+  // Molhos com peixe
+  "molho de ostra", "molho de peixe", "fish sauce",
+]);
+
+const DAIRY_INGREDIENTS = new Set([
+  // Queijos
+  "queijo", "queijo mussarela", "mussarela", "mussarela de búfala", "queijo mussarela de búfala",
+  "queijo parmesão", "parmesão", "parmesão ralado", "queijo coalho", "queijo minas",
+  "queijo minas frescal", "queijo minas padrão", "queijo minas curado", "queijo cheddar",
+  "queijo prato", "queijo provolone", "provolone", "queijo gorgonzola", "gorgonzola",
+  "queijo brie", "brie", "queijo camembert", "camembert", "queijo roquefort", "roquefort",
+  "queijo gruyère", "gruyère", "queijo emmental", "emmental", "queijo suíço",
+  "queijo cottage", "cottage", "queijo ricota", "ricota", "queijo feta", "feta",
+  "queijo de cabra", "queijo colonial", "queijo serrano", "queijo canastra",
+  "queijo do reino", "queijo estepe", "queijo gouda", "gouda", "queijo pecorino",
+  "requeijão", "requeijão cremoso", "cream cheese", "catupiry", "queijo cremoso",
+  "queijo ralado", "queijo branco", "queijo fresco", "queijo curado", "queijo defumado",
+  "burrata", "mascarpone", "queijo azul", "queijo fundido",
+  // Leites e Derivados
+  "leite", "leite integral", "leite desnatado", "leite semidesnatado", "leite em pó",
+  "leite condensado", "leite evaporado", "leite de cabra", "leite fermentado",
+  "creme de leite", "creme de leite fresco", "chantilly", "nata", "coalhada",
+  "iogurte", "iogurte natural", "iogurte grego", "iogurte desnatado", "iogurte integral",
+  "iogurte de morango", "iogurte de frutas", "kefir", "leitelho", "buttermilk",
+  "manteiga", "manteiga com sal", "manteiga sem sal", "manteiga ghee", "ghee",
+  "creme de ricota",
+]);
+
+const EGG_INGREDIENTS = new Set([
+  "ovo", "ovos", "ovo de galinha", "ovo caipira", "ovo de codorna", "gema", "clara de ovo",
+  "ovo cozido", "ovo frito",
+]);
+
+const HONEY_INGREDIENTS = new Set([
+  "mel", "mel silvestre", "mel de abelha",
+]);
+
+// Ingredientes que contêm gelatina animal
+const GELATIN_INGREDIENTS = new Set([
+  "gelatina", "gelatina em pó", "gelatina em folha",
+]);
+
+// Função para verificar se ingrediente é compatível com a dieta
+const isIngredientCompatible = (ingredient: string, dietaryPreference: string | null | undefined): boolean => {
+  const lowerIngredient = ingredient.toLowerCase();
+  
+  // Se não tem preferência ou é "comum", mostra tudo
+  if (!dietaryPreference || dietaryPreference === "comum") {
+    return true;
+  }
+  
+  // Vegetariano: sem carnes, peixes e frutos do mar
+  if (dietaryPreference === "vegetariana") {
+    if (MEAT_INGREDIENTS.has(lowerIngredient)) return false;
+    if (FISH_SEAFOOD_INGREDIENTS.has(lowerIngredient)) return false;
+    return true;
+  }
+  
+  // Vegano: sem carnes, peixes, frutos do mar, laticínios, ovos, mel e gelatina
+  if (dietaryPreference === "vegana") {
+    if (MEAT_INGREDIENTS.has(lowerIngredient)) return false;
+    if (FISH_SEAFOOD_INGREDIENTS.has(lowerIngredient)) return false;
+    if (DAIRY_INGREDIENTS.has(lowerIngredient)) return false;
+    if (EGG_INGREDIENTS.has(lowerIngredient)) return false;
+    if (HONEY_INGREDIENTS.has(lowerIngredient)) return false;
+    if (GELATIN_INGREDIENTS.has(lowerIngredient)) return false;
+    return true;
+  }
+  
+  // Low carb: mostra tudo (é sobre macros, não restrições de ingredientes)
+  if (dietaryPreference === "low_carb") {
+    return true;
+  }
+  
+  return true;
+};
+
 type UserProfile = {
   intolerances?: string[] | null;
   dietary_preference?: string | null;
@@ -352,12 +462,13 @@ export default function IngredientTagInput({
   // Hook de verificação de conflitos
   const { checkConflict } = useIngredientConflictCheck(userProfile);
 
-  // Filtra sugestões baseado no input - mostra apenas ingredientes que começam com o texto digitado
+  // Filtra sugestões baseado no input e preferência alimentar do usuário
   const filteredSuggestions = inputValue.length >= 1
     ? COMMON_INGREDIENTS.filter(
         (ingredient) =>
           ingredient.toLowerCase().startsWith(inputValue.toLowerCase()) &&
-          !value.includes(ingredient)
+          !value.includes(ingredient) &&
+          isIngredientCompatible(ingredient, userProfile?.dietary_preference)
       ).slice(0, 10)
     : [];
 

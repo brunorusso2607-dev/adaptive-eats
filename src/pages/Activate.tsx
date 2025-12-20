@@ -64,20 +64,35 @@ export default function Activate() {
 
   const handleInstallPWA = async () => {
     if (!deferredPrompt) {
-      toast.info("Use as instruções abaixo para instalar o app");
+      // On Android without prompt, show helpful toast
+      if (isAndroid) {
+        toast.info("Toque no menu (⋮) do navegador e selecione 'Instalar app'", {
+          duration: 5000,
+        });
+      } else {
+        toast.info("Use o menu do navegador para instalar o app");
+      }
       return;
     }
 
-    deferredPrompt.prompt();
-    const { outcome } = await deferredPrompt.userChoice;
-    
-    if (outcome === "accepted") {
-      toast.success("App instalado com sucesso!");
-      window.location.href = "/dashboard";
+    try {
+      deferredPrompt.prompt();
+      const { outcome } = await deferredPrompt.userChoice;
+      
+      if (outcome === "accepted") {
+        toast.success("App instalado com sucesso! Abrindo...");
+        // Small delay before redirect to show success message
+        setTimeout(() => {
+          window.location.href = "/dashboard";
+        }, 500);
+      }
+    } catch (error) {
+      console.error("Install error:", error);
+      toast.error("Erro ao instalar. Use o menu do navegador.");
+    } finally {
+      setDeferredPrompt(null);
+      setShowInstallButton(false);
     }
-    
-    setDeferredPrompt(null);
-    setShowInstallButton(false);
   };
 
   const handleActivate = async (e: React.FormEvent) => {
@@ -150,8 +165,26 @@ export default function Activate() {
             </div>
           </CardHeader>
           <CardContent className="space-y-6">
-            {/* Android / Chrome - Show install button when prompt is available */}
-            {showInstallButton && !isIOS && (
+            {/* Android - Always show prominent install button */}
+            {isAndroid && !isIOS && (
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleInstallPWA}
+                  className="w-full gradient-primary border-0 shadow-glow h-14 text-lg font-semibold"
+                >
+                  <Download className="w-6 h-6 mr-2" />
+                  Instalar App no Celular
+                </Button>
+                {!showInstallButton && (
+                  <p className="text-xs text-center text-muted-foreground">
+                    Se o botão não funcionar, use o menu do navegador (⋮) → "Instalar app"
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Desktop / Other - Show install button when prompt is available */}
+            {showInstallButton && !isIOS && !isAndroid && (
               <div className="space-y-4">
                 <Button 
                   onClick={handleInstallPWA}
@@ -261,63 +294,6 @@ export default function Activate() {
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            )}
-
-            {/* Android manual instructions (when prompt is not available) */}
-            {isAndroid && !showInstallButton && !isIOS && (
-              <div className="space-y-4">
-                <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
-                  <p className="text-sm font-semibold text-center mb-4">
-                    Siga os 2 passos para instalar:
-                  </p>
-                  
-                  {/* Step 1 */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
-                      1
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Toque no menu do navegador</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Os 3 pontinhos (⋮) no canto superior direito do Chrome
-                      </p>
-                      <div className="mt-2 flex items-center justify-center p-4 bg-background/50 rounded-lg">
-                        <div className="flex flex-col items-center gap-1">
-                          <MoreVertical className="w-8 h-8 text-primary" />
-                          <span className="text-xs text-muted-foreground">Menu</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Step 2 */}
-                  <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
-                      2
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">Toque em uma das opções:</p>
-                      <div className="mt-2 space-y-2">
-                        <div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg border border-primary/30">
-                          <Download className="w-5 h-5 text-primary" />
-                          <span className="text-sm font-medium">"Instalar aplicativo"</span>
-                        </div>
-                        <p className="text-xs text-muted-foreground text-center">ou</p>
-                        <div className="flex items-center gap-2 p-3 bg-background/50 rounded-lg border border-border/50">
-                          <PlusSquare className="w-5 h-5 text-muted-foreground" />
-                          <span className="text-sm">"Adicionar à tela inicial"</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="text-center bg-emerald-500/10 rounded-lg p-3">
-                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-medium">
-                    ✓ Funciona no Chrome, Samsung Internet, Edge e outros navegadores
-                  </p>
                 </div>
               </div>
             )}

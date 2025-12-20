@@ -278,26 +278,18 @@ export default function WorkoutSection({ onBack }: WorkoutSectionProps) {
                   </div>
                 </div>
 
-                {/* Exercise preview */}
+{/* Exercise preview */}
                 {workout.workout_exercises && workout.workout_exercises.length > 0 && (
                   <div className="mt-4 flex gap-2 overflow-x-auto pb-2">
-                    {workout.workout_exercises.slice(0, 4).map((exercise) => (
+                    {workout.workout_exercises.slice(0, 4).map((exercise, index) => (
                       <div 
                         key={exercise.id}
-                        className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-muted"
+                        className="shrink-0 w-16 h-16 rounded-lg overflow-hidden bg-gradient-to-br from-orange-100 to-orange-200 dark:from-orange-900/30 dark:to-orange-800/30 flex items-center justify-center"
+                        title={exercise.exercise_name}
                       >
-                        {exercise.gif_url ? (
-                          <img 
-                            src={exercise.gif_url} 
-                            alt={exercise.exercise_name}
-                            className="w-full h-full object-cover"
-                            loading="lazy"
-                          />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center">
-                            <Dumbbell className="w-6 h-6 text-muted-foreground" />
-                          </div>
-                        )}
+                        <span className="text-lg font-bold text-orange-600 dark:text-orange-400">
+                          {index + 1}
+                        </span>
                       </div>
                     ))}
                     {workout.workout_exercises.length > 4 && (

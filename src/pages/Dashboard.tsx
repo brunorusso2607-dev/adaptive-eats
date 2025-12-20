@@ -11,6 +11,7 @@ import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
+import IngredientTagInput from "@/components/IngredientTagInput";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -81,7 +82,7 @@ export default function Dashboard() {
   } | null>(null);
   
   // Recipe generation state
-  const [ingredients, setIngredients] = useState("");
+  const [ingredients, setIngredients] = useState<string[]>([]);
   const [isGeneratingRecipe, setIsGeneratingRecipe] = useState(false);
   const [generatedRecipe, setGeneratedRecipe] = useState<Recipe | null>(null);
   const [showRecipe, setShowRecipe] = useState(false);
@@ -165,10 +166,10 @@ export default function Dashboard() {
   const [lastUsedIngredients, setLastUsedIngredients] = useState<string | null>(null);
 
   const generateRecipe = async (type: "com_ingredientes" | "automatica", useLastIngredients = false) => {
-    const ingredientsToUse = useLastIngredients ? lastUsedIngredients : ingredients;
+    const ingredientsToUse = useLastIngredients ? lastUsedIngredients : ingredients.join(", ");
     
-    if (type === "com_ingredientes" && !ingredientsToUse?.trim()) {
-      toast.error("Digite alguns ingredientes primeiro");
+    if (type === "com_ingredientes" && (!ingredientsToUse || ingredientsToUse.trim() === "")) {
+      toast.error("Adicione alguns ingredientes primeiro");
       return;
     }
 
@@ -197,7 +198,7 @@ export default function Dashboard() {
       if (type === "com_ingredientes") {
         setLastUsedIngredients(ingredientsToUse);
       }
-      setIngredients("");
+      setIngredients([]);
     } catch (error) {
       console.error("Error generating recipe:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
@@ -584,21 +585,21 @@ export default function Dashboard() {
                       <div className="flex-1 h-px bg-border" />
                     </div>
                     
-                    {/* Input de ingredientes */}
-                    <div className="flex gap-2">
-                      <input 
-                        type="text" 
-                        value={ingredients}
-                        onChange={(e) => setIngredients(e.target.value)}
-                        placeholder="Ex: frango, batata, cebola..."
-                        className="flex-1 px-4 py-3 rounded-xl border border-border bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
-                        disabled={isGeneratingRecipe}
-                        onKeyDown={(e) => e.key === "Enter" && generateRecipe("com_ingredientes")}
-                      />
+                    {/* Input de ingredientes com tags */}
+                    <div className="flex gap-2 items-end">
+                      <div className="flex-1">
+                        <IngredientTagInput
+                          value={ingredients}
+                          onChange={setIngredients}
+                          placeholder="Digite um ingrediente..."
+                          disabled={isGeneratingRecipe}
+                          onSubmit={() => generateRecipe("com_ingredientes")}
+                        />
+                      </div>
                       <Button 
-                        className="gradient-primary border-0 px-6"
+                        className="gradient-primary border-0 px-6 h-12 shrink-0"
                         onClick={() => generateRecipe("com_ingredientes")}
-                        disabled={isGeneratingRecipe}
+                        disabled={isGeneratingRecipe || ingredients.length === 0}
                       >
                         {isGeneratingRecipe ? (
                           <Loader2 className="w-5 h-5 animate-spin" />

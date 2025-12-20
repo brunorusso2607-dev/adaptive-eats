@@ -915,29 +915,29 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Histórico e Modo Kids - Versão compacta no mobile */}
-                  <div className="md:hidden flex flex-col gap-2 w-full">
+                  <div className="md:hidden grid grid-cols-2 gap-2 w-full">
                     <button 
-                      className="flex items-center gap-3 p-3 w-full glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
+                      className="flex items-center gap-3 p-3 glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
                       onClick={() => setShowList("history")}
                     >
-                      <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                      <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0">
                         <History className="w-5 h-5 text-purple-500" />
                       </div>
-                      <div className="text-left flex-1">
-                        <h3 className="font-display font-semibold text-foreground text-sm">
+                      <div className="text-left min-w-0">
+                        <h3 className="font-display font-semibold text-foreground text-sm truncate">
                           Histórico
                         </h3>
-                        <p className="text-xs text-muted-foreground">
+                        <p className="text-xs text-muted-foreground truncate">
                           Receitas anteriores
                         </p>
                       </div>
                     </button>
 
                     {/* Modo Kids - Mobile */}
-                    {isSubscribed && activePlan === "premium" && (
+                    {isSubscribed && activePlan === "premium" ? (
                       <button 
                         className={cn(
-                          "flex items-center gap-3 p-3 w-full glass-card transition-all rounded-xl",
+                          "flex items-center gap-3 p-3 glass-card transition-all rounded-xl",
                           userContext === "modo_kids" 
                             ? "border-pink-500/50 bg-pink-500/10" 
                             : "border-border/50 hover:border-primary/30"
@@ -945,7 +945,7 @@ export default function Dashboard() {
                         onClick={toggleKidsMode}
                       >
                         <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center",
+                          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
                           userContext === "modo_kids" ? "bg-pink-500/20" : "bg-pink-500/10"
                         )}>
                           <Baby className={cn(
@@ -953,18 +953,22 @@ export default function Dashboard() {
                             userContext === "modo_kids" ? "text-pink-500" : "text-pink-400"
                           )} />
                         </div>
-                        <div className="text-left flex-1">
+                        <div className="text-left min-w-0">
                           <h3 className={cn(
-                            "font-display font-semibold text-sm",
+                            "font-display font-semibold text-sm truncate",
                             userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-foreground"
                           )}>
                             Modo Kids
                           </h3>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {userContext === "modo_kids" ? "Ativado" : "Desativado"}
                           </p>
                         </div>
                       </button>
+                    ) : (
+                      <div className="glass-card border-border/30 rounded-xl p-3 flex items-center justify-center opacity-50">
+                        <p className="text-xs text-muted-foreground text-center">Premium</p>
+                      </div>
                     )}
                   </div>
                   

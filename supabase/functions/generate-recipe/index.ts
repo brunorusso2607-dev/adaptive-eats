@@ -244,7 +244,7 @@ IMPORTANTE:
     logStep("Calling Google Gemini API");
 
     // Call Google Gemini API directly using the correct endpoint
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`;
     logStep("API URL", { url: apiUrl.replace(GOOGLE_AI_API_KEY, "***") });
 
     const response = await fetch(apiUrl, {

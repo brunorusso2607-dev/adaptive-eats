@@ -12,6 +12,7 @@ import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
 import WeightUpdateModal from "@/components/WeightUpdateModal";
+import WeightHistoryChart from "@/components/WeightHistoryChart";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -87,6 +88,7 @@ export default function Dashboard() {
   const [showMealPlan, setShowMealPlan] = useState(false);
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
+  const [showWeightHistory, setShowWeightHistory] = useState(false);
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -530,6 +532,13 @@ export default function Dashboard() {
               />
             ) : showMealPlan ? (
               <MealPlanSection onBack={() => setShowMealPlan(false)} />
+            ) : showWeightHistory && weightData?.weight_goal ? (
+              <WeightHistoryChart 
+                onBack={() => setShowWeightHistory(false)}
+                goalWeight={weightData.weight_goal}
+                goalMode={weightData.goal_mode}
+                currentWeight={weightData.weight_current || 0}
+              />
             ) : (
             <>
               {/* Home Principal - 5 Opções */}
@@ -708,6 +717,14 @@ export default function Dashboard() {
                                     <span>Meta em: <strong className={accentColor}>~{calcs.weeksToGoal} semanas</strong></span>
                                   </div>
                                 </div>
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  onClick={() => setShowWeightHistory(true)}
+                                  className={`w-full mt-3 ${userGoal === "ganhar_peso" ? "text-blue-600 hover:bg-blue-50" : "text-green-600 hover:bg-green-50"}`}
+                                >
+                                  📈 Ver Evolução do Peso
+                                </Button>
                               </>
                             );
                           })()}

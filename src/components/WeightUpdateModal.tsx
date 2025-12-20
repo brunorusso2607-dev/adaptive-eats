@@ -85,12 +85,26 @@ export default function WeightUpdateModal({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
 
+      // Update profile weight
       const { error } = await supabase
         .from("profiles")
         .update({ weight_current: weight })
         .eq("id", session.user.id);
 
       if (error) throw error;
+
+      // Save to weight history
+      const { error: historyError } = await supabase
+        .from("weight_history")
+        .insert({
+          user_id: session.user.id,
+          weight: weight,
+          goal_weight: goalWeight,
+        });
+
+      if (historyError) {
+        console.error("Error saving weight history:", historyError);
+      }
 
       // Calcular resultado
       const weightChange = currentWeight - weight;

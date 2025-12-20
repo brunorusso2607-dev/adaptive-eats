@@ -915,7 +915,7 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Histórico e Modo Kids - Versão compacta no mobile */}
-                  <div className="md:hidden grid grid-cols-2 gap-2 -mx-4 px-4" style={{ width: 'calc(100% + 2rem)' }}>
+                  <div className="md:hidden grid grid-cols-2 gap-2 col-span-2">
                     <button 
                       className="flex items-center gap-3 p-3 glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
                       onClick={() => setShowList("history")}

@@ -312,11 +312,11 @@ export default function IngredientTagInput({
   // Hook de verificação de conflitos
   const { checkConflict } = useIngredientConflictCheck(userProfile);
 
-  // Filtra sugestões baseado no input - abre imediatamente com 1+ caracteres
+  // Filtra sugestões baseado no input - mostra apenas ingredientes que começam com o texto digitado
   const filteredSuggestions = inputValue.length >= 1
     ? COMMON_INGREDIENTS.filter(
         (ingredient) =>
-          ingredient.toLowerCase().includes(inputValue.toLowerCase()) &&
+          ingredient.toLowerCase().startsWith(inputValue.toLowerCase()) &&
           !value.includes(ingredient)
       ).slice(0, 10)
     : [];

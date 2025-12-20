@@ -126,10 +126,6 @@ export const CATEGORY_RULES: CategoryConfig[] = [
         alwaysShow: true, // Bom para todos os objetivos
       },
       { 
-        name: "Pratos rápidos (até 15 min)", 
-        alwaysShow: true,
-      },
-      { 
         name: "Pratos elaborados / gourmet", 
         alwaysShow: true,
         excludedForContext: ["modo_kids"], // Kids preferem coisas simples
@@ -166,7 +162,6 @@ export const CATEGORY_RULES: CategoryConfig[] = [
     emoji: "🍳",
     subcategories: [
       { name: "Café da manhã", alwaysShow: true },
-      { name: "Lanches rápidos", alwaysShow: true },
       { 
         name: "Lanches fitness", 
         compatibleGoals: ["emagrecer", "manter"],
@@ -244,7 +239,6 @@ export const CATEGORY_RULES: CategoryConfig[] = [
     name: "Snacks & Petiscos",
     emoji: "🍟",
     subcategories: [
-      { name: "Petiscos rápidos", alwaysShow: true },
       { 
         name: "Snacks saudáveis", 
         compatibleGoals: ["emagrecer", "manter"],

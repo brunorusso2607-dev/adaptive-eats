@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSwipeable } from "react-swipeable";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -123,6 +124,19 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
       setInternalOpen(open);
     }
   };
+
+  // Swipe handler to close the sheet
+  const swipeHandlers = useSwipeable({
+    onSwipedRight: () => {
+      if (window.innerWidth < 768) {
+        setIsOpen(false);
+      }
+    },
+    trackMouse: false,
+    trackTouch: true,
+    delta: 50,
+    preventScrollOnSwipe: false,
+  });
 
   useEffect(() => {
     if (isOpen && user) {
@@ -605,14 +619,15 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
         </Button>
       </SheetTrigger>
       <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle className="flex items-center gap-2">
-            <User className="w-5 h-5" />
-            {isEditing ? "Editar Perfil" : "Minha Conta"}
-          </SheetTitle>
-        </SheetHeader>
+        <div {...swipeHandlers} className="h-full">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <User className="w-5 h-5" />
+              {isEditing ? "Editar Perfil" : "Minha Conta"}
+            </SheetTitle>
+          </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+          <div className="mt-6 space-y-6">
           {/* Email */}
           <div className="flex items-center gap-3 p-3 rounded-xl bg-muted/50">
             <Mail className="w-5 h-5 text-muted-foreground" />
@@ -663,6 +678,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           ) : (
             renderViewMode()
           )}
+          </div>
         </div>
       </SheetContent>
     </Sheet>

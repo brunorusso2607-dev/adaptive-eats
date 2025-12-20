@@ -46,8 +46,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -163,50 +163,47 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
 
     const userPrompt = `Crie uma nova receita para ${mealLabel}. ${ingredientsPrompt || "Surpreenda-me com algo delicioso!"}`;
 
-    logStep("Calling Lovable AI Gateway for recipe generation");
+    logStep("Calling Google Gemini API for recipe generation");
 
-    // Call Lovable AI Gateway
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Call Google Gemini API directly
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
+        contents: [
+          {
+            parts: [
+              { text: `${systemPrompt}\n\n${userPrompt}` }
+            ]
+          }
         ],
-        temperature: 0.7,
-        max_tokens: 2048,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2048,
+        }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      logStep("Lovable AI error", { status: response.status, error: errorText });
+      logStep("Google Gemini error", { status: response.status, error: errorText });
       
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Tente novamente em alguns segundos." }), {
+        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos esgotados. Entre em contato com o suporte." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI API error: ${response.status}`);
+      throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const aiData = await response.json();
     logStep("AI response received");
 
-    // Extract content from response
-    const content = aiData.choices?.[0]?.message?.content;
+    // Extract content from Google Gemini response format
+    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!content) {
       throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
     }

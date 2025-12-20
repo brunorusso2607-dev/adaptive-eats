@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -55,7 +55,9 @@ type MealPlanCalendarProps = {
   onMealUpdated?: (updatedMeal: MealPlanItem) => void;
 };
 
-const DAY_NAMES_BY_INDEX = ["Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+// Fixed order: Monday to Sunday (display positions 0-6)
+const DAY_NAMES_FIXED = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const DAY_NAMES_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
 const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: string }> = {
   cafe_manha: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
@@ -83,13 +85,70 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
   const [selectedWeek, setSelectedWeek] = useState(availableWeeks[0] || 1);
 
-  // Filter items by selected week
-  const weekItems = useMemo(() => {
-    return mealPlan.items.filter(item => (item.week_number || 1) === selectedWeek);
-  }, [mealPlan.items, selectedWeek]);
+  // Calculate dates for Mon-Sun of the selected display week
+  const getWeekDates = useMemo(() => {
+    const startDate = new Date(mealPlan.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Get the day of week of the start date (0 = Sunday, 1 = Monday, ... 6 = Saturday)
+    const startDayOfWeek = startDate.getDay();
+    
+    // Calculate how many days back to Monday
+    // Sunday (0) -> go back 6 days to Monday
+    // Monday (1) -> go back 0 days
+    // Tuesday (2) -> go back 1 day, etc.
+    const daysToMonday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
+    
+    // Get the Monday of the first week
+    const firstMonday = new Date(startDate);
+    firstMonday.setDate(startDate.getDate() - daysToMonday);
+    
+    // Add weeks based on selectedWeek
+    const weekStartDate = new Date(firstMonday);
+    weekStartDate.setDate(firstMonday.getDate() + (selectedWeek - 1) * 7);
+    
+    const dates: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(weekStartDate);
+      date.setDate(weekStartDate.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  }, [mealPlan.start_date, selectedWeek]);
 
-  const getDayMeals = (dayIndex: number) => {
-    return weekItems.filter(item => item.day_of_week === dayIndex);
+  // Check if a display day is before the plan start date
+  const isDayBeforeStart = (displayDayIndex: number) => {
+    const date = new Date(getWeekDates[displayDayIndex]);
+    date.setHours(0, 0, 0, 0);
+    const startDate = new Date(mealPlan.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    return date.getTime() < startDate.getTime();
+  };
+
+  // Get meals for a specific display day index (0 = Monday, 6 = Sunday)
+  const getDayMeals = (displayDayIndex: number) => {
+    if (isDayBeforeStart(displayDayIndex)) {
+      return []; // No meals before plan start
+    }
+    
+    const date = new Date(getWeekDates[displayDayIndex]);
+    date.setHours(0, 0, 0, 0);
+    const startDate = new Date(mealPlan.start_date);
+    startDate.setHours(0, 0, 0, 0);
+    
+    // Calculate days since plan start
+    const diffTime = date.getTime() - startDate.getTime();
+    const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    // Calculate which plan week and day this corresponds to
+    const planWeekNumber = Math.floor(daysSinceStart / 7) + 1;
+    const planDayOfWeek = daysSinceStart % 7;
+    
+    // Filter items matching this plan week and day
+    return mealPlan.items.filter(item => 
+      (item.week_number || 1) === planWeekNumber && 
+      item.day_of_week === planDayOfWeek
+    );
   };
 
   const getDayTotals = (dayIndex: number) => {
@@ -101,6 +160,21 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       fat: meals.reduce((sum, m) => sum + m.recipe_fat, 0),
     };
   };
+
+  // Calculate the first valid (non-disabled) day index
+  const firstValidDayIndex = useMemo(() => {
+    for (let i = 0; i < 7; i++) {
+      if (!isDayBeforeStart(i)) {
+        return i;
+      }
+    }
+    return 0;
+  }, [getWeekDates, mealPlan.start_date]);
+
+  // Auto-select first valid day when week changes or on mount
+  useEffect(() => {
+    setSelectedDay(firstValidDayIndex);
+  }, [selectedWeek, firstValidDayIndex]);
 
   const currentDayMeals = getDayMeals(selectedDay);
   const dayTotals = getDayTotals(selectedDay);
@@ -160,20 +234,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     setRegenerateDialog({ open: true, meal, mealType });
   };
 
-  // Calculate dates for the selected week
-  const getWeekDates = useMemo(() => {
-    const startDate = new Date(mealPlan.start_date);
-    const weekStartDate = new Date(startDate);
-    weekStartDate.setDate(startDate.getDate() + (selectedWeek - 1) * 7);
-    
-    const dates: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(weekStartDate);
-      date.setDate(weekStartDate.getDate() + i);
-      dates.push(date);
-    }
-    return dates;
-  }, [mealPlan.start_date, selectedWeek]);
+  // formatWeekRange and getMonthYear use getWeekDates defined earlier
 
   const formatWeekRange = useMemo(() => {
     const startDate = getWeekDates[0];
@@ -244,44 +305,47 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           Dia
         </label>
         <div className="grid grid-cols-7 gap-1 sm:gap-2">
-          {getWeekDates.map((date, index) => {
-            const dayOfWeek = date.getDay(); // 0 = Sunday, 1 = Monday, etc.
-            const dayName = DAY_NAMES_BY_INDEX[dayOfWeek];
+          {DAY_NAMES_FIXED.map((dayName, index) => {
+            const date = getWeekDates[index];
             const dayNumber = date.getDate();
             const isSelected = selectedDay === index;
             const status = getDayStatus(index);
             const hasMeals = getDayMeals(index).length > 0;
+            const isDisabled = isDayBeforeStart(index);
             
             return (
               <button
-                key={dayName}
-                onClick={() => setSelectedDay(index)}
+                key={`${dayName}-${index}`}
+                onClick={() => !isDisabled && setSelectedDay(index)}
+                disabled={isDisabled}
                 className={cn(
                   "flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all border",
-                  isSelected 
+                  isDisabled && "opacity-40 cursor-not-allowed bg-muted/50 border-muted",
+                  !isDisabled && isSelected 
                     ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                    : "bg-background hover:bg-muted border-border hover:border-primary/50",
+                    : !isDisabled && "bg-background hover:bg-muted border-border hover:border-primary/50",
                 )}
               >
                 <span className={cn(
                   "text-[10px] sm:text-xs font-medium",
-                  isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                  isDisabled ? "text-muted-foreground/50" : isSelected ? "text-primary-foreground" : "text-muted-foreground"
                 )}>
-                  {dayName.slice(0, 3)}
+                  {dayName}
                 </span>
                 <span className={cn(
                   "text-base sm:text-lg font-bold",
-                  isSelected ? "text-primary-foreground" : "text-foreground"
+                  isDisabled ? "text-muted-foreground/50" : isSelected ? "text-primary-foreground" : "text-foreground"
                 )}>
                   {dayNumber}
                 </span>
                 {/* Status indicator */}
                 <div className={cn(
                   "w-2 h-2 rounded-full mt-1",
-                  !hasMeals && "bg-muted-foreground/30",
-                  hasMeals && status === 'pending' && "bg-muted-foreground/50",
-                  hasMeals && status === 'partial' && "bg-yellow-500",
-                  hasMeals && status === 'complete' && "bg-green-500",
+                  isDisabled && "bg-muted-foreground/20",
+                  !isDisabled && !hasMeals && "bg-muted-foreground/30",
+                  !isDisabled && hasMeals && status === 'pending' && "bg-muted-foreground/50",
+                  !isDisabled && hasMeals && status === 'partial' && "bg-yellow-500",
+                  !isDisabled && hasMeals && status === 'complete' && "bg-green-500",
                 )} />
               </button>
             );
@@ -293,7 +357,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       <Card className="glass-card border-primary/20">
         <CardContent className="p-3 sm:p-4">
           <p className="text-xs font-medium text-muted-foreground mb-2 sm:mb-3 uppercase tracking-wide">
-            Consumo de {DAY_NAMES_BY_INDEX[getWeekDates[selectedDay]?.getDay() ?? 0]}
+            Consumo de {DAY_NAMES_FULL[selectedDay]}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
             <div className="flex items-center gap-1.5 sm:gap-2">

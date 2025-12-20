@@ -32,6 +32,59 @@ const GOAL_LABELS: Record<string, string> = {
   ganhar_peso: "ganhar massa muscular",
 };
 
+// Helper function to call Gemini API with retry logic
+async function callGeminiWithRetry(
+  apiKey: string,
+  body: any,
+  maxRetries: number = 3
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    logStep(`API call attempt ${attempt}/${maxRetries}`);
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      }
+    );
+
+    if (response.ok) {
+      return response;
+    }
+
+    if (response.status === 429) {
+      const errorText = await response.text();
+      logStep(`Rate limit hit on attempt ${attempt}`, { status: 429 });
+      
+      // Extract retry delay from error message if available
+      let retryDelay = 30; // Default 30 seconds
+      const retryMatch = errorText.match(/retry in (\d+\.?\d*)/i);
+      if (retryMatch) {
+        retryDelay = Math.ceil(parseFloat(retryMatch[1]));
+      }
+      
+      if (attempt < maxRetries) {
+        logStep(`Waiting ${retryDelay} seconds before retry...`);
+        await new Promise(resolve => setTimeout(resolve, retryDelay * 1000));
+        continue;
+      }
+      
+      // Last attempt failed
+      lastError = new Error(`Rate limit exceeded after ${maxRetries} attempts`);
+    } else {
+      // Non-429 error, don't retry
+      const errorText = await response.text();
+      throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
+    }
+  }
+  
+  throw lastError || new Error("Unknown error during API call");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -61,7 +114,6 @@ serve(async (req) => {
 
     const requestBody = await req.json();
     const { mealItemId, mealType, ingredients, mode } = requestBody;
-    // mode: "automatic" | "with_ingredients"
     logStep("Request received", { mealItemId, mealType, ingredients, mode });
 
     if (!mealItemId) throw new Error("mealItemId is required");
@@ -163,41 +215,22 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
 
     const userPrompt = `Crie uma nova receita para ${mealLabel}. ${ingredientsPrompt || "Surpreenda-me com algo delicioso!"}`;
 
-    logStep("Calling Google Gemini API for recipe generation");
+    logStep("Calling Google Gemini API with retry logic");
 
-    // Call Google Gemini API directly
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: `${systemPrompt}\n\n${userPrompt}` }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 2048,
+    // Call Google Gemini API with retry
+    const response = await callGeminiWithRetry(GOOGLE_AI_API_KEY, {
+      contents: [
+        {
+          parts: [
+            { text: `${systemPrompt}\n\n${userPrompt}` }
+          ]
         }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logStep("Google Gemini error", { status: response.status, error: errorText });
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      ],
+      generationConfig: {
+        temperature: 0.7,
+        maxOutputTokens: 2048,
       }
-      throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
-    }
+    });
 
     const aiData = await response.json();
     logStep("AI response received");
@@ -256,6 +289,17 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
+    
+    // Check if it's a rate limit error after retries
+    if (errorMessage.includes("Rate limit exceeded")) {
+      return new Response(JSON.stringify({ 
+        error: "Limite de requisições atingido. Por favor, aguarde 1 minuto e tente novamente." 
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 429,
+      });
+    }
+    
     return new Response(JSON.stringify({ error: errorMessage }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,

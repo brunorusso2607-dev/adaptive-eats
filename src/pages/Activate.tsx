@@ -5,9 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, Mail, Loader2, CheckCircle, Smartphone, Download, Share, PlusSquare, MoreVertical, ArrowRight } from "lucide-react";
+import { ChefHat, Mail, Loader2, CheckCircle, Download, MoreVertical, ArrowRight, Share, PlusSquare } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+
+import iosStep1 from "@/assets/ios-step-1-share.png";
+import iosStep2 from "@/assets/ios-step-2-add-home.png";
+import iosStep3 from "@/assets/ios-step-3-confirm.png";
 
 const emailSchema = z.string().email("Email inválido");
 
@@ -148,8 +152,8 @@ export default function Activate() {
             {/* iOS Instructions */}
             {isIOS && (
               <div className="space-y-4">
-                <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
-                  <p className="text-sm font-semibold text-center mb-4">
+                <div className="bg-secondary/50 rounded-xl p-4 space-y-5">
+                  <p className="text-sm font-semibold text-center">
                     Siga os 3 passos para instalar:
                   </p>
                   
@@ -161,10 +165,14 @@ export default function Activate() {
                     <div className="flex-1">
                       <p className="text-sm font-medium">Toque no ícone de compartilhar</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        O quadrado com a seta para cima na parte inferior do Safari
+                        O quadrado com a seta para cima na barra inferior do Safari
                       </p>
-                      <div className="mt-2 flex items-center justify-center p-3 bg-background/50 rounded-lg">
-                        <Share className="w-8 h-8 text-primary" />
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border/50">
+                        <img 
+                          src={iosStep1} 
+                          alt="Ícone de compartilhar do Safari" 
+                          className="w-full h-auto"
+                        />
                       </div>
                     </div>
                   </div>
@@ -175,10 +183,13 @@ export default function Activate() {
                       2
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-medium">Role para baixo e toque em</p>
-                      <div className="mt-2 flex items-center gap-2 p-3 bg-background/50 rounded-lg">
-                        <PlusSquare className="w-6 h-6 text-primary" />
-                        <span className="text-sm font-medium">Adicionar à Tela de Início</span>
+                      <p className="text-sm font-medium">Role para baixo e toque em:</p>
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border/50">
+                        <img 
+                          src={iosStep2} 
+                          alt="Adicionar à Tela de Início" 
+                          className="w-full h-auto"
+                        />
                       </div>
                     </div>
                   </div>
@@ -191,15 +202,22 @@ export default function Activate() {
                     <div className="flex-1">
                       <p className="text-sm font-medium">Toque em "Adicionar"</p>
                       <p className="text-xs text-muted-foreground mt-1">
-                        O app vai aparecer na sua tela inicial como qualquer outro app!
+                        O app vai aparecer na sua tela inicial!
                       </p>
+                      <div className="mt-2 rounded-lg overflow-hidden border border-border/50">
+                        <img 
+                          src={iosStep3} 
+                          alt="Botão Adicionar" 
+                          className="w-full h-auto"
+                        />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground">
-                    ⚠️ Use o Safari para instalar. Outros navegadores não suportam essa função no iOS.
+                <div className="text-center bg-amber-500/10 rounded-lg p-3">
+                  <p className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                    ⚠️ Use o Safari para instalar. Outros navegadores não suportam no iOS.
                   </p>
                 </div>
               </div>

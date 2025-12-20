@@ -82,8 +82,8 @@ Responda apenas o JSON. Se a imagem não for de comida, retorne: {"erro": "Não 
 
     logStep("Calling Google Gemini API with image");
 
-    // Call Google Gemini API with image - using gemini-2.5-flash-lite which supports vision
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    // Call Google Gemini API with image - using gemini-2.0-flash (15 RPM, 1500 RPD free tier)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

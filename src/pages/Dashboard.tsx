@@ -12,6 +12,7 @@ import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
 import IngredientTagInput from "@/components/IngredientTagInput";
+import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -91,6 +92,7 @@ export default function Dashboard() {
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
+  const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
   
   
   // PWA install state
@@ -370,8 +372,28 @@ export default function Dashboard() {
   const isSubscribed = subscription?.subscribed;
   const activePlan = subscription?.plan as "essencial" | "premium" | null;
 
+  // Handle mobile tab navigation
+  const handleMobileTabChange = (tab: MobileNavTab) => {
+    setMobileActiveTab(tab);
+    // Reset other views when changing tabs
+    setShowRecipe(false);
+    setShowList(null);
+    setShowWeightLossSetup(false);
+    setShowWeightHistory(false);
+    
+    if (tab === "meal-plan") {
+      setShowMealPlan(true);
+    } else {
+      setShowMealPlan(false);
+    }
+    
+    if (tab === "favorites") {
+      setShowList("favorites");
+    }
+  };
+
   return (
-    <div className="min-h-screen gradient-hero">
+    <div className="min-h-screen gradient-hero pb-20 md:pb-0">
       {/* Header */}
       <header className="glass-card border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
@@ -1060,6 +1082,15 @@ export default function Dashboard() {
           onWeightUpdated={(newWeight) => {
             setWeightData(prev => prev ? { ...prev, weight_current: newWeight } : null);
           }}
+        />
+      )}
+
+      {/* Mobile Bottom Navigation */}
+      {isSubscribed && (
+        <MobileBottomNav
+          activeTab={mobileActiveTab}
+          onTabChange={handleMobileTabChange}
+          hasMealPlan={hasMealPlan}
         />
       )}
     </div>

@@ -427,18 +427,20 @@ export default function Dashboard() {
             <span className="text-sm text-muted-foreground hidden md:block">
               {user?.email}
             </span>
-            <UserAccountMenu 
-              user={user} 
-              subscription={subscription} 
-              onLogout={handleLogout}
-              externalOpen={showProfileSheet}
-              onExternalOpenChange={(open) => {
-                setShowProfileSheet(open);
-                if (!open && mobileActiveTab === "profile") {
-                  setMobileActiveTab("home");
-                }
-              }}
-            />
+            <div className="hidden md:block">
+              <UserAccountMenu 
+                user={user} 
+                subscription={subscription} 
+                onLogout={handleLogout}
+                externalOpen={showProfileSheet}
+                onExternalOpenChange={(open) => {
+                  setShowProfileSheet(open);
+                  if (!open && mobileActiveTab === "profile") {
+                    setMobileActiveTab("home");
+                  }
+                }}
+              />
+            </div>
           </div>
         </div>
       </header>

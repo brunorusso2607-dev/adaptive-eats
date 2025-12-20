@@ -286,9 +286,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           </Label>
           <div className="grid grid-cols-3 gap-3">
             <button
+              type="button"
               onClick={() => setData({ ...data, goal_mode: "lose" })}
               className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all",
+                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
                 data.goal_mode === "lose"
                   ? "border-green-500 bg-green-50 dark:bg-green-950/30"
                   : "border-border hover:border-green-400/50"
@@ -298,9 +299,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
               <span className="font-medium text-sm">Emagrecer</span>
             </button>
             <button
+              type="button"
               onClick={() => setData({ ...data, goal_mode: "maintain" })}
               className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all",
+                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
                 data.goal_mode === "maintain"
                   ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
                   : "border-border hover:border-amber-400/50"
@@ -310,9 +312,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
               <span className="font-medium text-sm">Manter</span>
             </button>
             <button
+              type="button"
               onClick={() => setData({ ...data, goal_mode: "gain" })}
               className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all",
+                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
                 data.goal_mode === "gain"
                   ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
                   : "border-border hover:border-blue-400/50"
@@ -392,9 +395,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           </Label>
           <div className="grid grid-cols-2 gap-3">
             <button
+              type="button"
               onClick={() => setData({ ...data, sex: "male" })}
               className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all",
+                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
                 data.sex === "male"
                   ? "border-primary bg-primary/10"
                   : "border-border hover:border-primary/50"
@@ -404,9 +408,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
               <span className="font-medium text-sm">Masculino</span>
             </button>
             <button
+              type="button"
               onClick={() => setData({ ...data, sex: "female" })}
               className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all",
+                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
                 data.sex === "female"
                   ? "border-primary bg-primary/10"
                   : "border-border hover:border-primary/50"
@@ -427,10 +432,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           <div className="space-y-2">
             {ACTIVITY_LEVELS.map((level) => (
               <button
+                type="button"
                 key={level.id}
                 onClick={() => setData({ ...data, activity_level: level.id as WeightGoalData["activity_level"] })}
                 className={cn(
-                  "w-full p-3 rounded-xl border-2 text-left transition-all flex items-center justify-between",
+                  "w-full p-3 rounded-xl border-2 text-left transition-all flex items-center justify-between touch-manipulation",
                   data.activity_level === level.id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"

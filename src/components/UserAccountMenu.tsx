@@ -251,10 +251,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
             <div className="grid grid-cols-2 gap-2">
               {[{ id: "male", label: "Masculino", emoji: "👨" }, { id: "female", label: "Feminino", emoji: "👩" }].map((opt) => (
                 <button
+                  type="button"
                   key={opt.id}
                   onClick={() => setEditedProfile({ ...editedProfile, sex: opt.id })}
                   className={cn(
-                    "p-2 rounded-lg border-2 text-center transition-all text-sm",
+                    "p-2 rounded-lg border-2 text-center transition-all text-sm touch-manipulation",
                     editedProfile.sex === opt.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
@@ -270,10 +271,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
             <div className="grid grid-cols-1 gap-1">
               {Object.entries(LABELS.activity_level).map(([id, label]) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => setEditedProfile({ ...editedProfile, activity_level: id })}
                   className={cn(
-                    "p-2 rounded-lg border text-left text-sm transition-all flex items-center justify-between",
+                    "p-2 rounded-lg border text-left text-sm transition-all flex items-center justify-between touch-manipulation",
                     editedProfile.activity_level === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
@@ -298,10 +300,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
               { id: "ganhar_peso", label: "Ganhar", icon: TrendingUp, color: "blue" },
             ].map((opt) => (
               <button
+                type="button"
                 key={opt.id}
                 onClick={() => setEditedProfile({ ...editedProfile, goal: opt.id })}
                 className={cn(
-                  "p-2 rounded-lg border-2 text-center transition-all text-xs",
+                  "p-2 rounded-lg border-2 text-center transition-all text-xs touch-manipulation",
                   editedProfile.goal === opt.id 
                     ? `border-${opt.color}-500 bg-${opt.color}-50 dark:bg-${opt.color}-950/30` 
                     : "border-border hover:border-primary/50"
@@ -327,10 +330,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
             <div className="grid grid-cols-2 gap-2">
               {Object.entries(LABELS.dietary_preference).map(([id, label]) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => setEditedProfile({ ...editedProfile, dietary_preference: id })}
                   className={cn(
-                    "p-2 rounded-lg border text-sm transition-all",
+                    "p-2 rounded-lg border text-sm transition-all touch-manipulation",
                     editedProfile.dietary_preference === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
@@ -346,10 +350,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(LABELS.recipe_complexity).map(([id, label]) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => setEditedProfile({ ...editedProfile, recipe_complexity: id })}
                   className={cn(
-                    "p-2 rounded-lg border text-xs transition-all",
+                    "p-2 rounded-lg border text-xs transition-all touch-manipulation",
                     editedProfile.recipe_complexity === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
@@ -365,10 +370,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
             <div className="grid grid-cols-3 gap-2">
               {Object.entries(LABELS.context).map(([id, label]) => (
                 <button
+                  type="button"
                   key={id}
                   onClick={() => setEditedProfile({ ...editedProfile, context: id })}
                   className={cn(
-                    "p-2 rounded-lg border text-xs transition-all",
+                    "p-2 rounded-lg border text-xs transition-all touch-manipulation",
                     editedProfile.context === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
@@ -390,10 +396,11 @@ export default function UserAccountMenu({ user, subscription, onLogout }: UserAc
               const isSelected = (editedProfile.intolerances || []).includes(opt.id);
               return (
                 <button
+                  type="button"
                   key={opt.id}
                   onClick={() => toggleIntolerance(opt.id)}
                   className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all",
+                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all touch-manipulation",
                     isSelected 
                       ? "bg-destructive/20 text-destructive border border-destructive/30" 
                       : "bg-muted text-muted-foreground border border-border hover:border-destructive/50"

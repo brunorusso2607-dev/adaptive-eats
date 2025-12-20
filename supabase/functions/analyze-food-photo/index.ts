@@ -145,9 +145,17 @@ Responda apenas o JSON. Se a imagem não for de comida, retorne: {"erro": "Não 
       throw new Error("Não foi possível analisar a imagem. Tente com uma foto mais clara.");
     }
 
-    // Check for error response from AI
+    // Check for error response from AI (not food detected)
     if (analysis.erro) {
-      throw new Error(analysis.erro);
+      logStep("Not food detected", { message: analysis.erro });
+      return new Response(JSON.stringify({
+        success: false,
+        notFood: true,
+        message: analysis.erro
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     logStep("Analysis complete", { 

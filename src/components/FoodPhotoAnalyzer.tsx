@@ -31,6 +31,7 @@ export default function FoodPhotoAnalyzer() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [analysis, setAnalysis] = useState<FoodAnalysis | null>(null);
+  const [notFoodError, setNotFoodError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
@@ -67,6 +68,7 @@ export default function FoodPhotoAnalyzer() {
     }
 
     setIsAnalyzing(true);
+    setNotFoodError(null);
     try {
       const { data, error } = await supabase.functions.invoke("analyze-food-photo", {
         body: { imageBase64: imagePreview },
@@ -74,6 +76,12 @@ export default function FoodPhotoAnalyzer() {
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
+
+      // Handle "not food" response
+      if (data.notFood) {
+        setNotFoodError(data.message || "Não foi possível identificar alimentos na imagem.");
+        return;
+      }
 
       setAnalysis(data.analysis);
       toast.success("Análise concluída!");
@@ -88,8 +96,10 @@ export default function FoodPhotoAnalyzer() {
   const resetAnalysis = () => {
     setImagePreview(null);
     setAnalysis(null);
+    setNotFoodError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
+  };
   };
 
 
@@ -177,7 +187,27 @@ export default function FoodPhotoAnalyzer() {
               </Button>
             </div>
             
-            {!analysis && (
+            {/* Not food error message */}
+            {notFoodError && (
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center gap-3 text-center">
+                  <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
+                    <AlertCircle className="w-6 h-6 text-yellow-500" />
+                  </div>
+                  <p className="text-muted-foreground">{notFoodError}</p>
+                  <Button
+                    variant="outline"
+                    onClick={resetAnalysis}
+                    className="mt-2"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Tentar Outra Foto
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+
+            {!analysis && !notFoodError && (
               <CardContent className="p-4">
                 <Button
                   onClick={analyzeImage}

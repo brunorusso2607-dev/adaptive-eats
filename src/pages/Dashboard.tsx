@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download } from "lucide-react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -85,7 +85,11 @@ export default function Dashboard() {
   const [showList, setShowList] = useState<"history" | "favorites" | null>(null);
   const [showMealPlan, setShowMealPlan] = useState(false);
   const [hasMealPlan, setHasMealPlan] = useState(false);
-
+  
+  // PWA install state
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isAppInstalled, setIsAppInstalled] = useState(false);
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
@@ -221,6 +225,45 @@ export default function Dashboard() {
       .limit(1);
     
     setHasMealPlan(data && data.length > 0);
+  };
+
+  // PWA install prompt detection
+  useEffect(() => {
+    // Check if app is already installed
+    if (window.matchMedia('(display-mode: standalone)').matches) {
+      setIsAppInstalled(true);
+      return;
+    }
+
+    const handler = (e: Event) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallButton(true);
+    };
+
+    window.addEventListener("beforeinstallprompt", handler);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", handler);
+    };
+  }, []);
+
+  const handleInstallPWA = async () => {
+    if (!deferredPrompt) {
+      toast.info("Use o menu do navegador para instalar o app");
+      return;
+    }
+
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    
+    if (outcome === "accepted") {
+      toast.success("App instalado com sucesso!");
+      setIsAppInstalled(true);
+    }
+    
+    setDeferredPrompt(null);
+    setShowInstallButton(false);
   };
 
   useEffect(() => {
@@ -364,6 +407,20 @@ export default function Dashboard() {
                 </div>
               </div>
             )}
+            
+            {/* Install App Button */}
+            {showInstallButton && !isAppInstalled && (
+              <Button
+                onClick={handleInstallPWA}
+                size="sm"
+                variant="outline"
+                className="gap-1.5 text-xs sm:text-sm border-primary/30 text-primary hover:bg-primary/10"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Instalar App</span>
+              </Button>
+            )}
+            
             <span className="text-sm text-muted-foreground hidden md:block">
               {user?.email}
             </span>

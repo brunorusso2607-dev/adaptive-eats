@@ -2,7 +2,7 @@ import { useState, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, CalendarDays, ChevronDown } from "lucide-react";
+import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, CalendarDays, ChevronDown, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -11,6 +11,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -44,6 +52,7 @@ type MealPlanCalendarProps = {
   onClose: () => void;
   onSelectMeal: (meal: MealPlanItem) => void;
   onToggleFavorite: (mealId: string) => void;
+  onMealUpdated?: (updatedMeal: MealPlanItem) => void;
 };
 
 const DAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
@@ -56,8 +65,15 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
 
-export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite }: MealPlanCalendarProps) {
+export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated }: MealPlanCalendarProps) {
   const [selectedDay, setSelectedDay] = useState(0);
+  const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; meal: MealPlanItem | null; mealType: string }>({
+    open: false,
+    meal: null,
+    mealType: "",
+  });
+  const [ingredients, setIngredients] = useState("");
+  const [isRegenerating, setIsRegenerating] = useState(false);
   
   // Get unique weeks from the items
   const availableWeeks = useMemo(() => {
@@ -88,6 +104,61 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
   const currentDayMeals = getDayMeals(selectedDay);
   const dayTotals = getDayTotals(selectedDay);
+
+  const handleRegenerate = async (mode: "automatic" | "with_ingredients") => {
+    if (!regenerateDialog.meal) return;
+
+    setIsRegenerating(true);
+    try {
+      const { data: session } = await supabase.auth.getSession();
+      if (!session?.session?.access_token) {
+        throw new Error("Não autenticado");
+      }
+
+      const response = await supabase.functions.invoke("regenerate-meal", {
+        body: {
+          mealItemId: regenerateDialog.meal.id,
+          mealType: regenerateDialog.mealType,
+          ingredients: mode === "with_ingredients" ? ingredients : null,
+          mode,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || "Erro ao regenerar receita");
+      }
+
+      if (response.data?.success && response.data?.meal) {
+        toast({
+          title: "Receita atualizada!",
+          description: `Nova receita: ${response.data.meal.recipe_name}`,
+        });
+
+        if (onMealUpdated) {
+          onMealUpdated(response.data.meal);
+        }
+
+        setRegenerateDialog({ open: false, meal: null, mealType: "" });
+        setIngredients("");
+      } else {
+        throw new Error(response.data?.error || "Erro desconhecido");
+      }
+    } catch (error) {
+      console.error("Error regenerating meal:", error);
+      toast({
+        title: "Erro",
+        description: error instanceof Error ? error.message : "Erro ao regenerar receita",
+        variant: "destructive",
+      });
+    } finally {
+      setIsRegenerating(false);
+    }
+  };
+
+  const openRegenerateDialog = (meal: MealPlanItem, mealType: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setRegenerateDialog({ open: true, meal, mealType });
+  };
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
@@ -220,17 +291,28 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                             {meal.recipe_name}
                           </h3>
                         </div>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 w-8 h-8 sm:w-10 sm:h-10"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onToggleFavorite(meal.id);
-                          }}
-                        >
-                          <Heart className={cn("w-4 h-4 sm:w-5 sm:h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
-                        </Button>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-8 h-8 sm:w-10 sm:h-10"
+                            title="Gerar nova receita"
+                            onClick={(e) => openRegenerateDialog(meal, mealType, e)}
+                          >
+                            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-primary transition-colors" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="w-8 h-8 sm:w-10 sm:h-10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleFavorite(meal.id);
+                            }}
+                          >
+                            <Heart className={cn("w-4 h-4 sm:w-5 sm:h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
+                          </Button>
+                        </div>
                       </div>
                       
                       <div className="flex items-center gap-2 sm:gap-4 mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
@@ -259,6 +341,72 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           );
         })}
       </div>
+
+      {/* Regenerate Dialog */}
+      <Dialog open={regenerateDialog.open} onOpenChange={(open) => {
+        setRegenerateDialog({ open, meal: regenerateDialog.meal, mealType: regenerateDialog.mealType });
+        if (!open) setIngredients("");
+      }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="font-display text-lg">
+              Nova receita para {MEAL_CONFIG[regenerateDialog.mealType]?.label || ""}
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 pt-2">
+            {/* Opção automática */}
+            <Button
+              variant="outline"
+              className="w-full gradient-accent border-0 text-accent-foreground hover:opacity-90 h-12"
+              onClick={() => handleRegenerate("automatic")}
+              disabled={isRegenerating}
+            >
+              {isRegenerating ? (
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              ) : (
+                <Zap className="w-5 h-5 mr-2" />
+              )}
+              Surpreenda-me!
+            </Button>
+            
+            {/* Divisor */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">ou digite ingredientes</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            
+            {/* Input de ingredientes */}
+            <div className="flex gap-2">
+              <input 
+                type="text" 
+                value={ingredients}
+                onChange={(e) => setIngredients(e.target.value)}
+                placeholder="Ex: frango, batata, cebola..."
+                className="flex-1 px-4 py-3 rounded-xl border border-border bg-background/50 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                disabled={isRegenerating}
+                onKeyDown={(e) => e.key === "Enter" && ingredients.trim() && handleRegenerate("with_ingredients")}
+              />
+              <Button 
+                className="gradient-primary border-0 px-6"
+                onClick={() => handleRegenerate("with_ingredients")}
+                disabled={isRegenerating || !ingredients.trim()}
+              >
+                {isRegenerating ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Sparkles className="w-5 h-5" />
+                )}
+              </Button>
+            </div>
+            
+            <p className="text-xs text-muted-foreground text-center">
+              A nova receita substituirá a atual: {regenerateDialog.meal?.recipe_name}
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

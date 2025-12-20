@@ -117,11 +117,9 @@ serve(async (req) => {
         throw new Error("Erro ao gerar link de acesso.");
       }
 
-      // Extract token_hash and type from the action link
-      const actionLink = linkData.properties?.action_link;
-      const url = new URL(actionLink);
-      const tokenHash = url.searchParams.get("token_hash");
-      const type = url.searchParams.get("type");
+      // Extract token_hash and type from the hashed_token in properties
+      const tokenHash = linkData.properties?.hashed_token;
+      const type = "magiclink";
 
       logStep("Magic link generated for existing user", { userId: existingUser.id, hasTokenHash: !!tokenHash });
 
@@ -181,11 +179,9 @@ serve(async (req) => {
       throw new Error("Erro ao gerar link de acesso.");
     }
 
-    // Extract token_hash and type from the action link
-    const actionLink = linkData.properties?.action_link;
-    const url = new URL(actionLink);
-    const tokenHash = url.searchParams.get("token_hash");
-    const type = url.searchParams.get("type");
+    // Extract token_hash from hashed_token in properties
+    const tokenHash = linkData.properties?.hashed_token;
+    const type = "magiclink";
 
     logStep("Magic link generated for new user", { userId, hasTokenHash: !!tokenHash });
 

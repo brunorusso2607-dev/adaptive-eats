@@ -1,9 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { useSwipeable } from "react-swipeable";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -398,12 +399,66 @@ export default function Dashboard() {
     }
   };
 
+  // Handle back to home for mobile
+  const handleBackToHome = () => {
+    setMobileActiveTab("home");
+    setShowRecipe(false);
+    setShowList(null);
+    setShowMealPlan(false);
+    setShowWeightLossSetup(false);
+    setShowWeightHistory(false);
+    setShowProfileSheet(false);
+  };
+
+  // Check if we're in a sub-view that needs a back button
+  const isInSubView = mobileActiveTab !== "home" || showMealPlan || showList || showProfileSheet;
+  
+  // Determine back button type: X for modal-like views, arrow for section views
+  const getBackButtonType = (): "x" | "arrow" | null => {
+    if (mobileActiveTab === "profile" || mobileActiveTab === "favorites" || showProfileSheet || showList) {
+      return "x";
+    }
+    if (mobileActiveTab === "meal-plan" || showMealPlan) {
+      return "arrow";
+    }
+    return null;
+  };
+
+  // Swipe handlers for mobile navigation
+  const swipeHandlers = useSwipeable({
+    onSwipedRight: () => {
+      // Only trigger on mobile and when in a sub-view
+      if (window.innerWidth < 768 && isInSubView) {
+        handleBackToHome();
+      }
+    },
+    trackMouse: false,
+    trackTouch: true,
+    delta: 50, // Minimum swipe distance
+    preventScrollOnSwipe: false,
+  });
+
   return (
-    <div className="min-h-screen gradient-hero pb-20 md:pb-0">
+    <div className="min-h-screen gradient-hero pb-20 md:pb-0" {...swipeHandlers}>
       {/* Header */}
       <header className="glass-card border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-2">
+            {/* Mobile Back Button */}
+            {isInSubView && getBackButtonType() && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleBackToHome}
+                className="md:hidden w-10 h-10 rounded-xl"
+              >
+                {getBackButtonType() === "x" ? (
+                  <X className="w-5 h-5" />
+                ) : (
+                  <ArrowLeft className="w-5 h-5" />
+                )}
+              </Button>
+            )}
             <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-glow">
               <ChefHat className="w-6 h-6 text-primary-foreground" />
             </div>

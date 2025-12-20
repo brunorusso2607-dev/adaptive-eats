@@ -5,7 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { 
   Scale, Ruler, Calendar, User, Activity, Target, 
-  TrendingDown, TrendingUp, Minus, Flame, Beef, Wheat, Loader2, Check, X, Sparkles
+  TrendingDown, TrendingUp, Minus, Flame, Beef, Wheat, Loader2, Check, X, Sparkles,
+  AlertTriangle, Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -51,6 +52,128 @@ const ACTIVITY_LEVELS = [
   { id: "active", label: "Ativo", description: "Exercício 6-7x/semana", factor: 1.725 },
   { id: "very_active", label: "Muito Ativo", description: "Exercício intenso diário", factor: 1.9 },
 ];
+
+// IMC Classification
+type BMICategory = "underweight" | "normal" | "overweight" | "obese_1" | "obese_2" | "obese_3";
+
+function getBMICategory(bmi: number): BMICategory {
+  if (bmi < 18.5) return "underweight";
+  if (bmi < 25) return "normal";
+  if (bmi < 30) return "overweight";
+  if (bmi < 35) return "obese_1";
+  if (bmi < 40) return "obese_2";
+  return "obese_3";
+}
+
+function getBMICategoryLabel(category: BMICategory): string {
+  const labels: Record<BMICategory, string> = {
+    underweight: "Baixo peso",
+    normal: "Peso normal",
+    overweight: "Sobrepeso",
+    obese_1: "Obesidade grau I",
+    obese_2: "Obesidade grau II",
+    obese_3: "Obesidade grau III",
+  };
+  return labels[category];
+}
+
+type HealthRisk = {
+  level: "info" | "warning" | "danger";
+  title: string;
+  message: string;
+  suggestion?: string;
+};
+
+function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
+  const risks: HealthRisk[] = [];
+  
+  if (!data.weight_current || !data.weight_goal || !data.height || !data.goal_mode) {
+    return risks;
+  }
+
+  const heightInMeters = data.height / 100;
+  const currentBMI = data.weight_current / (heightInMeters * heightInMeters);
+  const goalBMI = data.weight_goal / (heightInMeters * heightInMeters);
+  
+  const currentCategory = getBMICategory(currentBMI);
+  const goalCategory = getBMICategory(goalBMI);
+  
+  const isSedentaryOrLight = data.activity_level === "sedentary" || data.activity_level === "light";
+  const weightDiff = data.weight_goal - data.weight_current;
+  const isGainingWeight = weightDiff > 0;
+  const isLosingWeight = weightDiff < 0;
+
+  // DANGER: Goal weight leads to obesity for sedentary person
+  if (data.goal_mode === "gain" && goalCategory.startsWith("obese") && isSedentaryOrLight) {
+    risks.push({
+      level: "danger",
+      title: "Risco de obesidade",
+      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Ganhar peso sem exercício regular aumenta gordura corporal, não massa muscular.`,
+      suggestion: "Considere aumentar seu nível de atividade física para pelo menos 'Moderado' antes de buscar ganho de peso.",
+    });
+  }
+
+  // DANGER: Goal weight leads to overweight for sedentary
+  if (data.goal_mode === "gain" && goalCategory === "overweight" && data.activity_level === "sedentary") {
+    risks.push({
+      level: "warning",
+      title: "Atenção: Ganho sem exercício",
+      message: `IMC projetado de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Sem atividade física, o ganho de peso tende a ser principalmente gordura.`,
+      suggestion: "Inicie exercícios de força para que o ganho seja de massa muscular.",
+    });
+  }
+
+  // DANGER: Goal weight is underweight
+  if (goalCategory === "underweight" && data.goal_mode === "lose") {
+    risks.push({
+      level: "danger",
+      title: "Risco de baixo peso",
+      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Isso pode causar problemas de saúde.`,
+      suggestion: "Considere um peso meta que resulte em IMC acima de 18.5.",
+    });
+  }
+
+  // WARNING: Currently underweight trying to lose more
+  if (currentCategory === "underweight" && data.goal_mode === "lose") {
+    risks.push({
+      level: "danger",
+      title: "Não recomendado",
+      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Perder mais peso pode ser prejudicial à saúde.`,
+      suggestion: "Consulte um profissional de saúde antes de continuar.",
+    });
+  }
+
+  // WARNING: Extreme weight change
+  if (Math.abs(weightDiff) > 20) {
+    risks.push({
+      level: "warning",
+      title: "Meta ambiciosa",
+      message: `Mudança de ${Math.abs(weightDiff)}kg é significativa. Metas muito distantes podem ser desmotivantes.`,
+      suggestion: "Considere dividir em metas menores de 5-10kg por vez.",
+    });
+  }
+
+  // INFO: Gaining weight while already overweight
+  if (data.goal_mode === "gain" && (currentCategory === "overweight" || currentCategory.startsWith("obese"))) {
+    risks.push({
+      level: "warning",
+      title: "Já acima do peso ideal",
+      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Ganhar mais peso pode não ser recomendado.`,
+      suggestion: "Consulte um nutricionista esportivo se o objetivo for ganho de massa muscular.",
+    });
+  }
+
+  // INFO: Good combination - gaining with exercise
+  if (data.goal_mode === "gain" && goalCategory === "normal" && !isSedentaryOrLight && isGainingWeight) {
+    risks.push({
+      level: "info",
+      title: "Combinação adequada",
+      message: `IMC projetado de ${goalBMI.toFixed(1)} está saudável. Com exercício regular, você pode ganhar massa muscular de forma saudável.`,
+    });
+  }
+
+  return risks;
+}
 
 export function calculateMacros(data: WeightGoalData): MacroCalculations | null {
   if (!data.weight_current || !data.weight_goal || !data.height || !data.age || !data.sex || !data.goal_mode) {
@@ -140,7 +263,9 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
   });
 
   const calculations = calculateMacros(data);
+  const healthRisks = calculateHealthRisks(data);
   const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex && data.goal_mode;
+  const hasDangerRisk = healthRisks.some(r => r.level === "danger");
 
   const getModeInfo = () => {
     if (!calculations) return null;
@@ -490,6 +615,59 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           </div>
         </div>
       </div>
+
+      {/* Health Risk Alerts */}
+      {healthRisks.length > 0 && (
+        <div className="space-y-3">
+          {healthRisks.map((risk, index) => (
+            <div
+              key={index}
+              className={cn(
+                "rounded-xl p-4 border-2",
+                risk.level === "danger" && "bg-red-50 dark:bg-red-950/30 border-red-400/50",
+                risk.level === "warning" && "bg-amber-50 dark:bg-amber-950/30 border-amber-400/50",
+                risk.level === "info" && "bg-blue-50 dark:bg-blue-950/30 border-blue-400/50"
+              )}
+            >
+              <div className="flex items-start gap-3">
+                <div className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
+                  risk.level === "danger" && "bg-red-500/20",
+                  risk.level === "warning" && "bg-amber-500/20",
+                  risk.level === "info" && "bg-blue-500/20"
+                )}>
+                  {risk.level === "danger" && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />}
+                  {risk.level === "warning" && <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                  {risk.level === "info" && <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className={cn(
+                    "font-semibold text-sm",
+                    risk.level === "danger" && "text-red-700 dark:text-red-300",
+                    risk.level === "warning" && "text-amber-700 dark:text-amber-300",
+                    risk.level === "info" && "text-blue-700 dark:text-blue-300"
+                  )}>
+                    {risk.title}
+                  </p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {risk.message}
+                  </p>
+                  {risk.suggestion && (
+                    <p className={cn(
+                      "text-xs mt-2 font-medium",
+                      risk.level === "danger" && "text-red-600 dark:text-red-400",
+                      risk.level === "warning" && "text-amber-600 dark:text-amber-400",
+                      risk.level === "info" && "text-blue-600 dark:text-blue-400"
+                    )}>
+                      💡 {risk.suggestion}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Calculations Preview */}
       {calculations && isComplete && modeInfo && (

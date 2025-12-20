@@ -915,15 +915,15 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Histórico e Modo Kids - Versão compacta no mobile */}
-                  <div className="md:hidden flex gap-2">
+                  <div className="md:hidden flex flex-col gap-2 w-full">
                     <button 
-                      className="flex items-center gap-3 p-3 flex-1 glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
+                      className="flex items-center gap-3 p-3 w-full glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
                       onClick={() => setShowList("history")}
                     >
                       <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center">
                         <History className="w-5 h-5 text-purple-500" />
                       </div>
-                      <div className="text-left">
+                      <div className="text-left flex-1">
                         <h3 className="font-display font-semibold text-foreground text-sm">
                           Histórico
                         </h3>
@@ -937,7 +937,7 @@ export default function Dashboard() {
                     {isSubscribed && activePlan === "premium" && (
                       <button 
                         className={cn(
-                          "flex items-center gap-3 p-3 flex-1 glass-card transition-all rounded-xl",
+                          "flex items-center gap-3 p-3 w-full glass-card transition-all rounded-xl",
                           userContext === "modo_kids" 
                             ? "border-pink-500/50 bg-pink-500/10" 
                             : "border-border/50 hover:border-primary/30"

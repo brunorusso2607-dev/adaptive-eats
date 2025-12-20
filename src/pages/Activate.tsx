@@ -79,15 +79,26 @@ export default function Activate() {
         throw new Error(data.error);
       }
 
-      // If we got an action link, redirect to it (this will log the user in)
-      if (data.actionLink) {
+      // Use verifyOtp with the tokenHash to log in
+      if (data.tokenHash && data.type) {
+        const { error: verifyError } = await supabase.auth.verifyOtp({
+          token_hash: data.tokenHash,
+          type: data.type,
+        });
+
+        if (verifyError) {
+          throw new Error(verifyError.message);
+        }
+
         toast.success("Conta ativada! Redirecionando...");
         setIsActivated(true);
         
-        // Small delay to show success state
+        // Small delay to show success state, then redirect
         setTimeout(() => {
-          window.location.href = data.actionLink;
+          window.location.href = "/dashboard";
         }, 1500);
+      } else {
+        throw new Error("Erro ao gerar link de acesso. Tente novamente.");
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao ativar conta";

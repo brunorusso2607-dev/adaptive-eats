@@ -322,7 +322,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
             </button>
             <button
               type="button"
-              onClick={() => setData({ ...data, goal_mode: "maintain" })}
+              onClick={() => setData({ 
+                ...data, 
+                goal_mode: "maintain",
+                weight_goal: data.weight_current // Sync weight_goal with current weight
+              })}
               className={cn(
                 "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
                 data.goal_mode === "maintain"
@@ -350,7 +354,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
         </div>
 
         {/* Weight Row */}
-        <div className="grid grid-cols-2 gap-3">
+        <div className={cn("grid gap-3", data.goal_mode === "maintain" ? "grid-cols-1" : "grid-cols-2")}>
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Scale className="w-4 h-4 text-muted-foreground" />
@@ -360,23 +364,33 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
               type="number"
               placeholder="75"
               value={data.weight_current || ""}
-              onChange={(e) => setData({ ...data, weight_current: e.target.value ? parseFloat(e.target.value) : null })}
+              onChange={(e) => {
+                const newWeight = e.target.value ? parseFloat(e.target.value) : null;
+                setData({ 
+                  ...data, 
+                  weight_current: newWeight,
+                  // When in maintain mode, weight_goal equals weight_current
+                  weight_goal: data.goal_mode === "maintain" ? newWeight : data.weight_goal
+                });
+              }}
               className="h-12"
             />
           </div>
-          <div className="space-y-2">
-            <Label className="flex items-center gap-2">
-              <Target className="w-4 h-4 text-muted-foreground" />
-              Peso Desejado (kg)
-            </Label>
-            <Input
-              type="number"
-              placeholder="70"
-              value={data.weight_goal || ""}
-              onChange={(e) => setData({ ...data, weight_goal: e.target.value ? parseFloat(e.target.value) : null })}
-              className="h-12"
-            />
-          </div>
+          {data.goal_mode !== "maintain" && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Target className="w-4 h-4 text-muted-foreground" />
+                Peso Desejado (kg)
+              </Label>
+              <Input
+                type="number"
+                placeholder="70"
+                value={data.weight_goal || ""}
+                onChange={(e) => setData({ ...data, weight_goal: e.target.value ? parseFloat(e.target.value) : null })}
+                className="h-12"
+              />
+            </div>
+          )}
         </div>
 
         {/* Height and Age Row */}

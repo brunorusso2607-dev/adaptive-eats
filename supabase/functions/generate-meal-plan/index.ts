@@ -82,6 +82,58 @@ serve(async (req) => {
     const { planName, startDate, existingPlanId, weekNumber } = requestBody;
     logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber });
 
+    // Fetch previous week's recipes to avoid repetition
+    let previousRecipes: string[] = [];
+    const targetWeekNumber = weekNumber || 1;
+    
+    if (existingPlanId && targetWeekNumber > 1) {
+      // Get recipes from the previous week of the same plan
+      const { data: prevItems } = await supabaseClient
+        .from("meal_plan_items")
+        .select("recipe_name")
+        .eq("meal_plan_id", existingPlanId)
+        .eq("week_number", targetWeekNumber - 1);
+      
+      if (prevItems && prevItems.length > 0) {
+        previousRecipes = [...new Set(prevItems.map(item => item.recipe_name))];
+        logStep("Previous week recipes fetched", { count: previousRecipes.length, recipes: previousRecipes });
+      }
+    } else {
+      // For new plans or week 1, check the most recent active plan's last week
+      const { data: recentPlan } = await supabaseClient
+        .from("meal_plans")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (recentPlan) {
+        // Get the highest week number from this plan
+        const { data: maxWeekData } = await supabaseClient
+          .from("meal_plan_items")
+          .select("week_number")
+          .eq("meal_plan_id", recentPlan.id)
+          .order("week_number", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        
+        if (maxWeekData) {
+          const { data: lastWeekItems } = await supabaseClient
+            .from("meal_plan_items")
+            .select("recipe_name")
+            .eq("meal_plan_id", recentPlan.id)
+            .eq("week_number", maxWeekData.week_number);
+          
+          if (lastWeekItems && lastWeekItems.length > 0) {
+            previousRecipes = [...new Set(lastWeekItems.map(item => item.recipe_name))];
+            logStep("Last plan recipes fetched", { count: previousRecipes.length, planId: recentPlan.id });
+          }
+        }
+      }
+    }
+
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
@@ -168,12 +220,19 @@ ${mealsPerDay === 5 ?
   "- Café da Manhã: 25%\n- Almoço: 35%\n- Lanche: 10%\n- Jantar: 30%"
 }
 
+${previousRecipes.length > 0 ? `
+RECEITAS A EVITAR (usadas na semana anterior - NÃO repita nenhuma delas):
+${previousRecipes.map((r, i) => `${i + 1}. ${r}`).join('\n')}
+
+IMPORTANTE: As receitas acima foram usadas recentemente. Crie receitas DIFERENTES para garantir variedade.
+` : ''}
+
 REGRAS IMPORTANTES:
 1. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
-2. Respeite TODAS as restrições e intolerâncias alimentares
-3. Use ingredientes comuns em supermercados brasileiros
-4. Cada receita deve ter ingredientes com quantidades exatas e instruções de preparo detalhadas
-5. Os macros (calorias, proteínas, carboidratos, gorduras) devem ser realistas para cada receita
+${previousRecipes.length > 0 ? '2. NÃO use nenhuma das receitas listadas acima (evitar repetição da semana anterior)\n3.' : '2.'} Respeite TODAS as restrições e intolerâncias alimentares
+${previousRecipes.length > 0 ? '4.' : '3.'} Use ingredientes comuns em supermercados brasileiros
+${previousRecipes.length > 0 ? '5.' : '4.'} Cada receita deve ter ingredientes com quantidades exatas e instruções de preparo detalhadas
+${previousRecipes.length > 0 ? '6.' : '5.'} Os macros (calorias, proteínas, carboidratos, gorduras) devem ser realistas para cada receita
 
 FORMATO DE RESPOSTA:
 Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:

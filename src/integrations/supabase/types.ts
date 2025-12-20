@@ -265,6 +265,101 @@ export type Database = {
         }
         Relationships: []
       }
+      workout_exercises: {
+        Row: {
+          body_part: string
+          created_at: string
+          equipment: string | null
+          exercise_id: string
+          exercise_name: string
+          gif_url: string | null
+          id: string
+          notes: string | null
+          order_index: number
+          reps: number
+          rest_seconds: number
+          sets: number
+          target_muscle: string
+          workout_plan_id: string
+        }
+        Insert: {
+          body_part: string
+          created_at?: string
+          equipment?: string | null
+          exercise_id: string
+          exercise_name: string
+          gif_url?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          reps?: number
+          rest_seconds?: number
+          sets?: number
+          target_muscle: string
+          workout_plan_id: string
+        }
+        Update: {
+          body_part?: string
+          created_at?: string
+          equipment?: string | null
+          exercise_id?: string
+          exercise_name?: string
+          gif_url?: string | null
+          id?: string
+          notes?: string | null
+          order_index?: number
+          reps?: number
+          rest_seconds?: number
+          sets?: number
+          target_muscle?: string
+          workout_plan_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "workout_exercises_workout_plan_id_fkey"
+            columns: ["workout_plan_id"]
+            isOneToOne: false
+            referencedRelation: "workout_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      workout_plans: {
+        Row: {
+          created_at: string
+          description: string | null
+          difficulty: string | null
+          id: string
+          is_active: boolean
+          name: string
+          target_muscle_group: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          target_muscle_group?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          difficulty?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          target_muscle_group?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

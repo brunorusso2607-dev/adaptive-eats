@@ -11,6 +11,7 @@ import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
+import WorkoutSection from "@/components/WorkoutSection";
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
@@ -89,6 +90,7 @@ export default function Dashboard() {
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
+  const [showWorkout, setShowWorkout] = useState(false);
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -532,6 +534,8 @@ export default function Dashboard() {
               />
             ) : showMealPlan ? (
               <MealPlanSection onBack={() => setShowMealPlan(false)} />
+            ) : showWorkout ? (
+              <WorkoutSection onBack={() => setShowWorkout(false)} />
             ) : showWeightHistory && weightData?.weight_goal ? (
               <WeightHistoryChart 
                 onBack={() => setShowWeightHistory(false)}
@@ -870,8 +874,8 @@ export default function Dashboard() {
 
                   {/* Treino */}
                   <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
-                    onClick={() => toast.info("Módulo de Treino em breve!")}
+                    className="glass-card border-border/50 hover:border-orange-500/30 transition-all cursor-pointer group"
+                    onClick={() => setShowWorkout(true)}
                   >
                     <CardContent className="p-5 text-center space-y-3">
                       <div className="w-12 h-12 mx-auto bg-orange-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">

@@ -84,6 +84,29 @@ type HealthRisk = {
   suggestion?: string;
 };
 
+/**
+ * Calculate the maximum realistic muscular weight for a person
+ * Based on research: even elite bodybuilders rarely exceed certain BMI limits
+ * Men: max muscular BMI ~28-30 (we use 28 as realistic for non-athletes)
+ * Women: max muscular BMI ~24-26 (we use 25 as realistic)
+ */
+function getMaxRealisticMuscularWeight(heightCm: number, sex: "male" | "female" | null): number {
+  const heightM = heightCm / 100;
+  const maxMuscularBMI = sex === "male" ? 28 : 25;
+  return Math.round(maxMuscularBMI * heightM * heightM);
+}
+
+/**
+ * Get a healthy weight range for a given height (BMI 18.5-24.9)
+ */
+function getHealthyWeightRange(heightCm: number): { min: number; max: number } {
+  const heightM = heightCm / 100;
+  return {
+    min: Math.round(18.5 * heightM * heightM),
+    max: Math.round(24.9 * heightM * heightM),
+  };
+}
+
 function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
   const risks: HealthRisk[] = [];
   
@@ -100,11 +123,13 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
   
   const isSedentaryOrLight = data.activity_level === "sedentary" || data.activity_level === "light";
   const weightDiff = data.weight_goal - data.weight_current;
-  const isGainingWeight = weightDiff > 0;
-  const isLosingWeight = weightDiff < 0;
+  
+  // Calculate realistic limits based on sex and height
+  const maxMuscularWeight = getMaxRealisticMuscularWeight(data.height, data.sex);
+  const healthyRange = getHealthyWeightRange(data.height);
+  const sexLabel = data.sex === "female" ? "uma mulher" : data.sex === "male" ? "um homem" : "uma pessoa";
 
   // CRITICAL: Check for contradictory goal vs weight combination FIRST
-  // These are logical errors that should block other validations
   
   // "Emagrecer" but goal weight is >= current weight
   if (data.goal_mode === "lose" && data.weight_goal >= data.weight_current) {
@@ -114,7 +139,7 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
       message: `Para emagrecer, o peso desejado (${data.weight_goal}kg) precisa ser menor que o peso atual (${data.weight_current}kg).`,
       suggestion: "Ajuste o peso desejado para um valor menor ou mude o objetivo para 'Ganhar Peso'.",
     });
-    return risks; // Return early - no other validations make sense
+    return risks;
   }
 
   // "Ganhar Peso" but goal weight is <= current weight
@@ -125,18 +150,43 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
       message: `Para ganhar peso, o peso desejado (${data.weight_goal}kg) precisa ser maior que o peso atual (${data.weight_current}kg).`,
       suggestion: "Ajuste o peso desejado para um valor maior ou mude o objetivo para 'Emagrecer'.",
     });
-    return risks; // Return early - no other validations make sense
+    return risks;
   }
 
-  // DANGER: Goal weight leads to obesity (any activity level)
-  if (data.goal_mode === "gain" && goalCategory.startsWith("obese")) {
+  // CRITICAL: Check if goal weight exceeds realistic muscular limits
+  // This is the most important check - even for very active people
+  if (data.goal_mode === "gain" && data.weight_goal > maxMuscularWeight) {
+    
+    // Severe obesity (BMI 35+) - absolutely dangerous, impossible as muscle
+    if (goalBMI >= 35) {
+      risks.push({
+        level: "danger",
+        title: "Peso fisicamente impossível como músculo",
+        message: `Para ${sexLabel} de ${data.height}cm, ${data.weight_goal}kg (IMC ${goalBMI.toFixed(1)}) é obesidade severa. Mesmo atletas de elite não ultrapassam ~${maxMuscularWeight}kg nessa altura.`,
+        suggestion: `Peso máximo saudável: ~${healthyRange.max}kg. Atletas muito musculosos: até ~${maxMuscularWeight}kg.`,
+      });
+      return risks; // So severe that other validations don't make sense
+    }
+    
+    // Obesity (BMI 30-35) - still dangerous
+    if (goalBMI >= 30) {
+      risks.push({
+        level: "danger",
+        title: "Risco de obesidade",
+        message: `${data.weight_goal}kg = IMC ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Para ${sexLabel} de ${data.height}cm, peso muscular máximo realista é ~${maxMuscularWeight}kg.`,
+        suggestion: `Meta sugerida: até ${maxMuscularWeight}kg (atlético) ou ${healthyRange.max}kg (saudável).`,
+      });
+    }
+  }
+
+  // For cases without sex defined OR within muscular limits but still obese by BMI
+  if (data.goal_mode === "gain" && goalCategory.startsWith("obese") && data.weight_goal <= maxMuscularWeight) {
+    // This catches edge cases where someone might be within "muscular limits" but still obese
     risks.push({
-      level: "danger",
-      title: "Risco de obesidade",
-      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Este peso é considerado obesidade e pode trazer riscos à saúde.`,
-      suggestion: isSedentaryOrLight 
-        ? "Considere um peso meta menor e aumente seu nível de atividade física."
-        : "Considere um peso meta que resulte em IMC abaixo de 30.",
+      level: "warning",
+      title: "Atenção: IMC elevado",
+      message: `IMC projetado de ${goalBMI.toFixed(1)} está na faixa de ${getBMICategoryLabel(goalCategory)}.`,
+      suggestion: "Este peso pode ser saudável para atletas musculosos, mas consulte um profissional.",
     });
   }
 
@@ -145,7 +195,7 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
     risks.push({
       level: "warning",
       title: "Atenção: Risco de sobrepeso",
-      message: `IMC projetado de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Sem atividade física regular, o ganho tende a ser principalmente gordura.`,
+      message: `IMC projetado de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Sem exercício, o ganho será principalmente gordura.`,
       suggestion: "Inicie exercícios de força para que o ganho seja de massa muscular.",
     });
   }
@@ -155,47 +205,48 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
     risks.push({
       level: "danger",
       title: "Risco de baixo peso",
-      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Isso pode causar problemas de saúde.`,
-      suggestion: "Considere um peso meta que resulte em IMC acima de 18.5.",
+      message: `Com ${data.weight_goal}kg você teria IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Isso pode causar desnutrição.`,
+      suggestion: `Peso mínimo saudável para ${data.height}cm: ${healthyRange.min}kg.`,
     });
   }
 
-  // WARNING: Currently underweight trying to lose more
+  // Currently underweight trying to lose more
   if (currentCategory === "underweight" && data.goal_mode === "lose") {
     risks.push({
       level: "danger",
       title: "Não recomendado",
-      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Perder mais peso pode ser prejudicial à saúde.`,
-      suggestion: "Consulte um profissional de saúde antes de continuar.",
+      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Perder mais peso é perigoso.`,
+      suggestion: "Consulte um profissional de saúde. Você já está abaixo do peso ideal.",
     });
   }
 
-  // WARNING: Extreme weight change (only if goal is valid)
-  if (Math.abs(weightDiff) > 20) {
+  // WARNING: Extreme weight change (only if no danger risks)
+  const hasDanger = risks.some(r => r.level === "danger");
+  if (!hasDanger && Math.abs(weightDiff) > 20) {
     risks.push({
       level: "warning",
       title: "Meta ambiciosa",
-      message: `Mudança de ${Math.abs(weightDiff)}kg é significativa. Metas muito distantes podem ser desmotivantes.`,
+      message: `Mudança de ${Math.abs(weightDiff)}kg é significativa. Metas distantes podem desmotivar.`,
       suggestion: "Considere dividir em metas menores de 5-10kg por vez.",
     });
   }
 
-  // INFO: Gaining weight while already overweight
+  // WARNING: Gaining weight while already overweight
   if (data.goal_mode === "gain" && (currentCategory === "overweight" || currentCategory.startsWith("obese"))) {
     risks.push({
       level: "warning",
       title: "Já acima do peso ideal",
-      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Ganhar mais peso pode não ser recomendado.`,
+      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}).`,
       suggestion: "Consulte um nutricionista esportivo se o objetivo for ganho de massa muscular.",
     });
   }
 
-  // INFO: Good combination - gaining with exercise
-  if (data.goal_mode === "gain" && goalCategory === "normal" && !isSedentaryOrLight && isGainingWeight) {
+  // INFO: Good combination - healthy weight gain with exercise
+  if (data.goal_mode === "gain" && goalCategory === "normal" && !isSedentaryOrLight) {
     risks.push({
       level: "info",
       title: "Combinação adequada",
-      message: `IMC projetado de ${goalBMI.toFixed(1)} está saudável. Com exercício regular, você pode ganhar massa muscular de forma saudável.`,
+      message: `IMC projetado de ${goalBMI.toFixed(1)} está saudável. Com exercício, você pode ganhar massa muscular.`,
     });
   }
 

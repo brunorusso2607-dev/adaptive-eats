@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, Dumbbell } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale } from "lucide-react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -11,7 +11,7 @@ import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
-import WorkoutSection from "@/components/WorkoutSection";
+
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
@@ -90,7 +90,7 @@ export default function Dashboard() {
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
-  const [showWorkout, setShowWorkout] = useState(false);
+  
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -534,8 +534,6 @@ export default function Dashboard() {
               />
             ) : showMealPlan ? (
               <MealPlanSection onBack={() => setShowMealPlan(false)} />
-            ) : showWorkout ? (
-              <WorkoutSection onBack={() => setShowWorkout(false)} />
             ) : showWeightHistory && weightData?.weight_goal ? (
               <WeightHistoryChart 
                 onBack={() => setShowWeightHistory(false)}
@@ -872,25 +870,6 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Treino */}
-                  <Card 
-                    className="glass-card border-border/50 hover:border-orange-500/30 transition-all cursor-pointer group"
-                    onClick={() => setShowWorkout(true)}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className="w-12 h-12 mx-auto bg-orange-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Dumbbell className="w-6 h-6 text-orange-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Treino
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Exercícios com GIFs
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
                 </div>
 
                 {/* Info do Plano */}

@@ -363,6 +363,34 @@ export default function Dashboard() {
     }
   };
 
+  // Handle back to home for mobile
+  const handleBackToHome = () => {
+    setMobileActiveTab("home");
+    setShowRecipe(false);
+    setShowList(null);
+    setShowMealPlan(false);
+    setShowWeightLossSetup(false);
+    setShowWeightHistory(false);
+    setShowProfileSheet(false);
+  };
+
+  // Check if we're in a sub-view that needs a back button
+  const isInSubView = mobileActiveTab !== "home" || showMealPlan || showList || showProfileSheet;
+
+  // Swipe handlers for mobile navigation - MUST be called before any early returns
+  const swipeHandlers = useSwipeable({
+    onSwipedRight: () => {
+      // Only trigger on mobile and when in a sub-view
+      if (window.innerWidth < 768 && isInSubView) {
+        handleBackToHome();
+      }
+    },
+    trackMouse: false,
+    trackTouch: true,
+    delta: 50, // Minimum swipe distance
+    preventScrollOnSwipe: false,
+  });
+
   if (isLoading) {
     return (
       <div className="min-h-screen gradient-hero flex items-center justify-center">
@@ -398,20 +426,6 @@ export default function Dashboard() {
       setShowProfileSheet(true);
     }
   };
-
-  // Handle back to home for mobile
-  const handleBackToHome = () => {
-    setMobileActiveTab("home");
-    setShowRecipe(false);
-    setShowList(null);
-    setShowMealPlan(false);
-    setShowWeightLossSetup(false);
-    setShowWeightHistory(false);
-    setShowProfileSheet(false);
-  };
-
-  // Check if we're in a sub-view that needs a back button
-  const isInSubView = mobileActiveTab !== "home" || showMealPlan || showList || showProfileSheet;
   
   // Determine back button type: X for modal-like views, arrow for section views
   const getBackButtonType = (): "x" | "arrow" | null => {
@@ -423,20 +437,6 @@ export default function Dashboard() {
     }
     return null;
   };
-
-  // Swipe handlers for mobile navigation
-  const swipeHandlers = useSwipeable({
-    onSwipedRight: () => {
-      // Only trigger on mobile and when in a sub-view
-      if (window.innerWidth < 768 && isInSubView) {
-        handleBackToHome();
-      }
-    },
-    trackMouse: false,
-    trackTouch: true,
-    delta: 50, // Minimum swipe distance
-    preventScrollOnSwipe: false,
-  });
 
   return (
     <div className="min-h-screen gradient-hero pb-20 md:pb-0" {...swipeHandlers}>

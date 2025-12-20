@@ -87,8 +87,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
   // Calculate dates for Mon-Sun of the selected display week
   const getWeekDates = useMemo(() => {
-    const startDate = new Date(mealPlan.start_date);
-    startDate.setHours(0, 0, 0, 0);
+    // Parse start_date as local date (not UTC)
+    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
     
     // Get the day of week of the start date (0 = Sunday, 1 = Monday, ... 6 = Saturday)
     const startDayOfWeek = startDate.getDay();
@@ -116,13 +117,18 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return dates;
   }, [mealPlan.start_date, selectedWeek]);
 
-  // Check if a display day is before the plan start date
+  // Check if a display day is before the plan start date (using date-only comparison)
   const isDayBeforeStart = (displayDayIndex: number) => {
-    const date = new Date(getWeekDates[displayDayIndex]);
-    date.setHours(0, 0, 0, 0);
-    const startDate = new Date(mealPlan.start_date);
-    startDate.setHours(0, 0, 0, 0);
-    return date.getTime() < startDate.getTime();
+    const date = getWeekDates[displayDayIndex];
+    // Parse start_date as local date (not UTC)
+    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
+    const startDateLocal = new Date(year, month - 1, day);
+    
+    // Compare dates only (no time component)
+    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const startOnly = new Date(startDateLocal.getFullYear(), startDateLocal.getMonth(), startDateLocal.getDate());
+    
+    return dateOnly.getTime() < startOnly.getTime();
   };
 
   // Get meals for a specific display day index (0 = Monday, 6 = Sunday)

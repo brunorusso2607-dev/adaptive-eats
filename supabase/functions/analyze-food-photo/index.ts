@@ -38,6 +38,21 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
+    // Fetch user's intolerances and dietary preference from profile
+    const { data: profile, error: profileError } = await supabaseClient
+      .from("profiles")
+      .select("intolerances, dietary_preference")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError) {
+      logStep("Profile fetch error", { error: profileError.message });
+    }
+
+    const userIntolerances = profile?.intolerances || [];
+    const dietaryPreference = profile?.dietary_preference || "comum";
+    logStep("User profile loaded", { intolerances: userIntolerances, dietaryPreference });
+
     const { imageBase64 } = await req.json();
     if (!imageBase64) throw new Error("No image provided");
     logStep("Image received", { imageSize: imageBase64.length });
@@ -47,13 +62,35 @@ serve(async (req) => {
       ? imageBase64.split(',')[1] 
       : imageBase64;
 
-    const systemPrompt = `Atue como um nutricionista digital especializado em análise visual de alimentos. Sua tarefa é analisar a imagem enviada e fornecer uma estimativa nutricional detalhada.
+    // Build intolerance context for the prompt
+    let intoleranceContext = "";
+    if (userIntolerances.length > 0 || dietaryPreference !== "comum") {
+      intoleranceContext = `
+IMPORTANTE - RESTRIÇÕES ALIMENTARES DO USUÁRIO:
+${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${userIntolerances.join(", ")}` : ""}
+${dietaryPreference === "vegetariana" ? "- Dieta: VEGETARIANA (não consome carne, peixe, frutos do mar)" : ""}
+${dietaryPreference === "vegana" ? "- Dieta: VEGANA (não consome nenhum produto de origem animal)" : ""}
 
+Você DEVE analisar cada alimento identificado e verificar se contém ou pode conter ingredientes problemáticos para essas restrições.
+Considere também ingredientes "escondidos" como:
+- Lactose: leite, queijo, creme, manteiga, whey, caseína, soro de leite
+- Glúten: trigo, centeio, cevada, aveia contaminada, malte
+- Soja: lecitina de soja, proteína de soja, molho shoyu
+- Ovo: albumina, maionese, alguns molhos
+- Frutos do mar: molho de ostra, pasta de camarão
+
+Se detectar algum alimento problemático, adicione ao array "alertas_intolerancia".
+`;
+    }
+
+    const systemPrompt = `Atue como um nutricionista digital especializado em análise visual de alimentos. Sua tarefa é analisar a imagem enviada e fornecer uma estimativa nutricional detalhada.
+${intoleranceContext}
 Siga este passo a passo internamente:
 
 1. Identifique cada item visível no prato.
 2. Estime o volume/porção de cada item com base na proporção do prato e talheres.
 3. Calcule as calorias e macronutrientes (Proteínas, Carboidratos e Gorduras) para cada item.
+${userIntolerances.length > 0 || dietaryPreference !== "comum" ? "4. Verifique se algum alimento contém ou pode conter ingredientes problemáticos para as restrições do usuário." : ""}
 
 Formato de Saída (Obrigatório em JSON):
 {
@@ -75,10 +112,25 @@ Formato de Saída (Obrigatório em JSON):
     "carboidratos_totais": 0,
     "gorduras_totais": 0
   },
-  "observacoes": "Menção a possíveis ingredientes ocultos como óleos ou temperos."
+  "observacoes": "Menção a possíveis ingredientes ocultos como óleos ou temperos.",
+  "alertas_intolerancia": [
+    {
+      "alimento": "nome do alimento problemático",
+      "intolerancia": "qual intolerância afeta",
+      "risco": "alto" | "medio" | "baixo",
+      "motivo": "explicação do porquê é problemático"
+    }
+  ]
 }
 
-Responda apenas o JSON. Se a imagem não for de comida, retorne: {"erro": "Não foi possível identificar alimentos na imagem."}`;
+REGRAS:
+- O array "alertas_intolerancia" deve estar vazio [] se não houver problemas detectados
+- O campo "risco" deve ser:
+  - "alto": contém definitivamente o ingrediente problemático
+  - "medio": provavelmente contém ou é preparado com
+  - "baixo": pode conter traços ou contaminação cruzada
+- Responda apenas o JSON
+- Se a imagem não for de comida, retorne: {"erro": "Não foi possível identificar alimentos na imagem."}`;
 
     logStep("Calling Google Gemini API with image");
 
@@ -145,6 +197,11 @@ Responda apenas o JSON. Se a imagem não for de comida, retorne: {"erro": "Não 
       throw new Error("Não foi possível analisar a imagem. Tente com uma foto mais clara.");
     }
 
+    // Ensure alertas_intolerancia exists
+    if (!analysis.alertas_intolerancia) {
+      analysis.alertas_intolerancia = [];
+    }
+
     // Check for error response from AI (not food detected)
     if (analysis.erro) {
       logStep("Not food detected", { message: analysis.erro });
@@ -160,7 +217,8 @@ Responda apenas o JSON. Se a imagem não for de comida, retorne: {"erro": "Não 
 
     logStep("Analysis complete", { 
       totalCalories: analysis.total_geral?.calorias_totais,
-      foodCount: analysis.alimentos?.length 
+      foodCount: analysis.alimentos?.length,
+      alertCount: analysis.alertas_intolerancia?.length || 0
     });
 
     return new Response(JSON.stringify({

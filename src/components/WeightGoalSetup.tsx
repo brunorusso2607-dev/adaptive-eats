@@ -523,7 +523,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
                   weight_goal: data.goal_mode === "maintain" ? newWeight : data.weight_goal
                 });
               }}
-              className="h-12"
+              className={cn(
+                "h-12 transition-colors",
+                hasDangerRisk && "border-red-500 focus-visible:ring-red-500"
+              )}
             />
           </div>
           {data.goal_mode !== "maintain" && (
@@ -537,7 +540,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
                 placeholder="70"
                 value={data.weight_goal || ""}
                 onChange={(e) => setData({ ...data, weight_goal: e.target.value ? parseFloat(e.target.value) : null })}
-                className="h-12"
+                className={cn(
+                  "h-12 transition-colors",
+                  hasDangerRisk && "border-red-500 focus-visible:ring-red-500"
+                )}
               />
             </div>
           )}

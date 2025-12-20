@@ -126,7 +126,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
   };
 
   // Swipe handler to close the sheet with visual feedback
-  const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
+  const { handlers: swipeHandlers, style: swipeStyle, isDragging, isExiting } = useSwipeToClose({
     onClose: () => setIsOpen(false),
     direction: "right",
     threshold: 100,

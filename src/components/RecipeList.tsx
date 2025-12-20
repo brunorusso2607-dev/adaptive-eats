@@ -163,7 +163,10 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
     <div 
       {...swipeHandlers} 
       style={swipeStyle} 
-      className={cn("space-y-6 animate-in fade-in duration-300", isDragging && "select-none")}
+      className={cn(
+        "space-y-6 animate-in fade-in duration-300 min-h-[calc(100vh-140px)]",
+        isDragging && "select-none"
+      )}
     >
       {/* Header */}
       <div className="flex items-center gap-3">

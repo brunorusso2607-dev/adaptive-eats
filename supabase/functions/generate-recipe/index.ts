@@ -82,9 +82,10 @@ serve(async (req) => {
       complexity: profile.recipe_complexity
     });
 
-    // Build intolerances string
-    const intolerancesStr = profile.intolerances.length > 0 && !profile.intolerances.includes("nenhuma")
-      ? profile.intolerances.map((i: string) => {
+    // Build intolerances string - handle null/undefined case
+    const intolerancesList = profile.intolerances || [];
+    const intolerancesStr = intolerancesList.length > 0 && !intolerancesList.includes("nenhuma")
+      ? intolerancesList.map((i: string) => {
           const labels: Record<string, string> = {
             lactose: "SEM LACTOSE (nenhum leite, queijo, manteiga, creme de leite, iogurte ou derivados)",
             gluten: "SEM GLÚTEN (nenhuma farinha de trigo, aveia, cevada, centeio)",

@@ -11,7 +11,6 @@ const logStep = (step: string, details?: any) => {
   console.log(`[GENERATE-MEAL-PLAN] ${step}${detailsStr}`);
 };
 
-const DAY_NAMES = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 const MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 const MEAL_LABELS: Record<string, string> = {
   cafe_manha: "Café da Manhã",
@@ -22,16 +21,33 @@ const MEAL_LABELS: Record<string, string> = {
 };
 
 const DIETARY_LABELS: Record<string, string> = {
-  comum: "alimentação comum",
-  vegetariana: "vegetariana",
-  vegana: "vegana",
-  low_carb: "low carb",
+  comum: "alimentação comum (onívora)",
+  vegetariana: "vegetariana (sem carnes)",
+  vegana: "vegana (sem produtos de origem animal)",
+  low_carb: "low carb (baixo carboidrato)",
 };
 
 const GOAL_LABELS: Record<string, string> = {
-  emagrecer: "emagrecer",
-  manter: "manter peso",
-  ganhar_peso: "ganhar massa muscular",
+  emagrecer: "emagrecimento (déficit calórico)",
+  manter: "manutenção de peso",
+  ganhar_peso: "ganho de massa muscular (superávit calórico)",
+};
+
+const COMPLEXITY_LABELS: Record<string, string> = {
+  rapida: "rápidas e práticas (até 20 min de preparo)",
+  equilibrada: "equilibradas (20-40 min de preparo)",
+  elaborada: "elaboradas (mais de 40 min, receitas mais sofisticadas)",
+};
+
+const CONTEXT_LABELS: Record<string, string> = {
+  individual: "pessoa solteira/individual",
+  familia: "família (receitas que servem mais pessoas)",
+  modo_kids: "família com crianças (receitas kid-friendly)",
+};
+
+const SEX_LABELS: Record<string, string> = {
+  male: "homem",
+  female: "mulher",
 };
 
 serve(async (req) => {
@@ -48,8 +64,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -62,7 +78,6 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id });
 
     const requestBody = await req.json();
-    // Limit days to 7 max to ensure AI can generate all recipes reliably
     const daysCount = Math.min(requestBody.daysCount || 7, 7);
     const { planName, startDate, existingPlanId, weekNumber } = requestBody;
     logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber });
@@ -75,11 +90,7 @@ serve(async (req) => {
       .single();
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
-    logStep("Profile fetched", { 
-      intolerances: profile.intolerances,
-      dietary: profile.dietary_preference,
-      goal: profile.goal
-    });
+    logStep("Profile fetched", profile);
 
     // Build intolerances string
     const intolerancesList = profile.intolerances || [];
@@ -87,7 +98,7 @@ serve(async (req) => {
       ? intolerancesList.join(", ")
       : "nenhuma";
 
-    // Calculate personalized macros if weight data is available
+    // Calculate personalized macros using Mifflin-St Jeor formula
     let dailyCalories = 2000;
     let dailyProtein = 60;
     
@@ -119,135 +130,130 @@ serve(async (req) => {
 
     logStep("Daily targets calculated", { dailyCalories, dailyProtein });
 
-    const systemPrompt = `Você é um nutricionista especializado em planejamento alimentar semanal.
-Você DEVE gerar planos com receitas VARIADAS e DIFERENTES a cada dia.
+    // Determine number of meals based on complexity
+    const mealsPerDay = profile.recipe_complexity === "rapida" ? 4 : 5;
+    const selectedMealTypes = mealsPerDay === 4 
+      ? ["cafe_manha", "almoco", "lanche", "jantar"]
+      : MEAL_TYPES;
 
-PERFIL DO USUÁRIO:
-- Preferência alimentar: ${DIETARY_LABELS[profile.dietary_preference] || "comum"}
-- Objetivo: ${GOAL_LABELS[profile.goal] || "manter peso"}
-- Intolerâncias: ${intolerancesStr}
-- Meta calórica diária: ${dailyCalories} kcal
-- Meta de proteína diária: ${dailyProtein}g
+    // Build optimized prompt 100% based on user profile
+    const prompt = `Gere um plano alimentar de ${daysCount} dias para:
 
-REGRAS ABSOLUTAS:
-1. Gere exatamente ${daysCount} dias de refeições
-2. Cada dia deve ter 5 refeições: ${MEAL_TYPES.map(m => MEAL_LABELS[m]).join(", ")}
-3. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
-4. Respeite TODAS as intolerâncias alimentares
-5. Distribua as calorias: Café 20%, Almoço 30%, Lanche 10%, Jantar 30%, Ceia 10%
-6. Cada receita deve ter ingredientes e instruções completas`;
+PERFIL COMPLETO:
+- Sexo: ${SEX_LABELS[profile.sex] || "não informado"}
+- Idade: ${profile.age || "não informada"} anos
+- Peso atual: ${profile.weight_current || "não informado"}kg
+- Altura: ${profile.height || "não informada"}cm
+- Peso meta: ${profile.weight_goal || profile.weight_current || "não informado"}kg
 
-    logStep("Calling Lovable AI Gateway with gemini-2.5-flash-lite");
+OBJETIVO: ${GOAL_LABELS[profile.goal] || "manutenção de peso"}
 
-    // Call Lovable AI Gateway with tool calling for structured output
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Gere um plano alimentar completo para ${daysCount} dias com todas as ${daysCount * 5} receitas.` }
-        ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "create_meal_plan",
-              description: "Cria um plano alimentar estruturado com receitas para cada refeição do dia",
-              parameters: {
-                type: "object",
-                properties: {
-                  days: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        day_index: { type: "number", description: "Índice do dia (0-6)" },
-                        day_name: { type: "string", description: "Nome do dia em português" },
-                        meals: {
-                          type: "array",
-                          items: {
-                            type: "object",
-                            properties: {
-                              meal_type: { type: "string", enum: ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] },
-                              recipe_name: { type: "string" },
-                              recipe_calories: { type: "number" },
-                              recipe_protein: { type: "number" },
-                              recipe_carbs: { type: "number" },
-                              recipe_fat: { type: "number" },
-                              recipe_prep_time: { type: "number" },
-                              recipe_ingredients: {
-                                type: "array",
-                                items: {
-                                  type: "object",
-                                  properties: {
-                                    item: { type: "string" },
-                                    quantity: { type: "string" },
-                                    unit: { type: "string" }
-                                  },
-                                  required: ["item", "quantity", "unit"]
-                                }
-                              },
-                              recipe_instructions: {
-                                type: "array",
-                                items: { type: "string" }
-                              }
-                            },
-                            required: ["meal_type", "recipe_name", "recipe_calories", "recipe_protein", "recipe_carbs", "recipe_fat", "recipe_prep_time", "recipe_ingredients", "recipe_instructions"]
-                          }
-                        }
-                      },
-                      required: ["day_index", "day_name", "meals"]
-                    }
-                  }
-                },
-                required: ["days"]
-              }
-            }
+METAS NUTRICIONAIS DIÁRIAS:
+- Calorias: ${dailyCalories}kcal/dia
+- Proteína mínima: ${dailyProtein}g/dia
+
+PREFERÊNCIA ALIMENTAR: ${DIETARY_LABELS[profile.dietary_preference] || "comum"}
+
+RESTRIÇÕES/INTOLERÂNCIAS: ${intolerancesStr}
+
+CONTEXTO: ${CONTEXT_LABELS[profile.context] || "individual"}
+
+COMPLEXIDADE DAS RECEITAS: ${COMPLEXITY_LABELS[profile.recipe_complexity] || "equilibradas"}
+
+ESTRUTURA: ${mealsPerDay} refeições por dia (${selectedMealTypes.map(m => MEAL_LABELS[m]).join(", ")})
+
+DISTRIBUIÇÃO CALÓRICA:
+${mealsPerDay === 5 ? 
+  "- Café da Manhã: 20%\n- Almoço: 30%\n- Lanche: 10%\n- Jantar: 30%\n- Ceia: 10%" :
+  "- Café da Manhã: 25%\n- Almoço: 35%\n- Lanche: 10%\n- Jantar: 30%"
+}
+
+REGRAS IMPORTANTES:
+1. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
+2. Respeite TODAS as restrições e intolerâncias alimentares
+3. Use ingredientes comuns em supermercados brasileiros
+4. Cada receita deve ter ingredientes com quantidades exatas e instruções de preparo detalhadas
+5. Os macros (calorias, proteínas, carboidratos, gorduras) devem ser realistas para cada receita
+
+FORMATO DE RESPOSTA:
+Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:
+{
+  "days": [
+    {
+      "day_index": 0,
+      "day_name": "Segunda-feira",
+      "meals": [
+        {
+          "meal_type": "cafe_manha",
+          "recipe_name": "Nome da receita",
+          "recipe_calories": 400,
+          "recipe_protein": 20,
+          "recipe_carbs": 50,
+          "recipe_fat": 15,
+          "recipe_prep_time": 15,
+          "recipe_ingredients": [
+            {"item": "ingrediente", "quantity": "100", "unit": "g"}
+          ],
+          "recipe_instructions": ["Passo 1", "Passo 2"]
+        }
+      ]
+    }
+  ]
+}`;
+
+    logStep("Calling Google Gemini 2.5 Flash-Lite");
+
+    // Call Google Gemini API directly
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.9,
+            maxOutputTokens: 32000,
           }
-        ],
-        tool_choice: { type: "function", function: { name: "create_meal_plan" } }
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
       const errorText = await response.text();
-      logStep("Lovable AI Gateway error", { status: response.status, error: errorText });
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos à sua conta." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`Lovable AI Gateway error: ${response.status} - ${errorText}`);
+      logStep("Gemini API error", { status: response.status, error: errorText });
+      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
     const aiData = await response.json();
-    logStep("AI response received");
+    logStep("Gemini response received");
 
-    // Extract structured data from tool call
-    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "create_meal_plan") {
-      logStep("No tool call in response", { aiData: JSON.stringify(aiData).slice(0, 500) });
+    // Extract text from Gemini response
+    const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textContent) {
+      logStep("No text in response", { aiData: JSON.stringify(aiData).slice(0, 500) });
       throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
     }
 
+    // Clean and parse the JSON response
+    let cleanedJson = textContent.trim();
+    // Remove markdown code blocks if present
+    if (cleanedJson.startsWith("```json")) {
+      cleanedJson = cleanedJson.slice(7);
+    } else if (cleanedJson.startsWith("```")) {
+      cleanedJson = cleanedJson.slice(3);
+    }
+    if (cleanedJson.endsWith("```")) {
+      cleanedJson = cleanedJson.slice(0, -3);
+    }
+    cleanedJson = cleanedJson.trim();
+
     let mealPlanData;
     try {
-      mealPlanData = JSON.parse(toolCall.function.arguments);
+      mealPlanData = JSON.parse(cleanedJson);
     } catch (parseError) {
-      logStep("Parse error", { error: String(parseError), arguments: toolCall.function.arguments.slice(0, 300) });
+      logStep("Parse error", { error: String(parseError), text: cleanedJson.slice(0, 500) });
       throw new Error("Não foi possível processar o plano alimentar. Tente novamente.");
     }
 
@@ -269,7 +275,6 @@ REGRAS ABSOLUTAS:
 
     // Use existing plan or create a new one
     if (existingPlanId) {
-      // Verify the plan exists and belongs to user
       const { data: existingPlan, error: fetchError } = await supabaseClient
         .from("meal_plans")
         .select("*")
@@ -281,7 +286,6 @@ REGRAS ABSOLUTAS:
         throw new Error("Plano alimentar não encontrado");
       }
 
-      // Update the end_date if this week extends beyond
       const newEndDate = endDate.toISOString().split('T')[0];
       if (newEndDate > existingPlan.end_date) {
         await supabaseClient
@@ -294,7 +298,6 @@ REGRAS ABSOLUTAS:
       mealPlanIdToUse = existingPlan.id;
       logStep("Using existing meal plan", { planId: mealPlanIdToUse });
     } else {
-      // Create new meal plan
       const { data: newPlan, error: planError } = await supabaseClient
         .from("meal_plans")
         .insert({
@@ -313,7 +316,6 @@ REGRAS ABSOLUTAS:
       mealPlanIdToUse = newPlan.id;
       logStep("Meal plan created", { planId: mealPlanIdToUse });
 
-      // Deactivate other plans
       await supabaseClient
         .from("meal_plans")
         .update({ is_active: false })
@@ -321,7 +323,7 @@ REGRAS ABSOLUTAS:
         .neq("id", mealPlanIdToUse);
     }
 
-    // Insert meal plan items - ensure numeric fields are properly typed
+    // Insert meal plan items
     const items = mealPlanData.days.flatMap((day: any) =>
       day.meals.map((meal: any) => ({
         meal_plan_id: mealPlanIdToUse,

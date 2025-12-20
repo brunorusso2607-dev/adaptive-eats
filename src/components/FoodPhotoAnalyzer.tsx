@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -17,6 +17,13 @@ type FoodItem = {
   };
 };
 
+type IntoleranceAlert = {
+  alimento: string;
+  intolerancia: string;
+  risco: "alto" | "medio" | "baixo";
+  motivo: string;
+};
+
 type FoodAnalysis = {
   alimentos: FoodItem[];
   total_geral: {
@@ -26,6 +33,7 @@ type FoodAnalysis = {
     gorduras_totais: number;
   };
   observacoes: string;
+  alertas_intolerancia?: IntoleranceAlert[];
 };
 
 type LabelIngredient = {
@@ -401,6 +409,62 @@ export default function FoodPhotoAnalyzer() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Intolerance Alerts */}
+              {foodAnalysis.alertas_intolerancia && foodAnalysis.alertas_intolerancia.length > 0 && (
+                <Card className="glass-card border-red-500/30 bg-red-500/5">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-red-500">
+                      <AlertTriangle className="w-5 h-5" />
+                      Alerta de Intolerância
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {foodAnalysis.alertas_intolerancia.map((alerta, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg ${
+                          alerta.risco === "alto" 
+                            ? "bg-red-500/20 border border-red-500/30" 
+                            : alerta.risco === "medio"
+                            ? "bg-yellow-500/20 border border-yellow-500/30"
+                            : "bg-orange-500/10 border border-orange-500/20"
+                        }`}
+                      >
+                        <div className="flex items-start gap-2">
+                          {alerta.risco === "alto" ? (
+                            <ShieldX className="w-5 h-5 text-red-500 flex-shrink-0 mt-0.5" />
+                          ) : alerta.risco === "medio" ? (
+                            <ShieldAlert className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                          ) : (
+                            <AlertCircle className="w-5 h-5 text-orange-500 flex-shrink-0 mt-0.5" />
+                          )}
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-medium text-foreground">{alerta.alimento}</span>
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                alerta.risco === "alto" 
+                                  ? "bg-red-500/30 text-red-600" 
+                                  : alerta.risco === "medio"
+                                  ? "bg-yellow-500/30 text-yellow-600"
+                                  : "bg-orange-500/20 text-orange-600"
+                              }`}>
+                                {alerta.risco === "alto" ? "Risco Alto" : alerta.risco === "medio" ? "Risco Médio" : "Risco Baixo"}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              <strong>Intolerância:</strong> {alerta.intolerancia}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {alerta.motivo}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Individual foods */}
               <Card className="glass-card">

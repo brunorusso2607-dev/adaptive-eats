@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Clock, Flame, Heart, Loader2, ChefHat, Trash2 } from "lucide-react";
+import { ArrowLeft, Clock, Flame, Heart, Loader2, ChefHat, Trash2, UtensilsCrossed, Calendar } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { Json } from "@/integrations/supabase/types";
+import { useUnifiedFavorites, type UnifiedFavorite } from "@/hooks/useUnifiedFavorites";
+import { Badge } from "@/components/ui/badge";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,8 +67,16 @@ const COMPLEXITY_LABELS = {
 };
 
 export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListProps) {
-  const [recipes, setRecipes] = useState<RecipeFromDB[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [historyRecipes, setHistoryRecipes] = useState<RecipeFromDB[]>([]);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
+  
+  // Hook unificado para favoritos
+  const { 
+    favorites, 
+    isLoading: isLoadingFavorites, 
+    toggleFavorite: toggleUnifiedFavorite,
+    deleteRecipe: deleteUnifiedRecipe 
+  } = useUnifiedFavorites();
 
   // Swipe to close with visual feedback
   const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
@@ -76,34 +86,30 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
   });
 
   useEffect(() => {
-    fetchRecipes();
+    if (type === "history") {
+      fetchHistoryRecipes();
+    }
   }, [type]);
 
-  const fetchRecipes = async () => {
-    setIsLoading(true);
+  const fetchHistoryRecipes = async () => {
+    setIsLoadingHistory(true);
     try {
-      let query = supabase
+      const { data, error } = await supabase
         .from("recipes")
         .select("*")
         .order("created_at", { ascending: false });
 
-      if (type === "favorites") {
-        query = query.eq("is_favorite", true);
-      }
-
-      const { data, error } = await query;
-
       if (error) throw error;
-      setRecipes(data || []);
+      setHistoryRecipes(data || []);
     } catch (error) {
       console.error("Error fetching recipes:", error);
       toast.error("Erro ao carregar receitas");
     } finally {
-      setIsLoading(false);
+      setIsLoadingHistory(false);
     }
   };
 
-  const toggleFavorite = async (recipeId: string, currentValue: boolean) => {
+  const toggleHistoryFavorite = async (recipeId: string, currentValue: boolean) => {
     try {
       const { error } = await supabase
         .from("recipes")
@@ -112,9 +118,8 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
 
       if (error) throw error;
 
-      setRecipes(prev => 
+      setHistoryRecipes(prev => 
         prev.map(r => r.id === recipeId ? { ...r, is_favorite: !currentValue } : r)
-          .filter(r => type === "history" || r.is_favorite)
       );
 
       toast.success(currentValue ? "Removido dos favoritos" : "Adicionado aos favoritos");
@@ -124,7 +129,7 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
     }
   };
 
-  const deleteRecipe = async (recipeId: string) => {
+  const deleteHistoryRecipe = async (recipeId: string) => {
     try {
       const { error } = await supabase
         .from("recipes")
@@ -133,7 +138,7 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
 
       if (error) throw error;
 
-      setRecipes(prev => prev.filter(r => r.id !== recipeId));
+      setHistoryRecipes(prev => prev.filter(r => r.id !== recipeId));
       toast.success("Receita deletada com sucesso");
     } catch (error) {
       console.error("Error deleting recipe:", error);
@@ -159,6 +164,27 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
     onSelectRecipe(formattedRecipe);
   };
 
+  const handleSelectUnifiedFavorite = (favorite: UnifiedFavorite) => {
+    const formattedRecipe: Recipe = {
+      name: favorite.name,
+      description: favorite.description || "",
+      ingredients: favorite.ingredients as { item: string; quantity: string; unit: string }[],
+      instructions: favorite.instructions as string[],
+      prep_time: favorite.prep_time,
+      complexity: favorite.complexity,
+      servings: favorite.servings,
+      calories: favorite.calories,
+      protein: favorite.protein,
+      carbs: favorite.carbs,
+      fat: favorite.fat,
+      input_ingredients: favorite.input_ingredients,
+    };
+    onSelectRecipe(formattedRecipe);
+  };
+
+  const isLoading = type === "favorites" ? isLoadingFavorites : isLoadingHistory;
+  const recipes = type === "favorites" ? [] : historyRecipes; // History usa o estado local
+
   return (
     <div 
       {...swipeHandlers} 
@@ -182,110 +208,220 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
         <div className="flex justify-center py-12">
           <Loader2 className="w-8 h-8 animate-spin text-primary" />
         </div>
-      ) : recipes.length === 0 ? (
-        <Card className="glass-card border-border/30">
-          <CardContent className="p-8 text-center">
-            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
-              {type === "favorites" ? (
+      ) : type === "favorites" ? (
+        // Renderização de favoritos unificados
+        favorites.length === 0 ? (
+          <Card className="glass-card border-border/30">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
                 <Heart className="w-8 h-8 text-muted-foreground" />
-              ) : (
-                <ChefHat className="w-8 h-8 text-muted-foreground" />
-              )}
-            </div>
-            <h3 className="font-display font-bold text-foreground mb-2">
-              {type === "favorites" ? "Nenhuma receita favorita" : "Nenhuma receita salva"}
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              {type === "favorites" 
-                ? "Adicione receitas aos favoritos para vê-las aqui" 
-                : "Gere e salve receitas para vê-las aqui"}
-            </p>
-          </CardContent>
-        </Card>
-      ) : (
-        <div className="space-y-3">
-          {recipes.map((recipe) => (
-            <Card 
-              key={recipe.id} 
-              className="glass-card border-border/30 hover:border-primary/30 transition-all cursor-pointer overflow-hidden"
-              onClick={() => handleSelectRecipe(recipe)}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-display font-bold text-foreground truncate">
-                      {recipe.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
-                      {recipe.description}
-                    </p>
-                    <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
-                      <span className="flex items-center gap-1 text-muted-foreground">
-                        <Clock className="w-3.5 h-3.5" />
-                        {recipe.prep_time} min
-                      </span>
-                      <span className="flex items-center gap-1 text-orange-500">
-                        <Flame className="w-3.5 h-3.5" />
-                        {recipe.calories} kcal
-                      </span>
-                      <span className={cn("text-xs", COMPLEXITY_LABELS[recipe.complexity].color)}>
-                        {COMPLEXITY_LABELS[recipe.complexity].label}
-                      </span>
+              </div>
+              <h3 className="font-display font-bold text-foreground mb-2">
+                Nenhuma receita favorita
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Adicione receitas aos favoritos para vê-las aqui
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {favorites.map((favorite) => (
+              <Card 
+                key={`${favorite.source}-${favorite.id}`}
+                className="glass-card border-border/30 hover:border-primary/30 transition-all cursor-pointer overflow-hidden"
+                onClick={() => handleSelectUnifiedFavorite(favorite)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <h3 className="font-display font-bold text-foreground truncate">
+                          {favorite.name}
+                        </h3>
+                        {favorite.source === "meal_plan" && (
+                          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
+                            <Calendar className="w-2.5 h-2.5 mr-1" />
+                            Plano
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground line-clamp-1">
+                        {favorite.description}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          {favorite.prep_time} min
+                        </span>
+                        <span className="flex items-center gap-1 text-orange-500">
+                          <Flame className="w-3.5 h-3.5" />
+                          {favorite.calories} kcal
+                        </span>
+                        {favorite.source === "recipe" && (
+                          <span className={cn("text-xs", COMPLEXITY_LABELS[favorite.complexity].color)}>
+                            {COMPLEXITY_LABELS[favorite.complexity].label}
+                          </span>
+                        )}
+                        {favorite.source === "meal_plan" && favorite.meal_plan_name && (
+                          <span className="text-xs text-primary">
+                            {favorite.meal_plan_name}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleUnifiedFavorite(favorite);
+                        }}
+                      >
+                        <Heart 
+                          className="w-5 h-5 transition-colors text-rose-500 fill-rose-500"
+                        />
+                      </Button>
+                      {favorite.source === "recipe" && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={(e) => e.stopPropagation()}
+                              className="text-muted-foreground hover:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Deletar receita?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja deletar "{favorite.name}"? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction
+                                onClick={() => deleteUnifiedRecipe(favorite)}
+                                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                              >
+                                Deletar
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleFavorite(recipe.id, recipe.is_favorite);
-                      }}
-                    >
-                      <Heart 
-                        className={cn(
-                          "w-5 h-5 transition-colors",
-                          recipe.is_favorite 
-                            ? "text-rose-500 fill-rose-500" 
-                            : "text-muted-foreground"
-                        )} 
-                      />
-                    </Button>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={(e) => e.stopPropagation()}
-                          className="text-muted-foreground hover:text-destructive"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent onClick={(e) => e.stopPropagation()}>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Deletar receita?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Tem certeza que deseja deletar "{recipe.name}"? Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteRecipe(recipe.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
+      ) : (
+        // Renderização de histórico (código original)
+        recipes.length === 0 ? (
+          <Card className="glass-card border-border/30">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
+                <ChefHat className="w-8 h-8 text-muted-foreground" />
+              </div>
+              <h3 className="font-display font-bold text-foreground mb-2">
+                Nenhuma receita salva
+              </h3>
+              <p className="text-sm text-muted-foreground">
+                Gere e salve receitas para vê-las aqui
+              </p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
+            {recipes.map((recipe) => (
+              <Card 
+                key={recipe.id} 
+                className="glass-card border-border/30 hover:border-primary/30 transition-all cursor-pointer overflow-hidden"
+                onClick={() => handleSelectRecipe(recipe)}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display font-bold text-foreground truncate">
+                        {recipe.name}
+                      </h3>
+                      <p className="text-sm text-muted-foreground line-clamp-1 mt-0.5">
+                        {recipe.description}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-3 mt-2 text-xs">
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <Clock className="w-3.5 h-3.5" />
+                          {recipe.prep_time} min
+                        </span>
+                        <span className="flex items-center gap-1 text-orange-500">
+                          <Flame className="w-3.5 h-3.5" />
+                          {recipe.calories} kcal
+                        </span>
+                        <span className={cn("text-xs", COMPLEXITY_LABELS[recipe.complexity].color)}>
+                          {COMPLEXITY_LABELS[recipe.complexity].label}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleHistoryFavorite(recipe.id, recipe.is_favorite);
+                        }}
+                      >
+                        <Heart 
+                          className={cn(
+                            "w-5 h-5 transition-colors",
+                            recipe.is_favorite 
+                              ? "text-rose-500 fill-rose-500" 
+                              : "text-muted-foreground"
+                          )} 
+                        />
+                      </Button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-muted-foreground hover:text-destructive"
                           >
-                            Deletar
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Deletar receita?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Tem certeza que deseja deletar "{recipe.name}"? Esta ação não pode ser desfeita.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteHistoryRecipe(recipe.id)}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Deletar
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                    </div>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )
       )}
     </div>
   );

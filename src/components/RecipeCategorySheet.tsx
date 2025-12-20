@@ -169,7 +169,7 @@ export default function RecipeCategorySheet({
       >
         <SheetHeader className="px-6 pb-4 border-b">
           <div className="flex items-center gap-3">
-            {step === 2 && (
+            {step === 2 ? (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -178,6 +178,17 @@ export default function RecipeCategorySheet({
               >
                 <ArrowLeft className="w-5 h-5" />
               </Button>
+            ) : getSelectedCount() > 0 ? (
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-8 -ml-2 text-muted-foreground hover:text-destructive"
+                onClick={() => setSelectedFilters({})}
+              >
+                Limpar
+              </Button>
+            ) : (
+              <div className="w-14" />
             )}
             <SheetTitle className="text-center font-display text-xl flex-1">
               {step === 1 ? "Personalize sua busca" : "Escolha uma categoria"}

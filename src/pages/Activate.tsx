@@ -5,11 +5,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, Mail, Loader2, CheckCircle, Smartphone, Download } from "lucide-react";
+import { ChefHat, Mail, Loader2, CheckCircle, Smartphone, Download, Share, PlusSquare, MoreVertical, ArrowRight } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 
 const emailSchema = z.string().email("Email inválido");
+
+type Step = "email" | "install";
 
 export default function Activate() {
   const [searchParams] = useSearchParams();
@@ -17,12 +19,18 @@ export default function Activate() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
-  const [isActivated, setIsActivated] = useState(false);
+  const [step, setStep] = useState<Step>("email");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
+  const [isIOS, setIsIOS] = useState(false);
+  const [isAndroid, setIsAndroid] = useState(false);
 
-  // Listen for PWA install prompt
+  // Detect platform and listen for PWA install prompt
   useEffect(() => {
+    const userAgent = navigator.userAgent.toLowerCase();
+    setIsIOS(/iphone|ipad|ipod/.test(userAgent));
+    setIsAndroid(/android/.test(userAgent));
+
     const handler = (e: Event) => {
       e.preventDefault();
       setDeferredPrompt(e);
@@ -38,8 +46,7 @@ export default function Activate() {
 
   const handleInstallPWA = async () => {
     if (!deferredPrompt) {
-      // Fallback for iOS or browsers that don't support beforeinstallprompt
-      toast.info("Para instalar o app, use o menu do navegador e selecione 'Adicionar à tela inicial'");
+      toast.info("Use as instruções abaixo para instalar o app");
       return;
     }
 
@@ -48,6 +55,7 @@ export default function Activate() {
     
     if (outcome === "accepted") {
       toast.success("App instalado com sucesso!");
+      window.location.href = "/dashboard";
     }
     
     setDeferredPrompt(null);
@@ -90,13 +98,8 @@ export default function Activate() {
           throw new Error(verifyError.message);
         }
 
-        toast.success("Conta ativada! Redirecionando...");
-        setIsActivated(true);
-        
-        // Small delay to show success state, then redirect
-        setTimeout(() => {
-          window.location.href = "/dashboard";
-        }, 1500);
+        toast.success("Conta ativada com sucesso!");
+        setStep("install");
       } else {
         throw new Error("Erro ao gerar link de acesso. Tente novamente.");
       }
@@ -108,31 +111,166 @@ export default function Activate() {
     }
   };
 
-  if (isActivated) {
+  const handleSkipInstall = () => {
+    window.location.href = "/dashboard";
+  };
+
+  // Step 2: Install instructions
+  if (step === "install") {
     return (
-      <div className="min-h-screen gradient-hero flex flex-col items-center justify-center px-4">
-        <Card className="w-full max-w-md glass-card border-border/50 text-center">
-          <CardHeader className="space-y-4">
-            <div className="mx-auto w-20 h-20 bg-green-500/20 rounded-full flex items-center justify-center">
-              <CheckCircle className="w-12 h-12 text-green-500" />
+      <div className="min-h-screen gradient-hero flex flex-col items-center justify-center px-4 py-8">
+        <Card className="w-full max-w-md glass-card border-border/50">
+          <CardHeader className="text-center space-y-4">
+            <div className="mx-auto w-16 h-16 bg-green-500/20 rounded-2xl flex items-center justify-center">
+              <CheckCircle className="w-9 h-9 text-green-500" />
             </div>
             <div>
-              <CardTitle className="font-display text-2xl">Conta Ativada!</CardTitle>
+              <CardTitle className="font-display text-2xl">Conta Ativada! 🎉</CardTitle>
               <CardDescription className="mt-2">
-                Redirecionando para o ReceitAI...
+                Agora instale o app na sua tela inicial para acessar mais fácil
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center justify-center">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-            </div>
+          <CardContent className="space-y-6">
+            {/* Android / Chrome - Show install button */}
+            {(showInstallButton || isAndroid) && !isIOS && (
+              <div className="space-y-4">
+                <Button 
+                  onClick={handleInstallPWA}
+                  className="w-full gradient-primary border-0 shadow-glow h-12 text-base"
+                >
+                  <Download className="w-5 h-5 mr-2" />
+                  Instalar App
+                </Button>
+              </div>
+            )}
+
+            {/* iOS Instructions */}
+            {isIOS && (
+              <div className="space-y-4">
+                <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                  <p className="text-sm font-semibold text-center mb-4">
+                    Siga os 3 passos para instalar:
+                  </p>
+                  
+                  {/* Step 1 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Toque no ícone de compartilhar</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        O quadrado com a seta para cima na parte inferior do Safari
+                      </p>
+                      <div className="mt-2 flex items-center justify-center p-3 bg-background/50 rounded-lg">
+                        <Share className="w-8 h-8 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Role para baixo e toque em</p>
+                      <div className="mt-2 flex items-center gap-2 p-3 bg-background/50 rounded-lg">
+                        <PlusSquare className="w-6 h-6 text-primary" />
+                        <span className="text-sm font-medium">Adicionar à Tela de Início</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 3 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
+                      3
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Toque em "Adicionar"</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        O app vai aparecer na sua tela inicial como qualquer outro app!
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">
+                    ⚠️ Use o Safari para instalar. Outros navegadores não suportam essa função no iOS.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* Android manual instructions (fallback) */}
+            {isAndroid && !showInstallButton && (
+              <div className="space-y-4">
+                <div className="bg-secondary/50 rounded-xl p-4 space-y-4">
+                  <p className="text-sm font-semibold text-center mb-4">
+                    Siga os passos para instalar:
+                  </p>
+                  
+                  {/* Step 1 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
+                      1
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Toque no menu do navegador</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        Os 3 pontinhos no canto superior direito
+                      </p>
+                      <div className="mt-2 flex items-center justify-center p-3 bg-background/50 rounded-lg">
+                        <MoreVertical className="w-8 h-8 text-primary" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Step 2 */}
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary">
+                      2
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium">Selecione "Instalar app" ou</p>
+                      <div className="mt-2 flex items-center gap-2 p-3 bg-background/50 rounded-lg">
+                        <Download className="w-6 h-6 text-primary" />
+                        <span className="text-sm font-medium">Adicionar à tela inicial</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Desktop instructions */}
+            {!isIOS && !isAndroid && !showInstallButton && (
+              <div className="bg-secondary/50 rounded-xl p-4">
+                <p className="text-sm text-center">
+                  Para instalar, use o menu do navegador e selecione "Instalar app" ou acesse pelo celular para uma melhor experiência.
+                </p>
+              </div>
+            )}
+
+            {/* Continue button */}
+            <Button 
+              variant="outline" 
+              onClick={handleSkipInstall}
+              className="w-full h-12"
+            >
+              Continuar para o app
+              <ArrowRight className="w-4 h-4 ml-2" />
+            </Button>
           </CardContent>
         </Card>
       </div>
     );
   }
 
+  // Step 1: Email activation
   return (
     <div className="min-h-screen gradient-hero flex flex-col items-center justify-center px-4">
       <Card className="w-full max-w-md glass-card border-border/50">
@@ -184,30 +322,6 @@ export default function Activate() {
               )}
             </Button>
           </form>
-
-          {/* PWA Install Section */}
-          <div className="pt-4 border-t border-border/50">
-            <div className="flex items-center gap-3 p-4 bg-secondary/50 rounded-lg">
-              <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                <Smartphone className="w-5 h-5 text-primary" />
-              </div>
-              <div className="flex-1">
-                <p className="text-sm font-medium">Instale o App</p>
-                <p className="text-xs text-muted-foreground">
-                  Acesse o ReceitAI direto da sua tela inicial
-                </p>
-              </div>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleInstallPWA}
-                className="flex-shrink-0"
-              >
-                <Download className="w-4 h-4 mr-1" />
-                Instalar
-              </Button>
-            </div>
-          </div>
         </CardContent>
       </Card>
 

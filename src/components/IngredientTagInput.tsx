@@ -143,7 +143,7 @@ export default function IngredientTagInput({
   }, [filteredSuggestions.length]);
 
   return (
-    <div ref={containerRef} className="relative w-full">
+    <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>
       {/* Input container with tags */}
       <div
         className={cn(
@@ -197,7 +197,7 @@ export default function IngredientTagInput({
 
       {/* Suggestions dropdown */}
       {showSuggestions && filteredSuggestions.length > 0 && (
-        <div className="absolute z-50 w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-lg max-h-64 overflow-y-auto">
+        <div className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto">
           {filteredSuggestions.map((suggestion, index) => (
             <button
               key={suggestion}

@@ -160,14 +160,52 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     setRegenerateDialog({ open: true, meal, mealType });
   };
 
+  // Calculate dates for the selected week
+  const getWeekDates = useMemo(() => {
+    const startDate = new Date(mealPlan.start_date);
+    const weekStartDate = new Date(startDate);
+    weekStartDate.setDate(startDate.getDate() + (selectedWeek - 1) * 7);
+    
+    const dates: Date[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(weekStartDate);
+      date.setDate(weekStartDate.getDate() + i);
+      dates.push(date);
+    }
+    return dates;
+  }, [mealPlan.start_date, selectedWeek]);
+
+  const formatWeekRange = useMemo(() => {
+    const startDate = getWeekDates[0];
+    const endDate = getWeekDates[6];
+    
+    const formatDate = (date: Date) => {
+      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+    };
+    
+    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
+  }, [getWeekDates]);
+
+  const getMonthYear = useMemo(() => {
+    const middleDate = getWeekDates[3]; // Use middle of week for month display
+    return middleDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+  }, [getWeekDates]);
+
+  // Check if a day has all meals executed (placeholder for future implementation)
+  const getDayStatus = (dayIndex: number): 'pending' | 'partial' | 'complete' => {
+    // TODO: Implement actual execution check when meal_executions table is created
+    // For now, return 'pending' for all days
+    return 'pending';
+  };
+
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      {/* Header */}
+      {/* Header with dynamic dates */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground truncate">{mealPlan.name}</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground capitalize">{getMonthYear}</h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {new Date(mealPlan.start_date).toLocaleDateString('pt-BR')} - {new Date(mealPlan.end_date).toLocaleDateString('pt-BR')}
+            {formatWeekRange}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
@@ -175,53 +213,78 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         </Button>
       </div>
 
-      {/* Navigation Row - Two Dropdowns */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* Week Dropdown */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Semana
-          </label>
-          <Select
-            value={selectedWeek.toString()}
-            onValueChange={(value) => {
-              setSelectedWeek(Number(value));
-              setSelectedDay(0);
-            }}
-          >
-            <SelectTrigger className="w-full bg-background">
-              <SelectValue placeholder="Semana" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border">
-              {availableWeeks.map((week) => (
-                <SelectItem key={week} value={week.toString()}>
-                  Semana {week}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+      {/* Week Selector */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Semana
+        </label>
+        <Select
+          value={selectedWeek.toString()}
+          onValueChange={(value) => {
+            setSelectedWeek(Number(value));
+            setSelectedDay(0);
+          }}
+        >
+          <SelectTrigger className="w-full bg-background">
+            <SelectValue placeholder="Semana" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border">
+            {availableWeeks.map((week) => (
+              <SelectItem key={week} value={week.toString()}>
+                Semana {week}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Day Dropdown */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Dia
-          </label>
-          <Select
-            value={selectedDay.toString()}
-            onValueChange={(value) => setSelectedDay(Number(value))}
-          >
-            <SelectTrigger className="w-full bg-background">
-              <SelectValue placeholder="Dia" />
-            </SelectTrigger>
-            <SelectContent className="bg-background border">
-              {DAY_NAMES.map((day, index) => (
-                <SelectItem key={day} value={index.toString()}>
-                  {day}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+      {/* Mini Calendar - Horizontal Days */}
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+          Dia
+        </label>
+        <div className="grid grid-cols-7 gap-1 sm:gap-2">
+          {DAY_NAMES.map((dayName, index) => {
+            const date = getWeekDates[index];
+            const dayNumber = date.getDate();
+            const isSelected = selectedDay === index;
+            const status = getDayStatus(index);
+            const hasMeals = getDayMeals(index).length > 0;
+            
+            return (
+              <button
+                key={dayName}
+                onClick={() => setSelectedDay(index)}
+                className={cn(
+                  "flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all border",
+                  isSelected 
+                    ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                    : "bg-background hover:bg-muted border-border hover:border-primary/50",
+                )}
+              >
+                <span className={cn(
+                  "text-[10px] sm:text-xs font-medium",
+                  isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                )}>
+                  {dayName.slice(0, 3)}
+                </span>
+                <span className={cn(
+                  "text-base sm:text-lg font-bold",
+                  isSelected ? "text-primary-foreground" : "text-foreground"
+                )}>
+                  {dayNumber}
+                </span>
+                {/* Status indicator */}
+                <div className={cn(
+                  "w-2 h-2 rounded-full mt-1",
+                  !hasMeals && "bg-muted-foreground/30",
+                  hasMeals && status === 'pending' && "bg-muted-foreground/50",
+                  hasMeals && status === 'partial' && "bg-yellow-500",
+                  hasMeals && status === 'complete' && "bg-green-500",
+                )} />
+              </button>
+            );
+          })}
         </div>
       </div>
 

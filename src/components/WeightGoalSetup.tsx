@@ -543,6 +543,59 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           )}
         </div>
 
+        {/* Health Risk Alerts - Show right after weight fields */}
+        {healthRisks.length > 0 && (
+          <div className="space-y-2">
+            {healthRisks.map((risk, index) => (
+              <div
+                key={index}
+                className={cn(
+                  "rounded-xl p-3 border-2 animate-in fade-in slide-in-from-top-2 duration-300",
+                  risk.level === "danger" && "bg-red-50 dark:bg-red-950/30 border-red-400/50",
+                  risk.level === "warning" && "bg-amber-50 dark:bg-amber-950/30 border-amber-400/50",
+                  risk.level === "info" && "bg-blue-50 dark:bg-blue-950/30 border-blue-400/50"
+                )}
+              >
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0",
+                    risk.level === "danger" && "bg-red-500/20",
+                    risk.level === "warning" && "bg-amber-500/20",
+                    risk.level === "info" && "bg-blue-500/20"
+                  )}>
+                    {risk.level === "danger" && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />}
+                    {risk.level === "warning" && <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
+                    {risk.level === "info" && <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className={cn(
+                      "font-semibold text-sm",
+                      risk.level === "danger" && "text-red-700 dark:text-red-300",
+                      risk.level === "warning" && "text-amber-700 dark:text-amber-300",
+                      risk.level === "info" && "text-blue-700 dark:text-blue-300"
+                    )}>
+                      {risk.title}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {risk.message}
+                    </p>
+                    {risk.suggestion && (
+                      <p className={cn(
+                        "text-xs mt-1.5 font-medium",
+                        risk.level === "danger" && "text-red-600 dark:text-red-400",
+                        risk.level === "warning" && "text-amber-600 dark:text-amber-400",
+                        risk.level === "info" && "text-blue-600 dark:text-blue-400"
+                      )}>
+                        💡 {risk.suggestion}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Height and Age Row */}
         <div className="grid grid-cols-2 gap-3">
           <div className="space-y-2">
@@ -640,59 +693,6 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           </div>
         </div>
       </div>
-
-      {/* Health Risk Alerts */}
-      {healthRisks.length > 0 && (
-        <div className="space-y-3">
-          {healthRisks.map((risk, index) => (
-            <div
-              key={index}
-              className={cn(
-                "rounded-xl p-4 border-2",
-                risk.level === "danger" && "bg-red-50 dark:bg-red-950/30 border-red-400/50",
-                risk.level === "warning" && "bg-amber-50 dark:bg-amber-950/30 border-amber-400/50",
-                risk.level === "info" && "bg-blue-50 dark:bg-blue-950/30 border-blue-400/50"
-              )}
-            >
-              <div className="flex items-start gap-3">
-                <div className={cn(
-                  "w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                  risk.level === "danger" && "bg-red-500/20",
-                  risk.level === "warning" && "bg-amber-500/20",
-                  risk.level === "info" && "bg-blue-500/20"
-                )}>
-                  {risk.level === "danger" && <AlertTriangle className="w-4 h-4 text-red-600 dark:text-red-400" />}
-                  {risk.level === "warning" && <AlertTriangle className="w-4 h-4 text-amber-600 dark:text-amber-400" />}
-                  {risk.level === "info" && <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className={cn(
-                    "font-semibold text-sm",
-                    risk.level === "danger" && "text-red-700 dark:text-red-300",
-                    risk.level === "warning" && "text-amber-700 dark:text-amber-300",
-                    risk.level === "info" && "text-blue-700 dark:text-blue-300"
-                  )}>
-                    {risk.title}
-                  </p>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {risk.message}
-                  </p>
-                  {risk.suggestion && (
-                    <p className={cn(
-                      "text-xs mt-2 font-medium",
-                      risk.level === "danger" && "text-red-600 dark:text-red-400",
-                      risk.level === "warning" && "text-amber-600 dark:text-amber-400",
-                      risk.level === "info" && "text-blue-600 dark:text-blue-400"
-                    )}>
-                      💡 {risk.suggestion}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
 
       {/* Calculations Preview */}
       {calculations && isComplete && modeInfo && (

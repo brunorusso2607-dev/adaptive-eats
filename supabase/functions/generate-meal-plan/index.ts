@@ -48,8 +48,8 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
-    if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY is not configured");
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -135,65 +135,88 @@ REGRAS ABSOLUTAS:
 3. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
 4. Respeite TODAS as intolerâncias alimentares
 5. Distribua as calorias: Café 20%, Almoço 30%, Lanche 10%, Jantar 30%, Ceia 10%
-6. Cada receita deve ter ingredientes e instruções completas
+6. Cada receita deve ter ingredientes e instruções completas`;
 
-FORMATO DE RESPOSTA (JSON VÁLIDO):
-{
-  "days": [
-    {
-      "day_index": 0,
-      "day_name": "Segunda",
-      "meals": [
-        {
-          "meal_type": "cafe_manha",
-          "recipe_name": "Nome da Receita",
-          "recipe_calories": 400,
-          "recipe_protein": 15,
-          "recipe_carbs": 45,
-          "recipe_fat": 18,
-          "recipe_prep_time": 15,
-          "recipe_ingredients": [
-            {"item": "ingrediente", "quantity": "100", "unit": "g"}
-          ],
-          "recipe_instructions": ["Passo 1...", "Passo 2..."]
-        }
-      ]
-    }
-  ]
-}
+    logStep("Calling Lovable AI Gateway with gemini-2.5-flash-lite");
 
-IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
-
-    const userPrompt = `Gere AGORA um plano alimentar completo para ${daysCount} dias.
-Retorne o JSON com todas as ${daysCount * 5} receitas (5 refeições por dia).
-NÃO peça mais informações. Apenas gere o plano completo.`;
-
-    logStep("Calling Google Gemini API for meal plan generation");
-
-    // Call Google Gemini API directly
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    // Call Lovable AI Gateway with tool calling for structured output
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        contents: [
+        model: "google/gemini-2.5-flash-lite",
+        messages: [
+          { role: "system", content: systemPrompt },
+          { role: "user", content: `Gere um plano alimentar completo para ${daysCount} dias com todas as ${daysCount * 5} receitas.` }
+        ],
+        tools: [
           {
-            parts: [
-              { text: `${systemPrompt}\n\n${userPrompt}` }
-            ]
+            type: "function",
+            function: {
+              name: "create_meal_plan",
+              description: "Cria um plano alimentar estruturado com receitas para cada refeição do dia",
+              parameters: {
+                type: "object",
+                properties: {
+                  days: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        day_index: { type: "number", description: "Índice do dia (0-6)" },
+                        day_name: { type: "string", description: "Nome do dia em português" },
+                        meals: {
+                          type: "array",
+                          items: {
+                            type: "object",
+                            properties: {
+                              meal_type: { type: "string", enum: ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] },
+                              recipe_name: { type: "string" },
+                              recipe_calories: { type: "number" },
+                              recipe_protein: { type: "number" },
+                              recipe_carbs: { type: "number" },
+                              recipe_fat: { type: "number" },
+                              recipe_prep_time: { type: "number" },
+                              recipe_ingredients: {
+                                type: "array",
+                                items: {
+                                  type: "object",
+                                  properties: {
+                                    item: { type: "string" },
+                                    quantity: { type: "string" },
+                                    unit: { type: "string" }
+                                  },
+                                  required: ["item", "quantity", "unit"]
+                                }
+                              },
+                              recipe_instructions: {
+                                type: "array",
+                                items: { type: "string" }
+                              }
+                            },
+                            required: ["meal_type", "recipe_name", "recipe_calories", "recipe_protein", "recipe_carbs", "recipe_fat", "recipe_prep_time", "recipe_ingredients", "recipe_instructions"]
+                          }
+                        }
+                      },
+                      required: ["day_index", "day_name", "meals"]
+                    }
+                  }
+                },
+                required: ["days"]
+              }
+            }
           }
         ],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 8192,
-        }
+        tool_choice: { type: "function", function: { name: "create_meal_plan" } }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      logStep("Google Gemini error", { status: response.status, error: errorText });
+      logStep("Lovable AI Gateway error", { status: response.status, error: errorText });
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
@@ -201,29 +224,30 @@ NÃO peça mais informações. Apenas gere o plano completo.`;
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione créditos à sua conta." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      throw new Error(`Lovable AI Gateway error: ${response.status} - ${errorText}`);
     }
 
     const aiData = await response.json();
     logStep("AI response received");
 
-    // Extract content from Google Gemini response format
-    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) {
-      logStep("No content in response", { aiData: JSON.stringify(aiData).slice(0, 500) });
+    // Extract structured data from tool call
+    const toolCall = aiData.choices?.[0]?.message?.tool_calls?.[0];
+    if (!toolCall || toolCall.function.name !== "create_meal_plan") {
+      logStep("No tool call in response", { aiData: JSON.stringify(aiData).slice(0, 500) });
       throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
     }
 
     let mealPlanData;
     try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        mealPlanData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in response");
-      }
+      mealPlanData = JSON.parse(toolCall.function.arguments);
     } catch (parseError) {
-      logStep("Parse error", { error: String(parseError), content: content.slice(0, 300) });
+      logStep("Parse error", { error: String(parseError), arguments: toolCall.function.arguments.slice(0, 300) });
       throw new Error("Não foi possível processar o plano alimentar. Tente novamente.");
     }
 

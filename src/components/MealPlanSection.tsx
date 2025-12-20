@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealPlanGenerator from "./MealPlanGenerator";
@@ -56,6 +58,13 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealPlanItem | null>(null);
+
+  // Swipe to close with visual feedback
+  const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
+    onClose: () => onBack?.(),
+    direction: "right",
+    threshold: 100,
+  });
 
   const fetchMealPlans = async () => {
     setIsLoading(true);
@@ -238,7 +247,11 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 animate-fade-in">
+    <div 
+      {...swipeHandlers} 
+      style={swipeStyle} 
+      className={cn("space-y-4 sm:space-y-6 animate-fade-in", isDragging && "select-none")}
+    >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3 sm:gap-4">

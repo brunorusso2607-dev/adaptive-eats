@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Clock, Flame, Heart, Loader2, ChefHat, Trash2 } from "lucide-react";
@@ -66,6 +67,13 @@ const COMPLEXITY_LABELS = {
 export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListProps) {
   const [recipes, setRecipes] = useState<RecipeFromDB[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Swipe to close with visual feedback
+  const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
+    onClose: onBack,
+    direction: "right",
+    threshold: 100,
+  });
 
   useEffect(() => {
     fetchRecipes();
@@ -152,7 +160,11 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-300">
+    <div 
+      {...swipeHandlers} 
+      style={swipeStyle} 
+      className={cn("space-y-6 animate-in fade-in duration-300", isDragging && "select-none")}
+    >
       {/* Header */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="icon" onClick={onBack}>

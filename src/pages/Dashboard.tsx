@@ -847,10 +847,10 @@ export default function Dashboard() {
                     </Card>
                   )}
 
-                  {/* Plano Semanal - Só aparece se tem plano criado */}
+                  {/* Plano Semanal - Só aparece se tem plano criado - Escondido no mobile */}
                   {hasMealPlan && (
                     <Card 
-                      className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                      className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group hidden md:block"
                       onClick={() => setShowMealPlan(true)}
                     >
                       <CardContent className="p-5 text-center space-y-3">
@@ -869,9 +869,9 @@ export default function Dashboard() {
                     </Card>
                   )}
 
-                  {/* Favoritas */}
+                  {/* Favoritas - Escondido no mobile */}
                   <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group hidden md:block"
                     onClick={() => setShowList("favorites")}
                   >
                     <CardContent className="p-5 text-center space-y-3">
@@ -889,9 +889,9 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Histórico */}
+                  {/* Histórico - Escondido no mobile */}
                   <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group hidden md:block"
                     onClick={() => setShowList("history")}
                   >
                     <CardContent className="p-5 text-center space-y-3">

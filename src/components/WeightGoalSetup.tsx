@@ -10,6 +10,8 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 type GoalMode = "lose" | "gain" | "maintain";
 
@@ -243,13 +245,33 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
     setIsSaving(true);
     try {
       await saveToDatabase();
-      toast.success("Dados salvos! Vamos criar seu plano alimentar.");
+      toast.success("Dados salvos! Gerando seu plano alimentar...");
+      
+      // Generate the meal plan directly
+      const startDate = new Date();
+      const planName = `Plano ${format(startDate, "MMMM yyyy", { locale: ptBR })}`;
+      
+      const { data: planData, error: planError } = await supabase.functions.invoke("generate-meal-plan", {
+        body: {
+          planName,
+          startDate: startDate.toISOString().split('T')[0],
+          daysCount: 7,
+          existingPlanId: null,
+          weekNumber: 1
+        }
+      });
+      
+      if (planError) throw planError;
+      if (planData.error) throw new Error(planData.error);
+      
+      toast.success("Plano alimentar criado com sucesso!");
+      
       if (onGeneratePlan) {
         onGeneratePlan({ ...data, calculations });
       }
     } catch (error) {
-      console.error("Error saving:", error);
-      toast.error("Erro ao salvar dados");
+      console.error("Error generating plan:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao gerar plano alimentar");
     } finally {
       setIsSaving(false);
     }

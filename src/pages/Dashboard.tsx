@@ -410,7 +410,8 @@ export default function Dashboard() {
                     setUserGoal("manter");
                   }
                   setShowWeightLossSetup(false);
-                  // Navigate to meal plan section to create first plan
+                  // Update hasMealPlan and navigate to meal plan section
+                  setHasMealPlan(true);
                   setShowMealPlan(true);
                 }}
                 initialData={weightData || undefined}

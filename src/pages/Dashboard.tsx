@@ -484,13 +484,37 @@ export default function Dashboard() {
                       </div>
                       <div className="flex-1">
                         <h3 className="font-display text-lg font-bold text-foreground">
-                          Gerar Receita com Ingredientes
+                          Gerar Receita
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          Digite os ingredientes que você tem em casa
+                          Com ingredientes ou automática
                         </p>
                       </div>
                     </div>
+                    
+                    {/* Botão Surpreenda-me */}
+                    <Button
+                      variant="outline"
+                      className="w-full gradient-accent border-0 text-accent-foreground hover:opacity-90"
+                      onClick={() => !isGeneratingRecipe && generateRecipe("automatica")}
+                      disabled={isGeneratingRecipe}
+                    >
+                      {isGeneratingRecipe ? (
+                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                      ) : (
+                        <Zap className="w-5 h-5 mr-2" />
+                      )}
+                      Surpreenda-me!
+                    </Button>
+                    
+                    {/* Divisor */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-px bg-border" />
+                      <span className="text-xs text-muted-foreground">ou digite ingredientes</span>
+                      <div className="flex-1 h-px bg-border" />
+                    </div>
+                    
+                    {/* Input de ingredientes */}
                     <div className="flex gap-2">
                       <input 
                         type="text" 
@@ -669,30 +693,6 @@ export default function Dashboard() {
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">
-                  {/* Gerar Receita Automática */}
-                  <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
-                    onClick={() => !isGeneratingRecipe && generateRecipe("automatica")}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className="w-12 h-12 mx-auto gradient-accent rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                        {isGeneratingRecipe ? (
-                          <Loader2 className="w-6 h-6 text-accent-foreground animate-spin" />
-                        ) : (
-                          <Zap className="w-6 h-6 text-accent-foreground" />
-                        )}
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Receita Automática
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Surpreenda-me!
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
 
                   {/* Meta de Peso Toggle */}
                   <Card 

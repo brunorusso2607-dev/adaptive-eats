@@ -97,6 +97,12 @@ export default function Dashboard() {
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   
+  // User profile for ingredient validation
+  const [userProfile, setUserProfile] = useState<{
+    intolerances?: string[] | null;
+    dietary_preference?: string | null;
+  } | null>(null);
+  
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -105,7 +111,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, context, goal, weight_current, weight_goal, height, age, sex, activity_level")
+      .select("onboarding_completed, context, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, dietary_preference")
       .eq("id", userId)
       .maybeSingle();
     
@@ -115,6 +121,13 @@ export default function Dashboard() {
       setOnboardingCompleted(true);
       setUserContext(data?.context || "individual");
       setUserGoal(data?.goal || "manter");
+      
+      // Salvar dados do perfil para validação de ingredientes
+      setUserProfile({
+        intolerances: data?.intolerances,
+        dietary_preference: data?.dietary_preference,
+      });
+      
       if (data?.weight_current) {
         const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
           if (goal === "emagrecer") return "lose";
@@ -666,6 +679,7 @@ export default function Dashboard() {
                           placeholder="Digite um ingrediente..."
                           disabled={isGeneratingRecipe}
                           onSubmit={() => generateRecipe("com_ingredientes")}
+                          userProfile={userProfile}
                         />
                       </div>
                       <Button 

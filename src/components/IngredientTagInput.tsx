@@ -2,6 +2,8 @@ import { useState, useRef, useEffect, KeyboardEvent } from "react";
 import { X, Plus, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
+import IngredientConflictDialog from "@/components/IngredientConflictDialog";
 
 // Lista de ingredientes comuns para autocomplete - extensa e detalhada
 const COMMON_INGREDIENTS = [
@@ -274,12 +276,18 @@ const COMMON_INGREDIENTS = [
   "raspas de limão", "raspas de laranja", "zest",
 ];
 
+type UserProfile = {
+  intolerances?: string[] | null;
+  dietary_preference?: string | null;
+};
+
 interface IngredientTagInputProps {
   value: string[];
   onChange: (ingredients: string[]) => void;
   placeholder?: string;
   disabled?: boolean;
   onSubmit?: () => void;
+  userProfile?: UserProfile | null;
 }
 
 export default function IngredientTagInput({
@@ -288,12 +296,21 @@ export default function IngredientTagInput({
   placeholder = "Digite um ingrediente...",
   disabled = false,
   onSubmit,
+  userProfile = null,
 }: IngredientTagInputProps) {
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  
+  // Estado para o diálogo de conflito
+  const [conflictDialogOpen, setConflictDialogOpen] = useState(false);
+  const [currentConflict, setCurrentConflict] = useState<ConflictType | null>(null);
+  const [pendingIngredient, setPendingIngredient] = useState<string | null>(null);
+  
+  // Hook de verificação de conflitos
+  const { checkConflict } = useIngredientConflictCheck(userProfile);
 
   // Filtra sugestões baseado no input - abre imediatamente com 1+ caracteres
   const filteredSuggestions = inputValue.length >= 1
@@ -304,8 +321,8 @@ export default function IngredientTagInput({
       ).slice(0, 10)
     : [];
 
-  // Adiciona ingrediente
-  const addIngredient = (ingredient: string) => {
+  // Adiciona ingrediente (após verificação ou confirmação)
+  const doAddIngredient = (ingredient: string) => {
     const trimmed = ingredient.trim().toLowerCase();
     if (trimmed && !value.includes(trimmed)) {
       onChange([...value, trimmed]);
@@ -313,6 +330,44 @@ export default function IngredientTagInput({
     setInputValue("");
     setShowSuggestions(false);
     setHighlightedIndex(0);
+    inputRef.current?.focus();
+  };
+
+  // Tenta adicionar ingrediente (verifica conflitos primeiro)
+  const addIngredient = (ingredient: string) => {
+    const trimmed = ingredient.trim().toLowerCase();
+    if (!trimmed || value.includes(trimmed)) {
+      setInputValue("");
+      return;
+    }
+    
+    // Verificar conflitos
+    const conflict = checkConflict(trimmed);
+    if (conflict) {
+      setPendingIngredient(trimmed);
+      setCurrentConflict(conflict);
+      setConflictDialogOpen(true);
+    } else {
+      doAddIngredient(trimmed);
+    }
+  };
+  
+  // Confirmar adição após conflito
+  const handleConflictConfirm = () => {
+    if (pendingIngredient) {
+      doAddIngredient(pendingIngredient);
+    }
+    setConflictDialogOpen(false);
+    setCurrentConflict(null);
+    setPendingIngredient(null);
+  };
+  
+  // Cancelar adição após conflito
+  const handleConflictCancel = () => {
+    setConflictDialogOpen(false);
+    setCurrentConflict(null);
+    setPendingIngredient(null);
+    setInputValue("");
     inputRef.current?.focus();
   };
 
@@ -447,6 +502,15 @@ export default function IngredientTagInput({
           Digite e selecione ingredientes da lista ou pressione Enter para adicionar
         </p>
       )}
+      
+      {/* Diálogo de conflito */}
+      <IngredientConflictDialog
+        open={conflictDialogOpen}
+        onOpenChange={setConflictDialogOpen}
+        conflict={currentConflict}
+        onConfirm={handleConflictConfirm}
+        onCancel={handleConflictCancel}
+      />
     </div>
   );
 }

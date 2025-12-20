@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -50,7 +50,29 @@ type LabelAnalysis = {
   recomendacao: string;
 };
 
-type AnalysisMode = "food" | "label";
+type FridgeIngredient = {
+  nome: string;
+  quantidade_estimada: string;
+};
+
+type FridgeRecipe = {
+  nome: string;
+  descricao: string;
+  tempo_preparo: number;
+  dificuldade: string;
+  ingredientes_da_geladeira: string[];
+  ingredientes_extras: string[];
+  calorias_estimadas: number;
+  instrucoes_resumidas: string[];
+};
+
+type FridgeAnalysis = {
+  ingredientes_identificados: FridgeIngredient[];
+  receitas_sugeridas: FridgeRecipe[];
+  dica: string;
+};
+
+type AnalysisMode = "food" | "label" | "fridge";
 
 export default function FoodPhotoAnalyzer() {
   const [mode, setMode] = useState<AnalysisMode>("food");
@@ -58,6 +80,7 @@ export default function FoodPhotoAnalyzer() {
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [foodAnalysis, setFoodAnalysis] = useState<FoodAnalysis | null>(null);
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
+  const [fridgeAnalysis, setFridgeAnalysis] = useState<FridgeAnalysis | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -85,6 +108,7 @@ export default function FoodPhotoAnalyzer() {
       setImagePreview(base64);
       setFoodAnalysis(null);
       setLabelAnalysis(null);
+      setFridgeAnalysis(null);
     };
     reader.readAsDataURL(file);
   };
@@ -114,7 +138,7 @@ export default function FoodPhotoAnalyzer() {
 
         setFoodAnalysis(data.analysis);
         toast.success("Análise concluída!");
-      } else {
+      } else if (mode === "label") {
         const { data, error } = await supabase.functions.invoke("analyze-label-photo", {
           body: { imageBase64: imagePreview },
         });
@@ -129,6 +153,21 @@ export default function FoodPhotoAnalyzer() {
 
         setLabelAnalysis(data.analysis);
         toast.success("Verificação concluída!");
+      } else if (mode === "fridge") {
+        const { data, error } = await supabase.functions.invoke("analyze-fridge-photo", {
+          body: { imageBase64: imagePreview },
+        });
+
+        if (error) throw error;
+        if (data.error) throw new Error(data.error);
+
+        if (data.notFridge) {
+          setNotFoodError(data.message || "Não foi possível identificar uma geladeira ou despensa na imagem.");
+          return;
+        }
+
+        setFridgeAnalysis(data.analysis);
+        toast.success("Receitas sugeridas com sucesso!");
       }
     } catch (error) {
       console.error("Error analyzing image:", error);
@@ -142,13 +181,14 @@ export default function FoodPhotoAnalyzer() {
     setImagePreview(null);
     setFoodAnalysis(null);
     setLabelAnalysis(null);
+    setFridgeAnalysis(null);
     setNotFoodError(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
 
   const handleModeChange = (newMode: string) => {
-    if (newMode === "food" || newMode === "label") {
+    if (newMode === "food" || newMode === "label" || newMode === "fridge") {
       setMode(newMode);
       resetAnalysis();
     }
@@ -210,14 +250,18 @@ export default function FoodPhotoAnalyzer() {
     <div className="space-y-4">
       {/* Tabs */}
       <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="food" className="flex items-center gap-2">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="food" className="flex items-center gap-1 text-xs sm:text-sm">
             <Flame className="w-4 h-4" />
-            Analisar Comida
+            <span className="hidden sm:inline">Analisar</span> Comida
           </TabsTrigger>
-          <TabsTrigger value="label" className="flex items-center gap-2">
+          <TabsTrigger value="label" className="flex items-center gap-1 text-xs sm:text-sm">
             <ScanBarcode className="w-4 h-4" />
-            Verificar Rótulo
+            <span className="hidden sm:inline">Verificar</span> Rótulo
+          </TabsTrigger>
+          <TabsTrigger value="fridge" className="flex items-center gap-1 text-xs sm:text-sm">
+            <Refrigerator className="w-4 h-4" />
+            Geladeira
           </TabsTrigger>
         </TabsList>
 
@@ -238,6 +282,15 @@ export default function FoodPhotoAnalyzer() {
             </p>
           </div>
         </TabsContent>
+
+        <TabsContent value="fridge" className="mt-4">
+          <div className="text-center space-y-2 mb-4">
+            <h2 className="text-xl font-bold text-foreground">Geladeira Inteligente</h2>
+            <p className="text-sm text-muted-foreground">
+              Fotografe sua geladeira e receba sugestões de receitas personalizadas
+            </p>
+          </div>
+        </TabsContent>
       </Tabs>
 
       {/* Image capture/upload section */}
@@ -254,11 +307,18 @@ export default function FoodPhotoAnalyzer() {
               >
                 {mode === "food" ? (
                   <Camera className="w-10 h-10" />
-                ) : (
+                ) : mode === "label" ? (
                   <ScanBarcode className="w-10 h-10" />
+                ) : (
+                  <Refrigerator className="w-10 h-10" />
                 )}
                 <span className="text-lg font-medium">
-                  {mode === "food" ? "Tirar Foto do Prato" : "Fotografar Rótulo"}
+                  {mode === "food" 
+                    ? "Tirar Foto do Prato" 
+                    : mode === "label"
+                    ? "Fotografar Rótulo"
+                    : "Fotografar Geladeira"
+                  }
                 </span>
               </Button>
               <input
@@ -298,7 +358,9 @@ export default function FoodPhotoAnalyzer() {
             <p className="text-xs text-muted-foreground text-center mt-4">
               {mode === "food" 
                 ? "📸 Dica: Fotografe o prato de cima para melhor precisão"
-                : "📸 Dica: Fotografe a lista de ingredientes bem de perto"
+                : mode === "label"
+                ? "📸 Dica: Fotografe a lista de ingredientes bem de perto"
+                : "📸 Dica: Abra a geladeira e fotografe todos os ingredientes visíveis"
               }
             </p>
           </CardContent>
@@ -310,7 +372,7 @@ export default function FoodPhotoAnalyzer() {
             <div className="relative">
               <img
                 src={imagePreview}
-                alt={mode === "food" ? "Foto do prato" : "Foto do rótulo"}
+                alt={mode === "food" ? "Foto do prato" : mode === "label" ? "Foto do rótulo" : "Foto da geladeira"}
                 className="w-full h-64 object-cover"
               />
               <Button
@@ -323,7 +385,7 @@ export default function FoodPhotoAnalyzer() {
               </Button>
             </div>
             
-            {/* Not food/label error message */}
+            {/* Not food/label/fridge error message */}
             {notFoodError && (
               <CardContent className="p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
@@ -343,7 +405,7 @@ export default function FoodPhotoAnalyzer() {
               </CardContent>
             )}
 
-            {!foodAnalysis && !labelAnalysis && !notFoodError && (
+            {!foodAnalysis && !labelAnalysis && !fridgeAnalysis && !notFoodError && (
               <CardContent className="p-4">
                 <Button
                   onClick={analyzeImage}
@@ -354,7 +416,12 @@ export default function FoodPhotoAnalyzer() {
                   {isAnalyzing ? (
                     <>
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      {mode === "food" ? "Analisando..." : "Verificando..."}
+                      {mode === "food" 
+                        ? "Analisando..." 
+                        : mode === "label" 
+                        ? "Verificando..." 
+                        : "Buscando receitas..."
+                      }
                     </>
                   ) : (
                     <>
@@ -363,10 +430,15 @@ export default function FoodPhotoAnalyzer() {
                           <Flame className="w-5 h-5 mr-2" />
                           Analisar Calorias
                         </>
-                      ) : (
+                      ) : mode === "label" ? (
                         <>
                           <ScanBarcode className="w-5 h-5 mr-2" />
                           Verificar Ingredientes
+                        </>
+                      ) : (
+                        <>
+                          <ChefHat className="w-5 h-5 mr-2" />
+                          Sugerir Receitas
                         </>
                       )}
                     </>
@@ -594,6 +666,132 @@ export default function FoodPhotoAnalyzer() {
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Verificar Outro Rótulo
+              </Button>
+            </div>
+          )}
+
+          {/* Fridge Analysis results */}
+          {fridgeAnalysis && (
+            <div className="space-y-4 animate-fade-in">
+              {/* Ingredients found */}
+              <Card className="glass-card border-primary/20">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Refrigerator className="w-5 h-5 text-primary" />
+                    Ingredientes Encontrados
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {fridgeAnalysis.ingredientes_identificados.map((ing, index) => (
+                      <span
+                        key={index}
+                        className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm"
+                      >
+                        {ing.nome}
+                        {ing.quantidade_estimada && (
+                          <span className="text-xs opacity-70 ml-1">({ing.quantidade_estimada})</span>
+                        )}
+                      </span>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Recipe suggestions */}
+              <div className="space-y-3">
+                <h3 className="font-semibold text-foreground flex items-center gap-2">
+                  <ChefHat className="w-5 h-5 text-primary" />
+                  Receitas Sugeridas
+                </h3>
+                
+                {fridgeAnalysis.receitas_sugeridas.map((recipe, index) => (
+                  <Card key={index} className="glass-card">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between gap-2">
+                          <h4 className="font-semibold text-foreground">{recipe.nome}</h4>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Clock className="w-3.5 h-3.5" />
+                            {recipe.tempo_preparo}min
+                          </div>
+                        </div>
+                        
+                        <p className="text-sm text-muted-foreground">{recipe.descricao}</p>
+                        
+                        <div className="flex items-center gap-3 text-xs">
+                          <span className="px-2 py-1 rounded bg-green-500/10 text-green-600">
+                            {recipe.dificuldade}
+                          </span>
+                          <span className="px-2 py-1 rounded bg-orange-500/10 text-orange-600 flex items-center gap-1">
+                            <Flame className="w-3 h-3" />
+                            ~{recipe.calorias_estimadas} kcal
+                          </span>
+                        </div>
+
+                        <div className="space-y-2">
+                          <div>
+                            <p className="text-xs font-medium text-foreground mb-1">Da sua geladeira:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {recipe.ingredientes_da_geladeira.map((ing, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary">
+                                  ✓ {ing}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {recipe.ingredientes_extras.length > 0 && (
+                            <div>
+                              <p className="text-xs font-medium text-muted-foreground mb-1">Você pode precisar:</p>
+                              <div className="flex flex-wrap gap-1">
+                                {recipe.ingredientes_extras.map((ing, i) => (
+                                  <span key={i} className="text-xs px-2 py-0.5 rounded bg-muted text-muted-foreground">
+                                    {ing}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="pt-2 border-t border-border">
+                          <p className="text-xs font-medium text-foreground mb-2">Modo de preparo rápido:</p>
+                          <ol className="space-y-1">
+                            {recipe.instrucoes_resumidas.map((step, i) => (
+                              <li key={i} className="text-xs text-muted-foreground flex gap-2">
+                                <span className="font-medium text-primary">{i + 1}.</span>
+                                {step}
+                              </li>
+                            ))}
+                          </ol>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Tip */}
+              {fridgeAnalysis.dica && (
+                <Card className="glass-card border-yellow-500/20">
+                  <CardContent className="p-4">
+                    <div className="flex gap-2">
+                      <UtensilsCrossed className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-sm text-muted-foreground">{fridgeAnalysis.dica}</p>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Reset button */}
+              <Button
+                variant="outline"
+                onClick={resetAnalysis}
+                className="w-full"
+              >
+                <RotateCcw className="w-4 h-4 mr-2" />
+                Analisar Outra Geladeira
               </Button>
             </div>
           )}

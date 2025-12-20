@@ -239,7 +239,23 @@ IMPORTANTE:
 
     let userPrompt: string;
     if (categoryContext && categoryContext.category && categoryContext.subcategory) {
-      userPrompt = `Gere uma receita da categoria "${categoryContext.category}" - tipo "${categoryContext.subcategory}". A receita deve ser autêntica e representativa dessa categoria/tipo específico.`;
+      let filtersText = "";
+      if (categoryContext.filters) {
+        const filterParts: string[] = [];
+        if (categoryContext.filters.culinaria) {
+          filterParts.push(`culinária ${categoryContext.filters.culinaria}`);
+        }
+        if (categoryContext.filters.tempo) {
+          filterParts.push(`tempo de preparo: ${categoryContext.filters.tempo}`);
+        }
+        if (categoryContext.filters.metodo) {
+          filterParts.push(`método de preparo: ${categoryContext.filters.metodo}`);
+        }
+        if (filterParts.length > 0) {
+          filtersText = ` Considere os seguintes filtros: ${filterParts.join(", ")}.`;
+        }
+      }
+      userPrompt = `Gere uma receita da categoria "${categoryContext.category}" - tipo "${categoryContext.subcategory}".${filtersText} A receita deve ser autêntica e representativa dessa categoria/tipo específico.`;
     } else if (type === "automatica") {
       userPrompt = "Gere uma receita saudável e deliciosa que se encaixe no meu perfil.";
     } else {

@@ -67,20 +67,6 @@ const RECIPE_CATEGORIES: RecipeCategory[] = [
     subcategories: ["Petiscos rápidos", "Snacks saudáveis", "Snacks low carb", "Petiscos de forno", "Petiscos de airfryer", "Finger foods"],
   },
   {
-    id: "especiais",
-    name: "Receitas Especiais",
-    emoji: "👶",
-    icon: Baby,
-    subcategories: ["Receitas infantis (Kids)", "Receitas para marmita", "Receitas para congelar", "Receitas para dieta", "Receitas para emagrecimento", "Receitas para ganho de massa"],
-  },
-  {
-    id: "restricoes",
-    name: "Por Restrições Alimentares",
-    emoji: "🚫",
-    icon: AlertCircle,
-    subcategories: ["Sem lactose", "Sem glúten", "Sem açúcar", "Sem ovo", "Sem frutos do mar", "Sem oleaginosas", "Dieta FODMAP", "Dieta cetogênica"],
-  },
-  {
     id: "culinarias",
     name: "Culinárias do Mundo",
     emoji: "🌍",

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale } from "lucide-react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -11,6 +11,7 @@ import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
+import WeightUpdateModal from "@/components/WeightUpdateModal";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -85,6 +86,7 @@ export default function Dashboard() {
   const [showList, setShowList] = useState<"history" | "favorites" | null>(null);
   const [showMealPlan, setShowMealPlan] = useState(false);
   const [hasMealPlan, setHasMealPlan] = useState(false);
+  const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -631,7 +633,21 @@ export default function Dashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap">
+                          {weightData?.weight_current && (
+                            <Button 
+                              size="sm" 
+                              onClick={() => setShowWeightUpdateModal(true)}
+                              className={`${
+                                userGoal === "ganhar_peso"
+                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
+                                  : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                              }`}
+                            >
+                              <Scale className="w-4 h-4 mr-1" />
+                              Novo Peso
+                            </Button>
+                          )}
                           <Button 
                             variant="outline" 
                             size="sm" 
@@ -1008,6 +1024,20 @@ export default function Dashboard() {
           )}
         </div>
       </main>
+
+      {/* Weight Update Modal */}
+      {weightData?.weight_current && weightData?.weight_goal && (
+        <WeightUpdateModal
+          open={showWeightUpdateModal}
+          onOpenChange={setShowWeightUpdateModal}
+          currentWeight={weightData.weight_current}
+          goalWeight={weightData.weight_goal}
+          goalMode={weightData.goal_mode}
+          onWeightUpdated={(newWeight) => {
+            setWeightData(prev => prev ? { ...prev, weight_current: newWeight } : null);
+          }}
+        />
+      )}
     </div>
   );
 }

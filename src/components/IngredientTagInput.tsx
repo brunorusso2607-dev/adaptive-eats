@@ -72,13 +72,13 @@ export default function IngredientTagInput({
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Filtra sugestões baseado no input
-  const filteredSuggestions = inputValue.length >= 2
+  // Filtra sugestões baseado no input - abre imediatamente com 1+ caracteres
+  const filteredSuggestions = inputValue.length >= 1
     ? COMMON_INGREDIENTS.filter(
         (ingredient) =>
           ingredient.toLowerCase().includes(inputValue.toLowerCase()) &&
           !value.includes(ingredient)
-      ).slice(0, 8)
+      ).slice(0, 10)
     : [];
 
   // Adiciona ingrediente

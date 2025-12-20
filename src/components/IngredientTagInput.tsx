@@ -270,6 +270,46 @@ const COMMON_INGREDIENTS = [
   "tofu", "tempeh", "leite de coco", "curry paste", "pasta de curry",
   "macarrão de arroz", "papel de arroz", "wonton", "gyoza",
   
+  // Proteínas Vegetais e Plant-Based
+  "carne de soja", "carne vegetal", "carne moída vegetal", "carne moída de soja",
+  "proteína de soja", "proteína texturizada de soja", "pts", "proteína vegetal",
+  "hambúrguer de soja", "hambúrguer vegetal", "hambúrguer de grão de bico",
+  "hambúrguer de lentilha", "hambúrguer de feijão", "hambúrguer de quinoa",
+  "almôndega de soja", "almôndega vegetal", "almôndega de lentilha",
+  "salsicha de soja", "salsicha vegetal", "linguiça de soja", "linguiça vegetal",
+  "frango de soja", "frango vegetal", "nuggets vegetal", "nuggets de soja",
+  "steak vegetal", "bife vegetal", "bife de soja", "carne desfiada vegetal",
+  "seitan", "glúten de trigo", "jaca verde", "jaca desfiada",
+  "grão de bico", "falafel", "homus", "hummus", "pasta de grão de bico",
+  "lentilha", "ervilha", "edamame", "tempeh", "natto",
+  
+  // Laticínios Vegetais e Plant-Based
+  "queijo vegano", "queijo de castanha", "queijo de amendoim", "queijo de caju",
+  "queijo vegetal", "mussarela vegana", "parmesão vegano", "cheddar vegano",
+  "cream cheese vegano", "requeijão vegano", "ricota vegana",
+  "iogurte vegano", "iogurte de coco", "iogurte de soja", "iogurte de amêndoas",
+  "iogurte de castanha", "iogurte vegetal",
+  "manteiga vegana", "manteiga de coco", "manteiga vegetal",
+  "creme de leite vegano", "creme de leite de coco", "creme vegetal",
+  "chantilly vegano", "nata vegana", "nata de coco",
+  "leite vegetal", "bebida vegetal", "bebida de aveia", "bebida de amêndoas",
+  "bebida de soja", "bebida de arroz", "bebida de coco", "bebida de castanha",
+  
+  // Ovos Vegetais (Substitutos)
+  "ovo vegano", "substituto de ovo", "ovo de linhaça", "ovo de chia",
+  "aquafaba", "água do grão de bico",
+  
+  // Embutidos e Frios Vegetais
+  "presunto vegano", "presunto vegetal", "presunto de soja",
+  "mortadela vegana", "mortadela vegetal", "peito de peru vegano",
+  "bacon vegano", "bacon vegetal", "bacon de coco",
+  "salame vegano", "pepperoni vegano", "copa vegana",
+  
+  // Peixes e Frutos do Mar Vegetais
+  "atum vegano", "atum vegetal", "salmão vegano", "salmão vegetal",
+  "camarão vegano", "camarão vegetal", "peixe vegano", "peixe vegetal",
+  "frutos do mar vegano",
+  
   // Outros Ingredientes
   "gelatina", "gelatina em pó", "gelatina em folha", "ágar-ágar",
   "corante alimentício", "essência de baunilha", "extrato de baunilha", "baunilha",

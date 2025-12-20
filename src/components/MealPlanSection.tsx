@@ -214,29 +214,31 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   }
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-center gap-3 sm:gap-4">
           {onBack && (
-            <Button variant="ghost" size="icon" onClick={onBack}>
+            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}
-          <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center">
-            <Calendar className="w-7 h-7 text-primary-foreground" />
+          <div className="w-12 h-12 sm:w-14 sm:h-14 gradient-primary rounded-2xl flex items-center justify-center shrink-0">
+            <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-primary-foreground" />
           </div>
-          <div>
-            <h2 className="font-display text-xl font-bold text-foreground">Planos Alimentares</h2>
-            <p className="text-sm text-muted-foreground">
+          <div className="min-w-0">
+            <h2 className="font-display text-lg sm:text-xl font-bold text-foreground">Planos Alimentares</h2>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Crie rotinas semanais ou mensais com IA
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 ml-auto sm:ml-0">
           {mealPlans.some(p => p.is_active) && (
             <Button 
-              variant="outline" 
+              variant="outline"
+              size="sm"
+              className="text-xs sm:text-sm"
               onClick={() => {
                 const activePlan = mealPlans.find(p => p.is_active);
                 if (activePlan) {
@@ -245,13 +247,14 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                 }
               }}
             >
-              <ShoppingCart className="w-4 h-4 mr-2" />
-              Lista de Compras
+              <ShoppingCart className="w-4 h-4 sm:mr-2" />
+              <span className="hidden sm:inline">Lista de Compras</span>
             </Button>
           )}
-          <Button className="gradient-primary border-0" onClick={() => setView("create")}>
-            <Plus className="w-4 h-4 mr-2" />
-            Novo Plano
+          <Button className="gradient-primary border-0 text-xs sm:text-sm" size="sm" onClick={() => setView("create")}>
+            <Plus className="w-4 h-4 sm:mr-2" />
+            <span className="hidden sm:inline">Novo Plano</span>
+            <span className="sm:hidden">Novo</span>
           </Button>
         </div>
       </div>
@@ -263,10 +266,10 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
         </div>
       ) : mealPlans.length === 0 ? (
         <Card className="glass-card border-dashed border-2 border-muted-foreground/30">
-          <CardContent className="p-8 text-center">
-            <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <h3 className="font-display font-semibold text-lg mb-2">Nenhum plano criado</h3>
-            <p className="text-muted-foreground mb-4">
+          <CardContent className="p-6 sm:p-8 text-center">
+            <Calendar className="w-10 h-10 sm:w-12 sm:h-12 mx-auto text-muted-foreground mb-4" />
+            <h3 className="font-display font-semibold text-base sm:text-lg mb-2">Nenhum plano criado</h3>
+            <p className="text-sm text-muted-foreground mb-4">
               Crie seu primeiro plano alimentar e deixe a IA montar sua rotina semanal
             </p>
             <Button className="gradient-primary border-0" onClick={() => setView("create")}>
@@ -276,50 +279,52 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
           </CardContent>
         </Card>
       ) : (
-        <div className="space-y-4">
+        <div className="space-y-3 sm:space-y-4">
           {mealPlans.map((plan) => (
             <Card key={plan.id} className="glass-card hover:border-primary/30 transition-all">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center">
-                      <Calendar className="w-6 h-6 text-primary" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                      <Calendar className="w-5 h-5 sm:w-6 sm:h-6 text-primary" />
                     </div>
-                    <div>
-                      <h3 className="font-display font-semibold text-foreground">
-                        {plan.name}
+                    <div className="min-w-0 flex-1">
+                      <h3 className="font-display font-semibold text-sm sm:text-base text-foreground flex items-center flex-wrap gap-2">
+                        <span className="truncate">{plan.name}</span>
                         {plan.is_active && (
-                          <span className="ml-2 text-xs bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-2 py-0.5 rounded-full">
+                          <span className="text-[10px] sm:text-xs bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap">
                             Ativo
                           </span>
                         )}
                       </h3>
-                      <p className="text-sm text-muted-foreground">
+                      <p className="text-xs sm:text-sm text-muted-foreground">
                         {new Date(plan.start_date).toLocaleDateString('pt-BR')} - {new Date(plan.end_date).toLocaleDateString('pt-BR')}
                       </p>
-                      <p className="text-xs text-muted-foreground mt-1">
+                      <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
                         {plan.items.length} refeições planejadas
                       </p>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 ml-auto">
                     <Button
                       variant="outline"
                       size="sm"
+                      className="text-xs sm:text-sm"
                       onClick={() => handleViewPlan(plan)}
                     >
-                      <Eye className="w-4 h-4 mr-2" />
-                      Ver Plano
+                      <Eye className="w-4 h-4 sm:mr-2" />
+                      <span className="hidden sm:inline">Ver Plano</span>
+                      <span className="sm:hidden">Ver</span>
                     </Button>
                     
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
-                        <Button variant="ghost" size="icon" className="text-destructive">
+                        <Button variant="ghost" size="icon" className="text-destructive w-8 h-8 sm:w-10 sm:h-10">
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </AlertDialogTrigger>
-                      <AlertDialogContent>
+                      <AlertDialogContent className="max-w-[90vw] sm:max-w-lg">
                         <AlertDialogHeader>
                           <AlertDialogTitle>Excluir plano?</AlertDialogTitle>
                           <AlertDialogDescription>

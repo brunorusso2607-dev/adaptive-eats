@@ -90,22 +90,22 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   const dayTotals = getDayTotals(selectedDay);
 
   return (
-    <div className="space-y-6 animate-fade-in">
+    <div className="space-y-4 sm:space-y-6 animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-foreground">{mealPlan.name}</h2>
-          <p className="text-sm text-muted-foreground">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground truncate">{mealPlan.name}</h2>
+          <p className="text-xs sm:text-sm text-muted-foreground">
             {new Date(mealPlan.start_date).toLocaleDateString('pt-BR')} - {new Date(mealPlan.end_date).toLocaleDateString('pt-BR')}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose}>
+        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
           <X className="w-5 h-5" />
         </Button>
       </div>
 
       {/* Navigation Row - Two Dropdowns */}
-      <div className="flex items-start gap-4">
+      <div className="grid grid-cols-2 gap-3">
         {/* Week Dropdown */}
         <div className="space-y-1.5">
           <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
@@ -118,7 +118,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
               setSelectedDay(0);
             }}
           >
-            <SelectTrigger className="w-[140px] bg-background">
+            <SelectTrigger className="w-full bg-background">
               <SelectValue placeholder="Semana" />
             </SelectTrigger>
             <SelectContent className="bg-background border">
@@ -140,7 +140,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             value={selectedDay.toString()}
             onValueChange={(value) => setSelectedDay(Number(value))}
           >
-            <SelectTrigger className="w-[140px] bg-background">
+            <SelectTrigger className="w-full bg-background">
               <SelectValue placeholder="Dia" />
             </SelectTrigger>
             <SelectContent className="bg-background border">
@@ -156,39 +156,39 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
       {/* Day Summary */}
       <Card className="glass-card border-primary/20">
-        <CardContent className="p-4">
-          <p className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wide">
+        <CardContent className="p-3 sm:p-4">
+          <p className="text-xs font-medium text-muted-foreground mb-2 sm:mb-3 uppercase tracking-wide">
             Consumo de {DAY_NAMES[selectedDay]}
           </p>
-          <div className="flex items-center justify-between gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Flame className="w-5 h-5 text-orange-500" />
-              <span className="font-semibold">{dayTotals.calories}</span>
-              <span className="text-sm text-muted-foreground">kcal</span>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
+              <span className="font-semibold text-sm sm:text-base">{dayTotals.calories}</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">kcal</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Beef className="w-5 h-5 text-red-500" />
-              <span className="font-semibold">{dayTotals.protein.toFixed(0)}g</span>
-              <span className="text-sm text-muted-foreground">proteína</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Beef className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
+              <span className="font-semibold text-sm sm:text-base">{dayTotals.protein.toFixed(0)}g</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">prot</span>
             </div>
-            <div className="flex items-center gap-2">
-              <Wheat className="w-5 h-5 text-amber-500" />
-              <span className="font-semibold">{dayTotals.carbs.toFixed(0)}g</span>
-              <span className="text-sm text-muted-foreground">carbs</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <Wheat className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
+              <span className="font-semibold text-sm sm:text-base">{dayTotals.carbs.toFixed(0)}g</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">carbs</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-5 h-5 rounded-full bg-yellow-500/20 flex items-center justify-center">
-                <span className="text-xs">🧈</span>
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+                <span className="text-[10px] sm:text-xs">🧈</span>
               </div>
-              <span className="font-semibold">{dayTotals.fat.toFixed(0)}g</span>
-              <span className="text-sm text-muted-foreground">gordura</span>
+              <span className="font-semibold text-sm sm:text-base">{dayTotals.fat.toFixed(0)}g</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">gord</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Meals List */}
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {["cafe_manha", "almoco", "lanche", "jantar", "ceia"].map((mealType) => {
           const meal = currentDayMeals.find(m => m.meal_type === mealType);
           const config = MEAL_CONFIG[mealType];
@@ -203,43 +203,43 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
               )}
               onClick={() => meal && onSelectMeal(meal)}
             >
-              <CardContent className="p-4">
-                <div className="flex items-start gap-4">
-                  <div className={cn("w-12 h-12 rounded-xl flex items-center justify-center shrink-0", config.color)}>
-                    <Icon className="w-6 h-6" />
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex items-start gap-3 sm:gap-4">
+                  <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0", config.color)}>
+                    <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   
                   {meal ? (
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
-                        <div>
-                          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                        <div className="min-w-0 flex-1">
+                          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
                             {config.label}
                           </p>
-                          <h3 className="font-display font-semibold text-foreground group-hover:text-primary transition-colors">
+                          <h3 className="font-display font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors line-clamp-2">
                             {meal.recipe_name}
                           </h3>
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="shrink-0"
+                          className="shrink-0 w-8 h-8 sm:w-10 sm:h-10"
                           onClick={(e) => {
                             e.stopPropagation();
                             onToggleFavorite(meal.id);
                           }}
                         >
-                          <Heart className={cn("w-5 h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
+                          <Heart className={cn("w-4 h-4 sm:w-5 sm:h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
                         </Button>
                       </div>
                       
-                      <div className="flex items-center gap-4 mt-2 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-2 sm:gap-4 mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
-                          <Flame className="w-4 h-4 text-orange-500" />
+                          <Flame className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
                           {meal.recipe_calories} kcal
                         </span>
                         <span className="flex items-center gap-1">
-                          <Beef className="w-4 h-4 text-red-500" />
+                          <Beef className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
                           {meal.recipe_protein}g
                         </span>
                         <span>{meal.recipe_prep_time} min</span>
@@ -247,10 +247,10 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                     </div>
                   ) : (
                     <div className="flex-1">
-                      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                      <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
                         {config.label}
                       </p>
-                      <p className="text-muted-foreground italic">Nenhuma receita definida</p>
+                      <p className="text-sm text-muted-foreground italic">Nenhuma receita definida</p>
                     </div>
                   )}
                 </div>

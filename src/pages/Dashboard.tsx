@@ -12,6 +12,7 @@ import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 type Recipe = {
   name: string;
@@ -330,7 +331,30 @@ export default function Dashboard() {
             </div>
             <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            {/* Kids Mode Toggle */}
+            {isSubscribed && activePlan === "premium" && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={toggleKidsMode}
+                className={cn(
+                  "relative w-9 h-9 sm:w-10 sm:h-10 rounded-xl transition-all",
+                  userContext === "modo_kids" 
+                    ? "bg-pink-500/20 text-pink-600 dark:text-pink-400 hover:bg-pink-500/30" 
+                    : "hover:bg-muted"
+                )}
+                title={userContext === "modo_kids" ? "Desativar Modo Kids" : "Ativar Modo Kids"}
+              >
+                <Baby className={cn(
+                  "w-5 h-5 transition-transform",
+                  userContext === "modo_kids" && "scale-110"
+                )} />
+                {userContext === "modo_kids" && (
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-pink-500 rounded-full border-2 border-background" />
+                )}
+              </Button>
+            )}
             <span className="text-sm text-muted-foreground hidden sm:block">
               {user?.email}
             </span>

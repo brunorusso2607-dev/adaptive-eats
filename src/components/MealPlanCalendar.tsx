@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ChevronLeft, ChevronRight, Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, CalendarDays, ChevronDown, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
+import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   Select,
@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useMonthWeeks, formatWeekRange, type WeekInfo, type DayInfo } from "@/hooks/useMonthWeeks";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -55,8 +56,7 @@ type MealPlanCalendarProps = {
   onMealUpdated?: (updatedMeal: MealPlanItem) => void;
 };
 
-// Fixed order: Monday to Sunday (display positions 0-6)
-const DAY_NAMES_FIXED = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
+const DAY_NAMES_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAY_NAMES_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
 const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: string }> = {
@@ -68,7 +68,6 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
 };
 
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated }: MealPlanCalendarProps) {
-  const [selectedDay, setSelectedDay] = useState(0);
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; meal: MealPlanItem | null; mealType: string }>({
     open: false,
     meal: null,
@@ -76,115 +75,83 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   });
   const [ingredients, setIngredients] = useState("");
   const [isRegenerating, setIsRegenerating] = useState(false);
-  
-  // Get unique weeks from the items
-  const availableWeeks = useMemo(() => {
-    const weeks = [...new Set(mealPlan.items.map(item => item.week_number || 1))].sort((a, b) => a - b);
-    return weeks.length > 0 ? weeks : [1];
-  }, [mealPlan.items]);
 
-  // Check if a week is entirely in the past
-  const isWeekInPast = (weekNumber: number) => {
-    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day);
-    
-    // Calculate the last day of this week
-    const weekStartOffset = (weekNumber - 1) * 7;
-    const weekEndDate = new Date(startDate);
-    weekEndDate.setDate(startDate.getDate() + weekStartOffset + 6); // Last day of the week
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    return weekEndDate < today;
-  };
+  // Use the current month for dynamic weeks calculation
+  const currentDate = new Date();
+  const { weeks, totalWeeks, currentWeek, todayWeek, todayDayIndex, monthName, year } = useMonthWeeks(currentDate);
 
-  // Find the first non-past week
-  const firstActiveWeek = useMemo(() => {
-    for (const week of availableWeeks) {
-      if (!isWeekInPast(week)) {
-        return week;
+  // Initialize selected week to current week
+  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const [selectedDayIndex, setSelectedDayIndex] = useState(todayDayIndex);
+
+  // Get the currently selected week data
+  const currentWeekData = useMemo(() => {
+    return weeks[selectedWeek - 1] || weeks[0];
+  }, [weeks, selectedWeek]);
+
+  // Get the visible days (only days in the current month)
+  const visibleDays = useMemo(() => {
+    return currentWeekData?.days.filter(d => d.isInMonth) || [];
+  }, [currentWeekData]);
+
+  // Calculate week date range for display
+  const weekRangeText = useMemo(() => {
+    if (!currentWeekData) return "";
+    return formatWeekRange(currentWeekData, currentDate);
+  }, [currentWeekData, currentDate]);
+
+  // Auto-select first valid (non-past) day when week changes
+  useEffect(() => {
+    if (visibleDays.length > 0) {
+      const firstValidDay = visibleDays.find(d => !d.isPast);
+      if (firstValidDay) {
+        const indexInWeek = currentWeekData.days.findIndex(d => 
+          d.date.getTime() === firstValidDay.date.getTime()
+        );
+        setSelectedDayIndex(indexInWeek);
+      } else {
+        // All days are past, select the last one
+        const lastDay = visibleDays[visibleDays.length - 1];
+        const indexInWeek = currentWeekData.days.findIndex(d => 
+          d.date.getTime() === lastDay.date.getTime()
+        );
+        setSelectedDayIndex(indexInWeek);
       }
     }
-    return availableWeeks[availableWeeks.length - 1] || 1;
-  }, [availableWeeks, mealPlan.start_date]);
+  }, [selectedWeek, visibleDays, currentWeekData]);
 
-  const [selectedWeek, setSelectedWeek] = useState(firstActiveWeek);
+  // Get the selected day info
+  const selectedDay = currentWeekData?.days[selectedDayIndex];
 
-  // Calculate dates for Mon-Sun of the selected display week
-  const getWeekDates = useMemo(() => {
-    // Parse start_date as local date (not UTC)
-    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
-    const startDate = new Date(year, month - 1, day);
-    
-    // Get the day of week of the start date (0 = Sunday, 1 = Monday, ... 6 = Saturday)
-    const startDayOfWeek = startDate.getDay();
-    
-    // Calculate how many days back to Monday
-    // Sunday (0) -> go back 6 days to Monday
-    // Monday (1) -> go back 0 days
-    // Tuesday (2) -> go back 1 day, etc.
-    const daysToMonday = startDayOfWeek === 0 ? 6 : startDayOfWeek - 1;
-    
-    // Get the Monday of the first week
-    const firstMonday = new Date(startDate);
-    firstMonday.setDate(startDate.getDate() - daysToMonday);
-    
-    // Add weeks based on selectedWeek
-    const weekStartDate = new Date(firstMonday);
-    weekStartDate.setDate(firstMonday.getDate() + (selectedWeek - 1) * 7);
-    
-    const dates: Date[] = [];
-    for (let i = 0; i < 7; i++) {
-      const date = new Date(weekStartDate);
-      date.setDate(weekStartDate.getDate() + i);
-      dates.push(date);
-    }
-    return dates;
-  }, [mealPlan.start_date, selectedWeek]);
+  // Get meals for a specific day
+  const getDayMeals = (dayInfo: DayInfo) => {
+    if (!dayInfo || !dayInfo.isInMonth) return [];
 
-  // Check if a display day is before the plan start date (using date-only comparison)
-  const isDayBeforeStart = (displayDayIndex: number) => {
-    const date = getWeekDates[displayDayIndex];
-    // Parse start_date as local date (not UTC)
-    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
-    const startDateLocal = new Date(year, month - 1, day);
+    // Calculate the day_of_week based on days since plan start
+    const planStartDate = new Date(mealPlan.start_date);
+    planStartDate.setHours(0, 0, 0, 0);
     
-    // Compare dates only (no time component)
-    const dateOnly = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-    const startOnly = new Date(startDateLocal.getFullYear(), startDateLocal.getMonth(), startDateLocal.getDate());
-    
-    return dateOnly.getTime() < startOnly.getTime();
-  };
+    const dayDate = new Date(dayInfo.date);
+    dayDate.setHours(0, 0, 0, 0);
 
-  // Get meals for a specific display day index (0 = Monday, 6 = Sunday)
-  const getDayMeals = (displayDayIndex: number) => {
-    if (isDayBeforeStart(displayDayIndex)) {
-      return []; // No meals before plan start
-    }
-    
-    const date = new Date(getWeekDates[displayDayIndex]);
-    date.setHours(0, 0, 0, 0);
-    const startDate = new Date(mealPlan.start_date);
-    startDate.setHours(0, 0, 0, 0);
-    
-    // Calculate days since plan start
-    const diffTime = date.getTime() - startDate.getTime();
+    // Check if day is before plan start
+    if (dayDate < planStartDate) return [];
+
+    const diffTime = dayDate.getTime() - planStartDate.getTime();
     const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     // Calculate which plan week and day this corresponds to
     const planWeekNumber = Math.floor(daysSinceStart / 7) + 1;
     const planDayOfWeek = daysSinceStart % 7;
-    
-    // Filter items matching this plan week and day
+
     return mealPlan.items.filter(item => 
       (item.week_number || 1) === planWeekNumber && 
       item.day_of_week === planDayOfWeek
     );
   };
 
-  const getDayTotals = (dayIndex: number) => {
-    const meals = getDayMeals(dayIndex);
+  const getDayTotals = (dayInfo: DayInfo) => {
+    const meals = getDayMeals(dayInfo);
     return {
       calories: meals.reduce((sum, m) => sum + m.recipe_calories, 0),
       protein: meals.reduce((sum, m) => sum + m.recipe_protein, 0),
@@ -193,23 +160,8 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     };
   };
 
-  // Calculate the first valid (non-disabled) day index
-  const firstValidDayIndex = useMemo(() => {
-    for (let i = 0; i < 7; i++) {
-      if (!isDayBeforeStart(i)) {
-        return i;
-      }
-    }
-    return 0;
-  }, [getWeekDates, mealPlan.start_date]);
-
-  // Auto-select first valid day when week changes or on mount
-  useEffect(() => {
-    setSelectedDay(firstValidDayIndex);
-  }, [selectedWeek, firstValidDayIndex]);
-
-  const currentDayMeals = getDayMeals(selectedDay);
-  const dayTotals = getDayTotals(selectedDay);
+  const currentDayMeals = selectedDay ? getDayMeals(selectedDay) : [];
+  const dayTotals = selectedDay ? getDayTotals(selectedDay) : { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
   const handleRegenerate = async (mode: "automatic" | "with_ingredients") => {
     if (!regenerateDialog.meal) return;
@@ -266,39 +218,20 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     setRegenerateDialog({ open: true, meal, mealType });
   };
 
-  // formatWeekRange and getMonthYear use getWeekDates defined earlier
-
-  const formatWeekRange = useMemo(() => {
-    const startDate = getWeekDates[0];
-    const endDate = getWeekDates[6];
-    
-    const formatDate = (date: Date) => {
-      return date.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
-    };
-    
-    return `${formatDate(startDate)} - ${formatDate(endDate)}`;
-  }, [getWeekDates]);
-
-  const getMonthYear = useMemo(() => {
-    const middleDate = getWeekDates[3]; // Use middle of week for month display
-    return middleDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-  }, [getWeekDates]);
-
-  // Check if a day has all meals executed (placeholder for future implementation)
-  const getDayStatus = (dayIndex: number): 'pending' | 'partial' | 'complete' => {
-    // TODO: Implement actual execution check when meal_executions table is created
-    // For now, return 'pending' for all days
+  const getDayStatus = (dayInfo: DayInfo): 'pending' | 'partial' | 'complete' => {
     return 'pending';
   };
 
   return (
     <div className="space-y-4 sm:space-y-6 animate-fade-in">
-      {/* Header with dynamic dates */}
+      {/* Header with dynamic month/year */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground capitalize">{getMonthYear}</h2>
+          <h2 className="font-display text-xl sm:text-2xl font-bold text-foreground capitalize">
+            {monthName} De {year}
+          </h2>
           <p className="text-xs sm:text-sm text-muted-foreground">
-            {formatWeekRange}
+            {weekRangeText}
           </p>
         </div>
         <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
@@ -306,7 +239,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         </Button>
       </div>
 
-      {/* Week Selector */}
+      {/* Week Selector - Dynamic weeks */}
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Semana
@@ -314,56 +247,60 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         <Select
           value={selectedWeek.toString()}
           onValueChange={(value) => {
-            setSelectedWeek(Number(value));
-            setSelectedDay(0);
+            const weekNum = Number(value);
+            const week = weeks[weekNum - 1];
+            if (week && !week.isPast) {
+              setSelectedWeek(weekNum);
+            }
           }}
         >
           <SelectTrigger className="w-full bg-background">
             <SelectValue placeholder="Semana" />
           </SelectTrigger>
           <SelectContent className="bg-background border">
-            {availableWeeks.map((week) => {
-              const isPast = isWeekInPast(week);
-              return (
-                <SelectItem 
-                  key={week} 
-                  value={week.toString()}
-                  disabled={isPast}
-                  className={cn(isPast && "opacity-50")}
-                >
-                  Semana {week} {isPast && "(passada)"}
-                </SelectItem>
-              );
-            })}
+            {weeks.map((week) => (
+              <SelectItem 
+                key={week.weekNumber} 
+                value={week.weekNumber.toString()}
+                disabled={week.isPast}
+                className={cn(week.isPast && "opacity-50 text-muted-foreground")}
+              >
+                Semana {week.weekNumber} {week.isPast && "(passada)"}
+              </SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Mini Calendar - Horizontal Days */}
+      {/* Mini Calendar - Only days in current month for this week */}
       <div className="space-y-2">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Dia
         </label>
-        <div className="grid grid-cols-7 gap-1 sm:gap-2">
-          {DAY_NAMES_FIXED.map((dayName, index) => {
-            const date = getWeekDates[index];
-            const dayNumber = date.getDate();
-            const isSelected = selectedDay === index;
-            const status = getDayStatus(index);
-            const hasMeals = getDayMeals(index).length > 0;
-            const isDisabled = isDayBeforeStart(index);
-            
+        <div className="flex gap-1 sm:gap-2 justify-start">
+          {currentWeekData?.days.map((day, index) => {
+            if (!day.isInMonth) return null;
+
+            const dayNumber = day.dayOfMonth;
+            const dayName = DAY_NAMES_SHORT[day.dayOfWeek];
+            const isSelected = selectedDayIndex === index;
+            const status = getDayStatus(day);
+            const hasMeals = getDayMeals(day).length > 0;
+            const isDisabled = day.isPast;
+            const isToday = day.isToday;
+
             return (
               <button
-                key={`${dayName}-${index}`}
-                onClick={() => !isDisabled && setSelectedDay(index)}
+                key={`${day.date.toISOString()}`}
+                onClick={() => !isDisabled && setSelectedDayIndex(index)}
                 disabled={isDisabled}
                 className={cn(
-                  "flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all border",
+                  "flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all border min-w-[48px] sm:min-w-[56px]",
                   isDisabled && "opacity-40 cursor-not-allowed bg-muted/50 border-muted",
                   !isDisabled && isSelected 
                     ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
                     : !isDisabled && "bg-background hover:bg-muted border-border hover:border-primary/50",
+                  isToday && !isSelected && !isDisabled && "ring-2 ring-primary/50"
                 )}
               >
                 <span className={cn(
@@ -394,37 +331,39 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       </div>
 
       {/* Day Summary */}
-      <Card className="glass-card border-primary/20">
-        <CardContent className="p-3 sm:p-4">
-          <p className="text-xs font-medium text-muted-foreground mb-2 sm:mb-3 uppercase tracking-wide">
-            Consumo de {DAY_NAMES_FULL[selectedDay]}
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
-              <span className="font-semibold text-sm sm:text-base">{dayTotals.calories}</span>
-              <span className="text-xs sm:text-sm text-muted-foreground">kcal</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Beef className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
-              <span className="font-semibold text-sm sm:text-base">{dayTotals.protein.toFixed(0)}g</span>
-              <span className="text-xs sm:text-sm text-muted-foreground">prot</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <Wheat className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
-              <span className="font-semibold text-sm sm:text-base">{dayTotals.carbs.toFixed(0)}g</span>
-              <span className="text-xs sm:text-sm text-muted-foreground">carbs</span>
-            </div>
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
-                <span className="text-[10px] sm:text-xs">🧈</span>
+      {selectedDay && (
+        <Card className="glass-card border-primary/20">
+          <CardContent className="p-3 sm:p-4">
+            <p className="text-xs font-medium text-muted-foreground mb-2 sm:mb-3 uppercase tracking-wide">
+              Consumo de {DAY_NAMES_FULL[selectedDay.dayOfWeek]}
+            </p>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-4">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Flame className="w-4 h-4 sm:w-5 sm:h-5 text-orange-500 shrink-0" />
+                <span className="font-semibold text-sm sm:text-base">{dayTotals.calories}</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">kcal</span>
               </div>
-              <span className="font-semibold text-sm sm:text-base">{dayTotals.fat.toFixed(0)}g</span>
-              <span className="text-xs sm:text-sm text-muted-foreground">gord</span>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Beef className="w-4 h-4 sm:w-5 sm:h-5 text-red-500 shrink-0" />
+                <span className="font-semibold text-sm sm:text-base">{dayTotals.protein.toFixed(0)}g</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">prot</span>
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <Wheat className="w-4 h-4 sm:w-5 sm:h-5 text-amber-500 shrink-0" />
+                <span className="font-semibold text-sm sm:text-base">{dayTotals.carbs.toFixed(0)}g</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">carbs</span>
+              </div>
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-full bg-yellow-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] sm:text-xs">🧈</span>
+                </div>
+                <span className="font-semibold text-sm sm:text-base">{dayTotals.fat.toFixed(0)}g</span>
+                <span className="text-xs sm:text-sm text-muted-foreground">gord</span>
+              </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Meals List */}
       <div className="space-y-3 sm:space-y-4">

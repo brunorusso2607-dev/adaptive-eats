@@ -277,9 +277,12 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Dia
         </label>
-        <div className="flex gap-1 sm:gap-2 justify-start">
+        <div className="grid grid-cols-7 gap-1">
           {currentWeekData?.days.map((day, index) => {
-            if (!day.isInMonth) return null;
+            // If day is not in month, render empty placeholder to maintain grid
+            if (!day.isInMonth) {
+              return <div key={`empty-${index}`} className="min-h-[60px]" />;
+            }
 
             const dayNumber = day.dayOfMonth;
             const dayName = DAY_NAMES_SHORT[day.dayOfWeek];
@@ -295,7 +298,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                 onClick={() => !isDisabled && setSelectedDayIndex(index)}
                 disabled={isDisabled}
                 className={cn(
-                  "flex flex-col items-center p-2 sm:p-3 rounded-xl transition-all border min-w-[48px] sm:min-w-[56px]",
+                  "flex flex-col items-center py-2 px-1 sm:p-3 rounded-xl transition-all border",
                   isDisabled && "opacity-40 cursor-not-allowed bg-muted/50 border-muted",
                   !isDisabled && isSelected 
                     ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
@@ -310,14 +313,14 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                   {dayName}
                 </span>
                 <span className={cn(
-                  "text-base sm:text-lg font-bold",
+                  "text-sm sm:text-lg font-bold",
                   isDisabled ? "text-muted-foreground/50" : isSelected ? "text-primary-foreground" : "text-foreground"
                 )}>
                   {dayNumber}
                 </span>
                 {/* Status indicator */}
                 <div className={cn(
-                  "w-2 h-2 rounded-full mt-1",
+                  "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-0.5 sm:mt-1",
                   isDisabled && "bg-muted-foreground/20",
                   !isDisabled && !hasMeals && "bg-muted-foreground/30",
                   !isDisabled && hasMeals && status === 'pending' && "bg-muted-foreground/50",

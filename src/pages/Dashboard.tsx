@@ -547,8 +547,8 @@ export default function Dashboard() {
               {/* Home Principal - 5 Opções */}
               <div className="space-y-6">
                 {/* Opção Principal: Gerar Receita com Ingredientes */}
-                <Card className="glass-card border-2 border-primary/30 shadow-glow overflow-hidden">
-                  <CardContent className="p-6 space-y-4">
+                <Card className="glass-card border-2 border-primary/30 shadow-glow overflow-visible relative z-20">
+                  <CardContent className="p-6 space-y-4 overflow-visible">
                     <div className="flex items-center gap-4">
                       <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center shrink-0">
                         <UtensilsCrossed className="w-7 h-7 text-primary-foreground" />

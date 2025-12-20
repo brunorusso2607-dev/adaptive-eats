@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { useSwipeable } from "react-swipeable";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -377,19 +377,15 @@ export default function Dashboard() {
   // Check if we're in a sub-view that needs a back button
   const isInSubView = mobileActiveTab !== "home" || showMealPlan || showList || showProfileSheet;
 
-  // Swipe handlers for mobile navigation - MUST be called before any early returns
-  const swipeHandlers = useSwipeable({
-    onSwipedRight: () => {
-      // Only trigger on mobile and when in a sub-view
-      if (window.innerWidth < 768 && isInSubView) {
-        handleBackToHome();
-      }
-    },
-    trackMouse: false,
-    trackTouch: true,
-    delta: 50, // Minimum swipe distance
-    preventScrollOnSwipe: false,
+  // Swipe handlers for mobile navigation with visual feedback
+  const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
+    onClose: handleBackToHome,
+    direction: "right",
+    threshold: 100,
   });
+  
+  // Only apply swipe style when in a sub-view
+  const activeSwipeStyle = isInSubView ? swipeStyle : {};
 
   if (isLoading) {
     return (
@@ -439,7 +435,11 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen gradient-hero pb-20 md:pb-0" {...swipeHandlers}>
+    <div 
+      className={`min-h-screen gradient-hero pb-20 md:pb-0 ${isDragging ? 'select-none' : ''}`} 
+      {...swipeHandlers}
+      style={activeSwipeStyle}
+    >
       {/* Header */}
       <header className="glass-card border-b sticky top-0 z-50">
         <div className="container mx-auto px-4 py-4 flex items-center justify-between">

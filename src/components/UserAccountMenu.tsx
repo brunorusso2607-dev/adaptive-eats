@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useSwipeable } from "react-swipeable";
+import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,17 +125,11 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     }
   };
 
-  // Swipe handler to close the sheet
-  const swipeHandlers = useSwipeable({
-    onSwipedRight: () => {
-      if (window.innerWidth < 768) {
-        setIsOpen(false);
-      }
-    },
-    trackMouse: false,
-    trackTouch: true,
-    delta: 50,
-    preventScrollOnSwipe: false,
+  // Swipe handler to close the sheet with visual feedback
+  const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
+    onClose: () => setIsOpen(false),
+    direction: "right",
+    threshold: 100,
   });
 
   useEffect(() => {
@@ -618,8 +612,8 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           )}
         </Button>
       </SheetTrigger>
-      <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-        <div {...swipeHandlers} className="h-full">
+      <SheetContent className="w-full sm:max-w-md overflow-y-auto overflow-x-hidden">
+        <div {...swipeHandlers} style={swipeStyle} className={`h-full ${isDragging ? 'select-none' : ''}`}>
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <User className="w-5 h-5" />

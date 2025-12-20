@@ -250,7 +250,10 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     <div 
       {...swipeHandlers} 
       style={swipeStyle} 
-      className={cn("space-y-4 sm:space-y-6 animate-fade-in", isDragging && "select-none")}
+      className={cn(
+        "space-y-4 sm:space-y-6 animate-fade-in min-h-[calc(100vh-140px)]",
+        isDragging && "select-none"
+      )}
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

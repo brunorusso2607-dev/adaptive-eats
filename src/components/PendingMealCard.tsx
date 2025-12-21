@@ -34,26 +34,22 @@ interface PendingMealCardProps {
   onRefetch: () => void;
 }
 
-const statusStyles: Record<MealStatus, { border: string; bg: string; pulse: boolean }> = {
+const statusStyles: Record<MealStatus, { border: string; bg: string }> = {
   on_time: { 
     border: "border-border", 
-    bg: "bg-card", 
-    pulse: false 
+    bg: "bg-card"
   },
   delayed: { 
     border: "border-yellow-500/50", 
-    bg: "bg-yellow-500/5", 
-    pulse: false 
+    bg: "bg-yellow-500/5"
   },
   critical: { 
     border: "border-destructive/50", 
-    bg: "bg-destructive/5", 
-    pulse: true 
+    bg: "bg-destructive/5"
   },
   completed: { 
     border: "border-emerald-500/50", 
-    bg: "bg-emerald-500/5", 
-    pulse: false 
+    bg: "bg-emerald-500/5"
   },
 };
 
@@ -168,8 +164,7 @@ export default function PendingMealCard({
       className={cn(
         "glass-card overflow-hidden transition-all duration-300",
         styles.border,
-        styles.bg,
-        styles.pulse && "animate-pulse"
+        styles.bg
       )}
     >
       <CardContent className="p-4 space-y-4">

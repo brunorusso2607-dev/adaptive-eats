@@ -18,7 +18,7 @@ import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
-import NextMealCard from "@/components/NextMealCard";
+import PendingMealsList from "@/components/PendingMealsList";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -27,7 +27,7 @@ import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
 import { useActivityLog } from "@/hooks/useActivityLog";
-import { useNextMeal } from "@/hooks/useNextMeal";
+import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 
 type Recipe = {
   name: string;
@@ -119,8 +119,11 @@ export default function Dashboard() {
   // Admin check
   const { isAdmin } = useAdmin();
   
-  // Next meal hook for badge
-  const { mealStatus: nextMealStatus, hasMealPlan: hasActiveMealPlan } = useNextMeal();
+  // Pending meals hook for badge
+  const { pendingMeals, hasMealPlan: hasActiveMealPlan } = usePendingMeals();
+  const nextMealStatus = pendingMeals.length > 0 
+    ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].day_of_week, pendingMeals[0].completed_at)
+    : "on_time";
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -975,8 +978,8 @@ export default function Dashboard() {
                   </Card>
                 )}
 
-                {/* Card de Próxima Refeição - Abaixo dos macros */}
-                <NextMealCard />
+                {/* Lista de Refeições Pendentes - Abaixo dos macros */}
+                <PendingMealsList />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

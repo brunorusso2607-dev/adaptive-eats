@@ -29,7 +29,7 @@ export function useFilteredRecipeCategories() {
           .from("profiles")
           .select("goal, dietary_preference, context, intolerances")
           .eq("id", user.id)
-          .single();
+          .maybeSingle();
 
         if (error) {
           console.error("Erro ao buscar perfil:", error);
@@ -74,7 +74,7 @@ export function useFilteredRecipeCategories() {
         .from("profiles")
         .select("goal, dietary_preference, context, intolerances")
         .eq("id", user.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error("Erro ao buscar perfil:", error);

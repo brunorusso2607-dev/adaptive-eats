@@ -174,23 +174,35 @@ export default function FoodPhotoAnalyzer() {
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
+        // Handle rate limit from backend
+        if (data.rateLimited) {
+          toast.warning(data.error || "Limite atingido. Aguarde 30 segundos.", {
+            duration: 5000,
+          });
+          return;
+        }
+
         // Handle needsBackPhoto from backend (intelligent detection)
         if (data.needsBackPhoto) {
-          setNeedsBackPhoto(true);
-          setFrontImage(imagePreview);
-          setImagePreview(null);
-          setLabelStep("back");
+          console.log("[FoodPhotoAnalyzer] Backend requested second photo", data);
           
-          // Store dynamic reason from the AI
+          // Store dynamic reason from the AI FIRST
           const analysisData = data.analysis || {};
-          setBackPhotoReason({
+          const reason = {
             mensagem: analysisData.mensagem_segunda_foto || data.message || "Para sua segurança, tire uma foto da tabela de ingredientes.",
             motivo: analysisData.motivo_duvida || "Não foi possível confirmar todos os ingredientes",
             intolerancia: analysisData.intolerancia_em_duvida || "",
             produto: analysisData.produto_identificado || "produto"
-          });
+          };
           
-          toast.info(analysisData.mensagem_segunda_foto || data.message || "Preciso da foto dos ingredientes para confirmar.", {
+          // Set all states for the back photo step
+          setBackPhotoReason(reason);
+          setFrontImage(imagePreview);
+          setNeedsBackPhoto(true);
+          setLabelStep("back");
+          setImagePreview(null);
+          
+          toast.info(reason.mensagem, {
             duration: 5000,
           });
           return;

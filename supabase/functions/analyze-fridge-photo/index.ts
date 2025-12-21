@@ -385,37 +385,140 @@ IMPORTANTE: Se a imagem NÃO for de geladeira/despensa, responda:
       });
     }
 
-    // Pós-processamento: adicionar alertas extras baseado no mapa de produtos de risco
-    if (analysis.ingredientes_identificados && intolerances.length > 0) {
-      const alertasAdicionais: string[] = [];
+    // ========== PÓS-PROCESSAMENTO: ENRIQUECIMENTO COM PRODUTOS_CONHECIDOS ==========
+    // Esta etapa usa conhecimento enciclopédico para GARANTIR detecção de alérgenos
+    
+    if (analysis.ingredientes_identificados) {
+      logStep('Starting post-processing with PRODUTOS_CONHECIDOS');
       
       for (const ingrediente of analysis.ingredientes_identificados) {
-        const nomeNormalizado = ingrediente.nome.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        const nomeNormalizado = ingrediente.nome.toLowerCase()
+          .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+          .replace(/[^a-z0-9\s]/g, '');
         
-        // Verificar cada intolerância do usuário
-        for (const userIntolerance of intolerances) {
-          const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
-          const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
-          
-          // Verificar se o ingrediente está na lista de risco
-          const isRisco = produtosRisco.some(produto => 
-            nomeNormalizado.includes(produto.toLowerCase()) || 
-            produto.toLowerCase().includes(nomeNormalizado)
+        // 1. BUSCAR NO MAPA DE PRODUTOS CONHECIDOS
+        let produtoEncontrado: { contem: string[], marcasTipicas: string[] } | null = null;
+        let produtoKey = '';
+        
+        for (const [key, value] of Object.entries(PRODUTOS_CONHECIDOS)) {
+          const keyNormalizado = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+          // Verificar se o nome do ingrediente corresponde à chave do produto
+          if (nomeNormalizado.includes(keyNormalizado) || keyNormalizado.includes(nomeNormalizado)) {
+            produtoEncontrado = value;
+            produtoKey = key;
+            break;
+          }
+          // Verificar também pelas marcas típicas
+          const matchesMarca = value.marcasTipicas.some(marca => 
+            nomeNormalizado.includes(marca.toLowerCase())
           );
+          if (matchesMarca) {
+            produtoEncontrado = value;
+            produtoKey = key;
+            break;
+          }
+        }
+        
+        // 2. SE ENCONTROU PRODUTO CONHECIDO, ENRIQUECER COM INFORMAÇÕES
+        if (produtoEncontrado) {
+          logStep('Product matched in PRODUTOS_CONHECIDOS', { produto: produtoKey, ingrediente: ingrediente.nome });
           
-          if (isRisco && ingrediente.tipo === 'industrializado' && ingrediente.confianca !== 'alta') {
-            // Se é industrializado e não temos confiança alta, adicionar alerta
-            if (!ingrediente.alerta_seguranca) {
-              const versaoSegura = intoleranceKey === 'lactose' ? 'sem lactose' :
-                                   intoleranceKey === 'gluten' ? 'sem glúten' :
-                                   `sem ${userIntolerance}`;
-              ingrediente.alerta_seguranca = `⚠️ Verifique se este produto é a versão ${versaoSegura} antes de usar.`;
+          // Adicionar substâncias detectadas se não existir
+          if (!ingrediente.substancias_detectadas || ingrediente.substancias_detectadas.length === 0) {
+            ingrediente.substancias_detectadas = produtoEncontrado.contem;
+          } else {
+            // Mesclar com as substâncias já detectadas pela IA
+            const substanciasExistentes = new Set(ingrediente.substancias_detectadas.map((s: string) => s.toLowerCase()));
+            for (const substancia of produtoEncontrado.contem) {
+              if (!substanciasExistentes.has(substancia.toLowerCase())) {
+                ingrediente.substancias_detectadas.push(substancia);
+              }
+            }
+          }
+          
+          // 3. VERIFICAR CONFLITOS COM INTOLERÂNCIAS DO USUÁRIO
+          if (intolerances.length > 0) {
+            const substanciasDoIngrediente = ingrediente.substancias_detectadas.map((s: string) => 
+              s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+            );
+            
+            const conflitosDetectados: string[] = [];
+            
+            for (const userIntolerance of intolerances) {
+              const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
+              const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
+              
+              // Verificar se alguma substância do ingrediente conflita com a intolerância
+              for (const substancia of substanciasDoIngrediente) {
+                const conflito = produtosRisco.some(produto => 
+                  substancia.includes(produto.toLowerCase()) || 
+                  produto.toLowerCase().includes(substancia)
+                );
+                if (conflito && !conflitosDetectados.includes(intoleranceKey)) {
+                  conflitosDetectados.push(intoleranceKey);
+                }
+              }
+            }
+            
+            // 4. ADICIONAR ALERTA DE SEGURANÇA SE HOUVER CONFLITO
+            if (conflitosDetectados.length > 0) {
+              const restricoesLabel = conflitosDetectados.map(c => 
+                c === 'lactose' ? 'LACTOSE' :
+                c === 'gluten' ? 'GLÚTEN' :
+                c === 'ovo' ? 'OVO' :
+                c === 'soja' ? 'SOJA' :
+                c === 'acucar' ? 'AÇÚCAR' :
+                c.toUpperCase()
+              ).join(', ');
+              
+              const alertaAtual = ingrediente.alerta_seguranca || '';
+              const novoAlerta = `🔴 CONTÉM ${restricoesLabel} (baseado em conhecimento do produto "${produtoKey}")`;
+              
+              if (!alertaAtual.includes(restricoesLabel)) {
+                ingrediente.alerta_seguranca = alertaAtual 
+                  ? `${alertaAtual} | ${novoAlerta}`
+                  : novoAlerta;
+              }
+              
+              // Marcar como industrializado se não estiver
+              if (!ingrediente.tipo) {
+                ingrediente.tipo = 'industrializado';
+              }
+              
+              // Baixar confiança se IA tinha dado alta mas não viu rótulo
+              if (ingrediente.confianca === 'alta' && ingrediente.identificado_por !== 'rotulo') {
+                ingrediente.confianca = 'media';
+                ingrediente.confianca_percentual = Math.min(ingrediente.confianca_percentual || 75, 75);
+              }
+            }
+          }
+        }
+        
+        // 5. VERIFICAÇÃO ADICIONAL COM PRODUTOS_RISCO (mesmo sem match em PRODUTOS_CONHECIDOS)
+        if (intolerances.length > 0) {
+          for (const userIntolerance of intolerances) {
+            const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
+            const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
+            
+            const isRisco = produtosRisco.some(produto => 
+              nomeNormalizado.includes(produto.toLowerCase()) || 
+              produto.toLowerCase().includes(nomeNormalizado)
+            );
+            
+            if (isRisco && ingrediente.tipo === 'industrializado' && ingrediente.confianca !== 'alta') {
+              if (!ingrediente.alerta_seguranca) {
+                const versaoSegura = intoleranceKey === 'lactose' ? 'sem lactose' :
+                                     intoleranceKey === 'gluten' ? 'sem glúten' :
+                                     intoleranceKey === 'acucar' ? 'sem açúcar' :
+                                     `sem ${userIntolerance}`;
+                ingrediente.alerta_seguranca = `⚠️ Verifique se este produto é a versão ${versaoSegura} antes de usar.`;
+              }
             }
           }
         }
       }
       
-      // Adicionar alerta geral se há produtos de confiança baixa
+      // 6. ALERTAS GERAIS
       const produtosBaixaConfianca = analysis.ingredientes_identificados.filter(
         (i: any) => i.confianca === 'baixa' && i.tipo === 'industrializado'
       );
@@ -428,6 +531,16 @@ IMPORTANTE: Se a imagem NÃO for de geladeira/despensa, responda:
           `⚠️ ${produtosBaixaConfianca.length} produto(s) não puderam ter o rótulo verificado. Por segurança, confirme que são adequados para suas restrições antes de usar.`
         );
       }
+      
+      // 7. CONTAR ENRIQUECIMENTOS REALIZADOS
+      const ingredientesEnriquecidos = analysis.ingredientes_identificados.filter(
+        (i: any) => i.substancias_detectadas && i.substancias_detectadas.length > 0
+      ).length;
+      
+      logStep('Post-processing complete', { 
+        ingredientesEnriquecidos,
+        totalIngredientes: analysis.ingredientes_identificados.length
+      });
     }
 
     // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========

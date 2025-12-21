@@ -14,22 +14,25 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "prompt", // Mudamos para prompt para ter controle manual
+      registerType: "autoUpdate", // Volta para autoUpdate - atualiza automaticamente
       includeAssets: ["favicon.ico", "icons/*.png"],
       manifest: false, // Using external manifest.json
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        skipWaiting: false, // Não pular automaticamente
-        clientsClaim: true, // Tomar controle dos clientes existentes
+        skipWaiting: true, // FORÇA atualização imediata do SW
+        clientsClaim: true, // Toma controle dos clientes imediatamente
+        // Não cachear o HTML para sempre ter a versão mais recente
+        navigateFallback: null,
         runtimeCaching: [
           {
+            // Cache de fontes - pode ser longo
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
             handler: "CacheFirst",
             options: {
               cacheName: "google-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],
@@ -43,7 +46,7 @@ export default defineConfig(({ mode }) => ({
               cacheName: "gstatic-fonts-cache",
               expiration: {
                 maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365, // 1 year
+                maxAgeSeconds: 60 * 60 * 24 * 365,
               },
               cacheableResponse: {
                 statuses: [0, 200],

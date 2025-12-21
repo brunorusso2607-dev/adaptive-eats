@@ -52,11 +52,7 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
     ],
   },
-  {
-    label: "Pixels",
-    icon: Code2,
-    subItems: [],
-  },
+  { path: "/admin/pixels", label: "Pixels", icon: Code2 },
 ];
 
 export default function AdminDashboard() {

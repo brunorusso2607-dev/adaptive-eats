@@ -20,6 +20,8 @@ export type PendingMealData = {
   recipe_instructions: string[];
   is_favorite: boolean;
   completed_at: string | null;
+  // Calculated field for the actual date
+  actual_date?: Date;
 };
 
 // Mapeamento de horários para cada refeição
@@ -153,10 +155,10 @@ export function usePendingMeals() {
         return;
       }
 
-      // Buscar plano ativo
+      // Buscar plano ativo com start_date
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id")
+        .select("id, start_date")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -172,13 +174,14 @@ export function usePendingMeals() {
       }
 
       setHasMealPlan(true);
-      const activePlanId = plans[0].id;
+      const activePlan = plans[0];
+      const planStartDate = new Date(activePlan.start_date + "T00:00:00");
 
       // Buscar TODAS as refeições não completadas do plano
       const { data: meals, error: mealsError } = await supabase
         .from("meal_plan_items")
         .select("*")
-        .eq("meal_plan_id", activePlanId)
+        .eq("meal_plan_id", activePlan.id)
         .is("completed_at", null)
         .order("day_of_week", { ascending: true });
 
@@ -190,6 +193,21 @@ export function usePendingMeals() {
         return;
       }
 
+      // Calcular a data real de cada refeição baseada no start_date do plano
+      // O start_date é sempre uma segunda-feira (day 1), então precisamos ajustar
+      const calculateActualDate = (dayOfWeek: number): Date => {
+        const date = new Date(planStartDate);
+        // dayOfWeek: 0=Dom, 1=Seg, 2=Ter, etc.
+        // O plano começa na segunda (1), então:
+        // - Segunda (1) = start_date + 0
+        // - Terça (2) = start_date + 1
+        // - ...
+        // - Domingo (0) = start_date + 6
+        const daysFromStart = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+        date.setDate(date.getDate() + daysFromStart);
+        return date;
+      };
+
       // Ordenar por dia e depois por ordem da refeição
       const sortedMeals = meals.sort((a, b) => {
         if (a.day_of_week !== b.day_of_week) {
@@ -198,10 +216,11 @@ export function usePendingMeals() {
         return MEAL_ORDER.indexOf(a.meal_type) - MEAL_ORDER.indexOf(b.meal_type);
       });
 
-      // Converter para o formato esperado
+      // Converter para o formato esperado com data calculada
       const formattedMeals: PendingMealData[] = sortedMeals.map(meal => ({
         ...meal,
         recipe_ingredients: meal.recipe_ingredients as Ingredient[],
+        actual_date: calculateActualDate(meal.day_of_week),
         recipe_instructions: meal.recipe_instructions as string[],
       }));
 

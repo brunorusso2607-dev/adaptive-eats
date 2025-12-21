@@ -84,6 +84,10 @@ export default function PendingMealCard({
   const mealStatus = getMealStatus(meal.meal_type, meal.day_of_week, meal.completed_at);
   const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.day_of_week);
   const mealLabel = MEAL_LABELS[meal.meal_type] || meal.meal_type;
+  
+  // Get day abbreviation and date number
+  const dayAbbrev = DAY_LABELS[meal.day_of_week];
+  const dateNumber = meal.actual_date ? meal.actual_date.getDate() : null;
   const dayLabel = DAY_LABELS[meal.day_of_week];
 
   const handleFizClick = () => {
@@ -191,7 +195,7 @@ export default function PendingMealCard({
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
                 <span className="text-[10px] font-medium bg-muted px-1.5 py-0.5 rounded">
-                  {dayLabel}
+                  {dayAbbrev} {dateNumber}
                 </span>
                 <span className="text-xs font-medium text-muted-foreground">
                   {mealLabel}

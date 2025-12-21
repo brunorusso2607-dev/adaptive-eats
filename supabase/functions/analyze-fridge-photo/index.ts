@@ -11,54 +11,129 @@ const logStep = (step: string, details?: any) => {
   console.log(`[FRIDGE-ANALYZER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Mapa de produtos de risco por intolerância
+// Mapa de produtos de risco por intolerância (inclui nomes comerciais e técnicos)
 const PRODUTOS_RISCO: Record<string, string[]> = {
   lactose: [
+    // Produtos comuns
     'margarina', 'manteiga', 'iogurte', 'queijo', 'requeijão', 'cream cheese',
     'leite', 'creme de leite', 'chantilly', 'doce de leite', 'leite condensado',
     'sorvete', 'pudim', 'mousse', 'yakult', 'danoninho', 'petit suisse',
     'nata', 'coalhada', 'kefir', 'ricota', 'cottage', 'mussarela', 'parmesão',
-    'gorgonzola', 'brie', 'camembert', 'provolone', 'gouda', 'cheddar'
+    'gorgonzola', 'brie', 'camembert', 'provolone', 'gouda', 'cheddar',
+    // Marcas conhecidas com lactose
+    'qualy', 'danone', 'activia', 'vigor', 'nestle', 'elegê', 'parmalat',
+    // Nomes técnicos (alérgenos ocultos)
+    'caseína', 'caseinato', 'lactose', 'soro de leite', 'whey', 'lactoalbumina',
+    'lactoglobulina', 'proteína do leite', 'gordura de leite', 'lactato'
   ],
   gluten: [
+    // Produtos comuns
     'pão', 'torrada', 'bisnaguinha', 'bolo', 'bolacha', 'biscoito', 'massa',
     'macarrão', 'lasanha', 'pizza', 'cerveja', 'molho shoyu', 'molho teriyaki',
     'empanado', 'nuggets', 'salsicha', 'linguiça', 'hambúrguer', 'ketchup',
     'mostarda', 'maionese', 'molho barbecue', 'molho branco', 'croquete',
-    'esfiha', 'pão de queijo', 'croissant', 'wrap', 'tortilla'
+    'esfiha', 'pão de queijo', 'croissant', 'wrap', 'tortilla',
+    // Marcas conhecidas com glúten
+    'bauducco', 'pullman', 'wickbold', 'seven boys', 'visconti', 'adria',
+    // Nomes técnicos (alérgenos ocultos)
+    'glúten', 'trigo', 'centeio', 'cevada', 'aveia', 'malte', 'maltodextrina',
+    'amido de trigo', 'farinha de trigo', 'proteína de trigo', 'seitan',
+    'triticale', 'espelta', 'kamut', 'bulgur', 'cuscuz'
   ],
   amendoim: [
     'pasta de amendoim', 'paçoca', 'pé de moleque', 'amendoim', 'manteiga de amendoim',
     'molho satay', 'pad thai', 'cookies', 'brownie', 'sorvete', 'granola',
-    'barra de cereal', 'chocolate', 'bombom'
+    'barra de cereal', 'chocolate', 'bombom',
+    // Nomes técnicos
+    'arachis hypogaea', 'óleo de amendoim', 'proteína de amendoim'
   ],
   oleaginosas: [
     'castanha', 'nozes', 'amêndoas', 'pistache', 'avelã', 'macadâmia',
     'castanha de caju', 'castanha do pará', 'nutella', 'creme de avelã',
-    'leite de amêndoas', 'pesto', 'marzipã', 'torrone', 'praline'
+    'leite de amêndoas', 'pesto', 'marzipã', 'torrone', 'praline',
+    // Nomes técnicos
+    'corylus avellana', 'prunus dulcis', 'anacardium occidentale'
   ],
   frutos_do_mar: [
     'camarão', 'lagosta', 'caranguejo', 'siri', 'lula', 'polvo', 'marisco',
-    'mexilhão', 'ostra', 'vieira', 'surimi', 'kani', 'tempurá'
+    'mexilhão', 'ostra', 'vieira', 'surimi', 'kani', 'tempurá',
+    // Nomes técnicos
+    'crustáceo', 'molusco', 'extrato de crustáceos'
   ],
   peixe: [
     'atum', 'sardinha', 'salmão', 'tilápia', 'bacalhau', 'anchova',
-    'molho de peixe', 'fish sauce', 'caesar', 'molho worcestershire'
+    'molho de peixe', 'fish sauce', 'caesar', 'molho worcestershire',
+    // Nomes técnicos
+    'colágeno de peixe', 'gelatina de peixe', 'óleo de peixe', 'ômega-3'
   ],
   ovo: [
     'ovo', 'maionese', 'aioli', 'mousse', 'merengue', 'marshmallow',
     'massa fresca', 'macarrão', 'bolo', 'biscoito', 'pão de ló',
-    'quiche', 'omelete', 'fritada', 'panqueca', 'waffle', 'crepe'
+    'quiche', 'omelete', 'fritada', 'panqueca', 'waffle', 'crepe',
+    // Nomes técnicos
+    'albumina', 'ovalbumina', 'ovomucoide', 'lecitina de ovo', 'lisozima',
+    'globulina', 'livetina', 'ovomucina', 'ovovitelina'
   ],
   soja: [
     'tofu', 'molho shoyu', 'missô', 'edamame', 'leite de soja', 'tempeh',
-    'proteína de soja', 'óleo de soja', 'lecitina', 'molho teriyaki'
+    'proteína de soja', 'óleo de soja', 'lecitina', 'molho teriyaki',
+    // Nomes técnicos
+    'lecitina de soja', 'proteína vegetal hidrolisada', 'PVT', 'TVP',
+    'isolado proteico de soja', 'gordura vegetal hidrogenada'
   ],
   acucar: [
     'refrigerante', 'suco de caixinha', 'iogurte', 'achocolatado', 'gelatina',
     'pudim', 'doce', 'geleia', 'mel', 'açúcar', 'leite condensado',
-    'chocolate', 'sorvete', 'bolo', 'biscoito', 'cereal matinal'
+    'chocolate', 'sorvete', 'bolo', 'biscoito', 'cereal matinal',
+    // Nomes técnicos (açúcares ocultos)
+    'sacarose', 'frutose', 'glicose', 'dextrose', 'maltose', 'xarope de milho',
+    'xarope de glicose', 'açúcar invertido', 'melaço', 'xarope de agave',
+    'xarope de malte', 'concentrado de suco de fruta'
   ]
+};
+
+// Conhecimento enciclopédico de produtos industrializados conhecidos
+const PRODUTOS_CONHECIDOS: Record<string, { contem: string[], marcasTipicas: string[] }> = {
+  margarina: {
+    contem: ['soro de leite', 'lactose', 'gordura vegetal'],
+    marcasTipicas: ['qualy', 'delícia', 'primor', 'claybom']
+  },
+  iogurte: {
+    contem: ['leite', 'lactose', 'açúcar'],
+    marcasTipicas: ['danone', 'activia', 'vigor', 'batavo', 'nestlé']
+  },
+  molho_shoyu: {
+    contem: ['trigo', 'glúten', 'soja'],
+    marcasTipicas: ['sakura', 'kikkoman', 'hinomoto']
+  },
+  maionese: {
+    contem: ['ovo', 'óleo de soja'],
+    marcasTipicas: ['hellmanns', 'heinz', 'quero', 'liza']
+  },
+  nuggets: {
+    contem: ['farinha de trigo', 'glúten', 'soja'],
+    marcasTipicas: ['sadia', 'seara', 'perdigão', 'aurora']
+  },
+  salsicha: {
+    contem: ['amido de trigo', 'glúten', 'lactose'],
+    marcasTipicas: ['sadia', 'seara', 'perdigão', 'swift']
+  },
+  presunto: {
+    contem: ['amido', 'lactose', 'glúten'],
+    marcasTipicas: ['sadia', 'seara', 'aurora', 'frimesa']
+  },
+  requeijao: {
+    contem: ['leite', 'lactose', 'gordura de leite'],
+    marcasTipicas: ['catupiry', 'polenguinho', 'vigor', 'polenghi']
+  },
+  chocolate: {
+    contem: ['leite', 'lactose', 'açúcar', 'lecitina de soja'],
+    marcasTipicas: ['nestlé', 'lacta', 'garoto', 'hersheys']
+  },
+  biscoito: {
+    contem: ['farinha de trigo', 'glúten', 'açúcar', 'gordura vegetal'],
+    marcasTipicas: ['bauducco', 'marilan', 'nestlé', 'piraquê']
+  }
 };
 
 // Mapeamento de intolerâncias do perfil para chaves do mapa
@@ -187,7 +262,7 @@ REGRAS DE SEGURANÇA:
       contextInfo = 'Sugira receitas INFANTIS, atrativas para crianças.';
     }
 
-    const systemPrompt = `Você é um chef de cozinha especializado em SEGURANÇA ALIMENTAR para pessoas com intolerâncias e alergias.
+    const systemPrompt = `Você é um ESPECIALISTA EM SEGURANÇA ALIMENTAR DE NÍVEL CLÍNICO com conhecimento enciclopédico de produtos industrializados.
 
 ${dietaryContext}
 ${intoleranceContext}
@@ -195,31 +270,53 @@ ${goalContext}
 ${complexityContext}
 ${contextInfo}
 
-Analise a imagem da geladeira/despensa e:
-1. Identifique todos os ingredientes visíveis
-2. Para CADA ingrediente, avalie:
-   - Nível de confiança na identificação (alta/media/baixa)
-   - Se é "baixa", significa que você vê apenas a embalagem/marca, não o rótulo com ingredientes
-3. Sugira 3 receitas SEGURAS com esses ingredientes
-4. Adicione alertas de segurança quando necessário
+=== DIRETRIZES DE IDENTIFICAÇÃO ===
 
-VERIFICAÇÃO NEGATIVA (FAIL-SAFE):
-- Se você NÃO consegue ver claramente o rótulo de um produto industrializado, assuma que PODE conter alérgenos
-- Para margarinas, iogurtes, molhos, embutidos: SEMPRE adicionar alerta se não confirmar versão sem alérgeno
-- Priorize ingredientes in natura (frutas, vegetais, carnes frescas) que são naturalmente seguros
+1. IDENTIFICAÇÃO POR CONTEXTO VISUAL:
+   - Use branding, cores, logotipos, formato da embalagem e posição típica na geladeira
+   - Mesmo sem ver o rótulo claramente, identifique o produto pela marca/embalagem
+   - Exemplo: Embalagem amarela com logo vermelho = Margarina Qualy
 
-IMPORTANTE: Se a imagem NÃO for de uma geladeira, despensa, ou não mostrar ingredientes/alimentos, responda APENAS com:
+2. CONHECIMENTO ENCICLOPÉDICO:
+   - Recupere ingredientes TÍPICOS do produto identificado em sua base de conhecimento
+   - Se identificar "Margarina Qualy" → assuma IMEDIATAMENTE presença de soro de leite/lactose
+   - Se identificar "Molho Shoyu" → assuma presença de trigo/glúten
+   - Se identificar "Maionese Hellmann's" → assuma presença de ovo e soja
+   - Se identificar "Nuggets" → assuma glúten (empanado) e soja
+
+3. DETECÇÃO DE ALÉRGENOS OCULTOS:
+   Sinalize substâncias escondidas em nomes técnicos:
+   - LACTOSE: caseína, caseinato, soro de leite, whey, lactoalbumina, lactoglobulina
+   - GLÚTEN: maltodextrina, amido de trigo, proteína de trigo, malte, seitan
+   - OVO: albumina, ovalbumina, lecitina de ovo, lisozima, livetina
+   - SOJA: lecitina de soja, PVT, TVP, proteína vegetal hidrolisada
+   - AÇÚCAR: sacarose, frutose, dextrose, xarope de milho, maltose
+
+4. PESSIMISMO DE SEGURANÇA (FAIL-SAFE):
+   - EM CASO DE DÚVIDA = CLASSIFICAR COMO INSEGURO
+   - Melhor um falso-negativo do que um risco à saúde
+   - Se confiança < 85%, adicione alerta para verificar manualmente
+
+=== VERIFICAÇÃO NEGATIVA ===
+- Se NÃO consegue ver o rótulo de produto industrializado → assuma que CONTÉM alérgenos típicos
+- Para margarinas, iogurtes, molhos, embutidos: SEMPRE alerta se não confirmar versão "sem"
+- Priorize ingredientes in natura (frutas, vegetais, carnes frescas) = naturalmente seguros
+
+IMPORTANTE: Se a imagem NÃO for de geladeira/despensa, responda:
 {"notFridge": true, "message": "Por favor, fotografe o interior da sua geladeira ou despensa"}
 
-Se for uma geladeira/despensa com ingredientes, responda APENAS com JSON válido:
+=== RESPOSTA OBRIGATÓRIA EM JSON ===
 {
   "ingredientes_identificados": [
     {
       "nome": "nome do ingrediente",
       "quantidade_estimada": "quantidade aproximada",
       "confianca": "alta|media|baixa",
+      "confianca_percentual": 0-100,
       "alerta_seguranca": "Alerta se aplicável, ou null",
-      "tipo": "in_natura|industrializado"
+      "tipo": "in_natura|industrializado",
+      "substancias_detectadas": ["Lista de alérgenos detectados ou presumidos"],
+      "identificado_por": "rotulo|embalagem|marca|contexto"
     }
   ],
   "receitas_sugeridas": [

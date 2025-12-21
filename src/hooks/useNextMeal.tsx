@@ -22,17 +22,25 @@ export type NextMealData = {
   completed_at: string | null;
 };
 
-// Mapeamento de horários para cada refeição
+// Mapeamento de horários para cada refeição (em português para compatibilidade com o banco)
 const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
-  breakfast: { start: 6, end: 10 },
-  lunch: { start: 10, end: 14 },
-  snack: { start: 14, end: 17 },
-  dinner: { start: 17, end: 21 },
-  supper: { start: 21, end: 24 },
+  cafe_manha: { start: 6, end: 10 },
+  almoco: { start: 10, end: 14 },
+  lanche: { start: 14, end: 17 },
+  lanche_tarde: { start: 14, end: 17 },
+  jantar: { start: 17, end: 21 },
+  ceia: { start: 21, end: 24 },
 };
 
 // Labels em português
 export const MEAL_LABELS: Record<string, string> = {
+  cafe_manha: "Café da Manhã",
+  almoco: "Almoço",
+  lanche: "Lanche",
+  lanche_tarde: "Lanche da Tarde",
+  jantar: "Jantar",
+  ceia: "Ceia",
+  // Fallback para inglês (caso existam)
   breakfast: "Café da Manhã",
   lunch: "Almoço",
   snack: "Lanche",
@@ -41,23 +49,18 @@ export const MEAL_LABELS: Record<string, string> = {
 };
 
 // Ordem das refeições
-const MEAL_ORDER = ["breakfast", "lunch", "snack", "dinner", "supper"];
+const MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "lanche_tarde", "jantar", "ceia"];
 
 function getCurrentMealType(): string {
   const hour = new Date().getHours();
   
-  for (const [mealType, { start, end }] of Object.entries(MEAL_TIME_RANGES)) {
-    if (hour >= start && hour < end) {
-      return mealType;
-    }
-  }
+  if (hour >= 6 && hour < 10) return "cafe_manha";
+  if (hour >= 10 && hour < 14) return "almoco";
+  if (hour >= 14 && hour < 17) return "lanche";
+  if (hour >= 17 && hour < 21) return "jantar";
+  if (hour >= 21 || hour < 6) return "ceia";
   
-  // Se for depois da meia-noite até às 6h, considera ceia ainda
-  if (hour < 6) {
-    return "supper";
-  }
-  
-  return "breakfast";
+  return "cafe_manha";
 }
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {

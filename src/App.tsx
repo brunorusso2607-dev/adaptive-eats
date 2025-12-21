@@ -3,6 +3,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useAppSettings } from "@/hooks/useAppSettings";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -17,37 +18,48 @@ import AdminPlans from "./pages/admin/AdminPlans";
 import AdminPromptSimulator from "./pages/admin/AdminPromptSimulator";
 import AdminAIErrorLogs from "./pages/admin/AdminAIErrorLogs";
 import AdminPixels from "./pages/admin/AdminPixels";
+import AdminAppearance from "./pages/admin/AdminAppearance";
 
 const queryClient = new QueryClient();
+
+function AppContent() {
+  // Load and apply app settings on mount
+  useAppSettings();
+  
+  return (
+    <BrowserRouter>
+      <Toaster />
+      <Sonner />
+      <Routes>
+        <Route path="/" element={<Index />} />
+        <Route path="/auth" element={<Auth />} />
+        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/ativar" element={<Activate />} />
+        <Route path="/onboarding" element={<Onboarding />} />
+        
+        {/* Admin Routes */}
+        <Route path="/admin" element={<AdminDashboard />}>
+          <Route index element={<AdminStats />} />
+          <Route path="users" element={<AdminUsers />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="plans" element={<AdminPlans />} />
+          <Route path="prompt-simulator" element={<AdminPromptSimulator />} />
+          <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
+          <Route path="pixels" element={<AdminPixels />} />
+          <Route path="appearance" element={<AdminAppearance />} />
+        </Route>
+        
+        {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+        <Route path="*" element={<NotFound />} />
+      </Routes>
+    </BrowserRouter>
+  );
+}
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <BrowserRouter>
-        <Toaster />
-        <Sonner />
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/auth" element={<Auth />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/ativar" element={<Activate />} />
-          <Route path="/onboarding" element={<Onboarding />} />
-          
-          {/* Admin Routes */}
-          <Route path="/admin" element={<AdminDashboard />}>
-            <Route index element={<AdminStats />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="analytics" element={<AdminAnalytics />} />
-            <Route path="plans" element={<AdminPlans />} />
-            <Route path="prompt-simulator" element={<AdminPromptSimulator />} />
-            <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
-            <Route path="pixels" element={<AdminPixels />} />
-          </Route>
-          
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
+      <AppContent />
     </TooltipProvider>
   </QueryClientProvider>
 );

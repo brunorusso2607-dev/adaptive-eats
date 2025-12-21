@@ -16,7 +16,8 @@ import {
   Menu,
   CreditCard,
   MessageSquare,
-  AlertTriangle
+  AlertTriangle,
+  Paintbrush
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -53,6 +54,7 @@ const mainMenuItems: SubMenuItem[] = [
     ],
   },
   { path: "/admin/pixels", label: "Pixels", icon: Code2 },
+  { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
 ];
 
 export default function AdminDashboard() {

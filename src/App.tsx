@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppSettings } from "@/hooks/useAppSettings";
+import { useAutoUpdate } from "@/hooks/useAutoUpdate";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -25,6 +26,9 @@ const queryClient = new QueryClient();
 function AppContent() {
   // Load and apply app settings on mount
   useAppSettings();
+  
+  // Auto-update inteligente - atualiza quando app volta do segundo plano
+  useAutoUpdate();
   
   return (
     <BrowserRouter>

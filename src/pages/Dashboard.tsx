@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield } from "lucide-react";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -20,6 +20,8 @@ import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useAdmin } from "@/hooks/useAdmin";
+import { Link } from "react-router-dom";
 
 type Recipe = {
   name: string;
@@ -105,6 +107,9 @@ export default function Dashboard() {
     dietary_preference?: string | null;
   } | null>(null);
   
+  
+  // Admin check
+  const { isAdmin } = useAdmin();
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -490,6 +495,20 @@ export default function Dashboard() {
             <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
           </div>
           <div className="flex items-center gap-2 sm:gap-3">
+            
+            {/* Admin Panel Link */}
+            {isAdmin && (
+              <Link to="/admin">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs sm:text-sm border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <Shield className="w-4 h-4" />
+                  <span className="hidden sm:inline">Admin</span>
+                </Button>
+              </Link>
+            )}
             
             {/* Install App Button */}
             {showInstallButton && !isAppInstalled && (

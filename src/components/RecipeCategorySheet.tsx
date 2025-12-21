@@ -281,9 +281,9 @@ export default function RecipeCategorySheet({
           )}
         </div>
 
-        {/* Footer com botão Avançar (apenas na etapa 1) */}
+        {/* Footer com botão Avançar (apenas na etapa 1) - com safe-area para dispositivos móveis */}
         {step === 1 && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 bg-background border-t">
+          <div className="absolute bottom-0 left-0 right-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-background border-t">
             <Button 
               onClick={handleAdvance} 
               className="w-full h-12 rounded-xl text-base font-medium"

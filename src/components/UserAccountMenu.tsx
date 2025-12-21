@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
@@ -430,16 +431,18 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
         </div>
 
         {/* Botões de ação - com safe-area para dispositivos móveis */}
-        <div className="flex gap-2 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sticky bottom-0 bg-background border-t mt-4 -mx-6 px-6">
-          <Button variant="outline" className="flex-1 h-12" onClick={handleCancel} disabled={isSaving}>
-            <X className="w-4 h-4 mr-2" />
-            Cancelar
-          </Button>
-          <Button className="flex-1 h-12" onClick={handleSave} disabled={isSaving}>
-            {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
-            Salvar
-          </Button>
-        </div>
+        <SafeAreaFooter sticky className="mt-4 -mx-6 px-6">
+          <div className="flex gap-2">
+            <Button variant="outline" className="flex-1 h-12" onClick={handleCancel} disabled={isSaving}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button className="flex-1 h-12" onClick={handleSave} disabled={isSaving}>
+              {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
+              Salvar
+            </Button>
+          </div>
+        </SafeAreaFooter>
       </div>
     );
   };

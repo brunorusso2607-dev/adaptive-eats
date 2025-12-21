@@ -422,8 +422,12 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       logStep("Google Gemini error", { status: response.status, error: errorText });
       
       if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
-          status: 429,
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "Limite de requisições atingido. Aguarde 30 segundos e tente novamente.",
+          rateLimited: true
+        }), {
+          status: 200,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }

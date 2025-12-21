@@ -54,6 +54,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
     mealStatus,
     minutesOverdue,
     skipMeal,
+    refetch,
   } = useNextMeal();
 
   const [isMarking, setIsMarking] = useState(false);
@@ -109,7 +110,8 @@ export default function NextMealCard(_props: NextMealCardProps) {
 
   // When food drawer saves successfully
   const handleFoodDrawerSuccess = () => {
-    // The drawer already marked the meal as complete
+    // Refetch to show the next meal
+    refetch();
   };
 
   const handleSkip = async () => {

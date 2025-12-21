@@ -15,6 +15,7 @@ import IngredientTagInput from "@/components/IngredientTagInput";
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
+import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -102,6 +103,7 @@ export default function Dashboard() {
   const [showProfileSheet, setShowProfileSheet] = useState(false);
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showFoodAnalyzer, setShowFoodAnalyzer] = useState(false);
+  const [selectedPhotoMode, setSelectedPhotoMode] = useState<PhotoMode | null>(null);
   
   // User profile for ingredient validation
   const [userProfile, setUserProfile] = useState<{
@@ -455,6 +457,7 @@ export default function Dashboard() {
     setShowWeightHistory(false);
     setShowProfileSheet(false);
     setShowFoodAnalyzer(false);
+    setSelectedPhotoMode(null);
   };
 
   // Check if we're in a sub-view that needs a back button
@@ -480,6 +483,7 @@ export default function Dashboard() {
     setShowWeightLossSetup(false);
     setShowWeightHistory(false);
     setShowProfileSheet(false);
+    setSelectedPhotoMode(null);
     setShowFoodAnalyzer(false);
     
     if (tab === "meal-plan") {
@@ -685,7 +689,16 @@ export default function Dashboard() {
             ) : showMealPlan ? (
               <MealPlanSection onBack={() => setShowMealPlan(false)} />
             ) : showFoodAnalyzer ? (
-              <FoodPhotoAnalyzer />
+              selectedPhotoMode ? (
+                <FoodPhotoAnalyzer 
+                  initialMode={selectedPhotoMode} 
+                  hideModeTabs={true} 
+                />
+              ) : (
+                <PhotoModeSelector 
+                  onSelectMode={(mode) => setSelectedPhotoMode(mode)}
+                />
+              )
             ) : showWeightHistory && weightData?.weight_goal ? (
               <WeightHistoryChart 
                 onBack={() => setShowWeightHistory(false)}

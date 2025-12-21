@@ -86,25 +86,21 @@ const LABELS = {
 };
 
 const INTOLERANCES_OPTIONS = [
-  { id: "gluten", label: "Glúten" },
   { id: "lactose", label: "Lactose" },
+  { id: "gluten", label: "Glúten" },
+  { id: "acucar", label: "Açúcar" },
   { id: "amendoim", label: "Amendoim" },
-  { id: "frutos_do_mar", label: "Frutos do mar" },
-  { id: "ovos", label: "Ovos" },
-  { id: "soja", label: "Soja" },
-  { id: "diabetes", label: "Diabetes" },
-  { id: "hipertensao", label: "Hipertensão" },
+  { id: "frutos_mar", label: "Frutos do mar" },
+  { id: "ovo", label: "Ovo" },
 ];
 
 const INTOLERANCES_LABELS: Record<string, string> = {
-  gluten: "Glúten",
   lactose: "Lactose",
+  gluten: "Glúten",
+  acucar: "Açúcar",
   amendoim: "Amendoim",
-  frutos_do_mar: "Frutos do mar",
-  ovos: "Ovos",
-  soja: "Soja",
-  diabetes: "Diabetes",
-  hipertensao: "Hipertensão",
+  frutos_mar: "Frutos do mar",
+  ovo: "Ovo",
 };
 
 export default function UserAccountMenu({ user, subscription, onLogout, externalOpen, onExternalOpenChange }: UserAccountMenuProps) {

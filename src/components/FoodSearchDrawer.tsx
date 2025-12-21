@@ -209,9 +209,9 @@ export default function FoodSearchDrawer({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[85vh] flex flex-col">
-          <DrawerHeader className="pb-2 flex-shrink-0">
-            <DrawerTitle>Registrar o que você comeu</DrawerTitle>
+        <DrawerContent className="h-[95vh] max-h-[95vh] flex flex-col">
+          <DrawerHeader className="pb-1 pt-2 flex-shrink-0">
+            <DrawerTitle className="text-base">Registrar o que você comeu</DrawerTitle>
           </DrawerHeader>
 
           {/* Search input with dropdown results */}

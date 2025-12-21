@@ -1,5 +1,6 @@
 import { cn } from "@/lib/utils";
 import { TrendingDown, TrendingUp, Target, Flag } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface WeightProgressBarProps {
   currentWeight: number;
@@ -20,6 +21,41 @@ export default function WeightProgressBar({
   mode,
   className,
 }: WeightProgressBarProps) {
+  const [isAnimated, setIsAnimated] = useState(false);
+  const [displayCurrentWeight, setDisplayCurrentWeight] = useState(goalWeight);
+  const [displayGoalWeight, setDisplayGoalWeight] = useState(goalWeight);
+
+  // Trigger animation on mount
+  useEffect(() => {
+    const timer = setTimeout(() => setIsAnimated(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Animate weight counters
+  useEffect(() => {
+    if (!isAnimated) return;
+    
+    const duration = 1000;
+    const steps = 25;
+    
+    // Animate current weight
+    const currentIncrement = (currentWeight - goalWeight) / steps;
+    let currentStep = 0;
+    
+    const interval = setInterval(() => {
+      currentStep++;
+      if (currentStep >= steps) {
+        setDisplayCurrentWeight(currentWeight);
+        setDisplayGoalWeight(goalWeight);
+        clearInterval(interval);
+      } else {
+        setDisplayCurrentWeight(goalWeight + currentIncrement * currentStep);
+      }
+    }, duration / steps);
+    
+    return () => clearInterval(interval);
+  }, [isAnimated, currentWeight, goalWeight]);
+
   // Use startWeight if provided, otherwise estimate based on mode
   const effectiveStartWeight = startWeight || (mode === "lose" 
     ? Math.max(currentWeight, goalWeight + (goalWeight - currentWeight) * 0.1)
@@ -45,22 +81,32 @@ export default function WeightProgressBar({
   const monthsToGoal = Math.ceil(weeksToGoal / 4);
 
   return (
-    <div className={cn("space-y-3", className)}>
+    <div className={cn(
+      "space-y-3 transition-all duration-500",
+      isAnimated ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
+      className
+    )}>
       {/* Main Progress Container */}
       <div className="relative">
         {/* Labels */}
         <div className="flex justify-between items-end mb-2">
-          <div className="text-center">
+          <div className={cn(
+            "text-center transition-all duration-500 delay-100",
+            isAnimated ? "opacity-100 translate-x-0" : "opacity-0 -translate-x-4"
+          )}>
             <div className="flex items-center gap-1 text-muted-foreground">
               <Target className="w-3 h-3" />
               <span className="text-xs font-medium">Atual</span>
             </div>
-            <p className={cn("text-xl font-bold", accentColor)}>{currentWeight}kg</p>
+            <p className={cn("text-xl font-bold tabular-nums", accentColor)}>
+              {displayCurrentWeight.toFixed(1)}kg
+            </p>
           </div>
           
           {/* Center - Weekly change badge */}
           <div className={cn(
-            "flex items-center gap-1 px-3 py-1.5 rounded-full text-white text-sm font-medium shadow-lg",
+            "flex items-center gap-1 px-3 py-1.5 rounded-full text-white text-sm font-medium shadow-lg transition-all duration-500 delay-200",
+            isAnimated ? "opacity-100 scale-100" : "opacity-0 scale-75",
             bgAccent
           )}>
             {isGaining ? (
@@ -71,24 +117,31 @@ export default function WeightProgressBar({
             <span>{isGaining ? "+" : "-"}{weeklyChange}kg/sem</span>
           </div>
           
-          <div className="text-center">
+          <div className={cn(
+            "text-center transition-all duration-500 delay-100",
+            isAnimated ? "opacity-100 translate-x-0" : "opacity-0 translate-x-4"
+          )}>
             <div className="flex items-center gap-1 text-muted-foreground justify-end">
               <span className="text-xs font-medium">Meta</span>
               <Flag className="w-3 h-3" />
             </div>
-            <p className={cn("text-xl font-bold", accentColor)}>{goalWeight}kg</p>
+            <p className={cn("text-xl font-bold tabular-nums", accentColor)}>{goalWeight}kg</p>
           </div>
         </div>
 
         {/* Progress Bar */}
-        <div className={cn("relative h-4 rounded-full overflow-hidden", bgLight)}>
+        <div className={cn(
+          "relative h-4 rounded-full overflow-hidden transition-all duration-500 delay-300",
+          isAnimated ? "opacity-100" : "opacity-0",
+          bgLight
+        )}>
           {/* Progress Fill */}
           <div 
             className={cn(
-              "absolute left-0 top-0 h-full rounded-full bg-gradient-to-r transition-all duration-500 ease-out",
+              "absolute left-0 top-0 h-full rounded-full bg-gradient-to-r transition-all duration-1000 ease-out delay-500",
               gradientClass
             )}
-            style={{ width: `${Math.max(5, progressPercent)}%` }}
+            style={{ width: isAnimated ? `${Math.max(5, progressPercent)}%` : "0%" }}
           >
             {/* Shine effect */}
             <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent" />
@@ -96,22 +149,32 @@ export default function WeightProgressBar({
           
           {/* Current position indicator */}
           <div 
-            className="absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white border-3 shadow-lg transition-all duration-500"
+            className={cn(
+              "absolute top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-white shadow-lg transition-all duration-1000 ease-out",
+              isAnimated ? "opacity-100 scale-100" : "opacity-0 scale-0"
+            )}
             style={{ 
-              left: `calc(${Math.max(2, Math.min(98, progressPercent))}% - 10px)`,
+              left: isAnimated ? `calc(${Math.max(2, Math.min(98, progressPercent))}% - 10px)` : "0%",
               borderColor: isGaining ? "#3b82f6" : "#22c55e",
-              borderWidth: "3px"
+              borderWidth: "3px",
+              transitionDelay: "600ms"
             }}
           />
           
           {/* Goal flag at end */}
-          <div className="absolute right-1 top-1/2 -translate-y-1/2">
+          <div className={cn(
+            "absolute right-1 top-1/2 -translate-y-1/2 transition-all duration-500 delay-700",
+            isAnimated ? "opacity-100" : "opacity-0"
+          )}>
             <Flag className={cn("w-3 h-3", accentColor)} />
           </div>
         </div>
 
         {/* Progress percentage */}
-        <div className="flex justify-center mt-2">
+        <div className={cn(
+          "flex justify-center mt-2 transition-all duration-500 delay-700",
+          isAnimated ? "opacity-100 translate-y-0" : "opacity-0 translate-y-2"
+        )}>
           <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full", bgLight, accentColor)}>
             {progressPercent.toFixed(0)}% concluído
           </span>
@@ -120,7 +183,8 @@ export default function WeightProgressBar({
 
       {/* Timeline Info */}
       <div className={cn(
-        "flex items-center justify-center gap-4 py-2 px-3 rounded-lg",
+        "flex items-center justify-center gap-4 py-2 px-3 rounded-lg transition-all duration-500 delay-800",
+        isAnimated ? "opacity-100 translate-y-0" : "opacity-0 translate-y-4",
         bgLight
       )}>
         <div className="flex items-center gap-2">

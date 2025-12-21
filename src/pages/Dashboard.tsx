@@ -725,9 +725,6 @@ export default function Dashboard() {
               />
             ) : (
             <>
-              {/* Card de Próxima Refeição */}
-              <NextMealCard />
-
               {/* Home Principal - 5 Opções */}
               <div className="space-y-6">
                 {/* Opção Principal: Gerar Receita com Ingredientes */}
@@ -977,6 +974,9 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Card de Próxima Refeição - Abaixo dos macros */}
+                <NextMealCard />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

@@ -208,10 +208,12 @@ export function usePendingMeals() {
         return;
       }
 
-      // Calcular a data real de cada refeição baseada no start_date do plano
-      // O start_date é sempre uma segunda-feira (day 1), então precisamos ajustar
-      const calculateActualDate = (dayOfWeek: number): Date => {
+      // Calcular a data real de cada refeição baseada no start_date do plano e week_number
+      // O start_date é sempre uma segunda-feira (day 1)
+      const calculateActualDate = (dayOfWeek: number, weekNumber: number): Date => {
         const date = new Date(planStartDate);
+        // Adicionar semanas: (week_number - 1) * 7 dias
+        const weeksOffset = (weekNumber - 1) * 7;
         // dayOfWeek: 0=Dom, 1=Seg, 2=Ter, etc.
         // O plano começa na segunda (1), então:
         // - Segunda (1) = start_date + 0
@@ -219,27 +221,65 @@ export function usePendingMeals() {
         // - ...
         // - Domingo (0) = start_date + 6
         const daysFromStart = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        date.setDate(date.getDate() + daysFromStart);
+        date.setDate(date.getDate() + weeksOffset + daysFromStart);
         return date;
       };
 
-      // Ordenar por dia e depois por ordem da refeição
-      const sortedMeals = meals.sort((a, b) => {
-        if (a.day_of_week !== b.day_of_week) {
-          return a.day_of_week - b.day_of_week;
+      // Verificar se uma refeição já passou ou está no horário atual
+      const isMealPastOrCurrent = (mealType: string, actualDate: Date): boolean => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+        
+        // Se é de um dia anterior, já passou
+        if (mealDate < today) {
+          return true;
         }
-        return MEAL_ORDER.indexOf(a.meal_type) - MEAL_ORDER.indexOf(b.meal_type);
-      });
+        
+        // Se é de um dia futuro, ainda não chegou
+        if (mealDate > today) {
+          return false;
+        }
+        
+        // Se é hoje, verificar o horário
+        const hour = now.getHours();
+        const minutes = now.getMinutes();
+        const currentTimeInMinutes = hour * 60 + minutes;
+        
+        const range = MEAL_TIME_RANGES[mealType];
+        if (!range) return true; // Se não tem range definido, mostrar
+        
+        // Mostrar se já começou o horário da refeição (start)
+        const startTimeInMinutes = range.start * 60;
+        return currentTimeInMinutes >= startTimeInMinutes;
+      };
 
       // Converter para o formato esperado com data calculada
-      const formattedMeals: PendingMealData[] = sortedMeals.map(meal => ({
+      const mealsWithDates: PendingMealData[] = meals.map(meal => ({
         ...meal,
         recipe_ingredients: meal.recipe_ingredients as Ingredient[],
-        actual_date: calculateActualDate(meal.day_of_week),
+        actual_date: calculateActualDate(meal.day_of_week, meal.week_number),
         recipe_instructions: meal.recipe_instructions as string[],
       }));
 
-      setPendingMeals(formattedMeals);
+      // Filtrar apenas refeições passadas ou atuais
+      const filteredMeals = mealsWithDates.filter(meal => 
+        meal.actual_date && isMealPastOrCurrent(meal.meal_type, meal.actual_date)
+      );
+
+      // Ordenar por data real e depois por ordem da refeição
+      const sortedMeals = filteredMeals.sort((a, b) => {
+        // Primeiro por data
+        const dateA = a.actual_date?.getTime() || 0;
+        const dateB = b.actual_date?.getTime() || 0;
+        if (dateA !== dateB) {
+          return dateA - dateB;
+        }
+        // Depois por ordem da refeição
+        return MEAL_ORDER.indexOf(a.meal_type) - MEAL_ORDER.indexOf(b.meal_type);
+      });
+
+      setPendingMeals(sortedMeals);
     } catch (error) {
       console.error("Error fetching pending meals:", error);
     } finally {

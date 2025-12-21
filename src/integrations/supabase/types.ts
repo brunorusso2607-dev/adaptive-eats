@@ -80,6 +80,48 @@ export type Database = {
         }
         Relationships: []
       }
+      app_settings: {
+        Row: {
+          accent_color: string
+          background_color: string
+          created_at: string
+          custom_css: string | null
+          foreground_color: string
+          id: string
+          logo_url: string | null
+          primary_color: string
+          secondary_color: string
+          topbar_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          accent_color?: string
+          background_color?: string
+          created_at?: string
+          custom_css?: string | null
+          foreground_color?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          topbar_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          accent_color?: string
+          background_color?: string
+          created_at?: string
+          custom_css?: string | null
+          foreground_color?: string
+          id?: string
+          logo_url?: string | null
+          primary_color?: string
+          secondary_color?: string
+          topbar_text?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meal_plan_items: {
         Row: {
           completed_at: string | null

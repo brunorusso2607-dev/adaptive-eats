@@ -9,6 +9,7 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
 import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
+import WeightProgressBar from "@/components/WeightProgressBar";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
 import IngredientTagInput from "@/components/IngredientTagInput";
@@ -890,11 +891,14 @@ export default function Dashboard() {
                                     <p className="text-xs text-muted-foreground">Gordura</p>
                                   </div>
                                 </div>
-                                <div className="mt-3 bg-white/40 dark:bg-white/5 rounded-lg p-3">
-                                  <div className="flex justify-between text-sm">
-                                    <span>Mudança estimada: <strong className={accentColor}>~{calcs.weeklyChange}kg/semana</strong></span>
-                                    <span>Meta em: <strong className={accentColor}>~{calcs.weeksToGoal} semanas</strong></span>
-                                  </div>
+                                <div className="mt-4">
+                                  <WeightProgressBar
+                                    currentWeight={weightData?.weight_current || 0}
+                                    goalWeight={weightData?.weight_goal || 0}
+                                    weeklyChange={calcs.weeklyChange}
+                                    weeksToGoal={calcs.weeksToGoal}
+                                    mode={calcs.mode}
+                                  />
                                 </div>
                                 <Button 
                                   variant="ghost" 

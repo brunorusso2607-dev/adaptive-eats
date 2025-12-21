@@ -50,6 +50,36 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_error_logs: {
+        Row: {
+          created_at: string
+          error_details: Json | null
+          error_message: string
+          function_name: string
+          id: string
+          request_payload: Json | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_details?: Json | null
+          error_message: string
+          function_name: string
+          id?: string
+          request_payload?: Json | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string
+          function_name?: string
+          id?: string
+          request_payload?: Json | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       meal_plan_items: {
         Row: {
           completed_at: string | null

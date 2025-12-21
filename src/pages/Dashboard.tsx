@@ -205,8 +205,17 @@ export default function Dashboard() {
     }
   };
 
-  // Track the last used ingredients for "Gerar Outra"
+  // Track the last used ingredients and category for "Gerar Outra"
   const [lastUsedIngredients, setLastUsedIngredients] = useState<string | null>(null);
+  const [lastUsedCategoryContext, setLastUsedCategoryContext] = useState<{ 
+    category: string; 
+    subcategory: string;
+    filters?: {
+      culinaria?: string;
+      tempo?: string;
+      metodo?: string;
+    };
+  } | null>(null);
 
   const generateRecipe = async (
     type: "com_ingredientes" | "automatica", 
@@ -264,9 +273,12 @@ export default function Dashboard() {
         }
       );
       
-      // Save ingredients for "Gerar Outra" and clear input
+      // Save ingredients and category for "Gerar Outra" and clear input
       if (type === "com_ingredientes") {
         setLastUsedIngredients(ingredientsToUse);
+      }
+      if (categoryContext) {
+        setLastUsedCategoryContext(categoryContext);
       }
       setIngredients([]);
     } catch (error) {
@@ -655,7 +667,8 @@ export default function Dashboard() {
                 onBack={() => setShowRecipe(false)}
                 onGenerateAnother={() => generateRecipe(
                   generatedRecipe.input_ingredients ? "com_ingredientes" : "automatica",
-                  true // Use last ingredients when generating another
+                  true, // Use last ingredients when generating another
+                  lastUsedCategoryContext || undefined // Preserve the category context
                 )}
                 isGenerating={isGeneratingRecipe}
               />

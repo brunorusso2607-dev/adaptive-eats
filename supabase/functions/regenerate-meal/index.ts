@@ -32,6 +32,15 @@ const GOAL_LABELS: Record<string, string> = {
   ganhar_peso: "ganhar massa muscular",
 };
 
+// Exemplos de receitas apropriadas para cada tipo de refeição
+const MEAL_TYPE_EXAMPLES: Record<string, string[]> = {
+  cafe_manha: ["ovos mexidos", "mingau de aveia", "panqueca", "smoothie de frutas", "tapioca", "pão com queijo", "iogurte com granola", "crepioca", "vitamina de banana"],
+  almoco: ["frango grelhado com arroz", "peixe assado", "carne com legumes", "macarrão com molho", "strogonoff", "risoto", "feijoada light", "moqueca"],
+  lanche: ["sanduíche natural", "wrap de frango", "barra de cereal caseira", "frutas com pasta de amendoim", "bolo integral", "cookies proteicos", "açaí"],
+  jantar: ["sopa de legumes", "omelete", "salada completa", "wrap leve", "peixe grelhado", "frango desfiado", "quiche", "creme de abóbora"],
+  ceia: ["chá com biscoito integral", "iogurte", "frutas", "castanhas", "leite morno", "queijo cottage", "banana com canela"]
+};
+
 // Helper function to call Gemini API with retry logic
 async function callGeminiWithRetry(
   apiKey: string,
@@ -182,6 +191,9 @@ serve(async (req) => {
       ingredientsPrompt = `Use OBRIGATORIAMENTE os seguintes ingredientes: ${ingredients}. Pode adicionar temperos e complementos básicos.`;
     }
 
+    const mealExamples = MEAL_TYPE_EXAMPLES[mealType] || [];
+    const examplesStr = mealExamples.length > 0 ? mealExamples.join(", ") : "";
+
     const systemPrompt = `Você é um nutricionista especializado em criar receitas deliciosas e nutritivas.
 
 PERFIL DO USUÁRIO:
@@ -190,7 +202,12 @@ PERFIL DO USUÁRIO:
 - Intolerâncias: ${intolerancesStr}
 - Contexto: ${profile.context === "familia" ? "família com crianças" : profile.context === "modo_kids" ? "crianças" : "individual"}
 
-REGRAS:
+⚠️ REGRA ABSOLUTA - TIPO DE REFEIÇÃO:
+Esta receita é OBRIGATORIAMENTE para ${mealLabel.toUpperCase()}.
+Exemplos de receitas apropriadas: ${examplesStr}
+NUNCA gere receitas que não sejam apropriadas para ${mealLabel}!
+
+OUTRAS REGRAS:
 1. A receita deve ter aproximadamente ${targetCalories} calorias
 2. Respeite TODAS as intolerâncias alimentares
 3. Crie uma receita DIFERENTE e criativa
@@ -213,7 +230,7 @@ FORMATO DE RESPOSTA (JSON VÁLIDO):
 
 IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
 
-    const userPrompt = `Crie uma nova receita para ${mealLabel}. ${ingredientsPrompt || "Surpreenda-me com algo delicioso!"}`;
+    const userPrompt = `Crie uma nova receita EXCLUSIVAMENTE para ${mealLabel.toUpperCase()}. A receita DEVE ser apropriada para este horário/tipo de refeição. ${ingredientsPrompt || "Surpreenda-me com algo delicioso!"}`;
 
     logStep("Calling Google Gemini API with retry logic");
 
@@ -227,7 +244,7 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
         }
       ],
       generationConfig: {
-        temperature: 0.7,
+        temperature: 0.4,
         maxOutputTokens: 2048,
       }
     });

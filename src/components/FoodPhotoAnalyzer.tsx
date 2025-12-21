@@ -785,6 +785,45 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
+              {/* Personalized Profile Alerts - RIGHT AFTER STATUS CARD */}
+              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
+                <Card className={`glass-card border ${
+                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
+                    ? "border-red-500/30" 
+                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
+                    ? "border-yellow-500/30"
+                    : "border-green-500/30"
+                }`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-primary" />
+                      Verificação do Seu Perfil
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm font-medium text-foreground mb-2">{perfilAplicado.resumo}</p>
+                    {perfilAplicado.alertas_personalizados.map((alerta, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg flex items-start gap-2 ${
+                          alerta.status === "contem" 
+                            ? "bg-red-500/10 border border-red-500/20" 
+                            : alerta.status === "risco_potencial"
+                            ? "bg-yellow-500/10 border border-yellow-500/20"
+                            : "bg-green-500/10 border border-green-500/20"
+                        }`}
+                      >
+                        <span className="text-lg">{alerta.icone}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{alerta.restricao}</p>
+                          <p className="text-xs text-muted-foreground">{alerta.mensagem}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Total macros card */}
               <Card className="glass-card border-primary/20">
                 <CardHeader className="pb-2">
@@ -971,45 +1010,6 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                       <AlertCircle className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-0.5" />
                       <p className="text-sm text-muted-foreground">{foodAnalysis.observacoes}</p>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Personalized Profile Alerts */}
-              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`glass-card border ${
-                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
-                    ? "border-red-500/30" 
-                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
-                    ? "border-yellow-500/30"
-                    : "border-green-500/30"
-                }`}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-primary" />
-                      Verificação do Seu Perfil
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-sm font-medium text-foreground mb-2">{perfilAplicado.resumo}</p>
-                    {perfilAplicado.alertas_personalizados.map((alerta, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg flex items-start gap-2 ${
-                          alerta.status === "contem" 
-                            ? "bg-red-500/10 border border-red-500/20" 
-                            : alerta.status === "risco_potencial"
-                            ? "bg-yellow-500/10 border border-yellow-500/20"
-                            : "bg-green-500/10 border border-green-500/20"
-                        }`}
-                      >
-                        <span className="text-lg">{alerta.icone}</span>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{alerta.restricao}</p>
-                          <p className="text-xs text-muted-foreground">{alerta.mensagem}</p>
-                        </div>
-                      </div>
-                    ))}
                   </CardContent>
                 </Card>
               )}

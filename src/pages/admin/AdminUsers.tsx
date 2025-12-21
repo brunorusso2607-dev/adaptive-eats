@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { 
   Users, 
   Search, 
@@ -20,7 +22,11 @@ import {
   ShieldOff,
   Pencil,
   Save,
-  X
+  X,
+  CreditCard,
+  Clock,
+  Plus,
+  FileText
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -55,6 +61,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 
 type UserProfile = {
@@ -75,6 +82,21 @@ type UserProfile = {
   isAdmin?: boolean;
 };
 
+type UserSubscription = {
+  id: string;
+  user_id: string;
+  plan_name: string;
+  expires_at: string | null;
+  is_active: boolean;
+};
+
+type UserOccurrence = {
+  id: string;
+  user_id: string;
+  description: string;
+  created_at: string;
+};
+
 const PAGE_SIZE = 10;
 
 export default function AdminUsers() {
@@ -90,6 +112,20 @@ export default function AdminUsers() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Subscription state
+  const [subscription, setSubscription] = useState<UserSubscription | null>(null);
+  const [subscriptionForm, setSubscriptionForm] = useState({
+    plan_name: "free",
+    expires_at: "",
+    is_active: false,
+  });
+  const [isEditingSubscription, setIsEditingSubscription] = useState(false);
+  
+  // Occurrences state
+  const [occurrences, setOccurrences] = useState<UserOccurrence[]>([]);
+  const [newOccurrence, setNewOccurrence] = useState("");
+  const [isAddingOccurrence, setIsAddingOccurrence] = useState(false);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -108,7 +144,6 @@ export default function AdminUsers() {
 
       if (error) throw error;
 
-      // Check admin status for each user
       const usersWithRoles = await Promise.all(
         (data || []).map(async (user) => {
           const { data: roleData } = await supabase
@@ -116,7 +151,7 @@ export default function AdminUsers() {
             .select("role")
             .eq("user_id", user.id)
             .eq("role", "admin")
-            .single();
+            .maybeSingle();
           
           return { ...user, isAdmin: !!roleData };
         })
@@ -129,6 +164,49 @@ export default function AdminUsers() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const fetchUserSubscription = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("user_subscriptions")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching subscription:", error);
+      return;
+    }
+
+    setSubscription(data);
+    if (data) {
+      setSubscriptionForm({
+        plan_name: data.plan_name,
+        expires_at: data.expires_at ? data.expires_at.split("T")[0] : "",
+        is_active: data.is_active,
+      });
+    } else {
+      setSubscriptionForm({
+        plan_name: "free",
+        expires_at: "",
+        is_active: false,
+      });
+    }
+  };
+
+  const fetchUserOccurrences = async (userId: string) => {
+    const { data, error } = await supabase
+      .from("user_occurrences")
+      .select("*")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching occurrences:", error);
+      return;
+    }
+
+    setOccurrences(data || []);
   };
 
   useEffect(() => {
@@ -184,10 +262,15 @@ export default function AdminUsers() {
     }
   };
 
-  const handleViewDetails = (user: UserProfile) => {
+  const handleViewDetails = async (user: UserProfile) => {
     setSelectedUser(user);
     setIsEditing(false);
+    setIsEditingSubscription(false);
     setIsDetailOpen(true);
+    await Promise.all([
+      fetchUserSubscription(user.id),
+      fetchUserOccurrences(user.id),
+    ]);
   };
 
   const handleStartEdit = () => {
@@ -234,15 +317,108 @@ export default function AdminUsers() {
 
       if (error) throw error;
 
+      // Add occurrence
+      await supabase.from("user_occurrences").insert({
+        user_id: selectedUser.id,
+        description: "Dados do perfil atualizados pelo admin",
+      });
+
       toast.success("Dados atualizados com sucesso");
       setIsEditing(false);
-      setIsDetailOpen(false);
       fetchUsers();
+      fetchUserOccurrences(selectedUser.id);
     } catch (error) {
       console.error("Error updating user:", error);
       toast.error("Erro ao atualizar dados");
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleSaveSubscription = async () => {
+    if (!selectedUser) return;
+
+    setIsSaving(true);
+    try {
+      const subscriptionData = {
+        user_id: selectedUser.id,
+        plan_name: subscriptionForm.plan_name,
+        expires_at: subscriptionForm.expires_at ? new Date(subscriptionForm.expires_at).toISOString() : null,
+        is_active: subscriptionForm.is_active,
+      };
+
+      if (subscription) {
+        const { error } = await supabase
+          .from("user_subscriptions")
+          .update(subscriptionData)
+          .eq("id", subscription.id);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from("user_subscriptions")
+          .insert(subscriptionData);
+
+        if (error) throw error;
+      }
+
+      // Add occurrence
+      await supabase.from("user_occurrences").insert({
+        user_id: selectedUser.id,
+        description: `Assinatura atualizada: ${subscriptionForm.plan_name} - ${subscriptionForm.is_active ? "Ativa" : "Inativa"}`,
+      });
+
+      toast.success("Assinatura atualizada com sucesso");
+      setIsEditingSubscription(false);
+      fetchUserSubscription(selectedUser.id);
+      fetchUserOccurrences(selectedUser.id);
+    } catch (error) {
+      console.error("Error updating subscription:", error);
+      toast.error("Erro ao atualizar assinatura");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddOccurrence = async () => {
+    if (!selectedUser || !newOccurrence.trim()) return;
+
+    setIsAddingOccurrence(true);
+    try {
+      const { error } = await supabase.from("user_occurrences").insert({
+        user_id: selectedUser.id,
+        description: newOccurrence.trim(),
+      });
+
+      if (error) throw error;
+
+      toast.success("Ocorrência adicionada");
+      setNewOccurrence("");
+      fetchUserOccurrences(selectedUser.id);
+    } catch (error) {
+      console.error("Error adding occurrence:", error);
+      toast.error("Erro ao adicionar ocorrência");
+    } finally {
+      setIsAddingOccurrence(false);
+    }
+  };
+
+  const handleDeleteOccurrence = async (occurrenceId: string) => {
+    try {
+      const { error } = await supabase
+        .from("user_occurrences")
+        .delete()
+        .eq("id", occurrenceId);
+
+      if (error) throw error;
+
+      toast.success("Ocorrência removida");
+      if (selectedUser) {
+        fetchUserOccurrences(selectedUser.id);
+      }
+    } catch (error) {
+      console.error("Error deleting occurrence:", error);
+      toast.error("Erro ao remover ocorrência");
     }
   };
 
@@ -452,13 +628,14 @@ export default function AdminUsers() {
         if (!open) {
           setIsEditing(false);
           setEditForm({});
+          setIsEditingSubscription(false);
         }
       }}>
-        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader className="pr-8">
             <DialogTitle className="flex items-center justify-between gap-4">
               <span>{isEditing ? "Editar Usuário" : "Detalhes do Usuário"}</span>
-              {!isEditing && (
+              {!isEditing && !isEditingSubscription && (
                 <Button variant="outline" size="sm" onClick={handleStartEdit} className="mr-2">
                   <Pencil className="w-4 h-4 mr-2" />
                   Editar
@@ -471,65 +648,227 @@ export default function AdminUsers() {
           </DialogHeader>
           
           {selectedUser && !isEditing && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <p className="text-xs text-muted-foreground">Idade</p>
-                  <p className="font-medium">{selectedUser.age || "N/A"} anos</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Sexo</p>
-                  <p className="font-medium">{getSexLabel(selectedUser.sex)}</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Altura</p>
-                  <p className="font-medium">{selectedUser.height || "N/A"} cm</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Peso Atual</p>
-                  <p className="font-medium">{selectedUser.weight_current || "N/A"} kg</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Peso Meta</p>
-                  <p className="font-medium">{selectedUser.weight_goal || "N/A"} kg</p>
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Atividade</p>
-                  <p className="font-medium">{getActivityLabel(selectedUser.activity_level)}</p>
-                </div>
-              </div>
+            <Tabs defaultValue="info" className="w-full">
+              <TabsList className="grid w-full grid-cols-3">
+                <TabsTrigger value="info">
+                  <User className="w-4 h-4 mr-2" />
+                  Info
+                </TabsTrigger>
+                <TabsTrigger value="subscription">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  Assinatura
+                </TabsTrigger>
+                <TabsTrigger value="occurrences">
+                  <FileText className="w-4 h-4 mr-2" />
+                  Ocorrências
+                </TabsTrigger>
+              </TabsList>
 
-              <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground mb-2">Preferências</p>
-                <div className="flex flex-wrap gap-2">
-                  <Badge variant="outline">{getGoalLabel(selectedUser.goal)}</Badge>
-                  <Badge variant="outline">{getDietLabel(selectedUser.dietary_preference)}</Badge>
-                  <Badge variant="outline">{getContextLabel(selectedUser.context)}</Badge>
-                </div>
-              </div>
-
-              {selectedUser.intolerances && selectedUser.intolerances.length > 0 && (
-                <div className="border-t pt-4">
-                  <p className="text-xs text-muted-foreground mb-2">Intolerâncias</p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedUser.intolerances.map((intolerance) => (
-                      <Badge key={intolerance} variant="secondary">
-                        {intolerance}
-                      </Badge>
-                    ))}
+              <TabsContent value="info" className="space-y-4 mt-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-xs text-muted-foreground">Idade</p>
+                    <p className="font-medium">{selectedUser.age || "N/A"} anos</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Sexo</p>
+                    <p className="font-medium">{getSexLabel(selectedUser.sex)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Altura</p>
+                    <p className="font-medium">{selectedUser.height || "N/A"} cm</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Peso Atual</p>
+                    <p className="font-medium">{selectedUser.weight_current || "N/A"} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Peso Meta</p>
+                    <p className="font-medium">{selectedUser.weight_goal || "N/A"} kg</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground">Atividade</p>
+                    <p className="font-medium">{getActivityLabel(selectedUser.activity_level)}</p>
                   </div>
                 </div>
-              )}
 
-              <div className="border-t pt-4">
-                <p className="text-xs text-muted-foreground">Cadastro</p>
-                <p className="font-medium">
-                  {selectedUser.created_at
-                    ? format(new Date(selectedUser.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
-                    : "N/A"}
-                </p>
-              </div>
-            </div>
+                <div className="border-t pt-4">
+                  <p className="text-xs text-muted-foreground mb-2">Preferências</p>
+                  <div className="flex flex-wrap gap-2">
+                    <Badge variant="outline">{getGoalLabel(selectedUser.goal)}</Badge>
+                    <Badge variant="outline">{getDietLabel(selectedUser.dietary_preference)}</Badge>
+                    <Badge variant="outline">{getContextLabel(selectedUser.context)}</Badge>
+                  </div>
+                </div>
+
+                {selectedUser.intolerances && selectedUser.intolerances.length > 0 && (
+                  <div className="border-t pt-4">
+                    <p className="text-xs text-muted-foreground mb-2">Intolerâncias</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedUser.intolerances.map((intolerance) => (
+                        <Badge key={intolerance} variant="secondary">
+                          {intolerance}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="border-t pt-4">
+                  <p className="text-xs text-muted-foreground">Cadastro</p>
+                  <p className="font-medium">
+                    {selectedUser.created_at
+                      ? format(new Date(selectedUser.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
+                      : "N/A"}
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent value="subscription" className="space-y-4 mt-4">
+                {!isEditingSubscription ? (
+                  <>
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="text-xs text-muted-foreground">Plano</p>
+                          <p className="font-medium capitalize">{subscription?.plan_name || "Free"}</p>
+                        </div>
+                        <Badge variant={subscription?.is_active ? "default" : "secondary"}>
+                          {subscription?.is_active ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </div>
+
+                      <div>
+                        <p className="text-xs text-muted-foreground">Expira em</p>
+                        <p className="font-medium flex items-center gap-2">
+                          <Clock className="w-4 h-4" />
+                          {subscription?.expires_at
+                            ? format(new Date(subscription.expires_at), "dd 'de' MMMM 'de' yyyy", { locale: ptBR })
+                            : "Sem data de expiração"}
+                        </p>
+                      </div>
+                    </div>
+
+                    <Button 
+                      variant="outline" 
+                      className="w-full"
+                      onClick={() => setIsEditingSubscription(true)}
+                    >
+                      <Pencil className="w-4 h-4 mr-2" />
+                      Editar Assinatura
+                    </Button>
+                  </>
+                ) : (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Plano</Label>
+                      <Select
+                        value={subscriptionForm.plan_name}
+                        onValueChange={(value) => setSubscriptionForm({ ...subscriptionForm, plan_name: value })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="premium">Premium</SelectItem>
+                          <SelectItem value="pro">Pro</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Data de Expiração</Label>
+                      <Input
+                        type="date"
+                        value={subscriptionForm.expires_at}
+                        onChange={(e) => setSubscriptionForm({ ...subscriptionForm, expires_at: e.target.value })}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <Label>Assinatura Ativa</Label>
+                      <Switch
+                        checked={subscriptionForm.is_active}
+                        onCheckedChange={(checked) => setSubscriptionForm({ ...subscriptionForm, is_active: checked })}
+                      />
+                    </div>
+
+                    <div className="flex gap-2 pt-4">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setIsEditingSubscription(false)} 
+                        className="flex-1"
+                      >
+                        <X className="w-4 h-4 mr-2" />
+                        Cancelar
+                      </Button>
+                      <Button onClick={handleSaveSubscription} disabled={isSaving} className="flex-1">
+                        {isSaving ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Save className="w-4 h-4 mr-2" />
+                        )}
+                        Salvar
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+
+              <TabsContent value="occurrences" className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Textarea
+                    placeholder="Adicionar nova ocorrência..."
+                    value={newOccurrence}
+                    onChange={(e) => setNewOccurrence(e.target.value)}
+                    rows={2}
+                  />
+                  <Button 
+                    onClick={handleAddOccurrence} 
+                    disabled={!newOccurrence.trim() || isAddingOccurrence}
+                    className="w-full"
+                  >
+                    {isAddingOccurrence ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Plus className="w-4 h-4 mr-2" />
+                    )}
+                    Adicionar Ocorrência
+                  </Button>
+                </div>
+
+                <div className="border-t pt-4 space-y-3 max-h-60 overflow-y-auto">
+                  {occurrences.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      Nenhuma ocorrência registrada
+                    </p>
+                  ) : (
+                    occurrences.map((occurrence) => (
+                      <div 
+                        key={occurrence.id} 
+                        className="p-3 bg-muted/30 rounded-lg group"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm">{occurrence.description}</p>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                            onClick={() => handleDeleteOccurrence(occurrence.id)}
+                          >
+                            <Trash2 className="w-3 h-3 text-destructive" />
+                          </Button>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {format(new Date(occurrence.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </TabsContent>
+            </Tabs>
           )}
 
           {selectedUser && isEditing && (

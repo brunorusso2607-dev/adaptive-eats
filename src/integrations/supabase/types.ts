@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      activity_logs: {
+        Row: {
+          action_description: string
+          action_type: string
+          created_at: string
+          id: string
+          log_source: string
+          new_values: Json | null
+          old_values: Json | null
+          performed_by: string
+          user_id: string
+        }
+        Insert: {
+          action_description: string
+          action_type: string
+          created_at?: string
+          id?: string
+          log_source: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by: string
+          user_id: string
+        }
+        Update: {
+          action_description?: string
+          action_type?: string
+          created_at?: string
+          id?: string
+          log_source?: string
+          new_values?: Json | null
+          old_values?: Json | null
+          performed_by?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_plan_items: {
         Row: {
           completed_at: string | null
@@ -243,30 +279,6 @@ export type Database = {
           prep_time?: number
           protein?: number
           servings?: number
-          user_id?: string
-        }
-        Relationships: []
-      }
-      user_occurrences: {
-        Row: {
-          created_at: string
-          created_by: string | null
-          description: string
-          id: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          created_by?: string | null
-          description: string
-          id?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          created_by?: string | null
-          description?: string
-          id?: string
           user_id?: string
         }
         Relationships: []

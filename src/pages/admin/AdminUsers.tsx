@@ -455,11 +455,11 @@ export default function AdminUsers() {
         }
       }}>
         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
+          <DialogHeader className="pr-8">
+            <DialogTitle className="flex items-center justify-between gap-4">
               <span>{isEditing ? "Editar Usuário" : "Detalhes do Usuário"}</span>
               {!isEditing && (
-                <Button variant="outline" size="sm" onClick={handleStartEdit}>
+                <Button variant="outline" size="sm" onClick={handleStartEdit} className="mr-2">
                   <Pencil className="w-4 h-4 mr-2" />
                   Editar
                 </Button>

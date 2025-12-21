@@ -99,6 +99,12 @@ export default function FoodPhotoAnalyzer() {
   const [labelStep, setLabelStep] = useState<LabelStep>("front");
   const [frontImage, setFrontImage] = useState<string | null>(null);
   const [needsBackPhoto, setNeedsBackPhoto] = useState(false);
+  const [backPhotoReason, setBackPhotoReason] = useState<{
+    mensagem: string;
+    motivo: string;
+    intolerancia: string;
+    produto: string;
+  } | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -124,6 +130,7 @@ export default function FoodPhotoAnalyzer() {
       setFoodAnalysis(null);
       setLabelAnalysis(null);
       setNeedsBackPhoto(false);
+      setBackPhotoReason(null);
     };
     reader.readAsDataURL(file);
   };
@@ -167,12 +174,23 @@ export default function FoodPhotoAnalyzer() {
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
-        if (data.needsBackPhoto) {
+        // Handle both old needsBackPhoto and new requer_foto_ingredientes
+        if (data.needsBackPhoto || (data.analysis?.requer_foto_ingredientes === true)) {
           setNeedsBackPhoto(true);
           setFrontImage(imagePreview);
           setImagePreview(null);
           setLabelStep("back");
-          toast.info("Não reconheci o produto. Tire uma foto da tabela nutricional.", {
+          
+          // Store dynamic reason from the AI
+          const analysis = data.analysis || {};
+          setBackPhotoReason({
+            mensagem: analysis.mensagem_segunda_foto || data.message || "Para sua segurança, tire uma foto da tabela de ingredientes.",
+            motivo: analysis.motivo_duvida || "Não foi possível confirmar todos os ingredientes",
+            intolerancia: analysis.intolerancia_em_duvida || "",
+            produto: analysis.produto_identificado || "produto"
+          });
+          
+          toast.info(analysis.mensagem_segunda_foto || "Preciso da foto dos ingredientes para confirmar.", {
             duration: 5000,
           });
           return;
@@ -222,6 +240,7 @@ export default function FoodPhotoAnalyzer() {
     setLabelStep("front");
     setFrontImage(null);
     setNeedsBackPhoto(false);
+    setBackPhotoReason(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
     if (cameraInputRef.current) cameraInputRef.current.value = "";
   };
@@ -239,6 +258,7 @@ export default function FoodPhotoAnalyzer() {
       setLabelStep("front");
       setFrontImage(null);
       setNeedsBackPhoto(false);
+      setBackPhotoReason(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
       if (cameraInputRef.current) cameraInputRef.current.value = "";
       // Set mode last to ensure all states are reset before re-render
@@ -386,9 +406,9 @@ export default function FoodPhotoAnalyzer() {
       };
     } else if (labelStep === "back") {
       return {
-        title: "Passo 2: Tabela Nutricional",
-        description: "Não reconheci o produto somente pela embalagem. Para a sua segurança, tire uma foto da tabela nutricional que consta em algum lugar da embalagem.",
-        buttonText: "Tirar Foto da Tabela Nutricional",
+        title: "Passo 2: Tabela de Ingredientes",
+        description: backPhotoReason?.mensagem || "Para sua segurança, tire uma foto da tabela de ingredientes.",
+        buttonText: "Tirar Foto dos Ingredientes",
         icon: <ScanBarcode className="w-10 h-10" />
       };
     }
@@ -493,19 +513,31 @@ export default function FoodPhotoAnalyzer() {
         </TabsContent>
       </Tabs>
 
-      {/* Show front image preview if in back step */}
+      {/* Show front image preview if in back step - with dynamic reason */}
       {mode === "label" && labelStep === "back" && frontImage && (
-        <Card className="glass-card border-primary/30">
+        <Card className="glass-card border-amber-500/50 bg-amber-500/10">
           <CardContent className="p-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-start gap-3">
               <img 
                 src={frontImage} 
                 alt="Frente do produto" 
-                className="w-16 h-16 object-cover rounded-lg"
+                className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
               />
-              <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Foto do rótulo capturada ✓</p>
-                <p className="text-xs text-muted-foreground">Agora fotografe a tabela nutricional</p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1">
+                  <AlertTriangle className="w-4 h-4 text-amber-500 flex-shrink-0" />
+                  <p className="text-sm font-medium text-foreground">
+                    {backPhotoReason?.produto ? `${backPhotoReason.produto} identificado` : "Produto identificado"}
+                  </p>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">
+                  {backPhotoReason?.motivo || "Preciso confirmar os ingredientes"}
+                </p>
+                {backPhotoReason?.intolerancia && (
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-700 dark:text-amber-300">
+                    ⚠️ Verificar: {backPhotoReason.intolerancia.charAt(0).toUpperCase() + backPhotoReason.intolerancia.slice(1)}
+                  </span>
+                )}
               </div>
             </div>
           </CardContent>

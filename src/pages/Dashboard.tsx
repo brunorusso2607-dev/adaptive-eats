@@ -826,16 +826,17 @@ export default function Dashboard() {
                         <div className="flex gap-2 flex-wrap">
                           {weightData?.weight_current && (
                             <Button 
+                              variant="ghost"
                               size="sm" 
                               onClick={() => setShowWeightUpdateModal(true)}
-                              className={`${
+                              className={`text-xs ${
                                 userGoal === "ganhar_peso"
-                                  ? "bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600 text-white"
-                                  : "bg-gradient-to-r from-green-500 to-emerald-500 hover:from-green-600 hover:to-emerald-600 text-white"
+                                  ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
+                                  : "text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
                               }`}
                             >
-                              <Scale className="w-4 h-4 mr-1" />
-                              Novo Peso
+                              <Scale className="w-3 h-3 mr-1" />
+                              Atualizar peso
                             </Button>
                           )}
                           <Button 

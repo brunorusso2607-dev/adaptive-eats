@@ -439,29 +439,6 @@ export default function FoodPhotoAnalyzer() {
                 className="hidden"
               />
 
-              <div className="flex items-center gap-4">
-                <div className="flex-1 h-px bg-border" />
-                <span className="text-xs text-muted-foreground">ou</span>
-                <div className="flex-1 h-px bg-border" />
-              </div>
-
-              {/* Upload button */}
-              <Button
-                variant="outline"
-                size="lg"
-                className="w-full h-16 flex gap-2"
-                onClick={() => fileInputRef.current?.click()}
-              >
-                <Upload className="w-5 h-5" />
-                <span>Escolher da Galeria</span>
-              </Button>
-              <input
-                ref={fileInputRef}
-                type="file"
-                accept="image/*"
-                onChange={handleFileSelect}
-                className="hidden"
-              />
             </div>
 
             <p className="text-xs text-muted-foreground text-center mt-4">

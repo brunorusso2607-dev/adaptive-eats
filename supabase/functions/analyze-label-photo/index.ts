@@ -11,17 +11,95 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ANALYZE-LABEL-PHOTO] ${step}${detailsStr}`);
 };
 
-// Map of ingredient aliases to their allergen categories
+// Mapa EXPANDIDO de sinônimos por intolerância - inclui termos técnicos brasileiros
 const ingredientAliases: Record<string, string[]> = {
-  "lactose": ["leite", "lactose", "laticínios", "derivados de leite"],
-  "gluten": ["glúten", "trigo", "centeio", "cevada", "aveia", "malte"],
-  "soja": ["soja", "lecitina de soja", "proteína de soja", "óleo de soja"],
-  "ovo": ["ovo", "ovos", "albumina", "lisozima", "lecitina de ovo"],
-  "amendoim": ["amendoim", "pasta de amendoim", "óleo de amendoim"],
-  "nozes": ["nozes", "castanhas", "amêndoas", "avelãs", "pistache", "macadâmia", "pecã"],
-  "frutos_do_mar": ["camarão", "caranguejo", "lagosta", "marisco", "moluscos", "crustáceos"],
-  "peixe": ["peixe", "anchova", "atum", "sardinha", "salmão"],
+  "lactose": [
+    "leite", "lactose", "laticínios", "derivados de leite", "soro de leite", "whey",
+    "caseína", "caseinato", "caseinato de sódio", "caseinato de cálcio",
+    "lactoalbumina", "lactoglobulina", "proteína do leite", "proteína láctea",
+    "manteiga", "creme de leite", "nata", "gordura láctea", "gordura de leite",
+    "coalho", "queijo", "requeijão", "iogurte", "coalhada", "kefir",
+    "leite em pó", "leite condensado", "leite integral", "leite desnatado",
+    "buttermilk", "ghee", "sólidos de leite", "extrato de leite",
+    "lactato", "ácido láctico" // alguns podem ser veganos, mas melhor alertar
+  ],
+  "gluten": [
+    "glúten", "trigo", "farinha de trigo", "farinha branca", "farinha integral",
+    "centeio", "cevada", "aveia", "malte", "extrato de malte", "xarope de malte",
+    "semolina", "sêmola", "espelta", "kamut", "triticale",
+    "amido de trigo", "amido modificado", "proteína de trigo",
+    "bulgur", "couscous", "seitan", "pão", "massa", "macarrão",
+    "cerveja", "whisky", "uísque", "farinha de rosca", "panko"
+  ],
+  "amendoim": [
+    "amendoim", "pasta de amendoim", "manteiga de amendoim", "óleo de amendoim",
+    "farinha de amendoim", "proteína de amendoim", "arachis hypogaea",
+    "traços de amendoim", "pode conter amendoim"
+  ],
+  "nozes": [
+    "nozes", "castanhas", "castanha de caju", "castanha do pará", "castanha do brasil",
+    "amêndoas", "avelãs", "pistache", "macadâmia", "pecã", "noz pecã",
+    "pinhão", "pralinê", "marzipã", "maçapão", "nougat",
+    "traços de castanhas", "pode conter castanhas", "frutas oleaginosas"
+  ],
+  "frutos_do_mar": [
+    "camarão", "caranguejo", "siri", "lagosta", "lagostim", "marisco",
+    "moluscos", "crustáceos", "mexilhão", "ostra", "vieira", "lula",
+    "polvo", "surimi", "kani", "crab stick",
+    "traços de crustáceos", "pode conter crustáceos"
+  ],
+  "peixe": [
+    "peixe", "anchova", "atum", "sardinha", "salmão", "bacalhau", "tilápia",
+    "merluza", "pescada", "linguado", "robalo", "dourado",
+    "óleo de peixe", "colágeno de peixe", "gelatina de peixe",
+    "molho de peixe", "fish sauce", "pasta de peixe",
+    "traços de peixe", "pode conter peixe"
+  ],
+  "ovo": [
+    "ovo", "ovos", "gema", "clara", "albumina", "ovoalbumina",
+    "lisozima", "lecitina de ovo", "globulina", "livetina",
+    "ovo em pó", "ovo líquido", "ovo pasteurizado",
+    "maionese", "merengue", "gemada",
+    "traços de ovo", "pode conter ovo"
+  ],
+  "soja": [
+    "soja", "lecitina de soja", "E322", "proteína de soja", "proteína texturizada de soja",
+    "óleo de soja", "molho de soja", "shoyu", "missô", "miso", "tofu",
+    "tempeh", "edamame", "leite de soja", "farinha de soja",
+    "extrato de soja", "isolado de soja", "concentrado de soja",
+    "traços de soja", "pode conter soja"
+  ],
+  "sugar": [
+    "açúcar", "sacarose", "glicose", "frutose", "dextrose", "maltose",
+    "xarope de milho", "xarope de glicose", "xarope de frutose", "high fructose corn syrup",
+    "maltodextrina", "açúcar invertido", "açúcar mascavo", "açúcar demerara",
+    "melado", "melaço", "rapadura", "mel", "xarope de agave",
+    "caramelo", "glucose-fructose", "açúcar de coco", "néctar"
+  ]
 };
+
+// Ingredientes de origem animal (para veganos)
+const animalIngredients = [
+  "carne", "frango", "galinha", "peru", "pato", "porco", "bacon", "presunto",
+  "linguiça", "salsicha", "boi", "vaca", "vitela", "cordeiro", "carneiro",
+  "gelatina", "gelatina animal", "colágeno", "colágeno animal", "banha", "toucinho",
+  "gordura animal", "sebo", "tutano", "caldo de carne", "extrato de carne",
+  "mel", "própolis", "geleia real", "cera de abelha",
+  "carmim", "cochonilha", "E120", "corante natural vermelho",
+  "queratina", "lanolina", "seda", "albumina", "caseína",
+  // inclui laticínios e ovos também
+  "leite", "queijo", "manteiga", "iogurte", "ovo", "clara", "gema"
+];
+
+// Ingredientes de carne/peixe (para vegetarianos)
+const meatIngredients = [
+  "carne", "frango", "galinha", "peru", "pato", "porco", "bacon", "presunto",
+  "linguiça", "salsicha", "boi", "vaca", "vitela", "cordeiro", "carneiro",
+  "peixe", "atum", "sardinha", "salmão", "camarão", "camarões", "marisco",
+  "crustáceo", "molusco", "anchova", "surimi",
+  "gelatina", "gelatina animal", "banha", "gordura animal", "sebo",
+  "caldo de carne", "caldo de galinha", "extrato de carne"
+];
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -65,83 +143,107 @@ serve(async (req) => {
     const dietaryPreference = profile?.dietary_preference || "comum";
     logStep("User profile loaded", { intolerances: userIntolerances, dietaryPreference });
 
-    const { imageBase64 } = await req.json();
+    const { imageBase64, step } = await req.json();
     if (!imageBase64) throw new Error("No image provided");
-    logStep("Image received", { imageSize: imageBase64.length });
+    logStep("Image received", { imageSize: imageBase64.length, step: step || "single" });
 
     // Extract base64 data (remove data URL prefix if present)
     const base64Data = imageBase64.includes(',') 
       ? imageBase64.split(',')[1] 
       : imageBase64;
 
-    // Build the list of ingredients to watch for based on user intolerances
+    // Build the COMPLETE list of ingredients to watch for based on user profile
     let ingredientsToWatch: string[] = [];
+    let intoleranceLabels: string[] = [];
+    
     for (const intolerance of userIntolerances) {
       const aliases = ingredientAliases[intolerance.toLowerCase()];
       if (aliases) {
         ingredientsToWatch.push(...aliases);
+        intoleranceLabels.push(intolerance);
       } else {
         ingredientsToWatch.push(intolerance);
+        intoleranceLabels.push(intolerance);
       }
     }
 
     // Add dietary preference restrictions
     let dietaryRestrictions = "";
+    let dietaryIngredientsToWatch: string[] = [];
+    
     if (dietaryPreference === "vegetariana") {
-      dietaryRestrictions = "O usuário é VEGETARIANO. Alerte sobre qualquer ingrediente de origem animal (carne, peixe, frutos do mar, gelatina animal, banha, gordura animal).";
+      dietaryRestrictions = "O usuário é VEGETARIANO.";
+      dietaryIngredientsToWatch = meatIngredients;
+      intoleranceLabels.push("vegetarianismo");
     } else if (dietaryPreference === "vegana") {
-      dietaryRestrictions = "O usuário é VEGANO. Alerte sobre QUALQUER ingrediente de origem animal (carne, peixe, laticínios, ovos, mel, gelatina, corantes de origem animal como carmim/cochonilha).";
+      dietaryRestrictions = "O usuário é VEGANO.";
+      dietaryIngredientsToWatch = animalIngredients;
+      intoleranceLabels.push("veganismo");
     }
 
-    const systemPrompt = `Você é um especialista em análise de rótulos de alimentos, focado em identificar ingredientes que podem ser problemáticos para pessoas com intolerâncias alimentares.
+    ingredientsToWatch = [...new Set([...ingredientsToWatch, ...dietaryIngredientsToWatch])];
 
-CONTEXTO DO USUÁRIO:
-- Intolerâncias/Alergias: ${userIntolerances.length > 0 ? userIntolerances.join(", ") : "Nenhuma cadastrada"}
-- Preferência alimentar: ${dietaryPreference}
+    // PROMPT DE VERIFICAÇÃO NEGATIVA COM FAIL-SAFE
+    const systemPrompt = `Você é um especialista em segurança alimentar, especializado em identificar ingredientes perigosos para pessoas com restrições alimentares.
+
+PERFIL DO USUÁRIO (CRÍTICO - MEMORIZE):
+- Intolerâncias/Alergias: ${intoleranceLabels.length > 0 ? intoleranceLabels.join(", ").toUpperCase() : "Nenhuma cadastrada"}
+- Preferência alimentar: ${dietaryPreference.toUpperCase()}
 ${dietaryRestrictions}
 
-${ingredientsToWatch.length > 0 ? `
-INGREDIENTES PARA VERIFICAR COM ATENÇÃO:
-${ingredientsToWatch.join(", ")}
+⚠️ LISTA DE INGREDIENTES A PROCURAR ATIVAMENTE (inclui sinônimos e termos técnicos):
+${ingredientsToWatch.map(i => `• ${i}`).join("\n")}
 
-Também verifique sinônimos e derivados desses ingredientes. Por exemplo:
-- Lactose pode aparecer como: caseína, soro de leite, whey, lactoalbumina, lactoglobulina
-- Glúten pode aparecer como: farinha de trigo, malte, extrato de malte, amido de trigo
-- Soja pode aparecer como: lecitina de soja (E322), proteína texturizada de soja
-` : ""}
+🔍 REGRAS DE ANÁLISE (SIGA À RISCA):
 
-TAREFA:
-Analise a imagem do rótulo de ingredientes e:
-1. Identifique o nome do produto (se visível)
-2. Liste todos os ingredientes identificados
-3. Classifique cada ingrediente como:
-   - "seguro": Não representa risco para as intolerâncias do usuário
-   - "atencao": Pode conter traços ou derivados problemáticos
-   - "evitar": Contém ingrediente que o usuário deve evitar
-4. Dê um veredicto geral do produto
+1. LEIA CADA INGREDIENTE DA LISTA - um por um, letra por letra
+2. Para CADA ingrediente encontrado, pergunte-se: "Este ingrediente está na lista de restrições do usuário?"
+3. SE NÃO RECONHECER um termo químico ou ingrediente técnico → CLASSIFIQUE COMO "risco_potencial" (não como seguro!)
+4. SE ENCONTRAR "pode conter traços de..." → CLASSIFIQUE COMO "risco_potencial"
+5. SE ENCONTRAR qualquer ingrediente da lista acima → CLASSIFIQUE COMO "contem"
+
+📊 SISTEMA DE 3 NÍVEIS DE RISCO (OBRIGATÓRIO):
+
+🔴 "contem" = CERTEZA que contém ingrediente problemático
+   → Use quando o ingrediente aparece claramente na lista
+
+🟡 "risco_potencial" = INCERTEZA ou traços possíveis
+   → Use quando: termo técnico desconhecido, "pode conter", derivados suspeitos
+
+🟢 "seguro" = CERTEZA de ausência
+   → APENAS quando você tem 100% de certeza que NÃO há nenhum ingrediente problemático
 
 FORMATO DE RESPOSTA (JSON obrigatório):
 {
   "produto": "Nome do produto (se identificável)",
-  "veredicto": "seguro" | "atencao" | "evitar",
+  "encontrou_lista_ingredientes": true/false,
+  "veredicto": "seguro" | "risco_potencial" | "contem",
   "ingredientes_analisados": [
     {
-      "nome": "nome do ingrediente",
-      "status": "seguro" | "atencao" | "evitar",
-      "motivo": "explicação se status não for seguro"
+      "nome": "nome exato do ingrediente como aparece no rótulo",
+      "status": "seguro" | "risco_potencial" | "contem",
+      "motivo": "explicação clara do motivo (sempre preencher se não for seguro)",
+      "restricao_afetada": "qual intolerância/preferência é afetada (se aplicável)"
     }
   ],
-  "alertas": ["Lista de alertas importantes"],
-  "recomendacao": "Recomendação final para o usuário"
+  "alertas": ["Lista de alertas CRÍTICOS em ordem de gravidade"],
+  "ingredientes_suspeitos": ["Lista de ingredientes que você não reconheceu ou tem dúvida"],
+  "recomendacao": "Recomendação clara e direta para o usuário"
 }
 
-Se a imagem não for de um rótulo de ingredientes, retorne:
-{"erro": "Não foi possível identificar um rótulo de ingredientes na imagem. Por favor, fotografe a lista de ingredientes do produto."}`;
+IMPORTANTE:
+- Se a imagem NÃO mostrar uma lista de ingredientes legível, retorne:
+  {"erro": "lista_nao_encontrada", "mensagem": "Não encontrei a lista de ingredientes. Por favor, fotografe o VERSO do produto onde aparece a lista completa de ingredientes."}
+
+- Se a qualidade da imagem estiver ruim (borrada, escura, cortada), retorne:
+  {"erro": "qualidade_ruim", "mensagem": "A imagem está difícil de ler. Por favor, tire uma foto mais nítida e bem iluminada da lista de ingredientes."}
+
+LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar algo perigoso. NA DÚVIDA, CLASSIFIQUE COMO "risco_potencial".`;
 
     logStep("Calling Google Gemini API with image");
 
-    // Call Google Gemini API with image
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    // Call Google Gemini API with image (usando modelo mais capaz para segurança)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -161,8 +263,8 @@ Se a imagem não for de um rótulo de ingredientes, retorne:
           }
         ],
         generationConfig: {
-          temperature: 0.2,
-          maxOutputTokens: 2048,
+          temperature: 0.1, // Baixa temperatura para mais precisão
+          maxOutputTokens: 4096,
         }
       }),
     });
@@ -199,27 +301,69 @@ Se a imagem não for de um rótulo de ingredientes, retorne:
         throw new Error("No JSON found in response");
       }
     } catch (parseError) {
-      logStep("Parse error", { error: String(parseError), content: content.slice(0, 200) });
+      logStep("Parse error", { error: String(parseError), content: content.slice(0, 500) });
       throw new Error("Não foi possível analisar o rótulo. Tente com uma foto mais clara.");
     }
 
-    // Check for error response from AI (not a label detected)
+    // Check for error responses from AI
     if (analysis.erro) {
-      logStep("Not a label detected", { message: analysis.erro });
+      logStep("AI detected issue", { erro: analysis.erro, mensagem: analysis.mensagem });
+      
+      if (analysis.erro === "lista_nao_encontrada") {
+        return new Response(JSON.stringify({
+          success: false,
+          needsBackPhoto: true,
+          message: analysis.mensagem || "Não encontrei a lista de ingredientes. Por favor, fotografe o verso do produto."
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      if (analysis.erro === "qualidade_ruim") {
+        return new Response(JSON.stringify({
+          success: false,
+          qualityIssue: true,
+          message: analysis.mensagem || "A imagem está difícil de ler. Tente uma foto mais nítida."
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
       return new Response(JSON.stringify({
         success: false,
         notLabel: true,
-        message: analysis.erro
+        message: analysis.mensagem || analysis.erro
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
     }
 
+    // Normalize veredicto to match the 3-level system
+    if (analysis.veredicto === "atencao") {
+      analysis.veredicto = "risco_potencial";
+    }
+    if (analysis.veredicto === "evitar") {
+      analysis.veredicto = "contem";
+    }
+
+    // Normalize ingredient status
+    if (analysis.ingredientes_analisados) {
+      analysis.ingredientes_analisados = analysis.ingredientes_analisados.map((ing: any) => {
+        let status = ing.status;
+        if (status === "atencao") status = "risco_potencial";
+        if (status === "evitar") status = "contem";
+        return { ...ing, status };
+      });
+    }
+
     logStep("Analysis complete", { 
       veredicto: analysis.veredicto,
       ingredientCount: analysis.ingredientes_analisados?.length,
-      alertCount: analysis.alertas?.length
+      alertCount: analysis.alertas?.length,
+      suspiciousCount: analysis.ingredientes_suspeitos?.length
     });
 
     return new Response(JSON.stringify({

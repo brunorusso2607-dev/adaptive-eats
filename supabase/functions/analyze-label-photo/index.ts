@@ -503,29 +503,41 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       });
     }
 
-    // Check if AI determined we need ingredient photo (low confidence OR requer_foto_ingredientes)
-    if (analysis.requer_foto_ingredientes === true || 
-        (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) ||
-        (analysis.confianca === "baixa" && analysis.e_categoria_duvidosa === true)) {
+    // Check if AI determined we need ingredient photo - ROBUST CHECK for all variations
+    // AI may return: requer_foto_ingredientes, requer_foto, confianca="baixa", or low confianca_identificacao
+    const needsIngredientPhoto = 
+      analysis.requer_foto_ingredientes === true || 
+      analysis.requer_foto === true ||
+      (analysis.confianca === "baixa") ||
+      (typeof analysis.confianca === "number" && analysis.confianca < 85) ||
+      (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) ||
+      (analysis.e_categoria_duvidosa === true && !analysis.ingredientes_visiveis && !analysis.selos_encontrados?.length);
+    
+    if (needsIngredientPhoto) {
+      const produtoNome = analysis.produto_identificado || analysis.produto || 'produto';
+      const motivoDuvida = analysis.motivo_duvida || analysis.motivo || 
+        `Preciso verificar os ingredientes de ${produtoNome} para confirmar se é seguro para você.`;
+      const mensagemFoto = analysis.mensagem_segunda_foto || 
+        `Para confirmar se ${produtoNome} é seguro para você, tire uma foto da tabela de ingredientes.`;
+      
       logStep("Needs ingredient photo", { 
         confianca: analysis.confianca_identificacao || analysis.confianca,
-        produto: analysis.produto_identificado,
-        requer_foto: analysis.requer_foto_ingredientes,
+        produto: produtoNome,
+        requer_foto: analysis.requer_foto_ingredientes || analysis.requer_foto,
         categoria_duvidosa: analysis.e_categoria_duvidosa,
-        motivo: analysis.motivo_duvida
+        motivo: motivoDuvida
       });
       
       return new Response(JSON.stringify({
         success: false,
         needsBackPhoto: true,
-        message: analysis.mensagem_segunda_foto || analysis.motivo_duvida || 
-          `Identifiquei como "${analysis.produto_identificado || 'produto desconhecido'}". Para confirmar se é seguro para você, tire uma foto da tabela de ingredientes.`,
+        message: mensagemFoto,
         analysis: {
-          produto_identificado: analysis.produto_identificado,
+          produto_identificado: produtoNome,
           marca: analysis.marca,
-          motivo_duvida: analysis.motivo_duvida,
+          motivo_duvida: motivoDuvida,
           intolerancia_em_duvida: analysis.intolerancia_em_duvida,
-          mensagem_segunda_foto: analysis.mensagem_segunda_foto
+          mensagem_segunda_foto: mensagemFoto
         }
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },

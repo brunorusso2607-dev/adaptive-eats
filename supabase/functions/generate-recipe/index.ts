@@ -37,6 +37,86 @@ const CALORIE_LABELS: Record<string, string> = {
   definir_depois: "calorias normais",
 };
 
+// Mapeamento de categorias com exemplos típicos para guiar a IA
+const CATEGORY_EXAMPLES: Record<string, Record<string, string>> = {
+  "Entradas & Leves": {
+    "Saladas": "Salada Caesar, Salada Caprese, Salada de Quinoa com Legumes, Salada Tropical",
+    "Molhos para salada": "Molho de Iogurte, Vinagrete, Molho Caesar, Molho de Mostarda e Mel",
+    "Pastas e patês": "Homus, Guacamole, Patê de Atum, Pasta de Grão-de-Bico",
+    "Antepastos": "Bruschetta, Carpaccio, Tábua de Frios, Antepasto de Berinjela",
+    "Sopas leves": "Sopa de Legumes, Caldo Verde Light, Sopa de Abóbora, Consomê",
+    "Caldos": "Caldo de Legumes, Caldo de Frango, Caldo Detox, Caldo de Feijão",
+    "Cremes frios": "Gazpacho, Creme de Pepino, Vichyssoise, Creme de Abacate",
+  },
+  "Pratos Principais": {
+    "Prato principal tradicional": "Arroz com Feijão e Bife, Frango Assado, Strogonoff, Feijoada Light",
+    "Pratos fitness": "Frango Grelhado com Batata Doce, Tilápia com Legumes, Omelete Proteica",
+    "Pratos low carb": "Espaguete de Abobrinha, Couve-Flor Refogada com Frango, Berinjela Recheada",
+    "Pratos vegetarianos": "Risoto de Cogumelos, Lasanha de Berinjela, Curry de Grão-de-Bico",
+    "Pratos veganos": "Buddha Bowl, Feijoada Vegana, Moqueca de Banana da Terra",
+    "Pratos proteicos (high protein)": "Bife Ancho, Salmão Grelhado, Peito de Peru Assado",
+    "Pratos elaborados / gourmet": "Risoto de Camarão, Medalhão ao Molho Madeira, Lombo Recheado",
+    "Pratos para bulking": "Macarrão com Carne Moída, Arroz com Frango e Ovo, Bowl Calórico",
+    "Pratos calóricos": "Lasanha Tradicional, Escondidinho de Carne Seca, Feijoada Completa",
+  },
+  "Acompanhamentos": {
+    "Arroz e grãos": "Arroz à Grega, Arroz de Brócolis, Arroz Integral, Quinoa",
+    "Legumes refogados": "Abobrinha Refogada, Brócolis no Alho, Mix de Legumes",
+    "Purês": "Purê de Batata, Purê de Mandioquinha, Purê de Abóbora",
+    "Farofas": "Farofa de Banana, Farofa de Ovos, Farofa Crocante",
+    "Massas": "Espaguete ao Alho e Óleo, Penne ao Sugo, Macarrão Integral",
+    "Cuscuz": "Cuscuz Nordestino, Cuscuz Marroquino, Cuscuz de Legumes",
+    "Quinoa e derivados": "Quinoa com Legumes, Tabule de Quinoa, Quinoa ao Pesto",
+  },
+  "Café da Manhã & Lanches": {
+    "Café da manhã": "Omelete com Queijo, Panqueca de Banana, Torrada com Abacate, Mingau de Aveia, Tapioca Recheada, Pão Integral com Ovos",
+    "Lanches fitness": "Wrap de Frango, Sanduíche Natural, Barrinha de Proteína Caseira, Smoothie Bowl, Crepioca, Muffin de Banana",
+    "Lanches calóricos": "Sanduíche de Pasta de Amendoim, Vitamina com Aveia e Banana, Panqueca com Mel",
+    "Panquecas": "Panqueca de Aveia, Panqueca Americana, Panqueca de Banana, Panqueca Proteica",
+    "Ovos e omeletes": "Omelete de Legumes, Ovos Mexidos, Ovo Pochê, Fritada de Espinafre",
+    "Sanduíches": "Sanduíche de Frango, Sanduíche Caprese, Croissant Recheado, Bagel de Cream Cheese",
+    "Tapiocas": "Tapioca de Queijo, Tapioca de Frango, Tapioca de Banana com Canela, Tapioca Fit",
+  },
+  "Sobremesas": {
+    "Sobremesas tradicionais": "Pudim de Leite, Brigadeiro, Mousse de Maracujá, Pavê",
+    "Sobremesas fitness": "Mousse de Chocolate Fit, Sorvete de Banana, Pudim Proteico",
+    "Sobremesas low carb": "Cheesecake Low Carb, Brownie Sem Açúcar, Tortinha de Morango",
+    "Sobremesas sem açúcar": "Gelatina Diet, Mousse de Limão Diet, Doce de Abóbora Sem Açúcar",
+    "Sobremesas veganas": "Brigadeiro Vegano, Mousse de Cacau, Sorvete de Coco",
+    "Bolos": "Bolo de Cenoura, Bolo de Chocolate, Bolo de Laranja, Bolo Formigueiro",
+    "Tortas doces": "Torta de Limão, Torta de Maçã, Torta Holandesa, Cheesecake",
+    "Doces gelados": "Sorvete Caseiro, Picolé de Frutas, Açaí na Tigela, Paleta Mexicana",
+  },
+  "Bebidas": {
+    "Sucos naturais": "Suco de Laranja, Suco Verde Detox, Suco de Melancia, Limonada",
+    "Vitaminas e smoothies": "Vitamina de Banana, Smoothie de Morango, Vitamina de Abacate",
+    "Shakes proteicos": "Shake de Whey com Banana, Shake de Proteína Vegetal, Shake Pós-Treino",
+    "Shakes para ganho de massa": "Shake Hipercalórico, Shake de Pasta de Amendoim, Shake com Aveia",
+    "Chás": "Chá de Camomila, Chá Verde, Chá de Hibisco, Chá de Gengibre",
+    "Bebidas funcionais": "Água Detox, Shot de Gengibre, Golden Milk, Kombucha",
+    "Bebidas detox": "Suco Detox Verde, Água de Pepino, Suco Emagrecedor, Chá Detox",
+  },
+  "Snacks & Petiscos": {
+    "Snacks saudáveis": "Chips de Batata Doce, Grão-de-Bico Crocante, Mix de Nuts, Palitos de Legumes",
+    "Snacks low carb": "Chips de Queijo, Palitos de Pepino, Bolinhas de Carne, Ovos de Codorna",
+    "Snacks calóricos": "Granola Caseira, Mix de Frutas Secas, Castanhas Caramelizadas",
+    "Petiscos de forno": "Bolinha de Queijo, Empada, Pastel Assado, Coxinha de Frango Fit",
+    "Petiscos de airfryer": "Batata Rústica, Calabresa Acebolada, Nuggets Caseiros, Bolinho de Bacalhau",
+    "Finger foods": "Mini Hambúrguer, Espetinho Caprese, Tartine, Canapés",
+  },
+};
+
+// Tipos de refeição por horário/ocasião
+const MEAL_TYPE_HINTS: Record<string, string> = {
+  "Café da manhã": "Esta é uma receita para o CAFÉ DA MANHÃ. Deve ser algo típico de café da manhã como ovos, pães, frutas, mingau, tapioca, panquecas, etc. NUNCA gere almoço ou jantar.",
+  "Lanches fitness": "Esta é uma receita de LANCHE FITNESS. Deve ser algo leve e proteico para lanchar entre refeições, como wraps, sanduíches naturais, smoothies, crepiocas. NUNCA gere pratos principais de almoço/jantar.",
+  "Lanches calóricos": "Esta é uma receita de LANCHE CALÓRICO para ganho de peso. Deve ser um lanche substancioso, não um prato principal completo.",
+  "Panquecas": "Deve ser uma receita de PANQUECA - doce ou salgada, típica de café da manhã ou lanche.",
+  "Ovos e omeletes": "Deve ser uma receita baseada em OVOS - omelete, ovos mexidos, fritada, etc. Típica de café da manhã.",
+  "Sanduíches": "Deve ser uma receita de SANDUÍCHE - para café da manhã ou lanche, não um prato principal.",
+  "Tapiocas": "Deve ser uma receita de TAPIOCA - típica de café da manhã ou lanche brasileiro.",
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -138,6 +218,46 @@ serve(async (req) => {
       personalizedMacros = { targetCalories, protein, mode: isWeightLossMode ? "lose" : "gain" };
       logStep("Personalized macros calculated", personalizedMacros);
     }
+
+    // Build category constraint if category is selected
+    let categoryConstraint = "";
+    let categoryExamples = "";
+    let mealTypeHint = "";
+    
+    if (categoryContext && categoryContext.category && categoryContext.subcategory) {
+      const category = categoryContext.category;
+      const subcategory = categoryContext.subcategory;
+      
+      // Get examples for this category/subcategory
+      if (CATEGORY_EXAMPLES[category] && CATEGORY_EXAMPLES[category][subcategory]) {
+        categoryExamples = CATEGORY_EXAMPLES[category][subcategory];
+      }
+      
+      // Get meal type hint if available
+      if (MEAL_TYPE_HINTS[subcategory]) {
+        mealTypeHint = MEAL_TYPE_HINTS[subcategory];
+      }
+      
+      categoryConstraint = `
+🚨🚨🚨 REGRA MAIS IMPORTANTE - CATEGORIA OBRIGATÓRIA 🚨🚨🚨
+O usuário SELECIONOU especificamente a categoria "${category}" → "${subcategory}".
+
+${mealTypeHint}
+
+EXEMPLOS TÍPICOS desta categoria: ${categoryExamples || subcategory}
+
+⛔ PROIBIDO: Gerar receitas que não pertencem a esta categoria.
+⛔ PROIBIDO: Gerar pratos principais (salmão, frango grelhado, carne) quando a categoria é "Café da Manhã & Lanches".
+⛔ PROIBIDO: Ignorar a categoria selecionada em favor de outras preferências.
+
+✅ OBRIGATÓRIO: A receita DEVE ser algo típico e representativo de "${subcategory}".
+✅ OBRIGATÓRIO: Respeitar a categoria TEM PRIORIDADE sobre macros e calorias.
+
+Se o usuário pediu "${subcategory}", você DEVE gerar algo dessa categoria, mesmo que pareça menos "nutritivo" ou "proteico".
+`;
+      
+      logStep("Category constraint built", { category, subcategory, hasExamples: !!categoryExamples });
+    }
     
     const kidsInstructions = isKidsMode ? `
 MODO KIDS ATIVO - REGRAS ESPECIAIS:
@@ -167,7 +287,8 @@ ${personalizedMacros
 - Prefira métodos de cocção: grelhado, assado, cozido no vapor
 - Adicione um campo "satiety_tip" com dica de saciedade
 - Adicione um campo "satiety_score" de 1-10 (quanto maior, mais saciante)
-- Inclua ingredientes termogênicos quando possível (gengibre, pimenta, canela)` : "";
+- Inclua ingredientes termogênicos quando possível (gengibre, pimenta, canela)
+⚠️ IMPORTANTE: Respeite PRIMEIRO a categoria selecionada, depois adapte para versão fit.` : "";
 
     const weightGainInstructions = isWeightGainMode ? `
 MODO GANHO DE PESO/MASSA ATIVO - REGRAS ESPECIAIS:
@@ -183,13 +304,24 @@ ${personalizedMacros
 - Proteína alta: mínimo 35g por porção`}
 - Inclua snacks calóricos saudáveis
 - Adicione um campo "muscle_tip" com dica para ganho de massa
-- Adicione um campo "calorie_density_score" de 1-10 (quanto maior, mais calórico)` : "";
+- Adicione um campo "calorie_density_score" de 1-10 (quanto maior, mais calórico)
+⚠️ IMPORTANTE: Respeite PRIMEIRO a categoria selecionada, depois adapte para versão calórica.` : "";
     
     const systemPrompt = `Você é um nutricionista e chef especializado em receitas personalizadas.
 Você DEVE gerar receitas com valores nutricionais REAIS e PRECISOS baseados em tabelas nutricionais.
+
+${categoryConstraint}
+
 ${kidsInstructions}
 ${weightLossInstructions}
 ${weightGainInstructions}
+
+HIERARQUIA DE PRIORIDADES (em ordem):
+1. 🥇 CATEGORIA SELECIONADA - se o usuário escolheu uma categoria, a receita DEVE ser dessa categoria
+2. 🥈 INTOLERÂNCIAS - nunca incluir ingredientes proibidos
+3. 🥉 PREFERÊNCIA ALIMENTAR - vegetariana, vegana, etc.
+4. 🏅 OBJETIVO DE PESO - adaptar calorias/macros
+5. 🏅 COMPLEXIDADE - tempo de preparo
 
 REGRAS ABSOLUTAS - NUNCA VIOLAR:
 1. INTOLERÂNCIAS: ${intolerancesStr}
@@ -255,16 +387,31 @@ IMPORTANTE:
           filtersText = ` Considere os seguintes filtros: ${filterParts.join(", ")}.`;
         }
       }
-      userPrompt = `Gere uma receita da categoria "${categoryContext.category}" - tipo "${categoryContext.subcategory}".${filtersText} A receita deve ser autêntica e representativa dessa categoria/tipo específico.`;
+      
+      // Prompt reforçado para categoria
+      userPrompt = `🎯 CATEGORIA SELECIONADA: "${categoryContext.category}" → "${categoryContext.subcategory}"
+
+GERE UMA RECEITA QUE SEJA TÍPICA E REPRESENTATIVA DE "${categoryContext.subcategory}".
+
+${CATEGORY_EXAMPLES[categoryContext.category]?.[categoryContext.subcategory] 
+  ? `Exemplos do que espero: ${CATEGORY_EXAMPLES[categoryContext.category][categoryContext.subcategory]}.` 
+  : ""}
+
+${MEAL_TYPE_HINTS[categoryContext.subcategory] || ""}
+
+${filtersText}
+
+⚠️ LEMBRE-SE: NÃO gere pratos de outra categoria. Se pedi "${categoryContext.subcategory}", a receita DEVE ser disso.`;
+      
     } else if (type === "automatica") {
       userPrompt = "Gere uma receita saudável e deliciosa que se encaixe no meu perfil.";
     } else {
       userPrompt = `Gere uma receita usando estes ingredientes: ${ingredients}. Pode adicionar outros ingredientes básicos se necessário.`;
     }
 
-    logStep("Calling Google Gemini API");
+    logStep("Calling Google Gemini API", { promptLength: userPrompt.length });
 
-    // Call Google Gemini API - using gemini-2.5-flash-lite
+    // Call Google Gemini API - using gemini-2.5-flash-lite with lower temperature for more precision
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
@@ -279,7 +426,7 @@ IMPORTANTE:
           }
         ],
         generationConfig: {
-          temperature: 0.7,
+          temperature: 0.4, // Reduced from 0.7 for more precise category adherence
           maxOutputTokens: 2048,
         }
       }),
@@ -321,7 +468,12 @@ IMPORTANTE:
       throw new Error("Não foi possível processar a receita. Tente novamente.");
     }
 
-    logStep("Recipe parsed", { name: recipe.name, calories: recipe.calories });
+    logStep("Recipe parsed", { 
+      name: recipe.name, 
+      calories: recipe.calories,
+      category: categoryContext?.category,
+      subcategory: categoryContext?.subcategory 
+    });
 
     return new Response(JSON.stringify({
       success: true,
@@ -331,6 +483,8 @@ IMPORTANTE:
         is_kids_mode: isKidsMode,
         is_weight_loss_mode: isWeightLossMode,
         is_weight_gain_mode: isWeightGainMode,
+        requested_category: categoryContext?.category || null,
+        requested_subcategory: categoryContext?.subcategory || null,
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

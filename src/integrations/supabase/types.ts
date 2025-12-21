@@ -122,6 +122,152 @@ export type Database = {
         }
         Relationships: []
       }
+      consumption_items: {
+        Row: {
+          calories: number
+          carbs: number
+          created_at: string
+          fat: number
+          food_id: string | null
+          food_name: string
+          id: string
+          meal_consumption_id: string
+          protein: number
+          quantity_grams: number
+        }
+        Insert: {
+          calories?: number
+          carbs?: number
+          created_at?: string
+          fat?: number
+          food_id?: string | null
+          food_name: string
+          id?: string
+          meal_consumption_id: string
+          protein?: number
+          quantity_grams: number
+        }
+        Update: {
+          calories?: number
+          carbs?: number
+          created_at?: string
+          fat?: number
+          food_id?: string | null
+          food_name?: string
+          id?: string
+          meal_consumption_id?: string
+          protein?: number
+          quantity_grams?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "consumption_items_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "consumption_items_meal_consumption_id_fkey"
+            columns: ["meal_consumption_id"]
+            isOneToOne: false
+            referencedRelation: "meal_consumption"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      foods: {
+        Row: {
+          calories_per_100g: number
+          carbs_per_100g: number
+          category: string | null
+          created_at: string
+          fat_per_100g: number
+          fiber_per_100g: number | null
+          id: string
+          name: string
+          name_normalized: string
+          protein_per_100g: number
+          sodium_per_100g: number | null
+        }
+        Insert: {
+          calories_per_100g?: number
+          carbs_per_100g?: number
+          category?: string | null
+          created_at?: string
+          fat_per_100g?: number
+          fiber_per_100g?: number | null
+          id?: string
+          name: string
+          name_normalized: string
+          protein_per_100g?: number
+          sodium_per_100g?: number | null
+        }
+        Update: {
+          calories_per_100g?: number
+          carbs_per_100g?: number
+          category?: string | null
+          created_at?: string
+          fat_per_100g?: number
+          fiber_per_100g?: number | null
+          id?: string
+          name?: string
+          name_normalized?: string
+          protein_per_100g?: number
+          sodium_per_100g?: number | null
+        }
+        Relationships: []
+      }
+      meal_consumption: {
+        Row: {
+          consumed_at: string
+          created_at: string
+          followed_plan: boolean
+          id: string
+          meal_plan_item_id: string | null
+          notes: string | null
+          total_calories: number
+          total_carbs: number
+          total_fat: number
+          total_protein: number
+          user_id: string
+        }
+        Insert: {
+          consumed_at?: string
+          created_at?: string
+          followed_plan?: boolean
+          id?: string
+          meal_plan_item_id?: string | null
+          notes?: string | null
+          total_calories?: number
+          total_carbs?: number
+          total_fat?: number
+          total_protein?: number
+          user_id: string
+        }
+        Update: {
+          consumed_at?: string
+          created_at?: string
+          followed_plan?: boolean
+          id?: string
+          meal_plan_item_id?: string | null
+          notes?: string | null
+          total_calories?: number
+          total_carbs?: number
+          total_fat?: number
+          total_protein?: number
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_consumption_meal_plan_item_id_fkey"
+            columns: ["meal_plan_item_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plan_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       meal_plan_items: {
         Row: {
           completed_at: string | null

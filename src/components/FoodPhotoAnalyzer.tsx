@@ -732,6 +732,59 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           {/* Food Analysis results */}
           {foodAnalysis && (
             <div className="space-y-4 animate-fade-in">
+              {/* Quick Intolerance Status Card - FIRST THING USER SEES */}
+              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
+                <Card className={`glass-card border-2 ${
+                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
+                    ? "border-red-500 bg-red-500/5" 
+                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
+                    ? "border-yellow-500 bg-yellow-500/5"
+                    : "border-green-500 bg-green-500/5"
+                }`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-3">
+                      {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
+                            <ShieldX className="w-6 h-6 text-red-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-red-600 text-lg">⚠️ Contém Restrição</p>
+                            <p className="text-sm text-muted-foreground">
+                              {perfilAplicado.alertas_personalizados.find(a => a.status === "contem")?.restricao}
+                            </p>
+                          </div>
+                        </>
+                      ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                            <ShieldAlert className="w-6 h-6 text-yellow-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-yellow-600 text-lg">⚠️ Atenção</p>
+                            <p className="text-sm text-muted-foreground">
+                              Possível risco: {perfilAplicado.alertas_personalizados.find(a => a.status === "risco_potencial")?.restricao}
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                            <ShieldCheck className="w-6 h-6 text-green-500" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-bold text-green-600 text-lg">✅ Alimento Seguro</p>
+                            <p className="text-sm text-muted-foreground">
+                              Compatível com suas restrições alimentares
+                            </p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Total macros card */}
               <Card className="glass-card border-primary/20">
                 <CardHeader className="pb-2">

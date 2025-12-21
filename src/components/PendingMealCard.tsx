@@ -36,8 +36,8 @@ interface PendingMealCardProps {
 
 const statusStyles: Record<MealStatus, { border: string; bg: string }> = {
   on_time: { 
-    border: "border-border", 
-    bg: "bg-card"
+    border: "border-primary/30", 
+    bg: "bg-primary/5"
   },
   delayed: { 
     border: "border-yellow-500/50", 

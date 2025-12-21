@@ -9,6 +9,10 @@ import Dashboard from "./pages/Dashboard";
 import Activate from "./pages/Activate";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminStats from "./pages/admin/AdminStats";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminAnalytics from "./pages/admin/AdminAnalytics";
 
 const queryClient = new QueryClient();
 
@@ -24,6 +28,14 @@ const App = () => (
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/ativar" element={<Activate />} />
           <Route path="/onboarding" element={<Onboarding />} />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={<AdminDashboard />}>
+            <Route index element={<AdminStats />} />
+            <Route path="users" element={<AdminUsers />} />
+            <Route path="analytics" element={<AdminAnalytics />} />
+          </Route>
+          
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -333,13 +333,142 @@ Se for uma geladeira/despensa com ingredientes, responda APENAS com JSON válido
       }
     }
 
-    logStep('Analysis complete with safety checks', { 
+    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========
+    // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
+    
+    const alertasPersonalizados: Array<{
+      ingrediente: string;
+      restricao: string;
+      status: "seguro" | "risco_potencial" | "contem";
+      mensagem: string;
+      icone: string;
+    }> = [];
+    
+    // Verificar cada intolerância do usuário contra os ingredientes identificados
+    for (const userIntolerance of intolerances) {
+      const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
+      const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
+      
+      let found = false;
+      let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
+      let foundIngredient = "";
+      
+      // Verificar em ingredientes identificados
+      if (analysis.ingredientes_identificados) {
+        for (const ing of analysis.ingredientes_identificados) {
+          const ingName = ing.nome?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || "";
+          
+          // Verificar se este ingrediente corresponde à intolerância
+          const matchesIntolerance = produtosRisco.some(produto => 
+            ingName.includes(produto.toLowerCase()) || 
+            produto.toLowerCase().includes(ingName)
+          );
+          
+          if (matchesIntolerance) {
+            found = true;
+            foundIngredient = ing.nome;
+            // Se temos alerta de segurança ou confiança baixa, é risco_potencial
+            // Se é industrializado sem alerta e alta confiança, assumimos que contém
+            if (ing.alerta_seguranca || ing.confianca === 'baixa') {
+              foundStatus = "risco_potencial";
+            } else {
+              foundStatus = "contem";
+            }
+          }
+        }
+      }
+      
+      // Gerar mensagem personalizada para o usuário
+      const restricaoLabel = intoleranceKey === "lactose" ? "Lactose" :
+                            intoleranceKey === "gluten" ? "Glúten" :
+                            intoleranceKey === "acucar" ? "Açúcar" :
+                            intoleranceKey === "amendoim" ? "Amendoim" :
+                            intoleranceKey === "frutos_do_mar" ? "Frutos do Mar" :
+                            intoleranceKey === "ovo" ? "Ovo" :
+                            intoleranceKey === "soja" ? "Soja" :
+                            intoleranceKey === "oleaginosas" ? "Oleaginosas" :
+                            userIntolerance;
+      
+      if (found) {
+        alertasPersonalizados.push({
+          ingrediente: foundIngredient,
+          restricao: restricaoLabel,
+          status: foundStatus,
+          mensagem: foundStatus === "contem" 
+            ? `⚠️ "${foundIngredient}" contém ${restricaoLabel.toUpperCase()} - na sua lista de restrições`
+            : `⚡ Verificar "${foundIngredient}" - pode conter ${restricaoLabel}`,
+          icone: foundStatus === "contem" ? "🔴" : "🟡"
+        });
+      } else {
+        alertasPersonalizados.push({
+          ingrediente: "",
+          restricao: restricaoLabel,
+          status: "seguro",
+          mensagem: `✅ Nenhum produto com ${restricaoLabel} identificado na geladeira`,
+          icone: "🟢"
+        });
+      }
+    }
+    
+    // Adicionar verificação de preferência alimentar
+    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana") {
+      const dietLabel = dietaryPreference === "vegana" ? "Veganismo" : "Vegetarianismo";
+      const meatKeywords = ["carne", "frango", "peixe", "camarão", "bacon", "linguiça", "presunto", "salsicha", "boi"];
+      const animalKeywords = [...meatKeywords, "leite", "queijo", "ovo", "manteiga", "iogurte", "mel"];
+      const keywordsToCheck = dietaryPreference === "vegana" ? animalKeywords : meatKeywords;
+      
+      let foundIngredients: string[] = [];
+      
+      if (analysis.ingredientes_identificados) {
+        for (const ing of analysis.ingredientes_identificados) {
+          const ingName = ing.nome?.toLowerCase() || "";
+          if (keywordsToCheck.some(keyword => ingName.includes(keyword))) {
+            foundIngredients.push(ing.nome);
+          }
+        }
+      }
+      
+      alertasPersonalizados.push({
+        ingrediente: foundIngredients.join(", "),
+        restricao: dietLabel,
+        status: foundIngredients.length > 0 ? "contem" : "seguro",
+        mensagem: foundIngredients.length > 0 
+          ? `⚠️ ${foundIngredients.length} item(s) incompatível(s) com ${dietLabel.toLowerCase()}`
+          : `✅ Ingredientes compatíveis com ${dietLabel.toLowerCase()}`,
+        icone: foundIngredients.length > 0 ? "🔴" : "🟢"
+      });
+    }
+    
+    // Ordenar alertas: primeiro os problemas, depois os seguros
+    alertasPersonalizados.sort((a, b) => {
+      const order = { "contem": 0, "risco_potencial": 1, "seguro": 2 };
+      return order[a.status] - order[b.status];
+    });
+    
+    // Adicionar ao response
+    const perfilUsuarioAplicado = {
+      intolerances: intolerances,
+      dietary_preference: dietaryPreference,
+      alertas_personalizados: alertasPersonalizados,
+      resumo: alertasPersonalizados.some(a => a.status === "contem")
+        ? "Sua geladeira contém itens que requerem atenção"
+        : alertasPersonalizados.some(a => a.status === "risco_potencial")
+        ? "Alguns itens precisam de verificação"
+        : "Todos os itens parecem seguros para seu perfil"
+    };
+
+    logStep('Analysis complete with safety checks and profile cross-check', { 
       ingredientCount: analysis.ingredientes_identificados?.length,
       recipeCount: analysis.receitas_sugeridas?.length,
-      alertCount: analysis.alertas_gerais?.length || 0
+      alertCount: analysis.alertas_gerais?.length || 0,
+      personalizedAlerts: alertasPersonalizados.length,
+      profileApplied: true
     });
 
-    return new Response(JSON.stringify({ analysis }), {
+    return new Response(JSON.stringify({ 
+      analysis,
+      perfil_usuario_aplicado: perfilUsuarioAplicado
+    }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
 

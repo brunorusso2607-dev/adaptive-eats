@@ -183,8 +183,43 @@ serve(async (req) => {
 
     ingredientsToWatch = [...new Set([...ingredientsToWatch, ...dietaryIngredientsToWatch])];
 
-    // PROMPT INTELIGENTE DE IDENTIFICAÇÃO E ANÁLISE
+    // PROMPT INTELIGENTE DE IDENTIFICAÇÃO E ANÁLISE COM VALIDAÇÃO DE CATEGORIA
     const systemPrompt = `Você é um especialista em segurança alimentar e nutrição com visão computacional avançada.
+
+🔍 ETAPA ZERO - CLASSIFICAÇÃO DA IMAGEM (EXECUTAR PRIMEIRO!):
+Antes de qualquer análise, você DEVE classificar o tipo de conteúdo da imagem:
+
+CATEGORIAS POSSÍVEIS:
+- "produto_alimenticio": Embalagem de produto alimentício (com ou sem rótulo visível)
+- "alimento_natural": Alimento sem embalagem (fruta, legume, carne, etc.)
+- "planta_decorativa": Planta ornamental, vaso, jardim (NÃO é comida)
+- "objeto_nao_alimenticio": Eletrônicos, móveis, roupas, etc.
+- "animal_vivo": Animal de estimação, fauna, etc.
+- "pessoa_ambiente": Selfie, paisagem, ambiente interno/externo
+- "documento_outro": Documento que não é rótulo de alimento
+- "imagem_ilegivel": Foto borrada, escura ou cortada demais
+
+⚠️ SE A CATEGORIA NÃO FOR "produto_alimenticio":
+Retorne IMEDIATAMENTE este JSON e NÃO continue a análise:
+{
+  "erro": "categoria_invalida",
+  "categoria_detectada": "[categoria aqui]",
+  "descricao_objeto": "Breve descrição do que foi detectado",
+  "mensagem": "Mensagem amigável explicando o problema"
+}
+
+MENSAGENS SUGERIDAS POR CATEGORIA:
+- planta_decorativa: "Isso parece uma planta 🌱 Para verificar ingredientes, tire foto de um produto alimentício com embalagem."
+- alimento_natural: "Esse alimento não tem rótulo de ingredientes. Para verificar restrições alimentares, tire foto de um produto embalado."
+- objeto_nao_alimenticio: "Não identifiquei um produto alimentício 📦 Tire foto de uma embalagem de alimento."
+- animal_vivo: "Ops! Isso parece um animal 🐾 Para verificar ingredientes, tire foto de um produto alimentício."
+- pessoa_ambiente: "Não encontrei um produto alimentício na foto 📸 Tire foto de uma embalagem com rótulo."
+- documento_outro: "Esse documento não parece ser um rótulo de alimentos 📄 Tire foto de uma embalagem de produto."
+- imagem_ilegivel: "A imagem está difícil de analisar 📷 Tente uma foto mais nítida e bem iluminada."
+
+---
+
+SE A IMAGEM FOR "produto_alimenticio", CONTINUE COM A ANÁLISE:
 
 PERFIL DO USUÁRIO (CRÍTICO - MEMORIZE):
 - Intolerâncias/Alergias: ${intoleranceLabels.length > 0 ? intoleranceLabels.join(", ").toUpperCase() : "Nenhuma cadastrada"}
@@ -231,8 +266,9 @@ Para CADA ingrediente (da imagem OU do seu conhecimento do produto):
 - 50-69%: Identificação parcial (apenas marca ou apenas tipo de produto)
 - 0-49%: Produto não identificado com segurança
 
-FORMATO DE RESPOSTA (JSON obrigatório):
+FORMATO DE RESPOSTA PARA PRODUTO ALIMENTÍCIO (JSON obrigatório):
 {
+  "categoria_imagem": "produto_alimenticio",
   "produto_identificado": "Nome completo do produto (ex: Margarina Qualy com Sal)",
   "marca": "Nome da marca",
   "confianca_identificacao": 0-100,
@@ -345,7 +381,21 @@ LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar 
 
     // Check for error responses from AI
     if (analysis.erro) {
-      logStep("AI detected issue", { erro: analysis.erro, mensagem: analysis.mensagem });
+      logStep("AI detected issue", { erro: analysis.erro, mensagem: analysis.mensagem, categoria: analysis.categoria_detectada });
+      
+      // NEW: Handle category validation errors
+      if (analysis.erro === "categoria_invalida") {
+        return new Response(JSON.stringify({
+          success: false,
+          categoryError: true,
+          categoria_detectada: analysis.categoria_detectada || "desconhecido",
+          descricao_objeto: analysis.descricao_objeto || "",
+          message: analysis.mensagem || "Não foi possível identificar um produto alimentício na imagem."
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
       
       if (analysis.erro === "lista_nao_encontrada") {
         return new Response(JSON.stringify({

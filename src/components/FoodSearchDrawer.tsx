@@ -325,6 +325,21 @@ export default function FoodSearchDrawer({
                 </div>
               )}
 
+              {/* Add more foods button */}
+              {selectedFoods.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full border-dashed"
+                  onClick={() => {
+                    const input = document.querySelector<HTMLInputElement>('input[placeholder="Buscar alimento..."]');
+                    input?.focus();
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Adicionar alimento
+                </Button>
+              )}
+
               {/* Totals */}
               {selectedFoods.length > 0 && (
                 <div className="bg-primary/10 rounded-lg p-4">

@@ -27,11 +27,11 @@ export type PendingMealData = {
 // Mapeamento de horários para cada refeição
 const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
   cafe_manha: { start: 6, end: 10 },
-  almoco: { start: 10, end: 14 },
-  lanche: { start: 14, end: 17 },
-  lanche_tarde: { start: 14, end: 17 },
-  jantar: { start: 17, end: 21 },
-  ceia: { start: 21, end: 24 },
+  almoco: { start: 12, end: 14 },
+  lanche: { start: 16, end: 17.5 },
+  lanche_tarde: { start: 16, end: 17.5 },
+  jantar: { start: 18, end: 21 },
+  ceia: { start: 22, end: 23 },
 };
 
 // Labels em português

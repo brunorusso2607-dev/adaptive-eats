@@ -80,8 +80,13 @@ type LabelAnalysis = {
 type AnalysisMode = "food" | "label" | "fridge";
 type LabelStep = "front" | "back" | "complete";
 
-export default function FoodPhotoAnalyzer() {
-  const [mode, setMode] = useState<AnalysisMode>("food");
+interface FoodPhotoAnalyzerProps {
+  initialMode?: AnalysisMode;
+  hideModeTabs?: boolean;
+}
+
+export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs = false }: FoodPhotoAnalyzerProps) {
+  const [mode, setMode] = useState<AnalysisMode>(initialMode);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [foodAnalysis, setFoodAnalysis] = useState<FoodAnalysis | null>(null);
@@ -436,6 +441,34 @@ export default function FoodPhotoAnalyzer() {
   if (mode === "fridge") {
     return (
       <div className="space-y-4">
+        {!hideModeTabs && (
+          <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
+            <TabsList className="grid w-full grid-cols-3">
+              <TabsTrigger value="food" className="flex items-center gap-1 text-xs sm:text-sm">
+                <Flame className="w-4 h-4" />
+                <span className="hidden sm:inline">Analisar</span> Comida
+              </TabsTrigger>
+              <TabsTrigger value="label" className="flex items-center gap-1 text-xs sm:text-sm">
+                <ScanBarcode className="w-4 h-4" />
+                <span className="hidden sm:inline">Verificar</span> Rótulo
+              </TabsTrigger>
+              <TabsTrigger value="fridge" className="flex items-center gap-1 text-xs sm:text-sm">
+                <Refrigerator className="w-4 h-4" />
+                Geladeira
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+        )}
+        
+        <FridgeScanner />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Tabs - only show when hideModeTabs is false */}
+      {!hideModeTabs && (
         <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="food" className="flex items-center gap-1 text-xs sm:text-sm">
@@ -452,78 +485,55 @@ export default function FoodPhotoAnalyzer() {
             </TabsTrigger>
           </TabsList>
         </Tabs>
-        
-        <FridgeScanner />
-      </div>
-    );
-  }
+      )}
 
-  return (
-    <div className="space-y-4">
-      {/* Tabs */}
-      <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="food" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Flame className="w-4 h-4" />
-            <span className="hidden sm:inline">Analisar</span> Comida
-          </TabsTrigger>
-          <TabsTrigger value="label" className="flex items-center gap-1 text-xs sm:text-sm">
-            <ScanBarcode className="w-4 h-4" />
-            <span className="hidden sm:inline">Verificar</span> Rótulo
-          </TabsTrigger>
-          <TabsTrigger value="fridge" className="flex items-center gap-1 text-xs sm:text-sm">
-            <Refrigerator className="w-4 h-4" />
-            Geladeira
-          </TabsTrigger>
-        </TabsList>
+      {/* Content based on mode */}
+      {mode === "food" && (
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-xl font-bold text-foreground">Analisar Foto do Prato</h2>
+          <p className="text-sm text-muted-foreground">
+            Tire uma foto do seu prato e descubra as calorias estimadas
+          </p>
+        </div>
+      )}
 
-        <TabsContent value="food" className="mt-4">
-          <div className="text-center space-y-2 mb-4">
-            <h2 className="text-xl font-bold text-foreground">Analisar Foto do Prato</h2>
-            <p className="text-sm text-muted-foreground">
-              Tire uma foto do seu prato e descubra as calorias estimadas
-            </p>
-          </div>
-        </TabsContent>
-
-        <TabsContent value="label" className="mt-4">
-          <div className="text-center space-y-2 mb-4">
-            <h2 className="text-xl font-bold text-foreground">{getLabelStepInfo().title}</h2>
-            <p className="text-sm text-muted-foreground">
-              {getLabelStepInfo().description}
-            </p>
-            
-            {/* Progress indicator for two-step flow */}
-            {mode === "label" && !labelAnalysis && (
-              <div className="flex items-center justify-center gap-2 mt-3">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  labelStep === "front" || labelStep === "back" || labelStep === "complete" 
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  1
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  labelStep === "back" || labelStep === "complete"
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  2
-                </div>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                  labelStep === "complete"
-                    ? "bg-primary text-primary-foreground" 
-                    : "bg-muted text-muted-foreground"
-                }`}>
-                  ✓
-                </div>
+      {mode === "label" && (
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-xl font-bold text-foreground">{getLabelStepInfo().title}</h2>
+          <p className="text-sm text-muted-foreground">
+            {getLabelStepInfo().description}
+          </p>
+          
+          {/* Progress indicator for two-step flow */}
+          {!labelAnalysis && (
+            <div className="flex items-center justify-center gap-2 mt-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                labelStep === "front" || labelStep === "back" || labelStep === "complete" 
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                1
               </div>
-            )}
-          </div>
-        </TabsContent>
-      </Tabs>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                labelStep === "back" || labelStep === "complete"
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                2
+              </div>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
+                labelStep === "complete"
+                  ? "bg-primary text-primary-foreground" 
+                  : "bg-muted text-muted-foreground"
+              }`}>
+                ✓
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Show front image preview if in back step - with dynamic reason */}
       {mode === "label" && labelStep === "back" && frontImage && (

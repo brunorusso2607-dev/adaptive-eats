@@ -14,11 +14,13 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate",
+      registerType: "prompt", // Mudamos para prompt para ter controle manual
       includeAssets: ["favicon.ico", "icons/*.png"],
       manifest: false, // Using external manifest.json
       workbox: {
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
+        skipWaiting: false, // Não pular automaticamente
+        clientsClaim: true, // Tomar controle dos clientes existentes
         runtimeCaching: [
           {
             urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,

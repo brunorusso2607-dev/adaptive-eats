@@ -122,8 +122,8 @@ serve(async (req) => {
     logStep("User authenticated", { userId: user.id });
 
     const requestBody = await req.json();
-    const { mealItemId, mealType, ingredients, mode } = requestBody;
-    logStep("Request received", { mealItemId, mealType, ingredients, mode });
+    const { mealItemId, ingredients, mode } = requestBody;
+    logStep("Request received", { mealItemId, ingredients, mode });
 
     if (!mealItemId) throw new Error("mealItemId is required");
 
@@ -183,6 +183,8 @@ serve(async (req) => {
       }
     }
 
+    // Use mealType from the database item
+    const mealType = mealItem.meal_type;
     const targetCalories = Math.round(dailyCalories * (calorieDistribution[mealType] || 0.20));
     const mealLabel = MEAL_LABELS[mealType] || mealType;
 

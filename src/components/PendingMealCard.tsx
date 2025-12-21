@@ -81,8 +81,8 @@ export default function PendingMealCard({
 
   const { saveConsumption } = useMealConsumption();
 
-  const mealStatus = getMealStatus(meal.meal_type, meal.day_of_week, meal.completed_at);
-  const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.day_of_week);
+  const mealStatus = getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
+  const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.actual_date);
   const mealLabel = MEAL_LABELS[meal.meal_type] || meal.meal_type;
   
   // Get day abbreviation and formatted date (day/month)

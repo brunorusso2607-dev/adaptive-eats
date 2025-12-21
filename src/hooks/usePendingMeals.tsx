@@ -75,71 +75,86 @@ function getCurrentMealType(): string {
   return "cafe_manha";
 }
 
-export function getMealStatus(mealType: string, dayOfWeek: number, completedAt: string | null): MealStatus {
+export function getMealStatus(mealType: string, actualDate: Date | undefined, completedAt: string | null): MealStatus {
   if (completedAt) return "completed";
   
-  const now = new Date();
-  const currentDay = now.getDay();
-  const hour = now.getHours();
-  const minutes = now.getMinutes();
-  const currentTimeInMinutes = hour * 60 + minutes;
+  if (!actualDate) return "on_time";
   
-  // Se é de um dia anterior, está atrasado/crítico
-  if (dayOfWeek < currentDay) {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+  
+  // Se a refeição é de um dia futuro, está "on_time"
+  if (mealDate > today) {
+    return "on_time";
+  }
+  
+  // Se a refeição é de um dia anterior, está "critical"
+  if (mealDate < today) {
     return "critical";
   }
   
   // Se é do dia atual, verificar o horário
-  if (dayOfWeek === currentDay) {
-    const range = MEAL_TIME_RANGES[mealType];
-    if (!range) return "on_time";
-    
-    const endTimeInMinutes = range.end * 60;
-    const delayedThreshold = endTimeInMinutes + 30;
-    const criticalThreshold = endTimeInMinutes + 60;
-    
-    if (currentTimeInMinutes >= criticalThreshold) {
-      return "critical";
-    } else if (currentTimeInMinutes >= delayedThreshold) {
-      return "delayed";
-    } else if (currentTimeInMinutes >= endTimeInMinutes) {
-      return "delayed";
-    }
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+  const currentTimeInMinutes = hour * 60 + minutes;
+  
+  const range = MEAL_TIME_RANGES[mealType];
+  if (!range) return "on_time";
+  
+  const endTimeInMinutes = range.end * 60;
+  const delayedThreshold = endTimeInMinutes + 30;
+  const criticalThreshold = endTimeInMinutes + 60;
+  
+  if (currentTimeInMinutes >= criticalThreshold) {
+    return "critical";
+  } else if (currentTimeInMinutes >= delayedThreshold) {
+    return "delayed";
+  } else if (currentTimeInMinutes >= endTimeInMinutes) {
+    return "delayed";
   }
   
   return "on_time";
 }
 
-export function getMinutesOverdue(mealType: string, dayOfWeek: number): number {
+export function getMinutesOverdue(mealType: string, actualDate: Date | undefined): number {
+  if (!actualDate) return 0;
+  
   const now = new Date();
-  const currentDay = now.getDay();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+  
+  // Se a refeição é de um dia futuro, não está atrasada
+  if (mealDate >= today) {
+    // Se é hoje, calcular baseado no horário
+    if (mealDate.getTime() === today.getTime()) {
+      const hour = now.getHours();
+      const minutes = now.getMinutes();
+      const currentTimeInMinutes = hour * 60 + minutes;
+      
+      const range = MEAL_TIME_RANGES[mealType];
+      if (!range) return 0;
+      
+      const endTimeInMinutes = range.end * 60;
+      
+      if (currentTimeInMinutes > endTimeInMinutes) {
+        return currentTimeInMinutes - endTimeInMinutes;
+      }
+    }
+    return 0;
+  }
+  
+  // Se é de um dia anterior, calcular dias de atraso
+  const daysDiff = Math.floor((today.getTime() - mealDate.getTime()) / (1000 * 60 * 60 * 24));
+  const range = MEAL_TIME_RANGES[mealType];
+  if (!range) return daysDiff * 24 * 60;
+  
   const hour = now.getHours();
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
+  const endTimeInMinutes = range.end * 60;
   
-  // Se é de um dia anterior, calcular minutos desde o fim do horário daquele dia
-  if (dayOfWeek < currentDay) {
-    const daysDiff = currentDay - dayOfWeek;
-    const range = MEAL_TIME_RANGES[mealType];
-    if (!range) return daysDiff * 24 * 60;
-    
-    const endTimeInMinutes = range.end * 60;
-    return (daysDiff * 24 * 60) + currentTimeInMinutes - endTimeInMinutes;
-  }
-  
-  // Se é do dia atual
-  if (dayOfWeek === currentDay) {
-    const range = MEAL_TIME_RANGES[mealType];
-    if (!range) return 0;
-    
-    const endTimeInMinutes = range.end * 60;
-    
-    if (currentTimeInMinutes > endTimeInMinutes) {
-      return currentTimeInMinutes - endTimeInMinutes;
-    }
-  }
-  
-  return 0;
+  return (daysDiff * 24 * 60) + currentTimeInMinutes - endTimeInMinutes;
 }
 
 export function usePendingMeals() {

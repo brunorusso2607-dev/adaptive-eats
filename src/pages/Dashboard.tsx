@@ -122,7 +122,7 @@ export default function Dashboard() {
   // Pending meals hook for badge
   const { pendingMeals, hasMealPlan: hasActiveMealPlan } = usePendingMeals();
   const nextMealStatus = pendingMeals.length > 0 
-    ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].day_of_week, pendingMeals[0].completed_at)
+    ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].actual_date, pendingMeals[0].completed_at)
     : "on_time";
   
   // PWA install state

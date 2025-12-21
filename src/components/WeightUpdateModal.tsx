@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { Scale, Trophy, TrendingDown, TrendingUp, Sparkles, Target } from "lucide-react";
 import confetti from "canvas-confetti";
 import { cn } from "@/lib/utils";
+import { useActivityLog } from "@/hooks/useActivityLog";
 
 interface WeightUpdateModalProps {
   open: boolean;
@@ -26,6 +27,7 @@ export default function WeightUpdateModal({
   goalMode,
   onWeightUpdated,
 }: WeightUpdateModalProps) {
+  const { logUserAction } = useActivityLog();
   const [newWeight, setNewWeight] = useState<string>(currentWeight?.toString() || "");
   const [isSaving, setIsSaving] = useState(false);
   const [showCelebration, setShowCelebration] = useState(false);
@@ -163,6 +165,16 @@ export default function WeightUpdateModal({
       if (achieved) {
         triggerConfetti();
       }
+
+      // Log user action
+      await logUserAction(
+        "weight_update",
+        achieved 
+          ? `Meta de peso atingida! Novo peso: ${weight}kg` 
+          : `Peso atualizado: ${currentWeight}kg → ${weight}kg`,
+        { weight: currentWeight, goal_weight: goalWeight },
+        { weight: weight, goal_weight: goalWeight, achieved }
+      );
 
       onWeightUpdated(weight);
     } catch (error) {

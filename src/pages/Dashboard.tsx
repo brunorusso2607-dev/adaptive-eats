@@ -22,6 +22,7 @@ import { Beef, Wheat, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
+import { useActivityLog } from "@/hooks/useActivityLog";
 
 type Recipe = {
   name: string;
@@ -67,6 +68,7 @@ type SubscriptionInfo = {
 export default function Dashboard() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { logUserAction } = useActivityLog();
   const [user, setUser] = useState<SupabaseUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isCheckingSubscription, setIsCheckingSubscription] = useState<string | null>(null);
@@ -168,6 +170,14 @@ export default function Dashboard() {
     if (!error) {
       setUserContext(newContext);
       toast.success(newContext === "modo_kids" ? "🎉 Modo Kids ativado!" : "Modo Kids desativado");
+      
+      // Log user action
+      await logUserAction(
+        "kids_mode_toggle",
+        newContext === "modo_kids" ? "Modo Kids ativado" : "Modo Kids desativado",
+        { context: userContext },
+        { context: newContext }
+      );
     }
   };
 
@@ -184,6 +194,14 @@ export default function Dashboard() {
     if (!error) {
       setUserGoal("manter");
       toast.success("Meta de peso desativada");
+      
+      // Log user action
+      await logUserAction(
+        "weight_goal_toggle",
+        "Meta de peso desativada",
+        { goal: userGoal },
+        { goal: "manter" }
+      );
     }
   };
 
@@ -231,6 +249,20 @@ export default function Dashboard() {
       
       setGeneratedRecipe(recipeWithIngredients);
       setShowRecipe(true);
+      
+      // Log user action
+      await logUserAction(
+        "recipe_generated",
+        `Receita gerada: "${data.recipe.name}"${categoryContext ? ` (${categoryContext.category}/${categoryContext.subcategory})` : type === "com_ingredientes" ? " (com ingredientes)" : " (automática)"}`,
+        null,
+        { 
+          recipe_name: data.recipe.name, 
+          type, 
+          ingredients: ingredientsToUse,
+          category: categoryContext?.category,
+          subcategory: categoryContext?.subcategory 
+        }
+      );
       
       // Save ingredients for "Gerar Outra" and clear input
       if (type === "com_ingredientes") {

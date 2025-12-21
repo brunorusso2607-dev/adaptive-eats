@@ -13,7 +13,7 @@ const modes = [
   {
     id: "food" as PhotoMode,
     title: "Analisar Prato",
-    description: "Tire foto da comida e descubra calorias e macros",
+    description: "Verifique suas restrições + calorias e macros",
     icon: Flame,
     iconBg: "bg-gradient-to-br from-orange-400 to-red-500",
     emoji: "🍽️",

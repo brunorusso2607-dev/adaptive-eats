@@ -390,62 +390,82 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
 
     logStep("Calling Google Gemini API with image");
 
-    // Call Google Gemini API with image (usando modelo mais capaz para segurança)
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            parts: [
-              { text: systemPrompt },
+    // Função para fazer a chamada com retry automático
+    const callGeminiWithRetry = async (maxRetries = 3, delayMs = 2000) => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
               {
-                inline_data: {
-                  mime_type: "image/jpeg",
-                  data: base64Data
-                }
+                parts: [
+                  { text: systemPrompt },
+                  {
+                    inline_data: {
+                      mime_type: "image/jpeg",
+                      data: base64Data
+                    }
+                  }
+                ]
               }
-            ]
-          }
-        ],
-        generationConfig: {
-          temperature: 0.1, // Baixa temperatura para mais precisão
-          maxOutputTokens: 4096,
+            ],
+            generationConfig: {
+              temperature: 0.1,
+              maxOutputTokens: 4096,
+            }
+          }),
+        });
+
+        if (response.ok) {
+          return response;
         }
-      }),
-    });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      logStep("Google Gemini error", { status: response.status, error: errorText });
-      
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: "Limite de requisições atingido. Aguarde 30 segundos e tente novamente.",
-          rateLimited: true
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+        const errorText = await response.text();
+        logStep("Google Gemini error", { status: response.status, error: errorText, attempt });
+
+        // Retry automático para erro 503 (model overloaded)
+        if (response.status === 503 && attempt < maxRetries) {
+          logStep("Retrying due to 503", { attempt, nextAttemptIn: delayMs });
+          await new Promise(resolve => setTimeout(resolve, delayMs));
+          continue;
+        }
+
+        if (response.status === 429) {
+          return { rateLimited: true, status: 429 };
+        }
+
+        if (response.status === 503) {
+          return { rateLimited: true, status: 503 };
+        }
+
+        throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
       }
-      
-      if (response.status === 503) {
-        return new Response(JSON.stringify({ 
-          success: false,
-          error: "O serviço de IA está temporariamente sobrecarregado. Por favor, tente novamente em alguns segundos.",
-          rateLimited: true
-        }), {
-          status: 200,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      
-      throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
+    };
+
+    const response = await callGeminiWithRetry();
+
+    // Handle rate limit / overload after all retries
+    if (response && 'rateLimited' in response) {
+      const message = response.status === 429 
+        ? "Limite de requisições atingido. Aguarde 30 segundos e tente novamente."
+        : "O serviço de IA está temporariamente sobrecarregado. Por favor, tente novamente em alguns segundos.";
+      return new Response(JSON.stringify({ 
+        success: false,
+        error: message,
+        rateLimited: true
+      }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
-
+    
+    if (!response) {
+      throw new Error("Failed to get response from AI after retries");
+    }
+    
     const aiData = await response.json();
     logStep("AI response received");
 

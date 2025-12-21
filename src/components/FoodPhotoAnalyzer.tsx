@@ -174,23 +174,23 @@ export default function FoodPhotoAnalyzer() {
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
-        // Handle both old needsBackPhoto and new requer_foto_ingredientes
-        if (data.needsBackPhoto || (data.analysis?.requer_foto_ingredientes === true)) {
+        // Handle needsBackPhoto from backend (intelligent detection)
+        if (data.needsBackPhoto) {
           setNeedsBackPhoto(true);
           setFrontImage(imagePreview);
           setImagePreview(null);
           setLabelStep("back");
           
           // Store dynamic reason from the AI
-          const analysis = data.analysis || {};
+          const analysisData = data.analysis || {};
           setBackPhotoReason({
-            mensagem: analysis.mensagem_segunda_foto || data.message || "Para sua segurança, tire uma foto da tabela de ingredientes.",
-            motivo: analysis.motivo_duvida || "Não foi possível confirmar todos os ingredientes",
-            intolerancia: analysis.intolerancia_em_duvida || "",
-            produto: analysis.produto_identificado || "produto"
+            mensagem: analysisData.mensagem_segunda_foto || data.message || "Para sua segurança, tire uma foto da tabela de ingredientes.",
+            motivo: analysisData.motivo_duvida || "Não foi possível confirmar todos os ingredientes",
+            intolerancia: analysisData.intolerancia_em_duvida || "",
+            produto: analysisData.produto_identificado || "produto"
           });
           
-          toast.info(analysis.mensagem_segunda_foto || "Preciso da foto dos ingredientes para confirmar.", {
+          toast.info(analysisData.mensagem_segunda_foto || data.message || "Preciso da foto dos ingredientes para confirmar.", {
             duration: 5000,
           });
           return;

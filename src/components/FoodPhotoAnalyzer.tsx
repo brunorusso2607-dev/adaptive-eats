@@ -201,6 +201,8 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           };
           
           // Set all states for the back photo step
+          // IMPORTANT: Clear perfilAplicado to avoid showing preliminary "VERIFICAR" alerts
+          setPerfilAplicado(null);
           setBackPhotoReason(reason);
           setFrontImage(imagePreview);
           setNeedsBackPhoto(true);
@@ -535,7 +537,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
         </div>
       )}
 
-      {/* Show front image preview if in back step - with dynamic reason */}
+      {/* Show front image preview if in back step - simplified without preliminary alerts */}
       {mode === "label" && labelStep === "back" && frontImage && (
         <>
           <Card className="glass-card border-amber-500/50 bg-amber-500/10">
@@ -553,14 +555,9 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                       {backPhotoReason?.produto ? `${backPhotoReason.produto} identificado` : "Produto identificado"}
                     </p>
                   </div>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    {backPhotoReason?.motivo || "Preciso confirmar os ingredientes"}
+                  <p className="text-xs text-muted-foreground">
+                    {backPhotoReason?.motivo || "Preciso confirmar os ingredientes para garantir sua segurança"}
                   </p>
-                  {backPhotoReason?.intolerancia && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-500/20 text-amber-700 dark:text-amber-300">
-                      ⚠️ Verificar: {backPhotoReason.intolerancia.charAt(0).toUpperCase() + backPhotoReason.intolerancia.slice(1)}
-                    </span>
-                  )}
                 </div>
               </div>
             </CardContent>

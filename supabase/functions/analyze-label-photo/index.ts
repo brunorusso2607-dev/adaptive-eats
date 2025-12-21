@@ -390,66 +390,129 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
 
     logStep("Calling Google Gemini API with image");
 
-    // Função para fazer a chamada com retry automático
-    const callGeminiWithRetry = async (maxRetries = 3, delayMs = 2000) => {
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  { text: systemPrompt },
-                  {
-                    inline_data: {
-                      mime_type: "image/jpeg",
-                      data: base64Data
-                    }
+    // Função para fazer a chamada Gemini
+    const callGemini = async () => {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                { text: systemPrompt },
+                {
+                  inline_data: {
+                    mime_type: "image/jpeg",
+                    data: base64Data
                   }
-                ]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.1,
-              maxOutputTokens: 4096,
+                }
+              ]
             }
-          }),
-        });
-
-        if (response.ok) {
-          return response;
-        }
-
-        const errorText = await response.text();
-        logStep("Google Gemini error", { status: response.status, error: errorText, attempt });
-
-        // Retry automático para erro 503 (model overloaded)
-        if (response.status === 503 && attempt < maxRetries) {
-          logStep("Retrying due to 503", { attempt, nextAttemptIn: delayMs });
-          await new Promise(resolve => setTimeout(resolve, delayMs));
-          continue;
-        }
-
-        if (response.status === 429) {
-          return { rateLimited: true, status: 429 };
-        }
-
-        if (response.status === 503) {
-          return { rateLimited: true, status: 503 };
-        }
-
-        throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
-      }
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 8192, // Aumentado de 4096 para evitar respostas truncadas
+          }
+        }),
+      });
+      return response;
     };
 
-    const response = await callGeminiWithRetry();
+    // Função para fazer parse do JSON da resposta
+    const parseAIResponse = (content: string) => {
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        return JSON.parse(jsonMatch[0]);
+      }
+      throw new Error("No JSON found in response");
+    };
+
+    // Função principal com retry para erros 503 E erros de parse JSON
+    const callGeminiWithRetry = async (maxRetries = 3, delayMs = 2000) => {
+      let lastError: Error | null = null;
+      
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          const response = await callGemini();
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            logStep("Google Gemini error", { status: response.status, error: errorText, attempt });
+
+            // Retry automático para erro 503 (model overloaded)
+            if (response.status === 503 && attempt < maxRetries) {
+              logStep("Retrying due to 503", { attempt, nextAttemptIn: delayMs });
+              await new Promise(resolve => setTimeout(resolve, delayMs));
+              continue;
+            }
+
+            if (response.status === 429) {
+              return { rateLimited: true, status: 429 };
+            }
+
+            if (response.status === 503) {
+              return { rateLimited: true, status: 503 };
+            }
+
+            throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
+          }
+
+          const aiData = await response.json();
+          logStep("AI response received");
+
+          // Extract analysis from Google Gemini response format
+          const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+          if (!content) {
+            throw new Error("Invalid AI response format");
+          }
+
+          // Tentar fazer parse do JSON
+          try {
+            const analysis = parseAIResponse(content);
+            return { success: true, analysis };
+          } catch (parseError) {
+            logStep("Parse error - will retry", { 
+              error: String(parseError), 
+              content: content.slice(0, 500),
+              attempt 
+            });
+            
+            // Retry para erros de parse JSON (resposta truncada)
+            if (attempt < maxRetries) {
+              logStep("Retrying due to JSON parse error", { attempt, nextAttemptIn: delayMs });
+              await new Promise(resolve => setTimeout(resolve, delayMs));
+              lastError = parseError instanceof Error ? parseError : new Error(String(parseError));
+              continue;
+            }
+            
+            // Última tentativa falhou
+            logStep("Parse error - all retries exhausted", { error: String(parseError), content: content.slice(0, 500) });
+            throw new Error("Não foi possível analisar o rótulo. Tente com uma foto mais clara.");
+          }
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          
+          // Se não é um erro de parse e não é 503, não fazer retry
+          if (!String(error).includes("parse") && !String(error).includes("JSON")) {
+            throw error;
+          }
+          
+          if (attempt >= maxRetries) {
+            throw lastError;
+          }
+        }
+      }
+      
+      throw lastError || new Error("Failed after all retries");
+    };
+
+    const result = await callGeminiWithRetry();
 
     // Handle rate limit / overload after all retries
-    if (response && 'rateLimited' in response) {
-      const message = response.status === 429 
+    if (result && 'rateLimited' in result) {
+      const message = result.status === 429 
         ? "Limite de requisições atingido. Aguarde 30 segundos e tente novamente."
         : "O serviço de IA está temporariamente sobrecarregado. Por favor, tente novamente em alguns segundos.";
       return new Response(JSON.stringify({ 
@@ -462,32 +525,11 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       });
     }
     
-    if (!response) {
+    if (!result || !('analysis' in result)) {
       throw new Error("Failed to get response from AI after retries");
     }
     
-    const aiData = await response.json();
-    logStep("AI response received");
-
-    // Extract analysis from Google Gemini response format
-    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) {
-      throw new Error("Invalid AI response format");
-    }
-
-    // Parse JSON from response
-    let analysis;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        analysis = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in response");
-      }
-    } catch (parseError) {
-      logStep("Parse error", { error: String(parseError), content: content.slice(0, 500) });
-      throw new Error("Não foi possível analisar o rótulo. Tente com uma foto mais clara.");
-    }
+    const analysis = result.analysis;
 
     // Check for error responses from AI
     if (analysis.erro) {

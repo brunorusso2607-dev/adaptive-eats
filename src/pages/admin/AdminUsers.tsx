@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { 
   Users, 
   Search, 
@@ -16,7 +17,10 @@ import {
   Eye,
   Trash2,
   Shield,
-  ShieldOff
+  ShieldOff,
+  Pencil,
+  Save,
+  X
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -44,6 +48,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 
 type UserProfile = {
@@ -76,6 +87,9 @@ export default function AdminUsers() {
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
+  const [isSaving, setIsSaving] = useState(false);
 
   const fetchUsers = async () => {
     setIsLoading(true);
@@ -172,7 +186,64 @@ export default function AdminUsers() {
 
   const handleViewDetails = (user: UserProfile) => {
     setSelectedUser(user);
+    setIsEditing(false);
     setIsDetailOpen(true);
+  };
+
+  const handleStartEdit = () => {
+    if (selectedUser) {
+      setEditForm({
+        age: selectedUser.age,
+        sex: selectedUser.sex,
+        height: selectedUser.height,
+        weight_current: selectedUser.weight_current,
+        weight_goal: selectedUser.weight_goal,
+        activity_level: selectedUser.activity_level,
+        dietary_preference: selectedUser.dietary_preference,
+        goal: selectedUser.goal,
+        context: selectedUser.context,
+      });
+      setIsEditing(true);
+    }
+  };
+
+  const handleCancelEdit = () => {
+    setIsEditing(false);
+    setEditForm({});
+  };
+
+  const handleSaveEdit = async () => {
+    if (!selectedUser) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          age: editForm.age,
+          sex: editForm.sex,
+          height: editForm.height,
+          weight_current: editForm.weight_current,
+          weight_goal: editForm.weight_goal,
+          activity_level: editForm.activity_level,
+          dietary_preference: editForm.dietary_preference as any,
+          goal: editForm.goal as any,
+          context: editForm.context as any,
+        })
+        .eq("id", selectedUser.id);
+
+      if (error) throw error;
+
+      toast.success("Dados atualizados com sucesso");
+      setIsEditing(false);
+      setIsDetailOpen(false);
+      fetchUsers();
+    } catch (error) {
+      console.error("Error updating user:", error);
+      toast.error("Erro ao atualizar dados");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleDeleteClick = (user: UserProfile) => {
@@ -184,7 +255,6 @@ export default function AdminUsers() {
     if (!userToDelete) return;
 
     try {
-      // Delete profile (this will cascade to related data)
       const { error } = await supabase
         .from("profiles")
         .delete()
@@ -206,7 +276,6 @@ export default function AdminUsers() {
   const handleToggleAdmin = async (user: UserProfile) => {
     try {
       if (user.isAdmin) {
-        // Remove admin role
         const { error } = await supabase
           .from("user_roles")
           .delete()
@@ -216,7 +285,6 @@ export default function AdminUsers() {
         if (error) throw error;
         toast.success("Permissão de admin removida");
       } else {
-        // Add admin role
         const { error } = await supabase
           .from("user_roles")
           .insert({ user_id: user.id, role: "admin" });
@@ -379,16 +447,30 @@ export default function AdminUsers() {
       )}
 
       {/* User Details Dialog */}
-      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
-        <DialogContent className="max-w-md">
+      <Dialog open={isDetailOpen} onOpenChange={(open) => {
+        setIsDetailOpen(open);
+        if (!open) {
+          setIsEditing(false);
+          setEditForm({});
+        }
+      }}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Detalhes do Usuário</DialogTitle>
+            <DialogTitle className="flex items-center justify-between">
+              <span>{isEditing ? "Editar Usuário" : "Detalhes do Usuário"}</span>
+              {!isEditing && (
+                <Button variant="outline" size="sm" onClick={handleStartEdit}>
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
+                </Button>
+              )}
+            </DialogTitle>
             <DialogDescription>
               {selectedUser?.email || "Email não informado"}
             </DialogDescription>
           </DialogHeader>
           
-          {selectedUser && (
+          {selectedUser && !isEditing && (
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
@@ -446,6 +528,153 @@ export default function AdminUsers() {
                     ? format(new Date(selectedUser.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })
                     : "N/A"}
                 </p>
+              </div>
+            </div>
+          )}
+
+          {selectedUser && isEditing && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="age">Idade</Label>
+                  <Input
+                    id="age"
+                    type="number"
+                    value={editForm.age || ""}
+                    onChange={(e) => setEditForm({ ...editForm, age: parseInt(e.target.value) || null })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="sex">Sexo</Label>
+                  <Select
+                    value={editForm.sex || ""}
+                    onValueChange={(value) => setEditForm({ ...editForm, sex: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Masculino</SelectItem>
+                      <SelectItem value="female">Feminino</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="height">Altura (cm)</Label>
+                  <Input
+                    id="height"
+                    type="number"
+                    value={editForm.height || ""}
+                    onChange={(e) => setEditForm({ ...editForm, height: parseInt(e.target.value) || null })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight_current">Peso Atual (kg)</Label>
+                  <Input
+                    id="weight_current"
+                    type="number"
+                    step="0.1"
+                    value={editForm.weight_current || ""}
+                    onChange={(e) => setEditForm({ ...editForm, weight_current: parseFloat(e.target.value) || null })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="weight_goal">Peso Meta (kg)</Label>
+                  <Input
+                    id="weight_goal"
+                    type="number"
+                    step="0.1"
+                    value={editForm.weight_goal || ""}
+                    onChange={(e) => setEditForm({ ...editForm, weight_goal: parseFloat(e.target.value) || null })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="activity_level">Nível de Atividade</Label>
+                  <Select
+                    value={editForm.activity_level || ""}
+                    onValueChange={(value) => setEditForm({ ...editForm, activity_level: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="sedentary">Sedentário</SelectItem>
+                      <SelectItem value="light">Leve</SelectItem>
+                      <SelectItem value="moderate">Moderado</SelectItem>
+                      <SelectItem value="active">Ativo</SelectItem>
+                      <SelectItem value="very_active">Muito Ativo</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="border-t pt-4 space-y-4">
+                <div className="space-y-2">
+                  <Label>Objetivo</Label>
+                  <Select
+                    value={editForm.goal || ""}
+                    onValueChange={(value) => setEditForm({ ...editForm, goal: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="emagrecer">Emagrecer</SelectItem>
+                      <SelectItem value="manter">Manter</SelectItem>
+                      <SelectItem value="ganhar_peso">Ganhar Peso</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Preferência Alimentar</Label>
+                  <Select
+                    value={editForm.dietary_preference || ""}
+                    onValueChange={(value) => setEditForm({ ...editForm, dietary_preference: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="comum">Comum</SelectItem>
+                      <SelectItem value="vegetariana">Vegetariana</SelectItem>
+                      <SelectItem value="vegana">Vegana</SelectItem>
+                      <SelectItem value="low_carb">Low Carb</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Contexto</Label>
+                  <Select
+                    value={editForm.context || ""}
+                    onValueChange={(value) => setEditForm({ ...editForm, context: value })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="individual">Individual</SelectItem>
+                      <SelectItem value="familia">Família</SelectItem>
+                      <SelectItem value="modo_kids">Modo Kids</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-4 border-t">
+                <Button variant="outline" onClick={handleCancelEdit} className="flex-1">
+                  <X className="w-4 h-4 mr-2" />
+                  Cancelar
+                </Button>
+                <Button onClick={handleSaveEdit} disabled={isSaving} className="flex-1">
+                  {isSaving ? (
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  ) : (
+                    <Save className="w-4 h-4 mr-2" />
+                  )}
+                  Salvar
+                </Button>
               </div>
             </div>
           )}

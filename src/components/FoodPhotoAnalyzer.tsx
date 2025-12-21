@@ -149,7 +149,7 @@ export default function FoodPhotoAnalyzer() {
           setFrontImage(imagePreview);
           setImagePreview(null);
           setLabelStep("back");
-          toast.info("📸 Agora fotografe a lista de ingredientes no verso", {
+          toast.info("Não reconheci o produto. Tire uma foto da tabela nutricional.", {
             duration: 5000,
           });
           return;
@@ -271,23 +271,23 @@ export default function FoodPhotoAnalyzer() {
   const getLabelStepInfo = () => {
     if (labelStep === "front") {
       return {
-        title: "Passo 1: Fotografar Produto",
-        description: "Tire uma foto do produto ou da lista de ingredientes",
-        buttonText: "Fotografar Produto",
+        title: "Passo 1: Fotografar Rótulo",
+        description: "Tire uma foto do rótulo do produto",
+        buttonText: "Tirar Foto do Rótulo",
         icon: <ScanBarcode className="w-10 h-10" />
       };
     } else if (labelStep === "back") {
       return {
-        title: "Passo 2: Lista de Ingredientes",
-        description: "Agora fotografe a lista de ingredientes no verso do produto",
-        buttonText: "Fotografar Ingredientes",
+        title: "Passo 2: Tabela Nutricional",
+        description: "Não reconheci o produto somente pela embalagem. Para a sua segurança, tire uma foto da tabela nutricional que consta em algum lugar da embalagem.",
+        buttonText: "Tirar Foto da Tabela Nutricional",
         icon: <ScanBarcode className="w-10 h-10" />
       };
     }
     return {
       title: "Verificar Rótulo",
-      description: "Fotografe o rótulo de ingredientes",
-      buttonText: "Fotografar Rótulo",
+      description: "Fotografe o rótulo do produto",
+      buttonText: "Tirar Foto do Rótulo",
       icon: <ScanBarcode className="w-10 h-10" />
     };
   };
@@ -396,8 +396,8 @@ export default function FoodPhotoAnalyzer() {
                 className="w-16 h-16 object-cover rounded-lg"
               />
               <div className="flex-1">
-                <p className="text-sm font-medium text-foreground">Foto da frente capturada ✓</p>
-                <p className="text-xs text-muted-foreground">Agora fotografe a lista de ingredientes</p>
+                <p className="text-sm font-medium text-foreground">Foto do rótulo capturada ✓</p>
+                <p className="text-xs text-muted-foreground">Agora fotografe a tabela nutricional</p>
               </div>
             </div>
           </CardContent>
@@ -424,9 +424,7 @@ export default function FoodPhotoAnalyzer() {
                 <span className="text-lg font-medium">
                   {mode === "food" 
                     ? "Tirar Foto do Prato" 
-                    : labelStep === "back"
-                      ? "Fotografar Ingredientes"
-                      : "Tirar Foto do Rótulo"
+                    : getLabelStepInfo().buttonText
                   }
                 </span>
               </Button>
@@ -445,8 +443,8 @@ export default function FoodPhotoAnalyzer() {
               {mode === "food" 
                 ? "📸 Dica: Fotografe o prato de cima para melhor precisão"
                 : labelStep === "back" 
-                  ? "📸 Dica: Fotografe a lista de ingredientes bem de perto e com boa iluminação"
-                  : "📸 Dica: Fotografe o produto ou a lista de ingredientes"
+                  ? "📸 Dica: Fotografe a tabela nutricional bem de perto e com boa iluminação"
+                  : "📸 Dica: Fotografe o rótulo do produto"
               }
             </p>
           </CardContent>

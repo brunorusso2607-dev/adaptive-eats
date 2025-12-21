@@ -232,11 +232,11 @@ FORMATO DE RESPOSTA (JSON obrigatório):
 }
 
 IMPORTANTE:
-- Se a imagem NÃO mostrar uma lista de ingredientes legível, retorne:
-  {"erro": "lista_nao_encontrada", "mensagem": "Não encontrei a lista de ingredientes. Por favor, fotografe o VERSO do produto onde aparece a lista completa de ingredientes."}
+- Se a imagem NÃO mostrar informações suficientes para análise (rótulo ilegível, produto não identificado), retorne:
+  {"erro": "lista_nao_encontrada", "mensagem": "Não reconheci o produto somente pela embalagem. Para a sua segurança, tire uma foto da tabela nutricional que consta em algum lugar da embalagem."}
 
 - Se a qualidade da imagem estiver ruim (borrada, escura, cortada), retorne:
-  {"erro": "qualidade_ruim", "mensagem": "A imagem está difícil de ler. Por favor, tire uma foto mais nítida e bem iluminada da lista de ingredientes."}
+  {"erro": "qualidade_ruim", "mensagem": "A imagem está difícil de ler. Por favor, tire uma foto mais nítida e bem iluminada."}
 
 LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar algo perigoso. NA DÚVIDA, CLASSIFIQUE COMO "risco_potencial".`;
 
@@ -313,7 +313,7 @@ LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar 
         return new Response(JSON.stringify({
           success: false,
           needsBackPhoto: true,
-          message: analysis.mensagem || "Não encontrei a lista de ingredientes. Por favor, fotografe o verso do produto."
+          message: analysis.mensagem || "Não reconheci o produto somente pela embalagem. Para a sua segurança, tire uma foto da tabela nutricional."
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,

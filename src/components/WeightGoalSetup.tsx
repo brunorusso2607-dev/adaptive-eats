@@ -13,6 +13,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import CalorieSpeedometer from "@/components/CalorieSpeedometer";
+import WeightProgressBar from "@/components/WeightProgressBar";
 
 type GoalMode = "lose" | "gain" | "maintain";
 
@@ -791,61 +793,24 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
             <CardDescription>Baseado nos seus dados e na fórmula Mifflin-St Jeor</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            {/* Key Metrics */}
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-white/60 dark:bg-white/10 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">Meta Diária</p>
-                <p className={cn("text-2xl font-bold", modeInfo.textColor)}>{calculations.targetCalories}</p>
-                <p className="text-xs text-muted-foreground">kcal/dia</p>
-              </div>
-              <div className="bg-white/60 dark:bg-white/10 rounded-xl p-3 text-center">
-                <p className="text-xs text-muted-foreground mb-1">{modeInfo.changeLabel}</p>
-                {calculations.mode === "maintain" ? (
-                  <p className={cn("text-2xl font-bold", modeInfo.textColor)}>—</p>
-                ) : (
-                  <p className={cn("text-2xl font-bold", modeInfo.textColor)}>~{calculations.weeklyChange}kg</p>
-                )}
-                <p className="text-xs text-muted-foreground">por semana</p>
-              </div>
-            </div>
+            {/* Calorie Speedometer */}
+            <CalorieSpeedometer
+              targetCalories={calculations.targetCalories}
+              protein={calculations.protein}
+              carbs={calculations.carbs}
+              fat={calculations.fat}
+              mode={calculations.mode}
+            />
 
-            {/* Macros */}
-            <div className="grid grid-cols-3 gap-2">
-              <div className="bg-red-500/10 rounded-xl p-3 text-center">
-                <Beef className="w-5 h-5 text-red-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{calculations.protein}g</p>
-                <p className="text-xs text-muted-foreground">Proteína</p>
-              </div>
-              <div className="bg-amber-500/10 rounded-xl p-3 text-center">
-                <Wheat className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{calculations.carbs}g</p>
-                <p className="text-xs text-muted-foreground">Carboidratos</p>
-              </div>
-              <div className="bg-green-500/10 rounded-xl p-3 text-center">
-                <Flame className="w-5 h-5 text-green-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{calculations.fat}g</p>
-                <p className="text-xs text-muted-foreground">Gordura</p>
-              </div>
-            </div>
-
-            {/* Timeline - only show for lose/gain */}
-            {calculations.mode !== "maintain" && (
-              <div className="bg-white/60 dark:bg-white/10 rounded-xl p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium">{data.weight_current}kg → {data.weight_goal}kg</span>
-                  <span className={cn("text-sm font-bold", modeInfo.textColor)}>
-                    ~{calculations.weeksToGoal} semanas
-                  </span>
-                </div>
-                <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                  <div className={cn("h-2 rounded-full bg-gradient-to-r", modeInfo.gradient)} style={{ width: "10%" }} />
-                </div>
-                <p className="text-xs text-muted-foreground mt-2 text-center">
-                  {calculations.weeksToGoal > 0 && (
-                    <>Aproximadamente {Math.ceil(calculations.weeksToGoal / 4)} meses para atingir sua meta</>
-                  )}
-                </p>
-              </div>
+            {/* Weight Progress Bar - only show for lose/gain */}
+            {calculations.mode !== "maintain" && data.weight_current && data.weight_goal && (
+              <WeightProgressBar
+                currentWeight={data.weight_current}
+                goalWeight={data.weight_goal}
+                weeklyChange={calculations.weeklyChange}
+                weeksToGoal={calculations.weeksToGoal}
+                mode={calculations.mode}
+              />
             )}
 
             {/* Metabolism Info */}

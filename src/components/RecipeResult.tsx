@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useActivityLog } from "@/hooks/useActivityLog";
 
 type Ingredient = {
   item: string;
@@ -48,6 +49,7 @@ const COMPLEXITY_LABELS = {
 };
 
 export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGenerating }: RecipeResultProps) {
+  const { logUserAction } = useActivityLog();
   const [isSaving, setIsSaving] = useState(false);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -82,6 +84,16 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
       });
 
       if (error) throw error;
+
+      // Log user action
+      await logUserAction(
+        asFavorite ? "recipe_favorited" : "recipe_saved",
+        asFavorite 
+          ? `Receita "${recipe.name}" adicionada aos favoritos`
+          : `Receita "${recipe.name}" salva no histórico`,
+        null,
+        { recipe_name: recipe.name, calories: recipe.calories }
+      );
 
       if (asFavorite) {
         setIsFavorited(true);

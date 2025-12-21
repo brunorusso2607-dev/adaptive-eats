@@ -317,6 +317,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
         open={showFoodDrawer}
         onOpenChange={setShowFoodDrawer}
         mealPlanItemId={nextMeal.id}
+        mealType={nextMeal.meal_type}
         onSuccess={handleFoodDrawerSuccess}
       />
 

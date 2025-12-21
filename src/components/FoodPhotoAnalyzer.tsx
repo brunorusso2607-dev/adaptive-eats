@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, ArrowRight, HelpCircle } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, ArrowRight, HelpCircle, CheckCircle2, CircleAlert, CircleDashed } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -55,6 +55,9 @@ type LabelAnalysis = {
 type FridgeIngredient = {
   nome: string;
   quantidade_estimada: string;
+  confianca?: "alta" | "media" | "baixa";
+  alerta_seguranca?: string | null;
+  tipo?: "in_natura" | "industrializado";
 };
 
 type FridgeRecipe = {
@@ -66,11 +69,13 @@ type FridgeRecipe = {
   ingredientes_extras: string[];
   calorias_estimadas: number;
   instrucoes_resumidas: string[];
+  alerta_receita?: string | null;
 };
 
 type FridgeAnalysis = {
   ingredientes_identificados: FridgeIngredient[];
   receitas_sugeridas: FridgeRecipe[];
+  alertas_gerais?: string[];
   dica: string;
 };
 
@@ -814,7 +819,26 @@ export default function FoodPhotoAnalyzer() {
           {/* Fridge Analysis results */}
           {fridgeAnalysis && (
             <div className="space-y-4 animate-fade-in">
-              {/* Ingredients found */}
+              {/* General Alerts */}
+              {fridgeAnalysis.alertas_gerais && fridgeAnalysis.alertas_gerais.length > 0 && (
+                <Card className="glass-card border-yellow-500/30">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
+                      <AlertTriangle className="w-5 h-5" />
+                      Alertas de Segurança
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {fridgeAnalysis.alertas_gerais.map((alerta, index) => (
+                      <div key={index} className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-foreground">
+                        {alerta}
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Ingredients found with confidence */}
               <Card className="glass-card border-primary/20">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center gap-2">
@@ -822,20 +846,64 @@ export default function FoodPhotoAnalyzer() {
                     Ingredientes Encontrados
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {fridgeAnalysis.ingredientes_identificados.map((ing, index) => (
-                      <span
-                        key={index}
-                        className="px-3 py-1.5 rounded-full bg-primary/10 text-primary text-sm"
-                      >
-                        {ing.nome}
-                        {ing.quantidade_estimada && (
-                          <span className="text-xs opacity-70 ml-1">({ing.quantidade_estimada})</span>
-                        )}
-                      </span>
-                    ))}
-                  </div>
+                <CardContent className="space-y-2">
+                  {fridgeAnalysis.ingredientes_identificados.map((ing, index) => (
+                    <div
+                      key={index}
+                      className={`p-3 rounded-lg ${
+                        ing.alerta_seguranca 
+                          ? "bg-yellow-500/5 border border-yellow-500/20" 
+                          : "bg-muted/50"
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="font-medium text-foreground">{ing.nome}</p>
+                            {/* Confidence badge */}
+                            {ing.confianca && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                                ing.confianca === "alta" 
+                                  ? "bg-green-500/20 text-green-600" 
+                                  : ing.confianca === "media"
+                                  ? "bg-blue-500/20 text-blue-600"
+                                  : "bg-yellow-500/20 text-yellow-600"
+                              }`}>
+                                {ing.confianca === "alta" ? (
+                                  <CheckCircle2 className="w-3 h-3" />
+                                ) : ing.confianca === "media" ? (
+                                  <CircleAlert className="w-3 h-3" />
+                                ) : (
+                                  <CircleDashed className="w-3 h-3" />
+                                )}
+                                {ing.confianca === "alta" ? "Alta" : ing.confianca === "media" ? "Média" : "Baixa"}
+                              </span>
+                            )}
+                            {/* Type badge */}
+                            {ing.tipo && (
+                              <span className={`text-xs px-2 py-0.5 rounded-full ${
+                                ing.tipo === "in_natura" 
+                                  ? "bg-green-500/10 text-green-600" 
+                                  : "bg-purple-500/10 text-purple-600"
+                              }`}>
+                                {ing.tipo === "in_natura" ? "In natura" : "Industrial"}
+                              </span>
+                            )}
+                          </div>
+                          {ing.quantidade_estimada && (
+                            <p className="text-xs text-muted-foreground mt-1">{ing.quantidade_estimada}</p>
+                          )}
+                          {/* Safety alert */}
+                          {ing.alerta_seguranca && (
+                            <p className="text-xs text-yellow-600 mt-1.5 flex items-start gap-1">
+                              <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                              {ing.alerta_seguranca}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </CardContent>
               </Card>
 
@@ -859,6 +927,16 @@ export default function FoodPhotoAnalyzer() {
                           {recipe.calorias_estimadas} kcal
                         </span>
                       </div>
+                      
+                      {/* Recipe safety alert */}
+                      {recipe.alerta_receita && (
+                        <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
+                          <p className="text-xs text-yellow-600 flex items-start gap-1">
+                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                            {recipe.alerta_receita}
+                          </p>
+                        </div>
+                      )}
                       
                       <div className="flex items-center gap-4 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">

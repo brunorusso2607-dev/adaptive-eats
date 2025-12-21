@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { 
@@ -283,7 +284,7 @@ export default function RecipeCategorySheet({
 
         {/* Footer com botão Avançar (apenas na etapa 1) - com safe-area para dispositivos móveis */}
         {step === 1 && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] bg-background border-t">
+          <SafeAreaFooter>
             <Button 
               onClick={handleAdvance} 
               className="w-full h-12 rounded-xl text-base font-medium"
@@ -294,7 +295,7 @@ export default function RecipeCategorySheet({
               }
               <ChevronRight className="w-5 h-5 ml-2" />
             </Button>
-          </div>
+          </SafeAreaFooter>
         )}
       </SheetContent>
     </Sheet>

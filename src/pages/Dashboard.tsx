@@ -10,6 +10,7 @@ import RecipeResult from "@/components/RecipeResult";
 import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import WeightProgressBar from "@/components/WeightProgressBar";
+import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
 import IngredientTagInput from "@/components/IngredientTagInput";
@@ -873,24 +874,18 @@ export default function Dashboard() {
                             const accentColor = userGoal === "ganhar_peso" ? "text-blue-600" : "text-green-600";
                             return (
                               <>
-                                <div className="grid grid-cols-4 gap-2 mt-3">
-                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                    <p className={`text-lg font-bold ${accentColor}`}>{calcs.targetCalories}</p>
-                                    <p className="text-xs text-muted-foreground">kcal/dia</p>
-                                  </div>
-                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                    <p className="text-lg font-bold text-red-500">{calcs.protein}g</p>
-                                    <p className="text-xs text-muted-foreground">Proteína</p>
-                                  </div>
-                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                    <p className="text-lg font-bold text-amber-500">{calcs.carbs}g</p>
-                                    <p className="text-xs text-muted-foreground">Carbos</p>
-                                  </div>
-                                  <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                    <p className="text-lg font-bold text-green-500">{calcs.fat}g</p>
-                                    <p className="text-xs text-muted-foreground">Gordura</p>
-                                  </div>
+                                {/* Calorie Speedometer */}
+                                <div className="mt-3">
+                                  <CalorieSpeedometer
+                                    targetCalories={calcs.targetCalories}
+                                    protein={calcs.protein}
+                                    carbs={calcs.carbs}
+                                    fat={calcs.fat}
+                                    mode={calcs.mode}
+                                  />
                                 </div>
+                                
+                                {/* Weight Progress Bar */}
                                 <div className="mt-4">
                                   <WeightProgressBar
                                     currentWeight={weightData?.weight_current || 0}

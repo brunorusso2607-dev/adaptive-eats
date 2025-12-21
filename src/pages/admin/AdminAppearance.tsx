@@ -240,33 +240,34 @@ export default function AdminAppearance() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="space-y-4 sm:space-y-6">
+      {/* Header - Responsive */}
+      <div className="flex flex-col gap-4">
         <div>
-          <h1 className="text-2xl font-bold">Aparência</h1>
-          <p className="text-muted-foreground">Personalize as cores e visual do app</p>
+          <h1 className="text-xl sm:text-2xl font-bold">Aparência</h1>
+          <p className="text-sm text-muted-foreground">Personalize as cores e visual do app</p>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={handleResetPreview}>
-            <RotateCcw className="h-4 w-4 mr-2" />
-            Resetar Preview
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={handleResetPreview} className="flex-1 sm:flex-none">
+            <RotateCcw className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Resetar</span>
           </Button>
-          <Button variant="secondary" onClick={handlePreview}>
-            <Eye className="h-4 w-4 mr-2" />
-            Preview
+          <Button variant="secondary" size="sm" onClick={handlePreview} className="flex-1 sm:flex-none">
+            <Eye className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Preview</span>
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-            Salvar
+          <Button size="sm" onClick={handleSave} disabled={saving} className="flex-1 sm:flex-none">
+            {saving ? <Loader2 className="h-4 w-4 sm:mr-2 animate-spin" /> : <Save className="h-4 w-4 sm:mr-2" />}
+            <span className="hidden sm:inline">Salvar</span>
           </Button>
         </div>
       </div>
 
       <Tabs defaultValue="colors" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="colors">Cores</TabsTrigger>
-          <TabsTrigger value="brand">Marca</TabsTrigger>
-          <TabsTrigger value="advanced">Avançado</TabsTrigger>
+        <TabsList className="w-full grid grid-cols-3">
+          <TabsTrigger value="colors" className="text-xs sm:text-sm">Cores</TabsTrigger>
+          <TabsTrigger value="brand" className="text-xs sm:text-sm">Marca</TabsTrigger>
+          <TabsTrigger value="advanced" className="text-xs sm:text-sm">Avançado</TabsTrigger>
         </TabsList>
 
         <TabsContent value="colors" className="space-y-4">
@@ -280,19 +281,19 @@ export default function AdminAppearance() {
               <CardDescription>Escolha um tema pré-definido para começar</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
                 {PRESET_THEMES.map((theme) => (
                   <button
                     key={theme.name}
                     onClick={() => handleApplyTheme(theme)}
-                    className="p-3 rounded-lg border-2 border-border hover:border-primary transition-colors text-left"
+                    className="p-2 sm:p-3 rounded-lg border-2 border-border hover:border-primary transition-colors text-left"
                   >
-                    <div className="flex gap-1 mb-2">
-                      <div className="w-6 h-6 rounded-full" style={{ backgroundColor: theme.primary }} />
-                      <div className="w-6 h-6 rounded-full" style={{ backgroundColor: theme.secondary }} />
-                      <div className="w-6 h-6 rounded-full" style={{ backgroundColor: theme.accent }} />
+                    <div className="flex gap-1 mb-1 sm:mb-2">
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" style={{ backgroundColor: theme.primary }} />
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" style={{ backgroundColor: theme.secondary }} />
+                      <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-full" style={{ backgroundColor: theme.accent }} />
                     </div>
-                    <span className="text-sm font-medium">{theme.name}</span>
+                    <span className="text-xs sm:text-sm font-medium line-clamp-1">{theme.name}</span>
                   </button>
                 ))}
               </div>
@@ -306,7 +307,7 @@ export default function AdminAppearance() {
               <CardDescription>Ajuste cada cor individualmente</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                 <div className="space-y-2">
                   <Label>Cor Primária</Label>
                   <div className="flex gap-2">

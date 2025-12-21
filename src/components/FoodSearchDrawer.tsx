@@ -230,7 +230,6 @@ export default function FoodSearchDrawer({
           {/* Scrollable content area */}
           <ScrollArea className="flex-1 px-4">
             <div className="space-y-4 pb-4">
-
               {/* Search results */}
               {(isLoading || foods.length > 0) && (
                 <div className="bg-muted/50 rounded-lg border">
@@ -259,96 +258,96 @@ export default function FoodSearchDrawer({
                 </div>
               )}
 
-            {/* Selected foods */}
-            {selectedFoods.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Alimentos selecionados
-                </h4>
-                <div className="space-y-2">
-                  {selectedFoods.map((food) => {
-                    const macros = calculateMacros(food);
-                    return (
-                      <div
-                        key={food.id}
-                        className="bg-card border rounded-lg p-3 space-y-2"
-                      >
-                        <div className="flex items-center justify-between">
-                          <span className="font-medium text-sm">{food.name}</span>
-                          <button
-                            onClick={() => removeFood(food.id)}
-                            className="text-muted-foreground hover:text-destructive transition-colors"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Quantity controls */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-8 w-8"
-                              onClick={() => updateQuantity(food.id, -10)}
+              {/* Selected foods */}
+              {selectedFoods.length > 0 && (
+                <div className="space-y-3">
+                  <h4 className="text-sm font-medium text-muted-foreground">
+                    Alimentos selecionados
+                  </h4>
+                  <div className="space-y-2">
+                    {selectedFoods.map((food) => {
+                      const macros = calculateMacros(food);
+                      return (
+                        <div
+                          key={food.id}
+                          className="bg-card border rounded-lg p-3 space-y-2"
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-medium text-sm">{food.name}</span>
+                            <button
+                              onClick={() => removeFood(food.id)}
+                              className="text-muted-foreground hover:text-destructive transition-colors"
                             >
-                              <Minus className="w-3 h-3" />
-                            </Button>
-                            <span className="text-sm font-medium w-16 text-center">
-                              {food.quantity}g
-                            </span>
-                            <Button
-                              size="icon"
-                              variant="outline"
-                              className="h-8 w-8"
-                              onClick={() => updateQuantity(food.id, 10)}
-                            >
-                              <Plus className="w-3 h-3" />
-                            </Button>
+                              <X className="w-4 h-4" />
+                            </button>
                           </div>
 
-                          {/* Macros display */}
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <Flame className="w-3 h-3 text-orange-500" />
-                              {macros.calories}
-                            </span>
-                            <span>P: {macros.protein}g</span>
-                            <span>C: {macros.carbs}g</span>
-                            <span>G: {macros.fat}g</span>
+                          {/* Quantity controls */}
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8"
+                                onClick={() => updateQuantity(food.id, -10)}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="text-sm font-medium w-16 text-center">
+                                {food.quantity}g
+                              </span>
+                              <Button
+                                size="icon"
+                                variant="outline"
+                                className="h-8 w-8"
+                                onClick={() => updateQuantity(food.id, 10)}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+
+                            {/* Macros display */}
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Flame className="w-3 h-3 text-orange-500" />
+                                {macros.calories}
+                              </span>
+                              <span>P: {macros.protein}g</span>
+                              <span>C: {macros.carbs}g</span>
+                              <span>G: {macros.fat}g</span>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* Totals */}
-            {selectedFoods.length > 0 && (
-              <div className="bg-primary/10 rounded-lg p-4">
-                <h4 className="text-sm font-medium mb-2">Total</h4>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div>
-                    <p className="text-lg font-bold text-primary">{totals.calories}</p>
-                    <p className="text-xs text-muted-foreground">kcal</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-blue-500">{totals.protein.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Proteína</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-amber-500">{totals.carbs.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Carbos</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-red-500">{totals.fat.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Gordura</p>
+              {/* Totals */}
+              {selectedFoods.length > 0 && (
+                <div className="bg-primary/10 rounded-lg p-4">
+                  <h4 className="text-sm font-medium mb-2">Total</h4>
+                  <div className="grid grid-cols-4 gap-2 text-center">
+                    <div>
+                      <p className="text-lg font-bold text-primary">{totals.calories}</p>
+                      <p className="text-xs text-muted-foreground">kcal</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-blue-500">{totals.protein.toFixed(1)}</p>
+                      <p className="text-xs text-muted-foreground">Proteína</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-amber-500">{totals.carbs.toFixed(1)}</p>
+                      <p className="text-xs text-muted-foreground">Carbos</p>
+                    </div>
+                    <div>
+                      <p className="text-lg font-bold text-red-500">{totals.fat.toFixed(1)}</p>
+                      <p className="text-xs text-muted-foreground">Gordura</p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
             </div>
           </ScrollArea>
 

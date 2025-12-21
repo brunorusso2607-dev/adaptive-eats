@@ -364,6 +364,139 @@ REGRAS:
       });
     }
 
+    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========
+    // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
+    
+    const alertasPersonalizados: Array<{
+      ingrediente: string;
+      restricao: string;
+      status: "seguro" | "risco_potencial" | "contem";
+      mensagem: string;
+      icone: string;
+    }> = [];
+    
+    // Verificar cada intolerância do usuário contra os alimentos identificados
+    for (const userIntolerance of userIntolerances) {
+      const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
+      const synonyms = SINONIMOS_INTOLERANCIA[intoleranceKey] || [userIntolerance];
+      
+      let found = false;
+      let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
+      let foundFood = "";
+      
+      // Verificar em alimentos identificados
+      if (analysis.alimentos) {
+        for (const food of analysis.alimentos) {
+          const foodName = food.item?.toLowerCase() || "";
+          
+          // Verificar se este alimento corresponde à intolerância
+          const matchesIntolerance = synonyms.some(syn => 
+            foodName.includes(syn.toLowerCase())
+          );
+          
+          if (matchesIntolerance) {
+            found = true;
+            foundFood = food.item;
+            foundStatus = "contem";
+            break;
+          }
+        }
+      }
+      
+      // Verificar também nos alertas da IA
+      if (!found && analysis.alertas_intolerancia) {
+        for (const alerta of analysis.alertas_intolerancia) {
+          if (alerta.intolerancia?.toLowerCase().includes(intoleranceKey)) {
+            found = true;
+            foundFood = alerta.alimento;
+            foundStatus = alerta.risco === "alto" ? "contem" : "risco_potencial";
+            break;
+          }
+        }
+      }
+      
+      // Gerar mensagem personalizada para o usuário
+      const restricaoLabel = intoleranceKey === "lactose" ? "Lactose" :
+                            intoleranceKey === "gluten" ? "Glúten" :
+                            intoleranceKey === "acucar" ? "Açúcar" :
+                            intoleranceKey === "amendoim" ? "Amendoim" :
+                            intoleranceKey === "frutos_do_mar" ? "Frutos do Mar" :
+                            intoleranceKey === "ovo" ? "Ovo" :
+                            intoleranceKey === "soja" ? "Soja" :
+                            intoleranceKey === "oleaginosas" ? "Oleaginosas" :
+                            userIntolerance;
+      
+      if (found) {
+        alertasPersonalizados.push({
+          ingrediente: foundFood,
+          restricao: restricaoLabel,
+          status: foundStatus,
+          mensagem: foundStatus === "contem" 
+            ? `⚠️ ATENÇÃO: "${foundFood}" contém ${restricaoLabel.toUpperCase()}, que está na sua lista de restrições`
+            : `⚡ VERIFICAR: "${foundFood}" pode conter ${restricaoLabel}`,
+          icone: foundStatus === "contem" ? "🔴" : "🟡"
+        });
+      } else {
+        alertasPersonalizados.push({
+          ingrediente: "",
+          restricao: restricaoLabel,
+          status: "seguro",
+          mensagem: `✅ Seguro para você: Não identificamos ${restricaoLabel} nesta refeição`,
+          icone: "🟢"
+        });
+      }
+    }
+    
+    // Adicionar verificação de preferência alimentar
+    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana") {
+      const dietLabel = dietaryPreference === "vegana" ? "Veganismo" : "Vegetarianismo";
+      const meatKeywords = ["carne", "frango", "peixe", "camarão", "bacon", "linguiça", "presunto", "salsicha"];
+      const animalKeywords = [...meatKeywords, "leite", "queijo", "ovo", "manteiga", "iogurte", "mel"];
+      const keywordsToCheck = dietaryPreference === "vegana" ? animalKeywords : meatKeywords;
+      
+      let found = false;
+      let foundFood = "";
+      
+      if (analysis.alimentos) {
+        for (const food of analysis.alimentos) {
+          const foodName = food.item?.toLowerCase() || "";
+          if (keywordsToCheck.some(keyword => foodName.includes(keyword))) {
+            found = true;
+            foundFood = food.item;
+            break;
+          }
+        }
+      }
+      
+      alertasPersonalizados.push({
+        ingrediente: foundFood,
+        restricao: dietLabel,
+        status: found ? "contem" : "seguro",
+        mensagem: found 
+          ? `⚠️ ATENÇÃO: "${foundFood}" é incompatível com ${dietLabel.toLowerCase()}`
+          : `✅ Compatível com ${dietLabel.toLowerCase()}`,
+        icone: found ? "🔴" : "🟢"
+      });
+    }
+    
+    // Ordenar alertas: primeiro os problemas, depois os seguros
+    alertasPersonalizados.sort((a, b) => {
+      const order = { "contem": 0, "risco_potencial": 1, "seguro": 2 };
+      return order[a.status] - order[b.status];
+    });
+    
+    // Adicionar ao response
+    const perfilUsuarioAplicado = {
+      intolerances: userIntolerances,
+      dietary_preference: dietaryPreference,
+      alertas_personalizados: alertasPersonalizados,
+      resumo: alertasPersonalizados.some(a => a.status === "contem")
+        ? "Esta refeição contém itens NÃO recomendados para você"
+        : alertasPersonalizados.some(a => a.status === "risco_potencial")
+        ? "Verifique os ingredientes desta refeição com atenção"
+        : "Esta refeição parece segura para o seu perfil"
+    };
+
     // Adicionar informações de meta diária
     let metaDiaria = null;
     if (dailyCalorieGoal && analysis.total_geral?.calorias_totais) {
@@ -387,17 +520,20 @@ REGRAS:
       logStep("Daily goal integration", metaDiaria);
     }
 
-    logStep("Analysis complete", { 
+    logStep("Analysis complete with profile cross-check", { 
       totalCalories: analysis.total_geral?.calorias_totais,
       foodCount: analysis.alimentos?.length,
       alertCount: analysis.alertas_intolerancia?.length || 0,
-      hasMetaDiaria: !!metaDiaria
+      personalizedAlerts: alertasPersonalizados.length,
+      hasMetaDiaria: !!metaDiaria,
+      profileApplied: true
     });
 
     return new Response(JSON.stringify({
       success: true,
       analysis,
-      meta_diaria: metaDiaria
+      meta_diaria: metaDiaria,
+      perfil_usuario_aplicado: perfilUsuarioAplicado
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

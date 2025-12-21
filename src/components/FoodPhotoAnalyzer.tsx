@@ -46,6 +46,21 @@ type FoodAnalysis = {
   alertas_intolerancia?: IntoleranceAlert[];
 };
 
+type PersonalizedAlert = {
+  ingrediente: string;
+  restricao: string;
+  status: "seguro" | "risco_potencial" | "contem";
+  mensagem: string;
+  icone: string;
+};
+
+type PerfilUsuarioAplicado = {
+  intolerances: string[];
+  dietary_preference: string;
+  alertas_personalizados: PersonalizedAlert[];
+  resumo: string;
+};
+
 type LabelIngredient = {
   nome: string;
   status: "seguro" | "risco_potencial" | "contem" | "atencao" | "evitar";
@@ -72,6 +87,7 @@ export default function FoodPhotoAnalyzer() {
   const [foodAnalysis, setFoodAnalysis] = useState<FoodAnalysis | null>(null);
   const [metaDiaria, setMetaDiaria] = useState<MetaDiaria | null>(null);
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
+  const [perfilAplicado, setPerfilAplicado] = useState<PerfilUsuarioAplicado | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<{
     categoria: string;
@@ -138,6 +154,7 @@ export default function FoodPhotoAnalyzer() {
 
         setFoodAnalysis(data.analysis);
         setMetaDiaria(data.meta_diaria || null);
+        setPerfilAplicado(data.perfil_usuario_aplicado || null);
         toast.success("Análise concluída!");
       } else if (mode === "label") {
         const { data, error } = await supabase.functions.invoke("analyze-label-photo", {
@@ -182,6 +199,7 @@ export default function FoodPhotoAnalyzer() {
         }
 
         setLabelAnalysis(data.analysis);
+        setPerfilAplicado(data.perfil_usuario_aplicado || null);
         setLabelStep("complete");
         toast.success("Verificação concluída!");
       }
@@ -198,6 +216,7 @@ export default function FoodPhotoAnalyzer() {
     setFoodAnalysis(null);
     setMetaDiaria(null);
     setLabelAnalysis(null);
+    setPerfilAplicado(null);
     setNotFoodError(null);
     setCategoryError(null);
     setLabelStep("front");
@@ -214,6 +233,7 @@ export default function FoodPhotoAnalyzer() {
       setFoodAnalysis(null);
       setMetaDiaria(null);
       setLabelAnalysis(null);
+      setPerfilAplicado(null);
       setNotFoodError(null);
       setCategoryError(null);
       setLabelStep("front");
@@ -844,6 +864,45 @@ export default function FoodPhotoAnalyzer() {
                 </Card>
               )}
 
+              {/* Personalized Profile Alerts */}
+              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
+                <Card className={`glass-card border ${
+                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
+                    ? "border-red-500/30" 
+                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
+                    ? "border-yellow-500/30"
+                    : "border-green-500/30"
+                }`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-primary" />
+                      Verificação do Seu Perfil
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm font-medium text-foreground mb-2">{perfilAplicado.resumo}</p>
+                    {perfilAplicado.alertas_personalizados.map((alerta, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg flex items-start gap-2 ${
+                          alerta.status === "contem" 
+                            ? "bg-red-500/10 border border-red-500/20" 
+                            : alerta.status === "risco_potencial"
+                            ? "bg-yellow-500/10 border border-yellow-500/20"
+                            : "bg-green-500/10 border border-green-500/20"
+                        }`}
+                      >
+                        <span className="text-lg">{alerta.icone}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{alerta.restricao}</p>
+                          <p className="text-xs text-muted-foreground">{alerta.mensagem}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Reset button */}
               <Button
                 variant="outline"
@@ -856,9 +915,48 @@ export default function FoodPhotoAnalyzer() {
             </div>
           )}
 
-          {/* Label Analysis results */}
+          {/* Label Analysis results - add profile alerts before recommendation */}
           {labelAnalysis && (
             <div className="space-y-4 animate-fade-in">
+              {/* Personalized Profile Alerts for Label */}
+              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
+                <Card className={`glass-card border ${
+                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
+                    ? "border-red-500/30" 
+                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
+                    ? "border-yellow-500/30"
+                    : "border-green-500/30"
+                }`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <ShieldCheck className="w-5 h-5 text-primary" />
+                      Verificação do Seu Perfil
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    <p className="text-sm font-medium text-foreground mb-2">{perfilAplicado.resumo}</p>
+                    {perfilAplicado.alertas_personalizados.map((alerta, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg flex items-start gap-2 ${
+                          alerta.status === "contem" 
+                            ? "bg-red-500/10 border border-red-500/20" 
+                            : alerta.status === "risco_potencial"
+                            ? "bg-yellow-500/10 border border-yellow-500/20"
+                            : "bg-green-500/10 border border-green-500/20"
+                        }`}
+                      >
+                        <span className="text-lg">{alerta.icone}</span>
+                        <div className="flex-1">
+                          <p className="text-sm font-medium">{alerta.restricao}</p>
+                          <p className="text-xs text-muted-foreground">{alerta.mensagem}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Verdict card */}
               <Card className={`glass-card border ${getVeredictColor(labelAnalysis.veredicto)}`}>
                 <CardContent className="p-6">

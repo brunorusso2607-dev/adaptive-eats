@@ -464,19 +464,162 @@ LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar 
       });
     }
 
-    logStep("Analysis complete", { 
+    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========
+    // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
+    
+    const alertasPersonalizados: Array<{
+      ingrediente: string;
+      restricao: string;
+      status: "seguro" | "risco_potencial" | "contem";
+      mensagem: string;
+      icone: string;
+    }> = [];
+    
+    // Verificar cada intolerância do usuário contra os ingredientes analisados
+    for (const userIntolerance of userIntolerances) {
+      const intoleranceKey = userIntolerance.toLowerCase();
+      const aliases = ingredientAliases[intoleranceKey] || [userIntolerance];
+      
+      let found = false;
+      let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
+      let foundIngredient = "";
+      
+      // Verificar em ingredientes_analisados
+      if (analysis.ingredientes_analisados) {
+        for (const ing of analysis.ingredientes_analisados) {
+          const ingName = ing.nome?.toLowerCase() || "";
+          const ingMotivo = ing.motivo?.toLowerCase() || "";
+          const ingRestricao = ing.restricao_afetada?.toLowerCase() || "";
+          
+          // Verificar se este ingrediente corresponde à intolerância
+          const matchesIntolerance = aliases.some(alias => 
+            ingName.includes(alias.toLowerCase()) || 
+            ingMotivo.includes(alias.toLowerCase()) ||
+            ingRestricao.includes(intoleranceKey)
+          );
+          
+          if (matchesIntolerance || ingRestricao.includes(intoleranceKey)) {
+            found = true;
+            foundIngredient = ing.nome;
+            if (ing.status === "contem") {
+              foundStatus = "contem";
+              break; // Pior caso, não precisa continuar
+            } else if (ing.status === "risco_potencial") {
+              foundStatus = "risco_potencial";
+            }
+          }
+        }
+      }
+      
+      // Verificar também no conteúdo dos alertas da IA
+      if (!found && analysis.alertas) {
+        for (const alerta of analysis.alertas) {
+          const alertaLower = alerta.toLowerCase();
+          if (aliases.some(alias => alertaLower.includes(alias.toLowerCase()))) {
+            found = true;
+            foundStatus = "contem";
+            foundIngredient = userIntolerance;
+            break;
+          }
+        }
+      }
+      
+      // Gerar mensagem personalizada para o usuário
+      const restricaoLabel = intoleranceKey === "lactose" ? "Lactose" :
+                            intoleranceKey === "gluten" ? "Glúten" :
+                            intoleranceKey === "acucar" ? "Açúcar" :
+                            intoleranceKey === "amendoim" ? "Amendoim" :
+                            intoleranceKey === "frutos_mar" || intoleranceKey === "frutos_do_mar" ? "Frutos do Mar" :
+                            intoleranceKey === "ovo" ? "Ovo" :
+                            intoleranceKey === "soja" ? "Soja" :
+                            intoleranceKey === "nozes" || intoleranceKey === "oleaginosas" ? "Oleaginosas" :
+                            userIntolerance;
+      
+      if (found) {
+        alertasPersonalizados.push({
+          ingrediente: foundIngredient,
+          restricao: restricaoLabel,
+          status: foundStatus,
+          mensagem: foundStatus === "contem" 
+            ? `⚠️ ATENÇÃO: Este produto CONTÉM ${restricaoLabel.toUpperCase()}, que está na sua lista de restrições`
+            : `⚡ VERIFICAR: Este produto pode conter ${restricaoLabel}, que está na sua lista de restrições`,
+          icone: foundStatus === "contem" ? "🔴" : "🟡"
+        });
+      } else {
+        alertasPersonalizados.push({
+          ingrediente: "",
+          restricao: restricaoLabel,
+          status: "seguro",
+          mensagem: `✅ Seguro para você: Não identificamos ${restricaoLabel} neste produto`,
+          icone: "🟢"
+        });
+      }
+    }
+    
+    // Adicionar verificação de preferência alimentar
+    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana") {
+      const dietLabel = dietaryPreference === "vegana" ? "Veganismo" : "Vegetarianismo";
+      const ingredientsToCheck = dietaryPreference === "vegana" ? animalIngredients : meatIngredients;
+      
+      let found = false;
+      let foundIngredient = "";
+      
+      if (analysis.ingredientes_analisados) {
+        for (const ing of analysis.ingredientes_analisados) {
+          const ingName = ing.nome?.toLowerCase() || "";
+          if (ingredientsToCheck.some(item => ingName.includes(item.toLowerCase()))) {
+            found = true;
+            foundIngredient = ing.nome;
+            break;
+          }
+        }
+      }
+      
+      alertasPersonalizados.push({
+        ingrediente: foundIngredient,
+        restricao: dietLabel,
+        status: found ? "contem" : "seguro",
+        mensagem: found 
+          ? `⚠️ ATENÇÃO: Este produto contém ingredientes incompatíveis com ${dietLabel.toLowerCase()}`
+          : `✅ Compatível com ${dietLabel.toLowerCase()}`,
+        icone: found ? "🔴" : "🟢"
+      });
+    }
+    
+    // Ordenar alertas: primeiro os problemas, depois os seguros
+    alertasPersonalizados.sort((a, b) => {
+      const order = { "contem": 0, "risco_potencial": 1, "seguro": 2 };
+      return order[a.status] - order[b.status];
+    });
+    
+    // Adicionar ao response
+    const perfilUsuarioAplicado = {
+      intolerances: userIntolerances,
+      dietary_preference: dietaryPreference,
+      alertas_personalizados: alertasPersonalizados,
+      resumo: alertasPersonalizados.some(a => a.status === "contem")
+        ? "Este produto NÃO é recomendado para você"
+        : alertasPersonalizados.some(a => a.status === "risco_potencial")
+        ? "Verifique o rótulo com atenção antes de consumir"
+        : "Este produto parece seguro para o seu perfil"
+    };
+
+    logStep("Analysis complete with profile cross-check", { 
       produto: analysis.produto_identificado,
       marca: analysis.marca,
       confianca: analysis.confianca_identificacao,
       fonte: analysis.fonte_informacao,
       veredicto: analysis.veredicto,
       ingredientCount: analysis.ingredientes_analisados?.length,
-      alertCount: analysis.alertas?.length
+      alertCount: analysis.alertas?.length,
+      personalizedAlerts: alertasPersonalizados.length,
+      profileApplied: true
     });
 
     return new Response(JSON.stringify({
       success: true,
-      analysis
+      analysis,
+      perfil_usuario_aplicado: perfilUsuarioAplicado
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

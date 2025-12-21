@@ -1,7 +1,8 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, UtensilsCrossed } from "lucide-react";
-import { usePendingMeals } from "@/hooks/usePendingMeals";
+import { Check, UtensilsCrossed, Clock } from "lucide-react";
+import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
+import { useMemo } from "react";
 
 export default function PendingMealsList() {
   const {
@@ -11,6 +12,31 @@ export default function PendingMealsList() {
     skipMeal,
     refetch,
   } = usePendingMeals();
+
+  // Separar refeição atual das atrasadas
+  const { currentMeal, overdueMeals } = useMemo(() => {
+    if (pendingMeals.length === 0) {
+      return { currentMeal: null, overdueMeals: [] };
+    }
+
+    // A primeira refeição (mais recente/atual) é a "próxima"
+    const first = pendingMeals[0];
+    const status = getMealStatus(first.meal_type, first.actual_date, first.completed_at);
+    
+    // Se está on_time, é a atual. O resto são atrasadas.
+    if (status === "on_time") {
+      return {
+        currentMeal: first,
+        overdueMeals: pendingMeals.slice(1),
+      };
+    }
+    
+    // Se todas estão atrasadas, não há "atual"
+    return {
+      currentMeal: null,
+      overdueMeals: pendingMeals,
+    };
+  }, [pendingMeals]);
 
   // Loading state
   if (isLoading) {
@@ -73,27 +99,47 @@ export default function PendingMealsList() {
 
   // Handle mark complete through the hook
   const handleMarkComplete = async (mealId: string) => {
-    // This is handled inside PendingMealCard via saveConsumption
     return true;
   };
 
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <p className="text-xs text-muted-foreground">
-          {pendingMeals.length} refeição{pendingMeals.length !== 1 ? 'ões' : ''} pendente{pendingMeals.length !== 1 ? 's' : ''}
-        </p>
-      </div>
-      
-      {pendingMeals.map((meal) => (
-        <PendingMealCard
-          key={meal.id}
-          meal={meal}
-          onMarkComplete={handleMarkComplete}
-          onSkip={skipMeal}
-          onRefetch={refetch}
-        />
-      ))}
+    <div className="space-y-4">
+      {/* Próxima Refeição */}
+      {currentMeal && (
+        <div className="space-y-2">
+          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            Próxima Refeição
+          </h3>
+          <PendingMealCard
+            meal={currentMeal}
+            onMarkComplete={handleMarkComplete}
+            onSkip={skipMeal}
+            onRefetch={refetch}
+          />
+        </div>
+      )}
+
+      {/* Refeições Pendentes */}
+      {overdueMeals.length > 0 && (
+        <div className="space-y-2">
+          <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+            <Clock className="w-3.5 h-3.5" />
+            Pendentes ({overdueMeals.length})
+          </h3>
+          <div className="space-y-2">
+            {overdueMeals.map((meal) => (
+              <PendingMealCard
+                key={meal.id}
+                meal={meal}
+                onMarkComplete={handleMarkComplete}
+                onSkip={skipMeal}
+                onRefetch={refetch}
+              />
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

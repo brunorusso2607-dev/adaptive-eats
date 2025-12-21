@@ -146,6 +146,8 @@ export function useNextMeal() {
       // Buscar refeições do dia atual
       const dayOfWeek = today.getDay(); // 0 = domingo, 6 = sábado
       
+      console.log("[useNextMeal] today:", today.toISOString(), "dayOfWeek:", dayOfWeek, "planId:", activePlanId);
+      
       const { data: meals, error: mealsError } = await supabase
         .from("meal_plan_items")
         .select("*")
@@ -154,6 +156,8 @@ export function useNextMeal() {
         .order("meal_type", { ascending: true });
 
       if (mealsError) throw mealsError;
+
+      console.log("[useNextMeal] meals for day", dayOfWeek, ":", meals?.length, meals?.map(m => ({ type: m.meal_type, completed: m.completed_at })));
 
       if (!meals || meals.length === 0) {
         setNextMeal(null);

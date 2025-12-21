@@ -418,13 +418,17 @@ export default function FoodPhotoAnalyzer() {
               >
                 {mode === "food" ? (
                   <Camera className="w-10 h-10" />
-                ) : (
+                ) : mode === "label" ? (
                   <ScanBarcode className="w-10 h-10" />
+                ) : (
+                  <Camera className="w-10 h-10" />
                 )}
                 <span className="text-lg font-medium">
                   {mode === "food" 
                     ? "Tirar Foto do Prato" 
-                    : getLabelStepInfo().buttonText
+                    : mode === "label"
+                      ? getLabelStepInfo().buttonText
+                      : "Tirar Foto da Geladeira"
                   }
                 </span>
               </Button>

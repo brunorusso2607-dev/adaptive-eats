@@ -1,7 +1,8 @@
 import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User } from "lucide-react";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -456,92 +457,136 @@ export default function FridgeScanner() {
 
   // Step 2: Show ingredients
   if (currentStep === "ingredients" && analysis) {
+    // Separate ingredients into healthy (no alerts) and attention needed (with alerts)
+    const healthyIngredients = analysis.ingredientes_identificados.filter(ing => !ing.alerta_seguranca);
+    const attentionIngredients = analysis.ingredientes_identificados.filter(ing => ing.alerta_seguranca);
+
+    const renderIngredientItem = (ing: FridgeIngredient, index: number, isAttention: boolean) => (
+      <div
+        key={index}
+        className={`p-3 rounded-lg ${
+          isAttention 
+            ? "bg-amber-500/5 border border-amber-500/20" 
+            : "bg-green-500/5 border border-green-500/20"
+        }`}
+      >
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex-1">
+            <div className="flex items-center gap-2 flex-wrap">
+              <p className="font-medium text-foreground">{ing.nome}</p>
+              {ing.confianca && (
+                <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
+                  ing.confianca === "alta" 
+                    ? "bg-green-500/20 text-green-600" 
+                    : ing.confianca === "media"
+                    ? "bg-blue-500/20 text-blue-600"
+                    : "bg-amber-500/20 text-amber-600"
+                }`}>
+                  {ing.confianca === "alta" ? (
+                    <CheckCircle2 className="w-3 h-3" />
+                  ) : ing.confianca === "media" ? (
+                    <CircleAlert className="w-3 h-3" />
+                  ) : (
+                    <CircleDashed className="w-3 h-3" />
+                  )}
+                  {ing.confianca === "alta" ? "Alta" : ing.confianca === "media" ? "Média" : "Baixa"}
+                </span>
+              )}
+              {ing.tipo && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${
+                  ing.tipo === "in_natura" 
+                    ? "bg-green-500/10 text-green-600" 
+                    : "bg-purple-500/10 text-purple-600"
+                }`}>
+                  {ing.tipo === "in_natura" ? "In natura" : "Industrial"}
+                </span>
+              )}
+            </div>
+            {ing.quantidade_estimada && (
+              <p className="text-xs text-muted-foreground mt-1">{ing.quantidade_estimada}</p>
+            )}
+            {ing.alerta_seguranca && (
+              <p className="text-xs text-amber-600 mt-1.5 flex items-start gap-1">
+                <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                {ing.alerta_seguranca}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
+
     return (
       <div className="space-y-4 animate-fade-in">
-        {/* General Alerts */}
-        {analysis.alertas_gerais && analysis.alertas_gerais.length > 0 && (
-          <Card className="glass-card border-yellow-500/30">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
-                <AlertTriangle className="w-5 h-5" />
-                Alertas de Segurança
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              {analysis.alertas_gerais.map((alerta, index) => (
-                <div key={index} className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-foreground">
-                  {alerta}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+        {/* Section 1: Healthy Products */}
+        {healthyIngredients.length > 0 && (
+          <Collapsible defaultOpen>
+            <Card className="glass-card border-green-500/30">
+              <CollapsibleTrigger className="w-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 text-green-600">
+                    <ShieldCheck className="w-5 h-5" />
+                    Produtos Saudáveis ({healthyIngredients.length})
+                    <ChevronDown className="w-4 h-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-2 pt-0">
+                  {healthyIngredients.map((ing, index) => renderIngredientItem(ing, index, false))}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
         )}
 
-        {/* Ingredients found */}
-        <Card className="glass-card border-primary/20">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Refrigerator className="w-5 h-5 text-primary" />
-              Ingredientes Encontrados ({analysis.ingredientes_identificados.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {analysis.ingredientes_identificados.map((ing, index) => (
-              <div
-                key={index}
-                className={`p-3 rounded-lg ${
-                  ing.alerta_seguranca 
-                    ? "bg-yellow-500/5 border border-yellow-500/20" 
-                    : "bg-muted/50"
-                }`}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <p className="font-medium text-foreground">{ing.nome}</p>
-                      {ing.confianca && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                          ing.confianca === "alta" 
-                            ? "bg-green-500/20 text-green-600" 
-                            : ing.confianca === "media"
-                            ? "bg-blue-500/20 text-blue-600"
-                            : "bg-yellow-500/20 text-yellow-600"
-                        }`}>
-                          {ing.confianca === "alta" ? (
-                            <CheckCircle2 className="w-3 h-3" />
-                          ) : ing.confianca === "media" ? (
-                            <CircleAlert className="w-3 h-3" />
-                          ) : (
-                            <CircleDashed className="w-3 h-3" />
-                          )}
-                          {ing.confianca === "alta" ? "Alta" : ing.confianca === "media" ? "Média" : "Baixa"}
-                        </span>
-                      )}
-                      {ing.tipo && (
-                        <span className={`text-xs px-2 py-0.5 rounded-full ${
-                          ing.tipo === "in_natura" 
-                            ? "bg-green-500/10 text-green-600" 
-                            : "bg-purple-500/10 text-purple-600"
-                        }`}>
-                          {ing.tipo === "in_natura" ? "In natura" : "Industrial"}
-                        </span>
-                      )}
+        {/* Section 2: Products Needing Attention */}
+        {attentionIngredients.length > 0 && (
+          <Collapsible defaultOpen>
+            <Card className="glass-card border-amber-500/30">
+              <CollapsibleTrigger className="w-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 text-amber-600">
+                    <ShieldAlert className="w-5 h-5" />
+                    Requer Atenção ({attentionIngredients.length})
+                    <ChevronDown className="w-4 h-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-2 pt-0">
+                  {attentionIngredients.map((ing, index) => renderIngredientItem(ing, index, true))}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
+
+        {/* Section 3: General Safety Alerts */}
+        {analysis.alertas_gerais && analysis.alertas_gerais.length > 0 && (
+          <Collapsible defaultOpen>
+            <Card className="glass-card border-orange-500/30">
+              <CollapsibleTrigger className="w-full">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-base flex items-center gap-2 text-orange-600">
+                    <AlertTriangle className="w-5 h-5" />
+                    Alertas de Segurança ({analysis.alertas_gerais.length})
+                    <ChevronDown className="w-4 h-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                  </CardTitle>
+                </CardHeader>
+              </CollapsibleTrigger>
+              <CollapsibleContent>
+                <CardContent className="space-y-2 pt-0">
+                  {analysis.alertas_gerais.map((alerta, index) => (
+                    <div key={index} className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm text-foreground">
+                      {alerta}
                     </div>
-                    {ing.quantidade_estimada && (
-                      <p className="text-xs text-muted-foreground mt-1">{ing.quantidade_estimada}</p>
-                    )}
-                    {ing.alerta_seguranca && (
-                      <p className="text-xs text-yellow-600 mt-1.5 flex items-start gap-1">
-                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                        {ing.alerta_seguranca}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                  ))}
+                </CardContent>
+              </CollapsibleContent>
+            </Card>
+          </Collapsible>
+        )}
 
         {/* Generate recipes button */}
         <Button

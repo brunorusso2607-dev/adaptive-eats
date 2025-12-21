@@ -192,8 +192,19 @@ export default function FoodPhotoAnalyzer() {
 
   const handleModeChange = (newMode: string) => {
     if (newMode === "food" || newMode === "label" || newMode === "fridge") {
+      // Reset all states immediately and synchronously before changing mode
+      setImagePreview(null);
+      setFoodAnalysis(null);
+      setMetaDiaria(null);
+      setLabelAnalysis(null);
+      setNotFoodError(null);
+      setLabelStep("front");
+      setFrontImage(null);
+      setNeedsBackPhoto(false);
+      if (fileInputRef.current) fileInputRef.current.value = "";
+      if (cameraInputRef.current) cameraInputRef.current.value = "";
+      // Set mode last to ensure all states are reset before re-render
       setMode(newMode);
-      resetAnalysis();
     }
   };
 

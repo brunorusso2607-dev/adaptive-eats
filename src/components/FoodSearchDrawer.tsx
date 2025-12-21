@@ -209,13 +209,13 @@ export default function FoodSearchDrawer({
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="max-h-[90vh]">
-          <DrawerHeader className="pb-2">
+        <DrawerContent className="max-h-[85vh] flex flex-col">
+          <DrawerHeader className="pb-2 flex-shrink-0">
             <DrawerTitle>Registrar o que você comeu</DrawerTitle>
           </DrawerHeader>
 
-          <div className="px-4 pb-4 space-y-4">
-            {/* Search input */}
+          {/* Search input - fixed at top */}
+          <div className="px-4 pb-3 flex-shrink-0">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -223,21 +223,24 @@ export default function FoodSearchDrawer({
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
-                autoFocus
               />
             </div>
+          </div>
 
-            {/* Search results */}
-            {(isLoading || foods.length > 0) && (
-              <div className="bg-muted/50 rounded-lg border max-h-48 overflow-hidden">
-                <ScrollArea className="h-full max-h-48">
+          {/* Scrollable content area */}
+          <ScrollArea className="flex-1 px-4">
+            <div className="space-y-4 pb-4">
+
+              {/* Search results */}
+              {(isLoading || foods.length > 0) && (
+                <div className="bg-muted/50 rounded-lg border">
                   {isLoading ? (
                     <div className="p-4 text-center text-muted-foreground text-sm">
                       <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
                       Buscando...
                     </div>
                   ) : (
-                    <div className="p-2 space-y-1">
+                    <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
                       {foods.map((food) => (
                         <button
                           key={food.id}
@@ -253,9 +256,8 @@ export default function FoodSearchDrawer({
                       ))}
                     </div>
                   )}
-                </ScrollArea>
-              </div>
-            )}
+                </div>
+              )}
 
             {/* Selected foods */}
             {selectedFoods.length > 0 && (
@@ -347,8 +349,11 @@ export default function FoodSearchDrawer({
                 </div>
               </div>
             )}
+            </div>
+          </ScrollArea>
 
-            {/* Save button */}
+          {/* Save button - fixed at bottom */}
+          <div className="px-4 py-4 border-t flex-shrink-0 bg-background">
             <Button
               className="w-full gradient-primary"
               onClick={handleSave}

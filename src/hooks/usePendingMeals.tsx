@@ -267,16 +267,17 @@ export function usePendingMeals() {
         meal.actual_date && isMealPastOrCurrent(meal.meal_type, meal.actual_date)
       );
 
-      // Ordenar por data real e depois por ordem da refeição
+      // Ordenar por data real DECRESCENTE (mais recente primeiro) e depois por ordem da refeição DECRESCENTE
+      // Assim a refeição atual fica em primeiro, seguida das anteriores em ordem inversa
       const sortedMeals = filteredMeals.sort((a, b) => {
-        // Primeiro por data
+        // Primeiro por data (decrescente - mais recente primeiro)
         const dateA = a.actual_date?.getTime() || 0;
         const dateB = b.actual_date?.getTime() || 0;
         if (dateA !== dateB) {
-          return dateA - dateB;
+          return dateB - dateA; // Invertido para decrescente
         }
-        // Depois por ordem da refeição
-        return MEAL_ORDER.indexOf(a.meal_type) - MEAL_ORDER.indexOf(b.meal_type);
+        // Depois por ordem da refeição (decrescente - jantar antes de almoço)
+        return MEAL_ORDER.indexOf(b.meal_type) - MEAL_ORDER.indexOf(a.meal_type);
       });
 
       setPendingMeals(sortedMeals);

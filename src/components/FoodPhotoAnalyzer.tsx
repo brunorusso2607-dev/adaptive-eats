@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, ArrowRight, HelpCircle, CheckCircle2, CircleAlert, CircleDashed } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, ArrowRight, HelpCircle, CheckCircle2, CircleAlert, CircleDashed, Target, TrendingDown, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -22,6 +22,15 @@ type IntoleranceAlert = {
   intolerancia: string;
   risco: "alto" | "medio" | "baixo";
   motivo: string;
+};
+
+type MetaDiaria = {
+  meta_calorica_diaria: number;
+  calorias_esta_refeicao: number;
+  calorias_restantes: number;
+  percentual_consumido: number;
+  status: "leve" | "moderado" | "substancial" | "pesado";
+  mensagem: string;
 };
 
 type FoodAnalysis = {
@@ -87,6 +96,7 @@ export default function FoodPhotoAnalyzer() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [foodAnalysis, setFoodAnalysis] = useState<FoodAnalysis | null>(null);
+  const [metaDiaria, setMetaDiaria] = useState<MetaDiaria | null>(null);
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
   const [fridgeAnalysis, setFridgeAnalysis] = useState<FridgeAnalysis | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
@@ -152,6 +162,7 @@ export default function FoodPhotoAnalyzer() {
         }
 
         setFoodAnalysis(data.analysis);
+        setMetaDiaria(data.meta_diaria || null);
         toast.success("Análise concluída!");
       } else if (mode === "label") {
         const { data, error } = await supabase.functions.invoke("analyze-label-photo", {
@@ -217,6 +228,7 @@ export default function FoodPhotoAnalyzer() {
   const resetAnalysis = () => {
     setImagePreview(null);
     setFoodAnalysis(null);
+    setMetaDiaria(null);
     setLabelAnalysis(null);
     setFridgeAnalysis(null);
     setNotFoodError(null);
@@ -604,7 +616,85 @@ export default function FoodPhotoAnalyzer() {
                 </CardContent>
               </Card>
 
-              {/* Intolerance Alerts */}
+              {/* Meta Diária Card */}
+              {metaDiaria && (
+                <Card className={`glass-card border ${
+                  metaDiaria.calorias_restantes > 0 
+                    ? metaDiaria.status === 'leve' ? 'border-green-500/30' :
+                      metaDiaria.status === 'moderado' ? 'border-blue-500/30' :
+                      metaDiaria.status === 'substancial' ? 'border-yellow-500/30' : 'border-orange-500/30'
+                    : 'border-red-500/30'
+                }`}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Target className="w-5 h-5 text-primary" />
+                      Meta Diária
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-3">
+                    {/* Progress bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-xs text-muted-foreground">
+                        <span>Consumido nesta refeição</span>
+                        <span>{metaDiaria.percentual_consumido}% da meta</span>
+                      </div>
+                      <div className="h-3 bg-muted rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full rounded-full transition-all ${
+                            metaDiaria.percentual_consumido <= 30 ? 'bg-green-500' :
+                            metaDiaria.percentual_consumido <= 50 ? 'bg-blue-500' :
+                            metaDiaria.percentual_consumido <= 75 ? 'bg-yellow-500' :
+                            metaDiaria.percentual_consumido <= 100 ? 'bg-orange-500' : 'bg-red-500'
+                          }`}
+                          style={{ width: `${Math.min(metaDiaria.percentual_consumido, 100)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stats */}
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <p className="text-lg font-bold text-foreground">{metaDiaria.calorias_esta_refeicao}</p>
+                        <p className="text-xs text-muted-foreground">Esta refeição</p>
+                      </div>
+                      <div className="p-2 rounded-lg bg-muted/50">
+                        <p className="text-lg font-bold text-foreground">{metaDiaria.meta_calorica_diaria}</p>
+                        <p className="text-xs text-muted-foreground">Meta diária</p>
+                      </div>
+                      <div className={`p-2 rounded-lg ${
+                        metaDiaria.calorias_restantes > 0 ? 'bg-green-500/10' : 'bg-red-500/10'
+                      }`}>
+                        <p className={`text-lg font-bold ${
+                          metaDiaria.calorias_restantes > 0 ? 'text-green-600' : 'text-red-600'
+                        }`}>
+                          {metaDiaria.calorias_restantes > 0 ? (
+                            <span className="flex items-center justify-center gap-1">
+                              <TrendingDown className="w-4 h-4" />
+                              {metaDiaria.calorias_restantes}
+                            </span>
+                          ) : (
+                            <span className="flex items-center justify-center gap-1">
+                              <TrendingUp className="w-4 h-4" />
+                              +{Math.abs(metaDiaria.calorias_restantes)}
+                            </span>
+                          )}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {metaDiaria.calorias_restantes > 0 ? 'Restantes' : 'Excedido'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Message */}
+                    <p className={`text-sm ${
+                      metaDiaria.calorias_restantes > 0 ? 'text-muted-foreground' : 'text-red-600'
+                    }`}>
+                      {metaDiaria.mensagem}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
+
               {foodAnalysis.alertas_intolerancia && foodAnalysis.alertas_intolerancia.length > 0 && (
                 <Card className="glass-card border-red-500/20">
                   <CardHeader className="pb-2">

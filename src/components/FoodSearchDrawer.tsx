@@ -214,8 +214,8 @@ export default function FoodSearchDrawer({
             <DrawerTitle>Registrar o que você comeu</DrawerTitle>
           </DrawerHeader>
 
-          {/* Search input - fixed at top */}
-          <div className="px-4 pb-3 flex-shrink-0">
+          {/* Search input with dropdown results */}
+          <div className="px-4 pb-3 flex-shrink-0 relative z-20">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
@@ -225,38 +225,39 @@ export default function FoodSearchDrawer({
                 className="pl-9"
               />
             </div>
+            
+            {/* Search results dropdown - positioned absolutely */}
+            {(isLoading || foods.length > 0) && (
+              <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-64 overflow-y-auto">
+                {isLoading ? (
+                  <div className="p-4 text-center text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
+                    Buscando...
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {foods.map((food) => (
+                      <button
+                        key={food.id}
+                        onClick={() => handleAddFood(food)}
+                        className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                      >
+                        <div className="flex items-center gap-2">
+                          <Plus className="w-4 h-4 text-primary" />
+                          <span className="text-sm font-medium">{food.name}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">adicionar</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Scrollable content area */}
           <ScrollArea className="flex-1 px-4">
             <div className="space-y-4 pb-4">
-              {/* Search results */}
-              {(isLoading || foods.length > 0) && (
-                <div className="bg-muted/50 rounded-lg border">
-                  {isLoading ? (
-                    <div className="p-4 text-center text-muted-foreground text-sm">
-                      <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                      Buscando...
-                    </div>
-                  ) : (
-                    <div className="p-2 space-y-1 max-h-48 overflow-y-auto">
-                      {foods.map((food) => (
-                        <button
-                          key={food.id}
-                          onClick={() => handleAddFood(food)}
-                          className="w-full flex items-center justify-between p-2 hover:bg-muted rounded-md transition-colors text-left"
-                        >
-                          <div className="flex items-center gap-2">
-                            <Plus className="w-4 h-4 text-primary" />
-                            <span className="text-sm font-medium">{food.name}</span>
-                          </div>
-                          <span className="text-xs text-muted-foreground">adicionar</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Selected foods */}
               {selectedFoods.length > 0 && (

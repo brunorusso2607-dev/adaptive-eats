@@ -7,18 +7,21 @@ import {
   SkipForward, 
   Clock, 
   Flame, 
-  ChevronRight,
+  Eye,
   AlertTriangle,
   UtensilsCrossed,
   Loader2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNextMeal, MEAL_LABELS, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
+import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { toast } from "sonner";
+import MealConfirmDialog from "./MealConfirmDialog";
+import FoodSearchDrawer from "./FoodSearchDrawer";
+import MealDetailSheet from "./MealDetailSheet";
 
-interface NextMealCardProps {
-  onViewRecipe?: (meal: NextMealData) => void;
-}
+// eslint-disable-next-line @typescript-eslint/no-empty-object-type
+interface NextMealCardProps {}
 
 const statusStyles: Record<MealStatus, { border: string; bg: string; pulse: boolean }> = {
   on_time: { 
@@ -43,31 +46,70 @@ const statusStyles: Record<MealStatus, { border: string; bg: string; pulse: bool
   },
 };
 
-export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
+export default function NextMealCard(_props: NextMealCardProps) {
   const {
     nextMeal,
     isLoading,
     hasMealPlan,
     mealStatus,
     minutesOverdue,
-    isRegenerating,
-    markAsComplete,
     skipMeal,
-    regenerateMeal,
   } = useNextMeal();
 
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showFoodDrawer, setShowFoodDrawer] = useState(false);
+  const [showDetailSheet, setShowDetailSheet] = useState(false);
 
-  const handleMarkComplete = async () => {
+  const { saveConsumption } = useMealConsumption();
+
+  // Opens confirmation dialog
+  const handleFizClick = () => {
+    setShowConfirmDialog(true);
+  };
+
+  // User confirmed they followed the plan exactly
+  const handleConfirmAsPlanned = async () => {
+    if (!nextMeal) return;
+    
+    setShowConfirmDialog(false);
     setIsMarking(true);
-    const success = await markAsComplete();
+
+    // Save consumption with plan macros
+    const result = await saveConsumption({
+      mealPlanItemId: nextMeal.id,
+      followedPlan: true,
+      items: [],
+      totalCalories: nextMeal.recipe_calories,
+      totalProtein: nextMeal.recipe_protein,
+      totalCarbs: nextMeal.recipe_carbs,
+      totalFat: nextMeal.recipe_fat,
+    });
+
     setIsMarking(false);
-    if (success) {
+
+    if (result.success) {
       toast.success("Refeição marcada como feita! 🎉");
     } else {
       toast.error("Erro ao marcar refeição");
     }
+  };
+
+  // User wants to register different foods
+  const handleConfirmDifferent = () => {
+    setShowConfirmDialog(false);
+    setShowFoodDrawer(true);
+  };
+
+  // Trocar button opens food drawer directly
+  const handleTrocarClick = () => {
+    setShowFoodDrawer(true);
+  };
+
+  // When food drawer saves successfully
+  const handleFoodDrawerSuccess = () => {
+    // The drawer already marked the meal as complete
   };
 
   const handleSkip = async () => {
@@ -81,13 +123,9 @@ export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
     }
   };
 
-  const handleRegenerate = async () => {
-    const success = await regenerateMeal();
-    if (success) {
-      toast.success("Refeição substituída com sucesso!");
-    } else {
-      toast.error("Erro ao substituir refeição");
-    }
+  // View recipe details
+  const handleViewRecipe = () => {
+    setShowDetailSheet(true);
   };
 
   // Loading state
@@ -211,9 +249,20 @@ export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
         <div className="flex items-center gap-2">
           <Button
             size="sm"
+            variant="outline"
+            className="text-xs h-9"
+            onClick={handleViewRecipe}
+            disabled={isMarking || isSkipping}
+          >
+            <Eye className="w-4 h-4 mr-1.5" />
+            Ver
+          </Button>
+
+          <Button
+            size="sm"
             className="flex-1 gradient-primary border-0 text-xs h-9"
-            onClick={handleMarkComplete}
-            disabled={isMarking || isSkipping || isRegenerating}
+            onClick={handleFizClick}
+            disabled={isMarking || isSkipping}
           >
             {isMarking ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -229,17 +278,11 @@ export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
             size="sm"
             variant="outline"
             className="text-xs h-9"
-            onClick={handleRegenerate}
-            disabled={isMarking || isSkipping || isRegenerating}
+            onClick={handleTrocarClick}
+            disabled={isMarking || isSkipping}
           >
-            {isRegenerating ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4 mr-1.5" />
-                Trocar
-              </>
-            )}
+            <RefreshCw className="w-4 h-4 mr-1.5" />
+            Trocar
           </Button>
 
           <Button
@@ -247,7 +290,7 @@ export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
             variant="ghost"
             className="text-xs h-9 text-muted-foreground"
             onClick={handleSkip}
-            disabled={isMarking || isSkipping || isRegenerating}
+            disabled={isMarking || isSkipping}
           >
             {isSkipping ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -258,19 +301,30 @@ export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
               </>
             )}
           </Button>
-
-          {onViewRecipe && (
-            <Button
-              size="sm"
-              variant="ghost"
-              className="text-xs h-9 px-2"
-              onClick={() => onViewRecipe(nextMeal)}
-            >
-              <ChevronRight className="w-4 h-4" />
-            </Button>
-          )}
         </div>
       </CardContent>
+
+      {/* Dialogs and Sheets */}
+      <MealConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        mealName={nextMeal.recipe_name}
+        onConfirmAsPlanned={handleConfirmAsPlanned}
+        onConfirmDifferent={handleConfirmDifferent}
+      />
+
+      <FoodSearchDrawer
+        open={showFoodDrawer}
+        onOpenChange={setShowFoodDrawer}
+        mealPlanItemId={nextMeal.id}
+        onSuccess={handleFoodDrawerSuccess}
+      />
+
+      <MealDetailSheet
+        open={showDetailSheet}
+        onOpenChange={setShowDetailSheet}
+        meal={nextMeal}
+      />
     </Card>
   );
 }

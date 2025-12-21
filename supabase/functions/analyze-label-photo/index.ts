@@ -431,6 +431,18 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      
+      if (response.status === 503) {
+        return new Response(JSON.stringify({ 
+          success: false,
+          error: "O serviço de IA está temporariamente sobrecarregado. Por favor, tente novamente em alguns segundos.",
+          rateLimited: true
+        }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
       throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
     }
 

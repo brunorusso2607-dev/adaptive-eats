@@ -37,16 +37,19 @@ type FridgeSlot = {
   label: string;
   description: string;
   image: string | null;
+  required: boolean;
 };
 
 type AnalysisStep = "upload" | "ingredients" | "recipes";
+type FridgeFlowStep = "geladeira" | "extras" | "review";
 
 export default function FridgeScanner() {
   const [slots, setSlots] = useState<FridgeSlot[]>([
-    { id: "geladeira", label: "Geladeira", description: "Interior principal", image: null },
-    { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null },
-    { id: "freezer", label: "Freezer", description: "Congelador", image: null },
+    { id: "geladeira", label: "Geladeira", description: "Interior principal", image: null, required: true },
+    { id: "freezer", label: "Freezer", description: "Congelador", image: null, required: false },
+    { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null, required: false },
   ]);
+  const [flowStep, setFlowStep] = useState<FridgeFlowStep>("geladeira");
   const [activeSlot, setActiveSlot] = useState<FridgeSlot["id"] | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
@@ -58,6 +61,8 @@ export default function FridgeScanner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  const geladeiraSlot = slots.find(s => s.id === "geladeira");
+  const hasGeladeiraPhoto = geladeiraSlot?.image !== null;
   const hasAtLeastOnePhoto = slots.some(slot => slot.image !== null);
   const photoCount = slots.filter(slot => slot.image !== null).length;
 
@@ -232,10 +237,11 @@ export default function FridgeScanner() {
 
   const resetAll = () => {
     setSlots([
-      { id: "geladeira", label: "Geladeira", description: "Interior principal", image: null },
-      { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null },
-      { id: "freezer", label: "Freezer", description: "Congelador", image: null },
+      { id: "geladeira", label: "Geladeira", description: "Interior principal", image: null, required: true },
+      { id: "freezer", label: "Freezer", description: "Congelador", image: null, required: false },
+      { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null, required: false },
     ]);
+    setFlowStep("geladeira");
     setAnalysis(null);
     setCurrentStep("upload");
     setNotFridgeError(null);
@@ -263,8 +269,11 @@ export default function FridgeScanner() {
     </>
   );
 
-  // Step 1: Upload photos
+  // Step 1: Upload photos - Fluxo flexível
   if (currentStep === "upload") {
+    const freezerSlot = slots.find(s => s.id === "freezer");
+    const portaSlot = slots.find(s => s.id === "porta");
+    
     return (
       <div className="space-y-4">
         {renderHiddenInputs()}
@@ -272,68 +281,154 @@ export default function FridgeScanner() {
         <div className="text-center space-y-2 mb-4">
           <h2 className="text-xl font-bold text-foreground">Geladeira Inteligente</h2>
           <p className="text-sm text-muted-foreground">
-            Fotografe sua geladeira (mínimo 1 foto, até 3 áreas)
+            {flowStep === "geladeira" 
+              ? "Comece fotografando o interior da sua geladeira"
+              : `${photoCount}/3 áreas fotografadas`
+            }
           </p>
         </div>
 
-        {/* Photo slots */}
-        <div className="grid grid-cols-3 gap-3">
-          {slots.map((slot) => (
-            <Card 
-              key={slot.id} 
-              className={`glass-card overflow-hidden ${slot.image ? 'border-primary/50' : ''}`}
-            >
-              {slot.image ? (
-                <div className="relative aspect-square">
-                  <img 
-                    src={slot.image} 
-                    alt={slot.label}
-                    className="w-full h-full object-cover"
-                  />
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    className="absolute top-1 right-1 w-6 h-6"
-                    onClick={() => removePhoto(slot.id)}
-                  >
-                    <X className="w-3 h-3" />
-                  </Button>
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-2">
-                    <p className="text-xs text-white font-medium">{slot.label}</p>
-                  </div>
+        {/* Progress indicator */}
+        {hasGeladeiraPhoto && (
+          <div className="flex items-center justify-center gap-2 mb-2">
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+              geladeiraSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}>
+              {geladeiraSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '1'}
+            </div>
+            <div className="w-6 h-0.5 bg-muted" />
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+              freezerSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}>
+              {freezerSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '2'}
+            </div>
+            <div className="w-6 h-0.5 bg-muted" />
+            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
+              portaSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+            }`}>
+              {portaSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '3'}
+            </div>
+          </div>
+        )}
+
+        {/* Passo 1: Foto da Geladeira (obrigatório) */}
+        {flowStep === "geladeira" && !hasGeladeiraPhoto && (
+          <Card className="glass-card">
+            <CardContent className="p-6">
+              <div className="flex flex-col items-center gap-4">
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Refrigerator className="w-8 h-8 text-primary" />
                 </div>
-              ) : (
-                <CardContent className="p-3 flex flex-col items-center justify-center aspect-square gap-2">
-                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                    <Refrigerator className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                  <div className="text-center">
-                    <p className="text-xs font-medium text-foreground">{slot.label}</p>
-                    <p className="text-[10px] text-muted-foreground">{slot.description}</p>
-                  </div>
-                  <div className="flex gap-1">
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="w-7 h-7"
-                      onClick={() => openCamera(slot.id)}
+                <div className="text-center">
+                  <h3 className="font-semibold text-foreground">Passo 1: Interior da Geladeira</h3>
+                  <p className="text-sm text-muted-foreground mt-1">Abra a geladeira e fotografe o interior principal</p>
+                </div>
+                <Button
+                  className="w-full gradient-primary h-14"
+                  onClick={() => openCamera("geladeira")}
+                >
+                  <Camera className="w-5 h-5 mr-2" />
+                  Tirar Foto da Geladeira
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Após primeira foto: mostra resumo + opções extras */}
+        {hasGeladeiraPhoto && (
+          <>
+            {/* Fotos já tiradas */}
+            <div className="grid grid-cols-3 gap-2">
+              {slots.map((slot) => (
+                slot.image ? (
+                  <div key={slot.id} className="relative aspect-square rounded-lg overflow-hidden border-2 border-primary/50">
+                    <img 
+                      src={slot.image} 
+                      alt={slot.label}
+                      className="w-full h-full object-cover"
+                    />
+                    <Button
+                      variant="destructive"
+                      size="icon"
+                      className="absolute top-1 right-1 w-5 h-5"
+                      onClick={() => removePhoto(slot.id)}
                     >
-                      <Camera className="w-3 h-3" />
+                      <X className="w-3 h-3" />
                     </Button>
-                    <Button 
-                      variant="outline" 
-                      size="icon" 
-                      className="w-7 h-7"
-                      onClick={() => openGallery(slot.id)}
-                    >
-                      <Upload className="w-3 h-3" />
-                    </Button>
+                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
+                      <p className="text-[10px] text-white font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" />
+                        {slot.label}
+                      </p>
+                    </div>
+                  </div>
+                ) : null
+              ))}
+            </div>
+
+            {/* Opções extras (freezer e porta) */}
+            {(photoCount < 3) && (
+              <Card className="glass-card">
+                <CardContent className="p-4">
+                  <p className="text-sm text-muted-foreground text-center mb-3">
+                    Adicione mais fotos para receitas mais completas (opcional)
+                  </p>
+                  <div className="grid grid-cols-2 gap-3">
+                    {/* Freezer */}
+                    {!freezerSlot?.image && (
+                      <Button
+                        variant="outline"
+                        className="h-20 flex flex-col gap-1"
+                        onClick={() => openCamera("freezer")}
+                      >
+                        <Refrigerator className="w-5 h-5" />
+                        <span className="text-xs font-medium">Freezer</span>
+                        <span className="text-[10px] text-muted-foreground">Congelador</span>
+                      </Button>
+                    )}
+                    
+                    {/* Porta */}
+                    {!portaSlot?.image && (
+                      <Button
+                        variant="outline"
+                        className="h-20 flex flex-col gap-1"
+                        onClick={() => openCamera("porta")}
+                      >
+                        <Refrigerator className="w-5 h-5" />
+                        <span className="text-xs font-medium">Porta</span>
+                        <span className="text-[10px] text-muted-foreground">Prateleiras</span>
+                      </Button>
+                    )}
                   </div>
                 </CardContent>
+              </Card>
+            )}
+
+            {/* Botão Analisar */}
+            <Button
+              onClick={analyzePhotos}
+              disabled={isAnalyzing}
+              className="w-full gradient-primary h-14"
+              size="lg"
+            >
+              {isAnalyzing ? (
+                <>
+                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                  <span className="flex items-center gap-1">
+                    <User className="w-4 h-4" />
+                    Analisando {photoCount} área{photoCount > 1 ? 's' : ''}...
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Refrigerator className="w-5 h-5 mr-2" />
+                  Analisar Agora ({photoCount} foto{photoCount > 1 ? 's' : ''})
+                </>
               )}
-            </Card>
-          ))}
-        </div>
+            </Button>
+          </>
+        )}
 
         {/* Error message */}
         {notFridgeError && (
@@ -349,31 +444,11 @@ export default function FridgeScanner() {
           </Card>
         )}
 
-        {/* Analyze button */}
-        <Button
-          onClick={analyzePhotos}
-          disabled={!hasAtLeastOnePhoto || isAnalyzing}
-          className="w-full gradient-primary"
-          size="lg"
-        >
-          {isAnalyzing ? (
-            <>
-              <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              <span className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                Identificando ingredientes para seu perfil...
-              </span>
-            </>
-          ) : (
-            <>
-              <Refrigerator className="w-5 h-5 mr-2" />
-              Analisar {photoCount > 0 ? `(${photoCount} foto${photoCount > 1 ? 's' : ''})` : ''}
-            </>
-          )}
-        </Button>
-
         <p className="text-xs text-muted-foreground text-center">
-          📸 Dica: Fotografe as 3 áreas para receitas mais completas
+          📸 Dica: {hasGeladeiraPhoto 
+            ? "Quanto mais áreas fotografar, melhores as sugestões de receitas"
+            : "Fotografe o interior da geladeira para começar"
+          }
         </p>
       </div>
     );

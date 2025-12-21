@@ -408,12 +408,14 @@ export default function FoodPhotoAnalyzer() {
                 {mode === "food" ? (
                   <Camera className="w-10 h-10" />
                 ) : (
-                  getLabelStepInfo().icon
+                  <ScanBarcode className="w-10 h-10" />
                 )}
                 <span className="text-lg font-medium">
                   {mode === "food" 
                     ? "Tirar Foto do Prato" 
-                    : getLabelStepInfo().buttonText
+                    : labelStep === "back"
+                      ? "Fotografar Ingredientes"
+                      : "Tirar Foto do Rótulo"
                   }
                 </span>
               </Button>

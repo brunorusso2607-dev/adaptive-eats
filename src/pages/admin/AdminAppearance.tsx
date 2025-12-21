@@ -44,14 +44,6 @@ const PRESET_THEMES = [
     background: '#fffbeb',
     foreground: '#431407',
   },
-  {
-    name: 'Dark Mode',
-    primary: '#22c55e',
-    secondary: '#16a34a',
-    accent: '#4ade80',
-    background: '#0a0a0a',
-    foreground: '#fafafa',
-  },
 ];
 
 export default function AdminAppearance() {

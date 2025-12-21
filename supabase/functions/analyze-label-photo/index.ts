@@ -513,9 +513,9 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       analysis.requer_foto_ingredientes === true || 
       analysis.requer_foto === true ||
       (analysis.confianca === "baixa") ||
-      (typeof analysis.confianca === "number" && analysis.confianca < 85) ||
+      (typeof analysis.confianca === "number" && analysis.confianca < 90) ||
       (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) ||
-      (analysis.e_categoria_duvidosa === true && !analysis.ingredientes_visiveis && !analysis.selos_encontrados?.length);
+      (analysis.e_categoria_duvidosa === true || analysis.categoria_duvidosa === true) && (!analysis.ingredientes_visiveis && !analysis.selos_encontrados?.length);
     
     if (needsIngredientPhoto) {
       const produtoNome = analysis.produto_identificado || analysis.produto || 'produto';

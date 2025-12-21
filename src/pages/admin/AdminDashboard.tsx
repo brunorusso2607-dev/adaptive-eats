@@ -14,7 +14,9 @@ import {
   Wrench,
   Code2,
   Menu,
-  CreditCard
+  CreditCard,
+  MessageSquare,
+  AlertTriangle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -34,12 +36,20 @@ type SubMenuItem = {
 const mainMenuItems: SubMenuItem[] = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { path: "/admin/users", label: "Usuários", icon: Users },
-  { path: "/admin/analytics", label: "Relatórios", icon: BarChart3 },
+  {
+    label: "Relatórios",
+    icon: BarChart3,
+    subItems: [
+      { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+      { path: "/admin/ai-error-logs", label: "Erros de IA", icon: AlertTriangle },
+    ],
+  },
   {
     label: "Ferramentas",
     icon: Wrench,
     subItems: [
       { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
+      { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
     ],
   },
   {

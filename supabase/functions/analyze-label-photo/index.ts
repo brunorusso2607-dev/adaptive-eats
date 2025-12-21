@@ -183,60 +183,98 @@ serve(async (req) => {
 
     ingredientsToWatch = [...new Set([...ingredientsToWatch, ...dietaryIngredientsToWatch])];
 
-    // PROMPT DE VERIFICAÇÃO NEGATIVA COM FAIL-SAFE
-    const systemPrompt = `Você é um especialista em segurança alimentar, especializado em identificar ingredientes perigosos para pessoas com restrições alimentares.
+    // PROMPT INTELIGENTE DE IDENTIFICAÇÃO E ANÁLISE
+    const systemPrompt = `Você é um especialista em segurança alimentar e nutrição com visão computacional avançada.
 
 PERFIL DO USUÁRIO (CRÍTICO - MEMORIZE):
 - Intolerâncias/Alergias: ${intoleranceLabels.length > 0 ? intoleranceLabels.join(", ").toUpperCase() : "Nenhuma cadastrada"}
 - Preferência alimentar: ${dietaryPreference.toUpperCase()}
 ${dietaryRestrictions}
 
-⚠️ LISTA DE INGREDIENTES A PROCURAR ATIVAMENTE (inclui sinônimos e termos técnicos):
+⚠️ LISTA DE INGREDIENTES PROBLEMÁTICOS PARA ESTE USUÁRIO:
 ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}
 
-🔍 REGRAS DE ANÁLISE (SIGA À RISCA):
+🔍 SUA TAREFA (EXECUTE EM ORDEM):
 
-1. LEIA CADA INGREDIENTE DA LISTA - um por um, letra por letra
-2. Para CADA ingrediente encontrado, pergunte-se: "Este ingrediente está na lista de restrições do usuário?"
-3. SE NÃO RECONHECER um termo químico ou ingrediente técnico → CLASSIFIQUE COMO "risco_potencial" (não como seguro!)
-4. SE ENCONTRAR "pode conter traços de..." → CLASSIFIQUE COMO "risco_potencial"
-5. SE ENCONTRAR qualquer ingrediente da lista acima → CLASSIFIQUE COMO "contem"
+ETAPA 1 - IDENTIFICAÇÃO DO PRODUTO:
+Analise a imagem da embalagem. Mesmo que a tabela nutricional não esteja visível, utilize:
+- Branding e logo
+- Nome do produto
+- Características visuais da embalagem
+- Cores e design típicos da marca
 
-📊 SISTEMA DE 3 NÍVEIS DE RISCO (OBRIGATÓRIO):
+ETAPA 2 - RECUPERAR INFORMAÇÕES DO PRODUTO:
+Com base no seu conhecimento de banco de dados alimentares brasileiros:
+- Recupere os ingredientes padrão deste produto
+- Identifique a composição típica desta marca/produto
+- Considere variações comuns (ex: "com sal", "sem sal", "light")
+
+ETAPA 3 - VERIFICAR RESTRIÇÕES DO USUÁRIO:
+Para CADA ingrediente (da imagem OU do seu conhecimento do produto):
+- Verifique se está na lista de restrições acima
+- Classifique usando o sistema de 3 níveis
+
+📊 SISTEMA DE 3 NÍVEIS DE RISCO:
 
 🔴 "contem" = CERTEZA que contém ingrediente problemático
-   → Use quando o ingrediente aparece claramente na lista
+   → Ingrediente aparece claramente OU é ingrediente padrão conhecido do produto
 
 🟡 "risco_potencial" = INCERTEZA ou traços possíveis
-   → Use quando: termo técnico desconhecido, "pode conter", derivados suspeitos
+   → Termo técnico desconhecido, "pode conter", ou produto não 100% identificado
 
 🟢 "seguro" = CERTEZA de ausência
-   → APENAS quando você tem 100% de certeza que NÃO há nenhum ingrediente problemático
+   → 100% de certeza que NÃO há nenhum ingrediente problemático
+
+📊 NÍVEL DE CONFIANÇA DA IDENTIFICAÇÃO:
+- 90-100%: Produto identificado com certeza absoluta (marca + nome + variante claros)
+- 70-89%: Produto provavelmente identificado (marca visível, mas detalhes incertos)
+- 50-69%: Identificação parcial (apenas marca ou apenas tipo de produto)
+- 0-49%: Produto não identificado com segurança
 
 FORMATO DE RESPOSTA (JSON obrigatório):
 {
-  "produto": "Nome do produto (se identificável)",
+  "produto_identificado": "Nome completo do produto (ex: Margarina Qualy com Sal)",
+  "marca": "Nome da marca",
+  "confianca_identificacao": 0-100,
+  "fonte_informacao": "imagem" | "conhecimento" | "ambos",
   "encontrou_lista_ingredientes": true/false,
   "veredicto": "seguro" | "risco_potencial" | "contem",
   "ingredientes_analisados": [
     {
-      "nome": "nome exato do ingrediente como aparece no rótulo",
+      "nome": "nome do ingrediente",
       "status": "seguro" | "risco_potencial" | "contem",
-      "motivo": "explicação clara do motivo (sempre preencher se não for seguro)",
-      "restricao_afetada": "qual intolerância/preferência é afetada (se aplicável)"
+      "motivo": "explicação clara",
+      "restricao_afetada": "qual intolerância é afetada",
+      "fonte": "imagem" | "conhecimento"
     }
   ],
   "alertas": ["Lista de alertas CRÍTICOS em ordem de gravidade"],
-  "ingredientes_suspeitos": ["Lista de ingredientes que você não reconheceu ou tem dúvida"],
-  "recomendacao": "Recomendação clara e direta para o usuário"
+  "analise_seguranca": "Explicação curta sobre por que o produto é seguro ou não para as restrições do usuário",
+  "recomendacao": "Recomendação clara e direta para o usuário",
+  "precisa_tabela_nutricional": true/false
 }
 
-IMPORTANTE:
-- Se a imagem NÃO mostrar informações suficientes para análise (rótulo ilegível, produto não identificado), retorne:
-  {"erro": "lista_nao_encontrada", "mensagem": "Não reconheci o produto somente pela embalagem. Para a sua segurança, tire uma foto da tabela nutricional que consta em algum lugar da embalagem."}
+REGRAS ESPECIAIS:
 
-- Se a qualidade da imagem estiver ruim (borrada, escura, cortada), retorne:
-  {"erro": "qualidade_ruim", "mensagem": "A imagem está difícil de ler. Por favor, tire uma foto mais nítida e bem iluminada."}
+1. Se confianca_identificacao < 70 E não encontrou lista de ingredientes na imagem:
+   → Retorne precisa_tabela_nutricional: true
+   → veredicto deve ser "risco_potencial"
+
+2. Se identificar produto pelo branding mas confianca >= 80:
+   → Use seu conhecimento para análise mesmo sem tabela visível
+   → Informe que análise foi baseada em "conhecimento" do produto
+
+3. EXEMPLOS DE PRODUTOS CONHECIDOS (use seu conhecimento):
+   - Margarina Qualy tradicional → CONTÉM derivados de leite (lactose)
+   - Leite Ninho → CONTÉM lactose
+   - Pão de forma → Geralmente CONTÉM glúten
+   - Molho de soja → CONTÉM soja e geralmente glúten
+
+4. Se a qualidade da imagem estiver ruim (borrada, escura, cortada):
+   → Retorne: {"erro": "qualidade_ruim", "mensagem": "A imagem está difícil de ler. Por favor, tire uma foto mais nítida e bem iluminada."}
+
+5. Se REALMENTE não conseguir identificar o produto de forma alguma:
+   → Retorne: {"erro": "lista_nao_encontrada", "mensagem": "Não consegui identificar o produto. Para sua segurança, tire uma foto da tabela nutricional."}
 
 LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar algo perigoso. NA DÚVIDA, CLASSIFIQUE COMO "risco_potencial".`;
 
@@ -313,7 +351,7 @@ LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar 
         return new Response(JSON.stringify({
           success: false,
           needsBackPhoto: true,
-          message: analysis.mensagem || "Não reconheci o produto somente pela embalagem. Para a sua segurança, tire uma foto da tabela nutricional."
+          message: analysis.mensagem || "Não consegui identificar o produto. Para sua segurança, tire uma foto da tabela nutricional."
         }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
           status: 200,
@@ -341,6 +379,23 @@ LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar 
       });
     }
 
+    // Check if AI determined we need nutritional table (low confidence + no ingredient list)
+    if (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) {
+      logStep("Low confidence - needs nutritional table", { 
+        confianca: analysis.confianca_identificacao,
+        produto: analysis.produto_identificado 
+      });
+      
+      return new Response(JSON.stringify({
+        success: false,
+        needsBackPhoto: true,
+        message: `Identifiquei parcialmente como "${analysis.produto_identificado || 'produto desconhecido'}" (confiança: ${analysis.confianca_identificacao}%). Para sua segurança, tire uma foto da tabela nutricional.`
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // Normalize veredicto to match the 3-level system
     if (analysis.veredicto === "atencao") {
       analysis.veredicto = "risco_potencial";
@@ -360,10 +415,13 @@ LEMBRE-SE: É melhor alertar sobre um ingrediente duvidoso do que deixar passar 
     }
 
     logStep("Analysis complete", { 
+      produto: analysis.produto_identificado,
+      marca: analysis.marca,
+      confianca: analysis.confianca_identificacao,
+      fonte: analysis.fonte_informacao,
       veredicto: analysis.veredicto,
       ingredientCount: analysis.ingredientes_analisados?.length,
-      alertCount: analysis.alertas?.length,
-      suspiciousCount: analysis.ingredientes_suspeitos?.length
+      alertCount: analysis.alertas?.length
     });
 
     return new Response(JSON.stringify({

@@ -503,17 +503,30 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       });
     }
 
-    // Check if AI determined we need nutritional table (low confidence + no ingredient list)
-    if (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) {
-      logStep("Low confidence - needs nutritional table", { 
-        confianca: analysis.confianca_identificacao,
-        produto: analysis.produto_identificado 
+    // Check if AI determined we need ingredient photo (low confidence OR requer_foto_ingredientes)
+    if (analysis.requer_foto_ingredientes === true || 
+        (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) ||
+        (analysis.confianca === "baixa" && analysis.e_categoria_duvidosa === true)) {
+      logStep("Needs ingredient photo", { 
+        confianca: analysis.confianca_identificacao || analysis.confianca,
+        produto: analysis.produto_identificado,
+        requer_foto: analysis.requer_foto_ingredientes,
+        categoria_duvidosa: analysis.e_categoria_duvidosa,
+        motivo: analysis.motivo_duvida
       });
       
       return new Response(JSON.stringify({
         success: false,
         needsBackPhoto: true,
-        message: `Identifiquei parcialmente como "${analysis.produto_identificado || 'produto desconhecido'}" (confiança: ${analysis.confianca_identificacao}%). Para sua segurança, tire uma foto da tabela nutricional.`
+        message: analysis.mensagem_segunda_foto || analysis.motivo_duvida || 
+          `Identifiquei como "${analysis.produto_identificado || 'produto desconhecido'}". Para confirmar se é seguro para você, tire uma foto da tabela de ingredientes.`,
+        analysis: {
+          produto_identificado: analysis.produto_identificado,
+          marca: analysis.marca,
+          motivo_duvida: analysis.motivo_duvida,
+          intolerancia_em_duvida: analysis.intolerancia_em_duvida,
+          mensagem_segunda_foto: analysis.mensagem_segunda_foto
+        }
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

@@ -107,9 +107,17 @@ export default function NextMealCard({ onViewRecipe }: NextMealCardProps) {
     );
   }
 
-  // No meal plan state
+  // No meal plan state - show message for debugging (can be removed later)
   if (!hasMealPlan) {
-    return null;
+    return (
+      <Card className="glass-card border-border">
+        <CardContent className="p-4">
+          <p className="text-sm text-muted-foreground text-center">
+            Nenhum plano de refeições ativo
+          </p>
+        </CardContent>
+      </Card>
+    );
   }
 
   // All meals completed for today

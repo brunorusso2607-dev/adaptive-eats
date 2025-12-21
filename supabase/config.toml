@@ -17,3 +17,9 @@ verify_jwt = false
 
 [functions.analyze-fridge-photo]
 verify_jwt = false
+
+[functions.create-stripe-plan]
+verify_jwt = false
+
+[functions.list-stripe-plans]
+verify_jwt = false

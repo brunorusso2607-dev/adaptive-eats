@@ -13,7 +13,8 @@ import {
   ChevronDown,
   Wrench,
   Code2,
-  Menu
+  Menu,
+  CreditCard
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -37,7 +38,9 @@ const mainMenuItems: SubMenuItem[] = [
   {
     label: "Ferramentas",
     icon: Wrench,
-    subItems: [],
+    subItems: [
+      { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
+    ],
   },
   {
     label: "Pixels",

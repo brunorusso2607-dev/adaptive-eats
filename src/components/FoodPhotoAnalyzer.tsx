@@ -734,7 +734,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
             <div className="space-y-4 animate-fade-in">
               {/* Quick Intolerance Status Card - FIRST THING USER SEES */}
               {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`glass-card border-2 ${
+                <Card className={`glass-card border-2 animate-reveal animate-reveal-1 ${
                   perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
                     ? "border-red-500 bg-red-500/5" 
                     : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
@@ -787,7 +787,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
               {/* Personalized Profile Alerts - RIGHT AFTER STATUS CARD */}
               {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`glass-card border ${
+                <Card className={`glass-card border animate-reveal animate-reveal-2 ${
                   perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
                     ? "border-red-500/30" 
                     : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
@@ -825,7 +825,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               )}
 
               {/* Total macros card */}
-              <Card className="glass-card border-primary/20">
+              <Card className="glass-card border-primary/20 animate-reveal animate-reveal-3">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg">Total Estimado</CardTitle>
                 </CardHeader>
@@ -857,7 +857,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
               {/* Meta Diária Card */}
               {metaDiaria && (
-                <Card className={`glass-card border ${
+                <Card className={`glass-card border animate-reveal animate-reveal-4 ${
                   metaDiaria.calorias_restantes > 0 
                     ? metaDiaria.status === 'leve' ? 'border-green-500/30' :
                       metaDiaria.status === 'moderado' ? 'border-blue-500/30' :

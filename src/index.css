@@ -246,6 +246,18 @@
     animation: fade-in 0.5s ease-out forwards;
   }
 
+  /* Sequential card reveal animation */
+  .animate-reveal {
+    opacity: 0;
+    transform: translateY(8px);
+    animation: reveal 0.2s ease-out forwards;
+  }
+
+  .animate-reveal-1 { animation-delay: 0ms; }
+  .animate-reveal-2 { animation-delay: 75ms; }
+  .animate-reveal-3 { animation-delay: 150ms; }
+  .animate-reveal-4 { animation-delay: 225ms; }
+
   /* Elegant button styles */
   .btn-elegant {
     @apply px-8 py-4 rounded-full font-medium text-base transition-all duration-300;
@@ -300,6 +312,17 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }
 

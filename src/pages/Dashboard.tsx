@@ -18,6 +18,7 @@ import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
+import NextMealCard from "@/components/NextMealCard";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
 import { useActivityLog } from "@/hooks/useActivityLog";
+import { useNextMeal } from "@/hooks/useNextMeal";
 
 type Recipe = {
   name: string;
@@ -116,6 +118,9 @@ export default function Dashboard() {
   
   // Admin check
   const { isAdmin } = useAdmin();
+  
+  // Next meal hook for badge
+  const { mealStatus: nextMealStatus, hasMealPlan: hasActiveMealPlan } = useNextMeal();
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -407,6 +412,16 @@ export default function Dashboard() {
       toast.info("Checkout cancelado. Você pode tentar novamente quando quiser.");
     }
   }, [searchParams]);
+
+  // Toast de alerta para refeição pendente ao abrir o app
+  useEffect(() => {
+    if (hasActiveMealPlan && (nextMealStatus === "delayed" || nextMealStatus === "critical")) {
+      const message = nextMealStatus === "critical" 
+        ? "⚠️ Você tem uma refeição pendente há mais de 1 hora!"
+        : "🍽️ Você tem uma refeição pendente!";
+      toast.warning(message, { duration: 5000 });
+    }
+  }, [hasActiveMealPlan, nextMealStatus]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -710,6 +725,9 @@ export default function Dashboard() {
               />
             ) : (
             <>
+              {/* Card de Próxima Refeição */}
+              <NextMealCard />
+
               {/* Home Principal - 5 Opções */}
               <div className="space-y-6">
                 {/* Opção Principal: Gerar Receita com Ingredientes */}
@@ -1336,6 +1354,7 @@ export default function Dashboard() {
           activeTab={mobileActiveTab}
           onTabChange={handleMobileTabChange}
           hasMealPlan={hasMealPlan}
+          hasPendingMeal={hasActiveMealPlan && (nextMealStatus === "delayed" || nextMealStatus === "critical")}
         />
       )}
     </div>

@@ -2,9 +2,10 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, ArrowRight, HelpCircle, CheckCircle2, CircleAlert, CircleDashed, Target, TrendingDown, TrendingUp } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import FridgeScanner from "./FridgeScanner";
 
 type FoodItem = {
   item: string;
@@ -61,33 +62,6 @@ type LabelAnalysis = {
   recomendacao: string;
 };
 
-type FridgeIngredient = {
-  nome: string;
-  quantidade_estimada: string;
-  confianca?: "alta" | "media" | "baixa";
-  alerta_seguranca?: string | null;
-  tipo?: "in_natura" | "industrializado";
-};
-
-type FridgeRecipe = {
-  nome: string;
-  descricao: string;
-  tempo_preparo: number;
-  dificuldade: string;
-  ingredientes_da_geladeira: string[];
-  ingredientes_extras: string[];
-  calorias_estimadas: number;
-  instrucoes_resumidas: string[];
-  alerta_receita?: string | null;
-};
-
-type FridgeAnalysis = {
-  ingredientes_identificados: FridgeIngredient[];
-  receitas_sugeridas: FridgeRecipe[];
-  alertas_gerais?: string[];
-  dica: string;
-};
-
 type AnalysisMode = "food" | "label" | "fridge";
 type LabelStep = "front" | "back" | "complete";
 
@@ -98,7 +72,6 @@ export default function FoodPhotoAnalyzer() {
   const [foodAnalysis, setFoodAnalysis] = useState<FoodAnalysis | null>(null);
   const [metaDiaria, setMetaDiaria] = useState<MetaDiaria | null>(null);
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
-  const [fridgeAnalysis, setFridgeAnalysis] = useState<FridgeAnalysis | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
   
   // Label two-step flow
@@ -113,26 +86,22 @@ export default function FoodPhotoAnalyzer() {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith("image/")) {
       toast.error("Por favor, selecione uma imagem");
       return;
     }
 
-    // Validate file size (max 10MB)
     if (file.size > 10 * 1024 * 1024) {
       toast.error("Imagem muito grande. Máximo 10MB.");
       return;
     }
 
-    // Convert to base64 and compress if needed
     const reader = new FileReader();
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
       setImagePreview(base64);
       setFoodAnalysis(null);
       setLabelAnalysis(null);
-      setFridgeAnalysis(null);
       setNeedsBackPhoto(false);
     };
     reader.readAsDataURL(file);
@@ -175,7 +144,6 @@ export default function FoodPhotoAnalyzer() {
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
-        // Handle need for back photo
         if (data.needsBackPhoto) {
           setNeedsBackPhoto(true);
           setFrontImage(imagePreview);
@@ -187,7 +155,6 @@ export default function FoodPhotoAnalyzer() {
           return;
         }
 
-        // Handle quality issue
         if (data.qualityIssue) {
           setNotFoodError(data.message || "A imagem está difícil de ler. Tente uma foto mais nítida.");
           return;
@@ -201,21 +168,6 @@ export default function FoodPhotoAnalyzer() {
         setLabelAnalysis(data.analysis);
         setLabelStep("complete");
         toast.success("Verificação concluída!");
-      } else if (mode === "fridge") {
-        const { data, error } = await supabase.functions.invoke("analyze-fridge-photo", {
-          body: { imageBase64: imagePreview },
-        });
-
-        if (error) throw error;
-        if (data.error) throw new Error(data.error);
-
-        if (data.notFridge) {
-          setNotFoodError(data.message || "Não foi possível identificar uma geladeira ou despensa na imagem.");
-          return;
-        }
-
-        setFridgeAnalysis(data.analysis);
-        toast.success("Receitas sugeridas com sucesso!");
       }
     } catch (error) {
       console.error("Error analyzing image:", error);
@@ -230,7 +182,6 @@ export default function FoodPhotoAnalyzer() {
     setFoodAnalysis(null);
     setMetaDiaria(null);
     setLabelAnalysis(null);
-    setFridgeAnalysis(null);
     setNotFoodError(null);
     setLabelStep("front");
     setFrontImage(null);
@@ -330,6 +281,32 @@ export default function FoodPhotoAnalyzer() {
     };
   };
 
+  // If fridge mode is selected, render the dedicated FridgeScanner component
+  if (mode === "fridge") {
+    return (
+      <div className="space-y-4">
+        <Tabs value={mode} onValueChange={handleModeChange} className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="food" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Flame className="w-4 h-4" />
+              <span className="hidden sm:inline">Analisar</span> Comida
+            </TabsTrigger>
+            <TabsTrigger value="label" className="flex items-center gap-1 text-xs sm:text-sm">
+              <ScanBarcode className="w-4 h-4" />
+              <span className="hidden sm:inline">Verificar</span> Rótulo
+            </TabsTrigger>
+            <TabsTrigger value="fridge" className="flex items-center gap-1 text-xs sm:text-sm">
+              <Refrigerator className="w-4 h-4" />
+              Geladeira
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+        
+        <FridgeScanner />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4">
       {/* Tabs */}
@@ -395,15 +372,6 @@ export default function FoodPhotoAnalyzer() {
             )}
           </div>
         </TabsContent>
-
-        <TabsContent value="fridge" className="mt-4">
-          <div className="text-center space-y-2 mb-4">
-            <h2 className="text-xl font-bold text-foreground">Geladeira Inteligente</h2>
-            <p className="text-sm text-muted-foreground">
-              Fotografe sua geladeira e receba sugestões de receitas personalizadas
-            </p>
-          </div>
-        </TabsContent>
       </Tabs>
 
       {/* Show front image preview if in back step */}
@@ -439,17 +407,13 @@ export default function FoodPhotoAnalyzer() {
               >
                 {mode === "food" ? (
                   <Camera className="w-10 h-10" />
-                ) : mode === "label" ? (
-                  getLabelStepInfo().icon
                 ) : (
-                  <Refrigerator className="w-10 h-10" />
+                  getLabelStepInfo().icon
                 )}
                 <span className="text-lg font-medium">
                   {mode === "food" 
                     ? "Tirar Foto do Prato" 
-                    : mode === "label"
-                    ? getLabelStepInfo().buttonText
-                    : "Fotografar Geladeira"
+                    : getLabelStepInfo().buttonText
                   }
                 </span>
               </Button>
@@ -490,11 +454,9 @@ export default function FoodPhotoAnalyzer() {
             <p className="text-xs text-muted-foreground text-center mt-4">
               {mode === "food" 
                 ? "📸 Dica: Fotografe o prato de cima para melhor precisão"
-                : mode === "label"
-                ? labelStep === "back" 
+                : labelStep === "back" 
                   ? "📸 Dica: Fotografe a lista de ingredientes bem de perto e com boa iluminação"
                   : "📸 Dica: Fotografe o produto ou a lista de ingredientes"
-                : "📸 Dica: Abra a geladeira e fotografe todos os ingredientes visíveis"
               }
             </p>
           </CardContent>
@@ -506,7 +468,7 @@ export default function FoodPhotoAnalyzer() {
             <div className="relative">
               <img
                 src={imagePreview}
-                alt={mode === "food" ? "Foto do prato" : mode === "label" ? "Foto do rótulo" : "Foto da geladeira"}
+                alt={mode === "food" ? "Foto do prato" : "Foto do rótulo"}
                 className="w-full h-64 object-cover"
               />
               <Button
@@ -519,7 +481,7 @@ export default function FoodPhotoAnalyzer() {
               </Button>
             </div>
             
-            {/* Not food/label/fridge error message */}
+            {/* Not food/label error message */}
             {notFoodError && (
               <CardContent className="p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
@@ -539,7 +501,7 @@ export default function FoodPhotoAnalyzer() {
               </CardContent>
             )}
 
-            {!foodAnalysis && !labelAnalysis && !fridgeAnalysis && !notFoodError && (
+            {!foodAnalysis && !labelAnalysis && !notFoodError && (
               <CardContent className="p-4">
                 <Button
                   onClick={analyzeImage}
@@ -552,9 +514,7 @@ export default function FoodPhotoAnalyzer() {
                       <Loader2 className="w-5 h-5 mr-2 animate-spin" />
                       {mode === "food" 
                         ? "Analisando..." 
-                        : mode === "label" 
-                        ? "Verificando ingredientes..." 
-                        : "Buscando receitas..."
+                        : "Verificando ingredientes..."
                       }
                     </>
                   ) : (
@@ -564,15 +524,10 @@ export default function FoodPhotoAnalyzer() {
                           <Flame className="w-5 h-5 mr-2" />
                           Analisar Calorias
                         </>
-                      ) : mode === "label" ? (
+                      ) : (
                         <>
                           <ScanBarcode className="w-5 h-5 mr-2" />
                           Verificar Ingredientes
-                        </>
-                      ) : (
-                        <>
-                          <ChefHat className="w-5 h-5 mr-2" />
-                          Sugerir Receitas
                         </>
                       )}
                     </>
@@ -805,17 +760,17 @@ export default function FoodPhotoAnalyzer() {
 
               {/* Alerts */}
               {labelAnalysis.alertas && labelAnalysis.alertas.length > 0 && (
-                <Card className="glass-card border-red-500/20">
+                <Card className="glass-card border-yellow-500/20">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-red-500">
-                      <AlertCircle className="w-5 h-5" />
-                      Alertas Importantes
+                    <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
+                      <AlertTriangle className="w-5 h-5" />
+                      Alertas
                     </CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-2">
-                    {labelAnalysis.alertas.map((alerta, index) => (
-                      <div key={index} className="p-3 rounded-lg bg-red-500/10 text-sm text-foreground">
-                        {alerta}
+                    {labelAnalysis.alertas.map((alert, index) => (
+                      <div key={index} className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-foreground">
+                        {alert}
                       </div>
                     ))}
                   </CardContent>
@@ -824,20 +779,17 @@ export default function FoodPhotoAnalyzer() {
 
               {/* Suspicious ingredients */}
               {labelAnalysis.ingredientes_suspeitos && labelAnalysis.ingredientes_suspeitos.length > 0 && (
-                <Card className="glass-card border-yellow-500/20">
+                <Card className="glass-card border-red-500/20">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
-                      <HelpCircle className="w-5 h-5" />
-                      Ingredientes com Incerteza
+                    <CardTitle className="text-base flex items-center gap-2 text-red-600">
+                      <ShieldX className="w-5 h-5" />
+                      Ingredientes Suspeitos
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-xs text-muted-foreground mb-2">
-                      Não conseguimos identificar com certeza se estes ingredientes são seguros para você:
-                    </p>
                     <div className="flex flex-wrap gap-2">
                       {labelAnalysis.ingredientes_suspeitos.map((ing, index) => (
-                        <span key={index} className="px-2 py-1 rounded-full bg-yellow-500/20 text-yellow-600 text-sm">
+                        <span key={index} className="px-3 py-1 rounded-full bg-red-500/10 text-red-600 text-sm font-medium">
                           {ing}
                         </span>
                       ))}
@@ -846,38 +798,28 @@ export default function FoodPhotoAnalyzer() {
                 </Card>
               )}
 
-              {/* Ingredients analyzed */}
+              {/* All ingredients analyzed */}
               <Card className="glass-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Ingredientes Analisados</CardTitle>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <HelpCircle className="w-5 h-5 text-primary" />
+                    Ingredientes Analisados
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {labelAnalysis.ingredientes_analisados.map((ing, index) => (
                     <div
                       key={index}
-                      className={`p-3 rounded-lg ${
-                        ing.status === "contem" || ing.status === "evitar"
-                          ? "bg-red-500/5 border border-red-500/20"
-                          : ing.status === "risco_potencial" || ing.status === "atencao"
-                          ? "bg-yellow-500/5 border border-yellow-500/20"
-                          : "bg-muted/50"
-                      }`}
+                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
                     >
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-foreground">{ing.nome}</p>
-                            {getStatusBadge(ing.status)}
-                          </div>
-                          {ing.motivo && (
-                            <p className="text-xs text-muted-foreground mt-1">{ing.motivo}</p>
-                          )}
-                          {ing.restricao_afetada && (
-                            <p className="text-xs text-red-500 mt-0.5">
-                              Afeta: {ing.restricao_afetada}
-                            </p>
-                          )}
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium text-foreground">{ing.nome}</span>
+                          {getStatusBadge(ing.status)}
                         </div>
+                        {ing.motivo && (
+                          <p className="text-xs text-muted-foreground mt-1">{ing.motivo}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -889,7 +831,7 @@ export default function FoodPhotoAnalyzer() {
                 <CardContent className="p-4">
                   <div className="flex gap-2">
                     <ShieldCheck className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-foreground">{labelAnalysis.recomendacao}</p>
+                    <p className="text-sm text-muted-foreground">{labelAnalysis.recomendacao}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -902,203 +844,6 @@ export default function FoodPhotoAnalyzer() {
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
                 Verificar Outro Rótulo
-              </Button>
-            </div>
-          )}
-
-          {/* Fridge Analysis results */}
-          {fridgeAnalysis && (
-            <div className="space-y-4 animate-fade-in">
-              {/* General Alerts */}
-              {fridgeAnalysis.alertas_gerais && fridgeAnalysis.alertas_gerais.length > 0 && (
-                <Card className="glass-card border-yellow-500/30">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-yellow-600">
-                      <AlertTriangle className="w-5 h-5" />
-                      Alertas de Segurança
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {fridgeAnalysis.alertas_gerais.map((alerta, index) => (
-                      <div key={index} className="p-3 rounded-lg bg-yellow-500/10 border border-yellow-500/20 text-sm text-foreground">
-                        {alerta}
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Ingredients found with confidence */}
-              <Card className="glass-card border-primary/20">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Refrigerator className="w-5 h-5 text-primary" />
-                    Ingredientes Encontrados
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {fridgeAnalysis.ingredientes_identificados.map((ing, index) => (
-                    <div
-                      key={index}
-                      className={`p-3 rounded-lg ${
-                        ing.alerta_seguranca 
-                          ? "bg-yellow-500/5 border border-yellow-500/20" 
-                          : "bg-muted/50"
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <p className="font-medium text-foreground">{ing.nome}</p>
-                            {/* Confidence badge */}
-                            {ing.confianca && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full flex items-center gap-1 ${
-                                ing.confianca === "alta" 
-                                  ? "bg-green-500/20 text-green-600" 
-                                  : ing.confianca === "media"
-                                  ? "bg-blue-500/20 text-blue-600"
-                                  : "bg-yellow-500/20 text-yellow-600"
-                              }`}>
-                                {ing.confianca === "alta" ? (
-                                  <CheckCircle2 className="w-3 h-3" />
-                                ) : ing.confianca === "media" ? (
-                                  <CircleAlert className="w-3 h-3" />
-                                ) : (
-                                  <CircleDashed className="w-3 h-3" />
-                                )}
-                                {ing.confianca === "alta" ? "Alta" : ing.confianca === "media" ? "Média" : "Baixa"}
-                              </span>
-                            )}
-                            {/* Type badge */}
-                            {ing.tipo && (
-                              <span className={`text-xs px-2 py-0.5 rounded-full ${
-                                ing.tipo === "in_natura" 
-                                  ? "bg-green-500/10 text-green-600" 
-                                  : "bg-purple-500/10 text-purple-600"
-                              }`}>
-                                {ing.tipo === "in_natura" ? "In natura" : "Industrial"}
-                              </span>
-                            )}
-                          </div>
-                          {ing.quantidade_estimada && (
-                            <p className="text-xs text-muted-foreground mt-1">{ing.quantidade_estimada}</p>
-                          )}
-                          {/* Safety alert */}
-                          {ing.alerta_seguranca && (
-                            <p className="text-xs text-yellow-600 mt-1.5 flex items-start gap-1">
-                              <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                              {ing.alerta_seguranca}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Recipe suggestions */}
-              <Card className="glass-card">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <ChefHat className="w-5 h-5 text-primary" />
-                    Receitas Sugeridas
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {fridgeAnalysis.receitas_sugeridas.map((recipe, index) => (
-                    <div key={index} className="p-4 rounded-lg bg-muted/50 space-y-3">
-                      <div className="flex items-start justify-between">
-                        <div>
-                          <h4 className="font-semibold text-foreground">{recipe.nome}</h4>
-                          <p className="text-xs text-muted-foreground mt-0.5">{recipe.descricao}</p>
-                        </div>
-                        <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                          {recipe.calorias_estimadas} kcal
-                        </span>
-                      </div>
-                      
-                      {/* Recipe safety alert */}
-                      {recipe.alerta_receita && (
-                        <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                          <p className="text-xs text-yellow-600 flex items-start gap-1">
-                            <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                            {recipe.alerta_receita}
-                          </p>
-                        </div>
-                      )}
-                      
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <Clock className="w-3 h-3" />
-                          {recipe.tempo_preparo} min
-                        </span>
-                        <span className="flex items-center gap-1">
-                          <UtensilsCrossed className="w-3 h-3" />
-                          {recipe.dificuldade}
-                        </span>
-                      </div>
-
-                      <div>
-                        <p className="text-xs font-medium text-foreground mb-1">Ingredientes da geladeira:</p>
-                        <div className="flex flex-wrap gap-1">
-                          {recipe.ingredientes_da_geladeira.map((ing, i) => (
-                            <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-600">
-                              ✓ {ing}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-
-                      {recipe.ingredientes_extras.length > 0 && (
-                        <div>
-                          <p className="text-xs font-medium text-foreground mb-1">Você vai precisar:</p>
-                          <div className="flex flex-wrap gap-1">
-                            {recipe.ingredientes_extras.map((ing, i) => (
-                              <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-600">
-                                + {ing}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div>
-                        <p className="text-xs font-medium text-foreground mb-1">Como fazer:</p>
-                        <ol className="text-xs text-muted-foreground space-y-1">
-                          {recipe.instrucoes_resumidas.map((step, i) => (
-                            <li key={i} className="flex gap-2">
-                              <span className="text-primary font-medium">{i + 1}.</span>
-                              {step}
-                            </li>
-                          ))}
-                        </ol>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Tip */}
-              {fridgeAnalysis.dica && (
-                <Card className="glass-card border-primary/20">
-                  <CardContent className="p-4">
-                    <div className="flex gap-2">
-                      <ChefHat className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-muted-foreground">{fridgeAnalysis.dica}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Reset button */}
-              <Button
-                variant="outline"
-                onClick={resetAnalysis}
-                className="w-full"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Fotografar Outra Geladeira
               </Button>
             </div>
           )}

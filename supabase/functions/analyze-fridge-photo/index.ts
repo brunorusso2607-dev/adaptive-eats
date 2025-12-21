@@ -130,15 +130,19 @@ serve(async (req) => {
 
     logStep('Profile loaded', { intolerances, dietaryPreference, complexity, goal, context });
 
-    const { imageBase64 } = await req.json();
+    const { imageBase64, additionalImages, areas } = await req.json();
     
     if (!imageBase64) {
       throw new Error('Image data required');
     }
 
     const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, '');
+    const additionalBase64 = (additionalImages || []).map((img: string) => 
+      img.replace(/^data:image\/\w+;base64,/, '')
+    );
     
-    logStep('Analyzing fridge photo');
+    const areaLabels = areas || ['Geladeira'];
+    logStep('Analyzing fridge photo', { areas: areaLabels, imageCount: 1 + additionalBase64.length });
 
     // Build personalized prompt
     let dietaryContext = '';

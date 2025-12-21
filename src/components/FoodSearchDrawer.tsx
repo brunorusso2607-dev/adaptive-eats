@@ -21,10 +21,19 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+const MEAL_TYPE_LABELS: Record<string, string> = {
+  cafe_da_manha: "Café da Manhã",
+  almoco: "Almoço",
+  lanche: "Lanche",
+  jantar: "Jantar",
+  ceia: "Ceia",
+};
+
 interface FoodSearchDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mealPlanItemId: string;
+  mealType?: string;
   onSuccess: () => void;
 }
 
@@ -36,6 +45,7 @@ export default function FoodSearchDrawer({
   open,
   onOpenChange,
   mealPlanItemId,
+  mealType,
   onSuccess,
 }: FoodSearchDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -211,7 +221,9 @@ export default function FoodSearchDrawer({
       <Drawer open={open} onOpenChange={onOpenChange}>
         <DrawerContent className="h-[95vh] max-h-[95vh] flex flex-col">
           <DrawerHeader className="pb-1 pt-2 flex-shrink-0">
-            <DrawerTitle className="text-base">Registrar o que você comeu</DrawerTitle>
+            <DrawerTitle className="text-base">
+              {mealType ? `${MEAL_TYPE_LABELS[mealType] || mealType} - O que você comeu?` : "Registrar o que você comeu"}
+            </DrawerTitle>
           </DrawerHeader>
 
           {/* Search input with dropdown results */}

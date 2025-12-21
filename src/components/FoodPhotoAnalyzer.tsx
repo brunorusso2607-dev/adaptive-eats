@@ -446,9 +446,11 @@ export default function FoodPhotoAnalyzer() {
             <p className="text-xs text-muted-foreground text-center mt-4">
               {mode === "food" 
                 ? "📸 Dica: Fotografe o prato de cima para melhor precisão"
-                : labelStep === "back" 
-                  ? "📸 Dica: Fotografe a tabela nutricional bem de perto e com boa iluminação"
-                  : "📸 Dica: Fotografe o rótulo do produto"
+                : mode === "label"
+                  ? (labelStep === "back" 
+                      ? "📸 Dica: Fotografe a tabela nutricional bem de perto e com boa iluminação"
+                      : "📸 Dica: Fotografe o rótulo frontal do produto com boa iluminação")
+                  : "📸 Dica: Fotografe sua geladeira aberta para identificar os ingredientes"
               }
             </p>
           </CardContent>

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import FridgeScanner from "./FridgeScanner";
@@ -73,6 +73,11 @@ export default function FoodPhotoAnalyzer() {
   const [metaDiaria, setMetaDiaria] = useState<MetaDiaria | null>(null);
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<{
+    categoria: string;
+    descricao: string;
+    mensagem: string;
+  } | null>(null);
   
   // Label two-step flow
   const [labelStep, setLabelStep] = useState<LabelStep>("front");
@@ -115,6 +120,7 @@ export default function FoodPhotoAnalyzer() {
 
     setIsAnalyzing(true);
     setNotFoodError(null);
+    setCategoryError(null);
     
     try {
       if (mode === "food") {
@@ -160,6 +166,16 @@ export default function FoodPhotoAnalyzer() {
           return;
         }
 
+        // NEW: Handle category validation errors with dynamic feedback
+        if (data.categoryError) {
+          setCategoryError({
+            categoria: data.categoria_detectada || "desconhecido",
+            descricao: data.descricao_objeto || "",
+            mensagem: data.message || "Não foi possível identificar um produto alimentício."
+          });
+          return;
+        }
+
         if (data.notLabel) {
           setNotFoodError(data.message || "Não foi possível identificar um rótulo de ingredientes na imagem.");
           return;
@@ -183,6 +199,7 @@ export default function FoodPhotoAnalyzer() {
     setMetaDiaria(null);
     setLabelAnalysis(null);
     setNotFoodError(null);
+    setCategoryError(null);
     setLabelStep("front");
     setFrontImage(null);
     setNeedsBackPhoto(false);
@@ -198,6 +215,7 @@ export default function FoodPhotoAnalyzer() {
       setMetaDiaria(null);
       setLabelAnalysis(null);
       setNotFoodError(null);
+      setCategoryError(null);
       setLabelStep("front");
       setFrontImage(null);
       setNeedsBackPhoto(false);
@@ -265,6 +283,76 @@ export default function FoodPhotoAnalyzer() {
         return <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 font-medium">🔴 Contém</span>;
       default:
         return null;
+    }
+  };
+
+  // Helper para obter ícone e cor baseado na categoria detectada
+  const getCategoryFeedback = (categoria: string) => {
+    switch (categoria) {
+      case "planta_decorativa":
+        return {
+          icon: <Leaf className="w-8 h-8 text-green-500" />,
+          bgColor: "bg-green-500/10",
+          borderColor: "border-green-500/30",
+          title: "Planta Detectada",
+          emoji: "🌱"
+        };
+      case "alimento_natural":
+        return {
+          icon: <Flame className="w-8 h-8 text-orange-500" />,
+          bgColor: "bg-orange-500/10",
+          borderColor: "border-orange-500/30",
+          title: "Alimento Natural",
+          emoji: "🍎"
+        };
+      case "objeto_nao_alimenticio":
+        return {
+          icon: <Package className="w-8 h-8 text-blue-500" />,
+          bgColor: "bg-blue-500/10",
+          borderColor: "border-blue-500/30",
+          title: "Objeto Detectado",
+          emoji: "📦"
+        };
+      case "animal_vivo":
+        return {
+          icon: <Cat className="w-8 h-8 text-purple-500" />,
+          bgColor: "bg-purple-500/10",
+          borderColor: "border-purple-500/30",
+          title: "Animal Detectado",
+          emoji: "🐾"
+        };
+      case "pessoa_ambiente":
+        return {
+          icon: <User className="w-8 h-8 text-indigo-500" />,
+          bgColor: "bg-indigo-500/10",
+          borderColor: "border-indigo-500/30",
+          title: "Pessoa ou Ambiente",
+          emoji: "📸"
+        };
+      case "documento_outro":
+        return {
+          icon: <FileText className="w-8 h-8 text-gray-500" />,
+          bgColor: "bg-gray-500/10",
+          borderColor: "border-gray-500/30",
+          title: "Documento",
+          emoji: "📄"
+        };
+      case "imagem_ilegivel":
+        return {
+          icon: <ImageOff className="w-8 h-8 text-red-500" />,
+          bgColor: "bg-red-500/10",
+          borderColor: "border-red-500/30",
+          title: "Imagem Ilegível",
+          emoji: "📷"
+        };
+      default:
+        return {
+          icon: <AlertCircle className="w-8 h-8 text-yellow-500" />,
+          bgColor: "bg-yellow-500/10",
+          borderColor: "border-yellow-500/30",
+          title: "Conteúdo Não Identificado",
+          emoji: "❓"
+        };
     }
   };
 
@@ -475,8 +563,40 @@ export default function FoodPhotoAnalyzer() {
               </Button>
             </div>
             
+            {/* Category validation error - dynamic feedback */}
+            {categoryError && (
+              <CardContent className="p-4">
+                <div className={`flex flex-col items-center gap-4 text-center p-4 rounded-xl border ${getCategoryFeedback(categoryError.categoria).bgColor} ${getCategoryFeedback(categoryError.categoria).borderColor}`}>
+                  <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center shadow-sm">
+                    {getCategoryFeedback(categoryError.categoria).icon}
+                  </div>
+                  <div className="space-y-1">
+                    <h3 className="font-semibold text-foreground">
+                      {getCategoryFeedback(categoryError.categoria).emoji} {getCategoryFeedback(categoryError.categoria).title}
+                    </h3>
+                    {categoryError.descricao && (
+                      <p className="text-xs text-muted-foreground italic">
+                        Detectado: {categoryError.descricao}
+                      </p>
+                    )}
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {categoryError.mensagem}
+                  </p>
+                  <Button
+                    variant="default"
+                    onClick={resetAnalysis}
+                    className="mt-2 gradient-primary"
+                  >
+                    <RotateCcw className="w-4 h-4 mr-2" />
+                    Tentar Outra Foto
+                  </Button>
+                </div>
+              </CardContent>
+            )}
+
             {/* Not food/label error message */}
-            {notFoodError && (
+            {notFoodError && !categoryError && (
               <CardContent className="p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
@@ -495,7 +615,7 @@ export default function FoodPhotoAnalyzer() {
               </CardContent>
             )}
 
-            {!foodAnalysis && !labelAnalysis && !notFoodError && (
+            {!foodAnalysis && !labelAnalysis && !notFoodError && !categoryError && (
               <CardContent className="p-4">
                 <Button
                   onClick={analyzeImage}

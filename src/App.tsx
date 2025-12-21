@@ -16,6 +16,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminPlans from "./pages/admin/AdminPlans";
 import AdminPromptSimulator from "./pages/admin/AdminPromptSimulator";
 import AdminAIErrorLogs from "./pages/admin/AdminAIErrorLogs";
+import AdminPixels from "./pages/admin/AdminPixels";
 
 const queryClient = new QueryClient();
 
@@ -40,6 +41,7 @@ const App = () => (
             <Route path="plans" element={<AdminPlans />} />
             <Route path="prompt-simulator" element={<AdminPromptSimulator />} />
             <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
+            <Route path="pixels" element={<AdminPixels />} />
           </Route>
           
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

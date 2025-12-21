@@ -113,6 +113,9 @@ export default function Dashboard() {
   // Admin check
   const { isAdmin } = useAdmin();
   
+  // App version for debugging
+  const APP_VERSION = "1.0.2";
+  
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
@@ -1325,6 +1328,11 @@ export default function Dashboard() {
           hasMealPlan={hasMealPlan}
         />
       )}
+      
+      {/* Version indicator for debugging */}
+      <div className="fixed bottom-20 left-2 text-[10px] text-muted-foreground/50 pointer-events-none z-50">
+        v{APP_VERSION}
+      </div>
     </div>
   );
 }

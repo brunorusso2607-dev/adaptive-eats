@@ -173,13 +173,13 @@ const checkDietaryConflict = (
   
   if (dietaryPreference === "vegana") {
     return ANIMAL_INGREDIENTS.some(animal => 
-      normalizedIngredient.includes(animal) || animal.includes(normalizedIngredient)
+      normalizedIngredient.includes(animal)
     );
   }
   
   if (dietaryPreference === "vegetariana") {
     return MEAT_INGREDIENTS.some(meat => 
-      normalizedIngredient.includes(meat) || meat.includes(normalizedIngredient)
+      normalizedIngredient.includes(meat)
     );
   }
   

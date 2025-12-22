@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -82,36 +82,8 @@ export default function RecipeCategorySheet({
   const [expandedCategory, setExpandedCategory] = useState<string>("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
   const [ingredients, setIngredients] = useState<string[]>([]);
-  // Bloqueia scroll GLOBAL quando está na etapa de ingredientes
-  useEffect(() => {
-    if (step === "ingredients") {
-      // Adiciona classes ao html e body para bloquear scroll
-      const html = document.documentElement;
-      const body = document.body;
-      
-      html.classList.add('ingredients-scroll-lock');
-      body.classList.add('ingredients-scroll-lock');
-      
-      // Handler global para bloquear touchmove exceto no dropdown
-      const handleTouchMove = (e: TouchEvent) => {
-        const target = e.target as HTMLElement;
-        const isInsideScrollable = target.closest('.ios-scroll-fix');
-        if (!isInsideScrollable) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-      
-      // Usa capture para garantir que intercepta antes de qualquer outro handler
-      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
-      
-      return () => {
-        html.classList.remove('ingredients-scroll-lock');
-        body.classList.remove('ingredients-scroll-lock');
-        document.removeEventListener('touchmove', handleTouchMove, { capture: true } as EventListenerOptions);
-      };
-    }
-  }, [step]);
+  // O bloqueio de scroll agora é gerenciado pelo IngredientTagInput
+  // quando as sugestões estão visíveis
   
   // Usa o hook para buscar categorias filtradas pelo perfil
   const { categories: filteredCategories, isLoading: isCategoriesLoading, profile } = useFilteredRecipeCategories();

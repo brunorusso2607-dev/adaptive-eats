@@ -770,12 +770,9 @@ export default function IngredientTagInput({
               setInputValue(e.target.value);
               setShowSuggestions(true);
             }}
-            onFocus={(e) => {
+            onFocus={() => {
               setShowSuggestions(true);
-              // Scroll input into view on mobile when keyboard appears
-              setTimeout(() => {
-                e.target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-              }, 300);
+              // Removido scrollIntoView que interferia com o bloqueio de scroll
             }}
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : "Adicionar mais..."}

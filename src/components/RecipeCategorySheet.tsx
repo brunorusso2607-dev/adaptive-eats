@@ -82,21 +82,15 @@ export default function RecipeCategorySheet({
   const [expandedCategory, setExpandedCategory] = useState<string>("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
   const [ingredients, setIngredients] = useState<string[]>([]);
-  // Bloqueia scroll do body quando está na etapa de ingredientes
+  // Bloqueia scroll GLOBAL quando está na etapa de ingredientes
   useEffect(() => {
     if (step === "ingredients") {
-      // Salva o scroll atual e trava o body
-      const scrollY = window.scrollY;
-      const originalStyle = document.body.style.cssText;
+      // Adiciona classes ao html e body para bloquear scroll
+      const html = document.documentElement;
+      const body = document.body;
       
-      document.body.style.cssText = `
-        position: fixed;
-        top: -${scrollY}px;
-        left: 0;
-        right: 0;
-        overflow: hidden;
-        touch-action: none;
-      `;
+      html.classList.add('ingredients-scroll-lock');
+      body.classList.add('ingredients-scroll-lock');
       
       // Handler global para bloquear touchmove exceto no dropdown
       const handleTouchMove = (e: TouchEvent) => {
@@ -104,15 +98,17 @@ export default function RecipeCategorySheet({
         const isInsideScrollable = target.closest('.ios-scroll-fix');
         if (!isInsideScrollable) {
           e.preventDefault();
+          e.stopPropagation();
         }
       };
       
-      document.addEventListener('touchmove', handleTouchMove, { passive: false });
+      // Usa capture para garantir que intercepta antes de qualquer outro handler
+      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
       
       return () => {
-        document.body.style.cssText = originalStyle;
-        window.scrollTo(0, scrollY);
-        document.removeEventListener('touchmove', handleTouchMove);
+        html.classList.remove('ingredients-scroll-lock');
+        body.classList.remove('ingredients-scroll-lock');
+        document.removeEventListener('touchmove', handleTouchMove, { capture: true } as EventListenerOptions);
       };
     }
   }, [step]);

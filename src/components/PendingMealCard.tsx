@@ -38,6 +38,7 @@ interface PendingMealCardProps {
   onMarkComplete: (mealId: string) => Promise<boolean>;
   onSkip: (mealId: string) => Promise<boolean>;
   onRefetch: () => void;
+  onStreakRefresh?: () => void;
 }
 
 const statusStyles: Record<MealStatus, { border: string; bg: string }> = {
@@ -73,7 +74,8 @@ export default function PendingMealCard({
   meal, 
   onMarkComplete, 
   onSkip,
-  onRefetch 
+  onRefetch,
+  onStreakRefresh
 }: PendingMealCardProps) {
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
@@ -117,6 +119,7 @@ export default function PendingMealCard({
     if (result.success) {
       toast.success("Refeição marcada como feita! 🎉");
       onRefetch();
+      onStreakRefresh?.();
     } else {
       toast.error("Erro ao marcar refeição");
     }
@@ -133,6 +136,7 @@ export default function PendingMealCard({
 
   const handleFoodDrawerSuccess = () => {
     onRefetch();
+    onStreakRefresh?.();
   };
 
   const handleSkip = async () => {

@@ -63,7 +63,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isLoading } = useAdmin();
-  const [openMenus, setOpenMenus] = useState<string[]>(["Menu Principal"]);
+  const [openMenus, setOpenMenus] = useState<string[]>(["Início"]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -80,11 +80,6 @@ export default function AdminDashboard() {
 
   const isItemActive = (item: SubMenuItem) => {
     if (!item.path) return false;
-    // Dashboard só fica ativo se clicar nele, não por padrão
-    if (item.exact && item.path === "/admin") {
-      // Só ativa se veio de um clique (não na primeira carga)
-      return false;
-    }
     return item.exact
       ? location.pathname === item.path
       : location.pathname.startsWith(item.path) && item.path !== "/admin";
@@ -146,27 +141,27 @@ export default function AdminDashboard() {
         {/* Navigation Menu - Single Main Menu with all items inside */}
         <nav className="mb-6">
           <Collapsible
-            open={openMenus.includes("Menu Principal")}
-            onOpenChange={() => toggleMenu("Menu Principal")}
+            open={openMenus.includes("Início")}
+            onOpenChange={() => toggleMenu("Início")}
           >
             <CollapsibleTrigger asChild>
               <Button
                 variant="ghost"
                 className={cn(
                   "w-full justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all",
-                  openMenus.includes("Menu Principal")
+                  openMenus.includes("Início")
                     ? "bg-primary/10 text-primary"
                     : "bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground"
                 )}
               >
                 <div className="flex items-center gap-2">
                   <Menu className="w-4 h-4" />
-                  Menu Principal
+                  Início
                 </div>
                 <ChevronDown
                   className={cn(
                     "w-4 h-4 transition-transform duration-200",
-                    openMenus.includes("Menu Principal") && "rotate-180"
+                    openMenus.includes("Início") && "rotate-180"
                   )}
                 />
               </Button>

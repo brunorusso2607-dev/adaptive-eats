@@ -13,7 +13,7 @@ interface MobileBottomNavProps {
 const navItems = [
   { id: "home" as MobileNavTab, label: "Home", icon: Home },
   { id: "meal-plan" as MobileNavTab, label: "Plano", icon: Calendar },
-  { id: "scan" as MobileNavTab, label: "Foto", icon: Camera },
+  { id: "scan" as MobileNavTab, label: "Foto", icon: Camera, isMain: true },
   { id: "favorites" as MobileNavTab, label: "Favoritos", icon: Heart },
   { id: "profile" as MobileNavTab, label: "Perfil", icon: User },
 ];
@@ -29,6 +29,26 @@ export default function MobileBottomNav({
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const showBadge = item.id === "home" && hasPendingMeal && !isActive;
+          
+          // Botão central destacado (FAB)
+          if (item.isMain) {
+            return (
+              <button
+                key={item.id}
+                onClick={() => onTabChange(item.id)}
+                className={cn(
+                  "relative flex items-center justify-center -mt-8 transition-all",
+                  "w-14 h-14 rounded-full",
+                  "bg-primary text-primary-foreground",
+                  "shadow-lg shadow-primary/30",
+                  "hover:scale-105 active:scale-95",
+                  isActive && "ring-4 ring-primary/20"
+                )}
+              >
+                <item.icon className="w-6 h-6" strokeWidth={2.5} />
+              </button>
+            );
+          }
           
           return (
             <button

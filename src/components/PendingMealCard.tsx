@@ -225,59 +225,49 @@ export default function PendingMealCard({
         {/* Ações */}
         <div className="flex items-center gap-2">
           <Button
-            size="sm"
+            size="icon"
             variant="outline"
-            className="text-xs h-9"
+            className="h-9 w-9"
             onClick={handleViewRecipe}
             disabled={isMarking || isSkipping}
           >
-            <Eye className="w-4 h-4 mr-1.5" />
-            Ver
+            <Eye className="w-4 h-4" />
           </Button>
 
           <Button
-            size="sm"
-            className="flex-1 gradient-primary border-0 text-xs h-9"
+            size="icon"
+            variant="outline"
+            className="h-9 w-9"
+            onClick={handleTrocarClick}
+            disabled={isMarking || isSkipping}
+          >
+            <RefreshCw className="w-4 h-4" />
+          </Button>
+
+          <Button
+            size="icon"
+            className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 border-0"
             onClick={handleFizClick}
             disabled={isMarking || isSkipping}
           >
             {isMarking ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin text-white" />
             ) : (
-              <>
-                <Check className="w-4 h-4 mr-1.5" />
-                Fiz
-              </>
+              <Check className="w-4 h-4 text-white" />
             )}
           </Button>
 
-          <Button
-            size="sm"
-            variant="outline"
-            className="text-xs h-9"
-            onClick={handleTrocarClick}
-            disabled={isMarking || isSkipping}
-          >
-            <RefreshCw className="w-4 h-4 mr-1.5" />
-            Trocar
-          </Button>
-
-          <Button
-            size="sm"
-            variant="ghost"
-            className="text-xs h-9 text-muted-foreground"
+          <button
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 h-9 flex items-center disabled:opacity-50"
             onClick={handleSkip}
             disabled={isMarking || isSkipping}
           >
             {isSkipping ? (
               <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <>
-                <SkipForward className="w-4 h-4 mr-1.5" />
-                Pular
-              </>
+              "Pular"
             )}
-          </Button>
+          </button>
         </div>
       </CardContent>
 

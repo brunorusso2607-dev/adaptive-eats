@@ -3,85 +3,77 @@ import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek, format, subDays, parseISO, differenceInDays } from "date-fns";
 import confetti from "canvas-confetti";
 
-// Definição de conquistas disponíveis
-export const ACHIEVEMENTS = {
+// Health milestones - professional naming, no emojis
+export const HEALTH_MILESTONES = {
   first_meal: {
     key: "first_meal",
-    name: "Primeira Refeição",
+    name: "Primeiro Passo",
     description: "Registrou sua primeira refeição",
-    icon: "🍽️",
     xp: 50,
   },
   streak_3: {
     key: "streak_3",
-    name: "3 Dias Seguidos",
-    description: "Manteve a sequência por 3 dias",
-    icon: "🔥",
+    name: "3 Dias Consistente",
+    description: "Manteve a rotina por 3 dias seguidos",
     xp: 100,
   },
   streak_7: {
     key: "streak_7",
-    name: "Semana Perfeita",
-    description: "7 dias seguidos de refeições",
-    icon: "⭐",
+    name: "Semana Completa",
+    description: "7 dias de disciplina alimentar",
     xp: 200,
   },
   streak_14: {
     key: "streak_14",
-    name: "Duas Semanas!",
+    name: "Duas Semanas",
     description: "14 dias de consistência",
-    icon: "🌟",
     xp: 400,
   },
   streak_30: {
     key: "streak_30",
-    name: "Mês Completo",
-    description: "30 dias de dedicação",
-    icon: "🏆",
+    name: "Mês de Foco",
+    description: "30 dias de dedicação à sua saúde",
     xp: 1000,
   },
   adherence_80: {
     key: "adherence_80",
     name: "Aderência 80%",
     description: "Alcançou 80% de aderência semanal",
-    icon: "🎯",
     xp: 150,
   },
   adherence_100: {
     key: "adherence_100",
-    name: "Semana Perfeita",
+    name: "Aderência Total",
     description: "100% de aderência na semana",
-    icon: "💯",
     xp: 300,
   },
   meals_10: {
     key: "meals_10",
     name: "10 Refeições",
-    description: "Completou 10 refeições",
-    icon: "🥗",
+    description: "Completou 10 refeições registradas",
     xp: 100,
   },
   meals_50: {
     key: "meals_50",
     name: "50 Refeições",
-    description: "Completou 50 refeições",
-    icon: "🍳",
+    description: "Completou 50 refeições registradas",
     xp: 300,
   },
   meals_100: {
     key: "meals_100",
     name: "100 Refeições",
-    description: "Completou 100 refeições",
-    icon: "👨‍🍳",
+    description: "Completou 100 refeições registradas",
     xp: 500,
   },
 } as const;
 
-export type AchievementKey = keyof typeof ACHIEVEMENTS;
+// Legacy export for backwards compatibility
+export const ACHIEVEMENTS = HEALTH_MILESTONES;
 
-// Cálculo de nível baseado em XP
+export type AchievementKey = keyof typeof HEALTH_MILESTONES;
+
+// Level calculation based on XP
 export function calculateLevel(xp: number): { level: number; xpInLevel: number; xpForNextLevel: number; progress: number } {
-  // Fórmula: XP necessário = 100 * nível^1.5
   let level = 1;
   let totalXpForLevel = 0;
   
@@ -159,9 +151,8 @@ export function useGamification() {
     for (const { key, condition } of achievementsToCheck) {
       if (condition && !existingAchievements.includes(key)) {
         newAchievements.push(key);
-        xpGained += ACHIEVEMENTS[key].xp;
+        xpGained += HEALTH_MILESTONES[key].xp;
 
-        // Inserir conquista no banco
         await supabase.from("user_achievements").insert({
           user_id: userId,
           achievement_key: key,
@@ -185,7 +176,6 @@ export function useGamification() {
       const weekStart = startOfWeek(today, { weekStartsOn: 1 });
       const weekEnd = endOfWeek(today, { weekStartsOn: 1 });
 
-      // Buscar dados em paralelo
       const [
         consumptionsResult,
         mealPlanItemsResult,
@@ -228,7 +218,6 @@ export function useGamification() {
       const gamification = gamificationResult.data;
       const achievements = (achievementsResult.data || []).map((a: any) => a.achievement_key);
 
-      // Calcular streak atual
       let currentStreak = 0;
       let longestStreak = gamification?.longest_streak || 0;
       const totalMealsCompleted = consumptions.length;
@@ -257,7 +246,6 @@ export function useGamification() {
           }
         }
 
-        // Calcular longest streak histórico
         const sortedDates = Array.from(consumptionsByDate.keys()).sort();
         let tempStreak = 0;
         let prevDate: Date | null = null;
@@ -280,14 +268,12 @@ export function useGamification() {
         longestStreak = Math.max(longestStreak, tempStreak, currentStreak);
       }
 
-      // Calcular aderência semanal
       const mealsPlannedThisWeek = mealPlanItems.length;
       const mealsCompletedThisWeek = mealPlanItems.filter((item: any) => item.completed_at !== null).length;
       const weeklyAdherence = mealsPlannedThisWeek > 0
         ? Math.round((mealsCompletedThisWeek / mealsPlannedThisWeek) * 100)
         : 0;
 
-      // Verificar novas conquistas
       const { newAchievements, xpGained } = await checkAndUnlockAchievements(
         userId,
         currentStreak,
@@ -297,15 +283,13 @@ export function useGamification() {
         achievements
       );
 
-      // Calcular XP total (base + conquistas + refeições)
-      const baseXp = totalMealsCompleted * 10; // 10 XP por refeição
+      const baseXp = totalMealsCompleted * 10;
       const achievementXp = [...achievements, ...newAchievements].reduce((sum, key) => {
-        const achievement = ACHIEVEMENTS[key as AchievementKey];
+        const achievement = HEALTH_MILESTONES[key as AchievementKey];
         return sum + (achievement?.xp || 0);
       }, 0);
       const totalXp = baseXp + achievementXp;
 
-      // Atualizar gamification no banco se mudou
       const currentData = gamification || { total_xp: 0, longest_streak: 0, total_meals_completed: 0 };
       if (
         totalXp !== currentData.total_xp ||
@@ -322,7 +306,6 @@ export function useGamification() {
         });
       }
 
-      // Celebrar novas conquistas
       if (newAchievements.length > 0) {
         confetti({
           particleCount: 100,

@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, KeyboardEvent, useMemo } from "react";
+import { useState, useRef, useEffect, KeyboardEvent, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { X, Plus, Search, AlertTriangle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
@@ -726,45 +726,81 @@ export default function IngredientTagInput({
   const hasSuggestions = processedSuggestions.safe.length > 0 || processedSuggestions.conflicting.length > 0;
   const hasIntolerances = userProfile?.intolerances && userProfile.intolerances.length > 0 && !userProfile.intolerances.includes("nenhuma");
 
+  // Ref para rastrear se o bloqueio está ativo (evita re-runs desnecessários)
+  const scrollLockActiveRef = useRef(false);
+  const touchMoveHandlerRef = useRef<((e: TouchEvent) => void) | null>(null);
+  const wheelHandlerRef = useRef<((e: WheelEvent) => void) | null>(null);
+
   // Bloqueia scroll global quando as sugestões estão visíveis
+  // Usa refs para evitar cleanup/setup desnecessários que causam o bug
   useEffect(() => {
-    if (showSuggestions && hasSuggestions) {
+    const shouldLock = showSuggestions && hasSuggestions;
+    
+    if (shouldLock && !scrollLockActiveRef.current) {
+      // Ativar bloqueio
+      scrollLockActiveRef.current = true;
+      
       const html = document.documentElement;
       const body = document.body;
       
-      // Adiciona classes para bloquear scroll
       html.classList.add('ingredients-scroll-lock');
       body.classList.add('ingredients-scroll-lock');
       
       // Handler global com capture para interceptar antes de qualquer outro
-      const handleTouchMove = (e: TouchEvent) => {
+      touchMoveHandlerRef.current = (e: TouchEvent) => {
         const target = e.target as HTMLElement;
-        // Permite scroll apenas dentro do dropdown (ios-scroll-fix)
         if (!target.closest('.ios-scroll-fix')) {
           e.preventDefault();
           e.stopPropagation();
         }
       };
       
-      // Handler para prevenir scroll via wheel também
-      const handleWheel = (e: WheelEvent) => {
+      wheelHandlerRef.current = (e: WheelEvent) => {
         const target = e.target as HTMLElement;
         if (!target.closest('.ios-scroll-fix')) {
           e.preventDefault();
         }
       };
       
-      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
-      document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+      document.addEventListener('touchmove', touchMoveHandlerRef.current, { passive: false, capture: true });
+      document.addEventListener('wheel', wheelHandlerRef.current, { passive: false, capture: true });
       
-      return () => {
-        html.classList.remove('ingredients-scroll-lock');
-        body.classList.remove('ingredients-scroll-lock');
-        document.removeEventListener('touchmove', handleTouchMove, { capture: true } as EventListenerOptions);
-        document.removeEventListener('wheel', handleWheel, { capture: true } as EventListenerOptions);
-      };
+    } else if (!shouldLock && scrollLockActiveRef.current) {
+      // Desativar bloqueio
+      scrollLockActiveRef.current = false;
+      
+      const html = document.documentElement;
+      const body = document.body;
+      
+      html.classList.remove('ingredients-scroll-lock');
+      body.classList.remove('ingredients-scroll-lock');
+      
+      if (touchMoveHandlerRef.current) {
+        document.removeEventListener('touchmove', touchMoveHandlerRef.current, { capture: true } as EventListenerOptions);
+        touchMoveHandlerRef.current = null;
+      }
+      if (wheelHandlerRef.current) {
+        document.removeEventListener('wheel', wheelHandlerRef.current, { capture: true } as EventListenerOptions);
+        wheelHandlerRef.current = null;
+      }
     }
-  }, [showSuggestions, hasSuggestions]);
+    
+    // Cleanup ao desmontar o componente
+    return () => {
+      if (scrollLockActiveRef.current) {
+        scrollLockActiveRef.current = false;
+        document.documentElement.classList.remove('ingredients-scroll-lock');
+        document.body.classList.remove('ingredients-scroll-lock');
+        
+        if (touchMoveHandlerRef.current) {
+          document.removeEventListener('touchmove', touchMoveHandlerRef.current, { capture: true } as EventListenerOptions);
+        }
+        if (wheelHandlerRef.current) {
+          document.removeEventListener('wheel', wheelHandlerRef.current, { capture: true } as EventListenerOptions);
+        }
+      }
+    };
+  }); // Sem dependências - roda em todo render mas usa refs para controlar
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>

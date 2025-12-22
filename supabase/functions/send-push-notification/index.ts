@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { encode as base64Encode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -20,6 +21,112 @@ interface SendPushRequest {
   payload: PushPayload;
 }
 
+// Convert base64url to Uint8Array
+function base64UrlDecode(str: string): Uint8Array {
+  // Add padding if needed
+  str = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (str.length % 4) str += '=';
+  
+  const binaryString = atob(str);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+// Convert Uint8Array to base64url
+function base64UrlEncode(bytes: Uint8Array): string {
+  const binary = Array.from(bytes).map(b => String.fromCharCode(b)).join('');
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// Convert ArrayBuffer to base64url
+function arrayBufferToBase64Url(buffer: ArrayBuffer): string {
+  return base64UrlEncode(new Uint8Array(buffer));
+}
+
+// Create VAPID JWT for push authentication
+async function createVapidAuthHeader(
+  endpoint: string,
+  vapidPublicKey: string,
+  vapidPrivateKey: string,
+  subject: string
+): Promise<string> {
+  const url = new URL(endpoint);
+  const audience = `${url.protocol}//${url.host}`;
+  
+  // JWT Header
+  const header = { typ: 'JWT', alg: 'ES256' };
+  const headerB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(header)));
+  
+  // JWT Payload
+  const now = Math.floor(Date.now() / 1000);
+  const payload = {
+    aud: audience,
+    exp: now + 12 * 60 * 60, // 12 hours
+    sub: subject
+  };
+  const payloadB64 = base64UrlEncode(new TextEncoder().encode(JSON.stringify(payload)));
+  
+  const unsignedToken = `${headerB64}.${payloadB64}`;
+  
+  // Import the private key
+  // VAPID private key is 32 bytes in raw format, need to convert to JWK
+  const privateKeyBytes = base64UrlDecode(vapidPrivateKey);
+  const publicKeyBytes = base64UrlDecode(vapidPublicKey);
+  
+  console.log('[VAPID] Private key bytes length:', privateKeyBytes.length);
+  console.log('[VAPID] Public key bytes length:', publicKeyBytes.length);
+  
+  // Extract x and y coordinates from the public key (uncompressed format: 0x04 || x || y)
+  let x: Uint8Array, y: Uint8Array;
+  if (publicKeyBytes.length === 65 && publicKeyBytes[0] === 0x04) {
+    x = publicKeyBytes.slice(1, 33);
+    y = publicKeyBytes.slice(33, 65);
+  } else {
+    throw new Error('Invalid public key format');
+  }
+  
+  // Create JWK for private key
+  const jwk = {
+    kty: 'EC',
+    crv: 'P-256',
+    x: base64UrlEncode(x),
+    y: base64UrlEncode(y),
+    d: base64UrlEncode(privateKeyBytes)
+  };
+  
+  console.log('[VAPID] JWK created');
+  
+  const privateKey = await crypto.subtle.importKey(
+    'jwk',
+    jwk,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign']
+  );
+  
+  console.log('[VAPID] Key imported');
+  
+  // Sign the token
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    privateKey,
+    new TextEncoder().encode(unsignedToken)
+  );
+  
+  // Convert DER signature to raw (r || s) format if needed
+  // Web Crypto API returns signature in IEEE P1363 format (r || s), not DER
+  const signatureB64 = arrayBufferToBase64Url(signature);
+  
+  const jwt = `${unsignedToken}.${signatureB64}`;
+  
+  console.log('[VAPID] JWT created');
+  
+  return `vapid t=${jwt}, k=${vapidPublicKey}`;
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -37,6 +144,8 @@ serve(async (req) => {
     }
     
     console.log('[SEND-PUSH] VAPID keys found');
+    console.log('[SEND-PUSH] Public key length:', vapidPublicKey.length);
+    console.log('[SEND-PUSH] Private key length:', vapidPrivateKey.length);
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -85,14 +194,24 @@ serve(async (req) => {
       try {
         console.log('[PUSH] Sending to endpoint:', sub.endpoint.substring(0, 60) + '...');
         
-        // Send a simple push without payload (triggers the push event in SW)
-        // The SW will show a default notification
+        // Create VAPID authorization header
+        const authHeader = await createVapidAuthHeader(
+          sub.endpoint,
+          vapidPublicKey,
+          vapidPrivateKey,
+          'mailto:contato@receitai.com'
+        );
+        
+        console.log('[PUSH] Auth header created');
+        
+        // Send the push notification
         const response = await fetch(sub.endpoint, {
           method: 'POST',
           headers: {
-            'TTL': '60',
-            'Content-Length': '0',
+            'Authorization': authHeader,
+            'TTL': '86400',
             'Urgency': 'normal',
+            'Content-Length': '0',
           },
         });
         
@@ -113,6 +232,7 @@ serve(async (req) => {
       } catch (error: unknown) {
         console.error('[PUSH] Error sending:', error);
         const errorMessage = error instanceof Error ? error.message : String(error);
+        console.error('[PUSH] Error details:', errorMessage);
         if (errorMessage.includes('410') || errorMessage.includes('expired')) {
           failedSubscriptions.push(sub.id);
         }

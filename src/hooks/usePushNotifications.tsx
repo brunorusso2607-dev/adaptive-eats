@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 // VAPID public key - this is safe to expose (it's a PUBLIC key)
-const VAPID_PUBLIC_KEY = 'BKBM_Ycm0QcxMWTXDCmjVDhutxA0vs9KBO-BdF4t08-HD_EDTEYoPXyDfU_fO6_5fbOfrQV2d_NwNJwREBXc14g';
+const VAPID_PUBLIC_KEY = 'BFvsQaMbzpnY2i6ssyLlC3idQ-3a56wKU6LP6OCYjOrycUoM8qpaanDfvmx8vlqORG2ncV895egD0se9gM7ukGw';
 
 interface NotificationPreferences {
   meal_reminders: boolean;

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -82,6 +82,29 @@ export default function RecipeCategorySheet({
   const [expandedCategory, setExpandedCategory] = useState<string>("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
   const [ingredients, setIngredients] = useState<string[]>([]);
+  const sheetContentRef = useRef<HTMLDivElement>(null);
+  
+  // Bloqueia scroll do Sheet quando está na etapa de ingredientes
+  useEffect(() => {
+    if (step === "ingredients" && sheetContentRef.current) {
+      const sheetContent = sheetContentRef.current;
+      
+      const handleTouchMove = (e: TouchEvent) => {
+        const target = e.target as HTMLElement;
+        // Permite scroll apenas se estiver dentro do dropdown de ingredientes
+        const isInsideScrollable = target.closest('.ios-scroll-fix');
+        if (!isInsideScrollable) {
+          e.preventDefault();
+        }
+      };
+      
+      sheetContent.addEventListener('touchmove', handleTouchMove, { passive: false });
+      
+      return () => {
+        sheetContent.removeEventListener('touchmove', handleTouchMove);
+      };
+    }
+  }, [step]);
   
   // Usa o hook para buscar categorias filtradas pelo perfil
   const { categories: filteredCategories, isLoading: isCategoriesLoading, profile } = useFilteredRecipeCategories();
@@ -160,18 +183,15 @@ export default function RecipeCategorySheet({
           className={cn(
             "px-0 flex flex-col",
             step === "ingredients" 
-              ? "h-[100dvh] rounded-b-3xl pt-safe overflow-hidden touch-none" 
+              ? "h-[100dvh] rounded-b-3xl pt-safe overflow-hidden" 
               : "h-[85vh] rounded-t-3xl overflow-hidden"
           )}
-          onTouchMove={step === "ingredients" ? (e) => {
-            // Só permite scroll se o target estiver dentro de um elemento com classe ios-scroll-fix
-            const target = e.target as HTMLElement;
-            const scrollableParent = target.closest('.ios-scroll-fix');
-            if (!scrollableParent) {
-              e.preventDefault();
-            }
-          } : undefined}
         >
+          {/* Wrapper para controlar touch events */}
+          <div 
+            ref={sheetContentRef}
+            className="flex flex-col flex-1 overflow-hidden"
+          >
           <SheetHeader className="px-6 pb-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             {step === 2 || step === "ingredients" ? (
@@ -420,7 +440,8 @@ export default function RecipeCategorySheet({
             </Button>
           </SafeAreaFooter>
         )}
-      </SheetContent>
+          </div>
+        </SheetContent>
       </Sheet>
     </>
   );

@@ -146,6 +146,15 @@ export function useUserStreak() {
         ? Math.round((mealsCompletedThisWeek / mealsPlannedThisWeek) * 100)
         : 0;
 
+      console.log("[useUserStreak] Calculated streak data:", {
+        currentStreak,
+        longestStreak,
+        weeklyAdherence,
+        mealsCompletedThisWeek,
+        mealsPlannedThisWeek,
+        lastActivityDate,
+      });
+
       setStreakData({
         currentStreak,
         longestStreak,

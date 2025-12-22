@@ -12,6 +12,7 @@ import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import WeightProgressBar from "@/components/WeightProgressBar";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import UserAccountMenu from "@/components/UserAccountMenu";
+import ProfilePage from "@/components/ProfilePage";
 import MealPlanSection from "@/components/MealPlanSection";
 import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
 
@@ -691,6 +692,12 @@ export default function Dashboard() {
                 goalWeight={weightData.weight_goal}
                 goalMode={weightData.goal_mode}
                 currentWeight={weightData.weight_current || 0}
+              />
+            ) : showProfileSheet ? (
+              <ProfilePage
+                user={user}
+                subscription={subscription}
+                onLogout={handleLogout}
               />
             ) : (
             <>

@@ -308,6 +308,53 @@ export default function Dashboard() {
     }
   };
 
+  // Generate recipe with ingredients passed directly (avoids state sync issues)
+  const generateRecipeWithIngredients = async (ingredientsList: string[]) => {
+    if (ingredientsList.length === 0) {
+      toast.error("Adicione alguns ingredientes primeiro");
+      return;
+    }
+
+    const ingredientsToUse = ingredientsList.join(", ");
+    
+    setIsGeneratingRecipe(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-recipe", {
+        body: { 
+          type: "com_ingredientes",
+          ingredients: ingredientsToUse,
+          categoryContext: null,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      const recipeWithIngredients = {
+        ...data.recipe,
+        input_ingredients: ingredientsToUse,
+      };
+      
+      setGeneratedRecipe(recipeWithIngredients);
+      setShowRecipe(true);
+      
+      await logUserAction(
+        "recipe_generated",
+        `Receita gerada: "${data.recipe.name}" (com ingredientes)`,
+        null,
+        { recipe_name: data.recipe.name, type: "com_ingredientes", ingredients: ingredientsToUse }
+      );
+      
+      setLastUsedIngredients(ingredientsToUse);
+      setIngredients([]);
+    } catch (error) {
+      console.error("Error generating recipe:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
+    } finally {
+      setIsGeneratingRecipe(false);
+    }
+  };
+
   const handleCategorySelect = (category: string, subcategory: string, filters?: { culinaria?: string; tempo?: string; metodo?: string }) => {
     generateRecipe("automatica", false, { category, subcategory, filters });
   };
@@ -740,8 +787,8 @@ export default function Dashboard() {
                       onOpenChange={setShowCategorySheet}
                       onSelectCategory={handleCategorySelect}
                       onGenerateWithIngredients={(ingredientsList) => {
-                        setIngredients(ingredientsList);
-                        generateRecipe("com_ingredientes", false);
+                        // Pass ingredients directly to avoid state sync issues
+                        generateRecipeWithIngredients(ingredientsList);
                       }}
                       isLoading={isGeneratingRecipe}
                       userProfile={userProfile}

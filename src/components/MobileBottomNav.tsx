@@ -40,8 +40,9 @@ export default function MobileBottomNav({
                   "relative flex items-center justify-center -mt-8 transition-all",
                   "w-14 h-14 rounded-full",
                   "bg-[#F4694C] text-white",
-                  "shadow-xl shadow-[#F4694C]/60",
+                  "shadow-[0_0_20px_8px_rgba(244,105,76,0.5),0_0_40px_16px_rgba(244,105,76,0.3)]",
                   "hover:scale-105 active:scale-95 hover:brightness-110",
+                  "hover:shadow-[0_0_25px_10px_rgba(244,105,76,0.6),0_0_50px_20px_rgba(244,105,76,0.4)]",
                   isActive && "ring-4 ring-[#F4694C]/30"
                 )}
               >

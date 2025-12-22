@@ -1,6 +1,9 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
+// Import web-push library compiled for Deno
+import webpush from "https://esm.sh/web-push@3.6.7";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -20,112 +23,6 @@ interface SendPushRequest {
   payload: PushPayload;
 }
 
-// Convert base64url to Uint8Array
-function base64UrlToUint8Array(base64url: string): Uint8Array {
-  const base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
-  const padding = '='.repeat((4 - (base64.length % 4)) % 4);
-  const binary = atob(base64 + padding);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) {
-    bytes[i] = binary.charCodeAt(i);
-  }
-  return bytes;
-}
-
-// Generate VAPID signature
-async function generateVapidSignature(
-  endpoint: string,
-  vapidPrivateKey: string,
-  vapidPublicKey: string
-): Promise<{ authorization: string; cryptoKey: string }> {
-  const url = new URL(endpoint);
-  const audience = `${url.protocol}//${url.host}`;
-  const expiration = Math.floor(Date.now() / 1000) + 12 * 60 * 60; // 12 hours
-  
-  const header = { typ: "JWT", alg: "ES256" };
-  const payload = {
-    aud: audience,
-    exp: expiration,
-    sub: "mailto:noreply@nutriapp.com"
-  };
-
-  const headerB64 = btoa(JSON.stringify(header)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  const payloadB64 = btoa(JSON.stringify(payload)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '');
-  const unsignedToken = `${headerB64}.${payloadB64}`;
-
-  // Import the private key
-  const privateKeyBytes = base64UrlToUint8Array(vapidPrivateKey);
-  const privateKey = await crypto.subtle.importKey(
-    "pkcs8",
-    privateKeyBytes.buffer as ArrayBuffer,
-    { name: "ECDSA", namedCurve: "P-256" },
-    false,
-    ["sign"]
-  );
-
-  // Sign the token
-  const encoder = new TextEncoder();
-  const signature = await crypto.subtle.sign(
-    { name: "ECDSA", hash: "SHA-256" },
-    privateKey,
-    encoder.encode(unsignedToken)
-  );
-
-  // Convert signature to base64url
-  const signatureArray = new Uint8Array(signature);
-  let signatureB64 = btoa(String.fromCharCode(...signatureArray))
-    .replace(/\+/g, '-')
-    .replace(/\//g, '_')
-    .replace(/=/g, '');
-
-  const jwt = `${unsignedToken}.${signatureB64}`;
-
-  return {
-    authorization: `vapid t=${jwt}, k=${vapidPublicKey}`,
-    cryptoKey: `p256ecdsa=${vapidPublicKey}`
-  };
-}
-
-async function sendWebPush(
-  subscription: { endpoint: string; p256dh: string; auth: string },
-  payload: PushPayload,
-  vapidPublicKey: string,
-  vapidPrivateKey: string
-): Promise<boolean> {
-  try {
-    console.log('[PUSH] Sending to endpoint:', subscription.endpoint);
-
-    const { authorization, cryptoKey } = await generateVapidSignature(
-      subscription.endpoint,
-      vapidPrivateKey,
-      vapidPublicKey
-    );
-
-    const response = await fetch(subscription.endpoint, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'TTL': '86400',
-        'Authorization': authorization,
-        'Crypto-Key': cryptoKey,
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      const error = await response.text();
-      console.error('[PUSH] Failed:', response.status, error);
-      return false;
-    }
-
-    console.log('[PUSH] Sent successfully');
-    return true;
-  } catch (error) {
-    console.error('[PUSH] Error:', error);
-    return false;
-  }
-}
-
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -138,8 +35,18 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get("VAPID_PRIVATE_KEY");
 
     if (!vapidPublicKey || !vapidPrivateKey) {
+      console.error('[SEND-PUSH] VAPID keys missing');
       throw new Error("VAPID keys not configured");
     }
+    
+    console.log('[SEND-PUSH] VAPID Public Key (first 20 chars):', vapidPublicKey.substring(0, 20));
+
+    // Configure web-push with VAPID details
+    webpush.setVapidDetails(
+      'mailto:contato@receitai.com',
+      vapidPublicKey,
+      vapidPrivateKey
+    );
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -185,26 +92,42 @@ serve(async (req) => {
     const failedSubscriptions: string[] = [];
 
     for (const sub of subscriptions) {
-      const success = await sendWebPush(
-        { endpoint: sub.endpoint, p256dh: sub.p256dh, auth: sub.auth },
-        payload,
-        vapidPublicKey,
-        vapidPrivateKey
-      );
+      try {
+        console.log('[PUSH] Sending to endpoint:', sub.endpoint.substring(0, 50) + '...');
+        
+        const pushSubscription = {
+          endpoint: sub.endpoint,
+          keys: {
+            p256dh: sub.p256dh,
+            auth: sub.auth
+          }
+        };
 
-      if (success) {
+        await webpush.sendNotification(
+          pushSubscription,
+          JSON.stringify(payload)
+        );
+        
+        console.log('[PUSH] Sent successfully');
         sentCount++;
-      } else {
-        failedSubscriptions.push(sub.id);
+      } catch (error: unknown) {
+        console.error('[PUSH] Error sending:', error);
+        
+        // Check if subscription is gone (expired or unsubscribed)
+        const errorMessage = error instanceof Error ? error.message : String(error);
+        if (errorMessage.includes('410') || errorMessage.includes('expired')) {
+          failedSubscriptions.push(sub.id);
+        }
       }
     }
 
-    // Mark failed subscriptions as inactive
+    // Mark expired subscriptions as inactive
     if (failedSubscriptions.length > 0) {
       await supabaseClient
         .from('push_subscriptions')
         .update({ is_active: false })
         .in('id', failedSubscriptions);
+      console.log('[SEND-PUSH] Marked', failedSubscriptions.length, 'subscriptions as inactive');
     }
 
     console.log('[SEND-PUSH] Complete. Sent:', sentCount, 'Failed:', failedSubscriptions.length);

@@ -208,10 +208,12 @@ export default function RecipeCategorySheet({
           )}
         </SheetHeader>
         
-        <div className={cn(
-          "overflow-y-auto px-4 py-4 flex-1",
-          step === "ingredients" ? "h-auto" : "h-[calc(85vh-140px)]"
-        )}>
+        <div 
+          className={cn(
+            "px-4 py-4 flex-1",
+            step === "ingredients" ? "overflow-hidden" : "overflow-y-auto h-[calc(85vh-140px)]"
+          )}
+        >
           {step === 1 ? (
             // Etapa 1: Filtros incluindo opção de ingredientes
             <Accordion 

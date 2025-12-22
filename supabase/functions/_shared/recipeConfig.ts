@@ -267,18 +267,11 @@ export function buildKidsInstructions(isKidsMode: boolean): string {
   if (!isKidsMode) return "";
 
   return `
-🧒 MODO KIDS ATIVO - REGRAS ESPECIAIS:
-- Nomes DIVERTIDOS e criativos (ex: "Macarrão Arco-Íris 🌈", "Bolinho do Astronauta 🚀", "Pizza do Dino 🦕")
-- Descrições com emojis e linguagem amigável para crianças
-- Receitas SIMPLES com no máximo 6-8 ingredientes
-- Tempo de preparo CURTO (máximo 25 minutos)
-- Sabores suaves e familiares (evitar temperos fortes, pimenta, alho cru)
-- Ingredientes coloridos e visualmente atrativos
-- Instruções simples que uma criança poderia ajudar
-- Calorias adequadas para crianças (300-500 kcal por porção)
-- Apresentação divertida (formas, cores, decorações simples)
-- SEMPRE usar complexity "rapida" no Modo Kids
-- Texturas agradáveis (evitar alimentos muito fibrosos ou difíceis de mastigar)`;
+🧒 MODO KIDS:
+- Nomes DIVERTIDOS com emojis (ex: "Macarrão Arco-Íris 🌈")
+- Máximo 6-8 ingredientes, preparo até 25 min
+- Sabores suaves, ingredientes coloridos
+- Calorias: 300-500 kcal, complexity: "rapida"`;
 }
 
 /**
@@ -287,25 +280,15 @@ export function buildKidsInstructions(isKidsMode: boolean): string {
 export function buildWeightLossInstructions(isWeightLossMode: boolean, macros: MacroTargets | null): string {
   if (!isWeightLossMode) return "";
 
-  const macroText = macros
-    ? `- META CALÓRICA PERSONALIZADA: ${macros.dailyCalories} kcal/dia - adapte a receita para ~${Math.round(macros.dailyCalories / 3)} kcal por refeição
-- META DE PROTEÍNA: ${macros.dailyProtein}g por dia - inclua ~${Math.round(macros.dailyProtein / 3)}g por refeição`
-    : `- Calorias por porção: 300-450 kcal (déficit calórico controlado)
-- Proteína alta: mínimo 25g por porção`;
+  const targetCal = macros ? Math.round(macros.dailyCalories / 3) : 380;
+  const targetProt = macros ? Math.round(macros.dailyProtein / 3) : 28;
 
   return `
-🏃 MODO EMAGRECIMENTO ATIVO - REGRAS ESPECIAIS:
-- PRIORIZE ingredientes com ALTO PODER DE SACIEDADE (fibras, proteínas, água)
-- Use vegetais volumosos (brócolis, couve-flor, abobrinha, folhas verdes)
-- Inclua proteínas magras (frango, peixe, ovos, leguminosas)
-- Adicione fibras (aveia, chia, linhaça, legumes)
-- EVITE carboidratos refinados e açúcares
-${macroText}
-- Prefira métodos de cocção: grelhado, assado, cozido no vapor
-- Adicione um campo "satiety_tip" com dica de saciedade
-- Adicione um campo "satiety_score" de 1-10 (quanto maior, mais saciante)
-- Inclua ingredientes termogênicos quando possível (gengibre, pimenta, canela)
-⚠️ IMPORTANTE: Respeite PRIMEIRO a categoria selecionada, depois adapte para versão fit.`;
+🏃 MODO EMAGRECIMENTO:
+- Meta por refeição: ~${targetCal} kcal, ~${targetProt}g proteína
+- PRIORIZE: vegetais volumosos, proteínas magras, fibras
+- EVITE: carboidratos refinados e açúcares
+- Métodos: grelhado, assado, vapor`;
 }
 
 /**
@@ -314,24 +297,14 @@ ${macroText}
 export function buildWeightGainInstructions(isWeightGainMode: boolean, macros: MacroTargets | null): string {
   if (!isWeightGainMode) return "";
 
-  const macroText = macros
-    ? `- META CALÓRICA PERSONALIZADA: ${macros.dailyCalories} kcal/dia - adapte a receita para ~${Math.round(macros.dailyCalories / 3)} kcal por refeição
-- META DE PROTEÍNA: ${macros.dailyProtein}g por dia - inclua ~${Math.round(macros.dailyProtein / 3)}g por refeição`
-    : `- Calorias por porção: 550-700 kcal (superávit calórico controlado)
-- Proteína alta: mínimo 35g por porção`;
+  const targetCal = macros ? Math.round(macros.dailyCalories / 3) : 600;
+  const targetProt = macros ? Math.round(macros.dailyProtein / 3) : 38;
 
   return `
-💪 MODO GANHO DE PESO/MASSA ATIVO - REGRAS ESPECIAIS:
-- PRIORIZE receitas com ALTA DENSIDADE CALÓRICA e nutritiva
-- Use fontes de proteína de qualidade (frango, carne, ovos, peixe, leguminosas)
-- Inclua carboidratos complexos (arroz, batata, macarrão integral, aveia)
-- Adicione gorduras saudáveis (azeite, abacate, castanhas, pasta de amendoim)
-- AUMENTE porções de proteína e carboidratos
-${macroText}
-- Inclua snacks calóricos saudáveis
-- Adicione um campo "muscle_tip" com dica para ganho de massa
-- Adicione um campo "calorie_density_score" de 1-10 (quanto maior, mais calórico)
-⚠️ IMPORTANTE: Respeite PRIMEIRO a categoria selecionada, depois adapte para versão calórica.`;
+💪 MODO GANHO DE MASSA:
+- Meta por refeição: ~${targetCal} kcal, ~${targetProt}g proteína
+- PRIORIZE: proteínas de qualidade, carboidratos complexos, gorduras saudáveis
+- AUMENTE: porções de proteína e carboidratos`;
 }
 
 /**
@@ -342,30 +315,13 @@ export function buildCategoryConstraint(categoryContext: CategoryContext | null)
 
   const category = categoryContext.category;
   const subcategory = categoryContext.subcategory;
-
-  // Get examples for this category/subcategory
   const categoryExamples = CATEGORY_EXAMPLES[category]?.[subcategory] || "";
-  
-  // Get meal type hint if available
   const mealTypeHint = MEAL_TYPE_HINTS[subcategory] || "";
 
   return `
-🚨🚨🚨 REGRA MAIS IMPORTANTE - CATEGORIA OBRIGATÓRIA 🚨🚨🚨
-O usuário SELECIONOU especificamente a categoria "${category}" → "${subcategory}".
-
-${mealTypeHint}
-
-EXEMPLOS TÍPICOS desta categoria: ${categoryExamples || subcategory}
-
-⛔ PROIBIDO: Gerar receitas que não pertencem a esta categoria.
-⛔ PROIBIDO: Gerar pratos principais (salmão, frango grelhado, carne) quando a categoria é "Café da Manhã & Lanches".
-⛔ PROIBIDO: Ignorar a categoria selecionada em favor de outras preferências.
-
-✅ OBRIGATÓRIO: A receita DEVE ser algo típico e representativo de "${subcategory}".
-✅ OBRIGATÓRIO: Respeitar a categoria TEM PRIORIDADE sobre macros e calorias.
-
-Se o usuário pediu "${subcategory}", você DEVE gerar algo dessa categoria, mesmo que pareça menos "nutritivo" ou "proteico".
-`;
+🚨 CATEGORIA OBRIGATÓRIA: "${category}" → "${subcategory}"
+${mealTypeHint ? `${mealTypeHint}\n` : ""}Exemplos: ${categoryExamples || subcategory}
+⛔ NÃO gere receitas de outra categoria. A categoria TEM PRIORIDADE sobre macros.`;
 }
 
 /**
@@ -428,7 +384,6 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
   const isWeightGainMode = profile.goal === "ganhar_peso";
   const hasWeightGoal = isWeightLossMode || isWeightGainMode;
 
-  // Calculate personalized macros
   let macros: MacroTargets | null = null;
   if (hasWeightGoal && profile.weight_current && profile.height && profile.age && profile.sex) {
     macros = calculateMacroTargets(profile);
@@ -441,75 +396,41 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
   const weightGainInstructions = buildWeightGainInstructions(isWeightGainMode, macros);
   const safetyStatus = buildSafetyStatus(profile);
 
-  return `Você é o Mestre Chef ReceitAI, um nutricionista e chef de elite especializado em receitas personalizadas.
-Seu tom é encorajador, técnico e gastronômico. Você explica brevemente uma técnica culinária em cada receita.
-Você DEVE gerar receitas com valores nutricionais REAIS e PRECISOS baseados em tabelas nutricionais.
+  // Build special modes section (only if applicable)
+  const specialModes = [kidsInstructions, weightLossInstructions, weightGainInstructions]
+    .filter(Boolean)
+    .join("\n");
 
+  return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas.
 ${categoryConstraint}
+${specialModes}
 
-${kidsInstructions}
-${weightLossInstructions}
-${weightGainInstructions}
-
-HIERARQUIA DE PRIORIDADES (em ordem):
-1. 🥇 CATEGORIA SELECIONADA - se o usuário escolheu uma categoria, a receita DEVE ser dessa categoria
-2. 🥈 INTOLERÂNCIAS - NUNCA incluir ingredientes proibidos (SEGURANÇA ALIMENTAR)
-3. 🥉 PREFERÊNCIA ALIMENTAR - vegetariana, vegana, etc.
-4. 🏅 OBJETIVO DE PESO - adaptar calorias/macros
-5. 🏅 COMPLEXIDADE - tempo de preparo
-
-REGRAS ABSOLUTAS - NUNCA VIOLAR:
-1. INTOLERÂNCIAS/ALERGIAS:
-   - ${intolerancesStr}
-   - NUNCA inclua ingredientes proibidos - isso pode causar reações alérgicas graves
-   - Use APENAS substitutos seguros (ex: leite de amêndoas em vez de leite se sem lactose)
-   - Em caso de dúvida, sugira uma substituição segura e explique o porquê
-   
-2. PREFERÊNCIA ALIMENTAR: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
-
-3. OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
-
-4. META CALÓRICA: ${CALORIE_LABELS[profile.calorie_goal || "definir_depois"]}
-
-5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 minutos) - OBRIGATÓRIO no Modo Kids" : COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}
-
+REGRAS (ordem de prioridade):
+1. CATEGORIA: Se selecionada, a receita DEVE ser dessa categoria
+2. SEGURANÇA: ${intolerancesStr} - NUNCA inclua ingredientes proibidos
+3. DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
+4. OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
+5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 min)" : COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}
 6. CONTEXTO: ${CONTEXT_LABELS[profile.context || "individual"]}
 
-FORMATO DE RESPOSTA (JSON VÁLIDO):
+FORMATO JSON:
 {
-  "name": "${isKidsMode ? "Nome DIVERTIDO e criativo (ex: Macarrão Arco-Íris 🌈)" : "Nome da Receita"}",
-  "description": "${isKidsMode ? "Descrição curta e divertida COM EMOJIS para crianças!" : "Breve descrição em 1 frase"}",
+  "name": "Nome da Receita",
+  "description": "Descrição em 1 frase",
   "safety_status": "${safetyStatus}",
-  "ingredients": [
-    {"item": "nome do ingrediente", "quantity": "quantidade", "unit": "unidade"}
-  ],
-  "instructions": {
-    "inicio": ["Passos iniciais de preparação..."],
-    "meio": ["Passos do cozimento principal..."],
-    "finalizacao": ["Passos finais e apresentação..."]
-  },
+  "ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
+  "instructions": ["Passo 1...", "Passo 2...", "Passo 3..."],
   "prep_time": ${isKidsMode ? 20 : 30},
   "complexity": "${isKidsMode ? "rapida" : profile.recipe_complexity || "equilibrada"}",
   "servings": ${profile.context === "familia" ? 4 : isKidsMode ? 3 : 2},
   "calories": ${isKidsMode ? 400 : isWeightLossMode ? 380 : isWeightGainMode ? 600 : 450},
-  "protein": ${isWeightLossMode ? 30 : isWeightGainMode ? 40 : 25.5},
-  "carbs": ${isWeightLossMode ? 25 : isWeightGainMode ? 60 : 35.2},
-  "fat": ${isWeightLossMode ? 12 : isWeightGainMode ? 22 : 18.3},
-  "chef_tip": "Uma dica de técnica culinária, tempero ou conservação que eleva o prato"${isWeightLossMode ? `,
-  "satiety_score": 8,
-  "satiety_tip": "Dica de saciedade para ajudar no emagrecimento"` : isWeightGainMode ? `,
-  "calorie_density_score": 8,
-  "muscle_tip": "Dica para ganho de massa muscular"` : ""}
+  "protein": ${isWeightLossMode ? 30 : isWeightGainMode ? 40 : 25},
+  "carbs": ${isWeightLossMode ? 25 : isWeightGainMode ? 60 : 35},
+  "fat": ${isWeightLossMode ? 12 : isWeightGainMode ? 22 : 18},
+  "chef_tip": "Dica de técnica culinária"
 }
 
-IMPORTANTE:
-- calories, protein, carbs, fat são POR PORÇÃO
-- Use valores nutricionais REAIS baseados nos ingredientes
-- prep_time em minutos${isKidsMode ? " (MÁXIMO 25 no Modo Kids)" : ""}
-- chef_tip: uma técnica culinária ou segredo que melhora o prato
-- safety_status: confirma que a receita respeita todas as restrições
-${isWeightLossMode ? "- satiety_score de 1-10 baseado na composição (fibras + proteínas = maior score)\n- satiety_tip: uma dica prática de como a receita ajuda na saciedade" : ""}${isWeightGainMode ? "- calorie_density_score de 1-10 baseado na densidade calórica\n- muscle_tip: uma dica prática para maximizar ganho muscular" : ""}
-- Responda APENAS com o JSON, sem texto adicional`;
+Valores nutricionais são POR PORÇÃO. Responda APENAS com JSON.`;
 }
 
 /**
@@ -519,44 +440,24 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
   const { categoryContext, ingredients, type } = options;
 
   if (categoryContext?.category && categoryContext?.subcategory) {
+    const examples = CATEGORY_EXAMPLES[categoryContext.category]?.[categoryContext.subcategory] || "";
     let filtersText = "";
     if (categoryContext.filters) {
-      const filterParts: string[] = [];
-      if (categoryContext.filters.culinaria) {
-        filterParts.push(`culinária ${categoryContext.filters.culinaria}`);
-      }
-      if (categoryContext.filters.tempo) {
-        filterParts.push(`tempo de preparo: ${categoryContext.filters.tempo}`);
-      }
-      if (categoryContext.filters.metodo) {
-        filterParts.push(`método de preparo: ${categoryContext.filters.metodo}`);
-      }
-      if (filterParts.length > 0) {
-        filtersText = ` Considere os seguintes filtros: ${filterParts.join(", ")}.`;
-      }
+      const parts: string[] = [];
+      if (categoryContext.filters.culinaria) parts.push(categoryContext.filters.culinaria);
+      if (categoryContext.filters.tempo) parts.push(categoryContext.filters.tempo);
+      if (categoryContext.filters.metodo) parts.push(categoryContext.filters.metodo);
+      if (parts.length > 0) filtersText = ` (${parts.join(", ")})`;
     }
 
-    const examples = CATEGORY_EXAMPLES[categoryContext.category]?.[categoryContext.subcategory] || "";
-    const mealHint = MEAL_TYPE_HINTS[categoryContext.subcategory] || "";
-
-    return `🎯 CATEGORIA SELECIONADA: "${categoryContext.category}" → "${categoryContext.subcategory}"
-
-GERE UMA RECEITA QUE SEJA TÍPICA E REPRESENTATIVA DE "${categoryContext.subcategory}".
-
-${examples ? `Exemplos do que espero: ${examples}.` : ""}
-
-${mealHint}
-
-${filtersText}
-
-⚠️ LEMBRE-SE: NÃO gere pratos de outra categoria. Se pedi "${categoryContext.subcategory}", a receita DEVE ser disso.`;
+    return `Gere uma receita de "${categoryContext.subcategory}"${filtersText}. Exemplos: ${examples || categoryContext.subcategory}.`;
   }
 
   if (type === "com_ingredientes" && ingredients) {
-    return `Gere uma receita usando estes ingredientes: ${ingredients}. Pode adicionar outros ingredientes básicos se necessário.`;
+    return `Receita usando: ${ingredients}. Pode adicionar ingredientes básicos.`;
   }
 
-  return "Gere uma receita saudável e deliciosa que se encaixe no meu perfil.";
+  return "Gere uma receita saudável para meu perfil.";
 }
 
 /**
@@ -570,98 +471,55 @@ export function buildMealPlanPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const isKidsMode = profile.context === "modo_kids";
-  
-  // Determine number of meals based on complexity
   const mealsPerDay = profile.recipe_complexity === "rapida" ? 4 : 5;
   const selectedMealTypes = mealsPerDay === 4 
     ? ["cafe_manha", "almoco", "lanche", "jantar"]
     : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
-  const kidsNote = isKidsMode ? `
-⚠️ MODO KIDS ATIVO:
-- Todas as receitas devem ter nomes DIVERTIDOS e criativos com emojis
-- Sabores suaves e familiares (sem temperos fortes)
-- Tempo de preparo máximo: 25 minutos
-- Ingredientes coloridos e visualmente atrativos
-- Porções adequadas para crianças
-` : "";
+  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes divertidos, sabores suaves, máx 25 min" : "";
+  const avoidRecipes = previousRecipes.length > 0 
+    ? `\nEVITAR (semana anterior): ${previousRecipes.slice(0, 10).join(", ")}` 
+    : "";
 
-  return `Você é o Mestre Chef ReceitAI. Gere um plano alimentar de ${daysCount} dias.
+  return `Mestre Chef ReceitAI. Plano de ${daysCount} dias.
 
-PERFIL COMPLETO:
-- Sexo: ${SEX_LABELS[profile.sex || ""] || "não informado"}
-- Idade: ${profile.age || "não informada"} anos
-- Peso atual: ${profile.weight_current || "não informado"}kg
-- Altura: ${profile.height || "não informada"}cm
-- Peso meta: ${profile.weight_goal || profile.weight_current || "não informado"}kg
-
+PERFIL: ${SEX_LABELS[profile.sex || ""] || "-"}, ${profile.age || "-"} anos, ${profile.weight_current || "-"}kg
+METAS: ${macros.dailyCalories}kcal/dia, ${macros.dailyProtein}g proteína
 OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
-
-METAS NUTRICIONAIS DIÁRIAS:
-- Calorias: ${macros.dailyCalories}kcal/dia
-- Proteína mínima: ${macros.dailyProtein}g/dia
-
-PREFERÊNCIA ALIMENTAR: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
-
-RESTRIÇÕES/INTOLERÂNCIAS (NUNCA incluir estes ingredientes):
-- ${intolerancesStr}
-
+DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
+RESTRIÇÕES: ${intolerancesStr}
 CONTEXTO: ${CONTEXT_LABELS[profile.context || "individual"]}
+COMPLEXIDADE: ${COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}${kidsNote}${avoidRecipes}
 
-COMPLEXIDADE DAS RECEITAS: ${COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}
+ESTRUTURA: ${mealsPerDay} refeições (${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")})
 
-${kidsNote}
+REGRAS:
+1. NÃO repita receitas entre dias
+2. NUNCA inclua ingredientes das restrições
+3. Ingredientes comuns em supermercados BR
+4. Macros realistas por receita
 
-ESTRUTURA: ${mealsPerDay} refeições por dia (${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")})
-
-DISTRIBUIÇÃO CALÓRICA:
-${mealsPerDay === 5 ? 
-  "- Café da Manhã: 20%\n- Almoço: 30%\n- Lanche: 10%\n- Jantar: 30%\n- Ceia: 10%" :
-  "- Café da Manhã: 25%\n- Almoço: 35%\n- Lanche: 10%\n- Jantar: 30%"
+JSON:
+{
+  "days": [{
+    "day_index": 0,
+    "day_name": "Segunda-feira",
+    "meals": [{
+      "meal_type": "cafe_manha",
+      "recipe_name": "Nome",
+      "recipe_calories": 400,
+      "recipe_protein": 20,
+      "recipe_carbs": 50,
+      "recipe_fat": 15,
+      "recipe_prep_time": 15,
+      "recipe_ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
+      "recipe_instructions": ["Passo 1", "Passo 2"],
+      "chef_tip": "Dica culinária"
+    }]
+  }]
 }
 
-${previousRecipes.length > 0 ? `
-RECEITAS A EVITAR (usadas na semana anterior - NÃO repita nenhuma delas):
-${previousRecipes.map((r, i) => `${i + 1}. ${r}`).join('\n')}
-
-IMPORTANTE: As receitas acima foram usadas recentemente. Crie receitas DIFERENTES para garantir variedade.
-` : ''}
-
-REGRAS IMPORTANTES:
-1. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
-${previousRecipes.length > 0 ? '2. NÃO use nenhuma das receitas listadas acima (evitar repetição da semana anterior)\n' : ''}
-3. Respeite TODAS as restrições e intolerâncias alimentares - SEGURANÇA PRIMEIRO
-4. Use ingredientes comuns em supermercados brasileiros
-5. Cada receita deve ter ingredientes com quantidades exatas e instruções de preparo detalhadas
-6. Os macros (calorias, proteínas, carboidratos, gorduras) devem ser realistas para cada receita
-7. Inclua "chef_tip" com uma dica de técnica culinária para cada receita
-
-FORMATO DE RESPOSTA:
-Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:
-{
-  "days": [
-    {
-      "day_index": 0,
-      "day_name": "Segunda-feira",
-      "meals": [
-        {
-          "meal_type": "cafe_manha",
-          "recipe_name": "Nome da receita${isKidsMode ? " 🎉" : ""}",
-          "recipe_calories": 400,
-          "recipe_protein": 20,
-          "recipe_carbs": 50,
-          "recipe_fat": 15,
-          "recipe_prep_time": 15,
-          "recipe_ingredients": [
-            {"item": "ingrediente", "quantity": "100", "unit": "g"}
-          ],
-          "recipe_instructions": ["Passo 1", "Passo 2"],
-          "chef_tip": "Dica de técnica culinária"
-        }
-      ]
-    }
-  ]
-}`;
+Responda APENAS com JSON.`;
 }
 
 /**
@@ -677,58 +535,31 @@ export function buildRegenerateMealPrompt(
   const mealLabel = MEAL_TYPE_LABELS[mealType] || mealType;
   const mealExamples = MEAL_TYPE_EXAMPLES[mealType] || [];
   const isKidsMode = profile.context === "modo_kids";
+  const kidsNote = isKidsMode ? " 🧒 Modo Kids: nome divertido, sabores suaves, máx 25 min." : "";
+  const ingredientsNote = ingredients ? `\nINGREDIENTES OBRIGATÓRIOS: ${ingredients}` : "";
 
-  const ingredientsPrompt = ingredients
-    ? `Use OBRIGATORIAMENTE os seguintes ingredientes: ${ingredients}. Pode adicionar temperos e complementos básicos.`
-    : "";
+  return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
 
-  const kidsNote = isKidsMode ? `
-⚠️ MODO KIDS ATIVO:
-- Nome DIVERTIDO e criativo com emoji
-- Sabores suaves (sem temperos fortes)
-- Tempo máximo: 25 minutos
-- Ingredientes coloridos
-` : "";
+PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
+RESTRIÇÕES: ${intolerancesStr}${kidsNote}${ingredientsNote}
 
-  return `Você é o Mestre Chef ReceitAI, um nutricionista e chef especializado.
+REGRAS:
+1. ~${targetCalories} calorias
+2. NUNCA ingredientes das restrições
+3. Exemplos: ${mealExamples.join(", ")}
 
-PERFIL DO USUÁRIO:
-- Preferência alimentar: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
-- Objetivo: ${GOAL_LABELS[profile.goal || "manter"]}
-- Complexidade: ${COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}
-- Contexto: ${CONTEXT_LABELS[profile.context || "individual"]}
-
-RESTRIÇÕES/INTOLERÂNCIAS (NUNCA incluir estes ingredientes):
-- ${intolerancesStr}
-
-${kidsNote}
-
-⚠️ REGRA ABSOLUTA - TIPO DE REFEIÇÃO:
-Esta receita é OBRIGATORIAMENTE para ${mealLabel.toUpperCase()}.
-Exemplos de receitas apropriadas: ${mealExamples.join(", ")}
-NUNCA gere receitas que não sejam apropriadas para ${mealLabel}!
-
-OUTRAS REGRAS:
-1. A receita deve ter aproximadamente ${targetCalories} calorias
-2. Respeite TODAS as intolerâncias alimentares - SEGURANÇA PRIMEIRO
-3. Crie uma receita DIFERENTE e criativa
-4. Ingredientes e instruções completas
-${ingredientsPrompt}
-
-FORMATO DE RESPOSTA (JSON VÁLIDO):
+JSON:
 {
-  "recipe_name": "Nome da Receita${isKidsMode ? " 🎉" : ""}",
+  "recipe_name": "Nome",
   "recipe_calories": ${targetCalories},
   "recipe_protein": 25,
   "recipe_carbs": 30,
   "recipe_fat": 15,
   "recipe_prep_time": ${isKidsMode ? 20 : 30},
-  "recipe_ingredients": [
-    {"item": "ingrediente", "quantity": "100", "unit": "g"}
-  ],
-  "recipe_instructions": ["Passo 1...", "Passo 2..."],
-  "chef_tip": "Dica de técnica culinária"
+  "recipe_ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
+  "recipe_instructions": ["Passo 1", "Passo 2"],
+  "chef_tip": "Dica culinária"
 }
 
-IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
+Responda APENAS com JSON.`;
 }

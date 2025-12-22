@@ -356,3 +356,13 @@
 .safe-area-bottom {
   padding-bottom: env(safe-area-inset-bottom, 0);
 }
+
+/* Bloqueio de scroll global para tela de ingredientes */
+html.ingredients-scroll-lock,
+body.ingredients-scroll-lock {
+  overflow: hidden !important;
+  touch-action: none !important;
+  position: fixed !important;
+  width: 100% !important;
+  height: 100% !important;
+}

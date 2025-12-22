@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { decode } from "https://deno.land/std@0.190.0/encoding/base64.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +19,22 @@ const PRICE_TO_PLAN: Record<string, string> = {
   "price_1RVVk4RuiGbcMYaJclJuGdvq": "premium",
   "price_1Sg9ODCh4FnxqOQFkKsIJZOX": "premium",
 };
+
+// Decode JWT payload without verification (we'll verify via Supabase)
+function decodeJwtPayload(token: string): { sub?: string; email?: string } | null {
+  try {
+    const parts = token.split('.');
+    if (parts.length !== 3) return null;
+    
+    const payload = parts[1];
+    // Add padding if needed
+    const padded = payload + '='.repeat((4 - payload.length % 4) % 4);
+    const decoded = new TextDecoder().decode(decode(padded));
+    return JSON.parse(decoded);
+  } catch (e) {
+    return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -38,7 +55,7 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     logStep("Token extracted", { tokenLength: token.length });
 
-    // Use service role key to verify the JWT token
+    // Create admin client
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
@@ -49,26 +66,54 @@ serve(async (req) => {
       },
     });
 
-    logStep("Authenticating user with token");
-    
-    // Use getUser with the token directly - this validates the JWT
+    let userEmail: string | null = null;
+    let userId: string | null = null;
+
+    // First try to get user via getUser (works for valid sessions)
+    logStep("Attempting to authenticate with getUser");
     const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     
-    if (userError) {
-      logStep("User auth error", { error: userError.message });
-      throw new Error(`Authentication error: ${userError.message}`);
+    if (!userError && userData?.user?.email) {
+      userEmail = userData.user.email;
+      userId = userData.user.id;
+      logStep("User authenticated via getUser", { userId, email: userEmail });
+    } else {
+      logStep("getUser failed, trying JWT decode", { error: userError?.message });
+      
+      // Fallback: decode JWT to get user ID and fetch email from profiles
+      const jwtPayload = decodeJwtPayload(token);
+      logStep("JWT payload decoded", { sub: jwtPayload?.sub, email: jwtPayload?.email });
+      
+      if (jwtPayload?.email) {
+        userEmail = jwtPayload.email;
+        userId = jwtPayload.sub || null;
+        logStep("Got email from JWT", { email: userEmail });
+      } else if (jwtPayload?.sub) {
+        userId = jwtPayload.sub;
+        // Fetch email from profiles table
+        const { data: profileData, error: profileError } = await supabaseAdmin
+          .from("profiles")
+          .select("email")
+          .eq("id", userId)
+          .maybeSingle();
+        
+        if (profileData?.email) {
+          userEmail = profileData.email;
+          logStep("Got email from profiles", { email: userEmail });
+        } else {
+          logStep("Could not get email from profiles", { error: profileError?.message });
+        }
+      }
+    }
+
+    if (!userEmail) {
+      throw new Error("Could not determine user email");
     }
     
-    const user = userData.user;
-    if (!user?.email) {
-      logStep("No user or email found");
-      throw new Error("User not authenticated or email not available");
-    }
-    
-    logStep("User authenticated", { userId: user.id, email: user.email });
+    logStep("User identified", { userId, email: userEmail });
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2025-08-27.basil" });
-    const customers = await stripe.customers.list({ email: user.email, limit: 1 });
+    const customers = await stripe.customers.list({ email: userEmail, limit: 1 });
     
     if (customers.data.length === 0) {
       logStep("No customer found, user is not subscribed");

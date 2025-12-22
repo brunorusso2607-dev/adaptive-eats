@@ -19,6 +19,12 @@ import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
 import MealDetailSheet from "./MealDetailSheet";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface NextMealCardProps {}
@@ -248,52 +254,75 @@ export default function NextMealCard(_props: NextMealCardProps) {
         </div>
 
         {/* Ações */}
-        <div className="flex items-center gap-2">
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-9 w-9"
-            onClick={handleViewRecipe}
-            disabled={isMarking || isSkipping}
-          >
-            <Eye className="w-4 h-4" />
-          </Button>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9"
+                  onClick={handleViewRecipe}
+                  disabled={isMarking || isSkipping}
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ver receita</p>
+              </TooltipContent>
+            </Tooltip>
 
-          <Button
-            size="icon"
-            variant="outline"
-            className="h-9 w-9"
-            onClick={handleTrocarClick}
-            disabled={isMarking || isSkipping}
-          >
-            <RefreshCw className="w-4 h-4" />
-          </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9"
+                  onClick={handleTrocarClick}
+                  disabled={isMarking || isSkipping}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Trocar refeição</p>
+              </TooltipContent>
+            </Tooltip>
 
-          <Button
-            size="icon"
-            className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 border-0"
-            onClick={handleFizClick}
-            disabled={isMarking || isSkipping}
-          >
-            {isMarking ? (
-              <Loader2 className="w-4 h-4 animate-spin text-white" />
-            ) : (
-              <Check className="w-4 h-4 text-white" />
-            )}
-          </Button>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 border-0"
+                  onClick={handleFizClick}
+                  disabled={isMarking || isSkipping}
+                >
+                  {isMarking ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Marcar como feita</p>
+              </TooltipContent>
+            </Tooltip>
 
-          <button
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 h-9 flex items-center disabled:opacity-50"
-            onClick={handleSkip}
-            disabled={isMarking || isSkipping}
-          >
-            {isSkipping ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              "Pular"
-            )}
-          </button>
-        </div>
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 h-9 flex items-center disabled:opacity-50"
+              onClick={handleSkip}
+              disabled={isMarking || isSkipping}
+            >
+              {isSkipping ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Pular"
+              )}
+            </button>
+          </div>
+        </TooltipProvider>
       </CardContent>
 
       {/* Dialogs and Sheets */}

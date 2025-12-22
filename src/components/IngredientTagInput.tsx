@@ -791,9 +791,8 @@ export default function IngredientTagInput({
             maxHeight: '40dvh',
             display: 'flex',
             flexDirection: 'column',
+            touchAction: 'pan-y',
           }}
-          onTouchStart={(e) => e.stopPropagation()}
-          onTouchMove={(e) => e.stopPropagation()}
         >
           <div
             className="py-2 overflow-y-scroll flex-1 ios-scroll-fix"

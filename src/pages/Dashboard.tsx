@@ -28,8 +28,9 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
 import { useActivityLog } from "@/hooks/useActivityLog";
 import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
-import { useUserStreak } from "@/hooks/useUserStreak";
-import { Flame, Target } from "lucide-react";
+import { useGamification } from "@/hooks/useGamification";
+import GamificationCard from "@/components/GamificationCard";
+import AchievementBadges from "@/components/AchievementBadges";
 
 type Recipe = {
   name: string;
@@ -127,8 +128,8 @@ export default function Dashboard() {
     ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].actual_date, pendingMeals[0].completed_at)
     : "on_time";
   
-  // User streak hook
-  const { currentStreak, weeklyAdherence, isLoading: isLoadingStreak, refreshStreak } = useUserStreak();
+  // User gamification hook
+  const gamification = useGamification();
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -1009,39 +1010,29 @@ export default function Dashboard() {
                 )}
 
                 {/* Lista de Refeições Pendentes - Abaixo dos macros */}
-                <PendingMealsList onStreakRefresh={refreshStreak} />
+                <PendingMealsList onStreakRefresh={gamification.refresh} />
 
-                {/* Gamificação - Streak e Adesão Semanal */}
-                {!isLoadingStreak && (currentStreak > 0 || weeklyAdherence > 0) && (
-                  <Card className="glass-card border-border/50 overflow-hidden">
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-3">
-                        <Flame className="w-4 h-4 text-orange-500" />
-                        <h3 className="font-medium text-sm text-foreground">Seu Progresso</h3>
-                      </div>
-                      <div className="flex gap-2 flex-wrap">
-                        {currentStreak > 0 && (
-                          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 dark:from-orange-900/30 dark:to-amber-900/30 dark:text-orange-300">
-                            <Flame className="w-4 h-4" />
-                            <span>{currentStreak} {currentStreak === 1 ? "dia" : "dias"} seguidos 🔥</span>
-                          </div>
-                        )}
-                        {weeklyAdherence > 0 && (
-                          <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium ${
-                            weeklyAdherence >= 80
-                              ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 dark:from-emerald-900/30 dark:to-green-900/30 dark:text-emerald-300"
-                              : weeklyAdherence >= 50
-                                ? "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 dark:from-amber-900/30 dark:to-yellow-900/30 dark:text-amber-300"
-                                : "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-300"
-                          }`}>
-                            <Target className="w-4 h-4" />
-                            <span>{weeklyAdherence}% adesão semanal</span>
-                          </div>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+                {/* Gamificação Completa */}
+                <GamificationCard
+                  level={gamification.level}
+                  totalXp={gamification.totalXp}
+                  xpInLevel={gamification.xpInLevel}
+                  xpForNextLevel={gamification.xpForNextLevel}
+                  levelProgress={gamification.levelProgress}
+                  currentStreak={gamification.currentStreak}
+                  longestStreak={gamification.longestStreak}
+                  weeklyAdherence={gamification.weeklyAdherence}
+                  mealsCompletedThisWeek={gamification.mealsCompletedThisWeek}
+                  mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
+                  totalMealsCompleted={gamification.totalMealsCompleted}
+                  isLoading={gamification.isLoading}
+                />
+
+                {/* Conquistas */}
+                <AchievementBadges
+                  unlockedAchievements={gamification.unlockedAchievements}
+                  newAchievements={gamification.newAchievements}
+                />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

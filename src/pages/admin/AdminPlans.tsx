@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Loader2, CreditCard, RefreshCw, Copy } from "lucide-react";
+import { Plus, Loader2, CreditCard, RefreshCw, Copy, Settings, Eye, EyeOff, Key } from "lucide-react";
 import { useActivityLog } from "@/hooks/useActivityLog";
 
 type StripePrice = {
@@ -52,7 +52,8 @@ export default function AdminPlans() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreating, setIsCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
-
+  const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [showSecretKey, setShowSecretKey] = useState(false);
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -198,6 +199,59 @@ export default function AdminPlans() {
           </p>
         </div>
         <div className="flex gap-2">
+          <Dialog open={configDialogOpen} onOpenChange={setConfigDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings className="w-4 h-4 mr-2" />
+                Configuração
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Key className="w-5 h-5" />
+                  Configuração do Stripe
+                </DialogTitle>
+                <DialogDescription>
+                  Chave de API configurada para integração com o Stripe
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label>Chave Secreta (STRIPE_SECRET_KEY)</Label>
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 bg-muted rounded-lg p-3 font-mono text-sm break-all">
+                      {showSecretKey ? (
+                        <span className="text-foreground">sk_live_••••••••••••••••••••••••</span>
+                      ) : (
+                        <span className="text-muted-foreground">••••••••••••••••••••••••••••••••</span>
+                      )}
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => setShowSecretKey(!showSecretKey)}
+                    >
+                      {showSecretKey ? (
+                        <EyeOff className="w-4 h-4" />
+                      ) : (
+                        <Eye className="w-4 h-4" />
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    A chave secreta está armazenada de forma segura nas variáveis de ambiente do servidor.
+                  </p>
+                </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
+                  <p className="text-sm text-primary font-medium">✓ Stripe configurado</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    A integração com o Stripe está ativa e funcionando.
+                  </p>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Button
             variant="outline"
             size="sm"

@@ -1,5 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  buildRegenerateMealPrompt,
+  calculateMacroTargets,
+  type UserProfile,
+} from "../_shared/recipeConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,36 +14,6 @@ const corsHeaders = {
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[REGENERATE-MEAL] ${step}${detailsStr}`);
-};
-
-const MEAL_LABELS: Record<string, string> = {
-  cafe_manha: "Café da Manhã",
-  almoco: "Almoço",
-  lanche: "Lanche da Tarde",
-  jantar: "Jantar",
-  ceia: "Ceia"
-};
-
-const DIETARY_LABELS: Record<string, string> = {
-  comum: "alimentação comum",
-  vegetariana: "vegetariana",
-  vegana: "vegana",
-  low_carb: "low carb",
-};
-
-const GOAL_LABELS: Record<string, string> = {
-  emagrecer: "emagrecer",
-  manter: "manter peso",
-  ganhar_peso: "ganhar massa muscular",
-};
-
-// Exemplos de receitas apropriadas para cada tipo de refeição
-const MEAL_TYPE_EXAMPLES: Record<string, string[]> = {
-  cafe_manha: ["ovos mexidos", "mingau de aveia", "panqueca", "smoothie de frutas", "tapioca", "pão com queijo", "iogurte com granola", "crepioca", "vitamina de banana"],
-  almoco: ["frango grelhado com arroz", "peixe assado", "carne com legumes", "macarrão com molho", "strogonoff", "risoto", "feijoada light", "moqueca"],
-  lanche: ["sanduíche natural", "wrap de frango", "barra de cereal caseira", "frutas com pasta de amendoim", "bolo integral", "cookies proteicos", "açaí"],
-  jantar: ["sopa de legumes", "omelete", "salada completa", "wrap leve", "peixe grelhado", "frango desfiado", "quiche", "creme de abóbora"],
-  ceia: ["chá com biscoito integral", "iogurte", "frutas", "castanhas", "leite morno", "queijo cottage", "banana com canela"]
 };
 
 // Helper function to call Gemini API with retry logic
@@ -69,8 +44,7 @@ async function callGeminiWithRetry(
       const errorText = await response.text();
       logStep(`Rate limit hit on attempt ${attempt}`, { status: 429 });
       
-      // Extract retry delay from error message if available
-      let retryDelay = 30; // Default 30 seconds
+      let retryDelay = 30;
       const retryMatch = errorText.match(/retry in (\d+\.?\d*)/i);
       if (retryMatch) {
         retryDelay = Math.ceil(parseFloat(retryMatch[1]));
@@ -82,10 +56,8 @@ async function callGeminiWithRetry(
         continue;
       }
       
-      // Last attempt failed
       lastError = new Error(`Rate limit exceeded after ${maxRetries} attempts`);
     } else {
-      // Non-429 error, don't retry
       const errorText = await response.text();
       throw new Error(`Google Gemini API error: ${response.status} - ${errorText}`);
     }
@@ -145,13 +117,15 @@ serve(async (req) => {
       .single();
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
+    logStep("Profile fetched", {
+      intolerances: profile.intolerances,
+      dietary: profile.dietary_preference,
+      goal: profile.goal,
+      complexity: profile.recipe_complexity,
+      context: profile.context
+    });
 
-    const intolerancesList = profile.intolerances || [];
-    const intolerancesStr = intolerancesList.length > 0 && !intolerancesList.includes("nenhuma")
-      ? intolerancesList.join(", ")
-      : "nenhuma";
-
-    // Calculate target calories for this meal type
+    // Calculate target calories for this meal type using centralized function
     const calorieDistribution: Record<string, number> = {
       cafe_manha: 0.20,
       almoco: 0.30,
@@ -160,79 +134,20 @@ serve(async (req) => {
       ceia: 0.10,
     };
 
-    let dailyCalories = 2000;
-    if (profile.weight_current && profile.height && profile.age && profile.sex) {
-      let tmb: number;
-      if (profile.sex === "male") {
-        tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) + 5;
-      } else {
-        tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) - 161;
-      }
-      const activityFactors: Record<string, number> = {
-        sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9
-      };
-      const factor = activityFactors[profile.activity_level] || 1.55;
-      const get = Math.round(tmb * factor);
-      
-      if (profile.goal === "emagrecer") {
-        dailyCalories = Math.max(get - 500, profile.sex === "male" ? 1500 : 1200);
-      } else if (profile.goal === "ganhar_peso") {
-        dailyCalories = get + 400;
-      } else {
-        dailyCalories = get;
-      }
-    }
-
-    // Use mealType from the database item
+    const macros = calculateMacroTargets(profile as UserProfile);
     const mealType = mealItem.meal_type;
-    const targetCalories = Math.round(dailyCalories * (calorieDistribution[mealType] || 0.20));
-    const mealLabel = MEAL_LABELS[mealType] || mealType;
+    const targetCalories = Math.round(macros.dailyCalories * (calorieDistribution[mealType] || 0.20));
 
-    let ingredientsPrompt = "";
-    if (mode === "with_ingredients" && ingredients) {
-      ingredientsPrompt = `Use OBRIGATORIAMENTE os seguintes ingredientes: ${ingredients}. Pode adicionar temperos e complementos básicos.`;
-    }
+    logStep("Target calories calculated", { mealType, targetCalories, dailyCalories: macros.dailyCalories });
 
-    const mealExamples = MEAL_TYPE_EXAMPLES[mealType] || [];
-    const examplesStr = mealExamples.length > 0 ? mealExamples.join(", ") : "";
-
-    const systemPrompt = `Você é um nutricionista especializado em criar receitas deliciosas e nutritivas.
-
-PERFIL DO USUÁRIO:
-- Preferência alimentar: ${DIETARY_LABELS[profile.dietary_preference] || "comum"}
-- Objetivo: ${GOAL_LABELS[profile.goal] || "manter peso"}
-- Intolerâncias: ${intolerancesStr}
-- Contexto: ${profile.context === "familia" ? "família com crianças" : profile.context === "modo_kids" ? "crianças" : "individual"}
-
-⚠️ REGRA ABSOLUTA - TIPO DE REFEIÇÃO:
-Esta receita é OBRIGATORIAMENTE para ${mealLabel.toUpperCase()}.
-Exemplos de receitas apropriadas: ${examplesStr}
-NUNCA gere receitas que não sejam apropriadas para ${mealLabel}!
-
-OUTRAS REGRAS:
-1. A receita deve ter aproximadamente ${targetCalories} calorias
-2. Respeite TODAS as intolerâncias alimentares
-3. Crie uma receita DIFERENTE e criativa
-4. Ingredientes e instruções completas
-${ingredientsPrompt}
-
-FORMATO DE RESPOSTA (JSON VÁLIDO):
-{
-  "recipe_name": "Nome da Receita",
-  "recipe_calories": ${targetCalories},
-  "recipe_protein": 25,
-  "recipe_carbs": 30,
-  "recipe_fat": 15,
-  "recipe_prep_time": 20,
-  "recipe_ingredients": [
-    {"item": "ingrediente", "quantity": "100", "unit": "g"}
-  ],
-  "recipe_instructions": ["Passo 1...", "Passo 2..."]
-}
-
-IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
-
-    const userPrompt = `Crie uma nova receita EXCLUSIVAMENTE para ${mealLabel.toUpperCase()}. A receita DEVE ser apropriada para este horário/tipo de refeição. ${ingredientsPrompt || "Surpreenda-me com algo delicioso!"}`;
+    // Build prompt using centralized config
+    const ingredientsToUse = mode === "with_ingredients" ? ingredients : undefined;
+    const prompt = buildRegenerateMealPrompt(
+      profile as UserProfile,
+      mealType,
+      targetCalories,
+      ingredientsToUse
+    );
 
     logStep("Calling Google Gemini API with retry logic");
 
@@ -241,7 +156,7 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
       contents: [
         {
           parts: [
-            { text: `${systemPrompt}\n\n${userPrompt}` }
+            { text: prompt }
           ]
         }
       ],
@@ -277,6 +192,12 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
       throw new Error("A IA não retornou uma receita válida. Tente novamente.");
     }
 
+    logStep("Recipe parsed", { 
+      name: recipeData.recipe_name,
+      calories: recipeData.recipe_calories,
+      hasChefTip: !!recipeData.chef_tip
+    });
+
     // Update the meal item
     const { data: updatedMeal, error: updateError } = await supabaseClient
       .from("meal_plan_items")
@@ -309,7 +230,6 @@ IMPORTANTE: Responda APENAS com o JSON, sem texto adicional.`;
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR", { message: errorMessage });
     
-    // Check if it's a rate limit error after retries
     if (errorMessage.includes("Rate limit exceeded")) {
       return new Response(JSON.stringify({ 
         error: "Limite de requisições atingido. Por favor, aguarde 1 minuto e tente novamente." 

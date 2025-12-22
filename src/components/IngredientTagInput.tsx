@@ -782,38 +782,25 @@ export default function IngredientTagInput({
       {/* Suggestions dropdown with grouping - optimized for mobile keyboard */}
       {showSuggestions && hasSuggestions && (
         <div 
-          className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-[40dvh] overflow-y-auto overscroll-behavior-contain"
+          className="absolute z-[9999] w-full mt-2 bg-popover border border-border rounded-xl shadow-xl"
           style={{ 
-            WebkitOverflowScrolling: 'touch',
-            touchAction: 'pan-y',
-          }}
-          ref={(el) => {
-            if (el) {
-              let startY = 0;
-              
-              el.ontouchstart = (e) => {
-                startY = e.touches[0].clientY;
-              };
-              
-              el.ontouchmove = (e) => {
-                const currentY = e.touches[0].clientY;
-                const deltaY = startY - currentY;
-                const isScrollingDown = deltaY > 0;
-                const isScrollingUp = deltaY < 0;
-                
-                const isAtTop = el.scrollTop <= 0;
-                const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-                
-                // Block page scroll at boundaries
-                if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
-                  e.preventDefault();
-                }
-                
-                e.stopPropagation();
-              };
-            }
+            maxHeight: '40dvh',
+            display: 'flex',
+            flexDirection: 'column',
           }}
         >
+          <div
+            className="py-2 overflow-y-scroll flex-1"
+            style={{ 
+              WebkitOverflowScrolling: 'touch',
+              overscrollBehavior: 'contain',
+              minHeight: 0,
+            }}
+            onTouchMove={(e) => {
+              // Allow scroll inside, prevent propagation to parent
+              e.stopPropagation();
+            }}
+          >
           
           {/* Seção: Opções seguras */}
           {processedSuggestions.safe.length > 0 && (
@@ -881,6 +868,7 @@ export default function IngredientTagInput({
               })}
             </>
           )}
+          </div>
         </div>
       )}
 

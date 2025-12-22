@@ -9,8 +9,9 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Bell
 } from "lucide-react";
+import { NotificationSettings } from "@/components/NotificationSettings";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -581,6 +582,15 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
             </div>
           </div>
         )}
+
+        {/* Notificações */}
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Bell className="w-4 h-4 text-primary" />
+            Notificações
+          </h3>
+          <NotificationSettings />
+        </div>
 
         {/* Logout */}
         <Button 

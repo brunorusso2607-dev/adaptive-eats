@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect, KeyboardEvent } from "react";
-import { X, Plus, Search } from "lucide-react";
+import { useState, useRef, useEffect, KeyboardEvent, useMemo } from "react";
+import { X, Plus, Search, AlertTriangle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
@@ -67,6 +67,20 @@ const COMMON_INGREDIENTS = [
   "manteiga", "manteiga com sal", "manteiga sem sal", "manteiga ghee", "ghee",
   "margarina", "creme de ricota",
   
+  // ===== ALTERNATIVAS SEM LACTOSE =====
+  "leite sem lactose", "leite integral sem lactose", "leite desnatado sem lactose",
+  "leite semidesnatado sem lactose", "leite em pó sem lactose",
+  "creme de leite sem lactose", "chantilly sem lactose", "nata sem lactose",
+  "iogurte sem lactose", "iogurte natural sem lactose", "iogurte grego sem lactose",
+  "queijo sem lactose", "queijo mussarela sem lactose", "mussarela sem lactose",
+  "queijo parmesão sem lactose", "parmesão sem lactose", "queijo minas sem lactose",
+  "queijo cottage sem lactose", "queijo ricota sem lactose", "ricota sem lactose",
+  "queijo cheddar sem lactose", "queijo prato sem lactose",
+  "requeijão sem lactose", "cream cheese sem lactose", "catupiry sem lactose",
+  "manteiga sem lactose", "doce de leite sem lactose",
+  "leite condensado sem lactose", "pudim sem lactose", "sorvete sem lactose",
+  "chocolate ao leite sem lactose", "achocolatado sem lactose",
+  
   // Leites Vegetais
   "leite de coco", "leite de amêndoas", "leite de aveia", "leite de soja", "leite de arroz",
   "leite de castanha", "leite de avelã", "creme de coco",
@@ -85,6 +99,16 @@ const COMMON_INGREDIENTS = [
   "nhoque", "gnocchi", "massa folhada", "massa de pastel", "massa de pizza",
   "massa de torta", "massa de empada", "massa wonton", "macarrão instantâneo", "miojo",
   "macarrão de arroz", "bifum", "udon", "soba", "ramen", "lámen",
+  
+  // ===== ALTERNATIVAS SEM GLÚTEN =====
+  "farinha sem glúten", "farinha de trigo sem glúten", "mix de farinhas sem glúten",
+  "macarrão sem glúten", "espaguete sem glúten", "penne sem glúten", "fusilli sem glúten",
+  "lasanha sem glúten", "massa de lasanha sem glúten", "massa sem glúten",
+  "pão sem glúten", "pão de forma sem glúten", "pão francês sem glúten",
+  "torrada sem glúten", "biscoito sem glúten", "bolacha sem glúten",
+  "massa de pizza sem glúten", "massa de torta sem glúten", "massa folhada sem glúten",
+  "cerveja sem glúten", "molho de soja sem glúten", "shoyu sem glúten",
+  "aveia sem glúten", "aveia certificada sem glúten",
   
   // Carboidratos - Pães e Farinhas
   "pão", "pão francês", "pão de forma", "pão integral", "pão de leite", "pão sírio",
@@ -241,6 +265,12 @@ const COMMON_INGREDIENTS = [
   "xarope de bordo", "maple syrup", "xarope de agave", "xarope de milho",
   "glucose", "açúcar invertido", "stevia", "adoçante", "eritritol", "xilitol",
   
+  // ===== ALTERNATIVAS SEM AÇÚCAR =====
+  "chocolate sem açúcar", "chocolate ao leite sem açúcar", "chocolate meio amargo sem açúcar",
+  "achocolatado sem açúcar", "doce de leite sem açúcar", "geleia sem açúcar",
+  "sorvete sem açúcar", "pudim sem açúcar", "biscoito sem açúcar",
+  "refrigerante zero", "refrigerante sem açúcar", "suco sem açúcar",
+  
   // Chocolates e Cacau
   "chocolate", "chocolate ao leite", "chocolate meio amargo", "chocolate amargo",
   "chocolate branco", "chocolate em pó", "cacau", "cacau em pó", "nibs de cacau",
@@ -375,6 +405,8 @@ const DAIRY_INGREDIENTS = new Set([
   "iogurte de morango", "iogurte de frutas", "kefir", "leitelho", "buttermilk",
   "manteiga", "manteiga com sal", "manteiga sem sal", "manteiga ghee", "ghee",
   "creme de ricota",
+  // Derivados com lactose
+  "chocolate ao leite", "achocolatado", "sorvete", "pudim", "doce de leite",
 ]);
 
 const EGG_INGREDIENTS = new Set([
@@ -390,6 +422,59 @@ const HONEY_INGREDIENTS = new Set([
 const GELATIN_INGREDIENTS = new Set([
   "gelatina", "gelatina em pó", "gelatina em folha",
 ]);
+
+// Ingredientes que contêm glúten
+const GLUTEN_INGREDIENTS = new Set([
+  "farinha de trigo", "farinha de trigo integral", "trigo", "trigo para quibe",
+  "pão", "pão francês", "pão de forma", "pão integral", "pão de leite", "pão sírio",
+  "pão árabe", "pão ciabatta", "pão italiano", "pão brioche", "baguete", "croissant",
+  "torrada", "biscoito", "bolacha", "cream cracker", "biscoito água e sal",
+  "macarrão", "macarrão espaguete", "espaguete", "macarrão penne", "penne",
+  "macarrão fusilli", "macarrão farfalle", "macarrão talharim", "talharim",
+  "macarrão fettuccine", "lasanha", "massa de lasanha", "canelone", "ravióli",
+  "capeletti", "tortellini", "nhoque", "gnocchi", "massa folhada", "massa de pastel",
+  "massa de pizza", "massa de torta", "massa de empada", "miojo", "macarrão instantâneo",
+  "cerveja", "cevada", "centeio", "aveia", "aveia em flocos", "farelo de aveia",
+  "bulgur", "triguilho", "cuscuz", "semolina", "seitan",
+  "molho de soja", "shoyu",
+]);
+
+// Ingredientes que contêm açúcar
+const SUGAR_INGREDIENTS = new Set([
+  "açúcar", "açúcar refinado", "açúcar cristal", "açúcar mascavo", "açúcar demerara",
+  "açúcar de confeiteiro", "mel", "mel silvestre", "melado", "melado de cana",
+  "xarope de bordo", "maple syrup", "xarope de agave", "xarope de milho", "glucose",
+  "leite condensado", "doce de leite", "chocolate ao leite", "chocolate branco",
+  "achocolatado", "nutella", "gotas de chocolate",
+]);
+
+// Ingredientes com amendoim
+const PEANUT_INGREDIENTS = new Set([
+  "amendoim", "amendoim torrado", "pasta de amendoim", "manteiga de amendoim",
+  "paçoca", "óleo de amendoim",
+]);
+
+// Mapeamento de restrições para seus ingredientes
+const RESTRICTION_INGREDIENTS_MAP: Record<string, Set<string>> = {
+  lactose: DAIRY_INGREDIENTS,
+  gluten: GLUTEN_INGREDIENTS,
+  acucar: SUGAR_INGREDIENTS,
+  amendoim: PEANUT_INGREDIENTS,
+  frutos_mar: FISH_SEAFOOD_INGREDIENTS,
+  ovo: EGG_INGREDIENTS,
+};
+
+// Labels amigáveis para as restrições
+const RESTRICTION_LABELS: Record<string, string> = {
+  lactose: "lactose",
+  gluten: "glúten",
+  acucar: "açúcar",
+  amendoim: "amendoim",
+  frutos_mar: "frutos do mar",
+  ovo: "ovo",
+  vegana: "produto animal",
+  vegetariana: "carne",
+};
 
 // Função para verificar se ingrediente é compatível com a dieta
 const isIngredientCompatible = (ingredient: string, dietaryPreference: string | null | undefined): boolean => {
@@ -424,6 +509,35 @@ const isIngredientCompatible = (ingredient: string, dietaryPreference: string | 
   }
   
   return true;
+};
+
+// Função para verificar se ingrediente tem conflito com intolerância
+const checkIntoleranceConflict = (
+  ingredient: string, 
+  intolerances: string[] | null | undefined
+): string | null => {
+  if (!intolerances || intolerances.length === 0) return null;
+  
+  const lowerIngredient = ingredient.toLowerCase();
+  
+  for (const intolerance of intolerances) {
+    if (intolerance === "nenhuma") continue;
+    
+    const restrictedIngredients = RESTRICTION_INGREDIENTS_MAP[intolerance];
+    if (restrictedIngredients && restrictedIngredients.has(lowerIngredient)) {
+      return intolerance;
+    }
+  }
+  
+  return null;
+};
+
+// Tipo para ingrediente processado
+type ProcessedIngredient = {
+  name: string;
+  hasConflict: boolean;
+  conflictType: string | null;
+  conflictLabel: string | null;
 };
 
 type UserProfile = {
@@ -466,16 +580,43 @@ export default function IngredientTagInput({
   const normalizeString = (str: string) => 
     str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-  // Filtra sugestões baseado no input e preferência alimentar do usuário
-  const normalizedInput = normalizeString(inputValue);
-  const filteredSuggestions = inputValue.length >= 1
-    ? COMMON_INGREDIENTS.filter(
-        (ingredient) =>
-          normalizeString(ingredient).includes(normalizedInput) &&
-          !value.includes(ingredient) &&
-          isIngredientCompatible(ingredient, userProfile?.dietary_preference)
-      ).slice(0, 10)
-    : [];
+  // Processa e agrupa ingredientes
+  const processedSuggestions = useMemo(() => {
+    if (inputValue.length < 1) return { safe: [], conflicting: [] };
+    
+    const normalizedInput = normalizeString(inputValue);
+    
+    const filtered = COMMON_INGREDIENTS.filter(
+      (ingredient) =>
+        normalizeString(ingredient).includes(normalizedInput) &&
+        !value.includes(ingredient) &&
+        isIngredientCompatible(ingredient, userProfile?.dietary_preference)
+    );
+    
+    const processed: ProcessedIngredient[] = filtered.map(ingredient => {
+      const conflictType = checkIntoleranceConflict(ingredient, userProfile?.intolerances);
+      return {
+        name: ingredient,
+        hasConflict: !!conflictType,
+        conflictType,
+        conflictLabel: conflictType ? RESTRICTION_LABELS[conflictType] || conflictType : null,
+      };
+    });
+    
+    // Separa em seguros e conflitantes
+    const safe = processed.filter(i => !i.hasConflict);
+    const conflicting = processed.filter(i => i.hasConflict);
+    
+    return {
+      safe: safe.slice(0, 6),
+      conflicting: conflicting.slice(0, 4),
+    };
+  }, [inputValue, value, userProfile]);
+
+  // Lista combinada para navegação por teclado
+  const allSuggestions = useMemo(() => {
+    return [...processedSuggestions.safe, ...processedSuggestions.conflicting];
+  }, [processedSuggestions]);
 
   // Adiciona ingrediente (após verificação ou confirmação)
   const doAddIngredient = (ingredient: string) => {
@@ -537,8 +678,8 @@ export default function IngredientTagInput({
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === "Enter") {
       e.preventDefault();
-      if (showSuggestions && filteredSuggestions.length > 0) {
-        addIngredient(filteredSuggestions[highlightedIndex]);
+      if (showSuggestions && allSuggestions.length > 0) {
+        addIngredient(allSuggestions[highlightedIndex].name);
       } else if (inputValue.trim()) {
         addIngredient(inputValue);
       } else if (value.length > 0 && onSubmit) {
@@ -547,7 +688,7 @@ export default function IngredientTagInput({
     } else if (e.key === "ArrowDown") {
       e.preventDefault();
       setHighlightedIndex((prev) =>
-        Math.min(prev + 1, filteredSuggestions.length - 1)
+        Math.min(prev + 1, allSuggestions.length - 1)
       );
     } else if (e.key === "ArrowUp") {
       e.preventDefault();
@@ -574,7 +715,10 @@ export default function IngredientTagInput({
   // Reset highlighted index when suggestions change
   useEffect(() => {
     setHighlightedIndex(0);
-  }, [filteredSuggestions.length]);
+  }, [allSuggestions.length]);
+
+  const hasSuggestions = processedSuggestions.safe.length > 0 || processedSuggestions.conflicting.length > 0;
+  const hasIntolerances = userProfile?.intolerances && userProfile.intolerances.length > 0 && !userProfile.intolerances.includes("nenhuma");
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>
@@ -629,26 +773,76 @@ export default function IngredientTagInput({
         </div>
       </div>
 
-      {/* Suggestions dropdown */}
-      {showSuggestions && filteredSuggestions.length > 0 && (
-        <div className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-64 overflow-y-auto">
-          {filteredSuggestions.map((suggestion, index) => (
-            <button
-              key={suggestion}
-              type="button"
-              onClick={() => addIngredient(suggestion)}
-              className={cn(
-                "w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
-                index === highlightedIndex
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground hover:bg-muted"
+      {/* Suggestions dropdown with grouping */}
+      {showSuggestions && hasSuggestions && (
+        <div className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-72 overflow-y-auto">
+          
+          {/* Seção: Opções seguras */}
+          {processedSuggestions.safe.length > 0 && (
+            <>
+              {hasIntolerances && (
+                <div className="px-4 py-1.5 flex items-center gap-2">
+                  <Check className="w-3.5 h-3.5 text-green-500" />
+                  <span className="text-xs font-medium text-green-600">Opções seguras para você</span>
+                </div>
               )}
-            >
-              <Plus className="w-4 h-4 text-primary shrink-0" />
-              <span className="capitalize">{suggestion}</span>
-              <span className="ml-auto text-xs text-muted-foreground">adicionar</span>
-            </button>
-          ))}
+              {processedSuggestions.safe.map((item, index) => (
+                <button
+                  key={item.name}
+                  type="button"
+                  onClick={() => addIngredient(item.name)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
+                    index === highlightedIndex
+                      ? "bg-primary/10 text-primary"
+                      : "text-foreground hover:bg-muted"
+                  )}
+                >
+                  <Plus className="w-4 h-4 text-primary shrink-0" />
+                  <span className="capitalize flex-1">{item.name}</span>
+                  <span className="text-xs text-muted-foreground">adicionar</span>
+                </button>
+              ))}
+            </>
+          )}
+          
+          {/* Separador */}
+          {processedSuggestions.safe.length > 0 && processedSuggestions.conflicting.length > 0 && (
+            <div className="my-2 border-t border-border" />
+          )}
+          
+          {/* Seção: Contém restrição */}
+          {processedSuggestions.conflicting.length > 0 && (
+            <>
+              <div className="px-4 py-1.5 flex items-center gap-2">
+                <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-xs font-medium text-amber-600">Contém restrição</span>
+              </div>
+              {processedSuggestions.conflicting.map((item, index) => {
+                const globalIndex = processedSuggestions.safe.length + index;
+                return (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => addIngredient(item.name)}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors",
+                      globalIndex === highlightedIndex
+                        ? "bg-amber-50 dark:bg-amber-900/20"
+                        : "hover:bg-muted"
+                    )}
+                  >
+                    <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                    <span className="capitalize flex-1 text-foreground">{item.name}</span>
+                    <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-5 bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-700">
+                      {item.conflictLabel}
+                    </Badge>
+                    <span className="text-xs text-muted-foreground ml-1">adicionar</span>
+                  </button>
+                );
+              })}
+            </>
+          )}
         </div>
       )}
 

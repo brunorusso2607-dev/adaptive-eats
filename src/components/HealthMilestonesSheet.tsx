@@ -77,7 +77,7 @@ export default function HealthMilestonesSheet({
                 <span>Próximo nível</span>
                 <span>{xpInLevel}/{xpForNextLevel} XP</span>
               </div>
-              <Progress value={levelProgress} className="h-2 bg-muted/50" />
+              <Progress value={levelProgress} variant="xp" className="h-2.5 bg-muted/50" />
             </div>
           </div>
 
@@ -106,7 +106,7 @@ export default function HealthMilestonesSheet({
             {/* Total Meals */}
             <div className="p-3 rounded-xl bg-muted/30 border border-border/30 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
-                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                <TrendingUp className="w-4 h-4 text-primary" />
               </div>
               <p className="text-lg font-semibold text-foreground">{totalMealsCompleted}</p>
               <p className="text-[10px] text-muted-foreground uppercase tracking-wide">Refeições</p>

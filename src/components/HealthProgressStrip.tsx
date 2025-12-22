@@ -75,7 +75,8 @@ export default function HealthProgressStrip({
           </div>
           <Progress 
             value={levelProgress} 
-            className="h-1.5 bg-muted/50" 
+            variant="xp"
+            className="h-2 bg-muted/50 rounded-full" 
           />
         </div>
 

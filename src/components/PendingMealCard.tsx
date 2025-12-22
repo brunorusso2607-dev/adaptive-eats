@@ -43,20 +43,20 @@ interface PendingMealCardProps {
 
 const statusStyles: Record<MealStatus, { border: string; bg: string }> = {
   on_time: { 
-    border: "border-emerald-500/30", 
-    bg: "bg-emerald-500/5"
+    border: "border-primary/20", 
+    bg: "bg-primary/5"
   },
   delayed: { 
-    border: "border-yellow-500/50", 
-    bg: "bg-yellow-500/5"
+    border: "border-accent/50", 
+    bg: "bg-accent/5"
   },
   critical: { 
     border: "border-destructive/50", 
     bg: "bg-destructive/5"
   },
   completed: { 
-    border: "border-emerald-500/50", 
-    bg: "bg-emerald-500/5"
+    border: "border-primary/30", 
+    bg: "bg-primary/5"
   },
 };
 
@@ -273,14 +273,14 @@ export default function PendingMealCard({
               <TooltipTrigger asChild>
                 <Button
                   size="icon"
-                  className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 border-0"
+                  className="h-9 w-9 gradient-primary border-0 shadow-glow"
                   onClick={handleFizClick}
                   disabled={isMarking || isSkipping}
                 >
                   {isMarking ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                    <Loader2 className="w-4 h-4 animate-spin text-primary-foreground" />
                   ) : (
-                    <Check className="w-4 h-4 text-white" />
+                    <Check className="w-4 h-4 text-primary-foreground" />
                   )}
                 </Button>
               </TooltipTrigger>

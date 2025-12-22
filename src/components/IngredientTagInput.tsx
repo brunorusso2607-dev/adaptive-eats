@@ -781,7 +781,10 @@ export default function IngredientTagInput({
 
       {/* Suggestions dropdown with grouping - optimized for mobile keyboard */}
       {showSuggestions && hasSuggestions && (
-        <div className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-[40dvh] overflow-y-auto overscroll-contain">
+        <div 
+          className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-[40dvh] overflow-y-scroll"
+          style={{ WebkitOverflowScrolling: 'touch' }}
+        >
           
           {/* Seção: Opções seguras */}
           {processedSuggestions.safe.length > 0 && (

@@ -372,36 +372,6 @@ export type Database = {
         }
         Relationships: []
       }
-      notification_preferences: {
-        Row: {
-          created_at: string
-          id: string
-          meal_reminders: boolean
-          reminder_time: string
-          streak_alerts: boolean
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          meal_reminders?: boolean
-          reminder_time?: string
-          streak_alerts?: boolean
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          meal_reminders?: boolean
-          reminder_time?: string
-          streak_alerts?: boolean
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           activity_level: string | null
@@ -471,39 +441,6 @@ export type Database = {
           updated_at?: string | null
           weight_current?: number | null
           weight_goal?: number | null
-        }
-        Relationships: []
-      }
-      push_subscriptions: {
-        Row: {
-          auth: string
-          created_at: string
-          endpoint: string
-          id: string
-          is_active: boolean
-          p256dh: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          auth: string
-          created_at?: string
-          endpoint: string
-          id?: string
-          is_active?: boolean
-          p256dh: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          auth?: string
-          created_at?: string
-          endpoint?: string
-          id?: string
-          is_active?: boolean
-          p256dh?: string
-          updated_at?: string
-          user_id?: string
         }
         Relationships: []
       }

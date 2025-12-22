@@ -190,9 +190,17 @@ serve(async (req) => {
     let sentCount = 0;
     const failedSubscriptions: string[] = [];
 
+    // Prepare the notification payload as JSON
+    const notificationPayload = JSON.stringify(payload);
+    const payloadBytes = new TextEncoder().encode(notificationPayload);
+
+    console.log('[SEND-PUSH] Payload bytes length:', payloadBytes.length);
+
     for (const sub of subscriptions) {
       try {
         console.log('[PUSH] Sending to endpoint:', sub.endpoint.substring(0, 60) + '...');
+        console.log('[PUSH] Subscription p256dh:', sub.p256dh?.substring(0, 20) + '...');
+        console.log('[PUSH] Subscription auth:', sub.auth?.substring(0, 10) + '...');
         
         // Create VAPID authorization header
         const authHeader = await createVapidAuthHeader(
@@ -204,25 +212,28 @@ serve(async (req) => {
         
         console.log('[PUSH] Auth header created');
         
-        // Send the push notification
+        // For now, send without encryption (empty body with VAPID auth)
+        // The browser will show a default notification
         const response = await fetch(sub.endpoint, {
           method: 'POST',
           headers: {
             'Authorization': authHeader,
             'TTL': '86400',
-            'Urgency': 'normal',
+            'Urgency': 'high',
+            'Content-Type': 'application/octet-stream',
             'Content-Length': '0',
           },
         });
         
         console.log('[PUSH] Response status:', response.status);
+        const responseText = await response.text();
+        console.log('[PUSH] Response body:', responseText);
         
         if (response.ok || response.status === 201) {
           console.log('[PUSH] Sent successfully');
           sentCount++;
         } else {
-          const text = await response.text();
-          console.error('[PUSH] Failed:', response.status, text);
+          console.error('[PUSH] Failed:', response.status, responseText);
           
           // Mark as inactive if subscription is gone
           if (response.status === 410 || response.status === 404) {

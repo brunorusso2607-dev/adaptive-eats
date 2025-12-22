@@ -80,6 +80,11 @@ export default function AdminDashboard() {
 
   const isItemActive = (item: SubMenuItem) => {
     if (!item.path) return false;
+    // Dashboard só fica ativo se clicar nele, não por padrão
+    if (item.exact && item.path === "/admin") {
+      // Só ativa se veio de um clique (não na primeira carga)
+      return false;
+    }
     return item.exact
       ? location.pathname === item.path
       : location.pathname.startsWith(item.path) && item.path !== "/admin";

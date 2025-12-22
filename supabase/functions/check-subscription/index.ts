@@ -38,25 +38,21 @@ serve(async (req) => {
     const token = authHeader.replace("Bearer ", "");
     logStep("Token extracted", { tokenLength: token.length });
 
-    // Create a client with the user's token to verify authentication
+    // Use service role key to verify the JWT token
     const supabaseUrl = Deno.env.get("SUPABASE_URL") ?? "";
-    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+    const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
     
-    const supabaseUserClient = createClient(supabaseUrl, supabaseAnonKey, {
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceRoleKey, {
       auth: {
         persistSession: false,
         autoRefreshToken: false,
-      },
-      global: {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
       },
     });
 
     logStep("Authenticating user with token");
     
-    const { data: userData, error: userError } = await supabaseUserClient.auth.getUser();
+    // Use getUser with the token directly - this validates the JWT
+    const { data: userData, error: userError } = await supabaseAdmin.auth.getUser(token);
     
     if (userError) {
       logStep("User auth error", { error: userError.message });

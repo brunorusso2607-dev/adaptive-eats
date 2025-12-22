@@ -431,26 +431,26 @@ export default function AdminPlans() {
                 <div className="pt-2 border-t space-y-2">
                   <Label className="text-xs text-muted-foreground uppercase tracking-wide">Links Úteis</Label>
                   <div className="grid gap-2">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open("https://dashboard.stripe.com/apikeys", "_blank", "noopener,noreferrer")}
-                      className="w-full justify-start"
+                    <a
+                      href="https://dashboard.stripe.com/apikeys"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
                     >
                       <Key className="w-4 h-4 mr-2" />
                       Chaves de API do Stripe
                       <ExternalLink className="w-3 h-3 ml-auto" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => window.open("https://dashboard.stripe.com", "_blank", "noopener,noreferrer")}
-                      className="w-full justify-start"
+                    </a>
+                    <a
+                      href="https://dashboard.stripe.com"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center w-full px-3 py-2 text-sm rounded-md hover:bg-accent transition-colors"
                     >
                       <CreditCard className="w-4 h-4 mr-2" />
                       Dashboard Stripe
                       <ExternalLink className="w-3 h-3 ml-auto" />
-                    </Button>
+                    </a>
                   </div>
                 </div>
               </div>

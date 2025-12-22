@@ -265,7 +265,31 @@ export default function WeightHistoryChart({
               <CardTitle className="text-lg font-display">Registros</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-2 max-h-64 overflow-y-auto">
+              <div 
+                className="space-y-2 max-h-64 overflow-y-auto"
+                style={{
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'contain',
+                }}
+                onTouchStart={(e) => {
+                  const el = e.currentTarget;
+                  (el as any)._startY = e.touches[0].clientY;
+                }}
+                onTouchMove={(e) => {
+                  const el = e.currentTarget;
+                  const startY = (el as any)._startY || 0;
+                  const currentY = e.touches[0].clientY;
+                  const deltaY = startY - currentY;
+                  const isScrollingDown = deltaY > 0;
+                  const isScrollingUp = deltaY < 0;
+                  const isAtTop = el.scrollTop <= 0;
+                  const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+                  if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+                    e.preventDefault();
+                  }
+                  e.stopPropagation();
+                }}
+              >
                 {[...records].reverse().map((record, index) => {
                   const prevRecord = records[records.length - index - 2];
                   const change = prevRecord ? Number(record.weight) - Number(prevRecord.weight) : 0;

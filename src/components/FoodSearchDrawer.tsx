@@ -240,7 +240,31 @@ export default function FoodSearchDrawer({
             
             {/* Search results dropdown - positioned absolutely */}
             {(isLoading || foods.length > 0) && (
-              <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-64 overflow-y-auto">
+              <div 
+                className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-64 overflow-y-auto"
+                style={{
+                  WebkitOverflowScrolling: 'touch',
+                  overscrollBehavior: 'contain',
+                }}
+                onTouchStart={(e) => {
+                  const el = e.currentTarget;
+                  (el as any)._startY = e.touches[0].clientY;
+                }}
+                onTouchMove={(e) => {
+                  const el = e.currentTarget;
+                  const startY = (el as any)._startY || 0;
+                  const currentY = e.touches[0].clientY;
+                  const deltaY = startY - currentY;
+                  const isScrollingDown = deltaY > 0;
+                  const isScrollingUp = deltaY < 0;
+                  const isAtTop = el.scrollTop <= 0;
+                  const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+                  if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+                    e.preventDefault();
+                  }
+                  e.stopPropagation();
+                }}
+              >
                 {isLoading ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
                     <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />

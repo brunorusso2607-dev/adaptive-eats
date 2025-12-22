@@ -58,7 +58,31 @@ export default function HealthMilestonesSheet({
           </SheetTitle>
         </SheetHeader>
 
-        <div className="overflow-y-auto h-[calc(100%-4rem)] pb-8 space-y-6">
+        <div 
+          className="overflow-y-auto h-[calc(100%-4rem)] pb-8 space-y-6"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehavior: 'contain',
+          }}
+          onTouchStart={(e) => {
+            const el = e.currentTarget;
+            (el as any)._startY = e.touches[0].clientY;
+          }}
+          onTouchMove={(e) => {
+            const el = e.currentTarget;
+            const startY = (el as any)._startY || 0;
+            const currentY = e.touches[0].clientY;
+            const deltaY = startY - currentY;
+            const isScrollingDown = deltaY > 0;
+            const isScrollingUp = deltaY < 0;
+            const isAtTop = el.scrollTop <= 0;
+            const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+            if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+              e.preventDefault();
+            }
+            e.stopPropagation();
+          }}
+        >
           {/* Level & XP Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">

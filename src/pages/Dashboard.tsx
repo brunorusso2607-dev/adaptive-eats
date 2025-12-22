@@ -808,12 +808,14 @@ export default function Dashboard() {
                 </Card>
 
 
-                {/* Meta de Peso Banner - quando ativo (emagrecer ou ganhar peso) */}
-                {(userGoal === "emagrecer" || userGoal === "ganhar_peso") && (
+                {/* Meta de Peso Banner - quando ativo (emagrecer, ganhar peso ou manter) */}
+                {(userGoal === "emagrecer" || userGoal === "ganhar_peso" || userGoal === "manter") && weightData?.weight_current && (
                   <Card className={`glass-card border-2 overflow-hidden ${
                     userGoal === "ganhar_peso" 
                       ? "border-blue-400/50 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
-                      : "border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30"
+                      : userGoal === "manter"
+                        ? "border-amber-400/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30"
+                        : "border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30"
                   }`}>
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
@@ -821,23 +823,29 @@ export default function Dashboard() {
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
                             userGoal === "ganhar_peso"
                               ? "bg-gradient-to-r from-blue-500 to-indigo-500"
-                              : "bg-gradient-to-r from-green-500 to-emerald-500"
+                              : userGoal === "manter"
+                                ? "bg-gradient-to-r from-amber-500 to-orange-500"
+                                : "bg-gradient-to-r from-green-500 to-emerald-500"
                           }`}>
                             {userGoal === "ganhar_peso" 
                               ? <TrendingUp className="w-5 h-5 text-white" />
-                              : <TrendingDown className="w-5 h-5 text-white" />
+                              : userGoal === "manter"
+                                ? <Scale className="w-5 h-5 text-white" />
+                                : <TrendingDown className="w-5 h-5 text-white" />
                             }
                           </div>
                           <div>
                             <h3 className="font-display font-bold text-foreground">
-                              {userGoal === "ganhar_peso" ? "💪 Modo Ganho de Peso Ativo!" : "🔥 Modo Emagrecimento Ativo!"}
+                              {userGoal === "ganhar_peso" 
+                                ? "💪 Modo Ganho de Peso Ativo!" 
+                                : userGoal === "manter"
+                                  ? "⚖️ Modo Manutenção Ativo!"
+                                  : "🔥 Modo Emagrecimento Ativo!"}
                             </h3>
                             <p className="text-xs text-muted-foreground">
-                              {weightData?.weight_current 
-                                ? `${weightData.weight_current}kg → ${weightData.weight_goal}kg` 
-                                : userGoal === "ganhar_peso"
-                                  ? "Receitas com foco em calorias e proteínas"
-                                  : "Receitas com foco em saciedade e déficit calórico"}
+                              {userGoal === "manter"
+                                ? `Mantendo ${weightData.weight_current}kg`
+                                : `${weightData.weight_current}kg → ${weightData.weight_goal}kg`}
                             </p>
                           </div>
                         </div>
@@ -850,7 +858,9 @@ export default function Dashboard() {
                               className={`text-xs ${
                                 userGoal === "ganhar_peso"
                                   ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                  : "text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
+                                  : userGoal === "manter"
+                                    ? "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                                    : "text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
                               }`}
                             >
                               <Scale className="w-3 h-3 mr-1" />
@@ -864,10 +874,12 @@ export default function Dashboard() {
                             className={`${
                               userGoal === "ganhar_peso"
                                 ? "border-blue-400/50 text-blue-600 hover:bg-blue-50"
-                                : "border-green-400/50 text-green-600 hover:bg-green-50"
+                                : userGoal === "manter"
+                                  ? "border-amber-400/50 text-amber-600 hover:bg-amber-50"
+                                  : "border-green-400/50 text-green-600 hover:bg-green-50"
                             }`}
                           >
-                            {weightData?.weight_current ? "Editar" : "Configurar"}
+                            Editar
                           </Button>
                           <Button 
                             variant="outline" 
@@ -876,7 +888,9 @@ export default function Dashboard() {
                             className={`${
                               userGoal === "ganhar_peso"
                                 ? "border-blue-400/50 text-blue-600 hover:bg-blue-50"
-                                : "border-green-400/50 text-green-600 hover:bg-green-50"
+                                : userGoal === "manter"
+                                  ? "border-amber-400/50 text-amber-600 hover:bg-amber-50"
+                                  : "border-green-400/50 text-green-600 hover:bg-green-50"
                             }`}
                           >
                             Desativar
@@ -918,7 +932,13 @@ export default function Dashboard() {
                                   variant="ghost" 
                                   size="sm" 
                                   onClick={() => setShowWeightHistory(true)}
-                                  className={`w-full mt-3 ${userGoal === "ganhar_peso" ? "text-blue-600 hover:bg-blue-50" : "text-green-600 hover:bg-green-50"}`}
+                                  className={`w-full mt-3 ${
+                                    userGoal === "ganhar_peso" 
+                                      ? "text-blue-600 hover:bg-blue-50" 
+                                      : userGoal === "manter"
+                                        ? "text-amber-600 hover:bg-amber-50"
+                                        : "text-green-600 hover:bg-green-50"
+                                  }`}
                                 >
                                   📈 Ver Evolução do Peso
                                 </Button>
@@ -972,7 +992,13 @@ export default function Dashboard() {
                         </>
                       )}
                       <p className="text-xs text-muted-foreground mt-2 text-center">
-                        *Estimativa baseada em {userGoal === "ganhar_peso" ? "superávit calórico saudável" : "déficit calórico saudável"}. Resultados variam individualmente.
+                        *Estimativa baseada em {
+                          userGoal === "ganhar_peso" 
+                            ? "superávit calórico saudável" 
+                            : userGoal === "manter"
+                              ? "balanço calórico equilibrado"
+                              : "déficit calórico saudável"
+                        }. Resultados variam individualmente.
                       </p>
                     </CardContent>
                   </Card>
@@ -984,27 +1010,29 @@ export default function Dashboard() {
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">
 
-                  {/* Meta de Peso Toggle - só aparece quando não há meta ativa */}
-                  {userGoal !== "emagrecer" && userGoal !== "ganhar_peso" && (
-                    <Card 
-                      className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
-                      onClick={() => setShowWeightLossSetup(true)}
-                    >
-                      <CardContent className="p-5 text-center space-y-3">
-                        <div className="w-12 h-12 mx-auto bg-primary/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                          <TrendingDown className="w-6 h-6 text-primary" />
-                        </div>
-                        <div>
-                          <h3 className="font-display font-bold text-foreground">
-                            Meta de Peso
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Emagrecer ou ganhar
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
+                  {/* Meta de Peso Toggle - só aparece quando não há meta ativa ou não tem dados configurados */}
+                  {(userGoal !== "emagrecer" && userGoal !== "ganhar_peso" && userGoal !== "manter") || !weightData?.weight_current ? (
+                    !weightData?.weight_current && (
+                      <Card 
+                        className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                        onClick={() => setShowWeightLossSetup(true)}
+                      >
+                        <CardContent className="p-5 text-center space-y-3">
+                          <div className="w-12 h-12 mx-auto bg-primary/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
+                            <TrendingDown className="w-6 h-6 text-primary" />
+                          </div>
+                          <div>
+                            <h3 className="font-display font-bold text-foreground">
+                              Meta de Peso
+                            </h3>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Emagrecer ou ganhar
+                            </p>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )
+                  ) : null}
 
                   {/* Plano Semanal - Só aparece se tem plano criado - Escondido no mobile */}
                   {hasMealPlan && (

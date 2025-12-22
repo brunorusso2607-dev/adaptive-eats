@@ -54,11 +54,20 @@
     --success: 152 60% 45%;
     --warning: 38 92% 55%;
     --info: 199 89% 50%;
+    
+    /* Premium XP colors - Luxurious gold gradient */
+    --xp-start: 24 100% 50%;
+    --xp-mid: 36 100% 55%;
+    --xp-end: 45 100% 58%;
+
+    /* Neutral surface for secondary cards */
+    --surface-subtle: 220 14% 96%;
+    --surface-muted: 220 10% 94%;
 
     /* Gradients - Elegant warm tones */
     --gradient-primary: linear-gradient(135deg, hsl(8 75% 60%) 0%, hsl(15 80% 65%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(25 90% 65%) 0%, hsl(35 85% 70%) 100%);
-    --gradient-xp: linear-gradient(90deg, hsl(8 75% 55%) 0%, hsl(25 90% 60%) 50%, hsl(45 95% 55%) 100%);
+    --gradient-xp: linear-gradient(90deg, hsl(var(--xp-start)) 0%, hsl(var(--xp-mid)) 50%, hsl(var(--xp-end)) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(30 50% 99%) 0%, hsl(20 60% 96%) 50%, hsl(25 50% 94%) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%);
     --gradient-soft: linear-gradient(135deg, hsl(20 60% 97%) 0%, hsl(30 50% 95%) 100%);
@@ -68,6 +77,7 @@
     --shadow-md: 0 4px 12px -2px hsl(220 20% 20% / 0.08);
     --shadow-lg: 0 12px 32px -8px hsl(220 20% 20% / 0.12);
     --shadow-glow: 0 4px 24px hsl(8 75% 60% / 0.2);
+    --shadow-glow-xp: 0 0 16px hsl(var(--xp-mid) / 0.5), 0 0 32px hsl(var(--xp-end) / 0.3);
     --shadow-soft: 0 2px 8px hsl(220 20% 20% / 0.06);
 
     /* Sidebar */
@@ -113,10 +123,19 @@
     --success: 152 55% 45%;
     --warning: 38 88% 55%;
     --info: 199 85% 55%;
+    
+    /* Premium XP colors - Luxurious gold gradient */
+    --xp-start: 24 95% 45%;
+    --xp-mid: 36 95% 50%;
+    --xp-end: 45 95% 52%;
+
+    /* Neutral surface for secondary cards */
+    --surface-subtle: 220 10% 18%;
+    --surface-muted: 220 8% 22%;
 
     --gradient-primary: linear-gradient(135deg, hsl(8 70% 55%) 0%, hsl(15 75% 60%) 100%);
     --gradient-accent: linear-gradient(135deg, hsl(25 85% 55%) 0%, hsl(35 80% 60%) 100%);
-    --gradient-xp: linear-gradient(90deg, hsl(8 70% 50%) 0%, hsl(25 85% 55%) 50%, hsl(45 90% 50%) 100%);
+    --gradient-xp: linear-gradient(90deg, hsl(var(--xp-start)) 0%, hsl(var(--xp-mid)) 50%, hsl(var(--xp-end)) 100%);
     --gradient-hero: linear-gradient(180deg, hsl(220 20% 8%) 0%, hsl(220 18% 12%) 100%);
     --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
     --gradient-soft: linear-gradient(135deg, hsl(220 15% 12%) 0%, hsl(220 18% 15%) 100%);
@@ -125,6 +144,7 @@
     --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.35);
     --shadow-lg: 0 12px 32px -8px hsl(0 0% 0% / 0.45);
     --shadow-glow: 0 4px 24px hsl(8 70% 55% / 0.25);
+    --shadow-glow-xp: 0 0 16px hsl(var(--xp-mid) / 0.6), 0 0 32px hsl(var(--xp-end) / 0.4);
     --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.2);
 
     --sidebar-background: 220 20% 8%;

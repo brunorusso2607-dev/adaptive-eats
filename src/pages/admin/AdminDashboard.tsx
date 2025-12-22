@@ -42,6 +42,7 @@ const mainMenuItems: SubMenuItem[] = [
     icon: BarChart3,
     subItems: [
       { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+      { path: "/admin/users", label: "Usuários", icon: Users },
       { path: "/admin/ai-error-logs", label: "Erros de IA", icon: AlertTriangle },
     ],
   },
@@ -49,7 +50,6 @@ const mainMenuItems: SubMenuItem[] = [
     label: "Configurações",
     icon: Settings,
     subItems: [
-      { path: "/admin/users", label: "Usuários", icon: Users },
       { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/pixels", label: "Pixels", icon: Code2 },

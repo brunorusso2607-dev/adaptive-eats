@@ -792,6 +792,8 @@ export default function IngredientTagInput({
             display: 'flex',
             flexDirection: 'column',
           }}
+          onTouchStart={(e) => e.stopPropagation()}
+          onTouchMove={(e) => e.stopPropagation()}
         >
           <div
             className="py-2 overflow-y-scroll flex-1 ios-scroll-fix"
@@ -803,8 +805,10 @@ export default function IngredientTagInput({
             onTouchStart={(e) => {
               const el = e.currentTarget;
               (el as any)._startY = e.touches[0].clientY;
+              e.stopPropagation();
             }}
             onTouchMove={(e) => {
+              e.stopPropagation();
               const el = e.currentTarget;
               const startY = (el as any)._startY || 0;
               const currentY = e.touches[0].clientY;
@@ -813,11 +817,13 @@ export default function IngredientTagInput({
               const isScrollingUp = deltaY < 0;
               const isAtTop = el.scrollTop <= 0;
               const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+              
+              // Always prevent page scroll when touching inside the dropdown
               if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
                 e.preventDefault();
               }
-              e.stopPropagation();
             }}
+            onTouchEnd={(e) => e.stopPropagation()}
           >
           
           {/* Seção: Opções seguras */}

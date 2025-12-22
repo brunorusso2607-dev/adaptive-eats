@@ -29,8 +29,7 @@ import { Link } from "react-router-dom";
 import { useActivityLog } from "@/hooks/useActivityLog";
 import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 import { useGamification } from "@/hooks/useGamification";
-import GamificationCard from "@/components/GamificationCard";
-import AchievementBadges from "@/components/AchievementBadges";
+import HealthProgressStrip from "@/components/HealthProgressStrip";
 
 type Recipe = {
   name: string;
@@ -1012,8 +1011,8 @@ export default function Dashboard() {
                 {/* Lista de Refeições Pendentes - Abaixo dos macros */}
                 <PendingMealsList onStreakRefresh={gamification.refresh} />
 
-                {/* Gamificação Completa */}
-                <GamificationCard
+                {/* Health Progress Strip */}
+                <HealthProgressStrip
                   level={gamification.level}
                   totalXp={gamification.totalXp}
                   xpInLevel={gamification.xpInLevel}
@@ -1025,13 +1024,9 @@ export default function Dashboard() {
                   mealsCompletedThisWeek={gamification.mealsCompletedThisWeek}
                   mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
                   totalMealsCompleted={gamification.totalMealsCompleted}
-                  isLoading={gamification.isLoading}
-                />
-
-                {/* Conquistas */}
-                <AchievementBadges
                   unlockedAchievements={gamification.unlockedAchievements}
                   newAchievements={gamification.newAchievements}
+                  isLoading={gamification.isLoading}
                 />
 
                 {/* Grid de Opções */}

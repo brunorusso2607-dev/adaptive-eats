@@ -13,6 +13,7 @@ import WeightProgressBar from "@/components/WeightProgressBar";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
+import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
 
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
@@ -544,6 +545,9 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen gradient-hero pb-20 md:pb-0">
+      {/* Recipe Loading Screen - Fullscreen overlay */}
+      {isGeneratingRecipe && <RecipeLoadingScreen />}
+      
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="space-y-8">

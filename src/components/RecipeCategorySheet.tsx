@@ -9,6 +9,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useFilteredRecipeCategories } from "@/hooks/useFilteredRecipeCategories";
 import IngredientTagInput from "@/components/IngredientTagInput";
+import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
 
 // Filtros opcionais (Etapa 1)
 const FILTERS = {
@@ -149,12 +150,16 @@ export default function RecipeCategorySheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent 
-        side="bottom" 
-        className="h-[85vh] rounded-t-3xl px-0 overflow-hidden"
-      >
-        <SheetHeader className="px-6 pb-4 border-b">
+    <>
+      {/* Fullscreen loading overlay - shown outside Sheet */}
+      {isLoading && <RecipeLoadingScreen />}
+      
+      <Sheet open={open && !isLoading} onOpenChange={handleClose}>
+        <SheetContent 
+          side="bottom" 
+          className="h-[85vh] rounded-t-3xl px-0 overflow-hidden"
+        >
+          <SheetHeader className="px-6 pb-4 border-b">
           <div className="flex items-center gap-3">
             {step === 2 || step === "ingredients" ? (
               <Button 
@@ -398,6 +403,7 @@ export default function RecipeCategorySheet({
           </SafeAreaFooter>
         )}
       </SheetContent>
-    </Sheet>
+      </Sheet>
+    </>
   );
 }

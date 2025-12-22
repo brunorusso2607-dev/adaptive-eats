@@ -5,12 +5,12 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const progressVariants = cva(
-  "h-full w-full flex-1 transition-all",
+  "h-full w-full flex-1 transition-all rounded-full",
   {
     variants: {
       variant: {
         default: "bg-primary",
-        xp: "bg-gradient-to-r from-primary via-accent to-warning shadow-[0_0_12px_hsl(var(--accent)/0.6)]",
+        xp: "gradient-xp shadow-[var(--shadow-glow-xp)]",
         success: "bg-success",
       },
     },

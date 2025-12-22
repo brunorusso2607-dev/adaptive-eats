@@ -642,33 +642,42 @@ export default function Dashboard() {
               />
             ) : (
             <>
-              {/* Home Principal - 5 Opções */}
-              <div className="space-y-6">
-                {/* Subscription Status Banner */}
-                {isSubscribed && (
-                  <Card className="glass-card border-0">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Crown className="w-6 h-6 text-primary" />
-                          <span className="font-display font-bold text-foreground">
-                            Plano {plans[activePlan!]?.name}
-                          </span>
-                          {subscription?.status === "trialing" && (
-                            <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
-                              Trial
-                            </span>
-                          )}
-                        </div>
-                        {subscription?.status === "trialing" && subscription?.subscription_end && (
-                          <span className="text-sm text-muted-foreground">
-                            até {new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}
-                          </span>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
+              {/* Home Principal */}
+              <div className="space-y-4">
+                {/* Premium Header - Compact single line */}
+                <div className="flex items-center justify-between px-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-medium text-foreground">
+                      Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
+                    </span>
+                    {isSubscribed && (
+                      <Crown className="w-4 h-4 text-amber-500" />
+                    )}
+                  </div>
+                  {subscription?.status === "trialing" && subscription?.subscription_end && (
+                    <span className="text-xs text-muted-foreground">
+                      Trial até {new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}
+                    </span>
+                  )}
+                </div>
+
+                {/* Gamification Strip - XP + Streak */}
+                <HealthProgressStrip
+                  level={gamification.level}
+                  totalXp={gamification.totalXp}
+                  xpInLevel={gamification.xpInLevel}
+                  xpForNextLevel={gamification.xpForNextLevel}
+                  levelProgress={gamification.levelProgress}
+                  currentStreak={gamification.currentStreak}
+                  longestStreak={gamification.longestStreak}
+                  weeklyAdherence={gamification.weeklyAdherence}
+                  mealsCompletedThisWeek={gamification.mealsCompletedThisWeek}
+                  mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
+                  totalMealsCompleted={gamification.totalMealsCompleted}
+                  unlockedAchievements={gamification.unlockedAchievements}
+                  newAchievements={gamification.newAchievements}
+                  isLoading={gamification.isLoading}
+                />
 
                 {/* Opção Principal: Gerar Receita com Ingredientes */}
                 <Card className="glass-card border-2 border-primary/30 shadow-glow overflow-visible relative z-20">
@@ -748,39 +757,27 @@ export default function Dashboard() {
                 </Card>
 
 
-                {/* Meta de Peso Banner - quando ativo (emagrecer, ganhar peso ou manter) */}
+                {/* Meta de Peso Banner - Design discreto e informativo */}
                 {(userGoal === "emagrecer" || userGoal === "ganhar_peso" || userGoal === "manter") && weightData?.weight_current && (
-                  <Card className={`glass-card border-2 overflow-hidden ${
-                    userGoal === "ganhar_peso" 
-                      ? "border-blue-400/50 bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30"
-                      : userGoal === "manter"
-                        ? "border-amber-400/50 bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/30"
-                        : "border-green-400/50 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/30 dark:to-emerald-950/30"
-                  }`}>
+                  <Card className="bg-[hsl(var(--surface-subtle))] border border-border/30 overflow-hidden">
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between mb-3">
                         <div className="flex items-center gap-3">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
-                            userGoal === "ganhar_peso"
-                              ? "bg-gradient-to-r from-blue-500 to-indigo-500"
-                              : userGoal === "manter"
-                                ? "bg-gradient-to-r from-amber-500 to-orange-500"
-                                : "bg-gradient-to-r from-green-500 to-emerald-500"
-                          }`}>
+                          <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center">
                             {userGoal === "ganhar_peso" 
-                              ? <TrendingUp className="w-5 h-5 text-white" />
+                              ? <TrendingUp className="w-4 h-4 text-muted-foreground" />
                               : userGoal === "manter"
-                                ? <Scale className="w-5 h-5 text-white" />
-                                : <TrendingDown className="w-5 h-5 text-white" />
+                                ? <Scale className="w-4 h-4 text-muted-foreground" />
+                                : <TrendingDown className="w-4 h-4 text-muted-foreground" />
                             }
                           </div>
                           <div>
-                            <h3 className="font-display font-bold text-foreground">
+                            <h3 className="text-sm font-semibold text-foreground">
                               {userGoal === "ganhar_peso" 
-                                ? "💪 Modo Ganho de Peso Ativo!" 
+                                ? "Ganho de Peso" 
                                 : userGoal === "manter"
-                                  ? "⚖️ Modo Manutenção Ativo!"
-                                  : "🔥 Modo Emagrecimento Ativo!"}
+                                  ? "Manutenção"
+                                  : "Emagrecimento"}
                             </h3>
                             <p className="text-xs text-muted-foreground">
                               {userGoal === "manter"
@@ -789,51 +786,31 @@ export default function Dashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-2 flex-wrap">
-                          {weightData?.weight_current && (
-                            <Button 
-                              variant="ghost"
-                              size="sm" 
-                              onClick={() => setShowWeightUpdateModal(true)}
-                              className={`text-xs ${
-                                userGoal === "ganhar_peso"
-                                  ? "text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-950/30"
-                                  : userGoal === "manter"
-                                    ? "text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
-                                    : "text-green-600 hover:bg-green-50 dark:hover:bg-green-950/30"
-                              }`}
-                            >
-                              <Scale className="w-3 h-3 mr-1" />
-                              Atualizar peso
-                            </Button>
-                          )}
+                        <div className="flex gap-1.5">
                           <Button 
-                            variant="outline" 
+                            variant="ghost"
+                            size="sm" 
+                            onClick={() => setShowWeightUpdateModal(true)}
+                            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                          >
+                            <Scale className="w-3 h-3 mr-1" />
+                            Peso
+                          </Button>
+                          <Button 
+                            variant="ghost" 
                             size="sm" 
                             onClick={() => setShowWeightLossSetup(true)}
-                            className={`${
-                              userGoal === "ganhar_peso"
-                                ? "border-blue-400/50 text-blue-600 hover:bg-blue-50"
-                                : userGoal === "manter"
-                                  ? "border-amber-400/50 text-amber-600 hover:bg-amber-50"
-                                  : "border-green-400/50 text-green-600 hover:bg-green-50"
-                            }`}
+                            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
                           >
                             Editar
                           </Button>
                           <Button 
-                            variant="outline" 
+                            variant="ghost" 
                             size="sm" 
                             onClick={toggleWeightLossMode}
-                            className={`${
-                              userGoal === "ganhar_peso"
-                                ? "border-blue-400/50 text-blue-600 hover:bg-blue-50"
-                                : userGoal === "manter"
-                                  ? "border-amber-400/50 text-amber-600 hover:bg-amber-50"
-                                  : "border-green-400/50 text-green-600 hover:bg-green-50"
-                            }`}
+                            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
                           >
-                            Desativar
+                            ✕
                           </Button>
                         </div>
                       </div>
@@ -843,7 +820,6 @@ export default function Dashboard() {
                           {(() => {
                             const calcs = calculateMacros(weightData);
                             if (!calcs) return null;
-                            const accentColor = userGoal === "ganhar_peso" ? "text-blue-600" : "text-green-600";
                             return (
                               <>
                                 {/* Calorie Speedometer */}
@@ -871,15 +847,9 @@ export default function Dashboard() {
                                   variant="ghost" 
                                   size="sm" 
                                   onClick={() => setShowWeightHistory(true)}
-                                  className={`w-full mt-3 ${
-                                    userGoal === "ganhar_peso" 
-                                      ? "text-blue-600 hover:bg-blue-50" 
-                                      : userGoal === "manter"
-                                        ? "text-amber-600 hover:bg-amber-50"
-                                        : "text-green-600 hover:bg-green-50"
-                                  }`}
+                                  className="w-full mt-3 text-muted-foreground hover:text-foreground"
                                 >
-                                  📈 Ver Evolução do Peso
+                                  📈 Ver Evolução
                                 </Button>
                               </>
                             );
@@ -888,45 +858,26 @@ export default function Dashboard() {
                       ) : (
                         <>
                           <div className="grid grid-cols-3 gap-2 mt-3">
-                            {userGoal === "ganhar_peso" ? (
-                              <>
-                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                  <p className="text-lg font-bold text-blue-600">~0.3kg</p>
-                                  <p className="text-xs text-muted-foreground">por semana*</p>
-                                </div>
-                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                  <p className="text-lg font-bold text-blue-600">~1.2kg</p>
-                                  <p className="text-xs text-muted-foreground">por mês*</p>
-                                </div>
-                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                  <p className="text-lg font-bold text-blue-600">600-800</p>
-                                  <p className="text-xs text-muted-foreground">kcal/porção</p>
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                  <p className="text-lg font-bold text-green-600">~0.5kg</p>
-                                  <p className="text-xs text-muted-foreground">por semana*</p>
-                                </div>
-                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                  <p className="text-lg font-bold text-green-600">~2kg</p>
-                                  <p className="text-xs text-muted-foreground">por mês*</p>
-                                </div>
-                                <div className="bg-white/60 dark:bg-white/10 rounded-lg p-2 text-center">
-                                  <p className="text-lg font-bold text-green-600">300-450</p>
-                                  <p className="text-xs text-muted-foreground">kcal/porção</p>
-                                </div>
-                              </>
-                            )}
+                            <div className="bg-muted/40 rounded-lg p-2 text-center">
+                              <p className="text-lg font-bold text-foreground">{userGoal === "ganhar_peso" ? "~0.3kg" : "~0.5kg"}</p>
+                              <p className="text-xs text-muted-foreground">por semana*</p>
+                            </div>
+                            <div className="bg-muted/40 rounded-lg p-2 text-center">
+                              <p className="text-lg font-bold text-foreground">{userGoal === "ganhar_peso" ? "~1.2kg" : "~2kg"}</p>
+                              <p className="text-xs text-muted-foreground">por mês*</p>
+                            </div>
+                            <div className="bg-muted/40 rounded-lg p-2 text-center">
+                              <p className="text-lg font-bold text-foreground">{userGoal === "ganhar_peso" ? "600-800" : "300-450"}</p>
+                              <p className="text-xs text-muted-foreground">kcal/porção</p>
+                            </div>
                           </div>
                           <Button 
                             variant="ghost" 
                             size="sm" 
                             onClick={() => setShowWeightLossSetup(true)}
-                            className={`w-full mt-3 ${userGoal === "ganhar_peso" ? "text-blue-600 hover:bg-blue-50" : "text-green-600 hover:bg-green-50"}`}
+                            className="w-full mt-3 text-muted-foreground hover:text-foreground"
                           >
-                            👆 Configure seu peso para metas personalizadas
+                            Configure seu peso para metas personalizadas
                           </Button>
                         </>
                       )}
@@ -943,26 +894,8 @@ export default function Dashboard() {
                   </Card>
                 )}
 
-                {/* Lista de Refeições Pendentes - Abaixo dos macros */}
+                {/* Lista de Refeições Pendentes */}
                 <PendingMealsList onStreakRefresh={gamification.refresh} />
-
-                {/* Health Progress Strip */}
-                <HealthProgressStrip
-                  level={gamification.level}
-                  totalXp={gamification.totalXp}
-                  xpInLevel={gamification.xpInLevel}
-                  xpForNextLevel={gamification.xpForNextLevel}
-                  levelProgress={gamification.levelProgress}
-                  currentStreak={gamification.currentStreak}
-                  longestStreak={gamification.longestStreak}
-                  weeklyAdherence={gamification.weeklyAdherence}
-                  mealsCompletedThisWeek={gamification.mealsCompletedThisWeek}
-                  mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
-                  totalMealsCompleted={gamification.totalMealsCompleted}
-                  unlockedAchievements={gamification.unlockedAchievements}
-                  newAchievements={gamification.newAchievements}
-                  isLoading={gamification.isLoading}
-                />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

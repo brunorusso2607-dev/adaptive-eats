@@ -51,45 +51,45 @@ export default function HealthProgressStrip({
       <button
         onClick={() => setIsSheetOpen(true)}
         className={cn(
-          "w-full px-4 py-3 rounded-xl",
-          "bg-card/80 backdrop-blur-sm border border-border/50",
-          "hover:bg-card hover:border-border/80 transition-all",
-          "flex items-center gap-4",
+          "w-full px-3 py-2.5 rounded-xl",
+          "bg-[hsl(var(--surface-subtle))] border border-border/30",
+          "hover:border-border/60 transition-all",
+          "flex items-center gap-3",
           "group cursor-pointer"
         )}
       >
-        {/* Level Badge */}
-        <div className="flex-shrink-0 flex items-center justify-center w-10 h-10 rounded-lg bg-muted/50 border border-border/30">
-          <span className="text-sm font-semibold text-foreground">{level}</span>
+        {/* Level Badge - Premium gold accent */}
+        <div className="flex-shrink-0 flex items-center justify-center w-9 h-9 rounded-lg gradient-xp shadow-[var(--shadow-glow-xp)]">
+          <span className="text-sm font-bold text-white drop-shadow-sm">{level}</span>
         </div>
 
-        {/* XP Progress */}
+        {/* XP Progress - Compact */}
         <div className="flex-1 min-w-0">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-xs font-medium text-muted-foreground">
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-[11px] font-medium text-muted-foreground">
               Nível {level}
             </span>
-            <span className="text-xs text-muted-foreground">
-              {xpInLevel}/{xpForNextLevel} XP
+            <span className="text-[11px] text-muted-foreground tabular-nums">
+              {xpInLevel}/{xpForNextLevel}
             </span>
           </div>
           <Progress 
             value={levelProgress} 
             variant="xp"
-            className="h-2 bg-muted/50 rounded-full" 
+            className="h-1.5 bg-muted/40 rounded-full" 
           />
         </div>
 
-        {/* Streak */}
-        {currentStreak > 0 && (
-          <div className="flex-shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-muted/50 border border-border/30">
-            <Flame className="w-4 h-4 text-orange-500" />
-            <span className="text-sm font-medium text-foreground">{currentStreak}</span>
-          </div>
-        )}
+        {/* Streak - Always visible, compact */}
+        <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1 rounded-md bg-orange-500/10">
+          <Flame className="w-3.5 h-3.5 text-orange-500" />
+          <span className="text-xs font-semibold text-orange-600 dark:text-orange-400 tabular-nums">
+            {currentStreak}
+          </span>
+        </div>
 
         {/* Arrow indicator */}
-        <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-foreground transition-colors flex-shrink-0" />
+        <ChevronRight className="w-4 h-4 text-muted-foreground/60 group-hover:text-muted-foreground transition-colors flex-shrink-0" />
       </button>
 
       <HealthMilestonesSheet

@@ -1039,7 +1039,7 @@ export default function Dashboard() {
                 )}
 
                 {/* Lista de Refeições Pendentes - Abaixo dos macros */}
-                <PendingMealsList />
+                <PendingMealsList onStreakRefresh={refreshStreak} />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

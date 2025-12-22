@@ -4,7 +4,11 @@ import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import { useMemo } from "react";
 
-export default function PendingMealsList() {
+interface PendingMealsListProps {
+  onStreakRefresh?: () => void;
+}
+
+export default function PendingMealsList({ onStreakRefresh }: PendingMealsListProps) {
   const {
     pendingMeals,
     isLoading,
@@ -116,6 +120,7 @@ export default function PendingMealsList() {
             onMarkComplete={handleMarkComplete}
             onSkip={skipMeal}
             onRefetch={refetch}
+            onStreakRefresh={onStreakRefresh}
           />
         </div>
       )}
@@ -135,6 +140,7 @@ export default function PendingMealsList() {
                 onMarkComplete={handleMarkComplete}
                 onSkip={skipMeal}
                 onRefetch={refetch}
+                onStreakRefresh={onStreakRefresh}
               />
             ))}
           </div>

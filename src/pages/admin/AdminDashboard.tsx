@@ -37,7 +37,6 @@ type SubMenuItem = {
 };
 
 const mainMenuItems: SubMenuItem[] = [
-  { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   {
     label: "Relatórios",
     icon: BarChart3,
@@ -141,10 +140,18 @@ export default function AdminDashboard() {
         {/* Navigation Menu */}
         <nav className="mb-6">
           <div className="space-y-1">
-            <div className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-primary bg-primary/10 rounded-xl mb-2">
+            <Link
+              to="/admin"
+              className={cn(
+                "flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-xl mb-2 transition-all",
+                location.pathname === "/admin"
+                  ? "bg-primary text-primary-foreground shadow-glow"
+                  : "bg-primary/10 text-primary hover:bg-primary/20"
+              )}
+            >
               <Menu className="w-4 h-4" />
               Início
-            </div>
+            </Link>
             <div className="pl-4 space-y-1">
               {mainMenuItems.map((item) => (
                 item.path ? (

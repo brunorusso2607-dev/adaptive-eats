@@ -902,36 +902,6 @@ export default function Dashboard() {
                           </Button>
                         </div>
                       </div>
-                      
-                      {/* Streak Badges */}
-                      {!isLoadingStreak && (currentStreak > 0 || weeklyAdherence > 0) && (
-                        <div className="flex gap-2 flex-wrap mb-3">
-                          {currentStreak > 0 && (
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
-                              userGoal === "ganhar_peso"
-                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
-                                : userGoal === "manter"
-                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
-                            }`}>
-                              <Flame className="w-3.5 h-3.5" />
-                              <span>{currentStreak} {currentStreak === 1 ? "dia" : "dias"} seguidos</span>
-                            </div>
-                          )}
-                          {weeklyAdherence > 0 && (
-                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
-                              weeklyAdherence >= 80
-                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
-                                : weeklyAdherence >= 50
-                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
-                                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
-                            }`}>
-                              <Target className="w-3.5 h-3.5" />
-                              <span>{weeklyAdherence}% adesão</span>
-                            </div>
-                          )}
-                        </div>
-                      )}
                       {weightData?.weight_current ? (
                         <>
                           {/* Personalized Data */}
@@ -1040,6 +1010,38 @@ export default function Dashboard() {
 
                 {/* Lista de Refeições Pendentes - Abaixo dos macros */}
                 <PendingMealsList onStreakRefresh={refreshStreak} />
+
+                {/* Gamificação - Streak e Adesão Semanal */}
+                {!isLoadingStreak && (currentStreak > 0 || weeklyAdherence > 0) && (
+                  <Card className="glass-card border-border/50 overflow-hidden">
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <Flame className="w-4 h-4 text-orange-500" />
+                        <h3 className="font-medium text-sm text-foreground">Seu Progresso</h3>
+                      </div>
+                      <div className="flex gap-2 flex-wrap">
+                        {currentStreak > 0 && (
+                          <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-gradient-to-r from-orange-100 to-amber-100 text-orange-700 dark:from-orange-900/30 dark:to-amber-900/30 dark:text-orange-300">
+                            <Flame className="w-4 h-4" />
+                            <span>{currentStreak} {currentStreak === 1 ? "dia" : "dias"} seguidos 🔥</span>
+                          </div>
+                        )}
+                        {weeklyAdherence > 0 && (
+                          <div className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium ${
+                            weeklyAdherence >= 80
+                              ? "bg-gradient-to-r from-emerald-100 to-green-100 text-emerald-700 dark:from-emerald-900/30 dark:to-green-900/30 dark:text-emerald-300"
+                              : weeklyAdherence >= 50
+                                ? "bg-gradient-to-r from-amber-100 to-yellow-100 text-amber-700 dark:from-amber-900/30 dark:to-yellow-900/30 dark:text-amber-300"
+                                : "bg-gradient-to-r from-red-100 to-rose-100 text-red-700 dark:from-red-900/30 dark:to-rose-900/30 dark:text-red-300"
+                          }`}>
+                            <Target className="w-4 h-4" />
+                            <span>{weeklyAdherence}% adesão semanal</span>
+                          </div>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

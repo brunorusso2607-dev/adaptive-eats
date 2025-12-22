@@ -28,6 +28,8 @@ import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
 import { useActivityLog } from "@/hooks/useActivityLog";
 import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
+import { useUserStreak } from "@/hooks/useUserStreak";
+import { Flame, Target } from "lucide-react";
 
 type Recipe = {
   name: string;
@@ -124,6 +126,9 @@ export default function Dashboard() {
   const nextMealStatus = pendingMeals.length > 0 
     ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].actual_date, pendingMeals[0].completed_at)
     : "on_time";
+  
+  // User streak hook
+  const { currentStreak, weeklyAdherence, isLoading: isLoadingStreak, refreshStreak } = useUserStreak();
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -898,6 +903,35 @@ export default function Dashboard() {
                         </div>
                       </div>
                       
+                      {/* Streak Badges */}
+                      {!isLoadingStreak && (currentStreak > 0 || weeklyAdherence > 0) && (
+                        <div className="flex gap-2 flex-wrap mb-3">
+                          {currentStreak > 0 && (
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                              userGoal === "ganhar_peso"
+                                ? "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300"
+                                : userGoal === "manter"
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                  : "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300"
+                            }`}>
+                              <Flame className="w-3.5 h-3.5" />
+                              <span>{currentStreak} {currentStreak === 1 ? "dia" : "dias"} seguidos</span>
+                            </div>
+                          )}
+                          {weeklyAdherence > 0 && (
+                            <div className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium ${
+                              weeklyAdherence >= 80
+                                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300"
+                                : weeklyAdherence >= 50
+                                  ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300"
+                                  : "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
+                            }`}>
+                              <Target className="w-3.5 h-3.5" />
+                              <span>{weeklyAdherence}% adesão</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                       {weightData?.weight_current ? (
                         <>
                           {/* Personalized Data */}

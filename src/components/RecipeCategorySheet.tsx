@@ -158,11 +158,19 @@ export default function RecipeCategorySheet({
         <SheetContent 
           side={step === "ingredients" ? "top" : "bottom"} 
           className={cn(
-            "px-0 overflow-hidden flex flex-col",
+            "px-0 flex flex-col",
             step === "ingredients" 
-              ? "h-[100dvh] rounded-b-3xl pt-safe" 
-              : "h-[85vh] rounded-t-3xl"
+              ? "h-[100dvh] rounded-b-3xl pt-safe overflow-hidden touch-none" 
+              : "h-[85vh] rounded-t-3xl overflow-hidden"
           )}
+          onTouchMove={step === "ingredients" ? (e) => {
+            // Só permite scroll se o target estiver dentro de um elemento com classe ios-scroll-fix
+            const target = e.target as HTMLElement;
+            const scrollableParent = target.closest('.ios-scroll-fix');
+            if (!scrollableParent) {
+              e.preventDefault();
+            }
+          } : undefined}
         >
           <SheetHeader className="px-6 pb-4 border-b shrink-0">
           <div className="flex items-center gap-3">

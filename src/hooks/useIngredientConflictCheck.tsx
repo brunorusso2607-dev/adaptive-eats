@@ -160,7 +160,7 @@ const checkIngredientConflict = (
   const restrictedIngredients = getRestrictionIngredients(restriction);
   
   return restrictedIngredients.some(restricted => 
-    normalizedIngredient.includes(restricted) || restricted.includes(normalizedIngredient)
+    normalizedIngredient.includes(restricted)
   );
 };
 

@@ -23,12 +23,3 @@ verify_jwt = false
 
 [functions.list-stripe-plans]
 verify_jwt = false
-
-[functions.send-push-notification]
-verify_jwt = false
-
-[functions.cron-meal-reminders]
-verify_jwt = false
-
-[functions.generate-vapid-keys]
-verify_jwt = false

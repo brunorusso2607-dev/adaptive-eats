@@ -13,7 +13,7 @@ import WeightProgressBar from "@/components/WeightProgressBar";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import MealPlanSection from "@/components/MealPlanSection";
-import IngredientTagInput from "@/components/IngredientTagInput";
+
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
@@ -735,43 +735,13 @@ export default function Dashboard() {
                       open={showCategorySheet}
                       onOpenChange={setShowCategorySheet}
                       onSelectCategory={handleCategorySelect}
+                      onGenerateWithIngredients={(ingredientsList) => {
+                        setIngredients(ingredientsList);
+                        generateRecipe("com_ingredientes", false);
+                      }}
                       isLoading={isGeneratingRecipe}
+                      userProfile={userProfile}
                     />
-                    
-                    {/* Divisor */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-muted-foreground">ou digite ingredientes</span>
-                      <div className="flex-1 h-px bg-border" />
-                    </div>
-                    
-                    {/* Input de ingredientes com tags */}
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <div className="flex-1">
-                        <IngredientTagInput
-                          value={ingredients}
-                          onChange={setIngredients}
-                          placeholder="Digite um ingrediente..."
-                          disabled={isGeneratingRecipe}
-                          onSubmit={() => generateRecipe("com_ingredientes")}
-                          userProfile={userProfile}
-                        />
-                      </div>
-                      <Button 
-                        className="gradient-primary border-0 h-12 w-full sm:w-auto sm:px-6 shrink-0"
-                        onClick={() => generateRecipe("com_ingredientes")}
-                        disabled={isGeneratingRecipe || ingredients.length === 0}
-                      >
-                        {isGeneratingRecipe ? (
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
-                          <>
-                            <Sparkles className="w-5 h-5 mr-2 sm:mr-0" />
-                            <span className="sm:hidden">Gerar Receita</span>
-                          </>
-                        )}
-                      </Button>
-                    </div>
                   </CardContent>
                 </Card>
 

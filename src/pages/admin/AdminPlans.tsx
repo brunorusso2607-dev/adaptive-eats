@@ -28,8 +28,18 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Loader2, CreditCard, RefreshCw, Copy, Settings, Key } from "lucide-react";
+import { Plus, Loader2, CreditCard, RefreshCw, Copy, Settings, Key, CheckCircle2, XCircle, ExternalLink, AlertTriangle, Pencil, Trash2 } from "lucide-react";
 import { useActivityLog } from "@/hooks/useActivityLog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 type StripePrice = {
   id: string;
@@ -53,12 +63,80 @@ export default function AdminPlans() {
   const [isCreating, setIsCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
+  const [stripeStatus, setStripeStatus] = useState<"checking" | "connected" | "error">("checking");
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [showUpdateKeyInput, setShowUpdateKeyInput] = useState(false);
+  const [newStripeKey, setNewStripeKey] = useState("");
+  const [isUpdatingKey, setIsUpdatingKey] = useState(false);
+  const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [price, setPrice] = useState("");
   const [currency, setCurrency] = useState("brl");
   const [interval, setInterval] = useState("month");
+
+  const testStripeConnection = async () => {
+    setIsTestingConnection(true);
+    setStripeStatus("checking");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setStripeStatus("error");
+        return;
+      }
+
+      const { error } = await supabase.functions.invoke("list-stripe-plans", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) {
+        setStripeStatus("error");
+      } else {
+        setStripeStatus("connected");
+      }
+    } catch {
+      setStripeStatus("error");
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  useEffect(() => {
+    testStripeConnection();
+  }, []);
+
+  const handleUpdateStripeKey = async () => {
+    if (!newStripeKey.trim()) {
+      toast.error("Digite a nova chave Stripe");
+      return;
+    }
+
+    if (!newStripeKey.startsWith("sk_")) {
+      toast.error("A chave deve começar com 'sk_live_' ou 'sk_test_'");
+      return;
+    }
+
+    setIsUpdatingKey(true);
+    try {
+      // Note: In a real implementation, this would call an edge function
+      // to update the secret securely. For now, we show guidance.
+      toast.info("Para atualizar a chave, acesse Settings → Cloud → Secrets no Lovable");
+      setShowUpdateKeyInput(false);
+      setNewStripeKey("");
+    } finally {
+      setIsUpdatingKey(false);
+    }
+  };
+
+  const handleRemoveStripeKey = async () => {
+    // Note: Secrets managed by Lovable cannot be removed via the app
+    toast.info("Para remover a chave, acesse Settings → Cloud → Secrets no Lovable");
+    setShowRemoveConfirm(false);
+  };
 
   const fetchPlans = async () => {
     setIsLoading(true);
@@ -205,50 +283,197 @@ export default function AdminPlans() {
                 Configuração
               </Button>
             </DialogTrigger>
-            <DialogContent>
+            <DialogContent className="max-w-md">
               <DialogHeader>
                 <DialogTitle className="flex items-center gap-2">
                   <Key className="w-5 h-5" />
                   Configuração do Stripe
                 </DialogTitle>
                 <DialogDescription>
-                  Chave de API configurada para integração com o Stripe
+                  Gerencie a integração com o Stripe
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4">
+                {/* Status da Conexão */}
                 <div className="space-y-2">
-                  <Label>Chave Secreta (STRIPE_SECRET_KEY)</Label>
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Status da Conexão</Label>
+                  <div className={`rounded-lg p-3 border ${
+                    stripeStatus === "connected" 
+                      ? "bg-green-500/10 border-green-500/30" 
+                      : stripeStatus === "error" 
+                        ? "bg-destructive/10 border-destructive/30" 
+                        : "bg-muted border-border"
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {stripeStatus === "checking" && (
+                        <>
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">Verificando conexão...</span>
+                        </>
+                      )}
+                      {stripeStatus === "connected" && (
+                        <>
+                          <CheckCircle2 className="w-4 h-4 text-green-500" />
+                          <span className="text-sm font-medium text-green-600">Conectado ao Stripe</span>
+                        </>
+                      )}
+                      {stripeStatus === "error" && (
+                        <>
+                          <XCircle className="w-4 h-4 text-destructive" />
+                          <span className="text-sm font-medium text-destructive">Erro na conexão</span>
+                        </>
+                      )}
+                    </div>
+                    {stripeStatus === "connected" && (
+                      <p className="text-xs text-muted-foreground mt-1">
+                        A integração está ativa e funcionando corretamente.
+                      </p>
+                    )}
+                    {stripeStatus === "error" && (
+                      <p className="text-xs text-destructive/80 mt-1">
+                        Verifique se a chave Stripe está correta.
+                      </p>
+                    )}
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={testStripeConnection}
+                    disabled={isTestingConnection}
+                    className="w-full"
+                  >
+                    {isTestingConnection ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                    )}
+                    Testar Conexão
+                  </Button>
+                </div>
+
+                {/* Chave Atual */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Chave Secreta</Label>
                   <div className="bg-muted rounded-lg p-3 font-mono text-sm">
                     <span className="text-muted-foreground">sk_live_••••••••••••••••••••••••</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    A chave secreta está armazenada de forma segura nas variáveis de ambiente do servidor e não pode ser visualizada por segurança.
+                    A chave está armazenada de forma segura e não pode ser visualizada.
                   </p>
                 </div>
-                <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
-                  <p className="text-sm text-primary font-medium">✓ Stripe configurado</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    A integração com o Stripe está ativa e funcionando.
-                  </p>
-                </div>
-                <div className="pt-2 border-t">
-                  <p className="text-sm text-muted-foreground mb-3">
-                    Para atualizar a chave Stripe, acesse as configurações do projeto no Lovable e atualize o secret STRIPE_SECRET_KEY.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    onClick={() => {
-                      window.open("https://dashboard.stripe.com/apikeys", "_blank");
-                    }}
-                  >
-                    <Key className="w-4 h-4 mr-2" />
-                    Abrir Dashboard Stripe
-                  </Button>
+
+                {/* Formulário para Atualizar Chave */}
+                {showUpdateKeyInput ? (
+                  <div className="space-y-3 p-3 bg-muted/50 rounded-lg border">
+                    <Label htmlFor="newKey">Nova Chave Stripe</Label>
+                    <Input
+                      id="newKey"
+                      type="password"
+                      value={newStripeKey}
+                      onChange={(e) => setNewStripeKey(e.target.value)}
+                      placeholder="sk_live_..."
+                      className="font-mono text-sm"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          setShowUpdateKeyInput(false);
+                          setNewStripeKey("");
+                        }}
+                        className="flex-1"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={handleUpdateStripeKey}
+                        disabled={isUpdatingKey || !newStripeKey.trim()}
+                        className="flex-1"
+                      >
+                        {isUpdatingKey && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Salvar
+                      </Button>
+                    </div>
+                    <p className="text-xs text-amber-600 bg-amber-500/10 p-2 rounded flex items-start gap-2">
+                      <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                      Para alterar secrets, acesse Settings → Cloud → Secrets no painel do Lovable.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground uppercase tracking-wide">Ações</Label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowUpdateKeyInput(true)}
+                        className="w-full"
+                      >
+                        <Pencil className="w-4 h-4 mr-2" />
+                        Atualizar Chave
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setShowRemoveConfirm(true)}
+                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Remover
+                      </Button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Links Úteis */}
+                <div className="pt-2 border-t space-y-2">
+                  <Label className="text-xs text-muted-foreground uppercase tracking-wide">Links Úteis</Label>
+                  <div className="grid gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open("https://dashboard.stripe.com/apikeys", "_blank", "noopener,noreferrer")}
+                      className="w-full justify-start"
+                    >
+                      <Key className="w-4 h-4 mr-2" />
+                      Chaves de API do Stripe
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => window.open("https://dashboard.stripe.com", "_blank", "noopener,noreferrer")}
+                      className="w-full justify-start"
+                    >
+                      <CreditCard className="w-4 h-4 mr-2" />
+                      Dashboard Stripe
+                      <ExternalLink className="w-3 h-3 ml-auto" />
+                    </Button>
+                  </div>
                 </div>
               </div>
             </DialogContent>
           </Dialog>
+
+          {/* Alert Dialog para Confirmar Remoção */}
+          <AlertDialog open={showRemoveConfirm} onOpenChange={setShowRemoveConfirm}>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Remover chave Stripe?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Para remover a chave Stripe, você precisa acessar as configurações do projeto no Lovable (Settings → Cloud → Secrets) e excluir o secret STRIPE_SECRET_KEY.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                <AlertDialogAction onClick={handleRemoveStripeKey}>
+                  Entendi
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
           <Button
             variant="outline"
             size="sm"

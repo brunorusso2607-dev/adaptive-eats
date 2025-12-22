@@ -158,18 +158,22 @@ export function usePushNotifications() {
       // Check for existing subscription
       let subscription = await registration.pushManager.getSubscription();
 
-      // If no subscription, create one
-      if (!subscription) {
-        if (!VAPID_PUBLIC_KEY) {
-          throw new Error('VAPID public key not configured');
-        }
-
-        const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
-        subscription = await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: applicationServerKey.buffer as ArrayBuffer
-        });
+      // Always unsubscribe and resubscribe to ensure we use the current VAPID key
+      if (subscription) {
+        await subscription.unsubscribe();
+        subscription = null;
       }
+
+      // Create new subscription with current VAPID key
+      if (!VAPID_PUBLIC_KEY) {
+        throw new Error('VAPID public key not configured');
+      }
+
+      const applicationServerKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: applicationServerKey.buffer as ArrayBuffer
+      });
 
       // Extract keys from subscription
       const p256dh = subscription.getKey('p256dh');

@@ -1101,29 +1101,6 @@ export default function Dashboard() {
 
                 </div>
 
-                {/* Info do Plano */}
-                <Card className="glass-card border-border/30">
-                  <CardContent className="p-4 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      {activePlan === "premium" ? (
-                        <Crown className="w-5 h-5 text-accent" />
-                      ) : (
-                        <Star className="w-5 h-5 text-muted-foreground" />
-                      )}
-                      <span className="text-sm font-medium">Plano {plans[activePlan!]?.name}</span>
-                      {subscription?.status === "trialing" && (
-                        <span className="text-xs bg-primary/20 text-primary px-2 py-0.5 rounded-full">
-                          Trial
-                        </span>
-                      )}
-                    </div>
-                    <span className="text-xs text-muted-foreground">
-                      {subscription?.subscription_end && 
-                        `até ${new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}`
-                      }
-                    </span>
-                  </CardContent>
-                </Card>
               </div>
             </>
             )

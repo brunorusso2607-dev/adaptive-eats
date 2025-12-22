@@ -644,6 +644,32 @@ export default function Dashboard() {
             <>
               {/* Home Principal - 5 Opções */}
               <div className="space-y-6">
+                {/* Subscription Status Banner */}
+                {isSubscribed && (
+                  <Card className="glass-card border-0">
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Crown className="w-6 h-6 text-primary" />
+                          <span className="font-display font-bold text-foreground">
+                            Plano {plans[activePlan!]?.name}
+                          </span>
+                          {subscription?.status === "trialing" && (
+                            <span className="px-2 py-1 text-xs font-medium bg-primary/10 text-primary rounded-full">
+                              Trial
+                            </span>
+                          )}
+                        </div>
+                        {subscription?.status === "trialing" && subscription?.subscription_end && (
+                          <span className="text-sm text-muted-foreground">
+                            até {new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}
+                          </span>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Opção Principal: Gerar Receita com Ingredientes */}
                 <Card className="glass-card border-2 border-primary/30 shadow-glow overflow-visible relative z-20">
                   <CardContent className="p-6 space-y-4 overflow-visible">

@@ -700,17 +700,21 @@ export default function IngredientTagInput({
     }
   };
 
-  // Close suggestions when clicking outside
+  // Only close suggestions when clicking outside the container AND the input is empty
+  // Otherwise, keep suggestions open so user can scroll and select
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
-        setShowSuggestions(false);
+        // Only close if input is empty - otherwise keep open for selection
+        if (!inputValue.trim()) {
+          setShowSuggestions(false);
+        }
       }
     };
 
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  }, [inputValue]);
 
   // Reset highlighted index when suggestions change
   useEffect(() => {

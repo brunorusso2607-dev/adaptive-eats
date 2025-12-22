@@ -39,10 +39,10 @@ export default function MobileBottomNav({
                 className={cn(
                   "relative flex items-center justify-center -mt-8 transition-all",
                   "w-14 h-14 rounded-full",
-                  "bg-[#E8A087] text-white",
-                  "shadow-lg shadow-[#E8A087]/40",
-                  "hover:scale-105 active:scale-95",
-                  isActive && "ring-4 ring-[#E8A087]/20"
+                  "bg-[#E07A5F] text-white",
+                  "shadow-xl shadow-[#E07A5F]/50",
+                  "hover:scale-105 active:scale-95 hover:brightness-110",
+                  isActive && "ring-4 ring-[#E07A5F]/30"
                 )}
               >
                 <item.icon className="w-6 h-6" strokeWidth={2.5} />

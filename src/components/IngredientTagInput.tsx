@@ -462,11 +462,16 @@ export default function IngredientTagInput({
   // Hook de verificação de conflitos
   const { checkConflict } = useIngredientConflictCheck(userProfile);
 
+  // Normaliza string removendo acentos para comparação
+  const normalizeString = (str: string) => 
+    str.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+
   // Filtra sugestões baseado no input e preferência alimentar do usuário
+  const normalizedInput = normalizeString(inputValue);
   const filteredSuggestions = inputValue.length >= 1
     ? COMMON_INGREDIENTS.filter(
         (ingredient) =>
-          ingredient.toLowerCase().startsWith(inputValue.toLowerCase()) &&
+          normalizeString(ingredient).includes(normalizedInput) &&
           !value.includes(ingredient) &&
           isIngredientCompatible(ingredient, userProfile?.dietary_preference)
       ).slice(0, 10)

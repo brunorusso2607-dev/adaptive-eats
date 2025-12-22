@@ -546,23 +546,6 @@ export default function Dashboard() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="space-y-8">
-          {/* Welcome */}
-          <div className="text-center space-y-2">
-            <h1 className="font-display text-3xl md:text-4xl font-bold text-foreground">
-              {isSubscribed ? `Olá! Você está no Plano ${plans[activePlan!]?.name} 🎉` : "Bem-vindo ao ReceitAI! 🎉"}
-            </h1>
-            <p className="text-muted-foreground">
-              {isSubscribed 
-                ? "Aproveite todas as funcionalidades do seu plano."
-                : "Escolha seu plano e comece a transformar ingredientes em receitas incríveis."}
-            </p>
-            {subscription?.status === "trialing" && subscription?.subscription_end && (
-              <p className="text-sm text-primary font-medium">
-                Trial ativo até {new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}
-              </p>
-            )}
-          </div>
-
           {isLoadingSubscription ? (
             <div className="flex justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -726,82 +726,60 @@ export default function IngredientTagInput({
   const hasSuggestions = processedSuggestions.safe.length > 0 || processedSuggestions.conflicting.length > 0;
   const hasIntolerances = userProfile?.intolerances && userProfile.intolerances.length > 0 && !userProfile.intolerances.includes("nenhuma");
 
-  // Ref para rastrear se o bloqueio está ativo (evita re-runs desnecessários)
+  // Refs estáveis para o scroll lock - criadas UMA VEZ e nunca recriadas
   const scrollLockActiveRef = useRef(false);
-  const touchMoveHandlerRef = useRef<((e: TouchEvent) => void) | null>(null);
-  const wheelHandlerRef = useRef<((e: WheelEvent) => void) | null>(null);
+  
+  // Handler estático que usa ref para verificar se deve bloquear
+  const showSuggestionsRef = useRef(showSuggestions);
+  showSuggestionsRef.current = showSuggestions;
+  
+  // Handlers estáticos - criados uma vez
+  const touchMoveHandler = useRef((e: TouchEvent) => {
+    if (!showSuggestionsRef.current) return;
+    const target = e.target as HTMLElement;
+    if (!target.closest('.ios-scroll-fix')) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  });
+  
+  const wheelHandler = useRef((e: WheelEvent) => {
+    if (!showSuggestionsRef.current) return;
+    const target = e.target as HTMLElement;
+    if (!target.closest('.ios-scroll-fix')) {
+      e.preventDefault();
+    }
+  });
 
-  // Bloqueia scroll global quando showSuggestions está ativo
-  // IMPORTANTE: NÃO depende de hasSuggestions para evitar unlock durante filtro de sugestões
+  // Efeito para gerenciar classes CSS baseado em showSuggestions
   useEffect(() => {
-    // Lock baseado APENAS em showSuggestions - independente da quantidade de sugestões/caracteres
-    const shouldLock = showSuggestions;
+    const html = document.documentElement;
+    const body = document.body;
     
-    if (shouldLock && !scrollLockActiveRef.current) {
-      // Ativar bloqueio
-      scrollLockActiveRef.current = true;
-      
-      const html = document.documentElement;
-      const body = document.body;
-      
+    if (showSuggestions) {
       html.classList.add('ingredients-scroll-lock');
       body.classList.add('ingredients-scroll-lock');
-      
-      // Handler global com capture para interceptar antes de qualquer outro
-      touchMoveHandlerRef.current = (e: TouchEvent) => {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.ios-scroll-fix')) {
-          e.preventDefault();
-          e.stopPropagation();
-        }
-      };
-      
-      wheelHandlerRef.current = (e: WheelEvent) => {
-        const target = e.target as HTMLElement;
-        if (!target.closest('.ios-scroll-fix')) {
-          e.preventDefault();
-        }
-      };
-      
-      document.addEventListener('touchmove', touchMoveHandlerRef.current, { passive: false, capture: true });
-      document.addEventListener('wheel', wheelHandlerRef.current, { passive: false, capture: true });
-      
-    } else if (!shouldLock && scrollLockActiveRef.current) {
-      // Desativar bloqueio
-      scrollLockActiveRef.current = false;
-      
-      const html = document.documentElement;
-      const body = document.body;
-      
+    } else {
       html.classList.remove('ingredients-scroll-lock');
       body.classList.remove('ingredients-scroll-lock');
-      
-      if (touchMoveHandlerRef.current) {
-        document.removeEventListener('touchmove', touchMoveHandlerRef.current, { capture: true } as EventListenerOptions);
-        touchMoveHandlerRef.current = null;
-      }
-      if (wheelHandlerRef.current) {
-        document.removeEventListener('wheel', wheelHandlerRef.current, { capture: true } as EventListenerOptions);
-        wheelHandlerRef.current = null;
-      }
     }
+  }, [showSuggestions]);
+
+  // Efeito que adiciona listeners UMA VEZ no mount e remove no unmount
+  useEffect(() => {
+    const touchHandler = touchMoveHandler.current;
+    const wheelHandlerFn = wheelHandler.current;
     
-    // Cleanup ao desmontar o componente
+    document.addEventListener('touchmove', touchHandler, { passive: false, capture: true });
+    document.addEventListener('wheel', wheelHandlerFn, { passive: false, capture: true });
+    
     return () => {
-      if (scrollLockActiveRef.current) {
-        scrollLockActiveRef.current = false;
-        document.documentElement.classList.remove('ingredients-scroll-lock');
-        document.body.classList.remove('ingredients-scroll-lock');
-        
-        if (touchMoveHandlerRef.current) {
-          document.removeEventListener('touchmove', touchMoveHandlerRef.current, { capture: true } as EventListenerOptions);
-        }
-        if (wheelHandlerRef.current) {
-          document.removeEventListener('wheel', wheelHandlerRef.current, { capture: true } as EventListenerOptions);
-        }
-      }
+      document.removeEventListener('touchmove', touchHandler, { capture: true } as EventListenerOptions);
+      document.removeEventListener('wheel', wheelHandlerFn, { capture: true } as EventListenerOptions);
+      document.documentElement.classList.remove('ingredients-scroll-lock');
+      document.body.classList.remove('ingredients-scroll-lock');
     };
-  }, [showSuggestions]); // Depende APENAS de showSuggestions
+  }, []); // Vazio - roda apenas no mount/unmount
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>

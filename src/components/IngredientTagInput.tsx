@@ -731,10 +731,11 @@ export default function IngredientTagInput({
   const touchMoveHandlerRef = useRef<((e: TouchEvent) => void) | null>(null);
   const wheelHandlerRef = useRef<((e: WheelEvent) => void) | null>(null);
 
-  // Bloqueia scroll global quando as sugestões estão visíveis
-  // Usa refs para evitar cleanup/setup desnecessários que causam o bug
+  // Bloqueia scroll global quando showSuggestions está ativo
+  // IMPORTANTE: NÃO depende de hasSuggestions para evitar unlock durante filtro de sugestões
   useEffect(() => {
-    const shouldLock = showSuggestions && hasSuggestions;
+    // Lock baseado APENAS em showSuggestions - independente da quantidade de sugestões/caracteres
+    const shouldLock = showSuggestions;
     
     if (shouldLock && !scrollLockActiveRef.current) {
       // Ativar bloqueio
@@ -800,7 +801,7 @@ export default function IngredientTagInput({
         }
       }
     };
-  }); // Sem dependências - roda em todo render mas usa refs para controlar
+  }, [showSuggestions]); // Depende APENAS de showSuggestions
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>

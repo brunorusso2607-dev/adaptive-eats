@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -82,26 +82,37 @@ export default function RecipeCategorySheet({
   const [expandedCategory, setExpandedCategory] = useState<string>("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
   const [ingredients, setIngredients] = useState<string[]>([]);
-  const sheetContentRef = useRef<HTMLDivElement>(null);
-  
-  // Bloqueia scroll do Sheet quando está na etapa de ingredientes
+  // Bloqueia scroll do body quando está na etapa de ingredientes
   useEffect(() => {
-    if (step === "ingredients" && sheetContentRef.current) {
-      const sheetContent = sheetContentRef.current;
+    if (step === "ingredients") {
+      // Salva o scroll atual e trava o body
+      const scrollY = window.scrollY;
+      const originalStyle = document.body.style.cssText;
       
+      document.body.style.cssText = `
+        position: fixed;
+        top: -${scrollY}px;
+        left: 0;
+        right: 0;
+        overflow: hidden;
+        touch-action: none;
+      `;
+      
+      // Handler global para bloquear touchmove exceto no dropdown
       const handleTouchMove = (e: TouchEvent) => {
         const target = e.target as HTMLElement;
-        // Permite scroll apenas se estiver dentro do dropdown de ingredientes
         const isInsideScrollable = target.closest('.ios-scroll-fix');
         if (!isInsideScrollable) {
           e.preventDefault();
         }
       };
       
-      sheetContent.addEventListener('touchmove', handleTouchMove, { passive: false });
+      document.addEventListener('touchmove', handleTouchMove, { passive: false });
       
       return () => {
-        sheetContent.removeEventListener('touchmove', handleTouchMove);
+        document.body.style.cssText = originalStyle;
+        window.scrollTo(0, scrollY);
+        document.removeEventListener('touchmove', handleTouchMove);
       };
     }
   }, [step]);
@@ -187,11 +198,8 @@ export default function RecipeCategorySheet({
               : "h-[85vh] rounded-t-3xl overflow-hidden"
           )}
         >
-          {/* Wrapper para controlar touch events */}
-          <div 
-            ref={sheetContentRef}
-            className="flex flex-col flex-1 overflow-hidden"
-          >
+          {/* Wrapper para conteúdo */}
+          <div className="flex flex-col flex-1 overflow-hidden">
           <SheetHeader className="px-6 pb-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             {step === 2 || step === "ingredients" ? (

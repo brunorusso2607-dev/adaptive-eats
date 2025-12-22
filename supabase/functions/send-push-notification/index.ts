@@ -1,9 +1,6 @@
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
-// Import web-push library compiled for Deno
-import webpush from "https://esm.sh/web-push@3.6.7";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -39,14 +36,7 @@ serve(async (req) => {
       throw new Error("VAPID keys not configured");
     }
     
-    console.log('[SEND-PUSH] VAPID Public Key (first 20 chars):', vapidPublicKey.substring(0, 20));
-
-    // Configure web-push with VAPID details
-    webpush.setVapidDetails(
-      'mailto:contato@receitai.com',
-      vapidPublicKey,
-      vapidPrivateKey
-    );
+    console.log('[SEND-PUSH] VAPID keys found');
 
     const supabaseClient = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
@@ -60,7 +50,7 @@ serve(async (req) => {
       throw new Error("Payload is required");
     }
 
-    console.log('[SEND-PUSH] Payload:', payload);
+    console.log('[SEND-PUSH] Payload:', JSON.stringify(payload));
 
     // Get active subscriptions for user(s)
     let query = supabaseClient
@@ -93,27 +83,35 @@ serve(async (req) => {
 
     for (const sub of subscriptions) {
       try {
-        console.log('[PUSH] Sending to endpoint:', sub.endpoint.substring(0, 50) + '...');
+        console.log('[PUSH] Sending to endpoint:', sub.endpoint.substring(0, 60) + '...');
         
-        const pushSubscription = {
-          endpoint: sub.endpoint,
-          keys: {
-            p256dh: sub.p256dh,
-            auth: sub.auth
+        // Send a simple push without payload (triggers the push event in SW)
+        // The SW will show a default notification
+        const response = await fetch(sub.endpoint, {
+          method: 'POST',
+          headers: {
+            'TTL': '60',
+            'Content-Length': '0',
+            'Urgency': 'normal',
+          },
+        });
+        
+        console.log('[PUSH] Response status:', response.status);
+        
+        if (response.ok || response.status === 201) {
+          console.log('[PUSH] Sent successfully');
+          sentCount++;
+        } else {
+          const text = await response.text();
+          console.error('[PUSH] Failed:', response.status, text);
+          
+          // Mark as inactive if subscription is gone
+          if (response.status === 410 || response.status === 404) {
+            failedSubscriptions.push(sub.id);
           }
-        };
-
-        await webpush.sendNotification(
-          pushSubscription,
-          JSON.stringify(payload)
-        );
-        
-        console.log('[PUSH] Sent successfully');
-        sentCount++;
+        }
       } catch (error: unknown) {
         console.error('[PUSH] Error sending:', error);
-        
-        // Check if subscription is gone (expired or unsubscribed)
         const errorMessage = error instanceof Error ? error.message : String(error);
         if (errorMessage.includes('410') || errorMessage.includes('expired')) {
           failedSubscriptions.push(sub.id);

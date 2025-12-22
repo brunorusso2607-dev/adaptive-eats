@@ -1,14 +1,20 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, UtensilsCrossed, Clock } from "lucide-react";
+import { Check, UtensilsCrossed, Clock, ChevronDown } from "lucide-react";
 import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
 }
 
 export default function PendingMealsList({ onStreakRefresh }: PendingMealsListProps) {
+  const [isOpen, setIsOpen] = useState(false);
   const {
     pendingMeals,
     isLoading,
@@ -46,7 +52,7 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
   if (isLoading) {
     return (
       <div className="space-y-3">
-        {[1, 2, 3].map((i) => (
+        {[1, 2].map((i) => (
           <Card key={i} className="glass-card animate-pulse">
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
@@ -107,45 +113,76 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
   };
 
   return (
-    <div className="space-y-4">
-      {/* Próxima Refeição */}
-      {currentMeal && (
-        <div className="space-y-2">
-          <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-            Próxima Refeição
-          </h3>
-          <PendingMealCard
-            meal={currentMeal}
-            onMarkComplete={handleMarkComplete}
-            onSkip={skipMeal}
-            onRefetch={refetch}
-            onStreakRefresh={onStreakRefresh}
-          />
-        </div>
-      )}
-
-      {/* Refeições Pendentes */}
-      {overdueMeals.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5" />
-            Pendentes ({overdueMeals.length})
-          </h3>
-          <div className="space-y-2">
-            {overdueMeals.map((meal) => (
-              <PendingMealCard
-                key={meal.id}
-                meal={meal}
-                onMarkComplete={handleMarkComplete}
-                onSkip={skipMeal}
-                onRefetch={refetch}
-                onStreakRefresh={onStreakRefresh}
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <CollapsibleTrigger asChild>
+        <Card className="glass-card cursor-pointer hover:bg-accent/50 transition-colors">
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-destructive/10 flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-destructive" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-foreground">
+                    Pendentes ({pendingMeals.length})
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {pendingMeals[0]?.recipe_name?.substring(0, 30)}...
+                  </p>
+                </div>
+              </div>
+              <ChevronDown 
+                className={`w-5 h-5 text-muted-foreground transition-transform duration-200 ${
+                  isOpen ? "rotate-180" : ""
+                }`} 
               />
-            ))}
+            </div>
+          </CardContent>
+        </Card>
+      </CollapsibleTrigger>
+      
+      <CollapsibleContent className="space-y-2 mt-2">
+        {/* Próxima Refeição */}
+        {currentMeal && (
+          <div className="space-y-2">
+            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              Próxima Refeição
+            </h3>
+            <PendingMealCard
+              meal={currentMeal}
+              onMarkComplete={handleMarkComplete}
+              onSkip={skipMeal}
+              onRefetch={refetch}
+              onStreakRefresh={onStreakRefresh}
+            />
           </div>
-        </div>
-      )}
-    </div>
+        )}
+
+        {/* Refeições Pendentes */}
+        {overdueMeals.length > 0 && (
+          <div className="space-y-2">
+            {currentMeal && (
+              <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
+                <Clock className="w-3.5 h-3.5" />
+                Atrasadas ({overdueMeals.length})
+              </h3>
+            )}
+            <div className="space-y-2">
+              {overdueMeals.map((meal) => (
+                <PendingMealCard
+                  key={meal.id}
+                  meal={meal}
+                  onMarkComplete={handleMarkComplete}
+                  onSkip={skipMeal}
+                  onRefetch={refetch}
+                  onStreakRefresh={onStreakRefresh}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+      </CollapsibleContent>
+    </Collapsible>
   );
 }

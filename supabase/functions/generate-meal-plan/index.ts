@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  buildMealPlanPrompt,
+  calculateMacroTargets,
+  MEAL_TYPE_LABELS,
+  type UserProfile,
+} from "../_shared/recipeConfig.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,45 +15,6 @@ const corsHeaders = {
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[GENERATE-MEAL-PLAN] ${step}${detailsStr}`);
-};
-
-const MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
-const MEAL_LABELS: Record<string, string> = {
-  cafe_manha: "Café da Manhã",
-  almoco: "Almoço",
-  lanche: "Lanche da Tarde",
-  jantar: "Jantar",
-  ceia: "Ceia"
-};
-
-const DIETARY_LABELS: Record<string, string> = {
-  comum: "alimentação comum (onívora)",
-  vegetariana: "vegetariana (sem carnes)",
-  vegana: "vegana (sem produtos de origem animal)",
-  low_carb: "low carb (baixo carboidrato)",
-};
-
-const GOAL_LABELS: Record<string, string> = {
-  emagrecer: "emagrecimento (déficit calórico)",
-  manter: "manutenção de peso",
-  ganhar_peso: "ganho de massa muscular (superávit calórico)",
-};
-
-const COMPLEXITY_LABELS: Record<string, string> = {
-  rapida: "rápidas e práticas (até 20 min de preparo)",
-  equilibrada: "equilibradas (20-40 min de preparo)",
-  elaborada: "elaboradas (mais de 40 min, receitas mais sofisticadas)",
-};
-
-const CONTEXT_LABELS: Record<string, string> = {
-  individual: "pessoa solteira/individual",
-  familia: "família (receitas que servem mais pessoas)",
-  modo_kids: "família com crianças (receitas kid-friendly)",
-};
-
-const SEX_LABELS: Record<string, string> = {
-  male: "homem",
-  female: "mulher",
 };
 
 serve(async (req) => {
@@ -87,7 +54,6 @@ serve(async (req) => {
     const targetWeekNumber = weekNumber || 1;
     
     if (existingPlanId && targetWeekNumber > 1) {
-      // Get recipes from the previous week of the same plan
       const { data: prevItems } = await supabaseClient
         .from("meal_plan_items")
         .select("recipe_name")
@@ -96,10 +62,9 @@ serve(async (req) => {
       
       if (prevItems && prevItems.length > 0) {
         previousRecipes = [...new Set(prevItems.map(item => item.recipe_name))];
-        logStep("Previous week recipes fetched", { count: previousRecipes.length, recipes: previousRecipes });
+        logStep("Previous week recipes fetched", { count: previousRecipes.length });
       }
     } else {
-      // For new plans or week 1, check the most recent active plan's last week
       const { data: recentPlan } = await supabaseClient
         .from("meal_plans")
         .select("id")
@@ -110,7 +75,6 @@ serve(async (req) => {
         .maybeSingle();
       
       if (recentPlan) {
-        // Get the highest week number from this plan
         const { data: maxWeekData } = await supabaseClient
           .from("meal_plan_items")
           .select("week_number")
@@ -128,7 +92,7 @@ serve(async (req) => {
           
           if (lastWeekItems && lastWeekItems.length > 0) {
             previousRecipes = [...new Set(lastWeekItems.map(item => item.recipe_name))];
-            logStep("Last plan recipes fetched", { count: previousRecipes.length, planId: recentPlan.id });
+            logStep("Last plan recipes fetched", { count: previousRecipes.length });
           }
         }
       }
@@ -142,127 +106,29 @@ serve(async (req) => {
       .single();
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
-    logStep("Profile fetched", profile);
+    logStep("Profile fetched", {
+      intolerances: profile.intolerances,
+      dietary: profile.dietary_preference,
+      goal: profile.goal,
+      complexity: profile.recipe_complexity,
+      context: profile.context
+    });
 
-    // Build intolerances string
-    const intolerancesList = profile.intolerances || [];
-    const intolerancesStr = intolerancesList.length > 0 && !intolerancesList.includes("nenhuma")
-      ? intolerancesList.join(", ")
-      : "nenhuma";
+    // Calculate personalized macros using centralized function
+    const macros = calculateMacroTargets(profile as UserProfile);
+    logStep("Macros calculated", macros);
 
-    // Calculate personalized macros using Mifflin-St Jeor formula
-    let dailyCalories = 2000;
-    let dailyProtein = 60;
-    
-    if (profile.weight_current && profile.height && profile.age && profile.sex) {
-      let tmb: number;
-      if (profile.sex === "male") {
-        tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) + 5;
-      } else {
-        tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) - 161;
-      }
-      
-      const activityFactors: Record<string, number> = {
-        sedentary: 1.2, light: 1.375, moderate: 1.55, active: 1.725, very_active: 1.9
-      };
-      const factor = activityFactors[profile.activity_level] || 1.55;
-      const get = Math.round(tmb * factor);
-      
-      if (profile.goal === "emagrecer") {
-        dailyCalories = Math.max(get - 500, profile.sex === "male" ? 1500 : 1200);
-        dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * 2);
-      } else if (profile.goal === "ganhar_peso") {
-        dailyCalories = get + 400;
-        dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * 2.2);
-      } else {
-        dailyCalories = get;
-        dailyProtein = Math.round(profile.weight_current * 1.6);
-      }
-    }
-
-    logStep("Daily targets calculated", { dailyCalories, dailyProtein });
-
-    // Determine number of meals based on complexity
-    const mealsPerDay = profile.recipe_complexity === "rapida" ? 4 : 5;
-    const selectedMealTypes = mealsPerDay === 4 
-      ? ["cafe_manha", "almoco", "lanche", "jantar"]
-      : MEAL_TYPES;
-
-    // Build optimized prompt 100% based on user profile
-    const prompt = `Gere um plano alimentar de ${daysCount} dias para:
-
-PERFIL COMPLETO:
-- Sexo: ${SEX_LABELS[profile.sex] || "não informado"}
-- Idade: ${profile.age || "não informada"} anos
-- Peso atual: ${profile.weight_current || "não informado"}kg
-- Altura: ${profile.height || "não informada"}cm
-- Peso meta: ${profile.weight_goal || profile.weight_current || "não informado"}kg
-
-OBJETIVO: ${GOAL_LABELS[profile.goal] || "manutenção de peso"}
-
-METAS NUTRICIONAIS DIÁRIAS:
-- Calorias: ${dailyCalories}kcal/dia
-- Proteína mínima: ${dailyProtein}g/dia
-
-PREFERÊNCIA ALIMENTAR: ${DIETARY_LABELS[profile.dietary_preference] || "comum"}
-
-RESTRIÇÕES/INTOLERÂNCIAS: ${intolerancesStr}
-
-CONTEXTO: ${CONTEXT_LABELS[profile.context] || "individual"}
-
-COMPLEXIDADE DAS RECEITAS: ${COMPLEXITY_LABELS[profile.recipe_complexity] || "equilibradas"}
-
-ESTRUTURA: ${mealsPerDay} refeições por dia (${selectedMealTypes.map(m => MEAL_LABELS[m]).join(", ")})
-
-DISTRIBUIÇÃO CALÓRICA:
-${mealsPerDay === 5 ? 
-  "- Café da Manhã: 20%\n- Almoço: 30%\n- Lanche: 10%\n- Jantar: 30%\n- Ceia: 10%" :
-  "- Café da Manhã: 25%\n- Almoço: 35%\n- Lanche: 10%\n- Jantar: 30%"
-}
-
-${previousRecipes.length > 0 ? `
-RECEITAS A EVITAR (usadas na semana anterior - NÃO repita nenhuma delas):
-${previousRecipes.map((r, i) => `${i + 1}. ${r}`).join('\n')}
-
-IMPORTANTE: As receitas acima foram usadas recentemente. Crie receitas DIFERENTES para garantir variedade.
-` : ''}
-
-REGRAS IMPORTANTES:
-1. NÃO repita a mesma receita em dias diferentes (variedade é essencial)
-${previousRecipes.length > 0 ? '2. NÃO use nenhuma das receitas listadas acima (evitar repetição da semana anterior)\n3.' : '2.'} Respeite TODAS as restrições e intolerâncias alimentares
-${previousRecipes.length > 0 ? '4.' : '3.'} Use ingredientes comuns em supermercados brasileiros
-${previousRecipes.length > 0 ? '5.' : '4.'} Cada receita deve ter ingredientes com quantidades exatas e instruções de preparo detalhadas
-${previousRecipes.length > 0 ? '6.' : '5.'} Os macros (calorias, proteínas, carboidratos, gorduras) devem ser realistas para cada receita
-
-FORMATO DE RESPOSTA:
-Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:
-{
-  "days": [
-    {
-      "day_index": 0,
-      "day_name": "Segunda-feira",
-      "meals": [
-        {
-          "meal_type": "cafe_manha",
-          "recipe_name": "Nome da receita",
-          "recipe_calories": 400,
-          "recipe_protein": 20,
-          "recipe_carbs": 50,
-          "recipe_fat": 15,
-          "recipe_prep_time": 15,
-          "recipe_ingredients": [
-            {"item": "ingrediente", "quantity": "100", "unit": "g"}
-          ],
-          "recipe_instructions": ["Passo 1", "Passo 2"]
-        }
-      ]
-    }
-  ]
-}`;
+    // Build prompt using centralized config
+    const prompt = buildMealPlanPrompt(
+      profile as UserProfile,
+      daysCount,
+      macros,
+      previousRecipes
+    );
 
     logStep("Calling Google Gemini 2.5 Flash-Lite");
 
-    // Call Google Gemini API - using gemini-2.5-flash-lite
+    // Call Google Gemini API
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
       {
@@ -282,6 +148,13 @@ Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:
     if (!response.ok) {
       const errorText = await response.text();
       logStep("Gemini API error", { status: response.status, error: errorText });
+      
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
     }
 
@@ -297,7 +170,6 @@ Retorne APENAS um JSON válido (sem markdown, sem \`\`\`) com a estrutura:
 
     // Clean and parse the JSON response
     let cleanedJson = textContent.trim();
-    // Remove markdown code blocks if present
     if (cleanedJson.startsWith("```json")) {
       cleanedJson = cleanedJson.slice(7);
     } else if (cleanedJson.startsWith("```")) {

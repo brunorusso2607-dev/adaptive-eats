@@ -726,6 +726,46 @@ export default function IngredientTagInput({
   const hasSuggestions = processedSuggestions.safe.length > 0 || processedSuggestions.conflicting.length > 0;
   const hasIntolerances = userProfile?.intolerances && userProfile.intolerances.length > 0 && !userProfile.intolerances.includes("nenhuma");
 
+  // Bloqueia scroll global quando as sugestões estão visíveis
+  useEffect(() => {
+    if (showSuggestions && hasSuggestions) {
+      const html = document.documentElement;
+      const body = document.body;
+      
+      // Adiciona classes para bloquear scroll
+      html.classList.add('ingredients-scroll-lock');
+      body.classList.add('ingredients-scroll-lock');
+      
+      // Handler global com capture para interceptar antes de qualquer outro
+      const handleTouchMove = (e: TouchEvent) => {
+        const target = e.target as HTMLElement;
+        // Permite scroll apenas dentro do dropdown (ios-scroll-fix)
+        if (!target.closest('.ios-scroll-fix')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      // Handler para prevenir scroll via wheel também
+      const handleWheel = (e: WheelEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.ios-scroll-fix')) {
+          e.preventDefault();
+        }
+      };
+      
+      document.addEventListener('touchmove', handleTouchMove, { passive: false, capture: true });
+      document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+      
+      return () => {
+        html.classList.remove('ingredients-scroll-lock');
+        body.classList.remove('ingredients-scroll-lock');
+        document.removeEventListener('touchmove', handleTouchMove, { capture: true } as EventListenerOptions);
+        document.removeEventListener('wheel', handleWheel, { capture: true } as EventListenerOptions);
+      };
+    }
+  }, [showSuggestions, hasSuggestions]);
+
   return (
     <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>
       {/* Input container with tags */}

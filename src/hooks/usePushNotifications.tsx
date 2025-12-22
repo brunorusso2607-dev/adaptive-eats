@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
-// VAPID public key - this is safe to expose
-const VAPID_PUBLIC_KEY = import.meta.env.VITE_VAPID_PUBLIC_KEY || '';
+// VAPID public key - this is safe to expose (it's a PUBLIC key)
+const VAPID_PUBLIC_KEY = 'BKBM_Ycm0QcxMWTXDCmjVDhutxA0vs9KBO-BdF4t08-HD_EDTEYoPXyDfU_fO6_5fbOfrQV2d_NwNJwREBXc14g';
 
 interface NotificationPreferences {
   meal_reminders: boolean;

@@ -18,7 +18,8 @@ import {
   MessageSquare,
   AlertTriangle,
   Paintbrush,
-  LogOut
+  LogOut,
+  Settings
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -54,8 +55,14 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
     ],
   },
-  { path: "/admin/pixels", label: "Pixels", icon: Code2 },
-  { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
+  {
+    label: "Configurações",
+    icon: Settings,
+    subItems: [
+      { path: "/admin/pixels", label: "Pixels", icon: Code2 },
+      { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
+    ],
+  },
 ];
 
 export default function AdminDashboard() {

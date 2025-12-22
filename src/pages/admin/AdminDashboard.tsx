@@ -63,7 +63,7 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isLoading } = useAdmin();
-  const [openMenus, setOpenMenus] = useState<string[]>(["Início"]);
+  const [openMenus, setOpenMenus] = useState<string[]>([]);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -138,35 +138,14 @@ export default function AdminDashboard() {
       </header>
 
       <div className="container mx-auto px-4 py-6">
-        {/* Navigation Menu - Single Main Menu with all items inside */}
+        {/* Navigation Menu */}
         <nav className="mb-6">
-          <Collapsible
-            open={openMenus.includes("Início")}
-            onOpenChange={() => toggleMenu("Início")}
-          >
-            <CollapsibleTrigger asChild>
-              <Button
-                variant="ghost"
-                className={cn(
-                  "w-full justify-between px-4 py-3 rounded-xl text-sm font-medium transition-all",
-                  openMenus.includes("Início")
-                    ? "bg-primary/10 text-primary"
-                    : "bg-card/50 text-muted-foreground hover:bg-card hover:text-foreground"
-                )}
-              >
-                <div className="flex items-center gap-2">
-                  <Menu className="w-4 h-4" />
-                  Início
-                </div>
-                <ChevronDown
-                  className={cn(
-                    "w-4 h-4 transition-transform duration-200",
-                    openMenus.includes("Início") && "rotate-180"
-                  )}
-                />
-              </Button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="pl-4 pt-2 space-y-1">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-primary bg-primary/10 rounded-xl mb-2">
+              <Menu className="w-4 h-4" />
+              Início
+            </div>
+            <div className="pl-4 space-y-1">
               {mainMenuItems.map((item) => (
                 item.path ? (
                   <Link
@@ -236,8 +215,8 @@ export default function AdminDashboard() {
                   </Collapsible>
                 )
               ))}
-            </CollapsibleContent>
-          </Collapsible>
+            </div>
+          </div>
         </nav>
 
         {/* Content */}

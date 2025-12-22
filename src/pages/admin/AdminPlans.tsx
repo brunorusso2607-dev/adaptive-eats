@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Loader2, CreditCard, RefreshCw, Copy, Settings, Eye, EyeOff, Key } from "lucide-react";
+import { Plus, Loader2, CreditCard, RefreshCw, Copy, Settings, Key } from "lucide-react";
 import { useActivityLog } from "@/hooks/useActivityLog";
 
 type StripePrice = {
@@ -53,7 +53,6 @@ export default function AdminPlans() {
   const [isCreating, setIsCreating] = useState(false);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [showSecretKey, setShowSecretKey] = useState(false);
   // Form state
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
@@ -219,28 +218,11 @@ export default function AdminPlans() {
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label>Chave Secreta (STRIPE_SECRET_KEY)</Label>
-                  <div className="flex items-center gap-2">
-                    <div className="flex-1 bg-muted rounded-lg p-3 font-mono text-sm break-all">
-                      {showSecretKey ? (
-                        <span className="text-foreground">sk_live_••••••••••••••••••••••••</span>
-                      ) : (
-                        <span className="text-muted-foreground">••••••••••••••••••••••••••••••••</span>
-                      )}
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setShowSecretKey(!showSecretKey)}
-                    >
-                      {showSecretKey ? (
-                        <EyeOff className="w-4 h-4" />
-                      ) : (
-                        <Eye className="w-4 h-4" />
-                      )}
-                    </Button>
+                  <div className="bg-muted rounded-lg p-3 font-mono text-sm">
+                    <span className="text-muted-foreground">sk_live_••••••••••••••••••••••••</span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    A chave secreta está armazenada de forma segura nas variáveis de ambiente do servidor.
+                    A chave secreta está armazenada de forma segura nas variáveis de ambiente do servidor e não pode ser visualizada por segurança.
                   </p>
                 </div>
                 <div className="bg-primary/5 border border-primary/20 rounded-lg p-3">
@@ -248,6 +230,21 @@ export default function AdminPlans() {
                   <p className="text-xs text-muted-foreground mt-1">
                     A integração com o Stripe está ativa e funcionando.
                   </p>
+                </div>
+                <div className="pt-2 border-t">
+                  <p className="text-sm text-muted-foreground mb-3">
+                    Para atualizar a chave Stripe, acesse as configurações do projeto no Lovable e atualize o secret STRIPE_SECRET_KEY.
+                  </p>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      window.open("https://dashboard.stripe.com/apikeys", "_blank");
+                    }}
+                  >
+                    <Key className="w-4 h-4 mr-2" />
+                    Abrir Dashboard Stripe
+                  </Button>
                 </div>
               </div>
             </DialogContent>

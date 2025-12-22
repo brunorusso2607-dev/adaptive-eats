@@ -764,7 +764,13 @@ export default function IngredientTagInput({
               setInputValue(e.target.value);
               setShowSuggestions(true);
             }}
-            onFocus={() => setShowSuggestions(true)}
+            onFocus={(e) => {
+              setShowSuggestions(true);
+              // Scroll input into view on mobile when keyboard appears
+              setTimeout(() => {
+                e.target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+              }, 300);
+            }}
             onKeyDown={handleKeyDown}
             placeholder={value.length === 0 ? placeholder : "Adicionar mais..."}
             className="flex-1 bg-transparent border-none outline-none text-foreground placeholder:text-muted-foreground text-sm"
@@ -773,9 +779,9 @@ export default function IngredientTagInput({
         </div>
       </div>
 
-      {/* Suggestions dropdown with grouping */}
+      {/* Suggestions dropdown with grouping - optimized for mobile keyboard */}
       {showSuggestions && hasSuggestions && (
-        <div className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-72 overflow-y-auto">
+        <div className="absolute z-[9999] w-full mt-2 py-2 bg-popover border border-border rounded-xl shadow-xl max-h-[40dvh] overflow-y-auto overscroll-contain">
           
           {/* Seção: Opções seguras */}
           {processedSuggestions.safe.length > 0 && (

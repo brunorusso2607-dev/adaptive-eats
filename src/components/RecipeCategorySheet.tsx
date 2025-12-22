@@ -156,10 +156,15 @@ export default function RecipeCategorySheet({
       
       <Sheet open={open && !isLoading} onOpenChange={handleClose}>
         <SheetContent 
-          side="bottom" 
-          className="h-[85vh] rounded-t-3xl px-0 overflow-hidden"
+          side={step === "ingredients" ? "top" : "bottom"} 
+          className={cn(
+            "px-0 overflow-hidden flex flex-col",
+            step === "ingredients" 
+              ? "h-[100dvh] rounded-b-3xl pt-safe" 
+              : "h-[85vh] rounded-t-3xl"
+          )}
         >
-          <SheetHeader className="px-6 pb-4 border-b">
+          <SheetHeader className="px-6 pb-4 border-b shrink-0">
           <div className="flex items-center gap-3">
             {step === 2 || step === "ingredients" ? (
               <Button 
@@ -203,7 +208,10 @@ export default function RecipeCategorySheet({
           )}
         </SheetHeader>
         
-        <div className="overflow-y-auto h-[calc(85vh-140px)] px-4 py-4">
+        <div className={cn(
+          "overflow-y-auto px-4 py-4 flex-1",
+          step === "ingredients" ? "h-auto" : "h-[calc(85vh-140px)]"
+        )}>
           {step === 1 ? (
             // Etapa 1: Filtros incluindo opção de ingredientes
             <Accordion 

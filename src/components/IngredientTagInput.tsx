@@ -726,60 +726,66 @@ export default function IngredientTagInput({
   const hasSuggestions = processedSuggestions.safe.length > 0 || processedSuggestions.conflicting.length > 0;
   const hasIntolerances = userProfile?.intolerances && userProfile.intolerances.length > 0 && !userProfile.intolerances.includes("nenhuma");
 
-  // Refs estáveis para o scroll lock - criadas UMA VEZ e nunca recriadas
-  const scrollLockActiveRef = useRef(false);
-  
-  // Handler estático que usa ref para verificar se deve bloquear
-  const showSuggestionsRef = useRef(showSuggestions);
-  showSuggestionsRef.current = showSuggestions;
-  
-  // Handlers estáticos - criados uma vez
-  const touchMoveHandler = useRef((e: TouchEvent) => {
-    if (!showSuggestionsRef.current) return;
-    const target = e.target as HTMLElement;
-    if (!target.closest('.ios-scroll-fix')) {
-      e.preventDefault();
-      e.stopPropagation();
-    }
-  });
-  
-  const wheelHandler = useRef((e: WheelEvent) => {
-    if (!showSuggestionsRef.current) return;
-    const target = e.target as HTMLElement;
-    if (!target.closest('.ios-scroll-fix')) {
-      e.preventDefault();
-    }
-  });
-
-  // Efeito para gerenciar classes CSS baseado em showSuggestions
+  // SOLUÇÃO DEFINITIVA: Bloqueia scroll baseado no FOCO do input
+  // Usa eventos nativos do DOM, não estados React
   useEffect(() => {
-    const html = document.documentElement;
-    const body = document.body;
+    const input = inputRef.current;
+    if (!input) return;
     
-    if (showSuggestions) {
+    const lockScroll = () => {
+      const html = document.documentElement;
+      const body = document.body;
       html.classList.add('ingredients-scroll-lock');
       body.classList.add('ingredients-scroll-lock');
-    } else {
+      
+      // Adiciona handler para bloquear touchmove fora do dropdown
+      const handleTouch = (e: TouchEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.ios-scroll-fix')) {
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      
+      const handleWheel = (e: WheelEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.ios-scroll-fix')) {
+          e.preventDefault();
+        }
+      };
+      
+      document.addEventListener('touchmove', handleTouch, { passive: false, capture: true });
+      document.addEventListener('wheel', handleWheel, { passive: false, capture: true });
+      
+      // Armazena handlers no input para remover depois
+      (input as any)._scrollLockHandlers = { handleTouch, handleWheel };
+    };
+    
+    const unlockScroll = () => {
+      const html = document.documentElement;
+      const body = document.body;
       html.classList.remove('ingredients-scroll-lock');
       body.classList.remove('ingredients-scroll-lock');
-    }
-  }, [showSuggestions]);
-
-  // Efeito que adiciona listeners UMA VEZ no mount e remove no unmount
-  useEffect(() => {
-    const touchHandler = touchMoveHandler.current;
-    const wheelHandlerFn = wheelHandler.current;
+      
+      // Remove handlers armazenados
+      const handlers = (input as any)._scrollLockHandlers;
+      if (handlers) {
+        document.removeEventListener('touchmove', handlers.handleTouch, { capture: true } as EventListenerOptions);
+        document.removeEventListener('wheel', handlers.handleWheel, { capture: true } as EventListenerOptions);
+        (input as any)._scrollLockHandlers = null;
+      }
+    };
     
-    document.addEventListener('touchmove', touchHandler, { passive: false, capture: true });
-    document.addEventListener('wheel', wheelHandlerFn, { passive: false, capture: true });
+    // Adiciona listeners nativos de focus/blur
+    input.addEventListener('focus', lockScroll);
+    input.addEventListener('blur', unlockScroll);
     
     return () => {
-      document.removeEventListener('touchmove', touchHandler, { capture: true } as EventListenerOptions);
-      document.removeEventListener('wheel', wheelHandlerFn, { capture: true } as EventListenerOptions);
-      document.documentElement.classList.remove('ingredients-scroll-lock');
-      document.body.classList.remove('ingredients-scroll-lock');
+      input.removeEventListener('focus', lockScroll);
+      input.removeEventListener('blur', unlockScroll);
+      unlockScroll(); // Cleanup
     };
-  }, []); // Vazio - roda apenas no mount/unmount
+  }, []); // Vazio - roda apenas no mount
 
   return (
     <div ref={containerRef} className="relative w-full" style={{ zIndex: showSuggestions ? 100 : 'auto' }}>

@@ -588,7 +588,7 @@ export default function IngredientTagInput({
     
     const filtered = COMMON_INGREDIENTS.filter(
       (ingredient) =>
-        normalizeString(ingredient).includes(normalizedInput) &&
+        normalizeString(ingredient).startsWith(normalizedInput) &&
         !value.includes(ingredient) &&
         isIngredientCompatible(ingredient, userProfile?.dietary_preference)
     );

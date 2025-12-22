@@ -12,6 +12,7 @@ import Activate from "./pages/Activate";
 import Onboarding from "./pages/Onboarding";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminHome from "./pages/admin/AdminHome";
 import AdminStats from "./pages/admin/AdminStats";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminAnalytics from "./pages/admin/AdminAnalytics";
@@ -43,12 +44,12 @@ function AppContent() {
         
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />}>
-          <Route index element={<AdminStats />} />
-          <Route path="users" element={<AdminUsers />} />
+          <Route index element={<AdminHome />} />
+          <Route path="users" element={<AdminStats />} />
           <Route path="analytics" element={<AdminAnalytics />} />
+          <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
           <Route path="plans" element={<AdminPlans />} />
           <Route path="prompt-simulator" element={<AdminPromptSimulator />} />
-          <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
           <Route path="pixels" element={<AdminPixels />} />
           <Route path="appearance" element={<AdminAppearance />} />
         </Route>

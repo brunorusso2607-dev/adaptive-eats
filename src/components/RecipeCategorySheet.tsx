@@ -4,14 +4,21 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { 
-  Salad, UtensilsCrossed, Wheat, Coffee, Cake, GlassWater, Cookie,
-  Globe, Clock, Flame, ChevronRight, ArrowLeft, Check, Loader2
+  Globe, Clock, Flame, ChevronRight, ArrowLeft, Check, Loader2, Sparkles, Search
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFilteredRecipeCategories } from "@/hooks/useFilteredRecipeCategories";
+import IngredientTagInput from "@/components/IngredientTagInput";
 
 // Filtros opcionais (Etapa 1)
 const FILTERS = {
+  ingredientes: {
+    id: "ingredientes",
+    name: "Escolha o Ingrediente",
+    emoji: "🥗",
+    icon: Search,
+    isIngredientSelector: true,
+  },
   culinarias: {
     id: "culinarias",
     name: "Culinárias do Mundo",
@@ -53,19 +60,27 @@ interface RecipeCategorySheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSelectCategory: (category: string, subcategory: string, filters?: SelectedFilters) => void;
+  onGenerateWithIngredients?: (ingredients: string[]) => void;
   isLoading?: boolean;
+  userProfile?: {
+    intolerances?: string[] | null;
+    dietary_preference?: string | null;
+  } | null;
 }
 
 export default function RecipeCategorySheet({ 
   open, 
   onOpenChange, 
   onSelectCategory,
-  isLoading = false 
+  onGenerateWithIngredients,
+  isLoading = false,
+  userProfile = null,
 }: RecipeCategorySheetProps) {
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | "ingredients">(1);
   const [expandedFilter, setExpandedFilter] = useState<string>("");
   const [expandedCategory, setExpandedCategory] = useState<string>("");
   const [selectedFilters, setSelectedFilters] = useState<SelectedFilters>({});
+  const [ingredients, setIngredients] = useState<string[]>([]);
   
   // Usa o hook para buscar categorias filtradas pelo perfil
   const { categories: filteredCategories, isLoading: isCategoriesLoading, profile } = useFilteredRecipeCategories();
@@ -89,12 +104,31 @@ export default function RecipeCategorySheet({
   };
 
   const handleBack = () => {
-    setStep(1);
+    if (step === "ingredients") {
+      setStep(1);
+      setIngredients([]);
+    } else {
+      setStep(1);
+    }
     setExpandedCategory("");
   };
 
   const handleSubcategoryClick = (categoryName: string, subcategory: string) => {
     onSelectCategory(categoryName, subcategory, selectedFilters);
+    handleClose();
+  };
+
+  const handleIngredientOptionClick = () => {
+    setStep("ingredients");
+    setExpandedFilter("");
+  };
+
+  const handleGenerateWithIngredients = () => {
+    if (ingredients.length === 0) return;
+    
+    if (onGenerateWithIngredients) {
+      onGenerateWithIngredients(ingredients);
+    }
     handleClose();
   };
 
@@ -106,6 +140,7 @@ export default function RecipeCategorySheet({
       setExpandedFilter("");
       setExpandedCategory("");
       setSelectedFilters({});
+      setIngredients([]);
     }, 300);
   };
 
@@ -121,7 +156,7 @@ export default function RecipeCategorySheet({
       >
         <SheetHeader className="px-6 pb-4 border-b">
           <div className="flex items-center gap-3">
-            {step === 2 ? (
+            {step === 2 || step === "ingredients" ? (
               <Button 
                 variant="ghost" 
                 size="icon" 
@@ -143,20 +178,29 @@ export default function RecipeCategorySheet({
               <div className="w-14" />
             )}
             <SheetTitle className="text-center font-display text-xl flex-1">
-              {step === 1 ? "Personalize sua busca" : "Escolha uma categoria"}
+              {step === 1 
+                ? "Personalize sua busca" 
+                : step === "ingredients"
+                  ? "Escolha os ingredientes"
+                  : "Escolha uma categoria"}
             </SheetTitle>
-            {step === 2 && <div className="w-8" />}
+            {(step === 2 || step === "ingredients") && <div className="w-8" />}
           </div>
           {step === 1 && (
             <p className="text-sm text-muted-foreground text-center mt-1">
               Selecione os filtros desejados (opcional)
             </p>
           )}
+          {step === "ingredients" && (
+            <p className="text-sm text-muted-foreground text-center mt-1">
+              Digite e selecione ingredientes da lista
+            </p>
+          )}
         </SheetHeader>
         
         <div className="overflow-y-auto h-[calc(85vh-140px)] px-4 py-4">
           {step === 1 ? (
-            // Etapa 1: Filtros
+            // Etapa 1: Filtros incluindo opção de ingredientes
             <Accordion 
               type="single" 
               collapsible 
@@ -165,6 +209,25 @@ export default function RecipeCategorySheet({
               className="space-y-2"
             >
               {Object.values(FILTERS).map((filter) => {
+                // Opção de ingredientes é especial - não é um accordion, é um botão
+                if ('isIngredientSelector' in filter && filter.isIngredientSelector) {
+                  return (
+                    <div
+                      key={filter.id}
+                      className="border rounded-2xl overflow-hidden bg-card/50 backdrop-blur-sm transition-all hover:border-primary/50 hover:shadow-md cursor-pointer"
+                      onClick={handleIngredientOptionClick}
+                    >
+                      <div className="px-4 py-3 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg">
+                          {filter.emoji}
+                        </div>
+                        <span className="font-medium text-left flex-1">{filter.name}</span>
+                        <ChevronRight className="w-5 h-5 text-muted-foreground" />
+                      </div>
+                    </div>
+                  );
+                }
+
                 const filterKey = filter.id === "culinarias" ? "culinaria" : filter.id;
                 const isSelected = !!selectedFilters[filterKey as keyof SelectedFilters];
                 const selectedValue = selectedFilters[filterKey as keyof SelectedFilters];
@@ -198,7 +261,7 @@ export default function RecipeCategorySheet({
                     </AccordionTrigger>
                     <AccordionContent className="px-2 pb-2">
                       <div className="grid grid-cols-2 gap-2 pt-2">
-                        {filter.options.map((option) => (
+                        {'options' in filter && filter.options?.map((option) => (
                           <Button
                             key={option}
                             variant={selectedValue === option ? "default" : "outline"}
@@ -219,6 +282,26 @@ export default function RecipeCategorySheet({
                 );
               })}
             </Accordion>
+          ) : step === "ingredients" ? (
+            // Etapa de Ingredientes
+            <div className="space-y-4">
+              <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+                <IngredientTagInput
+                  value={ingredients}
+                  onChange={setIngredients}
+                  placeholder="Digite um ingrediente..."
+                  disabled={isLoading}
+                  onSubmit={handleGenerateWithIngredients}
+                  userProfile={userProfile || profile}
+                />
+              </div>
+              
+              {ingredients.length > 0 && (
+                <p className="text-sm text-muted-foreground text-center">
+                  {ingredients.length} ingrediente{ingredients.length !== 1 ? "s" : ""} selecionado{ingredients.length !== 1 ? "s" : ""}
+                </p>
+              )}
+            </div>
           ) : isCategoriesLoading ? (
             // Loading state
             <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -282,7 +365,7 @@ export default function RecipeCategorySheet({
           )}
         </div>
 
-        {/* Footer com botão Avançar (apenas na etapa 1) - com safe-area para dispositivos móveis */}
+        {/* Footer com botão Avançar (apenas na etapa 1) ou Gerar Receita (na etapa de ingredientes) */}
         {step === 1 && (
           <SafeAreaFooter>
             <Button 
@@ -294,6 +377,23 @@ export default function RecipeCategorySheet({
                 : "Avançar sem filtros"
               }
               <ChevronRight className="w-5 h-5 ml-2" />
+            </Button>
+          </SafeAreaFooter>
+        )}
+        
+        {step === "ingredients" && (
+          <SafeAreaFooter>
+            <Button 
+              onClick={handleGenerateWithIngredients} 
+              className="w-full h-12 rounded-xl text-base font-medium gradient-primary border-0"
+              disabled={ingredients.length === 0 || isLoading}
+            >
+              {isLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin mr-2" />
+              ) : (
+                <Sparkles className="w-5 h-5 mr-2" />
+              )}
+              Gerar Receita
             </Button>
           </SafeAreaFooter>
         )}

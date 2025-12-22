@@ -790,14 +790,28 @@ export default function IngredientTagInput({
           }}
         >
           <div
-            className="py-2 overflow-y-scroll flex-1"
+            className="py-2 overflow-y-scroll flex-1 ios-scroll-fix"
             style={{ 
               WebkitOverflowScrolling: 'touch',
               overscrollBehavior: 'contain',
               minHeight: 0,
             }}
+            onTouchStart={(e) => {
+              const el = e.currentTarget;
+              (el as any)._startY = e.touches[0].clientY;
+            }}
             onTouchMove={(e) => {
-              // Allow scroll inside, prevent propagation to parent
+              const el = e.currentTarget;
+              const startY = (el as any)._startY || 0;
+              const currentY = e.touches[0].clientY;
+              const deltaY = startY - currentY;
+              const isScrollingDown = deltaY > 0;
+              const isScrollingUp = deltaY < 0;
+              const isAtTop = el.scrollTop <= 0;
+              const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
+              if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
+                e.preventDefault();
+              }
               e.stopPropagation();
             }}
           >

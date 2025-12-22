@@ -38,7 +38,6 @@ type SubMenuItem = {
 
 const mainMenuItems: SubMenuItem[] = [
   { path: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
-  { path: "/admin/users", label: "Usuários", icon: Users },
   {
     label: "Relatórios",
     icon: BarChart3,
@@ -48,17 +47,12 @@ const mainMenuItems: SubMenuItem[] = [
     ],
   },
   {
-    label: "Ferramentas",
-    icon: Wrench,
-    subItems: [
-      { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
-      { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
-    ],
-  },
-  {
     label: "Configurações",
     icon: Settings,
     subItems: [
+      { path: "/admin/users", label: "Usuários", icon: Users },
+      { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
+      { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/pixels", label: "Pixels", icon: Code2 },
       { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
     ],

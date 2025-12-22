@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect, KeyboardEvent, useMemo } from "react";
+import { createPortal } from "react-dom";
 import { X, Plus, Search, AlertTriangle, Check } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -565,6 +566,7 @@ export default function IngredientTagInput({
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [highlightedIndex, setHighlightedIndex] = useState(0);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0, width: 0 });
   const inputRef = useRef<HTMLInputElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   

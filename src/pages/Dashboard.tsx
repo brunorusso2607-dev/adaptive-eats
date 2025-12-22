@@ -568,7 +568,12 @@ export default function Dashboard() {
             </div>
             <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
           </div>
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-1 sm:gap-2">
+            {/* Achievements Button in Header */}
+            <AchievementBadges
+              unlockedAchievements={gamification.unlockedAchievements}
+              newAchievements={gamification.newAchievements}
+            />
             
             {/* Admin Panel Link */}
             {isAdmin && (
@@ -1028,11 +1033,6 @@ export default function Dashboard() {
                   isLoading={gamification.isLoading}
                 />
 
-                {/* Conquistas */}
-                <AchievementBadges
-                  unlockedAchievements={gamification.unlockedAchievements}
-                  newAchievements={gamification.newAchievements}
-                />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

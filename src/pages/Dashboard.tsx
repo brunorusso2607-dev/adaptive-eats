@@ -30,6 +30,7 @@ import { useActivityLog } from "@/hooks/useActivityLog";
 import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 import { useGamification } from "@/hooks/useGamification";
 import HealthProgressStrip from "@/components/HealthProgressStrip";
+import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 
 type Recipe = {
   name: string;
@@ -110,7 +111,7 @@ export default function Dashboard() {
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showFoodAnalyzer, setShowFoodAnalyzer] = useState(false);
   const [selectedPhotoMode, setSelectedPhotoMode] = useState<PhotoMode | null>(null);
-  
+  const [showPlanSheet, setShowPlanSheet] = useState(false);
   // User profile for ingredient validation
   const [userProfile, setUserProfile] = useState<{
     intolerances?: string[] | null;
@@ -644,8 +645,12 @@ export default function Dashboard() {
             <>
               {/* Home Principal */}
               <div className="space-y-4">
-                {/* Premium Header - Compact single line */}
-                <div className="flex items-center justify-between px-1">
+                {/* Premium Header - Clicável para abrir detalhes do plano */}
+                <button 
+                  onClick={() => isSubscribed && setShowPlanSheet(true)}
+                  className="flex items-center justify-between w-full px-1 py-1 -mx-1 rounded-lg hover:bg-muted/30 transition-colors"
+                  disabled={!isSubscribed}
+                >
                   <div className="flex items-center gap-2">
                     <span className="text-base font-medium text-foreground">
                       Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
@@ -654,12 +659,26 @@ export default function Dashboard() {
                       <Crown className="w-4 h-4 text-amber-500" />
                     )}
                   </div>
-                  {subscription?.status === "trialing" && subscription?.subscription_end && (
+                  {isSubscribed && (
                     <span className="text-xs text-muted-foreground">
-                      Trial até {new Date(subscription.subscription_end).toLocaleDateString("pt-BR")}
+                      {subscription?.status === "trialing" ? "Trial" : plans[activePlan!]?.name}
                     </span>
                   )}
-                </div>
+                </button>
+
+                {/* Plan Details Sheet */}
+                {isSubscribed && activePlan && (
+                  <PlanDetailsSheet
+                    open={showPlanSheet}
+                    onOpenChange={setShowPlanSheet}
+                    planName={plans[activePlan]?.name || ""}
+                    planPrice={plans[activePlan]?.price || ""}
+                    features={plans[activePlan]?.features || []}
+                    isTrialing={subscription?.status === "trialing"}
+                    trialEndDate={subscription?.subscription_end || null}
+                    isActive={isSubscribed}
+                  />
+                )}
 
                 {/* Gamification Strip - XP + Streak */}
                 <HealthProgressStrip

@@ -17,7 +17,8 @@ import {
   CreditCard,
   MessageSquare,
   AlertTriangle,
-  Paintbrush
+  Paintbrush,
+  LogOut
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -62,6 +63,11 @@ export default function AdminDashboard() {
   const location = useLocation();
   const { isAdmin, isLoading } = useAdmin();
   const [openMenus, setOpenMenus] = useState<string[]>(["Menu Principal"]);
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate("/");
+  };
 
   const toggleMenu = (label: string) => {
     setOpenMenus((prev) =>
@@ -118,6 +124,15 @@ export default function AdminDashboard() {
               <p className="text-xs text-muted-foreground">Gerenciamento do sistema</p>
             </div>
           </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={handleLogout}
+            className="gap-2 text-muted-foreground hover:text-destructive"
+          >
+            <LogOut className="w-4 h-4" />
+            <span className="hidden sm:inline">Sair</span>
+          </Button>
         </div>
       </header>
 

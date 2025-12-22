@@ -213,6 +213,8 @@ export default function RecipeCategorySheet({
             "px-4 py-4 flex-1",
             step === "ingredients" ? "overflow-hidden" : "overflow-y-auto h-[calc(85vh-140px)]"
           )}
+          style={step === "ingredients" ? { touchAction: 'none' } : undefined}
+          onTouchMove={step === "ingredients" ? (e) => e.preventDefault() : undefined}
         >
           {step === 1 ? (
             // Etapa 1: Filtros incluindo opção de ingredientes

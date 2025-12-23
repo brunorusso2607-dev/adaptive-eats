@@ -22,6 +22,7 @@ import AdminAIErrorLogs from "./pages/admin/AdminAIErrorLogs";
 import AdminPixels from "./pages/admin/AdminPixels";
 import AdminAppearance from "./pages/admin/AdminAppearance";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
+import AdminSystemUsers from "./pages/admin/AdminSystemUsers";
 
 const queryClient = new QueryClient();
 
@@ -54,6 +55,7 @@ function AppContent() {
           <Route path="pixels" element={<AdminPixels />} />
           <Route path="appearance" element={<AdminAppearance />} />
           <Route path="webhooks" element={<AdminWebhooks />} />
+          <Route path="system-users" element={<AdminSystemUsers />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

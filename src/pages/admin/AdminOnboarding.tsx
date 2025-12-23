@@ -39,6 +39,7 @@ import {
   Flame,
   Clock,
   Users,
+  Sparkles,
 } from "lucide-react";
 
 type OnboardingOption = {
@@ -76,6 +77,7 @@ export default function AdminOnboarding() {
   const [editingOption, setEditingOption] = useState<OnboardingOption | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteOption, setDeleteOption] = useState<OnboardingOption | null>(null);
+  const [isGeneratingEmoji, setIsGeneratingEmoji] = useState(false);
   
   const [formData, setFormData] = useState({
     option_id: "",
@@ -85,6 +87,28 @@ export default function AdminOnboarding() {
     is_active: true,
     sort_order: 0,
   });
+
+  const generateEmoji = async (label: string) => {
+    if (!label.trim()) return;
+    
+    setIsGeneratingEmoji(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-emoji", {
+        body: { label },
+      });
+
+      if (error) throw error;
+      
+      if (data?.emoji) {
+        setFormData(prev => ({ ...prev, emoji: data.emoji }));
+      }
+    } catch (error) {
+      console.error("Error generating emoji:", error);
+      // Silently fail - user can still manually enter emoji
+    } finally {
+      setIsGeneratingEmoji(false);
+    }
+  };
 
   // Fetch all options
   const { data: options, isLoading } = useQuery({
@@ -407,12 +431,29 @@ export default function AdminOnboarding() {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="emoji">Emoji</Label>
-                <Input
-                  id="emoji"
-                  value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
-                  placeholder="🌾"
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="emoji"
+                    value={formData.emoji}
+                    onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                    placeholder="🌾"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => generateEmoji(formData.label)}
+                    disabled={isGeneratingEmoji || !formData.label.trim()}
+                    title="Gerar emoji com IA"
+                  >
+                    {isGeneratingEmoji ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Sparkles className="w-4 h-4" />
+                    )}
+                  </Button>
+                </div>
               </div>
             </div>
 
@@ -422,6 +463,12 @@ export default function AdminOnboarding() {
                 id="label"
                 value={formData.label}
                 onChange={(e) => setFormData({ ...formData, label: e.target.value })}
+                onBlur={(e) => {
+                  // Auto-generate emoji when label loses focus and emoji is empty
+                  if (e.target.value.trim() && !formData.emoji) {
+                    generateEmoji(e.target.value);
+                  }
+                }}
                 placeholder="Glúten"
               />
             </div>

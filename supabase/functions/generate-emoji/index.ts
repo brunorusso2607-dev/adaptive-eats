@@ -39,18 +39,22 @@ Given this food, ingredient or dietary concept: "${label}"
 
 Choose the BEST matching icon name from this list: ${availableIconsList}
 
+IMPORTANT: Only these exact icon names are available. There is NO pineapple, banana, strawberry, grape, or other specific fruit icons.
+
 Rules:
 - Return ONLY the icon name, nothing else
 - Choose the most semantically relevant icon
-- For grains/gluten use "wheat"
-- For dairy use "milk" or "droplet"
-- For nuts/seeds use "nut"
-- For seafood use "fish"
+- For grains/gluten/wheat/bread/pasta use "wheat"
+- For dairy/milk/cheese/yogurt use "milk" or "droplet"
+- For nuts/seeds/almonds/cashews use "nut"
+- For seafood/fish/shrimp/shellfish use "fish"
 - For eggs use "egg"
-- For legumes use "bean"
-- For vegetables/plants use "leaf" or "salad" or "carrot"
-- For meat use "flame"
-- For fruits use "apple"
+- For legumes/beans/lentils/soy use "bean"
+- For vegetables/plants/herbs use "leaf" or "salad" or "carrot"
+- For meat/beef/chicken/pork use "flame"
+- For apple specifically use "apple"
+- For OTHER fruits (pineapple, banana, mango, orange, grape, strawberry, etc.) use "leaf" since there's no specific icon
+- For tropical foods or exotic ingredients use "leaf"
 - For allergies/warnings use "alert-triangle" or "shield"
 - For goals/targets use "target"
 - For calories/energy use "flame" or "zap"
@@ -58,6 +62,7 @@ Rules:
 - For weight gain use "trending-up"
 - For cooking use "chef-hat" or "utensils"
 - For time use "clock" or "timer"
+- For drinks/beverages use "coffee" or "droplet"
 - If nothing fits well, use "utensils"
 
 Respond with only the icon name, no quotes, no punctuation.`,

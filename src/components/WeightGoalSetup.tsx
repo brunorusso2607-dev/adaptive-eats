@@ -32,6 +32,7 @@ type WeightGoalSetupProps = {
   onClose: () => void;
   onSave: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   onGeneratePlan?: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
+  onPlanRegenerated?: () => void;
   initialData?: Partial<WeightGoalData>;
   hasExistingPlan?: boolean;
 };
@@ -358,7 +359,7 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   };
 }
 
-export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initialData, hasExistingPlan }: WeightGoalSetupProps) {
+export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPlanRegenerated, initialData, hasExistingPlan }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [shakeError, setShakeError] = useState(false);
@@ -562,6 +563,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
       if (planData.error) throw new Error(planData.error);
       
       toast.success("Plano alimentar criado com sucesso!");
+      
+      // Notifica o Dashboard para atualizar os dados
+      if (hasExistingPlan && onPlanRegenerated) {
+        onPlanRegenerated();
+      }
       
       if (onGeneratePlan) {
         onGeneratePlan({ ...data, calculations: calculations! });

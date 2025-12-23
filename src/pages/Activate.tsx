@@ -80,10 +80,10 @@ export default function Activate() {
       const { outcome } = await deferredPrompt.userChoice;
       
       if (outcome === "accepted") {
-        toast.success("App instalado com sucesso! Abrindo...");
+        toast.success("App instalado com sucesso! Vamos configurar seu perfil...");
         // Small delay before redirect to show success message
         setTimeout(() => {
-          window.location.href = "/dashboard";
+          window.location.href = "/onboarding";
         }, 500);
       }
     } catch (error) {
@@ -145,7 +145,7 @@ export default function Activate() {
   };
 
   const handleSkipInstall = () => {
-    window.location.href = "/dashboard";
+    window.location.href = "/onboarding";
   };
 
   // Step 2: Install instructions
@@ -313,7 +313,7 @@ export default function Activate() {
               onClick={handleSkipInstall}
               className="w-full h-12"
             >
-              Continuar para o app
+              Continuar para configurar perfil
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </CardContent>

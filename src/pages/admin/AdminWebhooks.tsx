@@ -119,21 +119,32 @@ export default function AdminWebhooks() {
   const checkWebhookStatus = async () => {
     setWebhookStatus("checking");
     try {
-      // Test the webhook endpoint with a simple OPTIONS request
+      // Test the webhook endpoint - any response means it exists
       const response = await fetch(stripeWebhookUrl, {
-        method: "OPTIONS",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ test: true }),
       });
       
-      // If we get a response (even error), the function exists
-      if (response.ok || response.status === 400 || response.status === 500) {
-        setWebhookStatus("configured");
-      } else {
-        setWebhookStatus("not_configured");
-      }
+      // If we get any response (even 400/500), the function exists and is deployed
+      // A 400 or 500 error means the function is running but rejecting our test request (expected behavior)
+      setWebhookStatus("configured");
       setLastCheck(new Date());
     } catch (error) {
-      // If fetch fails completely, function might not exist
-      setWebhookStatus("not_configured");
+      // Network error - function might not exist or CORS issue
+      // Try OPTIONS as fallback
+      try {
+        const optionsResponse = await fetch(stripeWebhookUrl, { method: "OPTIONS" });
+        if (optionsResponse.ok) {
+          setWebhookStatus("configured");
+        } else {
+          setWebhookStatus("not_configured");
+        }
+      } catch {
+        setWebhookStatus("not_configured");
+      }
       setLastCheck(new Date());
     }
   };

@@ -262,25 +262,44 @@ export function usePendingMeals() {
         recipe_instructions: meal.recipe_instructions as string[],
       }));
 
-      // Filtrar apenas refeições passadas ou atuais
-      const filteredMeals = mealsWithDates.filter(meal => 
+      // Filtrar refeições passadas ou atuais (atrasadas)
+      const overdueMeals = mealsWithDates.filter(meal => 
         meal.actual_date && isMealPastOrCurrent(meal.meal_type, meal.actual_date)
       );
 
-      // Ordenar por data real DECRESCENTE (mais recente primeiro) e depois por ordem da refeição DECRESCENTE
-      // Assim a refeição atual fica em primeiro, seguida das anteriores em ordem inversa
-      const sortedMeals = filteredMeals.sort((a, b) => {
-        // Primeiro por data (decrescente - mais recente primeiro)
+      // Encontrar a próxima refeição futura (que ainda não começou)
+      const futureMeals = mealsWithDates.filter(meal => 
+        meal.actual_date && !isMealPastOrCurrent(meal.meal_type, meal.actual_date)
+      );
+
+      // Ordenar refeições futuras por data e horário (mais próxima primeiro)
+      const sortedFutureMeals = futureMeals.sort((a, b) => {
         const dateA = a.actual_date?.getTime() || 0;
         const dateB = b.actual_date?.getTime() || 0;
         if (dateA !== dateB) {
-          return dateB - dateA; // Invertido para decrescente
+          return dateA - dateB; // Crescente - mais próxima primeiro
         }
-        // Depois por ordem da refeição (decrescente - jantar antes de almoço)
+        return MEAL_ORDER.indexOf(a.meal_type) - MEAL_ORDER.indexOf(b.meal_type);
+      });
+
+      // Pegar apenas a primeira refeição futura (próxima refeição)
+      const nextFutureMeal = sortedFutureMeals.length > 0 ? [sortedFutureMeals[0]] : [];
+
+      // Ordenar atrasadas por data DECRESCENTE (mais recente primeiro)
+      const sortedOverdueMeals = overdueMeals.sort((a, b) => {
+        const dateA = a.actual_date?.getTime() || 0;
+        const dateB = b.actual_date?.getTime() || 0;
+        if (dateA !== dateB) {
+          return dateB - dateA; // Decrescente
+        }
         return MEAL_ORDER.indexOf(b.meal_type) - MEAL_ORDER.indexOf(a.meal_type);
       });
 
-      setPendingMeals(sortedMeals);
+      // Combinar: próxima refeição futura + atrasadas
+      // A próxima refeição vem primeiro para ser identificada como "on_time"
+      const combinedMeals = [...nextFutureMeal, ...sortedOverdueMeals];
+
+      setPendingMeals(combinedMeals);
     } catch (error) {
       console.error("Error fetching pending meals:", error);
     } finally {

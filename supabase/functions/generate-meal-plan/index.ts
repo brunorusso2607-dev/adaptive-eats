@@ -21,6 +21,61 @@ const logStep = (step: string, details?: any) => {
   console.log(`[GENERATE-MEAL-PLAN] ${step}${detailsStr}`);
 };
 
+// Helper function to wait with exponential backoff
+async function wait(ms: number): Promise<void> {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Retry wrapper with exponential backoff for API calls
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries: number = 5,
+  baseDelay: number = 1000
+): Promise<Response> {
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url, options);
+      
+      // If we get a rate limit error (429), wait and retry
+      if (response.status === 429) {
+        if (attempt < maxRetries) {
+          // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+          const delay = baseDelay * Math.pow(2, attempt);
+          logStep(`Rate limited (429), retrying in ${delay}ms`, { attempt: attempt + 1, maxRetries });
+          await wait(delay);
+          continue;
+        }
+        logStep(`Rate limited (429), max retries exceeded`, { attempts: attempt + 1 });
+        return response; // Return the 429 response after all retries
+      }
+      
+      // For other errors that might be transient (5xx), also retry
+      if (response.status >= 500 && attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        logStep(`Server error (${response.status}), retrying in ${delay}ms`, { attempt: attempt + 1, maxRetries });
+        await wait(delay);
+        continue;
+      }
+      
+      return response; // Return successful response or non-retryable error
+    } catch (error) {
+      lastError = error as Error;
+      if (attempt < maxRetries) {
+        const delay = baseDelay * Math.pow(2, attempt);
+        logStep(`Network error, retrying in ${delay}ms`, { attempt: attempt + 1, error: String(error) });
+        await wait(delay);
+        continue;
+      }
+    }
+  }
+  
+  // If we get here, all retries failed
+  throw lastError || new Error('All retry attempts failed');
+}
+
 // Helper function to generate a single missing meal
 async function generateSingleMeal(
   profile: UserProfile,
@@ -31,7 +86,7 @@ async function generateSingleMeal(
   try {
     const prompt = buildRegenerateMealPrompt(profile, mealType, targetCalories);
     
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -44,7 +99,9 @@ async function generateSingleMeal(
             maxOutputTokens: 4000,
           }
         }),
-      }
+      },
+      5, // max retries
+      2000 // base delay 2s for single meals
     );
 
     if (!response.ok) {
@@ -164,28 +221,18 @@ async function validateAndCompleteMeals(
       logStep(`Day ${dayIndex} missing meals`, { missingMealTypes, existing: existingMealTypes });
       missingMealsCount += missingMealTypes.length;
 
-      // Generate missing meals in parallel (batch of 3 to avoid rate limits)
-      for (let i = 0; i < missingMealTypes.length; i += 3) {
-        const batch = missingMealTypes.slice(i, i + 3);
-        const generatedMeals = await Promise.all(
-          batch.map((mealType) =>
-            generateSingleMeal(profile, mealType, caloriesPerMeal[mealType] || 400, apiKey)
-          )
-        );
-
-        // Add successfully generated meals to the day
-        for (const meal of generatedMeals) {
-          if (meal) {
-            day.meals.push(meal);
-            completedMealsCount++;
-            logStep(`Completed missing meal`, { dayIndex, mealType: meal.meal_type });
-          }
+      // Generate missing meals sequentially (one at a time to respect rate limits)
+      for (const mealType of missingMealTypes) {
+        const meal = await generateSingleMeal(profile, mealType, caloriesPerMeal[mealType] || 400, apiKey);
+        
+        if (meal) {
+          day.meals.push(meal);
+          completedMealsCount++;
+          logStep(`Completed missing meal`, { dayIndex, mealType: meal.meal_type });
         }
-
-        // Small delay between batches to avoid rate limits
-        if (i + 3 < missingMealTypes.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
-        }
+        
+        // Delay between each meal generation to avoid rate limits
+        await wait(1500);
       }
     }
 
@@ -217,7 +264,7 @@ async function generateSingleDay(
   const prompt = buildSingleDayPrompt(profile, dayIndex, dayName, macros as any, previousRecipes);
   
   try {
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
@@ -230,7 +277,9 @@ async function generateSingleDay(
             maxOutputTokens: 8192,
           }
         }),
-      }
+      },
+      5, // max retries
+      3000 // base delay 3s for full day generation
     );
 
     if (!response.ok) {
@@ -392,9 +441,9 @@ serve(async (req) => {
         });
       }
       
-      // Small delay between requests to avoid rate limits
+      // Increased delay between requests to avoid rate limits
       if (i < daysCount - 1) {
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await wait(2000);
       }
     }
     

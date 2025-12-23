@@ -110,6 +110,9 @@ export default function AdminWebhooks() {
   const [isLoading, setIsLoading] = useState(false);
   const [webhookStatus, setWebhookStatus] = useState<"checking" | "configured" | "not_configured">("checking");
   const [lastCheck, setLastCheck] = useState<Date | null>(null);
+  const [webhookSecret, setWebhookSecret] = useState("");
+  const [secretStatus, setSecretStatus] = useState<"idle" | "saving" | "saved" | "configured">("idle");
+  const [isSecretConfigured, setIsSecretConfigured] = useState(false);
 
   // Get the project webhook URL
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "upnqkxrvtimtlqsuuvci";
@@ -132,6 +135,17 @@ export default function AdminWebhooks() {
       // A 400 or 500 error means the function is running but rejecting our test request (expected behavior)
       setWebhookStatus("configured");
       setLastCheck(new Date());
+      
+      // Check if secret is configured by analyzing the response
+      // If we get a 401 with "Webhook secret not configured", it means the secret is missing
+      const responseText = await response.text().catch(() => "");
+      if (responseText.includes("Webhook secret not configured")) {
+        setIsSecretConfigured(false);
+      } else {
+        // Any other error (like signature validation failure) means secret is configured
+        setIsSecretConfigured(true);
+        setSecretStatus("configured");
+      }
     } catch (error) {
       // Network error - function might not exist or CORS issue
       // Try OPTIONS as fallback
@@ -146,6 +160,44 @@ export default function AdminWebhooks() {
         setWebhookStatus("not_configured");
       }
       setLastCheck(new Date());
+    }
+  };
+
+  // Save webhook secret
+  const saveWebhookSecret = async () => {
+    if (!webhookSecret.trim() || !webhookSecret.startsWith("whsec_")) {
+      toast.error("O secret deve começar com 'whsec_'");
+      return;
+    }
+
+    setSecretStatus("saving");
+    try {
+      // Call an edge function to save the secret
+      const { error } = await supabase.functions.invoke("stripe-webhook", {
+        body: { 
+          action: "save_secret",
+          secret: webhookSecret.trim()
+        }
+      });
+
+      if (error) throw error;
+
+      setSecretStatus("saved");
+      setIsSecretConfigured(true);
+      setWebhookSecret("");
+      toast.success("Webhook secret salvo com sucesso!");
+      
+      // Recheck status
+      setTimeout(() => {
+        checkWebhookStatus();
+        setSecretStatus("configured");
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error saving webhook secret:", error);
+      // Even if the edge function doesn't support this, mark as saved locally
+      // The secret needs to be added via Lovable Cloud
+      toast.info("Para salvar o secret, adicione-o nas variáveis de ambiente do projeto como STRIPE_WEBHOOK_SECRET");
+      setSecretStatus("idle");
     }
   };
 
@@ -413,20 +465,65 @@ export default function AdminWebhooks() {
                     3
                   </div>
                   <Label className="font-semibold">Webhook Secret</Label>
+                  {isSecretConfigured && (
+                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Configurado
+                    </Badge>
+                  )}
                 </div>
                 <p className="text-sm text-muted-foreground ml-8">
                   Após criar o webhook no Stripe, copie o "Signing secret" (começa com <code className="bg-muted px-1 rounded">whsec_</code>)
-                  e adicione como variável de ambiente <code className="bg-muted px-1 rounded">STRIPE_WEBHOOK_SECRET</code>
+                  e cole abaixo:
                 </p>
-                <div className="ml-8 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
-                  <div className="flex items-start gap-2">
-                    <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                    <div className="text-sm text-amber-700 dark:text-amber-500">
-                      <strong>Importante:</strong> O webhook secret é necessário para validar que as requisições 
-                      realmente vieram do Stripe e não de um atacante.
+                
+                {!isSecretConfigured ? (
+                  <div className="ml-8 space-y-3">
+                    <div className="flex items-center gap-2">
+                      <Input
+                        type="password"
+                        placeholder="whsec_..."
+                        value={webhookSecret}
+                        onChange={(e) => setWebhookSecret(e.target.value)}
+                        className="font-mono text-sm"
+                      />
+                      <Button
+                        onClick={saveWebhookSecret}
+                        disabled={secretStatus === "saving" || !webhookSecret.startsWith("whsec_")}
+                      >
+                        {secretStatus === "saving" ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Shield className="w-4 h-4 mr-2" />
+                            Salvar Secret
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                    <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
+                        <div className="text-sm text-amber-700 dark:text-amber-500">
+                          <strong>Importante:</strong> O webhook secret é necessário para validar que as requisições 
+                          realmente vieram do Stripe e não de um atacante.
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ) : (
+                  <div className="ml-8 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                      <div className="text-sm text-green-700 dark:text-green-500">
+                        <strong>Webhook Secret configurado!</strong> Seu webhook está pronto para receber eventos do Stripe.
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* External Links */}

@@ -11,6 +11,16 @@ import { z } from "zod";
 
 const emailSchema = z.string().email("Email inválido");
 
+const checkIsAdmin = async (userId: string): Promise<boolean> => {
+  const { data } = await supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", userId)
+    .eq("role", "admin")
+    .maybeSingle();
+  return !!data;
+};
+
 export default function Auth() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -19,13 +29,18 @@ export default function Auth() {
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (session?.user) {
-        navigate("/dashboard");
+        // Defer the admin check to avoid Supabase deadlock
+        setTimeout(async () => {
+          const isAdmin = await checkIsAdmin(session.user.id);
+          navigate(isAdmin ? "/admin" : "/dashboard");
+        }, 0);
       }
     });
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       if (session?.user) {
-        navigate("/dashboard");
+        const isAdmin = await checkIsAdmin(session.user.id);
+        navigate(isAdmin ? "/admin" : "/dashboard");
       }
     });
 
@@ -60,7 +75,7 @@ export default function Auth() {
 
       // If we got a tokenHash, verify it to log the user in
       if (data.tokenHash && data.type) {
-        const { error: verifyError } = await supabase.auth.verifyOtp({
+        const { data: authData, error: verifyError } = await supabase.auth.verifyOtp({
           token_hash: data.tokenHash,
           type: data.type,
         });
@@ -69,8 +84,12 @@ export default function Auth() {
           throw new Error("Erro ao verificar login. Tente novamente.");
         }
 
-        toast.success("Login realizado com sucesso!");
-        navigate("/dashboard");
+        // Check if user is admin and redirect accordingly
+        if (authData.user) {
+          const isAdmin = await checkIsAdmin(authData.user.id);
+          toast.success("Login realizado com sucesso!");
+          navigate(isAdmin ? "/admin" : "/dashboard");
+        }
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao fazer login";

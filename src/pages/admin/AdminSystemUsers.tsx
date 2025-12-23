@@ -3,6 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -20,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, Calendar, User, Pencil, Trash2, Activity, Loader2 } from "lucide-react";
+import { Shield, Calendar, User, Pencil, Trash2, Activity, Loader2, Save, X, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
 
 interface AdminUser {
@@ -30,18 +32,39 @@ interface AdminUser {
   created_at: string;
   profile?: {
     email: string | null;
+    first_name: string | null;
+    last_name: string | null;
   };
   actionsCount: number;
+}
+
+interface EditForm {
+  first_name: string;
+  last_name: string;
+  email: string;
+  current_password: string;
+  new_password: string;
+  confirm_password: string;
 }
 
 export default function AdminSystemUsers() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [adminActions, setAdminActions] = useState<any[]>([]);
   const [isLoadingActions, setIsLoadingActions] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editForm, setEditForm] = useState<EditForm>({
+    first_name: "",
+    last_name: "",
+    email: "",
+    current_password: "",
+    new_password: "",
+    confirm_password: "",
+  });
 
   useEffect(() => {
     fetchAdmins();
@@ -61,11 +84,10 @@ export default function AdminSystemUsers() {
         (rolesData || []).map(async (role) => {
           const { data: profileData } = await supabase
             .from("profiles")
-            .select("email")
+            .select("email, first_name, last_name")
             .eq("id", role.user_id)
             .single();
 
-          // Contar ações realizadas pelo admin
           const { count } = await supabase
             .from("activity_logs")
             .select("*", { count: "exact", head: true })
@@ -124,10 +146,83 @@ export default function AdminSystemUsers() {
     });
   };
 
+  const getDisplayName = (admin: AdminUser) => {
+    if (admin.profile?.first_name || admin.profile?.last_name) {
+      return `${admin.profile.first_name || ""} ${admin.profile.last_name || ""}`.trim();
+    }
+    return admin.profile?.email || "Usuário";
+  };
+
   const handleViewDetails = async (admin: AdminUser) => {
     setSelectedAdmin(admin);
     setIsDetailOpen(true);
     await fetchAdminActions(admin.user_id);
+  };
+
+  const handleEditClick = (admin: AdminUser) => {
+    setSelectedAdmin(admin);
+    setEditForm({
+      first_name: admin.profile?.first_name || "",
+      last_name: admin.profile?.last_name || "",
+      email: admin.profile?.email || "",
+      current_password: "",
+      new_password: "",
+      confirm_password: "",
+    });
+    setIsEditOpen(true);
+    setIsDetailOpen(false);
+  };
+
+  const handleSave = async () => {
+    if (!selectedAdmin) return;
+
+    // Validação de senha
+    if (editForm.new_password) {
+      if (editForm.new_password.length < 6) {
+        toast.error("A nova senha deve ter pelo menos 6 caracteres");
+        return;
+      }
+      if (editForm.new_password !== editForm.confirm_password) {
+        toast.error("As senhas não coincidem");
+        return;
+      }
+    }
+
+    setIsSaving(true);
+    try {
+      // Atualizar perfil
+      const { error: profileError } = await supabase
+        .from("profiles")
+        .update({
+          first_name: editForm.first_name || null,
+          last_name: editForm.last_name || null,
+        })
+        .eq("id", selectedAdmin.user_id);
+
+      if (profileError) throw profileError;
+
+      // Atualizar senha se preenchida
+      if (editForm.new_password) {
+        const { error: passwordError } = await supabase.auth.updateUser({
+          password: editForm.new_password,
+        });
+
+        if (passwordError) {
+          toast.error("Erro ao atualizar senha: " + passwordError.message);
+        } else {
+          toast.success("Senha atualizada com sucesso");
+        }
+      }
+
+      toast.success("Dados atualizados com sucesso");
+      setIsEditOpen(false);
+      fetchAdmins();
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      toast.error("Erro ao atualizar dados");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleRemoveAdmin = async () => {
@@ -195,7 +290,7 @@ export default function AdminSystemUsers() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-medium text-foreground">
-                        {admin.profile?.email || "Usuário"}
+                        {getDisplayName(admin)}
                       </span>
                       <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
                         <Shield className="w-3 h-3 mr-1" />
@@ -204,6 +299,9 @@ export default function AdminSystemUsers() {
                     </div>
                     
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
+                      {admin.profile?.email && (
+                        <span>{admin.profile.email}</span>
+                      )}
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
                         Admin desde {formatDate(admin.created_at)}
@@ -211,7 +309,7 @@ export default function AdminSystemUsers() {
                       
                       <span className="flex items-center gap-1">
                         <Activity className="w-3 h-3" />
-                        {admin.actionsCount} {admin.actionsCount === 1 ? "ação" : "ações"} realizadas
+                        {admin.actionsCount} {admin.actionsCount === 1 ? "ação" : "ações"}
                       </span>
                     </div>
                   </div>
@@ -219,7 +317,7 @@ export default function AdminSystemUsers() {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleViewDetails(admin)}
+                    onClick={() => handleEditClick(admin)}
                     className="shrink-0"
                   >
                     <Pencil className="w-4 h-4" />
@@ -231,6 +329,121 @@ export default function AdminSystemUsers() {
         )}
       </div>
 
+      {/* Modal de Edição */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Dados da conta */}
+            <div className="space-y-4">
+              <h3 className="font-medium text-foreground">Dados da conta</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="first_name">Nome (opcional)</Label>
+                <Input
+                  id="first_name"
+                  value={editForm.first_name}
+                  onChange={(e) => setEditForm({ ...editForm, first_name: e.target.value })}
+                  placeholder="Nome"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="last_name">Sobrenome (opcional)</Label>
+                <Input
+                  id="last_name"
+                  value={editForm.last_name}
+                  onChange={(e) => setEditForm({ ...editForm, last_name: e.target.value })}
+                  placeholder="Sobrenome"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail da conta</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={editForm.email}
+                  disabled
+                  className="bg-muted"
+                />
+                <p className="text-xs text-muted-foreground">O e-mail não pode ser alterado.</p>
+              </div>
+            </div>
+
+            {/* Alterar senha */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-medium text-foreground">Alterar senha</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="current_password">Senha atual</Label>
+                <Input
+                  id="current_password"
+                  type="password"
+                  value={editForm.current_password}
+                  onChange={(e) => setEditForm({ ...editForm, current_password: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="new_password">Nova senha</Label>
+                <Input
+                  id="new_password"
+                  type="password"
+                  value={editForm.new_password}
+                  onChange={(e) => setEditForm({ ...editForm, new_password: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="confirm_password">Repetir nova senha</Label>
+                <Input
+                  id="confirm_password"
+                  type="password"
+                  value={editForm.confirm_password}
+                  onChange={(e) => setEditForm({ ...editForm, confirm_password: e.target.value })}
+                  placeholder="••••••••"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between gap-2 pt-4 border-t">
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => {
+                setIsEditOpen(false);
+                setIsDeleteOpen(true);
+              }}
+            >
+              <Trash2 className="w-4 h-4 mr-2" />
+              Remover Admin
+            </Button>
+            
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={isSaving}>
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button onClick={handleSave} disabled={isSaving}>
+                {isSaving ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Save className="w-4 h-4 mr-2" />
+                )}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Detalhes */}
       <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
         <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
@@ -240,22 +453,23 @@ export default function AdminSystemUsers() {
           
           {selectedAdmin && (
             <div className="space-y-6 py-4">
-              {/* Info básica */}
               <div className="flex items-center gap-4">
                 <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
                   <User className="w-7 h-7 text-primary-foreground" />
                 </div>
                 <div>
                   <p className="font-medium text-foreground text-lg">
-                    {selectedAdmin.profile?.email || "Usuário"}
+                    {getDisplayName(selectedAdmin)}
                   </p>
                   <p className="text-sm text-muted-foreground">
+                    {selectedAdmin.profile?.email}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
                     Admin desde {formatDate(selectedAdmin.created_at)}
                   </p>
                 </div>
               </div>
 
-              {/* Estatísticas */}
               <div className="grid grid-cols-2 gap-4">
                 <Card className="bg-card/50">
                   <CardContent className="p-4 text-center">
@@ -273,7 +487,6 @@ export default function AdminSystemUsers() {
                 </Card>
               </div>
 
-              {/* Últimas ações */}
               <div>
                 <h4 className="font-medium text-foreground mb-3">Últimas Ações</h4>
                 {isLoadingActions ? (
@@ -301,8 +514,7 @@ export default function AdminSystemUsers() {
                 )}
               </div>
 
-              {/* Ações */}
-              <div className="flex justify-end pt-4 border-t">
+              <div className="flex justify-between pt-4 border-t">
                 <Button
                   variant="destructive"
                   size="sm"
@@ -310,6 +522,13 @@ export default function AdminSystemUsers() {
                 >
                   <Trash2 className="w-4 h-4 mr-2" />
                   Remover Admin
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => handleEditClick(selectedAdmin)}
+                >
+                  <Pencil className="w-4 h-4 mr-2" />
+                  Editar
                 </Button>
               </div>
             </div>

@@ -383,10 +383,12 @@ export type Database = {
             | Database["public"]["Enums"]["dietary_preference"]
             | null
           email: string | null
+          first_name: string | null
           goal: Database["public"]["Enums"]["user_goal"] | null
           height: number | null
           id: string
           intolerances: string[] | null
+          last_name: string | null
           onboarding_completed: boolean | null
           recipe_complexity:
             | Database["public"]["Enums"]["recipe_complexity"]
@@ -406,10 +408,12 @@ export type Database = {
             | Database["public"]["Enums"]["dietary_preference"]
             | null
           email?: string | null
+          first_name?: string | null
           goal?: Database["public"]["Enums"]["user_goal"] | null
           height?: number | null
           id: string
           intolerances?: string[] | null
+          last_name?: string | null
           onboarding_completed?: boolean | null
           recipe_complexity?:
             | Database["public"]["Enums"]["recipe_complexity"]
@@ -429,10 +433,12 @@ export type Database = {
             | Database["public"]["Enums"]["dietary_preference"]
             | null
           email?: string | null
+          first_name?: string | null
           goal?: Database["public"]["Enums"]["user_goal"] | null
           height?: number | null
           id?: string
           intolerances?: string[] | null
+          last_name?: string | null
           onboarding_completed?: boolean | null
           recipe_complexity?:
             | Database["public"]["Enums"]["recipe_complexity"]

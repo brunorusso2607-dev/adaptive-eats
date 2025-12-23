@@ -919,15 +919,17 @@ export default function Dashboard() {
                           </Button>
                         </>
                       )}
-                      <p className="text-xs text-muted-foreground mt-2 text-center">
-                        *Estimativa baseada em {
-                          userGoal === "ganhar_peso" 
-                            ? "superávit calórico saudável" 
-                            : userGoal === "manter"
-                              ? "balanço calórico equilibrado"
-                              : "déficit calórico saudável"
-                        }. Resultados variam individualmente.
-                      </p>
+                      <div className="border-t border-border/40 mt-4 pt-3">
+                        <p className="text-xs text-muted-foreground text-center">
+                          *Estimativa baseada em {
+                            userGoal === "ganhar_peso" 
+                              ? "superávit calórico saudável" 
+                              : userGoal === "manter"
+                                ? "balanço calórico equilibrado"
+                                : "déficit calórico saudável"
+                          }. Resultados variam individualmente.
+                        </p>
+                      </div>
                     </CardContent>
                   </Card>
                 )}

@@ -43,7 +43,7 @@ const mainMenuItems: SubMenuItem[] = [
     label: "Relatórios",
     icon: BarChart3,
     subItems: [
-      { path: "/admin/users", label: "Usuários", icon: Users },
+      { path: "/admin/users", label: "Clientes", icon: Users },
       { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
       { path: "/admin/ai-error-logs", label: "Erros de IA", icon: AlertTriangle },
     ],

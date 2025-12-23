@@ -426,43 +426,15 @@ export default function AdminOnboarding() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="option_id">ID da Opção *</Label>
-                <Input
-                  id="option_id"
-                  value={formData.option_id}
-                  onChange={(e) => setFormData({ ...formData, option_id: e.target.value })}
-                  placeholder="gluten"
-                  disabled={!!editingOption}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="emoji">Emoji</Label>
-                <div className="flex gap-2">
-                  <Input
-                    id="emoji"
-                    value={formData.emoji}
-                    onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
-                    placeholder="🌾"
-                    className="flex-1"
-                  />
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="icon"
-                    onClick={() => generateEmoji(formData.label)}
-                    disabled={isGeneratingEmoji || !formData.label.trim()}
-                    title="Gerar emoji com IA"
-                  >
-                    {isGeneratingEmoji ? (
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                    ) : (
-                      <Sparkles className="w-4 h-4" />
-                    )}
-                  </Button>
-                </div>
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="option_id">ID da Opção *</Label>
+              <Input
+                id="option_id"
+                value={formData.option_id}
+                onChange={(e) => setFormData({ ...formData, option_id: e.target.value })}
+                placeholder="gluten"
+                disabled={!!editingOption}
+              />
             </div>
 
             <div className="space-y-2">
@@ -479,6 +451,33 @@ export default function AdminOnboarding() {
                 }}
                 placeholder="Glúten"
               />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="emoji">Emoji</Label>
+              <div className="flex gap-2">
+                <Input
+                  id="emoji"
+                  value={formData.emoji}
+                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                  placeholder="🌾"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => generateEmoji(formData.label)}
+                  disabled={isGeneratingEmoji || !formData.label.trim()}
+                  title="Gerar emoji com IA"
+                >
+                  {isGeneratingEmoji ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="space-y-2">

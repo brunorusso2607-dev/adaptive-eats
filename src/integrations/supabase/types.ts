@@ -408,6 +408,39 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_time_settings: {
+        Row: {
+          created_at: string
+          end_hour: number
+          id: string
+          label: string
+          meal_type: string
+          sort_order: number
+          start_hour: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          end_hour: number
+          id?: string
+          label: string
+          meal_type: string
+          sort_order?: number
+          start_hour: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          end_hour?: number
+          id?: string
+          label?: string
+          meal_type?: string
+          sort_order?: number
+          start_hour?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       onboarding_options: {
         Row: {
           category: string

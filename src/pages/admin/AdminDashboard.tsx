@@ -27,7 +27,8 @@ import {
   Sparkles,
   PanelLeftClose,
   PanelLeft,
-  X
+  X,
+  Clock
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -79,6 +80,7 @@ const mainMenuItems: SubMenuItem[] = [
         icon: FileText,
         subItems: [
           { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
+          { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
         ],
       },
       { 

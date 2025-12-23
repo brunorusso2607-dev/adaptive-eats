@@ -851,14 +851,6 @@ export default function Dashboard() {
                             >
                               Editar
                             </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={toggleWeightLossMode}
-                              className="text-xs h-7 px-2.5 rounded-lg border-border font-medium"
-                            >
-                              Desativar
-                            </Button>
                           </div>
                         </div>
                       </div>

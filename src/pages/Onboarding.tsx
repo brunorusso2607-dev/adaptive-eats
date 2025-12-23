@@ -13,42 +13,68 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
 
-// Mapeamento de ícones line-art por option_id
-const ICON_MAP: Record<string, LucideIcon> = {
-  // Intolerâncias
-  gluten: Wheat,
-  lactose: Milk,
-  nuts: Nut,
-  seafood: Fish,
-  eggs: Egg,
-  soy: Bean,
-  none: Check,
-  nenhuma: Check,
-  // Preferências alimentares
-  comum: Salad,
-  vegetariana: Leaf,
-  vegana: Leaf,
-  low_carb: Flame,
-  // Objetivos
-  emagrecer: TrendingDown,
-  manter: Minus,
-  ganhar_peso: TrendingUp,
-  // Meta calórica
-  reduzir: TrendingDown,
-  aumentar: TrendingUp,
-  definir_depois: Clock,
-  // Complexidade
-  rapida: Timer,
-  equilibrada: Scale,
-  elaborada: ChefHat,
-  // Contexto
-  individual: User,
-  familia: Users,
-  modo_kids: Baby,
+// Mapeamento de nomes de ícones para componentes Lucide
+const LUCIDE_ICONS: Record<string, LucideIcon> = {
+  wheat: Wheat,
+  milk: Milk,
+  nut: Nut,
+  fish: Fish,
+  egg: Egg,
+  bean: Bean,
+  check: Check,
+  utensils: CircleSlash,
+  salad: Salad,
+  leaf: Leaf,
+  beef: Flame,
+  "trending-down": TrendingDown,
+  "trending-up": TrendingUp,
+  scale: Scale,
+  minus: Minus,
+  "arrow-down": TrendingDown,
+  "arrow-up": TrendingUp,
+  clock: Clock,
+  zap: Timer,
+  timer: Timer,
+  "chef-hat": ChefHat,
+  user: User,
+  users: Users,
+  baby: Baby,
+  flame: Flame,
 };
 
-const getIcon = (optionId: string): LucideIcon | null => {
-  return ICON_MAP[optionId] || null;
+const getIcon = (option: { option_id: string; icon_name?: string | null }): LucideIcon | null => {
+  // Prioriza icon_name do banco de dados
+  if (option.icon_name && LUCIDE_ICONS[option.icon_name]) {
+    return LUCIDE_ICONS[option.icon_name];
+  }
+  // Fallback para mapeamento por option_id (compatibilidade)
+  const FALLBACK_MAP: Record<string, LucideIcon> = {
+    gluten: Wheat,
+    lactose: Milk,
+    nuts: Nut,
+    seafood: Fish,
+    eggs: Egg,
+    soy: Bean,
+    none: Check,
+    nenhuma: Check,
+    comum: Salad,
+    vegetariana: Leaf,
+    vegana: Leaf,
+    low_carb: Flame,
+    emagrecer: TrendingDown,
+    manter: Minus,
+    ganhar_peso: TrendingUp,
+    reduzir: TrendingDown,
+    aumentar: TrendingUp,
+    definir_depois: Clock,
+    rapida: Timer,
+    equilibrada: Scale,
+    elaborada: ChefHat,
+    individual: User,
+    familia: Users,
+    modo_kids: Baby,
+  };
+  return FALLBACK_MAP[option.option_id] || null;
 };
 
 const STEPS = [
@@ -191,7 +217,7 @@ export default function Onboarding() {
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.intolerances.map((item) => {
-              const IconComponent = getIcon(item.option_id);
+              const IconComponent = getIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -221,7 +247,7 @@ export default function Onboarding() {
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.dietary_preferences.map((item) => {
-              const IconComponent = getIcon(item.option_id);
+              const IconComponent = getIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -254,7 +280,7 @@ export default function Onboarding() {
         return (
           <div className="space-y-3">
             {options.goals.map((item) => {
-              const IconComponent = getIcon(item.option_id);
+              const IconComponent = getIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -289,7 +315,7 @@ export default function Onboarding() {
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.calorie_goals.map((item) => {
-              const IconComponent = getIcon(item.option_id);
+              const IconComponent = getIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -322,7 +348,7 @@ export default function Onboarding() {
         return (
           <div className="space-y-3">
             {options.complexity.map((item) => {
-              const IconComponent = getIcon(item.option_id);
+              const IconComponent = getIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -357,7 +383,7 @@ export default function Onboarding() {
         return (
           <div className="space-y-3">
             {options.context.map((item) => {
-              const IconComponent = getIcon(item.option_id);
+              const IconComponent = getIcon(item);
               return (
                 <button
                   key={item.option_id}

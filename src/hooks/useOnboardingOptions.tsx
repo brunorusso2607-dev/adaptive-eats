@@ -8,6 +8,7 @@ export type OnboardingOption = {
   label: string;
   description: string | null;
   emoji: string | null;
+  icon_name: string | null;
   is_active: boolean;
   sort_order: number;
 };
@@ -24,36 +25,36 @@ export type OnboardingOptionsMap = {
 // Fallback hardcoded para caso o banco esteja vazio
 const FALLBACK_OPTIONS: OnboardingOptionsMap = {
   intolerances: [
-    { id: "1", category: "intolerances", option_id: "gluten", label: "Glúten", description: "Trigo, cevada, centeio", emoji: "🌾", is_active: true, sort_order: 1 },
-    { id: "2", category: "intolerances", option_id: "lactose", label: "Lactose", description: "Leite e derivados", emoji: "🥛", is_active: true, sort_order: 2 },
-    { id: "3", category: "intolerances", option_id: "none", label: "Nenhuma", description: "Não tenho intolerâncias", emoji: "✅", is_active: true, sort_order: 7 },
+    { id: "1", category: "intolerances", option_id: "gluten", label: "Glúten", description: "Trigo, cevada, centeio", emoji: "🌾", icon_name: "wheat", is_active: true, sort_order: 1 },
+    { id: "2", category: "intolerances", option_id: "lactose", label: "Lactose", description: "Leite e derivados", emoji: "🥛", icon_name: "milk", is_active: true, sort_order: 2 },
+    { id: "3", category: "intolerances", option_id: "none", label: "Nenhuma", description: "Não tenho intolerâncias", emoji: "✅", icon_name: "check", is_active: true, sort_order: 7 },
   ],
   dietary_preferences: [
-    { id: "4", category: "dietary_preferences", option_id: "comum", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", is_active: true, sort_order: 1 },
-    { id: "5", category: "dietary_preferences", option_id: "vegetariana", label: "Vegetariana", description: "Não como carnes", emoji: "🥗", is_active: true, sort_order: 2 },
-    { id: "6", category: "dietary_preferences", option_id: "vegana", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", is_active: true, sort_order: 3 },
-    { id: "7", category: "dietary_preferences", option_id: "low_carb", label: "Low Carb", description: "Reduzo carboidratos", emoji: "🥩", is_active: true, sort_order: 4 },
+    { id: "4", category: "dietary_preferences", option_id: "comum", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", icon_name: "utensils", is_active: true, sort_order: 1 },
+    { id: "5", category: "dietary_preferences", option_id: "vegetariana", label: "Vegetariana", description: "Não como carnes", emoji: "🥗", icon_name: "salad", is_active: true, sort_order: 2 },
+    { id: "6", category: "dietary_preferences", option_id: "vegana", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 3 },
+    { id: "7", category: "dietary_preferences", option_id: "low_carb", label: "Low Carb", description: "Reduzo carboidratos", emoji: "🥩", icon_name: "beef", is_active: true, sort_order: 4 },
   ],
   goals: [
-    { id: "8", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", is_active: true, sort_order: 1 },
-    { id: "9", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", is_active: true, sort_order: 2 },
-    { id: "10", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", is_active: true, sort_order: 3 },
+    { id: "8", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
+    { id: "9", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
+    { id: "10", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
   ],
   calorie_goals: [
-    { id: "11", category: "calorie_goals", option_id: "reduzir", label: "Reduzir", description: "Consumir menos calorias", emoji: "📉", is_active: true, sort_order: 1 },
-    { id: "12", category: "calorie_goals", option_id: "manter", label: "Manter", description: "Manter consumo atual", emoji: "📊", is_active: true, sort_order: 2 },
-    { id: "13", category: "calorie_goals", option_id: "aumentar", label: "Aumentar", description: "Consumir mais calorias", emoji: "📈", is_active: true, sort_order: 3 },
-    { id: "14", category: "calorie_goals", option_id: "definir_depois", label: "Definir depois", description: "Vou decidir mais tarde", emoji: "⏳", is_active: true, sort_order: 4 },
+    { id: "11", category: "calorie_goals", option_id: "reduzir", label: "Reduzir", description: "Consumir menos calorias", emoji: "📉", icon_name: "arrow-down", is_active: true, sort_order: 1 },
+    { id: "12", category: "calorie_goals", option_id: "manter", label: "Manter", description: "Manter consumo atual", emoji: "📊", icon_name: "scale", is_active: true, sort_order: 2 },
+    { id: "13", category: "calorie_goals", option_id: "aumentar", label: "Aumentar", description: "Consumir mais calorias", emoji: "📈", icon_name: "arrow-up", is_active: true, sort_order: 3 },
+    { id: "14", category: "calorie_goals", option_id: "definir_depois", label: "Definir depois", description: "Vou decidir mais tarde", emoji: "⏳", icon_name: "clock", is_active: true, sort_order: 4 },
   ],
   complexity: [
-    { id: "15", category: "complexity", option_id: "rapida", label: "Rápidas", description: "Receitas de até 20 minutos", emoji: "⚡", is_active: true, sort_order: 1 },
-    { id: "16", category: "complexity", option_id: "equilibrada", label: "Equilibradas", description: "Receitas de 20-40 minutos", emoji: "⏱️", is_active: true, sort_order: 2 },
-    { id: "17", category: "complexity", option_id: "elaborada", label: "Elaboradas", description: "Receitas mais complexas", emoji: "👨‍🍳", is_active: true, sort_order: 3 },
+    { id: "15", category: "complexity", option_id: "rapida", label: "Rápidas", description: "Receitas de até 20 minutos", emoji: "⚡", icon_name: "zap", is_active: true, sort_order: 1 },
+    { id: "16", category: "complexity", option_id: "equilibrada", label: "Equilibradas", description: "Receitas de 20-40 minutos", emoji: "⏱️", icon_name: "timer", is_active: true, sort_order: 2 },
+    { id: "17", category: "complexity", option_id: "elaborada", label: "Elaboradas", description: "Receitas mais complexas", emoji: "👨‍🍳", icon_name: "chef-hat", is_active: true, sort_order: 3 },
   ],
   context: [
-    { id: "18", category: "context", option_id: "individual", label: "Individual", description: "Cozinho só para mim", emoji: "👤", is_active: true, sort_order: 1 },
-    { id: "19", category: "context", option_id: "familia", label: "Família", description: "Cozinho para a família", emoji: "👨‍👩‍👧‍👦", is_active: true, sort_order: 2 },
-    { id: "20", category: "context", option_id: "modo_kids", label: "Modo Kids", description: "Receitas para crianças", emoji: "👶", is_active: true, sort_order: 3 },
+    { id: "18", category: "context", option_id: "individual", label: "Individual", description: "Cozinho só para mim", emoji: "👤", icon_name: "user", is_active: true, sort_order: 1 },
+    { id: "19", category: "context", option_id: "familia", label: "Família", description: "Cozinho para a família", emoji: "👨‍👩‍👧‍👦", icon_name: "users", is_active: true, sort_order: 2 },
+    { id: "20", category: "context", option_id: "modo_kids", label: "Modo Kids", description: "Receitas para crianças", emoji: "👶", icon_name: "baby", is_active: true, sort_order: 3 },
   ],
 };
 

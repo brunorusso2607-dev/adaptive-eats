@@ -12,6 +12,7 @@ import {
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptions";
 
 type UserProfile = {
   dietary_preference: string | null;
@@ -41,63 +42,17 @@ type ProfilePageProps = {
   onLogout: () => void;
 };
 
-const LABELS = {
-  dietary_preference: {
-    comum: "Comum",
-    vegetariana: "Vegetariana",
-    vegana: "Vegana",
-    low_carb: "Low Carb",
-  },
-  goal: {
-    emagrecer: "Emagrecer",
-    manter: "Manter peso",
-    ganhar_peso: "Ganhar peso",
-  },
-  calorie_goal: {
-    reduzir: "Reduzir calorias",
-    manter: "Manter calorias",
-    aumentar: "Aumentar calorias",
-    definir_depois: "Definir depois",
-  },
-  recipe_complexity: {
-    rapida: "Receitas rápidas",
-    equilibrada: "Equilibrada",
-    elaborada: "Receitas elaboradas",
-  },
-  context: {
-    individual: "Individual",
-    familia: "Família",
-    modo_kids: "Modo Kids",
-  },
-  activity_level: {
-    sedentary: "Sedentário",
-    light: "Leve",
-    moderate: "Moderado",
-    active: "Ativo",
-    very_active: "Muito ativo",
-  },
-  sex: {
-    male: "Masculino",
-    female: "Feminino",
-  },
+const ACTIVITY_LABELS: Record<string, string> = {
+  sedentary: "Sedentário",
+  light: "Leve",
+  moderate: "Moderado",
+  active: "Ativo",
+  very_active: "Muito ativo",
 };
 
-const INTOLERANCES_OPTIONS = [
-  { id: "lactose", label: "Lactose" },
-  { id: "gluten", label: "Glúten" },
-  { id: "acucar", label: "Açúcar" },
-  { id: "amendoim", label: "Amendoim" },
-  { id: "frutos_mar", label: "Frutos do mar" },
-  { id: "ovo", label: "Ovo" },
-];
-
-const INTOLERANCES_LABELS: Record<string, string> = {
-  lactose: "Lactose",
-  gluten: "Glúten",
-  acucar: "Açúcar",
-  amendoim: "Amendoim",
-  frutos_mar: "Frutos do mar",
-  ovo: "Ovo",
+const SEX_LABELS: Record<string, string> = {
+  male: "Masculino",
+  female: "Feminino",
 };
 
 export default function ProfilePage({ user, subscription, onLogout }: ProfilePageProps) {
@@ -106,6 +61,8 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+
+  const { data: onboardingOptions } = useOnboardingOptions();
 
   useEffect(() => {
     if (user) {
@@ -182,9 +139,9 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     setEditedProfile({ ...editedProfile, intolerances: updated });
   };
 
-  const getLabel = (category: keyof typeof LABELS, value: string | null) => {
+  const getProfileLabel = (category: "dietary_preferences" | "goals" | "calorie_goals" | "complexity" | "context", value: string | null) => {
     if (!value) return "Não definido";
-    return (LABELS[category] as Record<string, string>)[value] || value;
+    return getOptionLabel(onboardingOptions, category, value);
   };
 
   const planName = subscription?.plan === "premium" ? "Premium" : subscription?.plan === "essencial" ? "Essencial" : null;
@@ -264,7 +221,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
           <div className="space-y-1">
             <Label className="text-xs">Nível de Atividade</Label>
             <div className="grid grid-cols-1 gap-1">
-              {Object.entries(LABELS.activity_level).map(([id, label]) => (
+              {Object.entries(ACTIVITY_LABELS).map(([id, label]) => (
                 <button
                   type="button"
                   key={id}
@@ -323,17 +280,17 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
           <div className="space-y-1">
             <Label className="text-xs">Dieta</Label>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(LABELS.dietary_preference).map(([id, label]) => (
+              {onboardingOptions?.dietary_preferences.map((opt) => (
                 <button
                   type="button"
-                  key={id}
-                  onClick={() => setEditedProfile({ ...editedProfile, dietary_preference: id })}
+                  key={opt.option_id}
+                  onClick={() => setEditedProfile({ ...editedProfile, dietary_preference: opt.option_id })}
                   className={cn(
                     "p-2 rounded-lg border text-sm transition-all touch-manipulation",
-                    editedProfile.dietary_preference === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                    editedProfile.dietary_preference === opt.option_id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
-                  {label}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -343,17 +300,17 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
           <div className="space-y-1">
             <Label className="text-xs">Complexidade das Receitas</Label>
             <div className="grid grid-cols-3 gap-2">
-              {Object.entries(LABELS.recipe_complexity).map(([id, label]) => (
+              {onboardingOptions?.complexity.map((opt) => (
                 <button
                   type="button"
-                  key={id}
-                  onClick={() => setEditedProfile({ ...editedProfile, recipe_complexity: id })}
+                  key={opt.option_id}
+                  onClick={() => setEditedProfile({ ...editedProfile, recipe_complexity: opt.option_id })}
                   className={cn(
                     "p-2 rounded-lg border text-xs transition-all touch-manipulation",
-                    editedProfile.recipe_complexity === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                    editedProfile.recipe_complexity === opt.option_id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
-                  {label}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -363,17 +320,17 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
           <div className="space-y-1">
             <Label className="text-xs">Contexto</Label>
             <div className="grid grid-cols-3 gap-2">
-              {Object.entries(LABELS.context).map(([id, label]) => (
+              {onboardingOptions?.context.map((opt) => (
                 <button
                   type="button"
-                  key={id}
-                  onClick={() => setEditedProfile({ ...editedProfile, context: id })}
+                  key={opt.option_id}
+                  onClick={() => setEditedProfile({ ...editedProfile, context: opt.option_id })}
                   className={cn(
                     "p-2 rounded-lg border text-xs transition-all touch-manipulation",
-                    editedProfile.context === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                    editedProfile.context === opt.option_id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
-                  {label}
+                  {opt.label}
                 </button>
               ))}
             </div>
@@ -387,24 +344,26 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
             Restrições e Condições
           </h3>
           <div className="flex flex-wrap gap-2">
-            {INTOLERANCES_OPTIONS.map((opt) => {
-              const isSelected = (editedProfile.intolerances || []).includes(opt.id);
-              return (
-                <button
-                  type="button"
-                  key={opt.id}
-                  onClick={() => toggleIntolerance(opt.id)}
-                  className={cn(
-                    "px-3 py-1.5 rounded-full text-xs font-medium transition-all touch-manipulation",
-                    isSelected 
-                      ? "bg-destructive/20 text-destructive border border-destructive/30" 
-                      : "bg-muted text-muted-foreground border border-border hover:border-destructive/50"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              );
-            })}
+            {onboardingOptions?.intolerances
+              .filter(opt => opt.option_id !== "none" && opt.option_id !== "nenhuma")
+              .map((opt) => {
+                const isSelected = (editedProfile.intolerances || []).includes(opt.option_id);
+                return (
+                  <button
+                    type="button"
+                    key={opt.option_id}
+                    onClick={() => toggleIntolerance(opt.option_id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all touch-manipulation",
+                      isSelected 
+                        ? "bg-destructive/20 text-destructive border border-destructive/30" 
+                        : "bg-muted text-muted-foreground border border-border hover:border-destructive/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
           </div>
         </div>
 
@@ -459,7 +418,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
                 ) : (
                   <TrendingUp className="w-4 h-4 text-blue-600" />
                 )}
-                <span className="font-medium text-sm">{getLabel("goal", profile.goal)}</span>
+                <span className="font-medium text-sm">{getProfileLabel("goals", profile.goal)}</span>
               </div>
               {profile.weight_current && profile.weight_goal && (
                 <p className="text-xs text-muted-foreground">
@@ -502,7 +461,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
               {profile.sex && (
                 <div className="p-2 rounded-lg bg-muted/50 text-center">
                   <User className="w-4 h-4 mx-auto mb-1 text-muted-foreground" />
-                  <p className="text-sm font-medium">{getLabel("sex", profile.sex)}</p>
+                  <p className="text-sm font-medium">{SEX_LABELS[profile.sex] || profile.sex}</p>
                   <p className="text-xs text-muted-foreground">Sexo</p>
                 </div>
               )}
@@ -510,7 +469,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
             {profile.activity_level && (
               <div className="p-2 rounded-lg bg-muted/50">
                 <p className="text-xs text-muted-foreground">Nível de atividade</p>
-                <p className="text-sm font-medium">{getLabel("activity_level", profile.activity_level)}</p>
+                <p className="text-sm font-medium">{ACTIVITY_LABELS[profile.activity_level] || profile.activity_level}</p>
               </div>
             )}
           </div>
@@ -525,15 +484,15 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
           <div className="space-y-2">
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Dieta</p>
-              <p className="text-sm font-medium">{getLabel("dietary_preference", profile.dietary_preference)}</p>
+              <p className="text-sm font-medium">{getProfileLabel("dietary_preferences", profile.dietary_preference)}</p>
             </div>
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Complexidade das receitas</p>
-              <p className="text-sm font-medium">{getLabel("recipe_complexity", profile.recipe_complexity)}</p>
+              <p className="text-sm font-medium">{getProfileLabel("complexity", profile.recipe_complexity)}</p>
             </div>
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Contexto</p>
-              <p className="text-sm font-medium">{getLabel("context", profile.context)}</p>
+              <p className="text-sm font-medium">{getProfileLabel("context", profile.context)}</p>
             </div>
           </div>
         </div>
@@ -551,7 +510,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
                   key={item} 
                   className="px-3 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20"
                 >
-                  {INTOLERANCES_LABELS[item] || item}
+                  {getOptionLabel(onboardingOptions, "intolerances", item)}
                 </span>
               ))}
             </div>

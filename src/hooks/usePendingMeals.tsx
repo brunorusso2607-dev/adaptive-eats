@@ -27,11 +27,11 @@ export type PendingMealData = {
 // Mapeamento de horários para cada refeição
 export const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
   cafe_manha: { start: 6, end: 10 },
-  almoco: { start: 12, end: 14 },
-  lanche: { start: 16, end: 17.5 },
-  lanche_tarde: { start: 16, end: 17.5 },
-  jantar: { start: 18, end: 21 },
-  ceia: { start: 22, end: 23 },
+  almoco: { start: 10, end: 14 },
+  lanche: { start: 14, end: 17 },
+  lanche_tarde: { start: 14, end: 17 },
+  jantar: { start: 17, end: 21 },
+  ceia: { start: 21, end: 24 },
 };
 
 // Função para formatar horário (ex: 6 -> "06:00", 17.5 -> "17:30")
@@ -243,19 +243,15 @@ export function usePendingMeals() {
       }
 
       // Calcular a data real de cada refeição baseada no start_date do plano e week_number
-      // O start_date é sempre uma segunda-feira (day 1)
+      // O banco usa: dayOfWeek: 0=Segunda, 1=Terça, 2=Quarta, ..., 6=Domingo
+      // O start_date é sempre uma segunda-feira (dia 0 no banco)
       const calculateActualDate = (dayOfWeek: number, weekNumber: number): Date => {
         const date = new Date(planStartDate);
         // Adicionar semanas: (week_number - 1) * 7 dias
         const weeksOffset = (weekNumber - 1) * 7;
-        // dayOfWeek: 0=Dom, 1=Seg, 2=Ter, etc.
-        // O plano começa na segunda (1), então:
-        // - Segunda (1) = start_date + 0
-        // - Terça (2) = start_date + 1
-        // - ...
-        // - Domingo (0) = start_date + 6
-        const daysFromStart = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
-        date.setDate(date.getDate() + weeksOffset + daysFromStart);
+        // dayOfWeek no banco: 0=Segunda, 1=Terça, ..., 6=Domingo
+        // Como o start_date é segunda-feira (dia 0), basta somar o dayOfWeek
+        date.setDate(date.getDate() + weeksOffset + dayOfWeek);
         return date;
       };
 

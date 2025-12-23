@@ -5,13 +5,14 @@ import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "@/lib/utils";
 
 const progressVariants = cva(
-  "h-full w-full flex-1 transition-all rounded-full",
+  "h-full w-full flex-1 transition-all",
   {
     variants: {
       variant: {
-        default: "bg-primary",
-        xp: "gradient-xp shadow-[var(--shadow-glow-xp)]",
-        success: "bg-success",
+        default: "bg-primary rounded-full",
+        // Capsule Pill style - Material 3 polish
+        xp: "bg-gradient-to-r from-[hsl(var(--primary))] to-[hsl(25,100%,65%)] rounded-full",
+        success: "bg-success rounded-full",
       },
     },
     defaultVariants: {
@@ -22,15 +23,22 @@ const progressVariants = cva(
 
 interface ProgressProps
   extends React.ComponentPropsWithoutRef<typeof ProgressPrimitive.Root>,
-    VariantProps<typeof progressVariants> {}
+    VariantProps<typeof progressVariants> {
+  // Capsule pill style - fully rounded with custom height
+  pill?: boolean;
+}
 
 const Progress = React.forwardRef<
   React.ElementRef<typeof ProgressPrimitive.Root>,
   ProgressProps
->(({ className, value, variant, ...props }, ref) => (
+>(({ className, value, variant, pill, ...props }, ref) => (
   <ProgressPrimitive.Root
     ref={ref}
-    className={cn("relative h-4 w-full overflow-hidden rounded-full bg-secondary", className)}
+    className={cn(
+      "relative w-full overflow-hidden bg-secondary",
+      pill ? "h-1.5 rounded-full" : "h-4 rounded-full",
+      className
+    )}
     {...props}
   >
     <ProgressPrimitive.Indicator

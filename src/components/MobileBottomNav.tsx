@@ -26,7 +26,7 @@ export default function MobileBottomNav({
   return (
     <nav className={cn(
       "fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom",
-      "bg-card/80 backdrop-blur-xl border-t border-border"
+      "bg-white/95 dark:bg-card/95 backdrop-blur-xl border-t border-border"
     )}>
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
@@ -60,8 +60,8 @@ export default function MobileBottomNav({
               className={cn(
                 "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors relative",
                 isActive 
-                  ? "text-foreground" 
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "text-primary" 
+                  : "text-[hsl(215,14%,60%)] hover:text-foreground"
               )}
             >
               <div className="relative">
@@ -70,7 +70,7 @@ export default function MobileBottomNav({
                     "w-5 h-5 transition-transform",
                     isActive && "scale-105"
                   )} 
-                  strokeWidth={isActive ? 2 : 1.5}
+                  strokeWidth={isActive ? 2.5 : 1.5}
                 />
                 {showBadge && (
                   <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />

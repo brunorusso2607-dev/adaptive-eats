@@ -1,12 +1,11 @@
 import {
   Sheet,
   SheetContent,
-  SheetHeader,
-  SheetTitle,
 } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Flame, Utensils } from "lucide-react";
+import { Clock, Flame, Beef, Wheat, Users, CheckCircle } from "lucide-react";
 import type { NextMealData } from "@/hooks/useNextMeal";
 
 interface MealDetailSheetProps {
@@ -29,6 +28,14 @@ type RawIngredient = {
   [key: string]: unknown;
 };
 
+const MEAL_LABELS: Record<string, string> = {
+  cafe_manha: "Café da Manhã",
+  almoco: "Almoço",
+  lanche: "Lanche da Tarde",
+  jantar: "Jantar",
+  ceia: "Ceia"
+};
+
 export default function MealDetailSheet({
   open,
   onOpenChange,
@@ -48,78 +55,110 @@ export default function MealDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl">
-        <SheetHeader className="pb-4">
-          <SheetTitle className="text-left">{meal.recipe_name}</SheetTitle>
-        </SheetHeader>
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
+        <ScrollArea className="h-full">
+          <div className="p-6 space-y-6">
+            {/* Header */}
+            <div>
+              <Badge className="mb-2 bg-primary text-primary-foreground">
+                {MEAL_LABELS[meal.meal_type] || meal.meal_type}
+              </Badge>
+              <h2 className="font-display text-2xl font-bold text-foreground">
+                {meal.recipe_name}
+              </h2>
+            </div>
 
-        <ScrollArea className="h-[calc(85vh-100px)] pr-4">
-          <div className="space-y-6">
-            {/* Macros summary */}
-            <div className="grid grid-cols-4 gap-3">
-              <div className="bg-orange-500/10 rounded-lg p-3 text-center">
-                <Flame className="w-5 h-5 text-orange-500 mx-auto mb-1" />
-                <p className="text-lg font-bold">{meal.recipe_calories}</p>
-                <p className="text-xs text-muted-foreground">kcal</p>
+            {/* Quick Info */}
+            <div className="flex flex-wrap gap-4">
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Clock className="w-4 h-4" />
+                <span>{meal.recipe_prep_time} min</span>
               </div>
-              <div className="bg-blue-500/10 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-blue-500">{meal.recipe_protein}</p>
-                <p className="text-xs text-muted-foreground">Proteína</p>
-              </div>
-              <div className="bg-amber-500/10 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-amber-500">{meal.recipe_carbs}</p>
-                <p className="text-xs text-muted-foreground">Carbos</p>
-              </div>
-              <div className="bg-red-500/10 rounded-lg p-3 text-center">
-                <p className="text-lg font-bold text-red-500">{meal.recipe_fat}</p>
-                <p className="text-xs text-muted-foreground">Gordura</p>
+              <div className="flex items-center gap-2 text-muted-foreground">
+                <Users className="w-4 h-4" />
+                <span>2 porções</span>
               </div>
             </div>
 
-            {/* Prep time */}
-            <div className="flex items-center gap-2 text-muted-foreground">
-              <Clock className="w-4 h-4" />
-              <span className="text-sm">Tempo de preparo: {meal.recipe_prep_time} min</span>
-            </div>
+            {/* Nutrition Card */}
+            <Card className="glass-card border-primary/20 overflow-hidden">
+              <div className="gradient-primary px-4 py-2">
+                <h3 className="font-semibold text-primary-foreground text-sm">Informações Nutricionais (por porção)</h3>
+              </div>
+              <CardContent className="p-4">
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-orange-500/20 flex items-center justify-center mb-1">
+                      <Flame className="w-5 h-5 text-orange-500" />
+                    </div>
+                    <p className="text-lg font-bold">{meal.recipe_calories}</p>
+                    <p className="text-xs text-muted-foreground">kcal</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-red-500/20 flex items-center justify-center mb-1">
+                      <Beef className="w-5 h-5 text-red-500" />
+                    </div>
+                    <p className="text-lg font-bold">{meal.recipe_protein}g</p>
+                    <p className="text-xs text-muted-foreground">Proteína</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center mb-1">
+                      <Wheat className="w-5 h-5 text-amber-500" />
+                    </div>
+                    <p className="text-lg font-bold">{meal.recipe_carbs}g</p>
+                    <p className="text-xs text-muted-foreground">Carbs</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="w-10 h-10 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-1">
+                      <span className="text-lg">🧈</span>
+                    </div>
+                    <p className="text-lg font-bold">{meal.recipe_fat}g</p>
+                    <p className="text-xs text-muted-foreground">Gordura</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Ingredients */}
-            <div>
-              <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Utensils className="w-4 h-4" />
-                Ingredientes
-              </h3>
-              <div className="space-y-2">
-                {ingredients.map((ingredient, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
-                  >
-                    <span className="text-sm">{ingredient.item}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {ingredient.quantity} {ingredient.unit}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Instructions */}
-            {instructions.length > 0 && (
-              <div>
-                <h3 className="font-semibold mb-3">Modo de Preparo</h3>
-                <ol className="space-y-3">
-                  {instructions.map((instruction, index) => (
-                    <li key={index} className="flex gap-3">
-                      <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/20 text-primary text-sm flex items-center justify-center font-medium">
-                        {index + 1}
-                      </span>
-                      <span className="text-sm text-muted-foreground leading-relaxed">
-                        {instruction}
+            <Card className="glass-card">
+              <CardContent className="p-4">
+                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                  🥗 Ingredientes
+                </h3>
+                <ul className="space-y-2">
+                  {ingredients.map((ingredient, index) => (
+                    <li key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <CheckCircle className="w-4 h-4 text-primary" />
+                      </div>
+                      <span>
+                        <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
                       </span>
                     </li>
                   ))}
-                </ol>
-              </div>
+                </ul>
+              </CardContent>
+            </Card>
+
+            {/* Instructions */}
+            {instructions.length > 0 && (
+              <Card className="glass-card">
+                <CardContent className="p-4">
+                  <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                    👨‍🍳 Modo de Preparo
+                  </h3>
+                  <ol className="space-y-4">
+                    {instructions.map((instruction, index) => (
+                      <li key={index} className="flex gap-4">
+                        <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
+                          {index + 1}
+                        </div>
+                        <p className="flex-1 pt-1">{instruction}</p>
+                      </li>
+                    ))}
+                  </ol>
+                </CardContent>
+              </Card>
             )}
           </div>
         </ScrollArea>

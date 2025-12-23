@@ -82,6 +82,7 @@ export type Database = {
       }
       api_integrations: {
         Row: {
+          api_key_encrypted: string | null
           api_key_masked: string | null
           created_at: string
           created_by: string | null
@@ -92,6 +93,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          api_key_encrypted?: string | null
           api_key_masked?: string | null
           created_at?: string
           created_by?: string | null
@@ -102,6 +104,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          api_key_encrypted?: string | null
           api_key_masked?: string | null
           created_at?: string
           created_by?: string | null

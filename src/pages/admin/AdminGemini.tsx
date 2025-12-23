@@ -380,6 +380,7 @@ export default function AdminGemini() {
           name: "gemini",
           display_name: "Google Gemini",
           api_key_masked: maskApiKey(apiKey),
+          api_key_encrypted: apiKey,
           is_active: true,
           created_by: user?.id,
         });
@@ -412,6 +413,7 @@ export default function AdminGemini() {
         .from("api_integrations")
         .update({
           api_key_masked: maskApiKey(apiKey),
+          api_key_encrypted: apiKey,
           updated_at: new Date().toISOString(),
         })
         .eq("id", integration.id);

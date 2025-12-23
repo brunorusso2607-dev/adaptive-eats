@@ -140,11 +140,14 @@ export default function CalorieSpeedometer({
         </div>
       </div>
 
-      {/* Goal context label */}
+      {/* Motivational message based on progress */}
       <p className="text-xs text-muted-foreground/70 text-center -mt-1">
-        {mode === "lose" && "Meta para emagrecer"}
-        {mode === "gain" && "Meta para ganhar massa"}
-        {mode === "maintain" && "Meta para manutenção"}
+        {percentage === 0 && "Comece seu dia com energia"}
+        {percentage > 0 && percentage < 25 && "Bom começo, continue assim"}
+        {percentage >= 25 && percentage < 50 && "Você está no caminho certo"}
+        {percentage >= 50 && percentage < 75 && "Mais da metade! Ótimo ritmo"}
+        {percentage >= 75 && percentage < 100 && "Quase lá, finalize bem"}
+        {percentage >= 100 && "Meta atingida ✓"}
       </p>
 
       {/* Macros - horizontal clean layout */}

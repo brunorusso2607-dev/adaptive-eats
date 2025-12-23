@@ -101,9 +101,18 @@ export default function AdminDashboard() {
   };
 
   useEffect(() => {
-    if (!isLoading && !isAdmin) {
-      navigate("/dashboard");
-    }
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!isLoading && !isAdmin) {
+        // Se não tem sessão, vai para auth, não para dashboard
+        if (!session) {
+          navigate("/auth");
+        } else {
+          navigate("/dashboard");
+        }
+      }
+    };
+    checkAuth();
   }, [isAdmin, isLoading, navigate]);
 
   if (isLoading) {

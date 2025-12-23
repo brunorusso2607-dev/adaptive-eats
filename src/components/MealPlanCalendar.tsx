@@ -85,7 +85,13 @@ const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
 
 // Verifica se uma refeição já passou do horário no dia atual
 const isMealPastTime = (mealType: string, selectedDay: DayInfo | undefined): boolean => {
-  if (!selectedDay?.isToday) return false;
+  if (!selectedDay) return false;
+  
+  // Se o dia inteiro já passou, todas as refeições passaram
+  if (selectedDay.isPast) return true;
+  
+  // Se não é hoje, não passou ainda
+  if (!selectedDay.isToday) return false;
   
   const now = new Date();
   const currentHour = now.getHours();
@@ -130,18 +136,24 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return formatWeekRange(currentWeekData, currentDate);
   }, [currentWeekData, currentDate]);
 
-  // Auto-select first visible day when week changes (only on week change, not day click)
+  // Auto-select first visible non-past day when week changes (only on week change, not day click)
   useEffect(() => {
     if (visibleDays.length > 0) {
-      // When week changes, select today if it's in this week, otherwise first visible day
+      // When week changes, select today if it's in this week, otherwise first non-past visible day
       const todayInWeek = currentWeekData.days.findIndex(d => d.isToday);
       if (todayInWeek >= 0) {
         setSelectedDayIndex(todayInWeek);
       } else {
-        // Select first day in month for this week
-        const firstInMonth = currentWeekData.days.findIndex(d => d.isInMonth);
-        if (firstInMonth >= 0) {
-          setSelectedDayIndex(firstInMonth);
+        // Select first non-past day in month for this week
+        const firstNonPastInMonth = currentWeekData.days.findIndex(d => d.isInMonth && !d.isPast);
+        if (firstNonPastInMonth >= 0) {
+          setSelectedDayIndex(firstNonPastInMonth);
+        } else {
+          // Fallback to first day in month (even if past) - for past weeks that user somehow got to
+          const firstInMonth = currentWeekData.days.findIndex(d => d.isInMonth);
+          if (firstInMonth >= 0) {
+            setSelectedDayIndex(firstInMonth);
+          }
         }
       }
     }
@@ -318,27 +330,32 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             const hasMeals = getDayMeals(day).length > 0;
             const isToday = day.isToday;
 
+            const isPastDay = day.isPast;
+
             return (
               <button
                 key={`${day.date.toISOString()}`}
-                onClick={() => setSelectedDayIndex(index)}
+                onClick={() => !isPastDay && setSelectedDayIndex(index)}
+                disabled={isPastDay}
                 className={cn(
                   "flex flex-col items-center py-2 px-1 sm:p-3 rounded-xl transition-all border",
-                  isSelected 
-                    ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                    : "bg-background hover:bg-muted border-border hover:border-primary/50",
-                  isToday && !isSelected && "ring-2 ring-primary/50"
+                  isPastDay 
+                    ? "bg-muted/50 text-muted-foreground border-muted cursor-not-allowed opacity-60"
+                    : isSelected 
+                      ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                      : "bg-background hover:bg-muted border-border hover:border-primary/50",
+                  isToday && !isSelected && !isPastDay && "ring-2 ring-primary/50"
                 )}
               >
                 <span className={cn(
                   "text-[10px] sm:text-xs font-medium",
-                  isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                  isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-muted-foreground"
                 )}>
                   {dayName}
                 </span>
                 <span className={cn(
                   "text-sm sm:text-lg font-bold",
-                  isSelected ? "text-primary-foreground" : "text-foreground"
+                  isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-foreground"
                 )}>
                   {dayNumber}
                 </span>
@@ -346,9 +363,10 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                 <div className={cn(
                   "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-0.5 sm:mt-1",
                   !hasMeals && "bg-muted-foreground/30",
-                  hasMeals && status === 'pending' && "bg-muted-foreground/50",
-                  hasMeals && status === 'partial' && "bg-yellow-500",
-                  hasMeals && status === 'complete' && "bg-green-500",
+                  hasMeals && isPastDay && "bg-muted-foreground/30",
+                  hasMeals && !isPastDay && status === 'pending' && "bg-muted-foreground/50",
+                  hasMeals && !isPastDay && status === 'partial' && "bg-yellow-500",
+                  hasMeals && !isPastDay && status === 'complete' && "bg-green-500",
                 )} />
               </button>
             );

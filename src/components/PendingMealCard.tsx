@@ -310,12 +310,24 @@ export default function PendingMealCard({
                   {mealLabel}
                 </span>
                 {mealStatus === "critical" && minutesOverdueValue > 0 && (
-                  <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">
+                  <span 
+                    className="text-[10px] px-1.5 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: dynamicStyles.backgroundColor,
+                      color: dynamicStyles.color,
+                    }}
+                  >
                     {formatOverdue(minutesOverdueValue)}
                   </span>
                 )}
                 {mealStatus === "delayed" && (
-                  <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded-full">
+                  <span 
+                    className="text-[10px] px-1.5 py-0.5 rounded-full"
+                    style={{
+                      backgroundColor: dynamicStyles.backgroundColor,
+                      color: dynamicStyles.color,
+                    }}
+                  >
                     Atrasado
                   </span>
                 )}

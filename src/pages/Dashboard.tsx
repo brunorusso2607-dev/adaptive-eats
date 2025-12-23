@@ -125,7 +125,7 @@ export default function Dashboard() {
   const { isAdmin } = useAdmin();
   
   // Pending meals hook for badge
-  const { pendingMeals, hasMealPlan: hasActiveMealPlan } = usePendingMeals();
+  const { pendingMeals, hasMealPlan: hasActiveMealPlan, refetch: refetchPendingMeals } = usePendingMeals();
   const nextMealStatus = pendingMeals.length > 0 
     ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].actual_date, pendingMeals[0].completed_at)
     : "on_time";
@@ -652,6 +652,10 @@ export default function Dashboard() {
                 }}
                 initialData={weightData || undefined}
                 hasExistingPlan={hasMealPlan || hasActiveMealPlan}
+                onPlanRegenerated={() => {
+                  // Força refresh dos dados do Dashboard após regeneração
+                  refetchPendingMeals();
+                }}
               />
             ) : showRecipe && generatedRecipe ? (
               <RecipeResult

@@ -175,8 +175,9 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           </Button>
 
           {isGenerating && (
-            <p className="text-sm text-muted-foreground text-center animate-pulse">
-              ⏳ Isso pode levar alguns segundos...
+            <p className="text-sm text-muted-foreground text-center animate-pulse flex items-center justify-center gap-1.5">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              Isso pode levar alguns segundos...
             </p>
           )}
         </CardContent>

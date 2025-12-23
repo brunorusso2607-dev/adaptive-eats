@@ -201,17 +201,21 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
           <div className="space-y-1">
             <Label className="text-xs">Sexo Biológico</Label>
             <div className="grid grid-cols-2 gap-2">
-              {[{ id: "male", label: "Masculino", emoji: "👨" }, { id: "female", label: "Feminino", emoji: "👩" }].map((opt) => (
+              {[
+                { id: "male", label: "Masculino", color: "text-blue-500" }, 
+                { id: "female", label: "Feminino", color: "text-pink-500" }
+              ].map((opt) => (
                 <button
                   type="button"
                   key={opt.id}
                   onClick={() => setEditedProfile({ ...editedProfile, sex: opt.id })}
                   className={cn(
-                    "p-2 rounded-lg border-2 text-center transition-all text-sm touch-manipulation",
+                    "p-2 rounded-lg border-2 text-center transition-all text-sm touch-manipulation flex items-center justify-center gap-1.5",
                     editedProfile.sex === opt.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
                   )}
                 >
-                  <span className="mr-1">{opt.emoji}</span> {opt.label}
+                  <User className={cn("w-4 h-4 stroke-[1.5]", opt.color)} />
+                  {opt.label}
                 </button>
               ))}
             </div>

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import FridgeScanner from "./FridgeScanner";
@@ -339,7 +339,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
         return <span className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-600 font-medium">🟡 Risco</span>;
       case "contem":
       case "evitar":
-        return <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 font-medium">🔴 Contém</span>;
+        return <span className="text-xs px-2 py-0.5 rounded-full bg-red-500/20 text-red-600 font-medium flex items-center gap-1"><AlertCircle className="w-3 h-3 stroke-[1.5]" /> Contém</span>;
       default:
         return null;
     }
@@ -350,67 +350,59 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     switch (categoria) {
       case "planta_decorativa":
         return {
-          icon: <Leaf className="w-8 h-8 text-green-500" />,
+          icon: <Leaf className="w-8 h-8 text-green-500 stroke-[1.5]" />,
           bgColor: "bg-green-500/10",
           borderColor: "border-green-500/30",
-          title: "Planta Detectada",
-          emoji: "🌱"
+          title: "Planta Detectada"
         };
       case "alimento_natural":
         return {
-          icon: <Flame className="w-8 h-8 text-orange-500" />,
+          icon: <Flame className="w-8 h-8 text-orange-500 stroke-[1.5]" />,
           bgColor: "bg-orange-500/10",
           borderColor: "border-orange-500/30",
-          title: "Alimento Natural",
-          emoji: "🍎"
+          title: "Alimento Natural"
         };
       case "objeto_nao_alimenticio":
         return {
-          icon: <Package className="w-8 h-8 text-blue-500" />,
+          icon: <Package className="w-8 h-8 text-blue-500 stroke-[1.5]" />,
           bgColor: "bg-blue-500/10",
           borderColor: "border-blue-500/30",
-          title: "Objeto Detectado",
-          emoji: "📦"
+          title: "Objeto Detectado"
         };
       case "animal_vivo":
         return {
-          icon: <Cat className="w-8 h-8 text-purple-500" />,
+          icon: <Cat className="w-8 h-8 text-purple-500 stroke-[1.5]" />,
           bgColor: "bg-purple-500/10",
           borderColor: "border-purple-500/30",
-          title: "Animal Detectado",
-          emoji: "🐾"
+          title: "Animal Detectado"
         };
       case "pessoa_ambiente":
         return {
-          icon: <User className="w-8 h-8 text-indigo-500" />,
+          icon: <User className="w-8 h-8 text-indigo-500 stroke-[1.5]" />,
           bgColor: "bg-indigo-500/10",
           borderColor: "border-indigo-500/30",
-          title: "Pessoa ou Ambiente",
-          emoji: "📸"
+          title: "Pessoa ou Ambiente"
         };
       case "documento_outro":
         return {
-          icon: <FileText className="w-8 h-8 text-gray-500" />,
+          icon: <FileText className="w-8 h-8 text-gray-500 stroke-[1.5]" />,
           bgColor: "bg-gray-500/10",
           borderColor: "border-gray-500/30",
-          title: "Documento",
-          emoji: "📄"
+          title: "Documento"
         };
       case "imagem_ilegivel":
         return {
-          icon: <ImageOff className="w-8 h-8 text-red-500" />,
+          icon: <ImageOff className="w-8 h-8 text-red-500 stroke-[1.5]" />,
           bgColor: "bg-red-500/10",
           borderColor: "border-red-500/30",
-          title: "Imagem Ilegível",
-          emoji: "📷"
+          title: "Imagem Ilegível"
         };
       default:
         return {
-          icon: <AlertCircle className="w-8 h-8 text-yellow-500" />,
+          icon: <AlertCircle className="w-8 h-8 text-yellow-500 stroke-[1.5]" />,
           bgColor: "bg-yellow-500/10",
           borderColor: "border-yellow-500/30",
-          title: "Conteúdo Não Identificado",
-          emoji: "❓"
+          title: "Conteúdo Não Identificado"
         };
     }
   };
@@ -650,7 +642,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   </div>
                   <div className="space-y-1">
                     <h3 className="font-semibold text-foreground">
-                      {getCategoryFeedback(categoryError.categoria).emoji} {getCategoryFeedback(categoryError.categoria).title}
+                      {getCategoryFeedback(categoryError.categoria).title}
                     </h3>
                     {categoryError.descricao && (
                       <p className="text-xs text-muted-foreground italic">
@@ -770,10 +762,12 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                       ) : (
                         <>
                           <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldCheck className="w-6 h-6 text-green-500" />
+                            <ShieldCheck className="w-6 h-6 text-green-500 stroke-[1.5]" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-bold text-green-600 text-lg">✅ Alimento Seguro</p>
+                            <p className="font-bold text-green-600 text-lg flex items-center gap-1.5">
+                              <Check className="w-4 h-4 stroke-[1.5]" /> Alimento Seguro
+                            </p>
                             <p className="text-sm text-muted-foreground">
                               Compatível com suas restrições alimentares
                             </p>

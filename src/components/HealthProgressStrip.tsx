@@ -82,8 +82,8 @@ export default function HealthProgressStrip({
         </div>
 
         {/* Streak - Semi-bold text with fire icon */}
-        <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1">
-          <span className="text-sm">🔥</span>
+        <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1">
+          <Flame className="w-4 h-4 text-orange-500 stroke-[1.5]" />
           <span className="text-xs font-semibold text-foreground tabular-nums">
             {currentStreak} {currentStreak === 1 ? 'dia' : 'dias'}
           </span>

@@ -475,8 +475,8 @@ export default function Dashboard() {
   useEffect(() => {
     if (hasActiveMealPlan && (nextMealStatus === "delayed" || nextMealStatus === "critical")) {
       const message = nextMealStatus === "critical" 
-        ? "⚠️ Você tem uma refeição pendente há mais de 1 hora!"
-        : "🍽️ Você tem uma refeição pendente!";
+        ? "Você tem uma refeição pendente há mais de 1 hora!"
+        : "Você tem uma refeição pendente!";
       toast.warning(message, { duration: 5000 });
     }
   }, [hasActiveMealPlan, nextMealStatus]);
@@ -895,9 +895,10 @@ export default function Dashboard() {
                                   variant="ghost" 
                                   size="sm" 
                                   onClick={() => setShowWeightHistory(true)}
-                                  className="w-full mt-3 text-muted-foreground hover:text-foreground"
+                                  className="w-full mt-3 text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5"
                                 >
-                                  📈 Ver Evolução
+                                  <TrendingUp className="w-4 h-4 text-primary stroke-[1.5]" />
+                                  Ver Evolução
                                 </Button>
                               </>
                             );

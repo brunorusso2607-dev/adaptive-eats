@@ -731,7 +731,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
                   : "border-border hover:border-primary/50"
               )}
             >
-              <span className="text-2xl mb-1 block">👨</span>
+              <User className="w-6 h-6 mx-auto mb-1 text-blue-500 stroke-[1.5]" />
               <span className="font-medium text-sm">Masculino</span>
             </button>
             <button
@@ -744,7 +744,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
                   : "border-border hover:border-primary/50"
               )}
             >
-              <span className="text-2xl mb-1 block">👩</span>
+              <User className="w-6 h-6 mx-auto mb-1 text-pink-500 stroke-[1.5]" />
               <span className="font-medium text-sm">Feminino</span>
             </button>
           </div>
@@ -815,16 +815,16 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
 
             {/* Metabolism Info */}
             <div className="text-xs text-muted-foreground space-y-1 bg-white/40 dark:bg-white/5 p-3 rounded-lg">
-              <p>📊 <strong>TMB (Taxa Metabólica Basal):</strong> {calculations.tmb} kcal/dia</p>
-              <p>🔥 <strong>GET (Gasto Energético Total):</strong> {calculations.get} kcal/dia</p>
+              <p className="flex items-center gap-1.5"><Activity className="w-3.5 h-3.5 text-primary stroke-[1.5]" /> <strong>TMB (Taxa Metabólica Basal):</strong> {calculations.tmb} kcal/dia</p>
+              <p className="flex items-center gap-1.5"><Flame className="w-3.5 h-3.5 text-orange-500 stroke-[1.5]" /> <strong>GET (Gasto Energético Total):</strong> {calculations.get} kcal/dia</p>
               {calculations.mode === "lose" && (
-                <p>📉 <strong>Déficit calórico:</strong> {calculations.get - calculations.targetCalories} kcal/dia</p>
+                <p className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-green-500 stroke-[1.5]" /> <strong>Déficit calórico:</strong> {calculations.get - calculations.targetCalories} kcal/dia</p>
               )}
               {calculations.mode === "gain" && (
-                <p>📈 <strong>Superávit calórico:</strong> {calculations.targetCalories - calculations.get} kcal/dia</p>
+                <p className="flex items-center gap-1.5"><TrendingUp className="w-3.5 h-3.5 text-blue-500 stroke-[1.5]" /> <strong>Superávit calórico:</strong> {calculations.targetCalories - calculations.get} kcal/dia</p>
               )}
               {calculations.mode === "maintain" && (
-                <p>⚖️ <strong>Calorias de manutenção:</strong> {calculations.get} kcal/dia</p>
+                <p className="flex items-center gap-1.5"><Scale className="w-3.5 h-3.5 text-amber-500 stroke-[1.5]" /> <strong>Calorias de manutenção:</strong> {calculations.get} kcal/dia</p>
               )}
             </div>
 

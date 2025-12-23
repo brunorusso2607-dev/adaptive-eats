@@ -865,8 +865,8 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
         </div>
       </div>
 
-      {/* Calculations Preview */}
-      {calculations && isComplete && modeInfo && (
+      {/* Calculations Preview - only show for new plans, not when editing existing */}
+      {calculations && isComplete && modeInfo && !hasExistingPlan && (
         <Card className={cn("border-2", modeInfo.borderColor, `bg-gradient-to-r ${modeInfo.bgGradient}`)}>
           <CardHeader className="pb-3">
             <CardTitle className="text-lg flex items-center gap-2">

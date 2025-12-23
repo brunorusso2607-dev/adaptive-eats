@@ -17,8 +17,6 @@ export type OnboardingOptionsMap = {
   intolerances: OnboardingOption[];
   dietary_preferences: OnboardingOption[];
   goals: OnboardingOption[];
-  calorie_goals: OnboardingOption[];
-  complexity: OnboardingOption[];
   context: OnboardingOption[];
 };
 
@@ -39,17 +37,6 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
     { id: "8", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
     { id: "9", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
     { id: "10", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
-  ],
-  calorie_goals: [
-    { id: "11", category: "calorie_goals", option_id: "reduzir", label: "Reduzir", description: "Consumir menos calorias", emoji: "📉", icon_name: "arrow-down", is_active: true, sort_order: 1 },
-    { id: "12", category: "calorie_goals", option_id: "manter", label: "Manter", description: "Manter consumo atual", emoji: "📊", icon_name: "scale", is_active: true, sort_order: 2 },
-    { id: "13", category: "calorie_goals", option_id: "aumentar", label: "Aumentar", description: "Consumir mais calorias", emoji: "📈", icon_name: "arrow-up", is_active: true, sort_order: 3 },
-    { id: "14", category: "calorie_goals", option_id: "definir_depois", label: "Definir depois", description: "Vou decidir mais tarde", emoji: "⏳", icon_name: "clock", is_active: true, sort_order: 4 },
-  ],
-  complexity: [
-    { id: "15", category: "complexity", option_id: "rapida", label: "Rápidas", description: "Receitas de até 20 minutos", emoji: "⚡", icon_name: "zap", is_active: true, sort_order: 1 },
-    { id: "16", category: "complexity", option_id: "equilibrada", label: "Equilibradas", description: "Receitas de 20-40 minutos", emoji: "⏱️", icon_name: "timer", is_active: true, sort_order: 2 },
-    { id: "17", category: "complexity", option_id: "elaborada", label: "Elaboradas", description: "Receitas mais complexas", emoji: "👨‍🍳", icon_name: "chef-hat", is_active: true, sort_order: 3 },
   ],
   context: [
     { id: "18", category: "context", option_id: "individual", label: "Individual", description: "Cozinho só para mim", emoji: "👤", icon_name: "user", is_active: true, sort_order: 1 },
@@ -82,8 +69,6 @@ export function useOnboardingOptions() {
         intolerances: [],
         dietary_preferences: [],
         goals: [],
-        calorie_goals: [],
-        complexity: [],
         context: [],
       };
 

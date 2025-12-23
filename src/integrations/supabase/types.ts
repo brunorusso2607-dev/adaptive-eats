@@ -454,7 +454,6 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
-          calorie_goal: Database["public"]["Enums"]["calorie_goal"] | null
           context: Database["public"]["Enums"]["user_context"] | null
           created_at: string | null
           dietary_preference:
@@ -476,7 +475,6 @@ export type Database = {
         Insert: {
           activity_level?: string | null
           age?: number | null
-          calorie_goal?: Database["public"]["Enums"]["calorie_goal"] | null
           context?: Database["public"]["Enums"]["user_context"] | null
           created_at?: string | null
           dietary_preference?:
@@ -498,7 +496,6 @@ export type Database = {
         Update: {
           activity_level?: string | null
           age?: number | null
-          calorie_goal?: Database["public"]["Enums"]["calorie_goal"] | null
           context?: Database["public"]["Enums"]["user_context"] | null
           created_at?: string | null
           dietary_preference?:

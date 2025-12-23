@@ -17,7 +17,6 @@ import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptio
 type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
-  calorie_goal: string | null;
   context: string | null;
   weight_current: number | null;
   weight_goal: number | null;
@@ -75,7 +74,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, calorie_goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
+        .select("dietary_preference, goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -137,7 +136,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     setEditedProfile({ ...editedProfile, intolerances: updated });
   };
 
-  const getProfileLabel = (category: "dietary_preferences" | "goals" | "calorie_goals" | "complexity" | "context", value: string | null) => {
+  const getProfileLabel = (category: "dietary_preferences" | "goals" | "context", value: string | null) => {
     if (!value) return "Não definido";
     return getOptionLabel(onboardingOptions, category, value);
   };

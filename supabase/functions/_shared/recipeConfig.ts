@@ -18,7 +18,6 @@ export interface UserProfile {
   activity_level?: string | null;
   goal?: string | null;
   dietary_preference?: string | null;
-  calorie_goal?: string | null;
   context?: string | null;
   intolerances?: string[] | null;
 }
@@ -67,11 +66,19 @@ export const GOAL_LABELS: Record<string, string> = {
   ganhar_peso: "ganho de massa muscular (superávit calórico controlado, alta proteína)",
 };
 
+// Deriva meta calórica automaticamente do objetivo do usuário
+export function deriveCalorieGoalFromGoal(goal: string | null | undefined): string {
+  switch (goal) {
+    case "emagrecer": return "reduzir";
+    case "ganhar_peso": return "aumentar";
+    default: return "manter";
+  }
+}
+
 export const CALORIE_LABELS: Record<string, string> = {
   reduzir: "reduzir calorias (porções menores, menos calóricas)",
   manter: "manter calorias normais",
   aumentar: "aumentar calorias (porções maiores, mais densas)",
-  definir_depois: "calorias normais",
 };
 
 export const COMPLEXITY_LABELS: Record<string, string> = {

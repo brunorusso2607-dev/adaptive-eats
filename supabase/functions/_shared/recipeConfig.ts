@@ -471,10 +471,9 @@ export function buildMealPlanPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const isKidsMode = profile.context === "modo_kids";
-  const mealsPerDay = profile.recipe_complexity === "rapida" ? 4 : 5;
-  const selectedMealTypes = mealsPerDay === 4 
-    ? ["cafe_manha", "almoco", "lanche", "jantar"]
-    : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  // Always generate 5 meals - recipe_complexity only affects prep time, not number of meals
+  const mealsPerDay = 5;
+  const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
   const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes divertidos, sabores suaves, máx 25 min" : "";
   const avoidRecipes = previousRecipes.length > 0 

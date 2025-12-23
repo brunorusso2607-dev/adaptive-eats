@@ -101,11 +101,8 @@ async function validateAndCompleteMeals(
   daysCount: number,
   apiKey: string
 ): Promise<any> {
-  // Determine expected meal types based on complexity
-  const mealsPerDay = profile.recipe_complexity === "rapida" ? 4 : 5;
-  const expectedMealTypes = mealsPerDay === 4 
-    ? ["cafe_manha", "almoco", "lanche", "jantar"]
-    : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  // Always expect 5 meals - recipe_complexity only affects prep time, not number of meals
+  const expectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
   // Target calories per meal
   const caloriesPerMeal: Record<string, number> = {

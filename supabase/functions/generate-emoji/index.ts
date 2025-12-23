@@ -11,7 +11,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 async function callGeminiWithRetry(apiKey: string, label: string, maxRetries = 3): Promise<string> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${apiKey}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
       {
         method: "POST",
         headers: {

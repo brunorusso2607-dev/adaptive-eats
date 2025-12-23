@@ -69,6 +69,23 @@ export default function AdminPlans() {
   const [newStripeKey, setNewStripeKey] = useState("");
   const [isUpdatingKey, setIsUpdatingKey] = useState(false);
   const [showRemoveConfirm, setShowRemoveConfirm] = useState(false);
+  
+  // Edit state
+  const [editingPlan, setEditingPlan] = useState<StripePlan | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editName, setEditName] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editActive, setEditActive] = useState(true);
+  const [isUpdating, setIsUpdating] = useState(false);
+  
+  // Price edit state
+  const [priceDialogOpen, setPriceDialogOpen] = useState(false);
+  const [editingPriceProduct, setEditingPriceProduct] = useState<StripePlan | null>(null);
+  const [newPriceAmount, setNewPriceAmount] = useState("");
+  const [newPriceCurrency, setNewPriceCurrency] = useState("brl");
+  const [newPriceInterval, setNewPriceInterval] = useState("month");
+  const [deactivateOldPrice, setDeactivateOldPrice] = useState(true);
+  const [isCreatingPrice, setIsCreatingPrice] = useState(false);
 
   // Form state
   const [name, setName] = useState("");
@@ -262,6 +279,125 @@ export default function AdminPlans() {
       year: "Anual",
     };
     return labels[interval] || interval;
+  };
+
+  const openEditDialog = (plan: StripePlan) => {
+    setEditingPlan(plan);
+    setEditName(plan.name);
+    setEditDescription(plan.description || "");
+    setEditActive(plan.active);
+    setEditDialogOpen(true);
+  };
+
+  const handleUpdateProduct = async () => {
+    if (!editingPlan) return;
+    
+    setIsUpdating(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sessão expirada");
+        return;
+      }
+
+      const { data, error } = await supabase.functions.invoke("update-stripe-product", {
+        body: {
+          productId: editingPlan.id,
+          name: editName,
+          description: editDescription,
+          active: editActive,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Plano atualizado com sucesso!");
+      
+      await logAdminAction(
+        session.user.id,
+        "stripe_product_updated",
+        `Plano "${editName}" atualizado no Stripe`,
+        { name: editingPlan.name, description: editingPlan.description, active: editingPlan.active },
+        { name: editName, description: editDescription, active: editActive }
+      );
+
+      setEditDialogOpen(false);
+      fetchPlans();
+    } catch (error: any) {
+      console.error("Error updating product:", error);
+      toast.error(error.message || "Erro ao atualizar plano");
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const openPriceDialog = (plan: StripePlan) => {
+    setEditingPriceProduct(plan);
+    const currentPrice = plan.prices[0];
+    if (currentPrice) {
+      setNewPriceAmount(((currentPrice.unit_amount || 0) / 100).toString());
+      setNewPriceCurrency(currentPrice.currency);
+      setNewPriceInterval(currentPrice.recurring?.interval || "month");
+    }
+    setPriceDialogOpen(true);
+  };
+
+  const handleCreateNewPrice = async () => {
+    if (!editingPriceProduct) return;
+    
+    const amount = parseFloat(newPriceAmount);
+    if (isNaN(amount) || amount <= 0) {
+      toast.error("Valor inválido");
+      return;
+    }
+
+    setIsCreatingPrice(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Sessão expirada");
+        return;
+      }
+
+      const oldPriceId = editingPriceProduct.prices[0]?.id;
+
+      const { data, error } = await supabase.functions.invoke("create-stripe-price", {
+        body: {
+          productId: editingPriceProduct.id,
+          amount,
+          currency: newPriceCurrency,
+          interval: newPriceInterval === "one_time" ? null : newPriceInterval,
+          deactivateOldPrice,
+          oldPriceId: deactivateOldPrice ? oldPriceId : null,
+        },
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+      });
+
+      if (error) throw error;
+
+      toast.success("Novo preço criado com sucesso!");
+      
+      await logAdminAction(
+        session.user.id,
+        "stripe_price_created",
+        `Novo preço criado para "${editingPriceProduct.name}"`,
+        null,
+        { amount, currency: newPriceCurrency, interval: newPriceInterval }
+      );
+
+      setPriceDialogOpen(false);
+      fetchPlans();
+    } catch (error: any) {
+      console.error("Error creating price:", error);
+      toast.error(error.message || "Erro ao criar preço");
+    } finally {
+      setIsCreatingPrice(false);
+    }
   };
 
   return (
@@ -606,7 +742,7 @@ export default function AdminPlans() {
             <Card key={plan.id} className="relative">
               <CardHeader>
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1 min-w-0">
                     <CardTitle className="text-lg">{plan.name}</CardTitle>
                     {plan.description && (
                       <CardDescription className="mt-1">
@@ -614,9 +750,19 @@ export default function AdminPlans() {
                       </CardDescription>
                     )}
                   </div>
-                  <Badge variant={plan.active ? "default" : "secondary"}>
-                    {plan.active ? "Ativo" : "Inativo"}
-                  </Badge>
+                  <div className="flex items-center gap-2 ml-2">
+                    <Badge variant={plan.active ? "default" : "secondary"}>
+                      {plan.active ? "Ativo" : "Inativo"}
+                    </Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8 w-8 p-0"
+                      onClick={() => openEditDialog(plan)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -637,7 +783,18 @@ export default function AdminPlans() {
 
                 {plan.prices.length > 0 && (
                   <div className="space-y-2">
-                    <p className="text-sm font-medium">Preços:</p>
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-medium">Preços:</p>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-xs"
+                        onClick={() => openPriceDialog(plan)}
+                      >
+                        <Pencil className="w-3 h-3 mr-1" />
+                        Alterar
+                      </Button>
+                    </div>
                     {plan.prices.map((price) => (
                       <div
                         key={price.id}
@@ -668,6 +825,159 @@ export default function AdminPlans() {
           ))}
         </div>
       )}
+
+      {/* Dialog para Editar Produto */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Plano</DialogTitle>
+            <DialogDescription>
+              As alterações serão aplicadas diretamente no Stripe
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="editName">Nome do Plano</Label>
+              <Input
+                id="editName"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                placeholder="Nome do plano"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="editDescription">Descrição</Label>
+              <Textarea
+                id="editDescription"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="Descrição do plano..."
+                rows={3}
+              />
+            </div>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="editActive">Status do Plano</Label>
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">
+                  {editActive ? "Ativo" : "Inativo"}
+                </span>
+                <Button
+                  type="button"
+                  variant={editActive ? "default" : "secondary"}
+                  size="sm"
+                  onClick={() => setEditActive(!editActive)}
+                >
+                  {editActive ? "Desativar" : "Ativar"}
+                </Button>
+              </div>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setEditDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleUpdateProduct} disabled={isUpdating}>
+                {isUpdating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Salvar Alterações
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog para Alterar Preço */}
+      <Dialog open={priceDialogOpen} onOpenChange={setPriceDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Alterar Preço</DialogTitle>
+            <DialogDescription>
+              No Stripe, preços não podem ser editados. Um novo preço será criado e o antigo pode ser desativado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {editingPriceProduct && (
+              <div className="bg-muted/50 rounded-lg p-3">
+                <p className="text-sm font-medium">{editingPriceProduct.name}</p>
+                {editingPriceProduct.prices[0] && (
+                  <p className="text-xs text-muted-foreground">
+                    Preço atual: {formatPrice(editingPriceProduct.prices[0].unit_amount, editingPriceProduct.prices[0].currency)}
+                  </p>
+                )}
+              </div>
+            )}
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="newPriceAmount">Novo Preço *</Label>
+                <Input
+                  id="newPriceAmount"
+                  type="number"
+                  step="0.01"
+                  min="0.01"
+                  value={newPriceAmount}
+                  onChange={(e) => setNewPriceAmount(e.target.value)}
+                  placeholder="29.90"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="newPriceCurrency">Moeda</Label>
+                <Select value={newPriceCurrency} onValueChange={setNewPriceCurrency}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="brl">BRL (R$)</SelectItem>
+                    <SelectItem value="usd">USD ($)</SelectItem>
+                    <SelectItem value="eur">EUR (€)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="newPriceInterval">Intervalo de Cobrança</Label>
+              <Select value={newPriceInterval} onValueChange={setNewPriceInterval}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="month">Mensal</SelectItem>
+                  <SelectItem value="year">Anual</SelectItem>
+                  <SelectItem value="week">Semanal</SelectItem>
+                  <SelectItem value="day">Diário</SelectItem>
+                  <SelectItem value="one_time">Pagamento Único</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-amber-500/10 rounded-lg border border-amber-500/20">
+              <input
+                type="checkbox"
+                id="deactivateOldPrice"
+                checked={deactivateOldPrice}
+                onChange={(e) => setDeactivateOldPrice(e.target.checked)}
+                className="rounded"
+              />
+              <Label htmlFor="deactivateOldPrice" className="text-sm cursor-pointer">
+                Desativar preço antigo após criar o novo
+              </Label>
+            </div>
+            <div className="flex justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setPriceDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button onClick={handleCreateNewPrice} disabled={isCreatingPrice}>
+                {isCreatingPrice && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                Criar Novo Preço
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

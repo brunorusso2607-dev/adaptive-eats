@@ -23,3 +23,9 @@ verify_jwt = false
 
 [functions.list-stripe-plans]
 verify_jwt = false
+
+[functions.update-stripe-product]
+verify_jwt = false
+
+[functions.create-stripe-price]
+verify_jwt = false

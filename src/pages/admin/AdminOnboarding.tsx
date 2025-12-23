@@ -174,9 +174,6 @@ const CATEGORIES: CategoryInfo[] = [
   { key: "intolerances", label: "Intolerâncias", icon: Wheat, description: "Restrições alimentares dos usuários" },
   { key: "dietary_preferences", label: "Preferências Alimentares", icon: Utensils, description: "Tipos de dieta" },
   { key: "goals", label: "Objetivos", icon: Target, description: "Metas de peso" },
-  { key: "calorie_goals", label: "Meta de Calorias", icon: Flame, description: "Controle calórico" },
-  { key: "complexity", label: "Complexidade de Receitas", icon: Clock, description: "Tempo de preparo" },
-  { key: "context", label: "Contexto", icon: Users, description: "Para quem cozinha" },
 ];
 
 export default function AdminOnboarding() {

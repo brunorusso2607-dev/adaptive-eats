@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, ArrowRight, ArrowLeft, Check, Loader2 } from "lucide-react";
+import { ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -360,16 +360,31 @@ export default function Onboarding() {
     }
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Logout realizado com sucesso!");
+    navigate("/auth");
+  };
+
   return (
     <div className="min-h-screen gradient-hero flex flex-col">
       {/* Header */}
-      <header className="p-4">
+      <header className="p-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-glow">
             <ChefHat className="w-6 h-6 text-primary-foreground" />
           </div>
           <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
         </div>
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={handleLogout}
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Sair
+        </Button>
       </header>
 
       {/* Progress */}

@@ -21,6 +21,7 @@ import AdminPromptSimulator from "./pages/admin/AdminPromptSimulator";
 import AdminAIErrorLogs from "./pages/admin/AdminAIErrorLogs";
 import AdminPixels from "./pages/admin/AdminPixels";
 import AdminAppearance from "./pages/admin/AdminAppearance";
+import AdminWebhooks from "./pages/admin/AdminWebhooks";
 
 const queryClient = new QueryClient();
 
@@ -52,6 +53,7 @@ function AppContent() {
           <Route path="prompt-simulator" element={<AdminPromptSimulator />} />
           <Route path="pixels" element={<AdminPixels />} />
           <Route path="appearance" element={<AdminAppearance />} />
+          <Route path="webhooks" element={<AdminWebhooks />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

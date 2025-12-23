@@ -40,7 +40,57 @@ import {
   Clock,
   Users,
   Sparkles,
+  Milk,
+  Nut,
+  Fish,
+  Egg,
+  Bean,
+  Check,
+  Leaf,
+  Salad,
+  Scale,
+  TrendingDown,
+  TrendingUp,
+  ArrowDown,
+  ArrowUp,
+  Timer,
+  ChefHat,
+  User,
+  Baby,
+  Zap,
+  Minus,
+  type LucideIcon,
 } from "lucide-react";
+
+// Mapeamento de nomes de ícones para componentes Lucide
+const LUCIDE_ICONS: Record<string, LucideIcon> = {
+  wheat: Wheat,
+  milk: Milk,
+  nut: Nut,
+  fish: Fish,
+  egg: Egg,
+  bean: Bean,
+  check: Check,
+  utensils: Utensils,
+  salad: Salad,
+  leaf: Leaf,
+  beef: Flame,
+  "trending-down": TrendingDown,
+  "trending-up": TrendingUp,
+  scale: Scale,
+  minus: Minus,
+  "arrow-down": ArrowDown,
+  "arrow-up": ArrowUp,
+  clock: Clock,
+  zap: Zap,
+  timer: Timer,
+  "chef-hat": ChefHat,
+  user: User,
+  users: Users,
+  baby: Baby,
+  flame: Flame,
+  target: Target,
+};
 
 type OnboardingOption = {
   id: string;
@@ -49,6 +99,7 @@ type OnboardingOption = {
   label: string;
   description: string | null;
   emoji: string | null;
+  icon_name: string | null;
   is_active: boolean;
   sort_order: number;
   created_at: string;
@@ -85,6 +136,7 @@ export default function AdminOnboarding() {
     label: "",
     description: "",
     emoji: "",
+    icon_name: "",
     is_active: true,
     sort_order: 0,
   });
@@ -174,6 +226,7 @@ export default function AdminOnboarding() {
           label: data.label,
           description: data.description || null,
           emoji: data.emoji || null,
+          icon_name: data.icon_name || null,
           is_active: data.is_active,
           sort_order: data.sort_order,
         });
@@ -200,6 +253,7 @@ export default function AdminOnboarding() {
           label: data.label,
           description: data.description || null,
           emoji: data.emoji || null,
+          icon_name: data.icon_name || null,
           is_active: data.is_active,
           sort_order: data.sort_order,
         })
@@ -262,6 +316,7 @@ export default function AdminOnboarding() {
       label: "",
       description: "",
       emoji: "",
+      icon_name: "",
       is_active: true,
       sort_order: 0,
     });
@@ -274,6 +329,7 @@ export default function AdminOnboarding() {
       label: option.label,
       description: option.description || "",
       emoji: option.emoji || "",
+      icon_name: option.icon_name || "",
       is_active: option.is_active,
       sort_order: option.sort_order,
     });
@@ -382,8 +438,15 @@ export default function AdminOnboarding() {
                       >
                         <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
                         
-                        <div className="text-2xl w-10 text-center">
-                          {option.emoji || "📌"}
+                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
+                          {option.icon_name && LUCIDE_ICONS[option.icon_name] ? (
+                            (() => {
+                              const IconComponent = LUCIDE_ICONS[option.icon_name];
+                              return <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />;
+                            })()
+                          ) : (
+                            <span className="text-lg">{option.emoji || "•"}</span>
+                          )}
                         </div>
                         
                         <div className="flex-1 min-w-0">
@@ -509,6 +572,19 @@ export default function AdminOnboarding() {
                   )}
                 </Button>
               </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="icon_name">Nome do Ícone Lucide</Label>
+              <Input
+                id="icon_name"
+                value={formData.icon_name}
+                onChange={(e) => setFormData({ ...formData, icon_name: e.target.value })}
+                placeholder="wheat, milk, egg, leaf, etc."
+              />
+              <p className="text-xs text-muted-foreground">
+                Nomes disponíveis: wheat, milk, nut, fish, egg, bean, check, utensils, salad, leaf, trending-down, trending-up, scale, clock, zap, timer, chef-hat, user, users, baby
+              </p>
             </div>
 
             <div className="space-y-2">

@@ -405,6 +405,45 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_options: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          is_active: boolean
+          label: string
+          option_id: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          category: string
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          label: string
+          option_id: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          label?: string
+          option_id?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           activity_level: string | null

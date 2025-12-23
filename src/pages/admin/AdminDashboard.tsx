@@ -21,6 +21,7 @@ import {
   LogOut,
   Settings,
   Plug,
+  FileText,
   Webhook,
   Sparkles
 } from "lucide-react";
@@ -57,6 +58,13 @@ const mainMenuItems: SubMenuItem[] = [
         path: "/admin/system-users",
         label: "Usuários", 
         icon: Users,
+      },
+      { 
+        label: "Páginas", 
+        icon: FileText,
+        subItems: [
+          { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
+        ],
       },
       { 
         label: "Integrações", 

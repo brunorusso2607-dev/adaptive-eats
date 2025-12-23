@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
-export type MealStatus = "on_time" | "delayed" | "critical" | "completed";
+export type MealStatus = "on_time" | "delayed" | "critical" | "completed" | "upcoming";
 
 export type NextMealData = {
   id: string;
@@ -23,7 +23,7 @@ export type NextMealData = {
 };
 
 // Mapeamento de horários para cada refeição (em português para compatibilidade com o banco)
-const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
+export const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
   cafe_manha: { start: 6, end: 10 },
   almoco: { start: 10, end: 14 },
   lanche: { start: 14, end: 17 },
@@ -74,9 +74,15 @@ function getMealStatus(mealType: string, completedAt: string | null): MealStatus
   const range = MEAL_TIME_RANGES[mealType];
   if (!range) return "on_time";
   
+  const startTimeInMinutes = range.start * 60;
   const endTimeInMinutes = range.end * 60;
   const delayedThreshold = endTimeInMinutes + 30; // 30 min após o fim
   const criticalThreshold = endTimeInMinutes + 60; // 1 hora após o fim
+  
+  // Se ainda não chegou na hora de início, está "upcoming"
+  if (currentTimeInMinutes < startTimeInMinutes) {
+    return "upcoming";
+  }
   
   if (currentTimeInMinutes >= criticalThreshold) {
     return "critical";
@@ -102,6 +108,25 @@ function getMinutesOverdue(mealType: string): number {
   
   if (currentTimeInMinutes > endTimeInMinutes) {
     return currentTimeInMinutes - endTimeInMinutes;
+  }
+  
+  return 0;
+}
+
+// Calcula minutos até o início da refeição
+export function getMinutesUntilStart(mealType: string): number {
+  const now = new Date();
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+  const currentTimeInMinutes = hour * 60 + minutes;
+  
+  const range = MEAL_TIME_RANGES[mealType];
+  if (!range) return 0;
+  
+  const startTimeInMinutes = range.start * 60;
+  
+  if (currentTimeInMinutes < startTimeInMinutes) {
+    return startTimeInMinutes - currentTimeInMinutes;
   }
   
   return 0;

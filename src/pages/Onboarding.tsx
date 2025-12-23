@@ -3,11 +3,13 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { 
   ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut,
   Wheat, Milk, Nut, Fish, Egg, Bean, CircleSlash, Leaf, Salad, 
   Scale, TrendingDown, TrendingUp, Minus, Clock, Flame, Timer,
-  User, Users, Baby, type LucideIcon
+  User, Users, Baby, type LucideIcon, X, Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -80,12 +82,14 @@ const getIcon = (option: { option_id: string; icon_name?: string | null }): Luci
 const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
   { id: 2, title: "Preferência", description: "Qual sua preferência alimentar?" },
-  { id: 3, title: "Objetivo", description: "Qual seu objetivo?" },
+  { id: 3, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
+  { id: 4, title: "Objetivo", description: "Qual seu objetivo?" },
 ];
 
 type ProfileData = {
   intolerances: string[];
   dietary_preference: string;
+  excluded_ingredients: string[];
   goal: string;
 };
 
@@ -96,8 +100,10 @@ export default function Onboarding() {
   const [profile, setProfile] = useState<ProfileData>({
     intolerances: [],
     dietary_preference: "comum",
+    excluded_ingredients: [],
     goal: "manter",
   });
+  const [ingredientInput, setIngredientInput] = useState("");
 
   const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
 
@@ -140,7 +146,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 3) {
+    if (currentStep < 4) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -168,6 +174,7 @@ export default function Onboarding() {
         .update({
           intolerances: profile.intolerances,
           dietary_preference: profile.dietary_preference as any,
+          excluded_ingredients: profile.excluded_ingredients,
           goal: profile.goal as any,
           onboarding_completed: true,
         })
@@ -266,6 +273,87 @@ export default function Onboarding() {
         );
 
       case 3:
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Adicione alimentos específicos que você não consome (opcional). Isso nos ajuda a criar receitas personalizadas.
+            </p>
+            
+            {/* Input para adicionar ingredientes */}
+            <div className="flex gap-2">
+              <Input
+                placeholder="Ex: fígado, beterraba, jiló..."
+                value={ingredientInput}
+                onChange={(e) => setIngredientInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && ingredientInput.trim()) {
+                    e.preventDefault();
+                    const ingredient = ingredientInput.trim().toLowerCase();
+                    if (!profile.excluded_ingredients.includes(ingredient)) {
+                      setProfile({
+                        ...profile,
+                        excluded_ingredients: [...profile.excluded_ingredients, ingredient]
+                      });
+                    }
+                    setIngredientInput("");
+                  }
+                }}
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                onClick={() => {
+                  if (ingredientInput.trim()) {
+                    const ingredient = ingredientInput.trim().toLowerCase();
+                    if (!profile.excluded_ingredients.includes(ingredient)) {
+                      setProfile({
+                        ...profile,
+                        excluded_ingredients: [...profile.excluded_ingredients, ingredient]
+                      });
+                    }
+                    setIngredientInput("");
+                  }
+                }}
+              >
+                <Plus className="w-4 h-4" />
+              </Button>
+            </div>
+
+            {/* Lista de ingredientes adicionados */}
+            {profile.excluded_ingredients.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {profile.excluded_ingredients.map((ingredient) => (
+                  <Badge
+                    key={ingredient}
+                    variant="secondary"
+                    className="pl-3 pr-1.5 py-1.5 flex items-center gap-1.5"
+                  >
+                    <span className="capitalize">{ingredient}</span>
+                    <button
+                      onClick={() => setProfile({
+                        ...profile,
+                        excluded_ingredients: profile.excluded_ingredients.filter(i => i !== ingredient)
+                      })}
+                      className="hover:bg-muted rounded-full p-0.5"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </Badge>
+                ))}
+              </div>
+            )}
+
+            {profile.excluded_ingredients.length === 0 && (
+              <p className="text-xs text-muted-foreground/60 text-center py-4">
+                Nenhum alimento adicionado. Você pode pular esta etapa se quiser.
+              </p>
+            )}
+          </div>
+        );
+
+      case 4:
         return (
           <div className="space-y-3">
             {options.goals.map((item) => {
@@ -383,11 +471,11 @@ export default function Onboarding() {
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === 3 ? (
+          ) : currentStep === 4 ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === 3 ? "Concluir" : "Próximo"}
-          {currentStep < 3 && <ArrowRight className="w-4 h-4 ml-2" />}
+          {currentStep === 4 ? "Concluir" : "Próximo"}
+          {currentStep < 4 && <ArrowRight className="w-4 h-4 ml-2" />}
         </Button>
       </footer>
     </div>

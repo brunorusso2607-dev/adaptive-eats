@@ -11,14 +11,19 @@ export type MealStatusColor = {
   sort_order: number;
 };
 
+// Fallback colors for immediate use while loading
+const FALLBACK_COLORS: MealStatusColor[] = [
+  { id: '1', status_key: 'on_time', label: 'No horário', background_color: 'rgba(34, 197, 94, 0.1)', text_color: 'rgba(34, 197, 94, 1)', border_color: 'rgba(34, 197, 94, 0.3)', sort_order: 1 },
+  { id: '2', status_key: 'alert', label: 'Em alerta', background_color: 'rgba(251, 191, 36, 0.1)', text_color: 'rgba(217, 119, 6, 1)', border_color: 'rgba(251, 191, 36, 0.3)', sort_order: 2 },
+  { id: '3', status_key: 'late', label: 'Atrasado', background_color: 'rgba(239, 68, 68, 0.1)', text_color: 'rgba(239, 68, 68, 1)', border_color: 'rgba(239, 68, 68, 0.3)', sort_order: 3 },
+];
+
 export function useMealStatusColors() {
-  const [colors, setColors] = useState<MealStatusColor[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [colors, setColors] = useState<MealStatusColor[]>(FALLBACK_COLORS);
+  const [isLoading, setIsLoading] = useState(false); // Start as false to avoid early returns
 
   const fetchColors = useCallback(async () => {
     try {
-      setIsLoading(true);
-      
       const { data, error } = await supabase
         .from("meal_status_colors")
         .select("*")
@@ -26,23 +31,20 @@ export function useMealStatusColors() {
 
       if (error) throw error;
 
-      const formattedData: MealStatusColor[] = (data || []).map(item => ({
-        id: item.id,
-        status_key: item.status_key,
-        label: item.label,
-        background_color: item.background_color,
-        text_color: item.text_color,
-        border_color: item.border_color,
-        sort_order: item.sort_order,
-      }));
-
-      setColors(formattedData);
-      return formattedData;
+      if (data && data.length > 0) {
+        const formattedData: MealStatusColor[] = data.map(item => ({
+          id: item.id,
+          status_key: item.status_key,
+          label: item.label,
+          background_color: item.background_color,
+          text_color: item.text_color,
+          border_color: item.border_color,
+          sort_order: item.sort_order,
+        }));
+        setColors(formattedData);
+      }
     } catch (error) {
       console.error("Error fetching meal status colors:", error);
-      return [];
-    } finally {
-      setIsLoading(false);
     }
   }, []);
 

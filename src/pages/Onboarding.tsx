@@ -152,10 +152,10 @@ export default function Onboarding() {
                 key={item.option_id}
                 onClick={() => toggleIntolerance(item.option_id)}
                 className={cn(
-                  "p-4 rounded-xl border-2 text-left transition-all",
+                  "p-4 rounded-xl border text-left transition-all",
                   profile.intolerances.includes(item.option_id)
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 hover:border-primary/50 bg-card"
                 )}
               >
                 <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
@@ -173,10 +173,10 @@ export default function Onboarding() {
                 key={item.option_id}
                 onClick={() => setProfile({ ...profile, dietary_preference: item.option_id })}
                 className={cn(
-                  "p-4 rounded-xl border-2 text-left transition-all",
+                  "p-4 rounded-xl border text-left transition-all",
                   profile.dietary_preference === item.option_id
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 hover:border-primary/50 bg-card"
                 )}
               >
                 <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
@@ -197,10 +197,10 @@ export default function Onboarding() {
                 key={item.option_id}
                 onClick={() => setProfile({ ...profile, goal: item.option_id })}
                 className={cn(
-                  "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4",
+                  "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
                   profile.goal === item.option_id
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 hover:border-primary/50 bg-card"
                 )}
               >
                 <span className="text-3xl">{item.emoji || "📌"}</span>
@@ -223,10 +223,10 @@ export default function Onboarding() {
                 key={item.option_id}
                 onClick={() => setProfile({ ...profile, calorie_goal: item.option_id })}
                 className={cn(
-                  "p-4 rounded-xl border-2 text-left transition-all",
+                  "p-4 rounded-xl border text-left transition-all",
                   profile.calorie_goal === item.option_id
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 hover:border-primary/50 bg-card"
                 )}
               >
                 <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
@@ -247,10 +247,10 @@ export default function Onboarding() {
                 key={item.option_id}
                 onClick={() => setProfile({ ...profile, recipe_complexity: item.option_id })}
                 className={cn(
-                  "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4",
+                  "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
                   profile.recipe_complexity === item.option_id
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 hover:border-primary/50 bg-card"
                 )}
               >
                 <span className="text-3xl">{item.emoji || "📌"}</span>
@@ -273,10 +273,10 @@ export default function Onboarding() {
                 key={item.option_id}
                 onClick={() => setProfile({ ...profile, context: item.option_id })}
                 className={cn(
-                  "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4",
+                  "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
                   profile.context === item.option_id
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/50"
+                    ? "border-primary bg-primary/5"
+                    : "border-border/80 hover:border-primary/50 bg-card"
                 )}
               >
                 <span className="text-3xl">{item.emoji || "📌"}</span>
@@ -294,42 +294,42 @@ export default function Onboarding() {
       case 7:
         return (
           <div className="space-y-4">
-            <div className="space-y-3">
-              <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <span className="text-muted-foreground">Intolerâncias</span>
-                <span className="font-medium text-right max-w-[60%]">
+            <div className="space-y-2">
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                <span className="text-sm text-muted-foreground">Intolerâncias</span>
+                <span className="font-medium text-sm text-right max-w-[60%]">
                   {profile.intolerances.length === 0 
                     ? "Nenhuma" 
                     : profile.intolerances.map(i => getLabel("intolerances", i)).join(", ")}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <span className="text-muted-foreground">Preferência</span>
-                <span className="font-medium">
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                <span className="text-sm text-muted-foreground">Preferência</span>
+                <span className="font-medium text-sm">
                   {getLabel("dietary_preferences", profile.dietary_preference)}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <span className="text-muted-foreground">Objetivo</span>
-                <span className="font-medium">
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                <span className="text-sm text-muted-foreground">Objetivo</span>
+                <span className="font-medium text-sm">
                   {getLabel("goals", profile.goal)}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <span className="text-muted-foreground">Meta Calórica</span>
-                <span className="font-medium">
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                <span className="text-sm text-muted-foreground">Meta Calórica</span>
+                <span className="font-medium text-sm">
                   {getLabel("calorie_goals", profile.calorie_goal)}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <span className="text-muted-foreground">Tipo de Receitas</span>
-                <span className="font-medium">
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                <span className="text-sm text-muted-foreground">Tipo de Receitas</span>
+                <span className="font-medium text-sm">
                   {getLabel("complexity", profile.recipe_complexity)}
                 </span>
               </div>
-              <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
-                <span className="text-muted-foreground">Contexto</span>
-                <span className="font-medium">
+              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
+                <span className="text-sm text-muted-foreground">Contexto</span>
+                <span className="font-medium text-sm">
                   {getLabel("context", profile.context)}
                 </span>
               </div>
@@ -349,14 +349,14 @@ export default function Onboarding() {
   };
 
   return (
-    <div className="min-h-screen gradient-hero flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="p-4 flex items-center justify-between">
+      <header className="p-5 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center shadow-glow">
-            <ChefHat className="w-6 h-6 text-primary-foreground" />
+          <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
+            <ChefHat className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-display text-xl font-bold text-foreground">ReceitAI</span>
+          <span className="text-lg font-semibold text-foreground tracking-tight">ReceitAI</span>
         </div>
         <Button 
           variant="ghost" 
@@ -370,31 +370,31 @@ export default function Onboarding() {
       </header>
 
       {/* Progress */}
-      <div className="px-4 py-2">
-        <div className="flex gap-1">
+      <div className="px-5 py-3">
+        <div className="flex gap-1.5">
           {STEPS.map((step) => (
             <div
               key={step.id}
               className={cn(
-                "h-1.5 flex-1 rounded-full transition-all",
+                "h-1 flex-1 rounded-full transition-all",
                 step.id <= currentStep ? "bg-primary" : "bg-muted"
               )}
             />
           ))}
         </div>
-        <p className="text-sm text-muted-foreground mt-2">
+        <p className="text-xs text-muted-foreground mt-2">
           Passo {currentStep} de {STEPS.length}
         </p>
       </div>
 
       {/* Content */}
-      <main className="flex-1 px-4 py-4">
-        <Card className="glass-card border-border/50">
+      <main className="flex-1 px-5 py-4">
+        <Card className="bg-card border border-border/50 shadow-sm">
           <CardHeader className="pb-4">
-            <CardTitle className="font-display text-xl">
+            <CardTitle className="text-lg font-semibold tracking-tight">
               {STEPS[currentStep - 1].title}
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-sm">
               {STEPS[currentStep - 1].description}
             </CardDescription>
           </CardHeader>
@@ -405,15 +405,15 @@ export default function Onboarding() {
       </main>
 
       {/* Footer Navigation */}
-      <footer className="p-4 flex gap-3">
+      <footer className="p-5 flex gap-3">
         {currentStep > 1 && (
-          <Button variant="outline" size="lg" onClick={handleBack} className="flex-1">
+          <Button variant="outline" size="lg" onClick={handleBack} className="flex-1 h-12">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Voltar
           </Button>
         )}
         {currentStep < 7 ? (
-          <Button size="lg" onClick={handleNext} className="flex-1 gradient-primary border-0">
+          <Button size="lg" onClick={handleNext} className="flex-1 h-12 bg-primary hover:bg-primary/90">
             Próximo
             <ArrowRight className="w-4 h-4 ml-2" />
           </Button>
@@ -422,7 +422,7 @@ export default function Onboarding() {
             size="lg" 
             onClick={handleComplete} 
             disabled={isLoading}
-            className="flex-1 gradient-primary border-0"
+            className="flex-1 h-12 bg-primary hover:bg-primary/90"
           >
             {isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />

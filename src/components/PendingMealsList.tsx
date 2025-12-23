@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, UtensilsCrossed, Clock, ChevronDown, Flame } from "lucide-react";
+import { Check, UtensilsCrossed, Clock, ChevronDown, Flame, Eye } from "lucide-react";
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import MealDetailSheet from "./MealDetailSheet";
@@ -163,11 +163,12 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
             {/* Link "Visualizar receita" - aparece ANTES do horário da refeição */}
             {!showButtons && (
               <div className="flex justify-end">
-                <button
+              <button
                   onClick={() => setIsRecipeSheetOpen(true)}
-                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                  className="p-2 text-muted-foreground hover:text-primary transition-colors"
+                  aria-label="Visualizar receita"
                 >
-                  Visualizar receita
+                  <Eye className="w-5 h-5" strokeWidth={1.5} />
                 </button>
               </div>
             )}

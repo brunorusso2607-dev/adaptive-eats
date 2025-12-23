@@ -251,18 +251,30 @@ export default function AdminSystemUsers() {
 
   const handleCreate = async () => {
     // Validações
-    if (!createForm.first_name.trim()) {
+    const trimmedFirstName = createForm.first_name.trim();
+    const trimmedLastName = createForm.last_name.trim();
+    const trimmedEmail = createForm.email.trim().toLowerCase();
+    
+    if (!trimmedFirstName) {
       toast.error("O nome é obrigatório");
       return;
     }
-    if (!createForm.last_name.trim()) {
+    if (!trimmedLastName) {
       toast.error("O sobrenome é obrigatório");
       return;
     }
-    if (!createForm.email) {
+    if (!trimmedEmail) {
       toast.error("O e-mail é obrigatório");
       return;
     }
+    
+    // Validação de formato de email
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(trimmedEmail)) {
+      toast.error("Formato de e-mail inválido");
+      return;
+    }
+    
     if (!createForm.password) {
       toast.error("A senha é obrigatória");
       return;
@@ -281,10 +293,10 @@ export default function AdminSystemUsers() {
       // Usar Edge Function para criar admin de forma segura
       const { data, error } = await supabase.functions.invoke("create-admin-user", {
         body: {
-          email: createForm.email,
+          email: trimmedEmail,
           password: createForm.password,
-          first_name: createForm.first_name,
-          last_name: createForm.last_name,
+          first_name: trimmedFirstName,
+          last_name: trimmedLastName,
         },
       });
 

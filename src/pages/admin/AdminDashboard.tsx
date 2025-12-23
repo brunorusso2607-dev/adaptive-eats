@@ -53,9 +53,9 @@ const mainMenuItems: SubMenuItem[] = [
     icon: Settings,
     subItems: [
       { 
+        path: "/admin/system-users",
         label: "Usuários", 
         icon: Users,
-        subItems: [],
       },
       { 
         label: "Integrações", 

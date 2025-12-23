@@ -78,6 +78,7 @@ export default function AdminOnboarding() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteOption, setDeleteOption] = useState<OnboardingOption | null>(null);
   const [isGeneratingEmoji, setIsGeneratingEmoji] = useState(false);
+  const [isGeneratingDescription, setIsGeneratingDescription] = useState(false);
   
   const [formData, setFormData] = useState({
     option_id: "",
@@ -115,6 +116,36 @@ export default function AdminOnboarding() {
       toast.error("Erro ao gerar emoji");
     } finally {
       setIsGeneratingEmoji(false);
+    }
+  };
+
+  const generateDescription = async (label: string) => {
+    if (!label.trim()) return;
+    
+    setIsGeneratingDescription(true);
+    try {
+      console.log("Calling generate-description with label:", label, "category:", selectedCategory);
+      const { data, error } = await supabase.functions.invoke("generate-description", {
+        body: { label, category: selectedCategory },
+      });
+
+      console.log("generate-description response:", { data, error });
+
+      if (error) {
+        console.error("generate-description error:", error);
+        toast.error("Erro ao gerar descrição");
+        return;
+      }
+      
+      if (data?.description) {
+        setFormData(prev => ({ ...prev, description: data.description }));
+        toast.success("Descrição gerada com sucesso!");
+      }
+    } catch (error) {
+      console.error("Error generating description:", error);
+      toast.error("Erro ao gerar descrição");
+    } finally {
+      setIsGeneratingDescription(false);
     }
   };
 
@@ -482,12 +513,29 @@ export default function AdminOnboarding() {
 
             <div className="space-y-2">
               <Label htmlFor="description">Descrição</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                placeholder="Trigo, cevada, centeio"
-              />
+              <div className="flex gap-2">
+                <Input
+                  id="description"
+                  value={formData.description}
+                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                  placeholder="Trigo, cevada, centeio"
+                  className="flex-1"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={() => generateDescription(formData.label)}
+                  disabled={isGeneratingDescription || !formData.label.trim()}
+                  title="Gerar descrição com IA"
+                >
+                  {isGeneratingDescription ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="w-4 h-4" />
+                  )}
+                </Button>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-4">

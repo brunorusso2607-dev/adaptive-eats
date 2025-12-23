@@ -265,6 +265,7 @@ export type UserProfile = {
   dietary_preference?: DietaryPreference | null;
   context?: UserContext | null;
   intolerances?: string[] | null;
+  excluded_ingredients?: string[] | null;
 };
 
 /**

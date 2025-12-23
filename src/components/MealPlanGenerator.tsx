@@ -1,13 +1,14 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Sparkles, ArrowLeft, Calendar, CheckCircle2 } from "lucide-react";
+import { Loader2, Sparkles, ArrowLeft, Calendar, CheckCircle2, Ban } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { Badge } from "@/components/ui/badge";
 
 type MealPlanGeneratorProps = {
   onClose: () => void;
@@ -18,6 +19,27 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [planName, setPlanName] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
+
+  // Fetch user profile to get excluded ingredients
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("excluded_ingredients")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (profile?.excluded_ingredients) {
+        setExcludedIngredients(profile.excluded_ingredients);
+      }
+    };
+    
+    fetchProfile();
+  }, []);
 
   // Calculate remaining days in the current month
   const { remainingDays, monthName, defaultPlanName } = useMemo(() => {
@@ -182,6 +204,32 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           )}
         </CardContent>
       </Card>
+
+      {/* Excluded Ingredients Card */}
+      {excludedIngredients.length > 0 && (
+        <Card className="glass-card border-destructive/30 bg-destructive/5">
+          <CardContent className="p-4">
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-xl bg-destructive/20 flex items-center justify-center shrink-0">
+                <Ban className="w-5 h-5 text-destructive" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-semibold text-foreground">Ingredientes excluídos</h4>
+                <p className="text-xs text-muted-foreground mt-1 mb-2">
+                  Esses ingredientes serão evitados em todas as receitas
+                </p>
+                <div className="flex flex-wrap gap-1.5">
+                  {excludedIngredients.map((item) => (
+                    <Badge key={item} variant="outline" className="text-xs bg-destructive/10 border-destructive/30 text-destructive">
+                      {item}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Info Card */}
       <Card className="glass-card border-emerald-500/30 bg-emerald-500/5">

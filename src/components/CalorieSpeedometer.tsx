@@ -1,21 +1,29 @@
 import { cn } from "@/lib/utils";
-import { Flame, Beef, Wheat, Droplets } from "lucide-react";
+import { Beef, Wheat, Droplets } from "lucide-react";
 import { useEffect, useState } from "react";
 
 interface CalorieSpeedometerProps {
   targetCalories: number;
+  consumedCalories?: number;
   protein: number;
+  consumedProtein?: number;
   carbs: number;
+  consumedCarbs?: number;
   fat: number;
+  consumedFat?: number;
   mode: "lose" | "gain" | "maintain";
   className?: string;
 }
 
 export default function CalorieSpeedometer({
   targetCalories,
+  consumedCalories = 0,
   protein,
+  consumedProtein = 0,
   carbs,
+  consumedCarbs = 0,
   fat,
+  consumedFat = 0,
   mode,
   className,
 }: CalorieSpeedometerProps) {
@@ -32,13 +40,13 @@ export default function CalorieSpeedometer({
     
     const duration = 1000;
     const steps = 25;
-    const increment = targetCalories / steps;
+    const increment = consumedCalories / steps;
     let current = 0;
     
     const interval = setInterval(() => {
       current += increment;
-      if (current >= targetCalories) {
-        setDisplayCalories(targetCalories);
+      if (current >= consumedCalories) {
+        setDisplayCalories(consumedCalories);
         clearInterval(interval);
       } else {
         setDisplayCalories(Math.floor(current));
@@ -46,16 +54,17 @@ export default function CalorieSpeedometer({
     }, duration / steps);
     
     return () => clearInterval(interval);
-  }, [isAnimated, targetCalories]);
+  }, [isAnimated, consumedCalories]);
 
   // Subtle colors based on mode
   const isGaining = mode === "gain";
   const primaryColor = isGaining ? "#3b82f6" : "#22c55e";
   const accentClass = isGaining ? "text-blue-600" : "text-green-600";
 
-  // Calculate arc progress
-  const maxCalories = 3500;
-  const percentage = Math.min((targetCalories / maxCalories) * 100, 100);
+  // Calculate arc progress based on consumed vs target
+  const percentage = targetCalories > 0 
+    ? Math.min((consumedCalories / targetCalories) * 100, 100) 
+    : 0;
   
   // SVG arc calculations - thin stroke
   const radius = 72;
@@ -66,11 +75,14 @@ export default function CalorieSpeedometer({
     ? circumference - (percentage / 100) * circumference 
     : circumference;
 
-  // Calculate macro percentages
-  const totalMacrosCal = (protein * 4) + (carbs * 4) + (fat * 9);
-  const proteinPercent = totalMacrosCal > 0 ? ((protein * 4) / totalMacrosCal) * 100 : 33;
-  const carbsPercent = totalMacrosCal > 0 ? ((carbs * 4) / totalMacrosCal) * 100 : 33;
-  const fatPercent = totalMacrosCal > 0 ? ((fat * 9) / totalMacrosCal) * 100 : 34;
+  // Calculate macro percentages for consumed
+  const consumedMacrosCal = (consumedProtein * 4) + (consumedCarbs * 4) + (consumedFat * 9);
+  const targetMacrosCal = (protein * 4) + (carbs * 4) + (fat * 9);
+  
+  // Show consumed progress against target
+  const proteinPercent = protein > 0 ? Math.min((consumedProtein / protein) * 100, 100) : 0;
+  const carbsPercent = carbs > 0 ? Math.min((consumedCarbs / carbs) * 100, 100) : 0;
+  const fatPercent = fat > 0 ? Math.min((consumedFat / fat) * 100, 100) : 0;
 
   return (
     <div className={cn(
@@ -122,7 +134,9 @@ export default function CalorieSpeedometer({
           <p className={cn("text-3xl font-semibold tracking-tight tabular-nums", accentClass)}>
             {displayCalories.toLocaleString()}
           </p>
-          <p className="text-xs text-muted-foreground font-medium mt-0.5">kcal/dia</p>
+          <p className="text-xs text-muted-foreground font-medium mt-0.5">
+            kcal/dia
+          </p>
         </div>
       </div>
 
@@ -131,28 +145,43 @@ export default function CalorieSpeedometer({
         "w-full mt-2 transition-all duration-500",
         isAnimated ? "opacity-100" : "opacity-0"
       )}>
-        {/* Thin progress bar */}
+        {/* Thin progress bar showing consumed vs target */}
         <div className="h-1 rounded-full overflow-hidden flex bg-border mb-4">
           <div 
-            className="bg-red-400 transition-all duration-700" 
-            style={{ width: isAnimated ? `${proteinPercent}%` : "0%" }} 
-          />
+            className="bg-red-400 transition-all duration-700 relative" 
+            style={{ width: `${100/3}%` }}
+          >
+            <div 
+              className="absolute inset-0 bg-red-600 origin-left transition-all duration-700"
+              style={{ transform: isAnimated ? `scaleX(${proteinPercent / 100})` : "scaleX(0)" }}
+            />
+          </div>
           <div 
-            className="bg-amber-400 transition-all duration-700" 
-            style={{ width: isAnimated ? `${carbsPercent}%` : "0%" }} 
-          />
+            className="bg-amber-400 transition-all duration-700 relative" 
+            style={{ width: `${100/3}%` }}
+          >
+            <div 
+              className="absolute inset-0 bg-amber-600 origin-left transition-all duration-700"
+              style={{ transform: isAnimated ? `scaleX(${carbsPercent / 100})` : "scaleX(0)" }}
+            />
+          </div>
           <div 
-            className="bg-emerald-400 transition-all duration-700" 
-            style={{ width: isAnimated ? `${fatPercent}%` : "0%" }} 
-          />
+            className="bg-emerald-400 transition-all duration-700 relative" 
+            style={{ width: `${100/3}%` }}
+          >
+            <div 
+              className="absolute inset-0 bg-emerald-600 origin-left transition-all duration-700"
+              style={{ transform: isAnimated ? `scaleX(${fatPercent / 100})` : "scaleX(0)" }}
+            />
+          </div>
         </div>
 
-        {/* Horizontal macro metrics */}
+        {/* Horizontal macro metrics - show consumed/target */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-2">
             <Beef className="w-4 h-4 text-red-400" strokeWidth={1.5} />
             <div>
-              <span className="text-sm font-medium text-foreground">{protein}g</span>
+              <span className="text-sm font-medium text-foreground">{consumedProtein}g</span>
               <span className="text-xs text-muted-foreground ml-1">prot</span>
             </div>
           </div>
@@ -160,7 +189,7 @@ export default function CalorieSpeedometer({
           <div className="flex items-center gap-2">
             <Wheat className="w-4 h-4 text-amber-400" strokeWidth={1.5} />
             <div>
-              <span className="text-sm font-medium text-foreground">{carbs}g</span>
+              <span className="text-sm font-medium text-foreground">{consumedCarbs}g</span>
               <span className="text-xs text-muted-foreground ml-1">carb</span>
             </div>
           </div>
@@ -168,7 +197,7 @@ export default function CalorieSpeedometer({
           <div className="flex items-center gap-2">
             <Droplets className="w-4 h-4 text-emerald-400" strokeWidth={1.5} />
             <div>
-              <span className="text-sm font-medium text-foreground">{fat}g</span>
+              <span className="text-sm font-medium text-foreground">{consumedFat}g</span>
               <span className="text-xs text-muted-foreground ml-1">gord</span>
             </div>
           </div>

@@ -158,7 +158,7 @@ export default function AdminDashboard() {
   }
 
   const renderMenuItem = (item: SubMenuItem, depth: number = 0, forMobile: boolean = false) => {
-    const paddingLeft = depth * 12;
+    const paddingLeft = depth * 10;
     const isCollapsed = !forMobile && sidebarCollapsed;
 
     if (item.path) {
@@ -168,10 +168,10 @@ export default function AdminDashboard() {
           to={item.path}
           onClick={() => forMobile && setMobileMenuOpen(false)}
           className={cn(
-            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+            "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-normal transition-all",
             isItemActive(item)
-              ? "bg-foreground text-background"
-              : "text-muted-foreground hover:bg-muted hover:text-foreground",
+              ? "bg-muted text-foreground font-medium"
+              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
             isCollapsed && "justify-center"
           )}
           style={{ paddingLeft: isCollapsed ? undefined : `${12 + paddingLeft}px` }}
@@ -201,22 +201,22 @@ export default function AdminDashboard() {
       <Button
         variant="ghost"
         className={cn(
-          "w-full justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all h-auto",
+          "w-full justify-between px-3 py-2 rounded-lg text-[13px] font-normal transition-all h-auto",
           openMenus.includes(item.label)
-            ? "bg-muted/50 text-foreground"
-            : "text-muted-foreground hover:bg-muted hover:text-foreground",
+            ? "text-foreground"
+            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
           isCollapsed && "justify-center"
         )}
         style={{ paddingLeft: isCollapsed ? undefined : `${12 + paddingLeft}px` }}
       >
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <item.icon className="w-4 h-4 flex-shrink-0" />
           {!isCollapsed && <span>{item.label}</span>}
         </div>
         {!isCollapsed && (
           <ChevronDown
             className={cn(
-              "w-4 h-4 transition-transform duration-200",
+              "w-3.5 h-3.5 transition-transform duration-200 text-muted-foreground",
               openMenus.includes(item.label) && "rotate-180"
             )}
           />
@@ -259,7 +259,7 @@ export default function AdminDashboard() {
     return (
       <>
         {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+        <nav className="flex-1 overflow-y-auto p-2 space-y-0.5">
           {/* Início */}
           {isCollapsed ? (
             <Tooltip delayDuration={0}>
@@ -268,16 +268,16 @@ export default function AdminDashboard() {
                   to="/admin"
                   onClick={() => forMobile && setMobileMenuOpen(false)}
                   className={cn(
-                    "flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    "flex items-center justify-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-normal transition-all",
                     location.pathname === "/admin"
-                      ? "bg-foreground text-background"
-                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      ? "bg-muted text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
                   )}
                 >
-                  <Menu className="w-4 h-4 flex-shrink-0" />
+                  <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
                 </Link>
               </TooltipTrigger>
-              <TooltipContent side="right" className="font-medium">
+              <TooltipContent side="right" className="text-xs">
                 Início
               </TooltipContent>
             </Tooltip>
@@ -286,13 +286,13 @@ export default function AdminDashboard() {
               to="/admin"
               onClick={() => forMobile && setMobileMenuOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                "flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-normal transition-all",
                 location.pathname === "/admin"
-                  ? "bg-foreground text-background"
-                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  ? "bg-muted text-foreground font-medium"
+                  : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
               )}
             >
-              <Menu className="w-4 h-4 flex-shrink-0" />
+              <LayoutDashboard className="w-4 h-4 flex-shrink-0" />
               <span>Início</span>
             </Link>
           )}
@@ -302,7 +302,7 @@ export default function AdminDashboard() {
         </nav>
 
         {/* Sidebar Footer */}
-        <div className="p-3 border-t border-border/50 space-y-2">
+        <div className="p-3 border-t border-border/40 space-y-1">
           {isCollapsed ? (
             <>
               <Tooltip delayDuration={0}>
@@ -311,12 +311,12 @@ export default function AdminDashboard() {
                     variant="ghost"
                     size="sm"
                     onClick={() => navigate("/dashboard")}
-                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                    className="w-full justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
                   >
                     <ArrowLeft className="w-4 h-4 flex-shrink-0" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
+                <TooltipContent side="right" className="text-xs">
                   Voltar ao App
                 </TooltipContent>
               </Tooltip>
@@ -326,12 +326,12 @@ export default function AdminDashboard() {
                     variant="ghost"
                     size="sm"
                     onClick={handleLogout}
-                    className="w-full justify-center text-muted-foreground hover:text-destructive"
+                    className="w-full justify-center text-muted-foreground hover:text-destructive hover:bg-muted/50 rounded-lg"
                   >
                     <LogOut className="w-4 h-4 flex-shrink-0" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
+                <TooltipContent side="right" className="text-xs">
                   Sair
                 </TooltipContent>
               </Tooltip>
@@ -341,12 +341,12 @@ export default function AdminDashboard() {
                     variant="ghost"
                     size="sm"
                     onClick={() => setSidebarCollapsed(false)}
-                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                    className="w-full justify-center text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
                   >
                     <PanelLeft className="w-4 h-4 flex-shrink-0" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
+                <TooltipContent side="right" className="text-xs">
                   Expandir
                 </TooltipContent>
               </Tooltip>
@@ -360,7 +360,7 @@ export default function AdminDashboard() {
                   navigate("/dashboard");
                   forMobile && setMobileMenuOpen(false);
                 }}
-                className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+                className="w-full justify-start gap-2.5 text-[13px] font-normal text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
               >
                 <ArrowLeft className="w-4 h-4 flex-shrink-0" />
                 <span>Voltar ao App</span>
@@ -369,7 +369,7 @@ export default function AdminDashboard() {
                 variant="ghost"
                 size="sm"
                 onClick={handleLogout}
-                className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+                className="w-full justify-start gap-2.5 text-[13px] font-normal text-muted-foreground hover:text-destructive hover:bg-muted/50 rounded-lg"
               >
                 <LogOut className="w-4 h-4 flex-shrink-0" />
                 <span>Sair</span>
@@ -379,7 +379,7 @@ export default function AdminDashboard() {
                   variant="ghost"
                   size="sm"
                   onClick={() => setSidebarCollapsed(true)}
-                  className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+                  className="w-full justify-start gap-2.5 text-[13px] font-normal text-muted-foreground hover:text-foreground hover:bg-muted/50 rounded-lg"
                 >
                   <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
                   <span>Recolher</span>
@@ -454,25 +454,22 @@ export default function AdminDashboard() {
 
   // Desktop Layout
   return (
-    <div className="min-h-screen gradient-hero flex">
-      {/* Desktop Sidebar */}
+    <div className="min-h-screen bg-background flex">
+      {/* Desktop Sidebar - Clean white like reference */}
       <aside
         className={cn(
-          "fixed left-0 top-0 h-full bg-card/80 backdrop-blur-xl border-r border-border/50 z-50 transition-all duration-300 flex flex-col",
-          sidebarCollapsed ? "w-16" : "w-64"
+          "fixed left-0 top-0 h-full bg-card border-r border-border/40 z-50 transition-all duration-300 flex flex-col",
+          sidebarCollapsed ? "w-16" : "w-56"
         )}
       >
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-foreground rounded-xl flex items-center justify-center flex-shrink-0">
-              <Shield className="w-6 h-6 text-background" />
+        {/* Sidebar Header - Minimal */}
+        <div className="p-4 border-b border-border/40">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center flex-shrink-0">
+              <Shield className="w-4 h-4 text-background" />
             </div>
             {!sidebarCollapsed && (
-              <div className="overflow-hidden">
-                <h1 className="font-display text-lg font-bold text-foreground truncate">Painel Admin</h1>
-                <p className="text-xs text-muted-foreground truncate">Gerenciamento</p>
-              </div>
+              <span className="font-medium text-foreground text-sm">Admin</span>
             )}
           </div>
         </div>
@@ -480,14 +477,14 @@ export default function AdminDashboard() {
         <SidebarContent />
       </aside>
 
-      {/* Main Content */}
+      {/* Main Content - Clean background */}
       <main
         className={cn(
-          "flex-1 transition-all duration-300",
-          sidebarCollapsed ? "ml-16" : "ml-64"
+          "flex-1 transition-all duration-300 bg-muted/30",
+          sidebarCollapsed ? "ml-16" : "ml-56"
         )}
       >
-        <div className="p-6">
+        <div className="p-8">
           <Outlet />
         </div>
       </main>

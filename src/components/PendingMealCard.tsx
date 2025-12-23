@@ -39,6 +39,9 @@ interface PendingMealCardProps {
   onSkip: (mealId: string) => Promise<boolean>;
   onRefetch: () => void;
   onStreakRefresh?: () => void;
+  compact?: boolean;
+  status?: MealStatus;
+  minutesOverdue?: number;
 }
 
 const statusStyles: Record<MealStatus, { border: string; bg: string }> = {
@@ -75,7 +78,10 @@ export default function PendingMealCard({
   onMarkComplete, 
   onSkip,
   onRefetch,
-  onStreakRefresh
+  onStreakRefresh,
+  compact = false,
+  status: externalStatus,
+  minutesOverdue: externalMinutesOverdue
 }: PendingMealCardProps) {
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
@@ -85,8 +91,9 @@ export default function PendingMealCard({
 
   const { saveConsumption } = useMealConsumption();
 
-  const mealStatus = getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
-  const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.actual_date);
+  // Use external status/minutes if provided, otherwise calculate
+  const mealStatus = externalStatus || getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
+  const minutesOverdueValue = externalMinutesOverdue ?? getMinutesOverdue(meal.meal_type, meal.actual_date);
   const mealLabel = MEAL_LABELS[meal.meal_type] || meal.meal_type;
   
   // Get day abbreviation and formatted date (day/month)
@@ -169,6 +176,106 @@ export default function PendingMealCard({
     return `${minutes}min atrás`;
   };
 
+  // Modo compact: apenas as ações (para uso dentro de outro card)
+  if (compact) {
+    return (
+      <>
+        <TooltipProvider delayDuration={300}>
+          <div className="flex items-center gap-2">
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9"
+                  onClick={handleViewRecipe}
+                  disabled={isMarking || isSkipping}
+                >
+                  <Eye className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Ver receita</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  variant="outline"
+                  className="h-9 w-9"
+                  onClick={handleTrocarClick}
+                  disabled={isMarking || isSkipping}
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Trocar refeição</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  size="icon"
+                  className="h-9 w-9 bg-emerald-500 hover:bg-emerald-600 border-0"
+                  onClick={handleFizClick}
+                  disabled={isMarking || isSkipping}
+                >
+                  {isMarking ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white" />
+                  ) : (
+                    <Check className="w-4 h-4 text-white" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Marcar como feita</p>
+              </TooltipContent>
+            </Tooltip>
+
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors px-2 h-9 flex items-center disabled:opacity-50"
+              onClick={handleSkip}
+              disabled={isMarking || isSkipping}
+            >
+              {isSkipping ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "Pular"
+              )}
+            </button>
+          </div>
+        </TooltipProvider>
+
+        {/* Dialogs and Sheets */}
+        <MealConfirmDialog
+          open={showConfirmDialog}
+          onOpenChange={setShowConfirmDialog}
+          mealName={meal.recipe_name}
+          onConfirmAsPlanned={handleConfirmAsPlanned}
+          onConfirmDifferent={handleConfirmDifferent}
+        />
+
+        <FoodSearchDrawer
+          open={showFoodDrawer}
+          onOpenChange={setShowFoodDrawer}
+          mealPlanItemId={meal.id}
+          mealType={meal.meal_type}
+          onSuccess={handleFoodDrawerSuccess}
+        />
+
+        <MealDetailSheet
+          open={showDetailSheet}
+          onOpenChange={setShowDetailSheet}
+          meal={meal}
+        />
+      </>
+    );
+  }
+
   return (
     <Card 
       className={cn(
@@ -207,9 +314,9 @@ export default function PendingMealCard({
                 <span className="text-xs font-medium text-muted-foreground">
                   {mealLabel}
                 </span>
-                {mealStatus === "critical" && minutesOverdue > 0 && (
+                {mealStatus === "critical" && minutesOverdueValue > 0 && (
                   <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">
-                    {formatOverdue(minutesOverdue)}
+                    {formatOverdue(minutesOverdueValue)}
                   </span>
                 )}
                 {mealStatus === "delayed" && (

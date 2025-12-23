@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { toast } from "sonner";
 import { Loader2, Pencil, Trash2, Plus, Clock, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { StatusColorEditor } from "@/components/admin/StatusColorEditor";
 
 export default function AdminMealTimes() {
   const { settings, isLoading, isSaving, updateSetting, createSetting, deleteSetting } = useMealTimeSettingsAdmin();
@@ -327,6 +328,8 @@ export default function AdminMealTimes() {
           </Table>
         </CardContent>
       </Card>
+
+      <StatusColorEditor />
 
       <Card>
         <CardHeader>

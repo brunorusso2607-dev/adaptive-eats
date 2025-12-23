@@ -651,6 +651,7 @@ export default function Dashboard() {
                   setShowMealPlan(true);
                 }}
                 initialData={weightData || undefined}
+                hasExistingPlan={hasMealPlan || hasActiveMealPlan}
               />
             ) : showRecipe && generatedRecipe ? (
               <RecipeResult

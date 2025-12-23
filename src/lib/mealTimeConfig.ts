@@ -4,6 +4,12 @@ export type MealTimeRange = { start: number; end: number };
 export type MealTimeRanges = Record<string, MealTimeRange>;
 export type MealLabels = Record<string, string>;
 
+// Storage keys
+const STORAGE_KEY_RANGES = "meal_time_ranges_cache";
+const STORAGE_KEY_LABELS = "meal_time_labels_cache";
+const STORAGE_KEY_ORDER = "meal_time_order_cache";
+const STORAGE_KEY_TIMESTAMP = "meal_time_cache_timestamp";
+
 // Cache global
 let cachedTimeRanges: MealTimeRanges | null = null;
 let cachedLabels: MealLabels | null = null;
@@ -32,9 +38,49 @@ const DEFAULT_LABELS: MealLabels = {
 
 const DEFAULT_MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "lanche_tarde", "jantar", "ceia"];
 
-async function fetchMealTimeSettings(): Promise<void> {
-  // Usar cache se ainda válido
-  if (cachedTimeRanges && Date.now() - cacheTimestamp < CACHE_DURATION) {
+// Load from localStorage on module init
+function loadFromStorage(): boolean {
+  try {
+    const storedRanges = localStorage.getItem(STORAGE_KEY_RANGES);
+    const storedLabels = localStorage.getItem(STORAGE_KEY_LABELS);
+    const storedOrder = localStorage.getItem(STORAGE_KEY_ORDER);
+    const storedTimestamp = localStorage.getItem(STORAGE_KEY_TIMESTAMP);
+
+    if (storedRanges && storedLabels && storedOrder && storedTimestamp) {
+      cachedTimeRanges = JSON.parse(storedRanges);
+      cachedLabels = JSON.parse(storedLabels);
+      cachedMealOrder = JSON.parse(storedOrder);
+      cacheTimestamp = parseInt(storedTimestamp, 10);
+      return true;
+    }
+  } catch (error) {
+    console.warn("Error loading meal times from localStorage:", error);
+  }
+  return false;
+}
+
+// Save to localStorage
+function saveToStorage(): void {
+  try {
+    if (cachedTimeRanges && cachedLabels && cachedMealOrder) {
+      localStorage.setItem(STORAGE_KEY_RANGES, JSON.stringify(cachedTimeRanges));
+      localStorage.setItem(STORAGE_KEY_LABELS, JSON.stringify(cachedLabels));
+      localStorage.setItem(STORAGE_KEY_ORDER, JSON.stringify(cachedMealOrder));
+      localStorage.setItem(STORAGE_KEY_TIMESTAMP, Date.now().toString());
+    }
+  } catch (error) {
+    console.warn("Error saving meal times to localStorage:", error);
+  }
+}
+
+// Initialize from storage
+loadFromStorage();
+
+async function fetchMealTimeSettings(forceRefresh = false): Promise<void> {
+  const isCacheValid = cachedTimeRanges && Date.now() - cacheTimestamp < CACHE_DURATION;
+  
+  // Usar cache se ainda válido e não forçando refresh
+  if (!forceRefresh && isCacheValid) {
     return;
   }
 
@@ -64,6 +110,9 @@ async function fetchMealTimeSettings(): Promise<void> {
       cachedLabels = labels;
       cachedMealOrder = order;
       cacheTimestamp = Date.now();
+      
+      // Save to localStorage
+      saveToStorage();
     }
   } catch (error) {
     console.error("Error fetching meal time settings:", error);
@@ -71,7 +120,7 @@ async function fetchMealTimeSettings(): Promise<void> {
   }
 }
 
-// Inicializar cache na primeira importação
+// Inicializar cache na primeira importação (background fetch)
 fetchMealTimeSettings();
 
 export async function getMealTimeRanges(): Promise<MealTimeRanges> {
@@ -108,6 +157,19 @@ export function invalidateMealTimeCache(): void {
   cachedLabels = null;
   cachedMealOrder = null;
   cacheTimestamp = 0;
+  
+  // Also clear localStorage
+  try {
+    localStorage.removeItem(STORAGE_KEY_RANGES);
+    localStorage.removeItem(STORAGE_KEY_LABELS);
+    localStorage.removeItem(STORAGE_KEY_ORDER);
+    localStorage.removeItem(STORAGE_KEY_TIMESTAMP);
+  } catch (error) {
+    console.warn("Error clearing meal time cache from localStorage:", error);
+  }
+  
+  // Refetch immediately
+  fetchMealTimeSettings(true);
 }
 
 // Formatar horário

@@ -169,10 +169,11 @@ export function useNextMeal() {
       const currentMealType = getCurrentMealType();
       const currentMealIndex = MEAL_ORDER.indexOf(currentMealType);
 
-      // Procurar a próxima refeição não completada
+      // Procurar a próxima refeição não completada (apenas atual ou futura)
+      // Não mostra refeições passadas que não foram marcadas como feitas
       let nextMealData: NextMealData | null = null;
 
-      // Primeiro, verificar se a refeição atual não foi completada
+      // Buscar apenas a partir da refeição atual (não mostra passadas)
       for (let i = currentMealIndex; i < MEAL_ORDER.length; i++) {
         const mealType = MEAL_ORDER[i];
         const meal = meals.find(m => m.meal_type === mealType && !m.completed_at);
@@ -183,22 +184,6 @@ export function useNextMeal() {
             recipe_instructions: meal.recipe_instructions as string[],
           };
           break;
-        }
-      }
-
-      // Se não encontrou, verificar refeições anteriores não completadas (atrasadas)
-      if (!nextMealData) {
-        for (let i = 0; i < currentMealIndex; i++) {
-          const mealType = MEAL_ORDER[i];
-          const meal = meals.find(m => m.meal_type === mealType && !m.completed_at);
-          if (meal) {
-            nextMealData = {
-              ...meal,
-              recipe_ingredients: meal.recipe_ingredients as Ingredient[],
-              recipe_instructions: meal.recipe_instructions as string[],
-            };
-            break;
-          }
         }
       }
 

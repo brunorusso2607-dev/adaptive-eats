@@ -29,3 +29,6 @@ verify_jwt = false
 
 [functions.create-stripe-price]
 verify_jwt = false
+
+[functions.stripe-webhook]
+verify_jwt = false

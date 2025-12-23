@@ -3,23 +3,24 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Shield, Calendar, User, Pencil, Save, X, Loader2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Shield, Calendar, User, Pencil, Trash2, Activity, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface AdminUser {
@@ -29,32 +30,18 @@ interface AdminUser {
   created_at: string;
   profile?: {
     email: string | null;
-    age: number | null;
-    sex: string | null;
-    height: number | null;
-    weight_current: number | null;
   };
-}
-
-interface EditForm {
-  age: number | null;
-  sex: string | null;
-  height: number | null;
-  weight_current: number | null;
+  actionsCount: number;
 }
 
 export default function AdminSystemUsers() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
-  const [editForm, setEditForm] = useState<EditForm>({
-    age: null,
-    sex: null,
-    height: null,
-    weight_current: null,
-  });
-  const [isSaving, setIsSaving] = useState(false);
+  const [adminActions, setAdminActions] = useState<any[]>([]);
+  const [isLoadingActions, setIsLoadingActions] = useState(false);
 
   useEffect(() => {
     fetchAdmins();
@@ -74,13 +61,20 @@ export default function AdminSystemUsers() {
         (rolesData || []).map(async (role) => {
           const { data: profileData } = await supabase
             .from("profiles")
-            .select("email, age, sex, height, weight_current")
+            .select("email")
             .eq("id", role.user_id)
             .single();
+
+          // Contar ações realizadas pelo admin
+          const { count } = await supabase
+            .from("activity_logs")
+            .select("*", { count: "exact", head: true })
+            .eq("performed_by", role.user_id);
 
           return {
             ...role,
             profile: profileData || undefined,
+            actionsCount: count || 0,
           };
         })
       );
@@ -93,6 +87,25 @@ export default function AdminSystemUsers() {
     }
   };
 
+  const fetchAdminActions = async (userId: string) => {
+    setIsLoadingActions(true);
+    try {
+      const { data, error } = await supabase
+        .from("activity_logs")
+        .select("*")
+        .eq("performed_by", userId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setAdminActions(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar ações:", error);
+    } finally {
+      setIsLoadingActions(false);
+    }
+  };
+
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("pt-BR", {
       day: "2-digit",
@@ -101,48 +114,40 @@ export default function AdminSystemUsers() {
     });
   };
 
-  const getSexLabel = (sex: string | null) => {
-    if (sex === "male") return "Masculino";
-    if (sex === "female") return "Feminino";
-    return "Não informado";
-  };
-
-  const handleEditClick = (admin: AdminUser) => {
-    setSelectedAdmin(admin);
-    setEditForm({
-      age: admin.profile?.age || null,
-      sex: admin.profile?.sex || null,
-      height: admin.profile?.height || null,
-      weight_current: admin.profile?.weight_current || null,
+  const formatDateTime = (dateString: string) => {
+    return new Date(dateString).toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
     });
-    setIsEditOpen(true);
   };
 
-  const handleSave = async () => {
+  const handleViewDetails = async (admin: AdminUser) => {
+    setSelectedAdmin(admin);
+    setIsDetailOpen(true);
+    await fetchAdminActions(admin.user_id);
+  };
+
+  const handleRemoveAdmin = async () => {
     if (!selectedAdmin) return;
 
-    setIsSaving(true);
     try {
       const { error } = await supabase
-        .from("profiles")
-        .update({
-          age: editForm.age,
-          sex: editForm.sex,
-          height: editForm.height,
-          weight_current: editForm.weight_current,
-        })
-        .eq("id", selectedAdmin.user_id);
+        .from("user_roles")
+        .delete()
+        .eq("id", selectedAdmin.id);
 
       if (error) throw error;
 
-      toast.success("Dados atualizados com sucesso");
-      setIsEditOpen(false);
+      toast.success("Permissão de admin removida");
+      setIsDeleteOpen(false);
+      setIsDetailOpen(false);
       fetchAdmins();
     } catch (error) {
-      console.error("Erro ao atualizar:", error);
-      toast.error("Erro ao atualizar dados");
-    } finally {
-      setIsSaving(false);
+      console.error("Erro ao remover admin:", error);
+      toast.error("Erro ao remover permissão");
     }
   };
 
@@ -155,7 +160,7 @@ export default function AdminSystemUsers() {
         </div>
         <div className="space-y-4">
           {[1, 2].map((i) => (
-            <Skeleton key={i} className="h-24 w-full rounded-xl" />
+            <Skeleton key={i} className="h-20 w-full rounded-xl" />
           ))}
         </div>
       </div>
@@ -201,31 +206,20 @@ export default function AdminSystemUsers() {
                     <div className="flex items-center gap-4 mt-1 text-sm text-muted-foreground flex-wrap">
                       <span className="flex items-center gap-1">
                         <Calendar className="w-3 h-3" />
-                        {formatDate(admin.created_at)}
+                        Admin desde {formatDate(admin.created_at)}
                       </span>
                       
-                      {admin.profile?.age && (
-                        <span>{admin.profile.age} anos</span>
-                      )}
-                      
-                      {admin.profile?.sex && (
-                        <span>{getSexLabel(admin.profile.sex)}</span>
-                      )}
-                      
-                      {admin.profile?.height && (
-                        <span>{admin.profile.height} cm</span>
-                      )}
-                      
-                      {admin.profile?.weight_current && (
-                        <span>{admin.profile.weight_current} kg</span>
-                      )}
+                      <span className="flex items-center gap-1">
+                        <Activity className="w-3 h-3" />
+                        {admin.actionsCount} {admin.actionsCount === 1 ? "ação" : "ações"} realizadas
+                      </span>
                     </div>
                   </div>
 
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleEditClick(admin)}
+                    onClick={() => handleViewDetails(admin)}
                     className="shrink-0"
                   >
                     <Pencil className="w-4 h-4" />
@@ -237,81 +231,113 @@ export default function AdminSystemUsers() {
         )}
       </div>
 
-      {/* Modal de Edição */}
-      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
-        <DialogContent className="sm:max-w-md">
+      {/* Modal de Detalhes */}
+      <Dialog open={isDetailOpen} onOpenChange={setIsDetailOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogTitle>Detalhes do Administrador</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="age">Idade</Label>
-              <Input
-                id="age"
-                type="number"
-                value={editForm.age || ""}
-                onChange={(e) => setEditForm({ ...editForm, age: e.target.value ? Number(e.target.value) : null })}
-                placeholder="Ex: 30"
-              />
-            </div>
+          {selectedAdmin && (
+            <div className="space-y-6 py-4">
+              {/* Info básica */}
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
+                  <User className="w-7 h-7 text-primary-foreground" />
+                </div>
+                <div>
+                  <p className="font-medium text-foreground text-lg">
+                    {selectedAdmin.profile?.email || "Usuário"}
+                  </p>
+                  <p className="text-sm text-muted-foreground">
+                    Admin desde {formatDate(selectedAdmin.created_at)}
+                  </p>
+                </div>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="sex">Sexo</Label>
-              <Select
-                value={editForm.sex || ""}
-                onValueChange={(value) => setEditForm({ ...editForm, sex: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="male">Masculino</SelectItem>
-                  <SelectItem value="female">Feminino</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+              {/* Estatísticas */}
+              <div className="grid grid-cols-2 gap-4">
+                <Card className="bg-card/50">
+                  <CardContent className="p-4 text-center">
+                    <p className="text-2xl font-bold text-primary">{selectedAdmin.actionsCount}</p>
+                    <p className="text-xs text-muted-foreground">Ações realizadas</p>
+                  </CardContent>
+                </Card>
+                <Card className="bg-card/50">
+                  <CardContent className="p-4 text-center">
+                    <Badge className="bg-green-500/10 text-green-600 border-green-500/30">
+                      Ativo
+                    </Badge>
+                    <p className="text-xs text-muted-foreground mt-1">Status</p>
+                  </CardContent>
+                </Card>
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="height">Altura (cm)</Label>
-              <Input
-                id="height"
-                type="number"
-                value={editForm.height || ""}
-                onChange={(e) => setEditForm({ ...editForm, height: e.target.value ? Number(e.target.value) : null })}
-                placeholder="Ex: 170"
-              />
-            </div>
+              {/* Últimas ações */}
+              <div>
+                <h4 className="font-medium text-foreground mb-3">Últimas Ações</h4>
+                {isLoadingActions ? (
+                  <div className="flex items-center justify-center py-4">
+                    <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+                  </div>
+                ) : adminActions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">
+                    Nenhuma ação registrada.
+                  </p>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {adminActions.map((action) => (
+                      <div
+                        key={action.id}
+                        className="p-3 rounded-lg bg-muted/50 text-sm"
+                      >
+                        <p className="font-medium text-foreground">{action.action_description}</p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {formatDateTime(action.created_at)}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="weight">Peso (kg)</Label>
-              <Input
-                id="weight"
-                type="number"
-                step="0.1"
-                value={editForm.weight_current || ""}
-                onChange={(e) => setEditForm({ ...editForm, weight_current: e.target.value ? Number(e.target.value) : null })}
-                placeholder="Ex: 70"
-              />
+              {/* Ações */}
+              <div className="flex justify-end pt-4 border-t">
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => setIsDeleteOpen(true)}
+                >
+                  <Trash2 className="w-4 h-4 mr-2" />
+                  Remover Admin
+                </Button>
+              </div>
             </div>
-          </div>
-
-          <div className="flex justify-end gap-2">
-            <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={isSaving}>
-              <X className="w-4 h-4 mr-2" />
-              Cancelar
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              ) : (
-                <Save className="w-4 h-4 mr-2" />
-              )}
-              Salvar
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
+
+      {/* Confirmação de remoção */}
+      <AlertDialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Remover administrador?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação irá remover a permissão de administrador de{" "}
+              <strong>{selectedAdmin?.profile?.email}</strong>. O usuário ainda terá acesso como cliente.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleRemoveAdmin}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

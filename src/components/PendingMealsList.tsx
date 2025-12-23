@@ -192,26 +192,44 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
       {overdueMeals.length > 0 && (
         <Collapsible open={isOpen} onOpenChange={setIsOpen}>
           <CollapsibleTrigger asChild>
-            <Card className="bg-destructive/5 border border-destructive/30 cursor-pointer hover:border-destructive/50 transition-colors">
+            <Card className={cn(
+              "cursor-pointer transition-colors",
+              isOpen 
+                ? "bg-destructive/5 border border-destructive/30 hover:border-destructive/50" 
+                : "bg-white border border-[#E2E8F0] hover:border-[#CBD5E1]"
+            )}>
               <CardContent className="p-3">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="w-9 h-9 rounded-lg bg-destructive/20 flex items-center justify-center">
-                      <Clock className="w-4 h-4 text-destructive" />
+                    <div className={cn(
+                      "w-9 h-9 rounded-lg flex items-center justify-center",
+                      isOpen 
+                        ? "bg-destructive/20" 
+                        : "bg-[#F1F5F9]"
+                    )}>
+                      <UtensilsCrossed className={cn(
+                        "w-4 h-4",
+                        isOpen ? "text-destructive" : "text-[#94A3B8]"
+                      )} />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-destructive">
-                        Atrasadas ({overdueMeals.length})
+                      <p className={cn(
+                        "text-sm font-medium",
+                        isOpen ? "text-destructive" : "text-foreground"
+                      )}>
+                        {isOpen ? `Atrasadas (${overdueMeals.length})` : "Alimente seu histórico"}
                       </p>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {overdueMeals[0]?.recipe_name?.substring(0, 28)}...
-                      </p>
+                      {isOpen && (
+                        <p className="text-xs text-muted-foreground line-clamp-1">
+                          {overdueMeals[0]?.recipe_name?.substring(0, 28)}...
+                        </p>
+                      )}
                     </div>
                   </div>
                   <ChevronDown 
                     className={cn(
-                      "w-4 h-4 text-destructive transition-transform duration-200",
-                      isOpen && "rotate-180"
+                      "w-4 h-4 transition-transform duration-200",
+                      isOpen ? "text-destructive rotate-180" : "text-[#94A3B8]"
                     )} 
                   />
                 </div>

@@ -130,25 +130,22 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return formatWeekRange(currentWeekData, currentDate);
   }, [currentWeekData, currentDate]);
 
-  // Auto-select first valid (non-past) day when week changes
+  // Auto-select first visible day when week changes (only on week change, not day click)
   useEffect(() => {
     if (visibleDays.length > 0) {
-      const firstValidDay = visibleDays.find(d => !d.isPast);
-      if (firstValidDay) {
-        const indexInWeek = currentWeekData.days.findIndex(d => 
-          d.date.getTime() === firstValidDay.date.getTime()
-        );
-        setSelectedDayIndex(indexInWeek);
+      // When week changes, select today if it's in this week, otherwise first visible day
+      const todayInWeek = currentWeekData.days.findIndex(d => d.isToday);
+      if (todayInWeek >= 0) {
+        setSelectedDayIndex(todayInWeek);
       } else {
-        // All days are past, select the last one
-        const lastDay = visibleDays[visibleDays.length - 1];
-        const indexInWeek = currentWeekData.days.findIndex(d => 
-          d.date.getTime() === lastDay.date.getTime()
-        );
-        setSelectedDayIndex(indexInWeek);
+        // Select first day in month for this week
+        const firstInMonth = currentWeekData.days.findIndex(d => d.isInMonth);
+        if (firstInMonth >= 0) {
+          setSelectedDayIndex(firstInMonth);
+        }
       }
     }
-  }, [selectedWeek, visibleDays, currentWeekData]);
+  }, [selectedWeek]); // Only trigger on week change
 
   // Get the selected day info
   const selectedDay = currentWeekData?.days[selectedDayIndex];
@@ -319,43 +316,39 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             const isSelected = selectedDayIndex === index;
             const status = getDayStatus(day);
             const hasMeals = getDayMeals(day).length > 0;
-            const isDisabled = day.isPast;
             const isToday = day.isToday;
 
             return (
               <button
                 key={`${day.date.toISOString()}`}
-                onClick={() => !isDisabled && setSelectedDayIndex(index)}
-                disabled={isDisabled}
+                onClick={() => setSelectedDayIndex(index)}
                 className={cn(
                   "flex flex-col items-center py-2 px-1 sm:p-3 rounded-xl transition-all border",
-                  isDisabled && "opacity-40 cursor-not-allowed bg-muted/50 border-muted",
-                  !isDisabled && isSelected 
+                  isSelected 
                     ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                    : !isDisabled && "bg-background hover:bg-muted border-border hover:border-primary/50",
-                  isToday && !isSelected && !isDisabled && "ring-2 ring-primary/50"
+                    : "bg-background hover:bg-muted border-border hover:border-primary/50",
+                  isToday && !isSelected && "ring-2 ring-primary/50"
                 )}
               >
                 <span className={cn(
                   "text-[10px] sm:text-xs font-medium",
-                  isDisabled ? "text-muted-foreground/50" : isSelected ? "text-primary-foreground" : "text-muted-foreground"
+                  isSelected ? "text-primary-foreground" : "text-muted-foreground"
                 )}>
                   {dayName}
                 </span>
                 <span className={cn(
                   "text-sm sm:text-lg font-bold",
-                  isDisabled ? "text-muted-foreground/50" : isSelected ? "text-primary-foreground" : "text-foreground"
+                  isSelected ? "text-primary-foreground" : "text-foreground"
                 )}>
                   {dayNumber}
                 </span>
                 {/* Status indicator */}
                 <div className={cn(
                   "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-0.5 sm:mt-1",
-                  isDisabled && "bg-muted-foreground/20",
-                  !isDisabled && !hasMeals && "bg-muted-foreground/30",
-                  !isDisabled && hasMeals && status === 'pending' && "bg-muted-foreground/50",
-                  !isDisabled && hasMeals && status === 'partial' && "bg-yellow-500",
-                  !isDisabled && hasMeals && status === 'complete' && "bg-green-500",
+                  !hasMeals && "bg-muted-foreground/30",
+                  hasMeals && status === 'pending' && "bg-muted-foreground/50",
+                  hasMeals && status === 'partial' && "bg-yellow-500",
+                  hasMeals && status === 'complete' && "bg-green-500",
                 )} />
               </button>
             );

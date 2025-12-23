@@ -414,6 +414,7 @@ export type Database = {
           created_at: string
           description: string | null
           emoji: string | null
+          icon_name: string | null
           id: string
           is_active: boolean
           label: string
@@ -426,6 +427,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           emoji?: string | null
+          icon_name?: string | null
           id?: string
           is_active?: boolean
           label: string
@@ -438,6 +440,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           emoji?: string | null
+          icon_name?: string | null
           id?: string
           is_active?: boolean
           label?: string

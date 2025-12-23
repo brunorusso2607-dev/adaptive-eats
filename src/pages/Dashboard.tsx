@@ -106,6 +106,7 @@ export default function Dashboard() {
   const [showList, setShowList] = useState<"history" | "favorites" | null>(null);
   const [showMealPlan, setShowMealPlan] = useState(false);
   const [hasMealPlan, setHasMealPlan] = useState(false);
+  const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
@@ -596,6 +597,9 @@ export default function Dashboard() {
       {/* Recipe Loading Screen - Fullscreen overlay */}
       {isGeneratingRecipe && <RecipeLoadingScreen />}
       
+      {/* Plan Regeneration Loading Screen - Fullscreen overlay */}
+      {isRegeneratingPlan && <RecipeLoadingScreen message="Gerando seu novo plano alimentar..." />}
+      
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">
         <div className="space-y-8">
@@ -656,6 +660,8 @@ export default function Dashboard() {
                   // Força refresh dos dados do Dashboard após regeneração
                   refetchPendingMeals();
                 }}
+                onRegenerateStart={() => setIsRegeneratingPlan(true)}
+                onRegenerateEnd={() => setIsRegeneratingPlan(false)}
               />
             ) : showRecipe && generatedRecipe ? (
               <RecipeResult

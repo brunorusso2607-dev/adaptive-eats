@@ -33,6 +33,8 @@ type WeightGoalSetupProps = {
   onSave: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   onGeneratePlan?: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   onPlanRegenerated?: () => void;
+  onRegenerateStart?: () => void;
+  onRegenerateEnd?: () => void;
   initialData?: Partial<WeightGoalData>;
   hasExistingPlan?: boolean;
 };
@@ -359,7 +361,7 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   };
 }
 
-export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPlanRegenerated, initialData, hasExistingPlan }: WeightGoalSetupProps) {
+export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPlanRegenerated, onRegenerateStart, onRegenerateEnd, initialData, hasExistingPlan }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [shakeError, setShakeError] = useState(false);
@@ -512,6 +514,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     setShowRegenerateConfirm(false);
     setIsSaving(true);
     
+    // Notifica início da regeneração para mostrar loading fullscreen
+    if (hasExistingPlan && onRegenerateStart) {
+      onRegenerateStart();
+    }
+    
     try {
       // Se existe plano anterior, deletar primeiro
       if (hasExistingPlan) {
@@ -543,7 +550,6 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       }
 
       await saveToDatabase();
-      toast.success("Dados salvos! Gerando seu plano alimentar...");
       
       // Generate the meal plan directly
       const startDate = new Date();
@@ -577,6 +583,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       toast.error(error instanceof Error ? error.message : "Erro ao gerar plano alimentar");
     } finally {
       setIsSaving(false);
+      // Notifica fim da regeneração para esconder loading
+      if (hasExistingPlan && onRegenerateEnd) {
+        onRegenerateEnd();
+      }
     }
   };
 

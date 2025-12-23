@@ -328,9 +328,10 @@ serve(async (req) => {
         body: JSON.stringify({
           contents: [{ parts: [{ text: prompt }] }],
           generationConfig: {
-            temperature: 0.7,
-            topP: 0.9,
-            maxOutputTokens: 32000,
+            temperature: 0.6,
+            topP: 0.85,
+            maxOutputTokens: 65536,
+            responseMimeType: "application/json",
           }
         }),
       }

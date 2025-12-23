@@ -24,29 +24,31 @@ export default function MobileBottomNav({
   hasPendingMeal = false,
 }: MobileBottomNavProps) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 bg-background/95 backdrop-blur-lg border-t border-border md:hidden safe-area-bottom">
+    <nav className={cn(
+      "fixed bottom-0 left-0 right-0 z-50 md:hidden safe-area-bottom",
+      "bg-card/80 backdrop-blur-xl border-t border-border"
+    )}>
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
           const showBadge = item.id === "home" && hasPendingMeal && !isActive;
           
-          // Botão central destacado (FAB)
+          // FAB central - único elemento saturado
           if (item.isMain) {
             return (
               <button
                 key={item.id}
                 onClick={() => onTabChange(item.id)}
                 className={cn(
-                  "relative flex items-center justify-center -mt-8 transition-all",
+                  "relative flex items-center justify-center -mt-6 transition-all duration-200",
                   "w-14 h-14 rounded-full",
-                  "bg-[#F4694C] text-white",
-                  "shadow-[0_0_20px_8px_rgba(244,105,76,0.5),0_0_40px_16px_rgba(244,105,76,0.3)]",
-                  "hover:scale-105 active:scale-95 hover:brightness-110",
-                  "hover:shadow-[0_0_25px_10px_rgba(244,105,76,0.6),0_0_50px_20px_rgba(244,105,76,0.4)]",
-                  isActive && "ring-4 ring-[#F4694C]/30"
+                  "bg-primary text-primary-foreground",
+                  "shadow-lg shadow-primary/25",
+                  "hover:scale-105 active:scale-95",
+                  isActive && "ring-4 ring-primary/20"
                 )}
               >
-                <item.icon className="w-6 h-6" strokeWidth={2.5} />
+                <item.icon className="w-6 h-6" strokeWidth={2} />
               </button>
             );
           }
@@ -58,7 +60,7 @@ export default function MobileBottomNav({
               className={cn(
                 "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors relative",
                 isActive 
-                  ? "text-primary" 
+                  ? "text-foreground" 
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
@@ -66,23 +68,20 @@ export default function MobileBottomNav({
                 <item.icon 
                   className={cn(
                     "w-5 h-5 transition-transform",
-                    isActive && "scale-110"
+                    isActive && "scale-105"
                   )} 
-                  strokeWidth={isActive ? 2.5 : 2}
+                  strokeWidth={isActive ? 2 : 1.5}
                 />
                 {showBadge && (
-                  <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-destructive rounded-full animate-pulse" />
+                  <span className="absolute -top-1 -right-1 w-2 h-2 bg-destructive rounded-full" />
                 )}
               </div>
               <span className={cn(
-                "text-[10px] font-medium",
-                isActive && "font-semibold"
+                "text-[10px]",
+                isActive ? "font-medium" : "font-normal"
               )}>
                 {item.label}
               </span>
-              {isActive && (
-                <div className="absolute bottom-0 w-12 h-0.5 bg-primary rounded-full" />
-              )}
             </button>
           );
         })}

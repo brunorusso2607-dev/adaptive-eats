@@ -3,19 +3,17 @@
 @tailwind utilities;
 
 /* ReceitAI Design System
-   An elegant, warm aesthetic inspired by MoodCuisine
-   Primary: Coral/Salmon (warmth, appetite)
-   Accent: Soft peach/orange (energy, freshness)
-   Background: Soft cream with pink undertones
+   Clean, Modern & High-Tech Medical Aesthetic
+   Minimal, sophisticated, premium feel
 */
 
 @layer base {
   :root {
-    /* Background - Soft cream with warm undertones */
-    --background: 30 50% 99%;
+    /* Background - Cool light gray #F5F7F9 */
+    --background: 210 20% 98%;
     --foreground: 220 20% 20%;
 
-    /* Card - Pure white with subtle warmth */
+    /* Card - Pure white #FFFFFF with #E2E8F0 border */
     --card: 0 0% 100%;
     --card-foreground: 220 20% 20%;
 
@@ -23,138 +21,143 @@
     --popover: 0 0% 100%;
     --popover-foreground: 220 20% 20%;
 
-    /* Primary - Elegant coral/salmon */
-    --primary: 8 75% 60%;
+    /* Primary - Vibrant orange #FF6B00 */
+    --primary: 25 100% 50%;
     --primary-foreground: 0 0% 100%;
 
-    /* Secondary - Soft blush pink */
-    --secondary: 20 40% 96%;
+    /* Secondary - Light gray surface */
+    --secondary: 214 20% 96%;
     --secondary-foreground: 220 20% 30%;
 
-    /* Muted - Warm gray */
-    --muted: 30 20% 96%;
-    --muted-foreground: 220 10% 50%;
+    /* Muted - Neutral gray */
+    --muted: 210 15% 96%;
+    --muted-foreground: 220 10% 46%;
 
-    /* Accent - Warm peach/orange */
-    --accent: 25 90% 65%;
-    --accent-foreground: 0 0% 100%;
+    /* Accent - Subtle highlight */
+    --accent: 210 15% 94%;
+    --accent-foreground: 220 20% 20%;
 
     /* Destructive */
     --destructive: 0 84% 60%;
     --destructive-foreground: 0 0% 100%;
 
-    /* Border & Input */
-    --border: 30 30% 92%;
-    --input: 30 30% 92%;
-    --ring: 8 75% 60%;
+    /* Border & Input - #E2E8F0 */
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 25 100% 50%;
 
-    --radius: 1rem;
+    --radius: 0.75rem;
 
-    /* Custom tokens */
+    /* Status colors - subtle, outline style */
     --success: 152 60% 45%;
     --warning: 38 92% 55%;
     --info: 199 89% 50%;
     
-    /* Premium XP colors - Luxurious gold gradient */
-    --xp-start: 24 100% 50%;
-    --xp-mid: 36 100% 55%;
-    --xp-end: 45 100% 58%;
+    /* Premium gold for badges */
+    --gold: 43 74% 49%;
+    --gold-light: 45 93% 58%;
 
-    /* Neutral surface for secondary cards */
-    --surface-subtle: 220 14% 96%;
-    --surface-muted: 220 10% 94%;
+    /* XP gradient - subtle gold */
+    --xp-start: 43 74% 49%;
+    --xp-mid: 45 80% 55%;
+    --xp-end: 48 85% 60%;
 
-    /* Gradients - Elegant warm tones */
-    --gradient-primary: linear-gradient(135deg, hsl(8 75% 60%) 0%, hsl(15 80% 65%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(25 90% 65%) 0%, hsl(35 85% 70%) 100%);
+    /* Neutral surfaces */
+    --surface-subtle: 210 20% 97%;
+    --surface-muted: 210 15% 95%;
+
+    /* Gradients - Subtle, professional */
+    --gradient-primary: linear-gradient(135deg, hsl(25 100% 50%) 0%, hsl(30 100% 55%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(25 100% 55%) 0%, hsl(35 95% 60%) 100%);
     --gradient-xp: linear-gradient(90deg, hsl(var(--xp-start)) 0%, hsl(var(--xp-mid)) 50%, hsl(var(--xp-end)) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(30 50% 99%) 0%, hsl(20 60% 96%) 50%, hsl(25 50% 94%) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(255,255,255,0.8) 100%);
-    --gradient-soft: linear-gradient(135deg, hsl(20 60% 97%) 0%, hsl(30 50% 95%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(210 20% 98%) 0%, hsl(210 15% 96%) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.98) 0%, rgba(255,255,255,0.92) 100%);
+    --gradient-soft: linear-gradient(135deg, hsl(210 20% 98%) 0%, hsl(210 15% 96%) 100%);
 
-    /* Shadows - Softer, more elegant */
-    --shadow-sm: 0 1px 3px 0 hsl(220 20% 20% / 0.04);
-    --shadow-md: 0 4px 12px -2px hsl(220 20% 20% / 0.08);
-    --shadow-lg: 0 12px 32px -8px hsl(220 20% 20% / 0.12);
-    --shadow-glow: 0 4px 24px hsl(8 75% 60% / 0.2);
-    --shadow-glow-xp: 0 0 16px hsl(var(--xp-mid) / 0.5), 0 0 32px hsl(var(--xp-end) / 0.3);
-    --shadow-soft: 0 2px 8px hsl(220 20% 20% / 0.06);
+    /* Shadows - Soft, elegant */
+    --shadow-sm: 0 1px 2px 0 hsl(220 20% 20% / 0.03);
+    --shadow-md: 0 4px 12px -2px hsl(220 20% 20% / 0.06);
+    --shadow-lg: 0 12px 24px -4px hsl(220 20% 20% / 0.08);
+    --shadow-glow: 0 4px 20px hsl(25 100% 50% / 0.15);
+    --shadow-glow-xp: 0 0 12px hsl(var(--xp-mid) / 0.3);
+    --shadow-soft: 0 2px 8px hsl(220 20% 20% / 0.04);
 
     /* Sidebar */
-    --sidebar-background: 30 50% 99%;
+    --sidebar-background: 210 20% 98%;
     --sidebar-foreground: 220 20% 25%;
-    --sidebar-primary: 8 75% 60%;
+    --sidebar-primary: 25 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 20 40% 96%;
+    --sidebar-accent: 210 15% 96%;
     --sidebar-accent-foreground: 220 20% 30%;
-    --sidebar-border: 30 30% 92%;
-    --sidebar-ring: 8 75% 60%;
+    --sidebar-border: 214 32% 91%;
+    --sidebar-ring: 25 100% 50%;
   }
 
   .dark {
     --background: 220 20% 8%;
-    --foreground: 30 20% 95%;
+    --foreground: 210 20% 95%;
 
-    --card: 220 18% 12%;
-    --card-foreground: 30 20% 95%;
+    --card: 220 18% 11%;
+    --card-foreground: 210 20% 95%;
 
-    --popover: 220 18% 12%;
-    --popover-foreground: 30 20% 95%;
+    --popover: 220 18% 11%;
+    --popover-foreground: 210 20% 95%;
 
-    --primary: 8 70% 55%;
+    --primary: 25 95% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 220 15% 18%;
-    --secondary-foreground: 30 20% 90%;
+    --secondary: 220 15% 16%;
+    --secondary-foreground: 210 20% 90%;
 
-    --muted: 220 12% 20%;
-    --muted-foreground: 30 15% 60%;
+    --muted: 220 12% 18%;
+    --muted-foreground: 210 15% 55%;
 
-    --accent: 25 85% 55%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 220 12% 20%;
+    --accent-foreground: 210 20% 95%;
 
     --destructive: 0 72% 50%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 12% 20%;
-    --input: 220 12% 20%;
-    --ring: 8 70% 55%;
+    --border: 220 12% 18%;
+    --input: 220 12% 18%;
+    --ring: 25 95% 55%;
 
     --success: 152 55% 45%;
     --warning: 38 88% 55%;
     --info: 199 85% 55%;
     
-    /* Premium XP colors - Luxurious gold gradient */
-    --xp-start: 24 95% 45%;
-    --xp-mid: 36 95% 50%;
-    --xp-end: 45 95% 52%;
+    --gold: 43 70% 45%;
+    --gold-light: 45 88% 52%;
 
-    /* Neutral surface for secondary cards */
-    --surface-subtle: 220 10% 18%;
-    --surface-muted: 220 8% 22%;
+    --xp-start: 43 70% 45%;
+    --xp-mid: 45 75% 50%;
+    --xp-end: 48 80% 55%;
 
-    --gradient-primary: linear-gradient(135deg, hsl(8 70% 55%) 0%, hsl(15 75% 60%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(25 85% 55%) 0%, hsl(35 80% 60%) 100%);
+    --surface-subtle: 220 15% 14%;
+    --surface-muted: 220 12% 18%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(25 95% 55%) 0%, hsl(30 95% 60%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(25 90% 50%) 0%, hsl(35 85% 55%) 100%);
     --gradient-xp: linear-gradient(90deg, hsl(var(--xp-start)) 0%, hsl(var(--xp-mid)) 50%, hsl(var(--xp-end)) 100%);
-    --gradient-hero: linear-gradient(180deg, hsl(220 20% 8%) 0%, hsl(220 18% 12%) 100%);
-    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%);
-    --gradient-soft: linear-gradient(135deg, hsl(220 15% 12%) 0%, hsl(220 18% 15%) 100%);
+    --gradient-hero: linear-gradient(180deg, hsl(220 20% 8%) 0%, hsl(220 18% 11%) 100%);
+    --gradient-glass: linear-gradient(135deg, rgba(255,255,255,0.05) 0%, rgba(255,255,255,0.02) 100%);
+    --gradient-soft: linear-gradient(135deg, hsl(220 15% 11%) 0%, hsl(220 18% 14%) 100%);
 
-    --shadow-sm: 0 1px 3px 0 hsl(0 0% 0% / 0.25);
-    --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.35);
-    --shadow-lg: 0 12px 32px -8px hsl(0 0% 0% / 0.45);
-    --shadow-glow: 0 4px 24px hsl(8 70% 55% / 0.25);
-    --shadow-glow-xp: 0 0 16px hsl(var(--xp-mid) / 0.6), 0 0 32px hsl(var(--xp-end) / 0.4);
-    --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.2);
+    --shadow-sm: 0 1px 2px 0 hsl(0 0% 0% / 0.2);
+    --shadow-md: 0 4px 12px -2px hsl(0 0% 0% / 0.3);
+    --shadow-lg: 0 12px 24px -4px hsl(0 0% 0% / 0.4);
+    --shadow-glow: 0 4px 20px hsl(25 95% 55% / 0.2);
+    --shadow-glow-xp: 0 0 12px hsl(var(--xp-mid) / 0.4);
+    --shadow-soft: 0 2px 8px hsl(0 0% 0% / 0.15);
 
     --sidebar-background: 220 20% 8%;
-    --sidebar-foreground: 30 20% 90%;
-    --sidebar-primary: 8 70% 55%;
+    --sidebar-foreground: 210 20% 90%;
+    --sidebar-primary: 25 95% 55%;
     --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 220 15% 18%;
-    --sidebar-accent-foreground: 30 20% 90%;
-    --sidebar-border: 220 12% 20%;
-    --sidebar-ring: 8 70% 55%;
+    --sidebar-accent: 220 15% 16%;
+    --sidebar-accent-foreground: 210 20% 90%;
+    --sidebar-border: 220 12% 18%;
+    --sidebar-ring: 25 95% 55%;
   }
 }
 
@@ -172,21 +175,18 @@
 
   body {
     @apply bg-background text-foreground antialiased;
-    font-family: 'Outfit', system-ui, sans-serif;
-    /* iOS safe areas */
+    font-family: 'Inter', system-ui, sans-serif;
     padding-top: env(safe-area-inset-top);
     padding-bottom: env(safe-area-inset-bottom);
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
-    /* Prevent pull-to-refresh on iOS */
     overscroll-behavior-y: contain;
-    /* Smooth scrolling for iOS */
     -webkit-overflow-scrolling: touch;
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Playfair Display', Georgia, serif;
-    @apply tracking-tight;
+    font-family: 'Inter', system-ui, sans-serif;
+    @apply tracking-wide font-semibold;
   }
 
   /* Prevent iOS zoom on input focus */
@@ -218,7 +218,7 @@
 
 @layer components {
   .glass-card {
-    @apply bg-card/90 backdrop-blur-xl border border-border/40 shadow-lg rounded-2xl;
+    @apply bg-card border border-border shadow-sm rounded-xl;
   }
 
   .gradient-primary {
@@ -256,6 +256,14 @@
     box-shadow: var(--shadow-soft);
   }
 
+  /* Pro badge - minimal gold */
+  .badge-pro {
+    @apply inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium;
+    background: hsl(var(--gold) / 0.1);
+    color: hsl(var(--gold));
+    border: 1px solid hsl(var(--gold) / 0.2);
+  }
+
   .animate-float {
     animation: float 6s ease-in-out infinite;
   }
@@ -286,14 +294,14 @@
 
   /* Elegant button styles */
   .btn-elegant {
-    @apply px-8 py-4 rounded-full font-medium text-base transition-all duration-300;
-    @apply hover:scale-[1.02] hover:shadow-lg active:scale-[0.98];
+    @apply px-6 py-3 rounded-xl font-medium text-sm transition-all duration-200;
+    @apply hover:shadow-md active:scale-[0.98];
   }
 
-  /* Card hover effect */
+  /* Card hover effect - subtle */
   .card-hover {
-    @apply transition-all duration-300;
-    @apply hover:shadow-lg hover:-translate-y-1;
+    @apply transition-all duration-200;
+    @apply hover:shadow-md hover:-translate-y-0.5;
   }
 }
 

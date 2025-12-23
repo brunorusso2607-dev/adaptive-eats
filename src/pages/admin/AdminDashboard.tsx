@@ -170,8 +170,8 @@ export default function AdminDashboard() {
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
             isItemActive(item)
-              ? "bg-primary text-primary-foreground shadow-glow"
-              : "text-muted-foreground hover:bg-card hover:text-foreground",
+              ? "bg-foreground text-background"
+              : "text-muted-foreground hover:bg-muted hover:text-foreground",
             isCollapsed && "justify-center"
           )}
           style={{ paddingLeft: isCollapsed ? undefined : `${12 + paddingLeft}px` }}
@@ -203,8 +203,8 @@ export default function AdminDashboard() {
         className={cn(
           "w-full justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all h-auto",
           openMenus.includes(item.label)
-            ? "bg-card/50 text-foreground"
-            : "text-muted-foreground hover:bg-card hover:text-foreground",
+            ? "bg-muted/50 text-foreground"
+            : "text-muted-foreground hover:bg-muted hover:text-foreground",
           isCollapsed && "justify-center"
         )}
         style={{ paddingLeft: isCollapsed ? undefined : `${12 + paddingLeft}px` }}
@@ -270,8 +270,8 @@ export default function AdminDashboard() {
                   className={cn(
                     "flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                     location.pathname === "/admin"
-                      ? "bg-primary text-primary-foreground shadow-glow"
-                      : "text-muted-foreground hover:bg-card hover:text-foreground"
+                      ? "bg-foreground text-background"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
                   )}
                 >
                   <Menu className="w-4 h-4 flex-shrink-0" />
@@ -288,8 +288,8 @@ export default function AdminDashboard() {
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                 location.pathname === "/admin"
-                  ? "bg-primary text-primary-foreground shadow-glow"
-                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+                  ? "bg-foreground text-background"
+                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
               )}
             >
               <Menu className="w-4 h-4 flex-shrink-0" />
@@ -408,8 +408,8 @@ export default function AdminDashboard() {
               <Menu className="w-5 h-5" />
             </Button>
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-glow">
-                <Shield className="w-4 h-4 text-primary-foreground" />
+              <div className="w-8 h-8 bg-foreground rounded-lg flex items-center justify-center">
+                <Shield className="w-4 h-4 text-background" />
               </div>
               <span className="font-display font-bold text-foreground">Admin</span>
             </div>
@@ -429,8 +429,8 @@ export default function AdminDashboard() {
           <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl flex flex-col">
             <SheetHeader className="p-4 border-b border-border/50">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow">
-                  <Shield className="w-6 h-6 text-primary-foreground" />
+                <div className="w-10 h-10 bg-foreground rounded-xl flex items-center justify-center">
+                  <Shield className="w-6 h-6 text-background" />
                 </div>
                 <div>
                   <SheetTitle className="font-display text-lg font-bold text-foreground text-left">
@@ -465,8 +465,8 @@ export default function AdminDashboard() {
         {/* Sidebar Header */}
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow flex-shrink-0">
-              <Shield className="w-6 h-6 text-primary-foreground" />
+            <div className="w-10 h-10 bg-foreground rounded-xl flex items-center justify-center flex-shrink-0">
+              <Shield className="w-6 h-6 text-background" />
             </div>
             {!sidebarCollapsed && (
               <div className="overflow-hidden">

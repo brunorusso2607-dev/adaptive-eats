@@ -21,7 +21,6 @@ import {
   getMinutesOverdue
 } from "@/hooks/usePendingMeals";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
-import { useMealStatusColors } from "@/hooks/useMealStatusColors";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
@@ -45,8 +44,15 @@ interface PendingMealCardProps {
   minutesOverdue?: number;
 }
 
-// Map internal status to database status keys
-const statusToDbKey: Record<MealStatus, string> = {
+// Status colors (fixed)
+const STATUS_STYLES: Record<string, React.CSSProperties> = {
+  on_time: { backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'rgba(34, 197, 94, 1)', borderColor: 'rgba(34, 197, 94, 0.3)' },
+  alert: { backgroundColor: 'rgba(251, 191, 36, 0.1)', color: 'rgba(217, 119, 6, 1)', borderColor: 'rgba(251, 191, 36, 0.3)' },
+  late: { backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'rgba(239, 68, 68, 1)', borderColor: 'rgba(239, 68, 68, 0.3)' },
+};
+
+// Map internal status to style keys
+const statusToStyleKey: Record<MealStatus, string> = {
   on_time: "on_time",
   delayed: "alert",
   critical: "late",
@@ -80,16 +86,15 @@ export default function PendingMealCard({
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
   const { saveConsumption } = useMealConsumption();
-  const { getStyleByStatus, isLoading: isLoadingColors } = useMealStatusColors();
 
   // Use external status/minutes if provided, otherwise calculate
   const mealStatus = externalStatus || getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
   const minutesOverdueValue = externalMinutesOverdue ?? getMinutesOverdue(meal.meal_type, meal.actual_date);
   const mealLabel = MEAL_LABELS[meal.meal_type] || meal.meal_type;
   
-  // Get dynamic colors from database
-  const dbStatusKey = statusToDbKey[mealStatus];
-  const dynamicStyles = getStyleByStatus(dbStatusKey);
+  // Get fixed colors
+  const styleKey = statusToStyleKey[mealStatus];
+  const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.on_time;
   
   // Get day abbreviation and formatted date (day/month)
   const dayAbbrev = DAY_LABELS[meal.day_of_week];
@@ -97,23 +102,6 @@ export default function PendingMealCard({
     ? `${meal.actual_date.getDate().toString().padStart(2, '0')}/${(meal.actual_date.getMonth() + 1).toString().padStart(2, '0')}`
     : null;
   const dayLabel = DAY_LABELS[meal.day_of_week];
-
-  // Loading state for colors
-  if (isLoadingColors) {
-    return (
-      <Card className="rounded-xl shadow-sm border animate-pulse">
-        <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-xl bg-muted" />
-            <div className="flex-1 space-y-2">
-              <div className="h-4 bg-muted rounded w-1/3" />
-              <div className="h-5 bg-muted rounded w-2/3" />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
 
   const handleFizClick = () => {
     setShowConfirmDialog(true);
@@ -290,8 +278,8 @@ export default function PendingMealCard({
     <Card 
       className="overflow-hidden transition-all duration-300 rounded-xl shadow-sm"
       style={{
-        backgroundColor: dynamicStyles.backgroundColor || 'hsl(var(--card))',
-        borderColor: dynamicStyles.borderColor || 'hsl(var(--border))',
+        backgroundColor: statusStyles.backgroundColor || 'hsl(var(--card))',
+        borderColor: statusStyles.borderColor || 'hsl(var(--border))',
         borderWidth: '1px',
         borderStyle: 'solid',
       }}
@@ -330,8 +318,8 @@ export default function PendingMealCard({
                   <span 
                     className="text-[10px] px-1.5 py-0.5 rounded-full"
                     style={{
-                      backgroundColor: dynamicStyles.backgroundColor,
-                      color: dynamicStyles.color,
+                      backgroundColor: statusStyles.backgroundColor,
+                      color: statusStyles.color,
                     }}
                   >
                     {formatOverdue(minutesOverdueValue)}
@@ -341,8 +329,8 @@ export default function PendingMealCard({
                   <span 
                     className="text-[10px] px-1.5 py-0.5 rounded-full"
                     style={{
-                      backgroundColor: dynamicStyles.backgroundColor,
-                      color: dynamicStyles.color,
+                      backgroundColor: statusStyles.backgroundColor,
+                      color: statusStyles.color,
                     }}
                   >
                     Atrasado

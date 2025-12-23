@@ -107,6 +107,7 @@ export default function Dashboard() {
   const [showMealPlan, setShowMealPlan] = useState(false);
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
+  const [mealPlanKey, setMealPlanKey] = useState(0); // Key to force MealPlanSection remount
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
@@ -652,6 +653,7 @@ export default function Dashboard() {
                   setShowWeightLossSetup(false);
                   // Update hasMealPlan and navigate to meal plan section
                   setHasMealPlan(true);
+                  setMealPlanKey(prev => prev + 1); // Força remontagem do MealPlanSection
                   setShowMealPlan(true);
                 }}
                 initialData={weightData || undefined}
@@ -659,6 +661,8 @@ export default function Dashboard() {
                 onPlanRegenerated={() => {
                   // Força refresh dos dados do Dashboard após regeneração
                   refetchPendingMeals();
+                  // Incrementa key para forçar remontagem do MealPlanSection
+                  setMealPlanKey(prev => prev + 1);
                 }}
                 onRegenerateStart={() => setIsRegeneratingPlan(true)}
                 onRegenerateEnd={() => setIsRegeneratingPlan(false)}
@@ -685,7 +689,7 @@ export default function Dashboard() {
                 }}
               />
             ) : showMealPlan ? (
-              <MealPlanSection onBack={() => setShowMealPlan(false)} />
+              <MealPlanSection key={mealPlanKey} onBack={() => setShowMealPlan(false)} />
             ) : showFoodAnalyzer ? (
               selectedPhotoMode ? (
                 <FoodPhotoAnalyzer 

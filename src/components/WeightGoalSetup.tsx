@@ -33,6 +33,7 @@ type WeightGoalSetupProps = {
   onSave: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   onGeneratePlan?: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   initialData?: Partial<WeightGoalData>;
+  hasExistingPlan?: boolean;
 };
 
 export type MacroCalculations = {
@@ -357,8 +358,9 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   };
 }
 
-export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initialData }: WeightGoalSetupProps) {
+export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initialData, hasExistingPlan }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [shakeError, setShakeError] = useState(false);
   const errorRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<WeightGoalData>({
@@ -484,7 +486,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
     }
   };
 
-  const handleGeneratePlan = async () => {
+  const handleGeneratePlanClick = () => {
     if (!isComplete || !calculations) {
       toast.error("Preencha todos os campos");
       return;
@@ -494,9 +496,51 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
       scrollToErrorAndShake();
       return;
     }
-    
+
+    // Se já existe plano, mostra confirmação
+    if (hasExistingPlan) {
+      setShowRegenerateConfirm(true);
+      return;
+    }
+
+    // Se não existe, gera direto
+    executeGeneratePlan();
+  };
+
+  const executeGeneratePlan = async () => {
+    setShowRegenerateConfirm(false);
     setIsSaving(true);
+    
     try {
+      // Se existe plano anterior, deletar primeiro
+      if (hasExistingPlan) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          // Primeiro buscar os planos do usuário
+          const { data: existingPlans } = await supabase
+            .from("meal_plans")
+            .select("id")
+            .eq("user_id", session.user.id);
+          
+          // Deletar cada plano (os items serão deletados por cascade ou RLS)
+          if (existingPlans && existingPlans.length > 0) {
+            for (const plan of existingPlans) {
+              // Deletar items do plano primeiro
+              await supabase
+                .from("meal_plan_items")
+                .delete()
+                .eq("meal_plan_id", plan.id);
+              
+              // Deletar o plano
+              await supabase
+                .from("meal_plans")
+                .delete()
+                .eq("id", plan.id);
+            }
+          }
+        }
+      }
+
       await saveToDatabase();
       toast.success("Dados salvos! Gerando seu plano alimentar...");
       
@@ -520,7 +564,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
       toast.success("Plano alimentar criado com sucesso!");
       
       if (onGeneratePlan) {
-        onGeneratePlan({ ...data, calculations });
+        onGeneratePlan({ ...data, calculations: calculations! });
       }
     } catch (error) {
       console.error("Error generating plan:", error);
@@ -858,6 +902,40 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
         </Card>
       )}
 
+      {/* Confirmation Dialog for Regenerate */}
+      {showRegenerateConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-sm w-full animate-in zoom-in-95 duration-200">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Substituir plano atual?
+              </CardTitle>
+              <CardDescription>
+                Isso irá apagar seu plano alimentar atual e criar um novo baseado nas suas novas metas.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-0">
+              <div className="flex gap-3">
+                <Button 
+                  variant="outline" 
+                  className="flex-1"
+                  onClick={() => setShowRegenerateConfirm(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button 
+                  className="flex-1 bg-gradient-to-r from-primary to-primary/80"
+                  onClick={executeGeneratePlan}
+                >
+                  Sim, substituir
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
         <Button variant="outline" onClick={handleSaveOnly} disabled={!isComplete || isSaving} className="h-12">
@@ -867,7 +945,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           Não gerar e salvar
         </Button>
         <Button
-          onClick={handleGeneratePlan}
+          onClick={handleGeneratePlanClick}
           disabled={!isComplete || isSaving}
           className={cn(
             "h-12 border-0",
@@ -881,7 +959,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
           ) : (
             <Sparkles className="w-4 h-4 mr-2" />
           )}
-          Gerar Plano Alimentar
+          {hasExistingPlan ? "Regenerar Plano" : "Gerar Plano Alimentar"}
         </Button>
       </div>
     </div>

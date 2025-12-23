@@ -53,6 +53,11 @@ const mainMenuItems: SubMenuItem[] = [
     icon: Settings,
     subItems: [
       { 
+        label: "Usuários", 
+        icon: Users,
+        subItems: [],
+      },
+      { 
         label: "Integrações", 
         icon: Plug,
         subItems: [

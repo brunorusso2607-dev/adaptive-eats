@@ -23,6 +23,7 @@ import AdminPixels from "./pages/admin/AdminPixels";
 import AdminAppearance from "./pages/admin/AdminAppearance";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
 import AdminSystemUsers from "./pages/admin/AdminSystemUsers";
+import AdminGemini from "./pages/admin/AdminGemini";
 
 const queryClient = new QueryClient();
 
@@ -56,6 +57,7 @@ function AppContent() {
           <Route path="appearance" element={<AdminAppearance />} />
           <Route path="webhooks" element={<AdminWebhooks />} />
           <Route path="system-users" element={<AdminSystemUsers />} />
+          <Route path="gemini" element={<AdminGemini />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

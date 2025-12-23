@@ -1043,41 +1043,6 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Modo Kids - Card desktop */}
-                  {isSubscribed && activePlan === "premium" && (
-                    <Card 
-                      className={cn(
-                        "glass-card transition-all cursor-pointer group hidden md:block",
-                        userContext === "modo_kids" 
-                          ? "border-pink-500/50 bg-pink-500/5" 
-                          : "border-border/50 hover:border-primary/30"
-                      )}
-                      onClick={toggleKidsMode}
-                    >
-                      <CardContent className="p-5 text-center space-y-3">
-                        <div className={cn(
-                          "w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform",
-                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-muted"
-                        )}>
-                          <Baby className={cn(
-                            "w-6 h-6",
-                            userContext === "modo_kids" ? "text-pink-500" : "text-[hsl(215,14%,64%)]"
-                          )} />
-                        </div>
-                        <div>
-                          <h3 className={cn(
-                            "font-display font-bold",
-                            userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-foreground"
-                          )}>
-                            Modo Kids
-                          </h3>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {userContext === "modo_kids" ? "✓ Ativado" : "Toque para ativar"}
-                          </p>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  )}
 
                 </div>
 

@@ -18,7 +18,7 @@ async function getGeminiApiKey(): Promise<string> {
   
   const { data, error } = await supabase
     .from("api_integrations")
-    .select("api_key_masked")
+    .select("api_key_encrypted")
     .eq("name", "gemini")
     .eq("is_active", true)
     .maybeSingle();
@@ -28,11 +28,11 @@ async function getGeminiApiKey(): Promise<string> {
     throw new Error("Failed to fetch API key from database");
   }
 
-  if (!data?.api_key_masked) {
+  if (!data?.api_key_encrypted) {
     throw new Error("Gemini API key not configured in system");
   }
 
-  return data.api_key_masked;
+  return data.api_key_encrypted;
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));

@@ -203,6 +203,15 @@ export function StatusColorEditor() {
             <li>• O preview no topo do card mostra como ficará em tempo real</li>
           </ul>
         </div>
+
+        <div className="mt-4 p-4 bg-primary/5 border border-primary/20 rounded-lg">
+          <h4 className="font-medium text-sm mb-1 text-primary">Sobre o cache</h4>
+          <p className="text-xs text-muted-foreground">
+            O cache é limpo automaticamente sempre que você salva uma cor. Os usuários verão as novas cores
+            na próxima vez que acessarem o app. Use o botão "Limpar Cache" acima apenas se precisar forçar
+            uma atualização imediata no seu dispositivo.
+          </p>
+        </div>
       </CardContent>
     </Card>
   );

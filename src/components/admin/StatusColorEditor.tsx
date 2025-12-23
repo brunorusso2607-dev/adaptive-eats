@@ -6,12 +6,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Loader2, Palette, Save, RotateCcw } from "lucide-react";
+import { Loader2, Palette, Save, RotateCcw, Trash2 } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export function StatusColorEditor() {
   const { colors, isLoading, isSaving, updateColor, refetch } = useMealStatusColorsAdmin();
   const [editingColors, setEditingColors] = useState<Record<string, Partial<MealStatusColor>>>({});
+  const [isClearing, setIsClearing] = useState(false);
+
+  const handleClearCache = async () => {
+    setIsClearing(true);
+    try {
+      // Clear localStorage
+      localStorage.removeItem("meal_status_colors_cache");
+      localStorage.removeItem("meal_status_colors_cache_timestamp");
+      
+      // Refetch from database
+      await refetch();
+      
+      toast.success("Cache limpo! As cores serão recarregadas do banco de dados.");
+    } catch (error) {
+      toast.error("Erro ao limpar cache");
+    } finally {
+      setIsClearing(false);
+    }
+  };
 
   const handleColorChange = (id: string, field: keyof MealStatusColor, value: string) => {
     setEditingColors(prev => ({
@@ -78,10 +97,25 @@ export function StatusColorEditor() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <Palette className="w-5 h-5" />
-          Cores dos Status
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2">
+            <Palette className="w-5 h-5" />
+            Cores dos Status
+          </CardTitle>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleClearCache}
+            disabled={isClearing}
+          >
+            {isClearing ? (
+              <Loader2 className="w-4 h-4 mr-1 animate-spin" />
+            ) : (
+              <Trash2 className="w-4 h-4 mr-1" />
+            )}
+            Limpar Cache
+          </Button>
+        </div>
         <CardDescription>
           Configure as cores para cada status de refeição. Use o seletor para escolher cores com transparência.
         </CardDescription>

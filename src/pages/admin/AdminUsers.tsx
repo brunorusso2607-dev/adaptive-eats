@@ -490,9 +490,9 @@ export default function AdminUsers() {
     <div className="space-y-6 animate-fade-up">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="font-display text-2xl font-bold text-foreground">Gerenciar Usuários</h2>
+          <h2 className="font-display text-2xl font-bold text-foreground">Gerenciar Clientes</h2>
           <p className="text-muted-foreground text-sm mt-1">
-            {totalCount} usuários cadastrados
+            {totalCount} clientes cadastrados
           </p>
         </div>
 

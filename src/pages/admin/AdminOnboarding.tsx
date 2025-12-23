@@ -606,7 +606,18 @@ export default function AdminOnboarding() {
 
             <div className="space-y-2">
               <Label htmlFor="icon_name">Ícone Lucide</Label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 items-center">
+                {/* Icon Preview */}
+                <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 border">
+                  {formData.icon_name && LUCIDE_ICONS[formData.icon_name] ? (
+                    (() => {
+                      const IconComponent = LUCIDE_ICONS[formData.icon_name];
+                      return <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />;
+                    })()
+                  ) : (
+                    <Utensils className="w-5 h-5 text-muted-foreground stroke-[1.5]" />
+                  )}
+                </div>
                 <Input
                   id="icon_name"
                   value={formData.icon_name}
@@ -630,7 +641,7 @@ export default function AdminOnboarding() {
                 </Button>
               </div>
               <p className="text-xs text-muted-foreground">
-                Ícones disponíveis: wheat, milk, nut, fish, egg, bean, check, utensils, salad, leaf, flame, trending-down, trending-up, scale, clock, zap, timer, chef-hat, user, users, baby, target, apple, carrot, heart, droplet, alert-triangle, shield
+                Ícones: wheat, milk, nut, fish, egg, bean, leaf, salad, carrot, apple, banana, cherry, citrus, grape, flame, pizza, sandwich, soup, cookie, cake, ice-cream-cone, popcorn, candy, coffee, beer, wine, martini, cup-soda, droplet, chef-hat, utensils, etc.
               </p>
             </div>
 

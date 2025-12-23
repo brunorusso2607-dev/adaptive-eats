@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { 
@@ -10,10 +10,11 @@ import {
   Eye,
   AlertTriangle,
   UtensilsCrossed,
-  Loader2
+  Loader2,
+  Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useNextMeal, MEAL_LABELS, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
+import { useNextMeal, MEAL_LABELS, MEAL_TIME_RANGES, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
@@ -50,6 +51,11 @@ const statusStyles: Record<MealStatus, { border: string; bg: string; pulse: bool
     bg: "bg-emerald-500/5", 
     pulse: false 
   },
+  upcoming: { 
+    border: "border-blue-500/50", 
+    bg: "bg-blue-500/5", 
+    pulse: false 
+  },
 };
 
 export default function NextMealCard(_props: NextMealCardProps) {
@@ -68,6 +74,20 @@ export default function NextMealCard(_props: NextMealCardProps) {
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showFoodDrawer, setShowFoodDrawer] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
+  const [minutesUntilStart, setMinutesUntilStart] = useState(0);
+
+  // Atualiza contador a cada segundo quando status é "upcoming"
+  useEffect(() => {
+    if (mealStatus !== "upcoming" || !nextMeal) return;
+    
+    const updateCountdown = () => {
+      setMinutesUntilStart(getMinutesUntilStart(nextMeal.meal_type));
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 1000);
+    return () => clearInterval(interval);
+  }, [mealStatus, nextMeal]);
 
   const { saveConsumption } = useMealConsumption();
 
@@ -205,20 +225,24 @@ export default function NextMealCard(_props: NextMealCardProps) {
         {/* Header com status */}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div 
+          <div 
               className={cn(
                 "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors",
                 mealStatus === "critical" 
                   ? "bg-destructive/20" 
                   : mealStatus === "delayed"
                     ? "bg-yellow-500/20"
-                    : "gradient-primary"
+                    : mealStatus === "upcoming"
+                      ? "bg-blue-500/20"
+                      : "gradient-primary"
               )}
             >
               {mealStatus === "critical" ? (
                 <AlertTriangle className="w-6 h-6 text-destructive" />
               ) : mealStatus === "delayed" ? (
                 <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              ) : mealStatus === "upcoming" ? (
+                <Timer className="w-6 h-6 text-blue-600 dark:text-blue-400" />
               ) : (
                 <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
               )}
@@ -228,6 +252,15 @@ export default function NextMealCard(_props: NextMealCardProps) {
                 <span className="text-xs font-medium text-muted-foreground">
                   {mealLabel}
                 </span>
+                {mealStatus === "upcoming" && minutesUntilStart > 0 && (
+                  <span className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full flex items-center gap-1">
+                    <Timer className="w-3 h-3" />
+                    {minutesUntilStart >= 60 
+                      ? `${Math.floor(minutesUntilStart / 60)}h ${minutesUntilStart % 60}min`
+                      : `${minutesUntilStart}min`
+                    } para liberar
+                  </span>
+                )}
                 {mealStatus === "critical" && (
                   <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">
                     Pendente há {minutesOverdue}min

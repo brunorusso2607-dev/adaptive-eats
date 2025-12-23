@@ -135,10 +135,17 @@ export default function CalorieSpeedometer({
             {displayCalories.toLocaleString()}
           </p>
           <p className="text-xs text-muted-foreground font-medium mt-0.5">
-            kcal/dia
+            de {targetCalories.toLocaleString()} kcal
           </p>
         </div>
       </div>
+
+      {/* Goal context label */}
+      <p className="text-xs text-muted-foreground/70 text-center -mt-1">
+        {mode === "lose" && "Meta para emagrecer"}
+        {mode === "gain" && "Meta para ganhar massa"}
+        {mode === "maintain" && "Meta para manutenção"}
+      </p>
 
       {/* Macros - horizontal clean layout */}
       <div className={cn(

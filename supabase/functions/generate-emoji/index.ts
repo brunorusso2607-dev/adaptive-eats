@@ -20,56 +20,56 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+    if (!GOOGLE_AI_API_KEY) {
+      throw new Error("GOOGLE_AI_API_KEY is not configured");
     }
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: [
-          {
-            role: "system",
-            content: "You are an emoji expert. Given a food name, ingredient, dietary preference, or health goal, return ONLY a single emoji that best represents it. No text, no explanation, just one emoji character.",
+    console.log("Generating emoji for:", label);
+
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `You are an emoji expert. Given a food name, ingredient, dietary preference, or health goal, return ONLY a single emoji that best represents it. No text, no explanation, just one emoji character.
+
+What emoji best represents: "${label}"`,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 10,
           },
-          {
-            role: "user",
-            content: `What emoji best represents: "${label}"`,
-          },
-        ],
-      }),
-    });
+        }),
+      }
+    );
 
     if (!response.ok) {
-      if (response.status === 429) {
-        return new Response(
-          JSON.stringify({ error: "Rate limit exceeded, please try again later." }),
-          { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required, please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
-      throw new Error("AI gateway error");
+      console.error("Gemini API error:", response.status, errorText);
+      throw new Error(`Gemini API error: ${response.status}`);
     }
 
     const data = await response.json();
-    const emoji = data.choices?.[0]?.message?.content?.trim() || "📌";
+    console.log("Gemini response:", JSON.stringify(data));
+
+    const rawEmoji = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "📌";
 
     // Extract just the first emoji if there's extra text
-    const emojiMatch = emoji.match(/\p{Emoji}/u);
+    const emojiMatch = rawEmoji.match(/\p{Emoji}/u);
     const cleanEmoji = emojiMatch ? emojiMatch[0] : "📌";
+
+    console.log("Generated emoji:", cleanEmoji);
 
     return new Response(
       JSON.stringify({ emoji: cleanEmoji }),

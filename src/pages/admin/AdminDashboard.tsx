@@ -21,7 +21,8 @@ import {
   LogOut,
   Settings,
   Plug,
-  Webhook
+  Webhook,
+  Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -61,6 +62,7 @@ const mainMenuItems: SubMenuItem[] = [
         label: "Integrações", 
         icon: Plug,
         subItems: [
+          { path: "/admin/gemini", label: "Gemini", icon: Sparkles },
           { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
           { path: "/admin/webhooks", label: "Webhooks", icon: Webhook },
         ],

@@ -15,6 +15,7 @@ export type OnboardingOption = {
 
 export type OnboardingOptionsMap = {
   intolerances: OnboardingOption[];
+  excluded_ingredients: OnboardingOption[];
   dietary_preferences: OnboardingOption[];
   goals: OnboardingOption[];
 };
@@ -25,6 +26,11 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
     { id: "1", category: "intolerances", option_id: "gluten", label: "Glúten", description: "Trigo, cevada, centeio", emoji: "🌾", icon_name: "wheat", is_active: true, sort_order: 1 },
     { id: "2", category: "intolerances", option_id: "lactose", label: "Lactose", description: "Leite e derivados", emoji: "🥛", icon_name: "milk", is_active: true, sort_order: 2 },
     { id: "3", category: "intolerances", option_id: "none", label: "Nenhuma", description: "Não tenho intolerâncias", emoji: "✅", icon_name: "check", is_active: true, sort_order: 7 },
+  ],
+  excluded_ingredients: [
+    { id: "11", category: "excluded_ingredients", option_id: "carne_porco", label: "Carne de porco", description: "Inclui bacon, presunto, linguiça de porco", emoji: null, icon_name: "ban", is_active: true, sort_order: 1 },
+    { id: "12", category: "excluded_ingredients", option_id: "figado", label: "Fígado", description: "Fígado bovino, de frango ou outros", emoji: null, icon_name: "ban", is_active: true, sort_order: 2 },
+    { id: "13", category: "excluded_ingredients", option_id: "frutos_mar", label: "Frutos do mar", description: "Camarão, lula, polvo, mexilhão", emoji: null, icon_name: "fish", is_active: true, sort_order: 3 },
   ],
   dietary_preferences: [
     { id: "4", category: "dietary_preferences", option_id: "comum", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", icon_name: "utensils", is_active: true, sort_order: 1 },
@@ -61,6 +67,7 @@ export function useOnboardingOptions() {
       // Organize by category
       const organized: OnboardingOptionsMap = {
         intolerances: [],
+        excluded_ingredients: [],
         dietary_preferences: [],
         goals: [],
       };

@@ -42,6 +42,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   users: Users,
   baby: Baby,
   flame: Flame,
+  ban: CircleSlash,
 };
 
 const getIcon = (option: { option_id: string; icon_name?: string | null }): LucideIcon | null => {
@@ -276,13 +277,61 @@ export default function Onboarding() {
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Adicione alimentos específicos que você não consome (opcional). Isso nos ajuda a criar receitas personalizadas.
+              Selecione ou adicione alimentos específicos que você não consome (opcional).
             </p>
             
-            {/* Input para adicionar ingredientes */}
+            {/* Sugestões como chips clicáveis */}
+            {options.excluded_ingredients && options.excluded_ingredients.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Sugestões:</p>
+                <div className="flex flex-wrap gap-2">
+                  {options.excluded_ingredients.map((item) => {
+                    const isSelected = profile.excluded_ingredients.includes(item.label.toLowerCase());
+                    const IconComponent = getIcon(item);
+                    return (
+                      <button
+                        key={item.option_id}
+                        onClick={() => {
+                          const label = item.label.toLowerCase();
+                          if (isSelected) {
+                            setProfile({
+                              ...profile,
+                              excluded_ingredients: profile.excluded_ingredients.filter(i => i !== label)
+                            });
+                          } else {
+                            setProfile({
+                              ...profile,
+                              excluded_ingredients: [...profile.excluded_ingredients, label]
+                            });
+                          }
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5",
+                          isSelected
+                            ? "bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-700"
+                            : "bg-muted text-muted-foreground border border-border hover:border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950/30"
+                        )}
+                      >
+                        {IconComponent && <IconComponent className="w-3.5 h-3.5" />}
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Divisor */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1 h-px bg-border" />
+              <span className="text-xs text-muted-foreground">ou adicione outros</span>
+              <div className="flex-1 h-px bg-border" />
+            </div>
+            
+            {/* Input para adicionar ingredientes personalizados */}
             <div className="flex gap-2">
               <Input
-                placeholder="Ex: fígado, beterraba, jiló..."
+                placeholder="Ex: jiló, quiabo, beterraba..."
                 value={ingredientInput}
                 onChange={(e) => setIngredientInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -321,32 +370,35 @@ export default function Onboarding() {
               </Button>
             </div>
 
-            {/* Lista de ingredientes adicionados */}
+            {/* Lista de ingredientes selecionados */}
             {profile.excluded_ingredients.length > 0 && (
-              <div className="flex flex-wrap gap-2">
-                {profile.excluded_ingredients.map((ingredient) => (
-                  <Badge
-                    key={ingredient}
-                    variant="secondary"
-                    className="pl-3 pr-1.5 py-1.5 flex items-center gap-1.5"
-                  >
-                    <span className="capitalize">{ingredient}</span>
-                    <button
-                      onClick={() => setProfile({
-                        ...profile,
-                        excluded_ingredients: profile.excluded_ingredients.filter(i => i !== ingredient)
-                      })}
-                      className="hover:bg-muted rounded-full p-0.5"
+              <div className="space-y-2">
+                <p className="text-xs text-muted-foreground font-medium">Selecionados:</p>
+                <div className="flex flex-wrap gap-2">
+                  {profile.excluded_ingredients.map((ingredient) => (
+                    <Badge
+                      key={ingredient}
+                      variant="secondary"
+                      className="pl-3 pr-1.5 py-1.5 flex items-center gap-1.5 bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800"
                     >
-                      <X className="w-3 h-3" />
-                    </button>
-                  </Badge>
-                ))}
+                      <span className="capitalize">{ingredient}</span>
+                      <button
+                        onClick={() => setProfile({
+                          ...profile,
+                          excluded_ingredients: profile.excluded_ingredients.filter(i => i !== ingredient)
+                        })}
+                        className="hover:bg-orange-200 dark:hover:bg-orange-900 rounded-full p-0.5"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </Badge>
+                  ))}
+                </div>
               </div>
             )}
 
             {profile.excluded_ingredients.length === 0 && (
-              <p className="text-xs text-muted-foreground/60 text-center py-4">
+              <p className="text-xs text-muted-foreground/60 text-center py-2">
                 Nenhum alimento adicionado. Você pode pular esta etapa se quiser.
               </p>
             )}

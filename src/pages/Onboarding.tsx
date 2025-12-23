@@ -3,10 +3,53 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut } from "lucide-react";
+import { 
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut,
+  Wheat, Milk, Nut, Fish, Egg, Bean, CircleSlash, Leaf, Salad, 
+  Scale, TrendingDown, TrendingUp, Minus, Clock, Flame, Timer,
+  User, Users, Baby, type LucideIcon
+} from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
+
+// Mapeamento de ícones line-art por option_id
+const ICON_MAP: Record<string, LucideIcon> = {
+  // Intolerâncias
+  gluten: Wheat,
+  lactose: Milk,
+  nuts: Nut,
+  seafood: Fish,
+  eggs: Egg,
+  soy: Bean,
+  none: Check,
+  nenhuma: Check,
+  // Preferências alimentares
+  comum: Salad,
+  vegetariana: Leaf,
+  vegana: Leaf,
+  low_carb: Flame,
+  // Objetivos
+  emagrecer: TrendingDown,
+  manter: Minus,
+  ganhar_peso: TrendingUp,
+  // Meta calórica
+  reduzir: TrendingDown,
+  aumentar: TrendingUp,
+  definir_depois: Clock,
+  // Complexidade
+  rapida: Timer,
+  equilibrada: Scale,
+  elaborada: ChefHat,
+  // Contexto
+  individual: User,
+  familia: Users,
+  modo_kids: Baby,
+};
+
+const getIcon = (optionId: string): LucideIcon | null => {
+  return ICON_MAP[optionId] || null;
+};
 
 const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
@@ -147,147 +190,201 @@ export default function Onboarding() {
       case 1:
         return (
           <div className="grid grid-cols-2 gap-3">
-            {options.intolerances.map((item) => (
-              <button
-                key={item.option_id}
-                onClick={() => toggleIntolerance(item.option_id)}
-                className={cn(
-                  "p-4 rounded-xl border text-left transition-all",
-                  profile.intolerances.includes(item.option_id)
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-card"
-                )}
-              >
-                <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
-                <span className="font-medium text-sm">{item.label}</span>
-              </button>
-            ))}
+            {options.intolerances.map((item) => {
+              const IconComponent = getIcon(item.option_id);
+              return (
+                <button
+                  key={item.option_id}
+                  onClick={() => toggleIntolerance(item.option_id)}
+                  className={cn(
+                    "p-4 rounded-xl border text-left transition-all",
+                    profile.intolerances.includes(item.option_id)
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
+                  )}
+                >
+                  <div className="w-8 h-8 mb-2 flex items-center justify-center">
+                    {IconComponent ? (
+                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                    ) : (
+                      <span className="text-xl">{item.emoji || "•"}</span>
+                    )}
+                  </div>
+                  <span className="font-medium text-sm">{item.label}</span>
+                </button>
+              );
+            })}
           </div>
         );
 
       case 2:
         return (
           <div className="grid grid-cols-2 gap-3">
-            {options.dietary_preferences.map((item) => (
-              <button
-                key={item.option_id}
-                onClick={() => setProfile({ ...profile, dietary_preference: item.option_id })}
-                className={cn(
-                  "p-4 rounded-xl border text-left transition-all",
-                  profile.dietary_preference === item.option_id
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-card"
-                )}
-              >
-                <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
-                <span className="font-medium text-sm block">{item.label}</span>
-                {item.description && (
-                  <span className="text-xs text-muted-foreground">{item.description}</span>
-                )}
-              </button>
-            ))}
+            {options.dietary_preferences.map((item) => {
+              const IconComponent = getIcon(item.option_id);
+              return (
+                <button
+                  key={item.option_id}
+                  onClick={() => setProfile({ ...profile, dietary_preference: item.option_id })}
+                  className={cn(
+                    "p-4 rounded-xl border text-left transition-all",
+                    profile.dietary_preference === item.option_id
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
+                  )}
+                >
+                  <div className="w-8 h-8 mb-2 flex items-center justify-center">
+                    {IconComponent ? (
+                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                    ) : (
+                      <span className="text-xl">{item.emoji || "•"}</span>
+                    )}
+                  </div>
+                  <span className="font-medium text-sm block">{item.label}</span>
+                  {item.description && (
+                    <span className="text-xs text-muted-foreground">{item.description}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         );
 
       case 3:
         return (
           <div className="space-y-3">
-            {options.goals.map((item) => (
-              <button
-                key={item.option_id}
-                onClick={() => setProfile({ ...profile, goal: item.option_id })}
-                className={cn(
-                  "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                  profile.goal === item.option_id
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-card"
-                )}
-              >
-                <span className="text-3xl">{item.emoji || "📌"}</span>
-                <div>
-                  <span className="font-medium block">{item.label}</span>
-                  {item.description && (
-                    <span className="text-sm text-muted-foreground">{item.description}</span>
+            {options.goals.map((item) => {
+              const IconComponent = getIcon(item.option_id);
+              return (
+                <button
+                  key={item.option_id}
+                  onClick={() => setProfile({ ...profile, goal: item.option_id })}
+                  className={cn(
+                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
+                    profile.goal === item.option_id
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
                   )}
-                </div>
-              </button>
-            ))}
+                >
+                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
+                    {IconComponent ? (
+                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                    ) : (
+                      <span className="text-xl">{item.emoji || "•"}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium block">{item.label}</span>
+                    {item.description && (
+                      <span className="text-sm text-muted-foreground">{item.description}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         );
 
       case 4:
         return (
           <div className="grid grid-cols-2 gap-3">
-            {options.calorie_goals.map((item) => (
-              <button
-                key={item.option_id}
-                onClick={() => setProfile({ ...profile, calorie_goal: item.option_id })}
-                className={cn(
-                  "p-4 rounded-xl border text-left transition-all",
-                  profile.calorie_goal === item.option_id
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-card"
-                )}
-              >
-                <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
-                <span className="font-medium text-sm block">{item.label}</span>
-                {item.description && (
-                  <span className="text-xs text-muted-foreground">{item.description}</span>
-                )}
-              </button>
-            ))}
+            {options.calorie_goals.map((item) => {
+              const IconComponent = getIcon(item.option_id);
+              return (
+                <button
+                  key={item.option_id}
+                  onClick={() => setProfile({ ...profile, calorie_goal: item.option_id })}
+                  className={cn(
+                    "p-4 rounded-xl border text-left transition-all",
+                    profile.calorie_goal === item.option_id
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
+                  )}
+                >
+                  <div className="w-8 h-8 mb-2 flex items-center justify-center">
+                    {IconComponent ? (
+                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                    ) : (
+                      <span className="text-xl">{item.emoji || "•"}</span>
+                    )}
+                  </div>
+                  <span className="font-medium text-sm block">{item.label}</span>
+                  {item.description && (
+                    <span className="text-xs text-muted-foreground">{item.description}</span>
+                  )}
+                </button>
+              );
+            })}
           </div>
         );
 
       case 5:
         return (
           <div className="space-y-3">
-            {options.complexity.map((item) => (
-              <button
-                key={item.option_id}
-                onClick={() => setProfile({ ...profile, recipe_complexity: item.option_id })}
-                className={cn(
-                  "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                  profile.recipe_complexity === item.option_id
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-card"
-                )}
-              >
-                <span className="text-3xl">{item.emoji || "📌"}</span>
-                <div>
-                  <span className="font-medium block">{item.label}</span>
-                  {item.description && (
-                    <span className="text-sm text-muted-foreground">{item.description}</span>
+            {options.complexity.map((item) => {
+              const IconComponent = getIcon(item.option_id);
+              return (
+                <button
+                  key={item.option_id}
+                  onClick={() => setProfile({ ...profile, recipe_complexity: item.option_id })}
+                  className={cn(
+                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
+                    profile.recipe_complexity === item.option_id
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
                   )}
-                </div>
-              </button>
-            ))}
+                >
+                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
+                    {IconComponent ? (
+                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                    ) : (
+                      <span className="text-xl">{item.emoji || "•"}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium block">{item.label}</span>
+                    {item.description && (
+                      <span className="text-sm text-muted-foreground">{item.description}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         );
 
       case 6:
         return (
           <div className="space-y-3">
-            {options.context.map((item) => (
-              <button
-                key={item.option_id}
-                onClick={() => setProfile({ ...profile, context: item.option_id })}
-                className={cn(
-                  "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                  profile.context === item.option_id
-                    ? "border-primary bg-primary/5"
-                    : "border-border/80 hover:border-primary/50 bg-card"
-                )}
-              >
-                <span className="text-3xl">{item.emoji || "📌"}</span>
-                <div>
-                  <span className="font-medium block">{item.label}</span>
-                  {item.description && (
-                    <span className="text-sm text-muted-foreground">{item.description}</span>
+            {options.context.map((item) => {
+              const IconComponent = getIcon(item.option_id);
+              return (
+                <button
+                  key={item.option_id}
+                  onClick={() => setProfile({ ...profile, context: item.option_id })}
+                  className={cn(
+                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
+                    profile.context === item.option_id
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
                   )}
-                </div>
-              </button>
-            ))}
+                >
+                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
+                    {IconComponent ? (
+                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                    ) : (
+                      <span className="text-xl">{item.emoji || "•"}</span>
+                    )}
+                  </div>
+                  <div>
+                    <span className="font-medium block">{item.label}</span>
+                    {item.description && (
+                      <span className="text-sm text-muted-foreground">{item.description}</span>
+                    )}
+                  </div>
+                </button>
+              );
+            })}
           </div>
         );
 

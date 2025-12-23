@@ -12,6 +12,7 @@ import RecipeList from "@/components/RecipeList";
 import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
 import WeightProgressBar from "@/components/WeightProgressBar";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
+import { useDailyConsumption } from "@/hooks/useDailyConsumption";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import ProfilePage from "@/components/ProfilePage";
 import MealPlanSection from "@/components/MealPlanSection";
@@ -136,6 +137,9 @@ export default function Dashboard() {
   
   // User gamification hook
   const gamification = useGamification();
+  
+  // Daily consumption hook
+  const { consumption: dailyConsumption, refetch: refetchDailyConsumption } = useDailyConsumption();
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -872,9 +876,13 @@ export default function Dashboard() {
                                 <div className="mt-3">
                                   <CalorieSpeedometer
                                     targetCalories={calcs.targetCalories}
+                                    consumedCalories={Math.round(dailyConsumption.totalCalories)}
                                     protein={calcs.protein}
+                                    consumedProtein={Math.round(dailyConsumption.totalProtein)}
                                     carbs={calcs.carbs}
+                                    consumedCarbs={Math.round(dailyConsumption.totalCarbs)}
                                     fat={calcs.fat}
+                                    consumedFat={Math.round(dailyConsumption.totalFat)}
                                     mode={calcs.mode}
                                   />
                                 </div>

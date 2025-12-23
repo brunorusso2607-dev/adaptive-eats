@@ -203,10 +203,10 @@ export function usePendingMeals() {
         return;
       }
 
-      // Buscar plano ativo com start_date
+      // Buscar plano ativo com start_date e created_at
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id, start_date")
+        .select("id, start_date, created_at")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -224,6 +224,7 @@ export function usePendingMeals() {
       setHasMealPlan(true);
       const activePlan = plans[0];
       const planStartDate = new Date(activePlan.start_date + "T00:00:00");
+      const planCreatedAt = new Date(activePlan.created_at);
 
       // Buscar TODAS as refeições não completadas do plano
       const { data: meals, error: mealsError } = await supabase
@@ -256,6 +257,23 @@ export function usePendingMeals() {
         const daysFromStart = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
         date.setDate(date.getDate() + weeksOffset + daysFromStart);
         return date;
+      };
+
+      // Verificar se uma refeição existia quando o plano foi criado
+      // (se o horário da refeição é APÓS a criação do plano)
+      const isMealValidSinceCreation = (mealType: string, actualDate: Date): boolean => {
+        // Pegar o horário de fim da refeição naquele dia
+        const range = MEAL_TIME_RANGES[mealType];
+        if (!range) return true;
+        
+        // Criar data/hora do fim da refeição
+        const mealEndTime = new Date(actualDate);
+        const endHour = Math.floor(range.end);
+        const endMinutes = (range.end % 1) * 60;
+        mealEndTime.setHours(endHour, endMinutes, 0, 0);
+        
+        // A refeição só é válida se o horário de fim dela é DEPOIS da criação do plano
+        return mealEndTime >= planCreatedAt;
       };
 
       // Verificar se uma refeição já passou ou está no horário atual
@@ -295,13 +313,19 @@ export function usePendingMeals() {
         recipe_instructions: meal.recipe_instructions as string[],
       }));
 
-      // Filtrar refeições passadas ou atuais (atrasadas)
-      const overdueMeals = mealsWithDates.filter(meal => 
+      // Primeiro, filtrar apenas refeições que são válidas desde a criação do plano
+      // (exclui refeições cujo horário já tinha passado quando o usuário se cadastrou)
+      const validMeals = mealsWithDates.filter(meal =>
+        meal.actual_date && isMealValidSinceCreation(meal.meal_type, meal.actual_date)
+      );
+
+      // Filtrar refeições passadas ou atuais (atrasadas) - apenas das válidas
+      const overdueMeals = validMeals.filter(meal => 
         meal.actual_date && isMealPastOrCurrent(meal.meal_type, meal.actual_date)
       );
 
-      // Encontrar a próxima refeição futura (que ainda não começou)
-      const futureMeals = mealsWithDates.filter(meal => 
+      // Encontrar a próxima refeição futura (que ainda não começou) - apenas das válidas
+      const futureMeals = validMeals.filter(meal => 
         meal.actual_date && !isMealPastOrCurrent(meal.meal_type, meal.actual_date)
       );
 

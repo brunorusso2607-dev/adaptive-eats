@@ -108,10 +108,39 @@ export default function AdminWebhooks() {
   const [activeTab, setActiveTab] = useState("overview");
   const [webhookUrl, setWebhookUrl] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState<"checking" | "configured" | "not_configured">("checking");
+  const [lastCheck, setLastCheck] = useState<Date | null>(null);
 
   // Get the project webhook URL
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "upnqkxrvtimtlqsuuvci";
   const stripeWebhookUrl = `https://${projectId}.supabase.co/functions/v1/stripe-webhook`;
+
+  // Check webhook status
+  const checkWebhookStatus = async () => {
+    setWebhookStatus("checking");
+    try {
+      // Test the webhook endpoint with a simple OPTIONS request
+      const response = await fetch(stripeWebhookUrl, {
+        method: "OPTIONS",
+      });
+      
+      // If we get a response (even error), the function exists
+      if (response.ok || response.status === 400 || response.status === 500) {
+        setWebhookStatus("configured");
+      } else {
+        setWebhookStatus("not_configured");
+      }
+      setLastCheck(new Date());
+    } catch (error) {
+      // If fetch fails completely, function might not exist
+      setWebhookStatus("not_configured");
+      setLastCheck(new Date());
+    }
+  };
+
+  useEffect(() => {
+    checkWebhookStatus();
+  }, []);
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -163,18 +192,46 @@ export default function AdminWebhooks() {
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
-                    <AlertTriangle className="w-3 h-3 mr-1" />
-                    Não configurado
-                  </Badge>
-                  <Button 
-                    variant="ghost" 
-                    size="sm"
-                    onClick={() => setActiveTab("stripe")}
-                  >
-                    Configurar
-                  </Button>
+                  {webhookStatus === "checking" ? (
+                    <Badge variant="outline" className="bg-muted">
+                      <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                      Verificando...
+                    </Badge>
+                  ) : webhookStatus === "configured" ? (
+                    <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Configurado
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30">
+                      <AlertTriangle className="w-3 h-3 mr-1" />
+                      Não configurado
+                    </Badge>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={checkWebhookStatus}
+                      disabled={webhookStatus === "checking"}
+                    >
+                      <RefreshCw className={`w-4 h-4 ${webhookStatus === "checking" ? "animate-spin" : ""}`} />
+                    </Button>
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => setActiveTab("stripe")}
+                    >
+                      {webhookStatus === "configured" ? "Ver" : "Configurar"}
+                    </Button>
+                  </div>
                 </div>
+                {lastCheck && (
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Última verificação: {lastCheck.toLocaleTimeString()}
+                  </p>
+                )}
               </CardContent>
             </Card>
 

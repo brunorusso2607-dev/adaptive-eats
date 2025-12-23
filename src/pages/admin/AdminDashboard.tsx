@@ -19,7 +19,9 @@ import {
   AlertTriangle,
   Paintbrush,
   LogOut,
-  Settings
+  Settings,
+  Plug,
+  Webhook
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -33,7 +35,7 @@ type SubMenuItem = {
   label: string;
   icon: React.ComponentType<{ className?: string }>;
   exact?: boolean;
-  subItems?: { path: string; label: string; icon: React.ComponentType<{ className?: string }> }[];
+  subItems?: SubMenuItem[];
 };
 
 const mainMenuItems: SubMenuItem[] = [
@@ -50,7 +52,14 @@ const mainMenuItems: SubMenuItem[] = [
     label: "Configurações",
     icon: Settings,
     subItems: [
-      { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
+      { 
+        label: "Integrações", 
+        icon: Plug,
+        subItems: [
+          { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
+          { path: "/admin/webhooks", label: "Webhooks", icon: Webhook },
+        ],
+      },
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/pixels", label: "Pixels", icon: Code2 },
       { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
@@ -199,19 +208,75 @@ export default function AdminDashboard() {
                     <CollapsibleContent className="pl-4 pt-1 space-y-1">
                       {item.subItems && item.subItems.length > 0 ? (
                         item.subItems.map((subItem) => (
-                          <Link
-                            key={subItem.path}
-                            to={subItem.path}
-                            className={cn(
-                              "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                              location.pathname === subItem.path
-                                ? "bg-primary text-primary-foreground shadow-glow"
-                                : "bg-card/20 text-muted-foreground hover:bg-card hover:text-foreground"
-                            )}
-                          >
-                            <subItem.icon className="w-4 h-4" />
-                            {subItem.label}
-                          </Link>
+                          subItem.path ? (
+                            <Link
+                              key={subItem.path}
+                              to={subItem.path}
+                              className={cn(
+                                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                                location.pathname === subItem.path
+                                  ? "bg-primary text-primary-foreground shadow-glow"
+                                  : "bg-card/20 text-muted-foreground hover:bg-card hover:text-foreground"
+                              )}
+                            >
+                              <subItem.icon className="w-4 h-4" />
+                              {subItem.label}
+                            </Link>
+                          ) : (
+                            <Collapsible
+                              key={subItem.label}
+                              open={openMenus.includes(subItem.label)}
+                              onOpenChange={() => toggleMenu(subItem.label)}
+                            >
+                              <CollapsibleTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  className={cn(
+                                    "w-full justify-between px-4 py-2 rounded-xl text-sm font-medium transition-all",
+                                    openMenus.includes(subItem.label)
+                                      ? "bg-card/40 text-foreground"
+                                      : "bg-card/20 text-muted-foreground hover:bg-card hover:text-foreground"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <subItem.icon className="w-4 h-4" />
+                                    {subItem.label}
+                                  </div>
+                                  <ChevronDown
+                                    className={cn(
+                                      "w-4 h-4 transition-transform duration-200",
+                                      openMenus.includes(subItem.label) && "rotate-180"
+                                    )}
+                                  />
+                                </Button>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent className="pl-4 pt-1 space-y-1">
+                                {subItem.subItems && subItem.subItems.length > 0 ? (
+                                  subItem.subItems.map((nestedItem) => (
+                                    nestedItem.path && (
+                                      <Link
+                                        key={nestedItem.path}
+                                        to={nestedItem.path}
+                                        className={cn(
+                                          "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all",
+                                          location.pathname === nestedItem.path
+                                            ? "bg-primary text-primary-foreground shadow-glow"
+                                            : "bg-card/10 text-muted-foreground hover:bg-card hover:text-foreground"
+                                        )}
+                                      >
+                                        <nestedItem.icon className="w-3 h-3" />
+                                        {nestedItem.label}
+                                      </Link>
+                                    )
+                                  ))
+                                ) : (
+                                  <p className="px-4 py-2 text-xs text-muted-foreground italic">
+                                    Em breve...
+                                  </p>
+                                )}
+                              </CollapsibleContent>
+                            </Collapsible>
+                          )
                         ))
                       ) : (
                         <p className="px-4 py-2 text-xs text-muted-foreground italic">

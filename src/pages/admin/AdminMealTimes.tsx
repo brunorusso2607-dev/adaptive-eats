@@ -343,6 +343,22 @@ export default function AdminMealTimes() {
           <p>• Alterações são aplicadas imediatamente para novos acessos</p>
         </CardContent>
       </Card>
+
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardHeader>
+          <CardTitle className="text-amber-600">⚠️ Cache do Navegador</CardTitle>
+        </CardHeader>
+        <CardContent className="text-sm text-muted-foreground space-y-2">
+          <p>Se as alterações de horários ou cores não aparecerem no dashboard, pode ser necessário limpar o cache do navegador:</p>
+          <ol className="list-decimal list-inside space-y-1 ml-2">
+            <li>Abra as Ferramentas do Desenvolvedor (F12)</li>
+            <li>Vá na aba "Application" ou "Armazenamento"</li>
+            <li>Em "Local Storage", clique com o botão direito e selecione "Limpar"</li>
+            <li>Recarregue a página (Ctrl+Shift+R)</li>
+          </ol>
+          <p className="mt-2">Ou simplesmente aguarde 5 minutos para o cache expirar automaticamente.</p>
+        </CardContent>
+      </Card>
     </div>
   );
 }

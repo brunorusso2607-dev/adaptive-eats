@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { invalidateMealTimeCache } from "@/lib/mealTimeConfig";
 
 export type MealTimeSetting = {
   id: string;
@@ -143,9 +144,10 @@ export function useMealTimeSettingsAdmin() {
 
       if (error) throw error;
 
-      // Invalidar cache global
+      // Invalidar cache global e mealTimeConfig
       cachedSettings = null;
       cacheTimestamp = 0;
+      invalidateMealTimeCache();
 
       await fetchSettings();
       return true;
@@ -166,9 +168,10 @@ export function useMealTimeSettingsAdmin() {
 
       if (error) throw error;
 
-      // Invalidar cache global
+      // Invalidar cache global e mealTimeConfig
       cachedSettings = null;
       cacheTimestamp = 0;
+      invalidateMealTimeCache();
 
       await fetchSettings();
       return true;
@@ -190,9 +193,10 @@ export function useMealTimeSettingsAdmin() {
 
       if (error) throw error;
 
-      // Invalidar cache global
+      // Invalidar cache global e mealTimeConfig
       cachedSettings = null;
       cacheTimestamp = 0;
+      invalidateMealTimeCache();
 
       await fetchSettings();
       return true;

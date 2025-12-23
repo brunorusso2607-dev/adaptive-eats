@@ -278,52 +278,27 @@ export default function AdminSystemUsers() {
 
     setIsSaving(true);
     try {
-      // Criar usuário no Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: createForm.email,
-        password: createForm.password,
-        options: {
-          emailRedirectTo: `${window.location.origin}/`,
-          data: {
-            first_name: createForm.first_name,
-            last_name: createForm.last_name,
-          },
+      // Usar Edge Function para criar admin de forma segura
+      const { data, error } = await supabase.functions.invoke("create-admin-user", {
+        body: {
+          email: createForm.email,
+          password: createForm.password,
+          first_name: createForm.first_name,
+          last_name: createForm.last_name,
         },
       });
 
-      if (authError) {
-        if (authError.message.includes("already registered")) {
+      if (error) {
+        toast.error("Erro ao criar administrador: " + error.message);
+        return;
+      }
+
+      if (data?.error) {
+        if (data.error.includes("already") || data.error.includes("exists")) {
           toast.error("Este e-mail já está cadastrado");
         } else {
-          toast.error("Erro ao criar usuário: " + authError.message);
+          toast.error(data.error);
         }
-        return;
-      }
-
-      if (!authData.user) {
-        toast.error("Erro ao criar usuário");
-        return;
-      }
-
-      // Atualizar o perfil com nome e sobrenome
-      await supabase
-        .from("profiles")
-        .update({
-          first_name: createForm.first_name || null,
-          last_name: createForm.last_name || null,
-        })
-        .eq("id", authData.user.id);
-
-      // Adicionar role de admin
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .insert({
-          user_id: authData.user.id,
-          role: "admin",
-        });
-
-      if (roleError) {
-        toast.error("Erro ao definir permissão de admin");
         return;
       }
 

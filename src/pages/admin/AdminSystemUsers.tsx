@@ -2,8 +2,25 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Shield, Calendar, User } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Shield, Calendar, User, Pencil, Save, X, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface AdminUser {
   id: string;
@@ -19,9 +36,25 @@ interface AdminUser {
   };
 }
 
+interface EditForm {
+  age: number | null;
+  sex: string | null;
+  height: number | null;
+  weight_current: number | null;
+}
+
 export default function AdminSystemUsers() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
+  const [editForm, setEditForm] = useState<EditForm>({
+    age: null,
+    sex: null,
+    height: null,
+    weight_current: null,
+  });
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     fetchAdmins();
@@ -30,7 +63,6 @@ export default function AdminSystemUsers() {
   const fetchAdmins = async () => {
     setIsLoading(true);
     try {
-      // Buscar usuários com role admin
       const { data: rolesData, error: rolesError } = await supabase
         .from("user_roles")
         .select("*")
@@ -38,7 +70,6 @@ export default function AdminSystemUsers() {
 
       if (rolesError) throw rolesError;
 
-      // Para cada admin, buscar o perfil
       const adminsWithProfiles = await Promise.all(
         (rolesData || []).map(async (role) => {
           const { data: profileData } = await supabase
@@ -74,6 +105,45 @@ export default function AdminSystemUsers() {
     if (sex === "male") return "Masculino";
     if (sex === "female") return "Feminino";
     return "Não informado";
+  };
+
+  const handleEditClick = (admin: AdminUser) => {
+    setSelectedAdmin(admin);
+    setEditForm({
+      age: admin.profile?.age || null,
+      sex: admin.profile?.sex || null,
+      height: admin.profile?.height || null,
+      weight_current: admin.profile?.weight_current || null,
+    });
+    setIsEditOpen(true);
+  };
+
+  const handleSave = async () => {
+    if (!selectedAdmin) return;
+
+    setIsSaving(true);
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({
+          age: editForm.age,
+          sex: editForm.sex,
+          height: editForm.height,
+          weight_current: editForm.weight_current,
+        })
+        .eq("id", selectedAdmin.user_id);
+
+      if (error) throw error;
+
+      toast.success("Dados atualizados com sucesso");
+      setIsEditOpen(false);
+      fetchAdmins();
+    } catch (error) {
+      console.error("Erro ao atualizar:", error);
+      toast.error("Erro ao atualizar dados");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (isLoading) {
@@ -151,12 +221,97 @@ export default function AdminSystemUsers() {
                       )}
                     </div>
                   </div>
+
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleEditClick(admin)}
+                    className="shrink-0"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </Button>
                 </div>
               </CardContent>
             </Card>
           ))
         )}
       </div>
+
+      {/* Modal de Edição */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="age">Idade</Label>
+              <Input
+                id="age"
+                type="number"
+                value={editForm.age || ""}
+                onChange={(e) => setEditForm({ ...editForm, age: e.target.value ? Number(e.target.value) : null })}
+                placeholder="Ex: 30"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="sex">Sexo</Label>
+              <Select
+                value={editForm.sex || ""}
+                onValueChange={(value) => setEditForm({ ...editForm, sex: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="male">Masculino</SelectItem>
+                  <SelectItem value="female">Feminino</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="height">Altura (cm)</Label>
+              <Input
+                id="height"
+                type="number"
+                value={editForm.height || ""}
+                onChange={(e) => setEditForm({ ...editForm, height: e.target.value ? Number(e.target.value) : null })}
+                placeholder="Ex: 170"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="weight">Peso (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                value={editForm.weight_current || ""}
+                onChange={(e) => setEditForm({ ...editForm, weight_current: e.target.value ? Number(e.target.value) : null })}
+                placeholder="Ex: 70"
+              />
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setIsEditOpen(false)} disabled={isSaving}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button onClick={handleSave} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Salvar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -271,12 +271,12 @@ export default function PendingMealCard({
 
   return (
     <Card 
-      className="glass-card overflow-hidden transition-all duration-300"
+      className="overflow-hidden transition-all duration-300 rounded-xl shadow-sm"
       style={{
-        backgroundColor: dynamicStyles.backgroundColor,
-        borderColor: dynamicStyles.borderColor,
-        borderWidth: dynamicStyles.borderColor ? '1px' : undefined,
-        borderStyle: dynamicStyles.borderColor ? 'solid' : undefined,
+        backgroundColor: dynamicStyles.backgroundColor || 'hsl(var(--card))',
+        borderColor: dynamicStyles.borderColor || 'hsl(var(--border))',
+        borderWidth: '1px',
+        borderStyle: 'solid',
       }}
     >
       <CardContent className="p-4 space-y-4">

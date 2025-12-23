@@ -199,14 +199,14 @@ export default function NextMealCard(_props: NextMealCardProps) {
   return (
     <Card 
       className={cn(
-        "glass-card overflow-hidden transition-all duration-300",
+        "overflow-hidden transition-all duration-300 rounded-xl shadow-sm",
         mealStatus === "critical" && "animate-pulse"
       )}
       style={{
-        backgroundColor: dynamicStyles.backgroundColor,
-        borderColor: dynamicStyles.borderColor,
-        borderWidth: dynamicStyles.borderColor ? '1px' : undefined,
-        borderStyle: dynamicStyles.borderColor ? 'solid' : undefined,
+        backgroundColor: dynamicStyles.backgroundColor || 'hsl(var(--card))',
+        borderColor: dynamicStyles.borderColor || 'hsl(var(--border))',
+        borderWidth: '1px',
+        borderStyle: 'solid',
       }}
     >
       <CardContent className="p-4 space-y-4">

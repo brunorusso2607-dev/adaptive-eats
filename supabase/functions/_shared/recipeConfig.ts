@@ -20,6 +20,7 @@ export interface UserProfile {
   dietary_preference?: string | null;
   context?: string | null;
   intolerances?: string[] | null;
+  excluded_ingredients?: string[] | null;
 }
 
 export interface MacroTargets {
@@ -267,6 +268,19 @@ export function buildIntolerancesString(profile: UserProfile): string {
 }
 
 /**
+ * Constrói string de alimentos excluídos (preferências pessoais do usuário)
+ */
+export function buildExcludedIngredientsString(profile: UserProfile): string {
+  const excludedList = profile.excluded_ingredients || [];
+  
+  if (excludedList.length === 0) {
+    return "";
+  }
+
+  return excludedList.map((i: string) => i.toUpperCase()).join(", ");
+}
+
+/**
  * Gera instruções especiais para Modo Kids
  */
 export function buildKidsInstructions(isKidsMode: boolean): string {
@@ -396,6 +410,7 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
   }
 
   const intolerancesStr = buildIntolerancesString(profile);
+  const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const categoryConstraint = buildCategoryConstraint(categoryContext || null);
   const kidsInstructions = buildKidsInstructions(isKidsMode);
   const weightLossInstructions = buildWeightLossInstructions(isWeightLossMode, macros);
@@ -407,13 +422,18 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
     .filter(Boolean)
     .join("\n");
 
+  // Build excluded ingredients constraint
+  const excludedConstraint = excludedIngredientsStr 
+    ? `\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR): ${excludedIngredientsStr}`
+    : "";
+
   return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas.
 ${categoryConstraint}
 ${specialModes}
 
 REGRAS (ordem de prioridade):
 1. CATEGORIA: Se selecionada, a receita DEVE ser dessa categoria
-2. SEGURANÇA: ${intolerancesStr} - NUNCA inclua ingredientes proibidos
+2. SEGURANÇA: ${intolerancesStr} - NUNCA inclua ingredientes proibidos${excludedConstraint}
 3. DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
 4. OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
 5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 min)" : COMPLEXITY_LABELS["equilibrada"]}
@@ -478,6 +498,7 @@ export function buildSingleDayPrompt(
   previousRecipes: string[] = []
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
+  const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const isKidsMode = profile.context === "modo_kids";
   // Complexidade padrão: equilibrada (não vem mais do perfil do usuário)
   const complexity = "equilibrada";
@@ -486,6 +507,11 @@ export function buildSingleDayPrompt(
   const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes criativos e divertidos, sabores suaves, apresentação atraente." : "";
   const avoidRecipes = previousRecipes.length > 0 
     ? `\n⚠️ NÃO REPETIR: ${previousRecipes.slice(0, 8).join(", ")}` 
+    : "";
+
+  // Build excluded ingredients constraint for meal plan
+  const excludedConstraint = excludedIngredientsStr 
+    ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR):\n${excludedIngredientsStr}`
     : "";
 
   const complexityInstructions: Record<string, string> = {
@@ -505,7 +531,7 @@ export function buildSingleDayPrompt(
 • Contexto: ${CONTEXT_LABELS[profile.context || "individual"]}
 
 🚫 RESTRIÇÕES ALIMENTARES (JAMAIS INCLUIR):
-${intolerancesStr}
+${intolerancesStr}${excludedConstraint}
 
 ⏱️ COMPLEXIDADE: ${COMPLEXITY_LABELS[complexity]}
 ${complexityInstructions[complexity]}${kidsNote}${avoidRecipes}
@@ -551,20 +577,26 @@ export function buildRegenerateMealPrompt(
   ingredients?: string
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
+  const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const mealLabel = MEAL_TYPE_LABELS[mealType] || mealType;
   const mealExamples = MEAL_TYPE_EXAMPLES[mealType] || [];
   const isKidsMode = profile.context === "modo_kids";
   const kidsNote = isKidsMode ? " 🧒 Modo Kids: nome divertido, sabores suaves, máx 25 min." : "";
   const ingredientsNote = ingredients ? `\nINGREDIENTES OBRIGATÓRIOS: ${ingredients}` : "";
+  
+  // Build excluded ingredients constraint
+  const excludedConstraint = excludedIngredientsStr 
+    ? `\nALIMENTOS PROIBIDOS (usuário não consome): ${excludedIngredientsStr}`
+    : "";
 
   return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
 
 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
-RESTRIÇÕES: ${intolerancesStr}${kidsNote}${ingredientsNote}
+RESTRIÇÕES: ${intolerancesStr}${excludedConstraint}${kidsNote}${ingredientsNote}
 
 REGRAS:
 1. ~${targetCalories} calorias
-2. NUNCA ingredientes das restrições
+2. NUNCA ingredientes das restrições ou alimentos proibidos
 3. Exemplos: ${mealExamples.join(", ")}
 
 JSON:

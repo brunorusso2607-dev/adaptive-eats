@@ -113,6 +113,7 @@ export default function AdminWebhooks() {
   const [webhookSecret, setWebhookSecret] = useState("");
   const [secretStatus, setSecretStatus] = useState<"idle" | "saving" | "saved" | "configured">("idle");
   const [isSecretConfigured, setIsSecretConfigured] = useState(false);
+  const [showSecretInput, setShowSecretInput] = useState(false);
 
   // Get the project webhook URL
   const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID || "upnqkxrvtimtlqsuuvci";
@@ -515,13 +516,54 @@ export default function AdminWebhooks() {
                     </div>
                   </div>
                 ) : (
-                  <div className="ml-8 p-3 rounded-lg bg-green-500/10 border border-green-500/30">
-                    <div className="flex items-start gap-2">
-                      <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
-                      <div className="text-sm text-green-700 dark:text-green-500">
-                        <strong>Webhook Secret configurado!</strong> Seu webhook está pronto para receber eventos do Stripe.
+                  <div className="ml-8 space-y-3">
+                    <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-start gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-green-600 mt-0.5 shrink-0" />
+                          <div className="text-sm text-green-700 dark:text-green-500">
+                            <strong>Webhook Secret configurado!</strong> Seu webhook está pronto para receber eventos do Stripe.
+                          </div>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => setShowSecretInput(!showSecretInput)}
+                        >
+                          {showSecretInput ? "Cancelar" : "Alterar"}
+                        </Button>
                       </div>
                     </div>
+                    
+                    {showSecretInput && (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-2">
+                          <Input
+                            type="password"
+                            placeholder="whsec_..."
+                            value={webhookSecret}
+                            onChange={(e) => setWebhookSecret(e.target.value)}
+                            className="font-mono text-sm"
+                          />
+                          <Button
+                            onClick={saveWebhookSecret}
+                            disabled={secretStatus === "saving" || !webhookSecret.startsWith("whsec_")}
+                          >
+                            {secretStatus === "saving" ? (
+                              <>
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                Salvando...
+                              </>
+                            ) : (
+                              <>
+                                <Shield className="w-4 h-4 mr-2" />
+                                Atualizar Secret
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

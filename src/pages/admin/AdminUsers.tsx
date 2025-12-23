@@ -71,7 +71,6 @@ type UserProfile = {
   onboarding_completed: boolean | null;
   dietary_preference: string | null;
   goal: string | null;
-  context: string | null;
   age: number | null;
   sex: string | null;
   height: number | null;
@@ -145,7 +144,7 @@ export default function AdminUsers() {
 
       let query = supabase
         .from("profiles")
-        .select("id, email, created_at, onboarding_completed, dietary_preference, goal, context, age, sex, height, weight_current, weight_goal, activity_level, intolerances", { count: "exact" })
+        .select("id, email, created_at, onboarding_completed, dietary_preference, goal, age, sex, height, weight_current, weight_goal, activity_level, intolerances", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
 
@@ -244,15 +243,6 @@ export default function AdminUsers() {
     }
   };
 
-  const getContextLabel = (context: string | null) => {
-    switch (context) {
-      case "individual": return "Individual";
-      case "familia": return "Família";
-      case "modo_kids": return "Modo Kids";
-      default: return "N/A";
-    }
-  };
-
   const getActivityLabel = (activity: string | null) => {
     switch (activity) {
       case "sedentary": return "Sedentário";
@@ -294,7 +284,6 @@ export default function AdminUsers() {
         activity_level: selectedUser.activity_level,
         dietary_preference: selectedUser.dietary_preference,
         goal: selectedUser.goal,
-        context: selectedUser.context,
       });
       setIsEditing(true);
     }
@@ -319,7 +308,6 @@ export default function AdminUsers() {
         activity_level: selectedUser.activity_level,
         dietary_preference: selectedUser.dietary_preference,
         goal: selectedUser.goal,
-        context: selectedUser.context,
       };
 
       const { error } = await supabase
@@ -333,7 +321,6 @@ export default function AdminUsers() {
           activity_level: editForm.activity_level,
           dietary_preference: editForm.dietary_preference as any,
           goal: editForm.goal as any,
-          context: editForm.context as any,
         })
         .eq("id", selectedUser.id);
 
@@ -714,7 +701,6 @@ export default function AdminUsers() {
                   <div className="flex flex-wrap gap-2">
                     <Badge variant="outline">{getGoalLabel(selectedUser.goal)}</Badge>
                     <Badge variant="outline">{getDietLabel(selectedUser.dietary_preference)}</Badge>
-                    <Badge variant="outline">{getContextLabel(selectedUser.context)}</Badge>
                   </div>
                 </div>
 
@@ -1014,23 +1000,6 @@ export default function AdminUsers() {
                       <SelectItem value="vegetariana">Vegetariana</SelectItem>
                       <SelectItem value="vegana">Vegana</SelectItem>
                       <SelectItem value="low_carb">Low Carb</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Contexto</Label>
-                  <Select
-                    value={editForm.context || ""}
-                    onValueChange={(value) => setEditForm({ ...editForm, context: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecione" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="individual">Individual</SelectItem>
-                      <SelectItem value="familia">Família</SelectItem>
-                      <SelectItem value="modo_kids">Modo Kids</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

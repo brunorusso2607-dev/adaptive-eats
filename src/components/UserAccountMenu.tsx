@@ -18,7 +18,6 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
-  context: string | null;
   weight_current: number | null;
   weight_goal: number | null;
   height: number | null;
@@ -54,11 +53,6 @@ const LABELS = {
     emagrecer: "Emagrecer",
     manter: "Manter peso",
     ganhar_peso: "Ganhar peso",
-  },
-  context: {
-    individual: "Individual",
-    familia: "Família",
-    modo_kids: "Modo Kids",
   },
   activity_level: {
     sedentary: "Sedentário",
@@ -128,7 +122,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
+        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -152,7 +146,6 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
         .update({
           dietary_preference: editedProfile.dietary_preference as any,
           goal: editedProfile.goal as any,
-          context: editedProfile.context as any,
           weight_current: editedProfile.weight_current ? Number(editedProfile.weight_current) : null,
           weight_goal: editedProfile.weight_goal ? Number(editedProfile.weight_goal) : null,
           height: editedProfile.height ? Number(editedProfile.height) : null,
@@ -347,25 +340,6 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
             </div>
           </div>
 
-          {/* Contexto */}
-          <div className="space-y-1">
-            <Label className="text-xs">Contexto</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {Object.entries(LABELS.context).map(([id, label]) => (
-                <button
-                  type="button"
-                  key={id}
-                  onClick={() => setEditedProfile({ ...editedProfile, context: id })}
-                  className={cn(
-                    "p-2 rounded-lg border text-xs transition-all touch-manipulation",
-                    editedProfile.context === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Restrições */}
@@ -516,10 +490,6 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Dieta</p>
               <p className="text-sm font-medium">{getLabel("dietary_preference", profile.dietary_preference)}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Contexto</p>
-              <p className="text-sm font-medium">{getLabel("context", profile.context)}</p>
             </div>
           </div>
         </div>

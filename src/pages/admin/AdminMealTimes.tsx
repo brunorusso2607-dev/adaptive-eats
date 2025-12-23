@@ -11,6 +11,7 @@ import { Loader2, Pencil, Trash2, Plus, Clock, Save, RefreshCw } from "lucide-re
 import { Skeleton } from "@/components/ui/skeleton";
 import { StatusColorEditor } from "@/components/admin/StatusColorEditor";
 import { invalidateMealTimeCache } from "@/lib/mealTimeConfig";
+import { invalidateColorCache } from "@/hooks/useMealStatusColors";
 
 export default function AdminMealTimes() {
   const { settings, isLoading, isSaving, updateSetting, createSetting, deleteSetting } = useMealTimeSettingsAdmin();
@@ -363,12 +364,7 @@ export default function AdminMealTimes() {
               invalidateMealTimeCache();
               
               // Limpar cache de cores
-              try {
-                localStorage.removeItem("meal_status_colors_cache");
-                localStorage.removeItem("meal_status_colors_cache_timestamp");
-              } catch (e) {
-                console.warn("Error clearing color cache:", e);
-              }
+              invalidateColorCache();
               
               toast.success("Cache limpo! Recarregue a página do dashboard para ver as alterações.");
             }}

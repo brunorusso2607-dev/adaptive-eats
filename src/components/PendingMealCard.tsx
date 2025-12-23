@@ -80,7 +80,7 @@ export default function PendingMealCard({
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
   const { saveConsumption } = useMealConsumption();
-  const { getStyleByStatus } = useMealStatusColors();
+  const { getStyleByStatus, isLoading: isLoadingColors } = useMealStatusColors();
 
   // Use external status/minutes if provided, otherwise calculate
   const mealStatus = externalStatus || getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
@@ -97,6 +97,23 @@ export default function PendingMealCard({
     ? `${meal.actual_date.getDate().toString().padStart(2, '0')}/${(meal.actual_date.getMonth() + 1).toString().padStart(2, '0')}`
     : null;
   const dayLabel = DAY_LABELS[meal.day_of_week];
+
+  // Loading state for colors
+  if (isLoadingColors) {
+    return (
+      <Card className="rounded-xl shadow-sm border animate-pulse">
+        <CardContent className="p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 rounded-xl bg-muted" />
+            <div className="flex-1 space-y-2">
+              <div className="h-4 bg-muted rounded w-1/3" />
+              <div className="h-5 bg-muted rounded w-2/3" />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   const handleFizClick = () => {
     setShowConfirmDialog(true);

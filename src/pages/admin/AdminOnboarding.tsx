@@ -172,6 +172,7 @@ type CategoryInfo = {
 
 const CATEGORIES: CategoryInfo[] = [
   { key: "intolerances", label: "Intolerâncias", icon: Wheat, description: "Restrições alimentares dos usuários" },
+  { key: "excluded_ingredients", label: "Alimentos Excluídos", icon: Ban, description: "Sugestões de alimentos que usuários podem não consumir" },
   { key: "dietary_preferences", label: "Preferências Alimentares", icon: Utensils, description: "Tipos de dieta" },
   { key: "goals", label: "Objetivos", icon: Target, description: "Metas de peso" },
 ];

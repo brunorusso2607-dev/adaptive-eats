@@ -720,6 +720,7 @@ export default function Dashboard() {
                 user={user}
                 subscription={subscription}
                 onLogout={handleLogout}
+                onBack={() => setShowProfileSheet(false)}
               />
             ) : (
             <>

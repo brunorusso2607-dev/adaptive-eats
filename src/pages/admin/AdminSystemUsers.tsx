@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Shield, Calendar, User, Pencil, Trash2, Activity, Loader2, Save, X, ArrowLeft } from "lucide-react";
+import { Shield, Calendar, User, Pencil, Trash2, Activity, Loader2, Save, X, Plus, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 interface AdminUser {
@@ -47,11 +47,20 @@ interface EditForm {
   confirm_password: string;
 }
 
+interface CreateForm {
+  first_name: string;
+  last_name: string;
+  email: string;
+  password: string;
+  confirm_password: string;
+}
+
 export default function AdminSystemUsers() {
   const [admins, setAdmins] = useState<AdminUser[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [isDeleteOpen, setIsDeleteOpen] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<AdminUser | null>(null);
   const [adminActions, setAdminActions] = useState<any[]>([]);
@@ -63,6 +72,13 @@ export default function AdminSystemUsers() {
     email: "",
     current_password: "",
     new_password: "",
+    confirm_password: "",
+  });
+  const [createForm, setCreateForm] = useState<CreateForm>({
+    first_name: "",
+    last_name: "",
+    email: "",
+    password: "",
     confirm_password: "",
   });
 
@@ -173,10 +189,20 @@ export default function AdminSystemUsers() {
     setIsDetailOpen(false);
   };
 
+  const handleCreateClick = () => {
+    setCreateForm({
+      first_name: "",
+      last_name: "",
+      email: "",
+      password: "",
+      confirm_password: "",
+    });
+    setIsCreateOpen(true);
+  };
+
   const handleSave = async () => {
     if (!selectedAdmin) return;
 
-    // Validação de senha
     if (editForm.new_password) {
       if (editForm.new_password.length < 6) {
         toast.error("A nova senha deve ter pelo menos 6 caracteres");
@@ -190,7 +216,6 @@ export default function AdminSystemUsers() {
 
     setIsSaving(true);
     try {
-      // Atualizar perfil
       const { error: profileError } = await supabase
         .from("profiles")
         .update({
@@ -201,7 +226,6 @@ export default function AdminSystemUsers() {
 
       if (profileError) throw profileError;
 
-      // Atualizar senha se preenchida
       if (editForm.new_password) {
         const { error: passwordError } = await supabase.auth.updateUser({
           password: editForm.new_password,
@@ -225,6 +249,87 @@ export default function AdminSystemUsers() {
     }
   };
 
+  const handleCreate = async () => {
+    // Validações
+    if (!createForm.email) {
+      toast.error("O e-mail é obrigatório");
+      return;
+    }
+    if (!createForm.password) {
+      toast.error("A senha é obrigatória");
+      return;
+    }
+    if (createForm.password.length < 6) {
+      toast.error("A senha deve ter pelo menos 6 caracteres");
+      return;
+    }
+    if (createForm.password !== createForm.confirm_password) {
+      toast.error("As senhas não coincidem");
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      // Criar usuário no Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: createForm.email,
+        password: createForm.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            first_name: createForm.first_name,
+            last_name: createForm.last_name,
+          },
+        },
+      });
+
+      if (authError) {
+        if (authError.message.includes("already registered")) {
+          toast.error("Este e-mail já está cadastrado");
+        } else {
+          toast.error("Erro ao criar usuário: " + authError.message);
+        }
+        return;
+      }
+
+      if (!authData.user) {
+        toast.error("Erro ao criar usuário");
+        return;
+      }
+
+      // Atualizar o perfil com nome e sobrenome
+      await supabase
+        .from("profiles")
+        .update({
+          first_name: createForm.first_name || null,
+          last_name: createForm.last_name || null,
+        })
+        .eq("id", authData.user.id);
+
+      // Adicionar role de admin
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({
+          user_id: authData.user.id,
+          role: "admin",
+        });
+
+      if (roleError) {
+        toast.error("Erro ao definir permissão de admin");
+        return;
+      }
+
+      toast.success("Administrador criado com sucesso");
+      setIsCreateOpen(false);
+      fetchAdmins();
+    } catch (error) {
+      console.error("Erro ao criar admin:", error);
+      toast.error("Erro ao criar administrador");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const handleRemoveAdmin = async () => {
     if (!selectedAdmin) return;
 
@@ -239,6 +344,7 @@ export default function AdminSystemUsers() {
       toast.success("Permissão de admin removida");
       setIsDeleteOpen(false);
       setIsDetailOpen(false);
+      setIsEditOpen(false);
       fetchAdmins();
     } catch (error) {
       console.error("Erro ao remover admin:", error);
@@ -249,9 +355,11 @@ export default function AdminSystemUsers() {
   if (isLoading) {
     return (
       <div className="space-y-6 animate-fade-up">
-        <div>
-          <h2 className="font-display text-2xl font-bold text-foreground">Usuários do Sistema</h2>
-          <p className="text-muted-foreground text-sm mt-1">Administradores</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="font-display text-2xl font-bold text-foreground">Usuários do Sistema</h2>
+            <p className="text-muted-foreground text-sm mt-1">Administradores</p>
+          </div>
         </div>
         <div className="space-y-4">
           {[1, 2].map((i) => (
@@ -264,11 +372,18 @@ export default function AdminSystemUsers() {
 
   return (
     <div className="space-y-6 animate-fade-up">
-      <div>
-        <h2 className="font-display text-2xl font-bold text-foreground">Usuários do Sistema</h2>
-        <p className="text-muted-foreground text-sm mt-1">
-          {admins.length} {admins.length === 1 ? "administrador" : "administradores"}
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 className="font-display text-2xl font-bold text-foreground">Usuários do Sistema</h2>
+          <p className="text-muted-foreground text-sm mt-1">
+            {admins.length} {admins.length === 1 ? "administrador" : "administradores"}
+          </p>
+        </div>
+        
+        <Button onClick={handleCreateClick} className="gap-2">
+          <Plus className="w-4 h-4" />
+          Adicionar novo
+        </Button>
       </div>
 
       <div className="space-y-4">
@@ -329,6 +444,96 @@ export default function AdminSystemUsers() {
         )}
       </div>
 
+      {/* Modal de Criar Novo Admin */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserPlus className="w-5 h-5" />
+              Adicionar Novo Administrador
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            <div className="space-y-4">
+              <h3 className="font-medium text-foreground">Dados da conta</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="create_first_name">Nome (opcional)</Label>
+                <Input
+                  id="create_first_name"
+                  value={createForm.first_name}
+                  onChange={(e) => setCreateForm({ ...createForm, first_name: e.target.value })}
+                  placeholder="Nome"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create_last_name">Sobrenome (opcional)</Label>
+                <Input
+                  id="create_last_name"
+                  value={createForm.last_name}
+                  onChange={(e) => setCreateForm({ ...createForm, last_name: e.target.value })}
+                  placeholder="Sobrenome"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create_email">E-mail da conta *</Label>
+                <Input
+                  id="create_email"
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  placeholder="email@exemplo.com"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="font-medium text-foreground">Criar senha</h3>
+              
+              <div className="space-y-2">
+                <Label htmlFor="create_password">Senha *</Label>
+                <Input
+                  id="create_password"
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  placeholder="Mínimo 6 caracteres"
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="create_confirm_password">Confirmar senha *</Label>
+                <Input
+                  id="create_confirm_password"
+                  type="password"
+                  value={createForm.confirm_password}
+                  onChange={(e) => setCreateForm({ ...createForm, confirm_password: e.target.value })}
+                  placeholder="Repita a senha"
+                />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setIsCreateOpen(false)} disabled={isSaving}>
+              <X className="w-4 h-4 mr-2" />
+              Cancelar
+            </Button>
+            <Button onClick={handleCreate} disabled={isSaving}>
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4 mr-2" />
+              )}
+              Criar Administrador
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Modal de Edição */}
       <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
@@ -337,7 +542,6 @@ export default function AdminSystemUsers() {
           </DialogHeader>
           
           <div className="space-y-6 py-4">
-            {/* Dados da conta */}
             <div className="space-y-4">
               <h3 className="font-medium text-foreground">Dados da conta</h3>
               
@@ -374,7 +578,6 @@ export default function AdminSystemUsers() {
               </div>
             </div>
 
-            {/* Alterar senha */}
             <div className="space-y-4 pt-4 border-t">
               <h3 className="font-medium text-foreground">Alterar senha</h3>
               

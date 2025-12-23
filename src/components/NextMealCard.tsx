@@ -72,7 +72,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
   }, [mealStatus, nextMeal]);
 
   const { saveConsumption } = useMealConsumption();
-  const { getStyleByStatus } = useMealStatusColors();
+  const { getStyleByStatus, isLoading: isLoadingColors } = useMealStatusColors();
 
   // Opens confirmation dialog
   const handleFizClick = () => {
@@ -139,10 +139,10 @@ export default function NextMealCard(_props: NextMealCardProps) {
     setShowDetailSheet(true);
   };
 
-  // Loading state
-  if (isLoading) {
+  // Loading state (includes colors loading)
+  if (isLoading || isLoadingColors) {
     return (
-      <Card className="glass-card animate-pulse">
+      <Card className="rounded-xl shadow-sm border animate-pulse">
         <CardContent className="p-4">
           <div className="flex items-center gap-3">
             <div className="w-12 h-12 rounded-xl bg-muted" />

@@ -81,16 +81,14 @@ const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
   { id: 2, title: "Preferência", description: "Qual sua preferência alimentar?" },
   { id: 3, title: "Objetivo", description: "Qual seu objetivo?" },
-  { id: 4, title: "Meta Calórica", description: "Como quer gerenciar suas calorias?" },
-  { id: 5, title: "Contexto", description: "Para quem você cozinha?" },
-  { id: 6, title: "Confirmação", description: "Revise suas escolhas" },
+  { id: 4, title: "Contexto", description: "Para quem você cozinha?" },
+  { id: 5, title: "Confirmação", description: "Revise suas escolhas" },
 ];
 
 type ProfileData = {
   intolerances: string[];
   dietary_preference: string;
   goal: string;
-  calorie_goal: string;
   context: string;
 };
 
@@ -102,7 +100,6 @@ export default function Onboarding() {
     intolerances: [],
     dietary_preference: "comum",
     goal: "manter",
-    calorie_goal: "definir_depois",
     context: "individual",
   });
 
@@ -147,7 +144,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 7) {
+    if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     }
   };
@@ -174,7 +171,6 @@ export default function Onboarding() {
           intolerances: profile.intolerances,
           dietary_preference: profile.dietary_preference as any,
           goal: profile.goal as any,
-          calorie_goal: profile.calorie_goal as any,
           context: profile.context as any,
           onboarding_completed: true,
         })
@@ -309,39 +305,6 @@ export default function Onboarding() {
 
       case 4:
         return (
-          <div className="grid grid-cols-2 gap-3">
-            {options.calorie_goals.map((item) => {
-              const IconComponent = getIcon(item);
-              return (
-                <button
-                  key={item.option_id}
-                  onClick={() => setProfile({ ...profile, calorie_goal: item.option_id })}
-                  className={cn(
-                    "p-4 rounded-xl border text-left transition-all",
-                    profile.calorie_goal === item.option_id
-                      ? "border-primary bg-primary/5"
-                      : "border-border/80 hover:border-primary/50 bg-card"
-                  )}
-                >
-                  <div className="w-8 h-8 mb-2 flex items-center justify-center">
-                    {IconComponent ? (
-                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
-                    ) : (
-                      <span className="text-xl">{item.emoji || "•"}</span>
-                    )}
-                  </div>
-                  <span className="font-medium text-sm block">{item.label}</span>
-                  {item.description && (
-                    <span className="text-xs text-muted-foreground">{item.description}</span>
-                  )}
-                </button>
-              );
-            })}
-          </div>
-        );
-
-      case 5:
-        return (
           <div className="space-y-3">
             {options.context.map((item) => {
               const IconComponent = getIcon(item);
@@ -375,7 +338,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 6:
+      case 5:
         return (
           <div className="space-y-4">
             <div className="space-y-2">
@@ -397,12 +360,6 @@ export default function Onboarding() {
                 <span className="text-sm text-muted-foreground">Objetivo</span>
                 <span className="font-medium text-sm">
                   {getLabel("goals", profile.goal)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
-                <span className="text-sm text-muted-foreground">Meta Calórica</span>
-                <span className="font-medium text-sm">
-                  {getLabel("calorie_goals", profile.calorie_goal)}
                 </span>
               </div>
               <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">

@@ -18,7 +18,6 @@ import type { User as SupabaseUser } from "@supabase/supabase-js";
 type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
-  calorie_goal: string | null;
   context: string | null;
   weight_current: number | null;
   weight_goal: number | null;
@@ -55,12 +54,6 @@ const LABELS = {
     emagrecer: "Emagrecer",
     manter: "Manter peso",
     ganhar_peso: "Ganhar peso",
-  },
-  calorie_goal: {
-    reduzir: "Reduzir calorias",
-    manter: "Manter calorias",
-    aumentar: "Aumentar calorias",
-    definir_depois: "Definir depois",
   },
   context: {
     individual: "Individual",
@@ -135,7 +128,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, calorie_goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
+        .select("dietary_preference, goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
         .eq("id", user.id)
         .maybeSingle();
 

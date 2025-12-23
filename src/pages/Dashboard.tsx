@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield, Settings } from "lucide-react";
+import { DesktopProfileDropdown } from "@/components/DesktopProfileDropdown";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -742,21 +743,14 @@ export default function Dashboard() {
                     )}
                   </button>
                   
-                  <div className="flex items-center gap-2">
-                    {isSubscribed && subscription?.status === "trialing" && (
-                      <span className="text-xs text-muted-foreground">
-                        Trial
-                      </span>
-                    )}
-                    {/* Desktop Profile Button */}
-                    <button
-                      onClick={() => setShowProfileSheet(true)}
-                      className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-accent transition-colors"
-                      title="Perfil e configurações"
-                    >
-                      <User className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </div>
+                  {/* Desktop Profile Dropdown */}
+                  <DesktopProfileDropdown
+                    user={user}
+                    isSubscribed={isSubscribed}
+                    subscriptionStatus={subscription?.status}
+                    onOpenProfile={() => setShowProfileSheet(true)}
+                    onLogout={handleLogout}
+                  />
                 </div>
 
                 {/* Plan Details Sheet */}

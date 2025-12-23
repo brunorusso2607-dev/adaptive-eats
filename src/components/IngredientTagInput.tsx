@@ -953,10 +953,10 @@ export default function IngredientTagInput({
         </div>
       )}
 
-      {/* Helper text */}
+      {/* Helper text - Medical typography: 12px gray */}
       {value.length === 0 && (
-        <p className="mt-2 text-xs text-muted-foreground">
-          Digite e selecione ingredientes da lista ou pressione Enter para adicionar
+        <p className="mt-2 text-xs text-[hsl(215,16%,47%)] tracking-wide">
+          Digite e selecione ingredientes da lista
         </p>
       )}
       

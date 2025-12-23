@@ -807,9 +807,9 @@ export default function Dashboard() {
 
                 {/* Meta de Peso Banner - Design discreto e informativo */}
                 {(userGoal === "emagrecer" || userGoal === "ganhar_peso" || userGoal === "manter") && weightData?.weight_current && (
-                  <Card className="bg-[hsl(var(--surface-subtle))] border border-border/30 overflow-hidden">
-                    <CardContent className="p-4">
-                      <div className="flex items-center justify-between mb-3">
+                  <Card className="bg-card border border-border overflow-hidden">
+                    <CardContent className="p-5">
+                      <div className="flex items-center justify-between mb-4">
                         <div className="flex items-center gap-3">
                           <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center">
                             {userGoal === "ganhar_peso" 
@@ -834,31 +834,31 @@ export default function Dashboard() {
                             </p>
                           </div>
                         </div>
-                        <div className="flex gap-1.5">
+                        <div className="flex gap-2">
                           <Button 
-                            variant="ghost"
+                            variant="outline"
                             size="sm" 
                             onClick={() => setShowWeightUpdateModal(true)}
-                            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                            className="text-xs h-8 px-4 rounded-lg border-border font-medium"
                           >
-                            <Scale className="w-3 h-3 mr-1" />
+                            <Scale className="w-3 h-3 mr-1.5" />
                             Peso
                           </Button>
                           <Button 
-                            variant="ghost" 
+                            variant="outline" 
                             size="sm" 
                             onClick={() => setShowWeightLossSetup(true)}
-                            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                            className="text-xs h-8 px-4 rounded-lg border-border font-medium"
                           >
                             Editar
                           </Button>
                           <Button 
-                            variant="ghost" 
+                            variant="outline" 
                             size="sm" 
                             onClick={toggleWeightLossMode}
-                            className="text-xs text-muted-foreground hover:text-foreground h-7 px-2"
+                            className="text-xs h-8 px-4 rounded-lg border-border font-medium"
                           >
-                            ✕
+                            Desativar
                           </Button>
                         </div>
                       </div>
@@ -1046,11 +1046,11 @@ export default function Dashboard() {
                       >
                         <div className={cn(
                           "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-pink-500/10"
+                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-muted"
                         )}>
                           <Baby className={cn(
                             "w-5 h-5",
-                            userContext === "modo_kids" ? "text-pink-500" : "text-pink-400"
+                            userContext === "modo_kids" ? "text-pink-500" : "text-[hsl(215,14%,64%)]"
                           )} />
                         </div>
                         <div className="text-left min-w-0">
@@ -1106,11 +1106,11 @@ export default function Dashboard() {
                       <CardContent className="p-5 text-center space-y-3">
                         <div className={cn(
                           "w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform",
-                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-pink-500/10"
+                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-muted"
                         )}>
                           <Baby className={cn(
                             "w-6 h-6",
-                            userContext === "modo_kids" ? "text-pink-500" : "text-pink-400"
+                            userContext === "modo_kids" ? "text-pink-500" : "text-[hsl(215,14%,64%)]"
                           )} />
                         </div>
                         <div>

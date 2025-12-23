@@ -76,15 +76,16 @@ export default function HealthProgressStrip({
           <Progress 
             value={levelProgress} 
             variant="xp"
-            className="h-1 bg-border rounded-full" 
+            pill
+            className="bg-border" 
           />
         </div>
 
-        {/* Streak - Subtle indicator */}
-        <div className="flex-shrink-0 flex items-center gap-1.5 px-2 py-1">
-          <Flame className="w-3.5 h-3.5 text-muted-foreground" strokeWidth={1.5} />
-          <span className="text-xs font-medium text-muted-foreground tabular-nums">
-            {currentStreak}
+        {/* Streak - Semi-bold text with fire icon */}
+        <div className="flex-shrink-0 flex items-center gap-1 px-2 py-1">
+          <span className="text-sm">🔥</span>
+          <span className="text-xs font-semibold text-foreground tabular-nums">
+            {currentStreak} {currentStreak === 1 ? 'dia' : 'dias'}
           </span>
         </div>
 

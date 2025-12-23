@@ -648,7 +648,7 @@ export default function AdminGemini() {
               <AccordionItem key={module.id} value={module.id}>
                 <AccordionTrigger className="hover:no-underline">
                   <div className="flex items-center gap-3 text-left">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center text-muted-foreground">
                       {module.icon}
                     </div>
                     <div>

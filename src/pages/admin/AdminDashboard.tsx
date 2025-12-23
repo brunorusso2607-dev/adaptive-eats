@@ -148,7 +148,7 @@ export default function AdminDashboard() {
   if (isLoading) {
     return (
       <div className="min-h-screen gradient-hero flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }

@@ -142,7 +142,7 @@ export default function AdminAnalytics() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -160,7 +160,7 @@ export default function AdminAnalytics() {
       <Card className="glass-card border-border/30">
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-lg">
-            <TrendingUp className="w-5 h-5 text-primary" />
+            <TrendingUp className="w-5 h-5 text-muted-foreground" />
             Crescimento (Últimos 30 dias)
           </CardTitle>
         </CardHeader>
@@ -224,7 +224,7 @@ export default function AdminAnalytics() {
         <Card className="glass-card border-border/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Users className="w-5 h-5 text-primary" />
+              <Users className="w-5 h-5 text-muted-foreground" />
               Distribuição de Objetivos
             </CardTitle>
           </CardHeader>
@@ -264,7 +264,7 @@ export default function AdminAnalytics() {
         <Card className="glass-card border-border/30">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-lg">
-              <UtensilsCrossed className="w-5 h-5 text-primary" />
+              <UtensilsCrossed className="w-5 h-5 text-muted-foreground" />
               Preferências Alimentares
             </CardTitle>
           </CardHeader>

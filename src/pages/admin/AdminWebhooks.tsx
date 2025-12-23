@@ -225,14 +225,14 @@ export default function AdminWebhooks() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-        <TabsList className="bg-card/50 border">
-          <TabsTrigger value="overview" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+        <TabsList className="bg-muted/50 border">
+          <TabsTrigger value="overview" className="data-[state=active]:bg-foreground data-[state=active]:text-background">
             Visão Geral
           </TabsTrigger>
-          <TabsTrigger value="stripe" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="stripe" className="data-[state=active]:bg-foreground data-[state=active]:text-background">
             Stripe
           </TabsTrigger>
-          <TabsTrigger value="custom" className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+          <TabsTrigger value="custom" className="data-[state=active]:bg-foreground data-[state=active]:text-background">
             Personalizados
           </TabsTrigger>
         </TabsList>
@@ -342,7 +342,7 @@ export default function AdminWebhooks() {
           <Card className="glass-card border-border/50">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Info className="w-5 h-5 text-primary" />
+                <Info className="w-5 h-5 text-muted-foreground" />
                 <CardTitle>O que são Webhooks?</CardTitle>
               </div>
             </CardHeader>
@@ -386,7 +386,7 @@ export default function AdminWebhooks() {
               {/* Step 1: URL do Webhook */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
                     1
                   </div>
                   <Label className="font-semibold">URL do Endpoint</Label>
@@ -413,7 +413,7 @@ export default function AdminWebhooks() {
               {/* Step 2: Eventos */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
                     2
                   </div>
                   <Label className="font-semibold">Selecionar Eventos</Label>
@@ -462,7 +462,7 @@ export default function AdminWebhooks() {
               {/* Step 3: Secret */}
               <div className="space-y-3">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-bold text-primary">
+                  <div className="w-6 h-6 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground">
                     3
                   </div>
                   <Label className="font-semibold">Webhook Secret</Label>
@@ -606,7 +606,7 @@ export default function AdminWebhooks() {
           <Card className="glass-card border-border/50">
             <CardHeader>
               <div className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
+                <Shield className="w-5 h-5 text-muted-foreground" />
                 <CardTitle>Edge Function Handler</CardTitle>
               </div>
               <CardDescription>

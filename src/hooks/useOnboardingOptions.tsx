@@ -17,7 +17,6 @@ export type OnboardingOptionsMap = {
   intolerances: OnboardingOption[];
   dietary_preferences: OnboardingOption[];
   goals: OnboardingOption[];
-  context: OnboardingOption[];
 };
 
 // Fallback hardcoded para caso o banco esteja vazio
@@ -37,11 +36,6 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
     { id: "8", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
     { id: "9", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
     { id: "10", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
-  ],
-  context: [
-    { id: "18", category: "context", option_id: "individual", label: "Individual", description: "Cozinho só para mim", emoji: "👤", icon_name: "user", is_active: true, sort_order: 1 },
-    { id: "19", category: "context", option_id: "familia", label: "Família", description: "Cozinho para a família", emoji: "👨‍👩‍👧‍👦", icon_name: "users", is_active: true, sort_order: 2 },
-    { id: "20", category: "context", option_id: "modo_kids", label: "Modo Kids", description: "Receitas para crianças", emoji: "👶", icon_name: "baby", is_active: true, sort_order: 3 },
   ],
 };
 
@@ -69,7 +63,6 @@ export function useOnboardingOptions() {
         intolerances: [],
         dietary_preferences: [],
         goals: [],
-        context: [],
       };
 
       data.forEach((option) => {

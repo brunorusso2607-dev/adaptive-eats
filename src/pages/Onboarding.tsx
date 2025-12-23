@@ -81,15 +81,12 @@ const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
   { id: 2, title: "Preferência", description: "Qual sua preferência alimentar?" },
   { id: 3, title: "Objetivo", description: "Qual seu objetivo?" },
-  { id: 4, title: "Contexto", description: "Para quem você cozinha?" },
-  { id: 5, title: "Confirmação", description: "Revise suas escolhas" },
 ];
 
 type ProfileData = {
   intolerances: string[];
   dietary_preference: string;
   goal: string;
-  context: string;
 };
 
 export default function Onboarding() {
@@ -100,7 +97,6 @@ export default function Onboarding() {
     intolerances: [],
     dietary_preference: "comum",
     goal: "manter",
-    context: "individual",
   });
 
   const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
@@ -144,8 +140,10 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 6) {
+    if (currentStep < 3) {
       setCurrentStep(currentStep + 1);
+    } else {
+      handleComplete();
     }
   };
 
@@ -171,7 +169,6 @@ export default function Onboarding() {
           intolerances: profile.intolerances,
           dietary_preference: profile.dietary_preference as any,
           goal: profile.goal as any,
-          context: profile.context as any,
           onboarding_completed: true,
         })
         .eq("id", session.user.id);
@@ -303,75 +300,6 @@ export default function Onboarding() {
           </div>
         );
 
-      case 4:
-        return (
-          <div className="space-y-3">
-            {options.context.map((item) => {
-              const IconComponent = getIcon(item);
-              return (
-                <button
-                  key={item.option_id}
-                  onClick={() => setProfile({ ...profile, context: item.option_id })}
-                  className={cn(
-                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                    profile.context === item.option_id
-                      ? "border-primary bg-primary/5"
-                      : "border-border/80 hover:border-primary/50 bg-card"
-                  )}
-                >
-                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
-                    {IconComponent ? (
-                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
-                    ) : (
-                      <span className="text-xl">{item.emoji || "•"}</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-medium block">{item.label}</span>
-                    {item.description && (
-                      <span className="text-sm text-muted-foreground">{item.description}</span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        );
-
-      case 5:
-        return (
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
-                <span className="text-sm text-muted-foreground">Intolerâncias</span>
-                <span className="font-medium text-sm text-right max-w-[60%]">
-                  {profile.intolerances.length === 0 
-                    ? "Nenhuma" 
-                    : profile.intolerances.map(i => getLabel("intolerances", i)).join(", ")}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
-                <span className="text-sm text-muted-foreground">Preferência</span>
-                <span className="font-medium text-sm">
-                  {getLabel("dietary_preferences", profile.dietary_preference)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
-                <span className="text-sm text-muted-foreground">Objetivo</span>
-                <span className="font-medium text-sm">
-                  {getLabel("goals", profile.goal)}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-4 bg-muted/30 rounded-xl border border-border/50">
-                <span className="text-sm text-muted-foreground">Contexto</span>
-                <span className="font-medium text-sm">
-                  {getLabel("context", profile.context)}
-                </span>
-              </div>
-            </div>
-          </div>
-        );
-
       default:
         return null;
     }
@@ -447,26 +375,20 @@ export default function Onboarding() {
             Voltar
           </Button>
         )}
-        {currentStep < 7 ? (
-          <Button size="lg" onClick={handleNext} className="flex-1 h-12 bg-primary hover:bg-primary/90">
-            Próximo
-            <ArrowRight className="w-4 h-4 ml-2" />
-          </Button>
-        ) : (
-          <Button 
-            size="lg" 
-            onClick={handleComplete} 
-            disabled={isLoading}
-            className="flex-1 h-12 bg-primary hover:bg-primary/90"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Check className="w-4 h-4 mr-2" />
-            )}
-            Concluir
-          </Button>
-        )}
+        <Button 
+          size="lg" 
+          onClick={handleNext} 
+          disabled={isLoading}
+          className="flex-1 h-12 bg-primary hover:bg-primary/90"
+        >
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+          ) : currentStep === 3 ? (
+            <Check className="w-4 h-4 mr-2" />
+          ) : null}
+          {currentStep === 3 ? "Concluir" : "Próximo"}
+          {currentStep < 3 && <ArrowRight className="w-4 h-4 ml-2" />}
+        </Button>
       </footer>
     </div>
   );

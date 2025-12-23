@@ -17,7 +17,6 @@ import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptio
 type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
-  context: string | null;
   weight_current: number | null;
   weight_goal: number | null;
   height: number | null;
@@ -74,7 +73,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
+        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -98,7 +97,6 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
         .update({
           dietary_preference: editedProfile.dietary_preference as any,
           goal: editedProfile.goal as any,
-          context: editedProfile.context as any,
           weight_current: editedProfile.weight_current ? Number(editedProfile.weight_current) : null,
           weight_goal: editedProfile.weight_goal ? Number(editedProfile.weight_goal) : null,
           height: editedProfile.height ? Number(editedProfile.height) : null,
@@ -136,7 +134,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     setEditedProfile({ ...editedProfile, intolerances: updated });
   };
 
-  const getProfileLabel = (category: "dietary_preferences" | "goals" | "context", value: string | null) => {
+  const getProfileLabel = (category: "dietary_preferences" | "goals", value: string | null) => {
     if (!value) return "Não definido";
     return getOptionLabel(onboardingOptions, category, value);
   };
@@ -297,25 +295,6 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
             </div>
           </div>
 
-          {/* Contexto */}
-          <div className="space-y-1">
-            <Label className="text-xs">Contexto</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {onboardingOptions?.context.map((opt) => (
-                <button
-                  type="button"
-                  key={opt.option_id}
-                  onClick={() => setEditedProfile({ ...editedProfile, context: opt.option_id })}
-                  className={cn(
-                    "p-2 rounded-lg border text-xs transition-all touch-manipulation",
-                    editedProfile.context === opt.option_id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* Restrições */}
@@ -466,10 +445,6 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Dieta</p>
               <p className="text-sm font-medium">{getProfileLabel("dietary_preferences", profile.dietary_preference)}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Contexto</p>
-              <p className="text-sm font-medium">{getProfileLabel("context", profile.context)}</p>
             </div>
           </div>
         </div>

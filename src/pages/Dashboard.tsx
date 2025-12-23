@@ -142,7 +142,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, context, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, dietary_preference")
+      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, dietary_preference")
       .eq("id", userId)
       .maybeSingle();
     
@@ -150,7 +150,7 @@ export default function Dashboard() {
       navigate("/onboarding");
     } else {
       setOnboardingCompleted(true);
-      setUserContext(data?.context || "individual");
+      setUserContext("individual"); // App is individual by default
       setUserGoal(data?.goal || "manter");
       
       // Salvar dados do perfil para validação de ingredientes
@@ -176,30 +176,6 @@ export default function Dashboard() {
           goal_mode: goalToMode(data.goal || "manter"),
         });
       }
-    }
-  };
-
-  const toggleKidsMode = async () => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
-    
-    const newContext = userContext === "modo_kids" ? "individual" : "modo_kids";
-    const { error } = await supabase
-      .from("profiles")
-      .update({ context: newContext })
-      .eq("id", session.user.id);
-    
-    if (!error) {
-      setUserContext(newContext);
-      toast.success(newContext === "modo_kids" ? "🎉 Modo Kids ativado!" : "Modo Kids desativado");
-      
-      // Log user action
-      await logUserAction(
-        "kids_mode_toggle",
-        newContext === "modo_kids" ? "Modo Kids ativado" : "Modo Kids desativado",
-        { context: userContext },
-        { context: newContext }
-      );
     }
   };
 
@@ -1041,42 +1017,10 @@ export default function Dashboard() {
                     </button>
 
                     {/* Modo Kids - Mobile */}
-                    {isSubscribed && activePlan === "premium" ? (
-                      <button 
-                        className={cn(
-                          "flex items-center gap-3 p-3 glass-card transition-all rounded-xl",
-                          userContext === "modo_kids" 
-                            ? "border-pink-500/50 bg-pink-500/10" 
-                            : "border-border/50 hover:border-primary/30"
-                        )}
-                        onClick={toggleKidsMode}
-                      >
-                        <div className={cn(
-                          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
-                          userContext === "modo_kids" ? "bg-pink-500/20" : "bg-muted"
-                        )}>
-                          <Baby className={cn(
-                            "w-5 h-5",
-                            userContext === "modo_kids" ? "text-pink-500" : "text-[hsl(215,14%,64%)]"
-                          )} />
-                        </div>
-                        <div className="text-left min-w-0">
-                          <h3 className={cn(
-                            "font-display font-semibold text-sm truncate",
-                            userContext === "modo_kids" ? "text-pink-600 dark:text-pink-400" : "text-foreground"
-                          )}>
-                            Modo Kids
-                          </h3>
-                          <p className="text-xs text-muted-foreground truncate">
-                            {userContext === "modo_kids" ? "Ativado" : "Desativado"}
-                          </p>
-                        </div>
-                      </button>
-                    ) : (
-                      <div className="glass-card border-border/30 rounded-xl p-3 flex items-center justify-center opacity-50">
-                        <p className="text-xs text-muted-foreground text-center">Premium</p>
-                      </div>
-                    )}
+                    {/* Espaço reservado para futuras funcionalidades */}
+                    <div className="glass-card border-border/30 rounded-xl p-3 flex items-center justify-center opacity-50 md:hidden">
+                      <p className="text-xs text-muted-foreground text-center">Em breve</p>
+                    </div>
                   </div>
                   
                   {/* Histórico - Card desktop */}

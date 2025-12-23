@@ -251,6 +251,14 @@ export default function AdminSystemUsers() {
 
   const handleCreate = async () => {
     // Validações
+    if (!createForm.first_name.trim()) {
+      toast.error("O nome é obrigatório");
+      return;
+    }
+    if (!createForm.last_name.trim()) {
+      toast.error("O sobrenome é obrigatório");
+      return;
+    }
     if (!createForm.email) {
       toast.error("O e-mail é obrigatório");
       return;
@@ -459,7 +467,7 @@ export default function AdminSystemUsers() {
               <h3 className="font-medium text-foreground">Dados da conta</h3>
               
               <div className="space-y-2">
-                <Label htmlFor="create_first_name">Nome (opcional)</Label>
+                <Label htmlFor="create_first_name">Nome *</Label>
                 <Input
                   id="create_first_name"
                   value={createForm.first_name}
@@ -469,7 +477,7 @@ export default function AdminSystemUsers() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="create_last_name">Sobrenome (opcional)</Label>
+                <Label htmlFor="create_last_name">Sobrenome *</Label>
                 <Input
                   id="create_last_name"
                   value={createForm.last_name}

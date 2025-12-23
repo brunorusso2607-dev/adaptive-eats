@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
 
 const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
@@ -17,61 +18,13 @@ const STEPS = [
   { id: 7, title: "Confirmação", description: "Revise suas escolhas" },
 ];
 
-const INTOLERANCES = [
-  { id: "lactose", label: "Sem Lactose", emoji: "🥛" },
-  { id: "gluten", label: "Sem Glúten", emoji: "🌾" },
-  { id: "acucar", label: "Sem Açúcar", emoji: "🍬" },
-  { id: "amendoim", label: "Alergia a Amendoim", emoji: "🥜" },
-  { id: "frutos_mar", label: "Alergia a Frutos do Mar", emoji: "🦐" },
-  { id: "ovo", label: "Alergia a Ovo", emoji: "🥚" },
-  { id: "nenhuma", label: "Nenhuma Intolerância", emoji: "✅" },
-];
-
-const DIETARY_PREFERENCES = [
-  { id: "comum", label: "Comum", description: "Sem restrições específicas", emoji: "🍽️" },
-  { id: "vegetariana", label: "Vegetariana", description: "Sem carnes", emoji: "🥗" },
-  { id: "vegana", label: "Vegana", description: "Sem produtos animais", emoji: "🌱" },
-  { id: "low_carb", label: "Low Carb", description: "Baixo carboidrato", emoji: "🥩" },
-];
-
-const GOALS = [
-  { id: "emagrecer", label: "Emagrecer", description: "Perder peso de forma saudável", emoji: "📉" },
-  { id: "manter", label: "Manter Peso", description: "Manter o peso atual", emoji: "⚖️" },
-  { id: "ganhar_peso", label: "Ganhar Peso", description: "Aumentar massa corporal", emoji: "📈" },
-];
-
-const CALORIE_GOALS = [
-  { id: "reduzir", label: "Reduzir Calorias", description: "Déficit calórico", emoji: "🔥" },
-  { id: "manter", label: "Manter Calorias", description: "Equilíbrio", emoji: "⚖️" },
-  { id: "aumentar", label: "Aumentar Calorias", description: "Superávit calórico", emoji: "💪" },
-  { id: "definir_depois", label: "Definir Depois", description: "Vou decidir mais tarde", emoji: "⏳" },
-];
-
-const COMPLEXITY = [
-  { id: "rapida", label: "Receitas Rápidas", description: "Até 20 minutos", emoji: "⚡" },
-  { id: "equilibrada", label: "Equilibradas", description: "20-45 minutos", emoji: "⏱️" },
-  { id: "elaborada", label: "Elaboradas", description: "Mais de 45 minutos", emoji: "👨‍🍳" },
-];
-
-const CONTEXT = [
-  { id: "individual", label: "Individual", description: "Só para mim", emoji: "👤" },
-  { id: "familia", label: "Família", description: "Para toda a família", emoji: "👨‍👩‍👧‍👦" },
-  { id: "modo_kids", label: "Modo Kids", description: "Receitas para crianças", emoji: "👶" },
-];
-
-type DietaryPreference = "comum" | "vegetariana" | "vegana" | "low_carb";
-type UserGoal = "emagrecer" | "manter" | "ganhar_peso";
-type CalorieGoal = "reduzir" | "manter" | "aumentar" | "definir_depois";
-type RecipeComplexity = "rapida" | "equilibrada" | "elaborada";
-type UserContext = "individual" | "familia" | "modo_kids";
-
 type ProfileData = {
   intolerances: string[];
-  dietary_preference: DietaryPreference;
-  goal: UserGoal;
-  calorie_goal: CalorieGoal;
-  recipe_complexity: RecipeComplexity;
-  context: UserContext;
+  dietary_preference: string;
+  goal: string;
+  calorie_goal: string;
+  recipe_complexity: string;
+  context: string;
 };
 
 export default function Onboarding() {
@@ -87,6 +40,8 @@ export default function Onboarding() {
     context: "individual",
   });
 
+  const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
+
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -95,7 +50,6 @@ export default function Onboarding() {
         return;
       }
 
-      // Check if user already completed onboarding
       const { data: existingProfile } = await supabase
         .from("profiles")
         .select("onboarding_completed")
@@ -111,10 +65,13 @@ export default function Onboarding() {
   }, [navigate]);
 
   const toggleIntolerance = (id: string) => {
-    if (id === "nenhuma") {
-      setProfile({ ...profile, intolerances: profile.intolerances.includes("nenhuma") ? [] : ["nenhuma"] });
+    const noneOption = options?.intolerances.find(o => o.option_id === "none" || o.option_id === "nenhuma");
+    const noneId = noneOption?.option_id || "none";
+    
+    if (id === noneId) {
+      setProfile({ ...profile, intolerances: profile.intolerances.includes(noneId) ? [] : [noneId] });
     } else {
-      const filtered = profile.intolerances.filter(i => i !== "nenhuma");
+      const filtered = profile.intolerances.filter(i => i !== noneId && i !== "none" && i !== "nenhuma");
       if (filtered.includes(id)) {
         setProfile({ ...profile, intolerances: filtered.filter(i => i !== id) });
       } else {
@@ -149,11 +106,11 @@ export default function Onboarding() {
         .from("profiles")
         .update({
           intolerances: profile.intolerances,
-          dietary_preference: profile.dietary_preference,
-          goal: profile.goal,
-          calorie_goal: profile.calorie_goal,
-          recipe_complexity: profile.recipe_complexity,
-          context: profile.context,
+          dietary_preference: profile.dietary_preference as any,
+          goal: profile.goal as any,
+          calorie_goal: profile.calorie_goal as any,
+          recipe_complexity: profile.recipe_complexity as any,
+          context: profile.context as any,
           onboarding_completed: true,
         })
         .eq("id", session.user.id);
@@ -170,23 +127,38 @@ export default function Onboarding() {
     }
   };
 
+  const getLabel = (category: keyof typeof options, optionId: string): string => {
+    if (!options) return optionId;
+    const categoryOptions = options[category as keyof typeof options];
+    const option = categoryOptions?.find((o: OnboardingOption) => o.option_id === optionId);
+    return option?.label || optionId;
+  };
+
   const renderStepContent = () => {
+    if (isLoadingOptions || !options) {
+      return (
+        <div className="flex items-center justify-center py-8">
+          <Loader2 className="w-6 h-6 animate-spin text-primary" />
+        </div>
+      );
+    }
+
     switch (currentStep) {
       case 1:
         return (
           <div className="grid grid-cols-2 gap-3">
-            {INTOLERANCES.map((item) => (
+            {options.intolerances.map((item) => (
               <button
-                key={item.id}
-                onClick={() => toggleIntolerance(item.id)}
+                key={item.option_id}
+                onClick={() => toggleIntolerance(item.option_id)}
                 className={cn(
                   "p-4 rounded-xl border-2 text-left transition-all",
-                  profile.intolerances.includes(item.id)
+                  profile.intolerances.includes(item.option_id)
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <span className="text-2xl mb-2 block">{item.emoji}</span>
+                <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
                 <span className="font-medium text-sm">{item.label}</span>
               </button>
             ))}
@@ -196,20 +168,22 @@ export default function Onboarding() {
       case 2:
         return (
           <div className="grid grid-cols-2 gap-3">
-            {DIETARY_PREFERENCES.map((item) => (
+            {options.dietary_preferences.map((item) => (
               <button
-                key={item.id}
-                onClick={() => setProfile({ ...profile, dietary_preference: item.id as DietaryPreference })}
+                key={item.option_id}
+                onClick={() => setProfile({ ...profile, dietary_preference: item.option_id })}
                 className={cn(
                   "p-4 rounded-xl border-2 text-left transition-all",
-                  profile.dietary_preference === item.id
+                  profile.dietary_preference === item.option_id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <span className="text-2xl mb-2 block">{item.emoji}</span>
+                <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
                 <span className="font-medium text-sm block">{item.label}</span>
-                <span className="text-xs text-muted-foreground">{item.description}</span>
+                {item.description && (
+                  <span className="text-xs text-muted-foreground">{item.description}</span>
+                )}
               </button>
             ))}
           </div>
@@ -218,21 +192,23 @@ export default function Onboarding() {
       case 3:
         return (
           <div className="space-y-3">
-            {GOALS.map((item) => (
+            {options.goals.map((item) => (
               <button
-                key={item.id}
-                onClick={() => setProfile({ ...profile, goal: item.id as UserGoal })}
+                key={item.option_id}
+                onClick={() => setProfile({ ...profile, goal: item.option_id })}
                 className={cn(
                   "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4",
-                  profile.goal === item.id
+                  profile.goal === item.option_id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <span className="text-3xl">{item.emoji}</span>
+                <span className="text-3xl">{item.emoji || "📌"}</span>
                 <div>
                   <span className="font-medium block">{item.label}</span>
-                  <span className="text-sm text-muted-foreground">{item.description}</span>
+                  {item.description && (
+                    <span className="text-sm text-muted-foreground">{item.description}</span>
+                  )}
                 </div>
               </button>
             ))}
@@ -242,20 +218,22 @@ export default function Onboarding() {
       case 4:
         return (
           <div className="grid grid-cols-2 gap-3">
-            {CALORIE_GOALS.map((item) => (
+            {options.calorie_goals.map((item) => (
               <button
-                key={item.id}
-                onClick={() => setProfile({ ...profile, calorie_goal: item.id as CalorieGoal })}
+                key={item.option_id}
+                onClick={() => setProfile({ ...profile, calorie_goal: item.option_id })}
                 className={cn(
                   "p-4 rounded-xl border-2 text-left transition-all",
-                  profile.calorie_goal === item.id
+                  profile.calorie_goal === item.option_id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <span className="text-2xl mb-2 block">{item.emoji}</span>
+                <span className="text-2xl mb-2 block">{item.emoji || "📌"}</span>
                 <span className="font-medium text-sm block">{item.label}</span>
-                <span className="text-xs text-muted-foreground">{item.description}</span>
+                {item.description && (
+                  <span className="text-xs text-muted-foreground">{item.description}</span>
+                )}
               </button>
             ))}
           </div>
@@ -264,21 +242,23 @@ export default function Onboarding() {
       case 5:
         return (
           <div className="space-y-3">
-            {COMPLEXITY.map((item) => (
+            {options.complexity.map((item) => (
               <button
-                key={item.id}
-                onClick={() => setProfile({ ...profile, recipe_complexity: item.id as RecipeComplexity })}
+                key={item.option_id}
+                onClick={() => setProfile({ ...profile, recipe_complexity: item.option_id })}
                 className={cn(
                   "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4",
-                  profile.recipe_complexity === item.id
+                  profile.recipe_complexity === item.option_id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <span className="text-3xl">{item.emoji}</span>
+                <span className="text-3xl">{item.emoji || "📌"}</span>
                 <div>
                   <span className="font-medium block">{item.label}</span>
-                  <span className="text-sm text-muted-foreground">{item.description}</span>
+                  {item.description && (
+                    <span className="text-sm text-muted-foreground">{item.description}</span>
+                  )}
                 </div>
               </button>
             ))}
@@ -288,21 +268,23 @@ export default function Onboarding() {
       case 6:
         return (
           <div className="space-y-3">
-            {CONTEXT.map((item) => (
+            {options.context.map((item) => (
               <button
-                key={item.id}
-                onClick={() => setProfile({ ...profile, context: item.id as UserContext })}
+                key={item.option_id}
+                onClick={() => setProfile({ ...profile, context: item.option_id })}
                 className={cn(
                   "w-full p-4 rounded-xl border-2 text-left transition-all flex items-center gap-4",
-                  profile.context === item.id
+                  profile.context === item.option_id
                     ? "border-primary bg-primary/10"
                     : "border-border hover:border-primary/50"
                 )}
               >
-                <span className="text-3xl">{item.emoji}</span>
+                <span className="text-3xl">{item.emoji || "📌"}</span>
                 <div>
                   <span className="font-medium block">{item.label}</span>
-                  <span className="text-sm text-muted-foreground">{item.description}</span>
+                  {item.description && (
+                    <span className="text-sm text-muted-foreground">{item.description}</span>
+                  )}
                 </div>
               </button>
             ))}
@@ -315,40 +297,40 @@ export default function Onboarding() {
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                 <span className="text-muted-foreground">Intolerâncias</span>
-                <span className="font-medium">
+                <span className="font-medium text-right max-w-[60%]">
                   {profile.intolerances.length === 0 
                     ? "Nenhuma" 
-                    : profile.intolerances.map(i => INTOLERANCES.find(x => x.id === i)?.label).join(", ")}
+                    : profile.intolerances.map(i => getLabel("intolerances", i)).join(", ")}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                 <span className="text-muted-foreground">Preferência</span>
                 <span className="font-medium">
-                  {DIETARY_PREFERENCES.find(x => x.id === profile.dietary_preference)?.label}
+                  {getLabel("dietary_preferences", profile.dietary_preference)}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                 <span className="text-muted-foreground">Objetivo</span>
                 <span className="font-medium">
-                  {GOALS.find(x => x.id === profile.goal)?.label}
+                  {getLabel("goals", profile.goal)}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                 <span className="text-muted-foreground">Meta Calórica</span>
                 <span className="font-medium">
-                  {CALORIE_GOALS.find(x => x.id === profile.calorie_goal)?.label}
+                  {getLabel("calorie_goals", profile.calorie_goal)}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                 <span className="text-muted-foreground">Tipo de Receitas</span>
                 <span className="font-medium">
-                  {COMPLEXITY.find(x => x.id === profile.recipe_complexity)?.label}
+                  {getLabel("complexity", profile.recipe_complexity)}
                 </span>
               </div>
               <div className="flex justify-between items-center p-3 bg-secondary/50 rounded-lg">
                 <span className="text-muted-foreground">Contexto</span>
                 <span className="font-medium">
-                  {CONTEXT.find(x => x.id === profile.context)?.label}
+                  {getLabel("context", profile.context)}
                 </span>
               </div>
             </div>

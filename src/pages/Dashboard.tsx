@@ -833,25 +833,14 @@ export default function Dashboard() {
                                 : `${weightData.weight_current}kg → ${weightData.weight_goal}kg`}
                             </p>
                           </div>
-                          <div className="flex gap-1.5 shrink-0">
-                            <Button 
-                              variant="outline"
-                              size="sm" 
-                              onClick={() => setShowWeightUpdateModal(true)}
-                              className="text-xs h-7 px-2.5 rounded-lg border-border font-medium"
-                            >
-                              <Scale className="w-3 h-3 mr-1" />
-                              Peso
-                            </Button>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={() => setShowWeightLossSetup(true)}
-                              className="text-xs h-7 px-2.5 rounded-lg border-border font-medium"
-                            >
-                              Editar
-                            </Button>
-                          </div>
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setShowWeightLossSetup(true)}
+                            className="text-xs h-7 px-2.5 rounded-lg border-border font-medium shrink-0"
+                          >
+                            Editar
+                          </Button>
                         </div>
                       </div>
                       {weightData?.weight_current ? (
@@ -883,15 +872,23 @@ export default function Dashboard() {
                                     mode={calcs.mode}
                                   />
                                 </div>
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  onClick={() => setShowWeightHistory(true)}
-                                  className="w-full mt-3 text-muted-foreground hover:text-foreground flex items-center justify-center gap-1.5"
-                                >
-                                  <TrendingUp className="w-4 h-4 text-primary stroke-[1.5]" />
-                                  Ver Evolução
-                                </Button>
+                                <div className="flex items-center justify-center gap-4 mt-3">
+                                  <button 
+                                    onClick={() => setShowWeightUpdateModal(true)}
+                                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+                                  >
+                                    <Scale className="w-4 h-4 text-primary stroke-[1.5]" />
+                                    Atualizar Peso
+                                  </button>
+                                  <span className="text-muted-foreground/40">|</span>
+                                  <button 
+                                    onClick={() => setShowWeightHistory(true)}
+                                    className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+                                  >
+                                    <TrendingUp className="w-4 h-4 text-primary stroke-[1.5]" />
+                                    Ver Evolução
+                                  </button>
+                                </div>
                               </>
                             );
                           })()}

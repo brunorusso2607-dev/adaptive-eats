@@ -46,7 +46,7 @@ function AppContent() {
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />}>
           <Route index element={<AdminHome />} />
-          <Route path="users" element={<AdminStats />} />
+          <Route path="users" element={<AdminUsers />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
           <Route path="plans" element={<AdminPlans />} />

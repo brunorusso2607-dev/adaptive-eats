@@ -461,7 +461,8 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 }
 
 /**
- * Constrói prompt para geração de UM DIA do plano alimentar (para evitar truncamento)
+ * Constrói prompt para geração de UM DIA do plano alimentar
+ * Persona: Mestre Chef ReceitAI - receitas ricas e detalhadas
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -472,19 +473,52 @@ export function buildSingleDayPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const isKidsMode = profile.context === "modo_kids";
+  const complexity = profile.recipe_complexity || "equilibrada";
   const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
-  const kidsNote = isKidsMode ? " Modo Kids: nomes divertidos, max 25min." : "";
+  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes criativos e divertidos, sabores suaves, apresentação atraente." : "";
   const avoidRecipes = previousRecipes.length > 0 
-    ? ` Evitar: ${previousRecipes.slice(0, 5).join(", ")}.` 
+    ? `\n⚠️ NÃO REPETIR: ${previousRecipes.slice(0, 8).join(", ")}` 
     : "";
 
-  return `Gere 5 refeições para ${dayName}.
-PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}, ${macros.dailyCalories}kcal/dia
-RESTRIÇÕES: ${intolerancesStr}${kidsNote}${avoidRecipes}
-REFEIÇÕES: ${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")}
-REGRAS: Max 4 ingredientes. Max 3 passos. Sem markdown.
-JSON: {"day_index":${dayIndex},"day_name":"${dayName}","meals":[{"meal_type":"cafe_manha","recipe_name":"X","recipe_calories":400,"recipe_protein":20,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,"recipe_ingredients":[{"item":"x","quantity":"100","unit":"g"}],"recipe_instructions":["Passo"]}]}`;
+  const complexityInstructions: Record<string, string> = {
+    rapida: "Receitas práticas (max 20 min). 4-5 ingredientes simples. 3-4 passos diretos.",
+    equilibrada: "Receitas balanceadas (20-40 min). 6-7 ingredientes. 4-5 passos bem explicados.",
+    elaborada: "Receitas sofisticadas (40+ min). 7-8 ingredientes premium. 5-6 passos com técnicas culinárias."
+  };
+
+  return `🧑‍🍳 MESTRE CHEF RECEITAI - Plano Alimentar Personalizado
+
+📅 Gere as 5 refeições para: ${dayName}
+
+👤 PERFIL DO CLIENTE:
+• Dieta: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
+• Objetivo: ${GOAL_LABELS[profile.goal || "manter"]}
+• Meta diária: ${macros.dailyCalories}kcal, ${macros.dailyProtein}g proteína
+• Contexto: ${CONTEXT_LABELS[profile.context || "individual"]}
+
+🚫 RESTRIÇÕES ALIMENTARES (JAMAIS INCLUIR):
+${intolerancesStr}
+
+⏱️ COMPLEXIDADE: ${COMPLEXITY_LABELS[complexity]}
+${complexityInstructions[complexity]}${kidsNote}${avoidRecipes}
+
+🍽️ REFEIÇÕES A GERAR:
+${selectedMealTypes.map((m, i) => `${i + 1}. ${MEAL_TYPE_LABELS[m]}`).join("\n")}
+
+📋 INSTRUÇÕES DO CHEF:
+• Nomes criativos e apetitosos para cada receita
+• Ingredientes com quantidades precisas (g, ml, unidades)
+• Modo de preparo detalhado e claro
+• Macros realistas que somem ~${macros.dailyCalories}kcal no dia
+• Priorize ingredientes de fácil acesso no Brasil
+
+🔧 FORMATO JSON (responda APENAS com JSON válido):
+{"day_index":${dayIndex},"day_name":"${dayName}","meals":[
+  {"meal_type":"cafe_manha","recipe_name":"Nome Criativo","recipe_calories":450,"recipe_protein":25,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,
+   "recipe_ingredients":[{"item":"Ingrediente","quantity":"100","unit":"g"}],
+   "recipe_instructions":["Passo 1 detalhado","Passo 2 detalhado"]}
+]}`;
 }
 
 /**

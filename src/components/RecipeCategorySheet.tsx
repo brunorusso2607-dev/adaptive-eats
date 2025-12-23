@@ -4,10 +4,11 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { 
-  Globe, Clock, Flame, ChevronRight, ArrowLeft, Check, Loader2, Sparkles, Search
+  Globe, Clock, Flame, ChevronRight, ArrowLeft, Check, Loader2, Sparkles, Search, Ban
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFilteredRecipeCategories } from "@/hooks/useFilteredRecipeCategories";
+import { Badge } from "@/components/ui/badge";
 import IngredientTagInput from "@/components/IngredientTagInput";
 import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
 
@@ -61,6 +62,7 @@ interface RecipeCategorySheetProps {
   userProfile?: {
     intolerances?: string[] | null;
     dietary_preference?: string | null;
+    excluded_ingredients?: string[] | null;
   } | null;
 }
 
@@ -299,6 +301,26 @@ export default function RecipeCategorySheet({
           ) : step === "ingredients" ? (
             // Etapa de Ingredientes
             <div className="space-y-4">
+              {/* Exibição de alimentos excluídos */}
+              {((userProfile?.excluded_ingredients || profile?.excluded_ingredients) && 
+                (userProfile?.excluded_ingredients?.length || profile?.excluded_ingredients?.length)) && (
+                <div className="bg-destructive/5 rounded-xl p-3 border border-destructive/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ban className="w-4 h-4 text-destructive" />
+                    <p className="text-xs font-medium text-destructive">
+                      Ingredientes que você não consome (serão evitados)
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(userProfile?.excluded_ingredients || profile?.excluded_ingredients || []).map((item) => (
+                      <Badge key={item} variant="outline" className="text-xs bg-destructive/10 border-destructive/30 text-destructive">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
                 <IngredientTagInput
                   value={ingredients}
@@ -325,8 +347,27 @@ export default function RecipeCategorySheet({
           ) : (
             // Etapa 2: Categorias filtradas pelo perfil
             <div className="space-y-3">
+              {/* Exibição de alimentos excluídos */}
+              {(profile?.excluded_ingredients && profile.excluded_ingredients.length > 0) && (
+                <div className="bg-destructive/5 rounded-xl p-3 border border-destructive/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Ban className="w-4 h-4 text-destructive" />
+                    <p className="text-xs font-medium text-destructive">
+                      Ingredientes que você não consome
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {profile.excluded_ingredients.map((item) => (
+                      <Badge key={item} variant="outline" className="text-xs bg-destructive/10 border-destructive/30 text-destructive">
+                        {item}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
+              
               {profile && (
-                <div className="bg-primary/5 rounded-xl p-3 mb-4">
+                <div className="bg-primary/5 rounded-xl p-3">
                   <p className="text-xs text-muted-foreground text-center">
                     📋 Categorias personalizadas para seu perfil
                   </p>

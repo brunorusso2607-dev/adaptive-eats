@@ -27,7 +27,7 @@ export function useFilteredRecipeCategories() {
 
         const { data: profileData, error } = await supabase
           .from("profiles")
-          .select("goal, dietary_preference, intolerances")
+          .select("goal, dietary_preference, intolerances, excluded_ingredients")
           .eq("id", user.id)
           .maybeSingle();
 
@@ -72,7 +72,7 @@ export function useFilteredRecipeCategories() {
 
       const { data: profileData, error } = await supabase
         .from("profiles")
-        .select("goal, dietary_preference, intolerances")
+        .select("goal, dietary_preference, intolerances, excluded_ingredients")
         .eq("id", user.id)
         .maybeSingle();
 

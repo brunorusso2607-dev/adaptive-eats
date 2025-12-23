@@ -16,12 +16,13 @@ interface MealDetailSheetProps {
 }
 
 interface Ingredient {
-  name: string;
+  item: string;
   quantity: string;
   unit?: string;
 }
 
 type RawIngredient = {
+  item?: string;
   name?: string;
   quantity?: string;
   unit?: string;
@@ -37,8 +38,12 @@ export default function MealDetailSheet({
 
   const rawIngredients = (meal.recipe_ingredients || []) as unknown as RawIngredient[];
   const ingredients: Ingredient[] = rawIngredients
-    .filter((i) => i && typeof i.name === 'string')
-    .map((i) => ({ name: i.name || '', quantity: i.quantity || '' }));
+    .filter((i) => i && (typeof i.item === 'string' || typeof i.name === 'string'))
+    .map((i) => ({ 
+      item: i.item || i.name || '', 
+      quantity: i.quantity || '',
+      unit: i.unit || ''
+    }));
   const instructions = (meal.recipe_instructions || []) as unknown as string[];
 
   return (
@@ -89,9 +94,9 @@ export default function MealDetailSheet({
                     key={index}
                     className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
                   >
-                    <span className="text-sm">{ingredient.name}</span>
+                    <span className="text-sm">{ingredient.item}</span>
                     <Badge variant="secondary" className="text-xs">
-                      {ingredient.quantity}
+                      {ingredient.quantity} {ingredient.unit}
                     </Badge>
                   </div>
                 ))}

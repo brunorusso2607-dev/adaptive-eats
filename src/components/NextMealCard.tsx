@@ -16,7 +16,6 @@ import {
 import { cn } from "@/lib/utils";
 import { useNextMeal, MEAL_LABELS, MEAL_TIME_RANGES, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
-import { useMealStatusColors } from "@/hooks/useMealStatusColors";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
@@ -31,8 +30,15 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface NextMealCardProps {}
 
-// Map internal status to database status keys
-const statusToDbKey: Record<MealStatus, string> = {
+// Status colors (fixed)
+const STATUS_STYLES: Record<string, React.CSSProperties> = {
+  on_time: { backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'rgba(34, 197, 94, 1)', borderColor: 'rgba(34, 197, 94, 0.3)' },
+  alert: { backgroundColor: 'rgba(251, 191, 36, 0.1)', color: 'rgba(217, 119, 6, 1)', borderColor: 'rgba(251, 191, 36, 0.3)' },
+  late: { backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'rgba(239, 68, 68, 1)', borderColor: 'rgba(239, 68, 68, 0.3)' },
+};
+
+// Map internal status to style keys
+const statusToStyleKey: Record<MealStatus, string> = {
   on_time: "on_time",
   delayed: "alert",
   critical: "late",
@@ -72,7 +78,6 @@ export default function NextMealCard(_props: NextMealCardProps) {
   }, [mealStatus, nextMeal]);
 
   const { saveConsumption } = useMealConsumption();
-  const { getStyleByStatus, isLoading: isLoadingColors } = useMealStatusColors();
 
   // Opens confirmation dialog
   const handleFizClick = () => {
@@ -139,8 +144,8 @@ export default function NextMealCard(_props: NextMealCardProps) {
     setShowDetailSheet(true);
   };
 
-  // Loading state (includes colors loading)
-  if (isLoading || isLoadingColors) {
+  // Loading state
+  if (isLoading) {
     return (
       <Card className="rounded-xl shadow-sm border animate-pulse">
         <CardContent className="p-4">
@@ -192,8 +197,8 @@ export default function NextMealCard(_props: NextMealCardProps) {
     );
   }
 
-  const dbStatusKey = statusToDbKey[mealStatus];
-  const dynamicStyles = getStyleByStatus(dbStatusKey);
+  const styleKey = statusToStyleKey[mealStatus];
+  const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.on_time;
   const mealLabel = MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type;
 
   return (
@@ -203,8 +208,8 @@ export default function NextMealCard(_props: NextMealCardProps) {
         mealStatus === "critical" && "animate-pulse"
       )}
       style={{
-        backgroundColor: dynamicStyles.backgroundColor || 'hsl(var(--card))',
-        borderColor: dynamicStyles.borderColor || 'hsl(var(--border))',
+        backgroundColor: statusStyles.backgroundColor || 'hsl(var(--card))',
+        borderColor: statusStyles.borderColor || 'hsl(var(--border))',
         borderWidth: '1px',
         borderStyle: 'solid',
       }}
@@ -269,8 +274,8 @@ export default function NextMealCard(_props: NextMealCardProps) {
                 <span 
                   className="text-[10px] px-1.5 py-0.5 rounded-full inline-block mt-1"
                   style={{
-                    backgroundColor: dynamicStyles.backgroundColor,
-                    color: dynamicStyles.color,
+                    backgroundColor: statusStyles.backgroundColor,
+                    color: statusStyles.color,
                   }}
                 >
                   Pendente há {minutesOverdue}min
@@ -280,8 +285,8 @@ export default function NextMealCard(_props: NextMealCardProps) {
                 <span 
                   className="text-[10px] px-1.5 py-0.5 rounded-full inline-block mt-1"
                   style={{
-                    backgroundColor: dynamicStyles.backgroundColor,
-                    color: dynamicStyles.color,
+                    backgroundColor: statusStyles.backgroundColor,
+                    color: statusStyles.color,
                   }}
                 >
                   Atrasado

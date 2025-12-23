@@ -7,11 +7,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Plus, Clock, Save, RefreshCw } from "lucide-react";
+import { Loader2, Pencil, Trash2, Plus, Clock, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StatusColorEditor } from "@/components/admin/StatusColorEditor";
-import { invalidateMealTimeCache } from "@/lib/mealTimeConfig";
-import { invalidateColorCache } from "@/hooks/useMealStatusColors";
 
 export default function AdminMealTimes() {
   const { settings, isLoading, isSaving, updateSetting, createSetting, deleteSetting } = useMealTimeSettingsAdmin();
@@ -331,8 +328,6 @@ export default function AdminMealTimes() {
         </CardContent>
       </Card>
 
-      <StatusColorEditor />
-
       <Card>
         <CardHeader>
           <CardTitle>Dicas</CardTitle>
@@ -343,38 +338,6 @@ export default function AdminMealTimes() {
           <p>• Use valores decimais para horários com minutos (ex: 17.5 = 17:30)</p>
           <p>• A <strong>ordem</strong> define a sequência das refeições no dia</p>
           <p>• Alterações são aplicadas imediatamente para novos acessos</p>
-        </CardContent>
-      </Card>
-
-      <Card className="border-primary/30 bg-primary/5">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <RefreshCw className="w-5 h-5" />
-            Limpar Todo o Cache
-          </CardTitle>
-          <CardDescription>
-            Se as alterações de horários ou cores não aparecerem no dashboard, clique no botão abaixo para forçar a atualização.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Button 
-            variant="outline"
-            onClick={() => {
-              // Limpar cache de horários
-              invalidateMealTimeCache();
-              
-              // Limpar cache de cores
-              invalidateColorCache();
-              
-              toast.success("Cache limpo! Recarregue a página do dashboard para ver as alterações.");
-            }}
-          >
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Limpar Cache de Horários e Cores
-          </Button>
-          <p className="text-xs text-muted-foreground mt-3">
-            Nota: O cache é limpo automaticamente quando você salva alterações. Este botão é para forçar a limpeza local.
-          </p>
         </CardContent>
       </Card>
     </div>

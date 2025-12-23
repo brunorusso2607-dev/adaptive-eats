@@ -408,6 +408,42 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_status_colors: {
+        Row: {
+          background_color: string
+          border_color: string | null
+          created_at: string
+          id: string
+          label: string
+          sort_order: number
+          status_key: string
+          text_color: string
+          updated_at: string
+        }
+        Insert: {
+          background_color?: string
+          border_color?: string | null
+          created_at?: string
+          id?: string
+          label: string
+          sort_order?: number
+          status_key: string
+          text_color?: string
+          updated_at?: string
+        }
+        Update: {
+          background_color?: string
+          border_color?: string | null
+          created_at?: string
+          id?: string
+          label?: string
+          sort_order?: number
+          status_key?: string
+          text_color?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meal_time_settings: {
         Row: {
           created_at: string

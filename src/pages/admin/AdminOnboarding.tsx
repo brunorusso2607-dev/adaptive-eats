@@ -93,18 +93,26 @@ export default function AdminOnboarding() {
     
     setIsGeneratingEmoji(true);
     try {
+      console.log("Calling generate-emoji with label:", label);
       const { data, error } = await supabase.functions.invoke("generate-emoji", {
         body: { label },
       });
 
-      if (error) throw error;
+      console.log("generate-emoji response:", { data, error });
+
+      if (error) {
+        console.error("generate-emoji error:", error);
+        toast.error("Erro ao gerar emoji");
+        return;
+      }
       
       if (data?.emoji) {
         setFormData(prev => ({ ...prev, emoji: data.emoji }));
+        toast.success(`Emoji gerado: ${data.emoji}`);
       }
     } catch (error) {
       console.error("Error generating emoji:", error);
-      // Silently fail - user can still manually enter emoji
+      toast.error("Erro ao gerar emoji");
     } finally {
       setIsGeneratingEmoji(false);
     }

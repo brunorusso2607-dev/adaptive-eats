@@ -7,7 +7,7 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -39,6 +39,7 @@ type ProfilePageProps = {
   user: SupabaseUser | null;
   subscription: SubscriptionInfo | null;
   onLogout: () => void;
+  onBack?: () => void;
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
@@ -134,7 +135,7 @@ function ExcludedIngredientsEditor({
   );
 }
 
-export default function ProfilePage({ user, subscription, onLogout }: ProfilePageProps) {
+export default function ProfilePage({ user, subscription, onLogout, onBack }: ProfilePageProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -595,6 +596,16 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2">
+        {/* Desktop back button */}
+        {onBack && (
+          <button
+            onClick={onBack}
+            className="hidden md:flex items-center justify-center w-9 h-9 rounded-full hover:bg-accent transition-colors -ml-2"
+            title="Voltar"
+          >
+            <ArrowLeft className="w-5 h-5" />
+          </button>
+        )}
         <User className="w-5 h-5" />
         <h2 className="text-xl font-bold">{isEditing ? "Editar Perfil" : "Minha Conta"}</h2>
       </div>

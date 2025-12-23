@@ -12,7 +12,9 @@ const AVAILABLE_ICONS = [
   "leaf", "flame", "trending-down", "trending-up", "scale", "clock", "zap", 
   "timer", "chef-hat", "user", "users", "baby", "target", "minus", "arrow-down", 
   "arrow-up", "heart", "apple", "carrot", "pizza", "coffee", "droplet", "sun",
-  "moon", "star", "shield", "alert-triangle", "ban", "x-circle", "check-circle"
+  "moon", "star", "shield", "alert-triangle", "ban", "x-circle", "check-circle",
+  "banana", "cherry", "citrus", "grape", "sandwich", "soup", "cookie", "cake",
+  "ice-cream-cone", "popcorn", "candy", "beer", "wine", "martini", "cup-soda"
 ];
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -39,8 +41,6 @@ Given this food, ingredient or dietary concept: "${label}"
 
 Choose the BEST matching icon name from this list: ${availableIconsList}
 
-IMPORTANT: Only these exact icon names are available. There is NO pineapple, banana, strawberry, grape, or other specific fruit icons.
-
 Rules:
 - Return ONLY the icon name, nothing else
 - Choose the most semantically relevant icon
@@ -53,8 +53,25 @@ Rules:
 - For vegetables/plants/herbs use "leaf" or "salad" or "carrot"
 - For meat/beef/chicken/pork use "flame"
 - For apple specifically use "apple"
-- For OTHER fruits (pineapple, banana, mango, orange, grape, strawberry, etc.) use "leaf" since there's no specific icon
-- For tropical foods or exotic ingredients use "leaf"
+- For banana specifically use "banana"
+- For cherry specifically use "cherry"
+- For grape/grapes/raisins use "grape"
+- For citrus fruits (orange, lemon, lime, grapefruit) use "citrus"
+- For tropical fruits (pineapple, mango, papaya, kiwi) use "leaf"
+- For other berries (strawberry, blueberry, raspberry) use "cherry"
+- For sandwiches/burgers/wraps use "sandwich"
+- For soups/stews/broths use "soup"
+- For cookies/biscuits use "cookie"
+- For cakes/pastries/desserts use "cake"
+- For ice cream/frozen desserts use "ice-cream-cone"
+- For snacks/popcorn use "popcorn"
+- For candy/sweets/chocolate use "candy"
+- For beer use "beer"
+- For wine use "wine"
+- For cocktails use "martini"
+- For soda/soft drinks use "cup-soda"
+- For coffee/tea use "coffee"
+- For water/other drinks use "droplet"
 - For allergies/warnings use "alert-triangle" or "shield"
 - For goals/targets use "target"
 - For calories/energy use "flame" or "zap"
@@ -62,7 +79,6 @@ Rules:
 - For weight gain use "trending-up"
 - For cooking use "chef-hat" or "utensils"
 - For time use "clock" or "timer"
-- For drinks/beverages use "coffee" or "droplet"
 - If nothing fits well, use "utensils"
 
 Respond with only the icon name, no quotes, no punctuation.`,

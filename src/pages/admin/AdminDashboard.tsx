@@ -23,7 +23,9 @@ import {
   Plug,
   FileText,
   Webhook,
-  Sparkles
+  Sparkles,
+  PanelLeftClose,
+  PanelLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -86,7 +88,8 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isLoading } = useAdmin();
-  const [openMenus, setOpenMenus] = useState<string[]>([]);
+  const [openMenus, setOpenMenus] = useState<string[]>(["Relatórios", "Configurações"]);
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -112,7 +115,6 @@ export default function AdminDashboard() {
     const checkAuth = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!isLoading && !isAdmin) {
-        // Se não tem sessão, vai para auth, não para dashboard
         if (!session) {
           navigate("/auth");
         } else {
@@ -135,189 +137,170 @@ export default function AdminDashboard() {
     return null;
   }
 
+  const renderMenuItem = (item: SubMenuItem, depth: number = 0) => {
+    const paddingLeft = depth * 12;
+
+    if (item.path) {
+      return (
+        <Link
+          key={item.path}
+          to={item.path}
+          className={cn(
+            "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+            isItemActive(item)
+              ? "bg-primary text-primary-foreground shadow-glow"
+              : "text-muted-foreground hover:bg-card hover:text-foreground"
+          )}
+          style={{ paddingLeft: `${12 + paddingLeft}px` }}
+        >
+          <item.icon className="w-4 h-4 flex-shrink-0" />
+          {!sidebarCollapsed && <span>{item.label}</span>}
+        </Link>
+      );
+    }
+
+    return (
+      <Collapsible
+        key={item.label}
+        open={openMenus.includes(item.label)}
+        onOpenChange={() => toggleMenu(item.label)}
+      >
+        <CollapsibleTrigger asChild>
+          <Button
+            variant="ghost"
+            className={cn(
+              "w-full justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all h-auto",
+              openMenus.includes(item.label)
+                ? "bg-card/50 text-foreground"
+                : "text-muted-foreground hover:bg-card hover:text-foreground"
+            )}
+            style={{ paddingLeft: `${12 + paddingLeft}px` }}
+          >
+            <div className="flex items-center gap-3">
+              <item.icon className="w-4 h-4 flex-shrink-0" />
+              {!sidebarCollapsed && <span>{item.label}</span>}
+            </div>
+            {!sidebarCollapsed && (
+              <ChevronDown
+                className={cn(
+                  "w-4 h-4 transition-transform duration-200",
+                  openMenus.includes(item.label) && "rotate-180"
+                )}
+              />
+            )}
+          </Button>
+        </CollapsibleTrigger>
+        {!sidebarCollapsed && (
+          <CollapsibleContent className="space-y-1 mt-1">
+            {item.subItems?.map((subItem) => renderMenuItem(subItem, depth + 1))}
+          </CollapsibleContent>
+        )}
+      </Collapsible>
+    );
+  };
+
   return (
-    <div className="min-h-screen gradient-hero">
-      {/* Header */}
-      <header className="glass-card border-b sticky top-0 z-50">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
+    <div className="min-h-screen gradient-hero flex">
+      {/* Sidebar */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-full bg-card/80 backdrop-blur-xl border-r border-border/50 z-50 transition-all duration-300 flex flex-col",
+          sidebarCollapsed ? "w-16" : "w-64"
+        )}
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-border/50">
           <div className="flex items-center gap-3">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => navigate("/dashboard")}
-              className="rounded-xl"
-            >
-              <ArrowLeft className="w-5 h-5" />
-            </Button>
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow flex-shrink-0">
               <Shield className="w-6 h-6 text-primary-foreground" />
             </div>
-            <div>
-              <h1 className="font-display text-xl font-bold text-foreground">Painel Admin</h1>
-              <p className="text-xs text-muted-foreground">Gerenciamento do sistema</p>
-            </div>
+            {!sidebarCollapsed && (
+              <div className="overflow-hidden">
+                <h1 className="font-display text-lg font-bold text-foreground truncate">Painel Admin</h1>
+                <p className="text-xs text-muted-foreground truncate">Gerenciamento</p>
+              </div>
+            )}
           </div>
+        </div>
+
+        {/* Navigation */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
+          {/* Início */}
+          <Link
+            to="/admin"
+            className={cn(
+              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+              location.pathname === "/admin"
+                ? "bg-primary text-primary-foreground shadow-glow"
+                : "text-muted-foreground hover:bg-card hover:text-foreground"
+            )}
+          >
+            <Menu className="w-4 h-4 flex-shrink-0" />
+            {!sidebarCollapsed && <span>Início</span>}
+          </Link>
+
+          {/* Menu Items */}
+          {mainMenuItems.map((item) => renderMenuItem(item))}
+        </nav>
+
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-border/50 space-y-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => navigate("/dashboard")}
+            className={cn(
+              "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
+              sidebarCollapsed && "justify-center"
+            )}
+          >
+            <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+            {!sidebarCollapsed && <span>Voltar ao App</span>}
+          </Button>
           <Button
             variant="ghost"
             size="sm"
             onClick={handleLogout}
-            className="gap-2 text-muted-foreground hover:text-destructive"
+            className={cn(
+              "w-full justify-start gap-3 text-muted-foreground hover:text-destructive",
+              sidebarCollapsed && "justify-center"
+            )}
           >
-            <LogOut className="w-4 h-4" />
-            <span className="hidden sm:inline">Sair</span>
+            <LogOut className="w-4 h-4 flex-shrink-0" />
+            {!sidebarCollapsed && <span>Sair</span>}
+          </Button>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
+            className={cn(
+              "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
+              sidebarCollapsed && "justify-center"
+            )}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeft className="w-4 h-4 flex-shrink-0" />
+            ) : (
+              <>
+                <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
+                <span>Recolher</span>
+              </>
+            )}
           </Button>
         </div>
-      </header>
+      </aside>
 
-      <div className="container mx-auto px-4 py-6">
-        {/* Navigation Menu */}
-        <nav className="mb-6">
-          <div className="space-y-1">
-            <Link
-              to="/admin"
-              className={cn(
-                "flex items-center gap-2 px-4 py-3 text-sm font-medium rounded-xl mb-2 transition-all",
-                location.pathname === "/admin"
-                  ? "bg-primary text-primary-foreground shadow-glow"
-                  : "bg-primary/10 text-primary hover:bg-primary/20"
-              )}
-            >
-              <Menu className="w-4 h-4" />
-              Início
-            </Link>
-            <div className="pl-4 space-y-1">
-              {mainMenuItems.map((item) => (
-                item.path ? (
-                  <Link
-                    key={item.label}
-                    to={item.path}
-                    className={cn(
-                      "flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
-                      isItemActive(item)
-                        ? "bg-primary text-primary-foreground shadow-glow"
-                        : "bg-card/30 text-muted-foreground hover:bg-card hover:text-foreground"
-                    )}
-                  >
-                    <item.icon className="w-4 h-4" />
-                    {item.label}
-                  </Link>
-                ) : (
-                  <Collapsible
-                    key={item.label}
-                    open={openMenus.includes(item.label)}
-                    onOpenChange={() => toggleMenu(item.label)}
-                  >
-                    <CollapsibleTrigger asChild>
-                      <Button
-                        variant="ghost"
-                        className={cn(
-                          "w-full justify-between px-4 py-2.5 rounded-xl text-sm font-medium transition-all",
-                          openMenus.includes(item.label)
-                            ? "bg-card/50 text-foreground"
-                            : "bg-card/30 text-muted-foreground hover:bg-card hover:text-foreground"
-                        )}
-                      >
-                        <div className="flex items-center gap-2">
-                          <item.icon className="w-4 h-4" />
-                          {item.label}
-                        </div>
-                        <ChevronDown
-                          className={cn(
-                            "w-4 h-4 transition-transform duration-200",
-                            openMenus.includes(item.label) && "rotate-180"
-                          )}
-                        />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pl-4 pt-1 space-y-1">
-                      {item.subItems && item.subItems.length > 0 ? (
-                        item.subItems.map((subItem) => (
-                          subItem.path ? (
-                            <Link
-                              key={subItem.path}
-                              to={subItem.path}
-                              className={cn(
-                                "flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                                location.pathname === subItem.path
-                                  ? "bg-primary text-primary-foreground shadow-glow"
-                                  : "bg-card/20 text-muted-foreground hover:bg-card hover:text-foreground"
-                              )}
-                            >
-                              <subItem.icon className="w-4 h-4" />
-                              {subItem.label}
-                            </Link>
-                          ) : (
-                            <Collapsible
-                              key={subItem.label}
-                              open={openMenus.includes(subItem.label)}
-                              onOpenChange={() => toggleMenu(subItem.label)}
-                            >
-                              <CollapsibleTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  className={cn(
-                                    "w-full justify-between px-4 py-2 rounded-xl text-sm font-medium transition-all",
-                                    openMenus.includes(subItem.label)
-                                      ? "bg-card/40 text-foreground"
-                                      : "bg-card/20 text-muted-foreground hover:bg-card hover:text-foreground"
-                                  )}
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <subItem.icon className="w-4 h-4" />
-                                    {subItem.label}
-                                  </div>
-                                  <ChevronDown
-                                    className={cn(
-                                      "w-4 h-4 transition-transform duration-200",
-                                      openMenus.includes(subItem.label) && "rotate-180"
-                                    )}
-                                  />
-                                </Button>
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="pl-4 pt-1 space-y-1">
-                                {subItem.subItems && subItem.subItems.length > 0 ? (
-                                  subItem.subItems.map((nestedItem) => (
-                                    nestedItem.path && (
-                                      <Link
-                                        key={nestedItem.path}
-                                        to={nestedItem.path}
-                                        className={cn(
-                                          "flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all",
-                                          location.pathname === nestedItem.path
-                                            ? "bg-primary text-primary-foreground shadow-glow"
-                                            : "bg-card/10 text-muted-foreground hover:bg-card hover:text-foreground"
-                                        )}
-                                      >
-                                        <nestedItem.icon className="w-3 h-3" />
-                                        {nestedItem.label}
-                                      </Link>
-                                    )
-                                  ))
-                                ) : (
-                                  <p className="px-4 py-2 text-xs text-muted-foreground italic">
-                                    Em breve...
-                                  </p>
-                                )}
-                              </CollapsibleContent>
-                            </Collapsible>
-                          )
-                        ))
-                      ) : (
-                        <p className="px-4 py-2 text-xs text-muted-foreground italic">
-                          Em breve...
-                        </p>
-                      )}
-                    </CollapsibleContent>
-                  </Collapsible>
-                )
-              ))}
-            </div>
-          </div>
-        </nav>
-
-        {/* Content */}
-        <Outlet />
-      </div>
+      {/* Main Content */}
+      <main
+        className={cn(
+          "flex-1 transition-all duration-300",
+          sidebarCollapsed ? "ml-16" : "ml-64"
+        )}
+      >
+        <div className="p-6">
+          <Outlet />
+        </div>
+      </main>
     </div>
   );
 }

@@ -1,5 +1,5 @@
 import { User as SupabaseUser } from "@supabase/supabase-js";
-import { Crown, LogOut, Settings, User } from "lucide-react";
+import { Crown, LogOut, User } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -155,11 +155,6 @@ export function DesktopProfileDropdown({
         <DropdownMenuItem onClick={onOpenProfile} className="cursor-pointer">
           <User className="mr-2 h-4 w-4" />
           <span>Meu Perfil</span>
-        </DropdownMenuItem>
-        
-        <DropdownMenuItem onClick={onOpenProfile} className="cursor-pointer">
-          <Settings className="mr-2 h-4 w-4" />
-          <span>Configurações</span>
         </DropdownMenuItem>
         
         <DropdownMenuSeparator />

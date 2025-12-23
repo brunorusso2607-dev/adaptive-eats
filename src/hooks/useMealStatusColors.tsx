@@ -16,7 +16,7 @@ const STORAGE_KEY = "meal_status_colors_cache";
 const STORAGE_TIMESTAMP_KEY = "meal_status_colors_cache_timestamp";
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
-// Memory cache
+// Memory cache - will be revalidated against localStorage on each use
 let cachedColors: MealStatusColor[] | null = null;
 let cacheTimestamp: number = 0;
 
@@ -57,15 +57,32 @@ export function useMealStatusColors() {
   const [isLoading, setIsLoading] = useState(!cachedColors);
 
   const fetchColors = useCallback(async (forceRefresh = false) => {
-    const isCacheValid = cachedColors && Date.now() - cacheTimestamp < CACHE_DURATION;
+    // Check localStorage for data and timestamp
+    const storedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+    const storedData = localStorage.getItem(STORAGE_KEY);
     
-    // If we have cached data and it's valid, use it
-    if (!forceRefresh && isCacheValid) {
-      setColors(cachedColors!);
-      setIsLoading(false);
-      return cachedColors;
+    // If localStorage was cleared (no timestamp), invalidate memory cache too
+    if (!storedTimestamp) {
+      cachedColors = null;
+      cacheTimestamp = 0;
+    } else if (storedData) {
+      const timestamp = parseInt(storedTimestamp, 10);
+      const isCacheValid = Date.now() - timestamp < CACHE_DURATION;
+      
+      // If localStorage is newer than memory cache, use localStorage
+      if (timestamp > cacheTimestamp) {
+        cachedColors = JSON.parse(storedData);
+        cacheTimestamp = timestamp;
+        setColors(cachedColors!);
+      }
+      
+      // If cache is valid and not forcing refresh, return
+      if (isCacheValid && !forceRefresh) {
+        setIsLoading(false);
+        return cachedColors;
+      }
     }
-
+    
     // If we have stale cache, use it but revalidate in background
     const hasStaleCache = cachedColors && cachedColors.length > 0;
     if (hasStaleCache && !forceRefresh) {
@@ -156,6 +173,18 @@ export function useMealStatusColors() {
     getStyleByStatus,
     clearCache,
   };
+}
+
+// Global function to invalidate color cache (call when admin updates colors)
+export function invalidateColorCache(): void {
+  cachedColors = null;
+  cacheTimestamp = 0;
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+  } catch (error) {
+    console.warn("Error clearing color cache from localStorage:", error);
+  }
 }
 
 // Hook para administração (CRUD)

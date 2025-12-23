@@ -11,87 +11,13 @@ export type MealStatusColor = {
   sort_order: number;
 };
 
-// Cache keys
-const STORAGE_KEY = "meal_status_colors_cache";
-const STORAGE_TIMESTAMP_KEY = "meal_status_colors_cache_timestamp";
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
-
-// Memory cache - will be revalidated against localStorage on each use
-let cachedColors: MealStatusColor[] | null = null;
-let cacheTimestamp: number = 0;
-
-// Load from localStorage on module init
-function loadFromStorage(): MealStatusColor[] | null {
-  try {
-    const stored = localStorage.getItem(STORAGE_KEY);
-    const storedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
-    
-    if (stored && storedTimestamp) {
-      const timestamp = parseInt(storedTimestamp, 10);
-      // Return cached data even if expired (will revalidate in background)
-      cachedColors = JSON.parse(stored);
-      cacheTimestamp = timestamp;
-      return cachedColors;
-    }
-  } catch (error) {
-    console.warn("Error loading colors from localStorage:", error);
-  }
-  return null;
-}
-
-// Save to localStorage
-function saveToStorage(colors: MealStatusColor[]): void {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(colors));
-    localStorage.setItem(STORAGE_TIMESTAMP_KEY, Date.now().toString());
-  } catch (error) {
-    console.warn("Error saving colors to localStorage:", error);
-  }
-}
-
-// Initialize from storage
-loadFromStorage();
-
 export function useMealStatusColors() {
-  const [colors, setColors] = useState<MealStatusColor[]>(cachedColors || []);
-  const [isLoading, setIsLoading] = useState(!cachedColors);
+  const [colors, setColors] = useState<MealStatusColor[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const fetchColors = useCallback(async (forceRefresh = false) => {
-    // Check localStorage for data and timestamp
-    const storedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
-    const storedData = localStorage.getItem(STORAGE_KEY);
-    
-    // If localStorage was cleared (no timestamp), invalidate memory cache too
-    if (!storedTimestamp) {
-      cachedColors = null;
-      cacheTimestamp = 0;
-    } else if (storedData) {
-      const timestamp = parseInt(storedTimestamp, 10);
-      const isCacheValid = Date.now() - timestamp < CACHE_DURATION;
-      
-      // If localStorage is newer than memory cache, use localStorage
-      if (timestamp > cacheTimestamp) {
-        cachedColors = JSON.parse(storedData);
-        cacheTimestamp = timestamp;
-        setColors(cachedColors!);
-      }
-      
-      // If cache is valid and not forcing refresh, return
-      if (isCacheValid && !forceRefresh) {
-        setIsLoading(false);
-        return cachedColors;
-      }
-    }
-    
-    // If we have stale cache, use it but revalidate in background
-    const hasStaleCache = cachedColors && cachedColors.length > 0;
-    if (hasStaleCache && !forceRefresh) {
-      setColors(cachedColors!);
-      setIsLoading(false);
-    }
-
+  const fetchColors = useCallback(async () => {
     try {
-      if (!hasStaleCache) setIsLoading(true);
+      setIsLoading(true);
       
       const { data, error } = await supabase
         .from("meal_status_colors")
@@ -110,18 +36,11 @@ export function useMealStatusColors() {
         sort_order: item.sort_order,
       }));
 
-      // Update memory cache
-      cachedColors = formattedData;
-      cacheTimestamp = Date.now();
-      
-      // Save to localStorage
-      saveToStorage(formattedData);
-      
       setColors(formattedData);
       return formattedData;
     } catch (error) {
       console.error("Error fetching meal status colors:", error);
-      return cachedColors || [];
+      return [];
     } finally {
       setIsLoading(false);
     }
@@ -153,38 +72,18 @@ export function useMealStatusColors() {
     };
   }, [colors]);
 
-  // Clear cache (useful for admin after updates)
-  const clearCache = useCallback(() => {
-    cachedColors = null;
-    cacheTimestamp = 0;
-    try {
-      localStorage.removeItem(STORAGE_KEY);
-      localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
-    } catch (error) {
-      console.warn("Error clearing localStorage cache:", error);
-    }
-  }, []);
-
   return {
     colors,
     isLoading,
-    refetch: () => fetchColors(true),
+    refetch: fetchColors,
     getColorByStatus,
     getStyleByStatus,
-    clearCache,
   };
 }
 
-// Global function to invalidate color cache (call when admin updates colors)
+// Função vazia para compatibilidade (não precisa mais limpar cache)
 export function invalidateColorCache(): void {
-  cachedColors = null;
-  cacheTimestamp = 0;
-  try {
-    localStorage.removeItem(STORAGE_KEY);
-    localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
-  } catch (error) {
-    console.warn("Error clearing color cache from localStorage:", error);
-  }
+  // Não faz nada - dados são sempre buscados do banco
 }
 
 // Hook para administração (CRUD)
@@ -234,16 +133,6 @@ export function useMealStatusColorsAdmin() {
         .eq("id", id);
 
       if (error) throw error;
-
-      // Invalidar cache global e localStorage
-      cachedColors = null;
-      cacheTimestamp = 0;
-      try {
-        localStorage.removeItem(STORAGE_KEY);
-        localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
-      } catch (e) {
-        console.warn("Error clearing localStorage cache:", e);
-      }
 
       await fetchColors();
       return true;

@@ -9,8 +9,9 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban
 } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -25,6 +26,7 @@ type UserProfile = {
   sex: string | null;
   activity_level: string | null;
   intolerances: string[] | null;
+  excluded_ingredients: string[] | null;
 };
 
 type SubscriptionInfo = {
@@ -85,6 +87,86 @@ const INTOLERANCES_LABELS: Record<string, string> = {
   ovo: "Ovo",
 };
 
+// Componente para editar alimentos excluídos no menu
+function ExcludedIngredientsEditorMenu({ 
+  value, 
+  onChange 
+}: { 
+  value: string[]; 
+  onChange: (ingredients: string[]) => void;
+}) {
+  const [inputValue, setInputValue] = useState("");
+
+  const addIngredient = () => {
+    const trimmed = inputValue.trim();
+    if (trimmed && !value.includes(trimmed)) {
+      onChange([...value, trimmed]);
+      setInputValue("");
+    }
+  };
+
+  const removeIngredient = (ingredient: string) => {
+    onChange(value.filter(i => i !== ingredient));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addIngredient();
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <h3 className="font-semibold text-sm flex items-center gap-2">
+        <Ban className="w-4 h-4 text-orange-500" />
+        Alimentos que não consome
+      </h3>
+      <p className="text-xs text-muted-foreground">
+        Adicione alimentos que você não consome por preferência pessoal
+      </p>
+      <div className="flex gap-2">
+        <Input
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Ex: carne de porco, fígado..."
+          className="flex-1"
+        />
+        <Button 
+          type="button" 
+          variant="outline" 
+          size="icon"
+          onClick={addIngredient}
+          disabled={!inputValue.trim()}
+        >
+          <Plus className="w-4 h-4" />
+        </Button>
+      </div>
+      {value.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {value.map((ingredient) => (
+            <Badge
+              key={ingredient}
+              variant="secondary"
+              className="bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800 pr-1"
+            >
+              {ingredient}
+              <button
+                type="button"
+                onClick={() => removeIngredient(ingredient)}
+                className="ml-1 hover:text-orange-900 dark:hover:text-orange-300"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function UserAccountMenu({ user, subscription, onLogout, externalOpen, onExternalOpenChange }: UserAccountMenuProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null);
@@ -122,7 +204,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
+        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -153,6 +235,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           sex: editedProfile.sex,
           activity_level: editedProfile.activity_level,
           intolerances: editedProfile.intolerances,
+          excluded_ingredients: editedProfile.excluded_ingredients,
         })
         .eq("id", user.id);
 
@@ -370,6 +453,12 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           </div>
         </div>
 
+        {/* Alimentos que não consome */}
+        <ExcludedIngredientsEditorMenu 
+          value={editedProfile.excluded_ingredients || []}
+          onChange={(ingredients) => setEditedProfile({ ...editedProfile, excluded_ingredients: ingredients })}
+        />
+
         {/* Botões de ação - com safe-area para dispositivos móveis */}
         <SafeAreaFooter sticky className="mt-4 -mx-6 px-6">
           <div className="flex gap-2">
@@ -508,6 +597,26 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
                   className="px-3 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20"
                 >
                   {INTOLERANCES_LABELS[item] || item}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Alimentos que não consome */}
+        {profile.excluded_ingredients && profile.excluded_ingredients.length > 0 && (
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Ban className="w-4 h-4 text-orange-500" />
+              Alimentos que não consome
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {profile.excluded_ingredients.map((item) => (
+                <span 
+                  key={item} 
+                  className="px-3 py-1 rounded-full text-xs font-medium bg-orange-100 text-orange-700 border border-orange-200 dark:bg-orange-950/30 dark:text-orange-400 dark:border-orange-800"
+                >
+                  {item}
                 </span>
               ))}
             </div>

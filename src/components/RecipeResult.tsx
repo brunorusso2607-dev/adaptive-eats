@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   ChefHat, Clock, Flame, Users, ArrowLeft, RefreshCw, 
-  Heart, Save, Check, Loader2, Beef, Wheat, Droplet, TrendingDown, Leaf
+  Heart, Save, Check, Loader2, Beef, Wheat, Droplet, TrendingDown, Leaf, 
+  Baby, Zap, Sparkles
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
@@ -121,17 +122,29 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
         <Button variant="ghost" size="icon" onClick={onBack}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
-        <h2 className="font-display text-xl font-bold text-foreground flex-1">
-          {isKidsMode ? "🎉 Receita Divertida!" : isWeightLossMode ? "🔥 Receita Saudável" : "Receita Gerada"}
+        <h2 className="font-display text-xl font-bold text-foreground flex-1 flex items-center gap-2">
+          {isKidsMode ? (
+            <>
+              <Sparkles className="w-5 h-5 text-yellow-500 stroke-[1.5]" />
+              Receita Divertida!
+            </>
+          ) : isWeightLossMode ? (
+            <>
+              <Flame className="w-5 h-5 text-orange-500 stroke-[1.5]" />
+              Receita Saudável
+            </>
+          ) : (
+            "Receita Gerada"
+          )}
         </h2>
         {isKidsMode && (
-          <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-xs font-bold rounded-full animate-pulse">
-            👶 Modo Kids
+          <span className="px-3 py-1 bg-gradient-to-r from-pink-500 to-yellow-500 text-white text-xs font-bold rounded-full animate-pulse flex items-center gap-1">
+            <Baby className="w-3 h-3 stroke-[1.5]" /> Modo Kids
           </span>
         )}
         {isWeightLossMode && !isKidsMode && (
-          <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full">
-            🔥 Emagrecer
+          <span className="px-3 py-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white text-xs font-bold rounded-full flex items-center gap-1">
+            <TrendingDown className="w-3 h-3 stroke-[1.5]" /> Emagrecer
           </span>
         )}
       </div>
@@ -170,12 +183,13 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
             isKidsMode && "bg-gradient-to-r from-pink-50 to-yellow-50 dark:from-pink-950/30 dark:to-yellow-950/30 p-3 rounded-xl"
           )}>
             <div className="flex items-center gap-1.5">
-              <Clock className={cn("w-4 h-4", isKidsMode ? "text-pink-500" : "text-muted-foreground")} />
-              <span>{isKidsMode ? `⚡ ${recipe.prep_time} min` : `${recipe.prep_time} min`}</span>
+              <Clock className={cn("w-4 h-4 stroke-[1.5]", isKidsMode ? "text-pink-500" : "text-muted-foreground")} />
+              {isKidsMode && <Zap className="w-3 h-3 text-yellow-500 stroke-[1.5]" />}
+              <span>{recipe.prep_time} min</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <Users className={cn("w-4 h-4", isKidsMode ? "text-yellow-500" : "text-muted-foreground")} />
-              <span>{isKidsMode ? `👨‍👩‍👧 ${recipe.servings} porções` : `${recipe.servings} porções`}</span>
+              <Users className={cn("w-4 h-4 stroke-[1.5]", isKidsMode ? "text-yellow-500" : "text-muted-foreground")} />
+              <span>{recipe.servings} porções</span>
             </div>
             <div className={cn("flex items-center gap-1.5", isKidsMode ? "text-green-500" : COMPLEXITY_LABELS[recipe.complexity].color)}>
               <ChefHat className="w-4 h-4" />

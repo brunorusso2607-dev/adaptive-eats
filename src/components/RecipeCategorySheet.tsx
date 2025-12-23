@@ -16,28 +16,24 @@ const FILTERS = {
   ingredientes: {
     id: "ingredientes",
     name: "Escolha o Ingrediente",
-    emoji: "🥗",
     icon: Search,
     isIngredientSelector: true,
   },
   culinarias: {
     id: "culinarias",
     name: "Culinárias do Mundo",
-    emoji: "🌍",
     icon: Globe,
     options: ["Brasileira", "Italiana", "Japonesa", "Mexicana", "Árabe", "Indiana", "Mediterrânea", "Americana"],
   },
   tempo: {
     id: "tempo",
     name: "Por Tempo de Preparo",
-    emoji: "⏱️",
     icon: Clock,
     options: ["Até 10 minutos", "Até 20 minutos", "Até 30 minutos", "Mais de 30 minutos"],
   },
   metodo: {
     id: "metodo",
     name: "Por Método de Preparo",
-    emoji: "🔥",
     icon: Flame,
     options: ["Airfryer", "Forno", "Panela", "Panela de pressão", "Grelhado", "Cozido", "Cru (raw food)"],
   },
@@ -47,7 +43,6 @@ const FILTERS = {
 export type RecipeCategory = {
   id: string;
   name: string;
-  emoji: string;
   subcategories: string[];
 };
 
@@ -237,8 +232,8 @@ export default function RecipeCategorySheet({
                       onClick={handleIngredientOptionClick}
                     >
                       <div className="px-4 py-3 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-lg">
-                          {filter.emoji}
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
+                          <filter.icon className="w-5 h-5 text-primary stroke-[1.5]" />
                         </div>
                         <span className="font-medium text-left flex-1">{filter.name}</span>
                         <ChevronRight className="w-5 h-5 text-muted-foreground" />
@@ -265,10 +260,10 @@ export default function RecipeCategorySheet({
                     <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/50 [&[data-state=open]]:bg-primary/5">
                       <div className="flex items-center gap-3 flex-1">
                         <div className={cn(
-                          "w-10 h-10 rounded-xl flex items-center justify-center text-lg transition-colors",
+                          "w-10 h-10 rounded-xl flex items-center justify-center transition-colors",
                           isSelected ? "bg-primary text-primary-foreground" : "bg-primary/10"
                         )}>
-                          {isSelected ? <Check className="w-5 h-5" /> : filter.emoji}
+                          {isSelected ? <Check className="w-5 h-5 stroke-[1.5]" /> : <filter.icon className="w-5 h-5 text-primary stroke-[1.5]" />}
                         </div>
                         <div className="flex flex-col items-start">
                           <span className="font-medium text-left">{filter.name}</span>

@@ -461,7 +461,34 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 }
 
 /**
- * Constrói prompt para geração de plano alimentar
+ * Constrói prompt para geração de UM DIA do plano alimentar (para evitar truncamento)
+ */
+export function buildSingleDayPrompt(
+  profile: UserProfile,
+  dayIndex: number,
+  dayName: string,
+  macros: MacroTargets,
+  previousRecipes: string[] = []
+): string {
+  const intolerancesStr = buildIntolerancesString(profile);
+  const isKidsMode = profile.context === "modo_kids";
+  const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+
+  const kidsNote = isKidsMode ? " Modo Kids: nomes divertidos, max 25min." : "";
+  const avoidRecipes = previousRecipes.length > 0 
+    ? ` Evitar: ${previousRecipes.slice(0, 5).join(", ")}.` 
+    : "";
+
+  return `Gere 5 refeições para ${dayName}.
+PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}, ${macros.dailyCalories}kcal/dia
+RESTRIÇÕES: ${intolerancesStr}${kidsNote}${avoidRecipes}
+REFEIÇÕES: ${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")}
+REGRAS: Max 4 ingredientes. Max 3 passos. Sem markdown.
+JSON: {"day_index":${dayIndex},"day_name":"${dayName}","meals":[{"meal_type":"cafe_manha","recipe_name":"X","recipe_calories":400,"recipe_protein":20,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,"recipe_ingredients":[{"item":"x","quantity":"100","unit":"g"}],"recipe_instructions":["Passo"]}]}`;
+}
+
+/**
+ * Constrói prompt para geração de plano alimentar completo (mantido para compatibilidade)
  */
 export function buildMealPlanPrompt(
   profile: UserProfile,
@@ -469,33 +496,8 @@ export function buildMealPlanPrompt(
   macros: MacroTargets,
   previousRecipes: string[] = []
 ): string {
-  const intolerancesStr = buildIntolerancesString(profile);
-  const isKidsMode = profile.context === "modo_kids";
-  // Always generate 5 meals - recipe_complexity only affects prep time, not number of meals
-  const mealsPerDay = 5;
-  const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
-
-  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes divertidos, sabores suaves, máx 25 min" : "";
-  const avoidRecipes = previousRecipes.length > 0 
-    ? `\nEVITAR (semana anterior): ${previousRecipes.slice(0, 10).join(", ")}` 
-    : "";
-
-  return `Chef ReceitAI. Plano ${daysCount} dias, ${mealsPerDay} refeições/dia.
-
-PERFIL: ${profile.age || "-"}a, ${profile.weight_current || "-"}kg, ${GOAL_LABELS[profile.goal || "manter"]}
-DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
-METAS: ${macros.dailyCalories}kcal, ${macros.dailyProtein}g prot
-RESTRIÇÕES: ${intolerancesStr}
-COMPLEXIDADE: ${COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}${kidsNote}${avoidRecipes}
-
-REFEIÇÕES: ${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")}
-
-REGRAS: Sem repetir receitas. Sem ingredientes restritos. Max 5 ingredientes/receita. Max 4 passos/receita.
-
-FORMATO JSON COMPACTO:
-{"days":[{"day_index":0,"day_name":"Seg","meals":[{"meal_type":"cafe_manha","recipe_name":"Nome","recipe_calories":400,"recipe_protein":20,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,"recipe_ingredients":[{"item":"ing","quantity":"100","unit":"g"}],"recipe_instructions":["Passo"]}]}]}
-
-APENAS JSON válido, sem markdown.`;
+  // Agora usa buildSingleDayPrompt internamente, mas mantém interface
+  return buildSingleDayPrompt(profile, 0, "Segunda-feira", macros, previousRecipes);
 }
 
 /**

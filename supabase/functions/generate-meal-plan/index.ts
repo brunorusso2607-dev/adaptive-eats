@@ -1,13 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
-  buildMealPlanPrompt,
+  buildSingleDayPrompt,
   buildRegenerateMealPrompt,
   calculateMacroTargets,
   MEAL_TYPE_LABELS,
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+
+const DAY_NAMES = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,7 +122,7 @@ async function validateAndCompleteMeals(
   while (mealPlanData.days.length < daysCount) {
     mealPlanData.days.push({
       day_index: mealPlanData.days.length,
-      day_name: getDayName(mealPlanData.days.length),
+      day_name: DAY_NAMES[mealPlanData.days.length % 7],
       meals: []
     });
     logStep(`Added missing day ${mealPlanData.days.length}`);
@@ -203,9 +205,56 @@ async function validateAndCompleteMeals(
   return mealPlanData;
 }
 
-function getDayName(index: number): string {
-  const days = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
-  return days[index % 7];
+// Generate a single day's meals
+async function generateSingleDay(
+  profile: UserProfile,
+  dayIndex: number,
+  macros: { dailyCalories: number; dailyProtein: number },
+  previousRecipes: string[],
+  apiKey: string
+): Promise<any | null> {
+  const dayName = DAY_NAMES[dayIndex % 7];
+  const prompt = buildSingleDayPrompt(profile, dayIndex, dayName, macros as any, previousRecipes);
+  
+  try {
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.9,
+            maxOutputTokens: 8192,
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      logStep(`Day ${dayIndex} API error`, { status: response.status });
+      return null;
+    }
+
+    const aiData = await response.json();
+    const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!textContent) return null;
+
+    let cleanedJson = textContent.trim();
+    if (cleanedJson.startsWith("```json")) cleanedJson = cleanedJson.slice(7);
+    else if (cleanedJson.startsWith("```")) cleanedJson = cleanedJson.slice(3);
+    if (cleanedJson.endsWith("```")) cleanedJson = cleanedJson.slice(0, -3);
+    cleanedJson = cleanedJson.trim();
+
+    const dayData = JSON.parse(cleanedJson);
+    logStep(`Day ${dayIndex} generated`, { meals: dayData.meals?.length || 0 });
+    return dayData;
+  } catch (error) {
+    logStep(`Day ${dayIndex} error`, { error: String(error) });
+    return null;
+  }
 }
 
 serve(async (req) => {
@@ -309,84 +358,48 @@ serve(async (req) => {
     const macros = calculateMacroTargets(profile as UserProfile);
     logStep("Macros calculated", macros);
 
-    // Build prompt using centralized config
-    const prompt = buildMealPlanPrompt(
-      profile as UserProfile,
-      daysCount,
-      macros,
-      previousRecipes
-    );
-
-    logStep("Calling Google Gemini 2.5 Flash-Lite");
-
-    // Call Google Gemini API
-    const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.6,
-            topP: 0.85,
-            maxOutputTokens: 65536,
-            responseMimeType: "application/json",
-          }
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      logStep("Gemini API error", { status: response.status, error: errorText });
+    // ========================================
+    // GERAR DIAS UM A UM PARA EVITAR TRUNCAMENTO
+    // ========================================
+    logStep("Generating days one by one with Flash-Lite");
+    
+    const allDays: any[] = [];
+    const usedRecipes = [...previousRecipes];
+    
+    for (let i = 0; i < daysCount; i++) {
+      logStep(`Generating day ${i + 1}/${daysCount}`);
       
-      if (response.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições atingido. Aguarde alguns minutos e tente novamente." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+      const dayData = await generateSingleDay(
+        profile as UserProfile,
+        i,
+        macros,
+        usedRecipes,
+        GOOGLE_AI_API_KEY
+      );
+      
+      if (dayData && dayData.meals) {
+        allDays.push(dayData);
+        // Add recipes to avoid list
+        dayData.meals.forEach((meal: any) => {
+          if (meal.recipe_name) usedRecipes.push(meal.recipe_name);
+        });
+      } else {
+        // Create empty day to be filled later by validation
+        allDays.push({
+          day_index: i,
+          day_name: DAY_NAMES[i % 7],
+          meals: []
         });
       }
-      throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+      
+      // Small delay between requests to avoid rate limits
+      if (i < daysCount - 1) {
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
     }
-
-    const aiData = await response.json();
-    logStep("Gemini response received");
-
-    // Extract text from Gemini response
-    const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textContent) {
-      logStep("No text in response", { aiData: JSON.stringify(aiData).slice(0, 500) });
-      throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
-    }
-
-    // Clean and parse the JSON response
-    let cleanedJson = textContent.trim();
-    if (cleanedJson.startsWith("```json")) {
-      cleanedJson = cleanedJson.slice(7);
-    } else if (cleanedJson.startsWith("```")) {
-      cleanedJson = cleanedJson.slice(3);
-    }
-    if (cleanedJson.endsWith("```")) {
-      cleanedJson = cleanedJson.slice(0, -3);
-    }
-    cleanedJson = cleanedJson.trim();
-
-    let mealPlanData;
-    try {
-      mealPlanData = JSON.parse(cleanedJson);
-    } catch (parseError) {
-      logStep("Parse error", { error: String(parseError), text: cleanedJson.slice(0, 500) });
-      throw new Error("Não foi possível processar o plano alimentar. Tente novamente.");
-    }
-
-    if (!mealPlanData || !mealPlanData.days || !Array.isArray(mealPlanData.days)) {
-      const dataPreview = mealPlanData ? JSON.stringify(mealPlanData).slice(0, 200) : "undefined";
-      logStep("Invalid meal plan data structure", { dataPreview });
-      throw new Error("A IA não retornou um plano alimentar válido. Por favor, tente novamente.");
-    }
-
-    logStep("Meal plan parsed", { daysCount: mealPlanData.days?.length });
+    
+    let mealPlanData: any = { days: allDays };
+    logStep("All days generated", { daysCount: allDays.length });
 
     // ========================================
     // VALIDAÇÃO E COMPLETAÇÃO DE REFEIÇÕES FALTANTES

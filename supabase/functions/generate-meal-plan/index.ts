@@ -79,6 +79,20 @@ async function generateSingleMeal(
   }
 }
 
+// Normalize meal type to expected format
+function normalizeMealType(mealType: string): string {
+  const normalizations: Record<string, string> = {
+    "lanche_tarde": "lanche",
+    "lanche_da_tarde": "lanche",
+    "snack": "lanche",
+    "breakfast": "cafe_manha",
+    "lunch": "almoco",
+    "dinner": "jantar",
+    "supper": "ceia",
+  };
+  return normalizations[mealType] || mealType;
+}
+
 // Function to validate and complete missing meals
 async function validateAndCompleteMeals(
   mealPlanData: any,
@@ -123,7 +137,23 @@ async function validateAndCompleteMeals(
     // Ensure meals array exists
     if (!day.meals) day.meals = [];
 
-    // Get existing meal types for this day
+    // Normalize meal types first (fix AI inconsistencies like lanche_tarde -> lanche)
+    day.meals = day.meals.map((meal: any) => ({
+      ...meal,
+      meal_type: normalizeMealType(meal.meal_type)
+    }));
+
+    // Remove duplicate meal types (keep first occurrence)
+    const seenMealTypes = new Set<string>();
+    day.meals = day.meals.filter((meal: any) => {
+      if (seenMealTypes.has(meal.meal_type)) {
+        return false;
+      }
+      seenMealTypes.add(meal.meal_type);
+      return true;
+    });
+
+    // Get existing meal types for this day (after normalization)
     const existingMealTypes = day.meals.map((m: any) => m.meal_type);
 
     // Find missing meal types
@@ -431,12 +461,12 @@ serve(async (req) => {
         .neq("id", mealPlanIdToUse);
     }
 
-    // Insert meal plan items
+    // Insert meal plan items (meal_type already normalized during validation)
     const items = mealPlanData.days.flatMap((day: any) =>
       day.meals.map((meal: any) => ({
         meal_plan_id: mealPlanIdToUse,
         day_of_week: Math.round(Number(day.day_index) || 0),
-        meal_type: meal.meal_type,
+        meal_type: normalizeMealType(meal.meal_type), // Ensure normalized
         recipe_name: meal.recipe_name,
         recipe_calories: Math.round(Number(meal.recipe_calories) || 0),
         recipe_protein: Number(meal.recipe_protein) || 0,

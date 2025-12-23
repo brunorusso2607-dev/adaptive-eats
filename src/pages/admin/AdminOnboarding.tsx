@@ -450,13 +450,13 @@ export default function AdminOnboarding() {
               <TabsTrigger
                 key={cat.key}
                 value={cat.key}
-                className="data-[state=active]:bg-primary data-[state=active]:text-primary-foreground gap-2 px-4 py-2 rounded-xl"
+                className="data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground hover:bg-muted gap-2 px-4 py-2 rounded-xl border-0"
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{cat.label}</span>
-                <Badge variant="secondary" className="ml-1 text-xs">
+                <span className="ml-1 text-xs bg-background/20 data-[state=active]:bg-background/30 px-1.5 py-0.5 rounded-md font-medium">
                   {count}
-                </Badge>
+                </span>
               </TabsTrigger>
             );
           })}
@@ -464,18 +464,18 @@ export default function AdminOnboarding() {
 
         {CATEGORIES.map((cat) => (
           <TabsContent key={cat.key} value={cat.key} className="mt-6">
-            <Card>
+            <Card className="border-border/50">
               <CardHeader className="flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <cat.icon className="w-5 h-5 text-primary" />
+                    <cat.icon className="w-5 h-5 text-muted-foreground" />
                     {cat.label}
                   </CardTitle>
                   <p className="text-sm text-muted-foreground mt-1">
                     {cat.description}
                   </p>
                 </div>
-                <Button onClick={openCreateDialog} className="gap-2">
+                <Button onClick={openCreateDialog} className="gap-2 bg-foreground text-background hover:bg-foreground/90">
                   <Plus className="w-4 h-4" />
                   Nova Opção
                 </Button>
@@ -509,13 +509,13 @@ export default function AdminOnboarding() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-medium">{option.label}</span>
-                            <Badge variant="outline" className="text-xs">
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
                               {option.option_id}
-                            </Badge>
+                            </span>
                             {!option.is_active && (
-                              <Badge variant="secondary" className="text-xs">
+                              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
                                 Inativo
-                              </Badge>
+                              </span>
                             )}
                           </div>
                           {option.description && (
@@ -530,12 +530,14 @@ export default function AdminOnboarding() {
                           onCheckedChange={(checked) =>
                             toggleActiveMutation.mutate({ id: option.id, is_active: checked })
                           }
+                          className="data-[state=checked]:bg-foreground"
                         />
 
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => openEditDialog(option)}
+                          className="text-muted-foreground hover:text-foreground hover:bg-muted"
                         >
                           <Pencil className="w-4 h-4" />
                         </Button>
@@ -543,7 +545,7 @@ export default function AdminOnboarding() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="text-destructive hover:text-destructive"
+                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                           onClick={() => setDeleteOption(option)}
                         >
                           <Trash2 className="w-4 h-4" />
@@ -697,6 +699,7 @@ export default function AdminOnboarding() {
                   id="is_active"
                   checked={formData.is_active}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                  className="data-[state=checked]:bg-foreground"
                 />
                 <Label htmlFor="is_active">Ativo</Label>
               </div>
@@ -717,6 +720,7 @@ export default function AdminOnboarding() {
             <Button
               onClick={handleSubmit}
               disabled={createMutation.isPending || updateMutation.isPending}
+              className="bg-foreground text-background hover:bg-foreground/90"
             >
               {(createMutation.isPending || updateMutation.isPending) && (
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />

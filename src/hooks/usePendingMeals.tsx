@@ -1,5 +1,12 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { 
+  getMealTimeRangesSync, 
+  getMealLabelsSync, 
+  getMealOrderSync,
+  getMealTimeRanges,
+  formatMealTime as formatTime 
+} from "@/lib/mealTimeConfig";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -24,21 +31,12 @@ export type PendingMealData = {
   actual_date?: Date;
 };
 
-// Mapeamento de horários para cada refeição
-export const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
-  cafe_manha: { start: 6, end: 10 },
-  almoco: { start: 10, end: 14 },
-  lanche: { start: 14, end: 17 },
-  lanche_tarde: { start: 14, end: 17 },
-  jantar: { start: 17, end: 21 },
-  ceia: { start: 21, end: 24 },
-};
+// Re-exportar para manter compatibilidade
+export const MEAL_TIME_RANGES = getMealTimeRangesSync();
 
 // Função para formatar horário (ex: 6 -> "06:00", 17.5 -> "17:30")
 export function formatMealTime(hour: number): string {
-  const hours = Math.floor(hour);
-  const minutes = (hour % 1) * 60;
-  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+  return formatTime(hour);
 }
 
 // Função para verificar se o horário da refeição já começou
@@ -60,30 +58,19 @@ export function isMealTimeStarted(mealType: string, actualDate: Date | undefined
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const range = MEAL_TIME_RANGES[mealType];
+  const timeRanges = getMealTimeRangesSync();
+  const range = timeRanges[mealType];
   if (!range) return true;
   
   const startTimeInMinutes = range.start * 60;
   return currentTimeInMinutes >= startTimeInMinutes;
 }
 
-// Labels em português
-export const MEAL_LABELS: Record<string, string> = {
-  cafe_manha: "Café da Manhã",
-  almoco: "Almoço",
-  lanche: "Lanche",
-  lanche_tarde: "Lanche da Tarde",
-  jantar: "Jantar",
-  ceia: "Ceia",
-  breakfast: "Café da Manhã",
-  lunch: "Almoço",
-  snack: "Lanche",
-  dinner: "Jantar",
-  supper: "Ceia",
-};
+// Labels em português - usar do banco
+export const MEAL_LABELS = getMealLabelsSync();
 
-// Ordem das refeições
-const MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "lanche_tarde", "jantar", "ceia"];
+// Ordem das refeições - usar do banco
+const MEAL_ORDER = getMealOrderSync();
 
 // Dias da semana em português
 const DAY_LABELS: Record<number, string> = {
@@ -98,14 +85,27 @@ const DAY_LABELS: Record<number, string> = {
 
 function getCurrentMealType(): string {
   const hour = new Date().getHours();
+  const timeRanges = getMealTimeRangesSync();
+  const mealOrder = getMealOrderSync();
   
-  if (hour >= 6 && hour < 10) return "cafe_manha";
-  if (hour >= 10 && hour < 14) return "almoco";
-  if (hour >= 14 && hour < 17) return "lanche";
-  if (hour >= 17 && hour < 21) return "jantar";
-  if (hour >= 21 || hour < 6) return "ceia";
+  // Encontrar a refeição atual baseado no horário
+  for (const mealType of mealOrder) {
+    const range = timeRanges[mealType];
+    if (range) {
+      if (hour >= range.start && hour < range.end) {
+        return mealType;
+      }
+    }
+  }
   
-  return "cafe_manha";
+  // Verificar ceia (pode ir até meia-noite ou passar)
+  const ceiaRange = timeRanges["ceia"];
+  if (ceiaRange && (hour >= ceiaRange.start || hour < 6)) {
+    return "ceia";
+  }
+  
+  // Fallback para o primeiro da ordem
+  return mealOrder[0] || "cafe_manha";
 }
 
 export function getMealStatus(mealType: string, actualDate: Date | undefined, completedAt: string | null): MealStatus {
@@ -132,7 +132,8 @@ export function getMealStatus(mealType: string, actualDate: Date | undefined, co
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const range = MEAL_TIME_RANGES[mealType];
+  const timeRanges = getMealTimeRangesSync();
+  const range = timeRanges[mealType];
   if (!range) return "on_time";
   
   const endTimeInMinutes = range.end * 60;
@@ -165,7 +166,8 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
       const minutes = now.getMinutes();
       const currentTimeInMinutes = hour * 60 + minutes;
       
-      const range = MEAL_TIME_RANGES[mealType];
+      const timeRanges = getMealTimeRangesSync();
+      const range = timeRanges[mealType];
       if (!range) return 0;
       
       const endTimeInMinutes = range.end * 60;
@@ -179,7 +181,8 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
   
   // Se é de um dia anterior, calcular dias de atraso
   const daysDiff = Math.floor((today.getTime() - mealDate.getTime()) / (1000 * 60 * 60 * 24));
-  const range = MEAL_TIME_RANGES[mealType];
+  const timeRanges = getMealTimeRangesSync();
+  const range = timeRanges[mealType];
   if (!range) return daysDiff * 24 * 60;
   
   const hour = now.getHours();

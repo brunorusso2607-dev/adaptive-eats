@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -359,6 +359,8 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
 
 export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initialData }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
+  const [shakeError, setShakeError] = useState(false);
+  const errorRef = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<WeightGoalData>({
     weight_current: initialData?.weight_current || null,
     weight_goal: initialData?.weight_goal || null,
@@ -373,6 +375,15 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
   const healthRisks = calculateHealthRisks(data);
   const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex && data.goal_mode;
   const hasDangerRisk = healthRisks.some(r => r.level === "danger");
+
+  const scrollToErrorAndShake = () => {
+    if (errorRef.current) {
+      errorRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+      setShakeError(true);
+      setTimeout(() => setShakeError(false), 600);
+    }
+    toast.error("Ajuste o objetivo contraditório antes de salvar");
+  };
 
   const getModeInfo = () => {
     if (!calculations) return null;
@@ -454,6 +465,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
       toast.error("Preencha todos os campos");
       return;
     }
+
+    if (hasDangerRisk) {
+      scrollToErrorAndShake();
+      return;
+    }
     
     setIsSaving(true);
     try {
@@ -471,6 +487,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
   const handleGeneratePlan = async () => {
     if (!isComplete || !calculations) {
       toast.error("Preencha todos os campos");
+      return;
+    }
+
+    if (hasDangerRisk) {
+      scrollToErrorAndShake();
       return;
     }
     
@@ -637,11 +658,13 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, initi
             {healthRisks.map((risk, index) => (
               <div
                 key={index}
+                ref={risk.level === "danger" ? errorRef : undefined}
                 className={cn(
-                  "rounded-xl p-3 border-2 animate-in fade-in slide-in-from-top-2 duration-300",
+                  "rounded-xl p-3 border-2 animate-in fade-in slide-in-from-top-2 duration-300 transition-transform",
                   risk.level === "danger" && "bg-red-50 dark:bg-red-950/30 border-red-400/50",
                   risk.level === "warning" && "bg-amber-50 dark:bg-amber-950/30 border-amber-400/50",
-                  risk.level === "info" && "bg-blue-50 dark:bg-blue-950/30 border-blue-400/50"
+                  risk.level === "info" && "bg-blue-50 dark:bg-blue-950/30 border-blue-400/50",
+                  risk.level === "danger" && shakeError && "animate-shake"
                 )}
               >
                 <div className="flex items-start gap-3">

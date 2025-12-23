@@ -249,32 +249,44 @@ export default function NextMealCard(_props: NextMealCardProps) {
             </div>
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2 flex-wrap">
-                <span className="text-xs font-medium text-muted-foreground">
+                <span className="inline-flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                  Próxima Refeição
+                </span>
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">
                   {mealLabel}
                 </span>
-                {mealStatus === "upcoming" && minutesUntilStart > 0 && (
-                  <span className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full flex items-center gap-1">
-                    <Timer className="w-3 h-3" />
-                    {minutesUntilStart >= 60 
-                      ? `${Math.floor(minutesUntilStart / 60)}h ${minutesUntilStart % 60}min`
-                      : `${minutesUntilStart}min`
-                    } para liberar
-                  </span>
-                )}
-                {mealStatus === "critical" && (
-                  <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full">
-                    Pendente há {minutesOverdue}min
-                  </span>
-                )}
-                {mealStatus === "delayed" && (
-                  <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded-full">
-                    Atrasado
-                  </span>
-                )}
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground">
+                  {MEAL_TIME_RANGES[nextMeal.meal_type] 
+                    ? `${MEAL_TIME_RANGES[nextMeal.meal_type].start}:00 às ${MEAL_TIME_RANGES[nextMeal.meal_type].end}:00`
+                    : ""
+                  }
+                </span>
               </div>
               <h3 className="font-display font-semibold text-foreground truncate">
                 {nextMeal.recipe_name}
               </h3>
+              {mealStatus === "upcoming" && minutesUntilStart > 0 && (
+                <span className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 mt-1">
+                  <Timer className="w-3 h-3" />
+                  {minutesUntilStart >= 60 
+                    ? `${Math.floor(minutesUntilStart / 60)}h ${minutesUntilStart % 60}min`
+                    : `${minutesUntilStart}min`
+                  } para liberar
+                </span>
+              )}
+              {mealStatus === "critical" && (
+                <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full inline-block mt-1">
+                  Pendente há {minutesOverdue}min
+                </span>
+              )}
+              {mealStatus === "delayed" && (
+                <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded-full inline-block mt-1">
+                  Atrasado
+                </span>
+              )}
             </div>
           </div>
 

@@ -3,7 +3,8 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield, Settings } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeResult from "@/components/RecipeResult";
@@ -86,6 +87,7 @@ export default function Dashboard() {
   const [isLoadingSubscription, setIsLoadingSubscription] = useState(true);
   const [onboardingCompleted, setOnboardingCompleted] = useState<boolean | null>(null);
   const [userContext, setUserContext] = useState<string | null>(null);
+  const [kidsMode, setKidsMode] = useState(false);
   const [userGoal, setUserGoal] = useState<string | null>(null);
   const [showWeightLossSetup, setShowWeightLossSetup] = useState(false);
   const [weightData, setWeightData] = useState<{
@@ -142,7 +144,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, dietary_preference")
+      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, dietary_preference, kids_mode")
       .eq("id", userId)
       .maybeSingle();
     
@@ -151,6 +153,7 @@ export default function Dashboard() {
     } else {
       setOnboardingCompleted(true);
       setUserContext("individual"); // App is individual by default
+      setKidsMode(data?.kids_mode || false);
       setUserGoal(data?.goal || "manter");
       
       // Salvar dados do perfil para validação de ingredientes
@@ -199,6 +202,29 @@ export default function Dashboard() {
         "Meta de peso desativada",
         { goal: userGoal },
         { goal: "manter" }
+      );
+    }
+  };
+
+  const toggleKidsMode = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+    
+    const newKidsMode = !kidsMode;
+    const { error } = await supabase
+      .from("profiles")
+      .update({ kids_mode: newKidsMode })
+      .eq("id", session.user.id);
+    
+    if (!error) {
+      setKidsMode(newKidsMode);
+      toast.success(newKidsMode ? "Modo Kids ativado" : "Modo Kids desativado");
+      
+      await logUserAction(
+        "kids_mode_toggle",
+        newKidsMode ? "Modo Kids ativado" : "Modo Kids desativado",
+        { kids_mode: kidsMode },
+        { kids_mode: newKidsMode }
       );
     }
   };
@@ -1016,11 +1042,39 @@ export default function Dashboard() {
                       </div>
                     </button>
 
-                    {/* Modo Kids - Mobile */}
-                    {/* Espaço reservado para futuras funcionalidades */}
-                    <div className="glass-card border-border/30 rounded-xl p-3 flex items-center justify-center opacity-50 md:hidden">
-                      <p className="text-xs text-muted-foreground text-center">Em breve</p>
-                    </div>
+                    {/* Modo Kids - Mobile Toggle */}
+                    {isSubscribed && activePlan === "premium" && (
+                      <button 
+                        className={cn(
+                          "flex items-center gap-3 p-3 glass-card transition-all rounded-xl",
+                          kidsMode 
+                            ? "border-pink-500/50 bg-pink-500/5" 
+                            : "border-border/50 hover:border-primary/30"
+                        )}
+                        onClick={toggleKidsMode}
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-lg flex items-center justify-center shrink-0",
+                          kidsMode ? "bg-pink-500/20" : "bg-muted"
+                        )}>
+                          <Baby className={cn(
+                            "w-5 h-5",
+                            kidsMode ? "text-pink-500" : "text-muted-foreground"
+                          )} />
+                        </div>
+                        <div className="text-left min-w-0">
+                          <h3 className={cn(
+                            "font-display font-semibold text-sm truncate",
+                            kidsMode ? "text-pink-600 dark:text-pink-400" : "text-foreground"
+                          )}>
+                            Modo Kids
+                          </h3>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {kidsMode ? "✓ Ativado" : "Receitas infantis"}
+                          </p>
+                        </div>
+                      </button>
+                    )}
                   </div>
                   
                   {/* Histórico - Card desktop */}
@@ -1042,6 +1096,42 @@ export default function Dashboard() {
                       </div>
                     </CardContent>
                   </Card>
+
+                  {/* Modo Kids - Card desktop */}
+                  {isSubscribed && activePlan === "premium" && (
+                    <Card 
+                      className={cn(
+                        "glass-card transition-all cursor-pointer group hidden md:block",
+                        kidsMode 
+                          ? "border-pink-500/50 bg-pink-500/5" 
+                          : "border-border/50 hover:border-primary/30"
+                      )}
+                      onClick={toggleKidsMode}
+                    >
+                      <CardContent className="p-5 text-center space-y-3">
+                        <div className={cn(
+                          "w-12 h-12 mx-auto rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform",
+                          kidsMode ? "bg-pink-500/20" : "bg-muted"
+                        )}>
+                          <Baby className={cn(
+                            "w-6 h-6",
+                            kidsMode ? "text-pink-500" : "text-muted-foreground"
+                          )} />
+                        </div>
+                        <div>
+                          <h3 className={cn(
+                            "font-display font-bold",
+                            kidsMode ? "text-pink-600 dark:text-pink-400" : "text-foreground"
+                          )}>
+                            Modo Kids
+                          </h3>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {kidsMode ? "✓ Ativado" : "Toque para ativar"}
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
 
 
                 </div>

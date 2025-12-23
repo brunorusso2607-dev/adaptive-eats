@@ -464,6 +464,7 @@ export type Database = {
           height: number | null
           id: string
           intolerances: string[] | null
+          kids_mode: boolean | null
           last_name: string | null
           onboarding_completed: boolean | null
           sex: string | null
@@ -484,6 +485,7 @@ export type Database = {
           height?: number | null
           id: string
           intolerances?: string[] | null
+          kids_mode?: boolean | null
           last_name?: string | null
           onboarding_completed?: boolean | null
           sex?: string | null
@@ -504,6 +506,7 @@ export type Database = {
           height?: number | null
           id?: string
           intolerances?: string[] | null
+          kids_mode?: boolean | null
           last_name?: string | null
           onboarding_completed?: boolean | null
           sex?: string | null

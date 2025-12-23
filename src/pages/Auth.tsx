@@ -100,42 +100,42 @@ export default function Auth() {
   };
 
   return (
-    <div className="min-h-screen gradient-hero flex flex-col">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
-      <header className="p-4">
+      <header className="p-5">
         <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
           <ArrowLeft className="w-4 h-4" />
-          Voltar
+          <span className="text-sm font-medium">Voltar</span>
         </Link>
       </header>
 
       {/* Auth Form */}
-      <main className="flex-1 flex items-center justify-center px-4 py-8">
-        <Card className="w-full max-w-md glass-card border-border/50">
-          <CardHeader className="text-center space-y-4">
-            <div className="mx-auto w-16 h-16 gradient-primary rounded-2xl flex items-center justify-center shadow-glow">
-              <ChefHat className="w-9 h-9 text-primary-foreground" />
+      <main className="flex-1 flex items-center justify-center px-5 py-8">
+        <Card className="w-full max-w-md bg-card border border-border/50 shadow-xl">
+          <CardHeader className="text-center space-y-5 pb-2">
+            <div className="mx-auto w-14 h-14 bg-primary rounded-xl flex items-center justify-center">
+              <ChefHat className="w-7 h-7 text-primary-foreground" />
             </div>
-            <div>
-              <CardTitle className="font-display text-2xl">Bem-vindo ao ReceitAI</CardTitle>
-              <CardDescription className="mt-2">
+            <div className="space-y-2">
+              <CardTitle className="text-xl font-semibold tracking-tight">Bem-vindo ao ReceitAI</CardTitle>
+              <CardDescription className="text-sm text-muted-foreground">
                 Digite seu email para acessar sua conta
               </CardDescription>
             </div>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+          <CardContent className="pt-2">
+            <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
+                <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
-                  <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
                     id="email"
                     type="email"
                     placeholder="seu@email.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10"
+                    className="pl-11"
                     disabled={isLoading}
                     required
                     autoFocus
@@ -147,7 +147,7 @@ export default function Auth() {
               </div>
               <Button 
                 type="submit" 
-                className="w-full gradient-primary border-0 shadow-glow"
+                className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
                 disabled={isLoading}
               >
                 {isLoading ? (

@@ -16,6 +16,7 @@ import {
 import { cn } from "@/lib/utils";
 import { useNextMeal, MEAL_LABELS, MEAL_TIME_RANGES, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
+import { useMealStatusColors } from "@/hooks/useMealStatusColors";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
@@ -30,32 +31,13 @@ import {
 // eslint-disable-next-line @typescript-eslint/no-empty-object-type
 interface NextMealCardProps {}
 
-const statusStyles: Record<MealStatus, { border: string; bg: string; pulse: boolean }> = {
-  on_time: { 
-    border: "border-border", 
-    bg: "bg-card", 
-    pulse: false 
-  },
-  delayed: { 
-    border: "border-yellow-500/50", 
-    bg: "bg-yellow-500/5", 
-    pulse: false 
-  },
-  critical: { 
-    border: "border-destructive/50", 
-    bg: "bg-destructive/5", 
-    pulse: true 
-  },
-  completed: { 
-    border: "border-emerald-500/50", 
-    bg: "bg-emerald-500/5", 
-    pulse: false 
-  },
-  upcoming: { 
-    border: "border-blue-500/50", 
-    bg: "bg-blue-500/5", 
-    pulse: false 
-  },
+// Map internal status to database status keys
+const statusToDbKey: Record<MealStatus, string> = {
+  on_time: "on_time",
+  delayed: "alert",
+  critical: "late",
+  completed: "on_time",
+  upcoming: "on_time",
 };
 
 export default function NextMealCard(_props: NextMealCardProps) {
@@ -90,6 +72,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
   }, [mealStatus, nextMeal]);
 
   const { saveConsumption } = useMealConsumption();
+  const { getStyleByStatus } = useMealStatusColors();
 
   // Opens confirmation dialog
   const handleFizClick = () => {
@@ -209,17 +192,22 @@ export default function NextMealCard(_props: NextMealCardProps) {
     );
   }
 
-  const styles = statusStyles[mealStatus];
+  const dbStatusKey = statusToDbKey[mealStatus];
+  const dynamicStyles = getStyleByStatus(dbStatusKey);
   const mealLabel = MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type;
 
   return (
     <Card 
       className={cn(
         "glass-card overflow-hidden transition-all duration-300",
-        styles.border,
-        styles.bg,
-        styles.pulse && "animate-pulse"
+        mealStatus === "critical" && "animate-pulse"
       )}
+      style={{
+        backgroundColor: dynamicStyles.backgroundColor,
+        borderColor: dynamicStyles.borderColor,
+        borderWidth: dynamicStyles.borderColor ? '1px' : undefined,
+        borderStyle: dynamicStyles.borderColor ? 'solid' : undefined,
+      }}
     >
       <CardContent className="p-4 space-y-4">
         {/* Header com status */}

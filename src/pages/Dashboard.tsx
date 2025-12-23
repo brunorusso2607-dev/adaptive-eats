@@ -703,23 +703,26 @@ export default function Dashboard() {
             <>
               {/* Home Principal */}
               <div className="space-y-4">
-                {/* Premium Header - Clicável para abrir detalhes do plano */}
+                {/* Premium Header - Clean, minimal */}
                 <button 
                   onClick={() => isSubscribed && setShowPlanSheet(true)}
-                  className="flex items-center justify-between w-full px-1 py-1 -mx-1 rounded-lg hover:bg-muted/30 transition-colors"
+                  className="flex items-center justify-between w-full py-1 rounded-lg hover:bg-accent/50 transition-colors"
                   disabled={!isSubscribed}
                 >
                   <div className="flex items-center gap-2">
-                    <span className="text-base font-medium text-foreground">
+                    <span className="text-sm font-normal text-muted-foreground tracking-wide">
                       Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
                     </span>
                     {isSubscribed && (
-                      <Crown className="w-4 h-4 text-amber-500" />
+                      <span className="badge-pro">
+                        <Crown className="w-3 h-3" />
+                        PRO
+                      </span>
                     )}
                   </div>
                   {isSubscribed && (
                     <span className="text-xs text-muted-foreground">
-                      {subscription?.status === "trialing" ? "Trial" : plans[activePlan!]?.name}
+                      {subscription?.status === "trialing" ? "Trial" : ""}
                     </span>
                   )}
                 </button>
@@ -756,15 +759,15 @@ export default function Dashboard() {
                   isLoading={gamification.isLoading}
                 />
 
-                {/* Opção Principal: Gerar Receita com Ingredientes */}
-                <Card className="glass-card border-2 border-primary/30 shadow-glow overflow-visible relative z-20">
-                  <CardContent className="p-6 space-y-4 overflow-visible">
+                {/* Main Recipe Card - Clean white card */}
+                <Card className="bg-card border border-border shadow-sm overflow-visible">
+                  <CardContent className="p-5 space-y-4 overflow-visible">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 gradient-primary rounded-2xl flex items-center justify-center shrink-0">
-                        <UtensilsCrossed className="w-7 h-7 text-primary-foreground" />
+                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                        <UtensilsCrossed className="w-5 h-5 text-primary" strokeWidth={1.5} />
                       </div>
                       <div className="flex-1">
-                        <h3 className="font-display text-lg font-bold text-foreground">
+                        <h3 className="text-base font-semibold text-foreground tracking-wide">
                           Gerar Receita
                         </h3>
                         <p className="text-sm text-muted-foreground">
@@ -773,28 +776,26 @@ export default function Dashboard() {
                       </div>
                     </div>
                     
-                    {/* Botão Surpreenda-me - Abre o Sheet */}
+                    {/* CTA Button - Primary orange, only saturated element */}
                     <Button
-                      variant="outline"
-                      className="w-full gradient-accent border-0 text-accent-foreground hover:opacity-90"
+                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
                       onClick={() => setShowCategorySheet(true)}
                       disabled={isGeneratingRecipe}
                     >
                       {isGeneratingRecipe ? (
-                        <Loader2 className="w-5 h-5 animate-spin mr-2" />
+                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
                       ) : (
-                        <Zap className="w-5 h-5 mr-2" />
+                        <Zap className="w-4 h-4 mr-2" strokeWidth={1.5} />
                       )}
                       Surpreenda-me!
                     </Button>
                     
-                    {/* Sheet de Categorias */}
+                    {/* Category Sheet */}
                     <RecipeCategorySheet
                       open={showCategorySheet}
                       onOpenChange={setShowCategorySheet}
                       onSelectCategory={handleCategorySelect}
                       onGenerateWithIngredients={(ingredientsList) => {
-                        // Pass ingredients directly to avoid state sync issues
                         generateRecipeWithIngredients(ingredientsList);
                       }}
                       isLoading={isGeneratingRecipe}

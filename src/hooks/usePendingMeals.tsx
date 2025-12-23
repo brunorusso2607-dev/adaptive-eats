@@ -25,7 +25,7 @@ export type PendingMealData = {
 };
 
 // Mapeamento de horários para cada refeição
-const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
+export const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
   cafe_manha: { start: 6, end: 10 },
   almoco: { start: 12, end: 14 },
   lanche: { start: 16, end: 17.5 },
@@ -33,6 +33,39 @@ const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
   jantar: { start: 18, end: 21 },
   ceia: { start: 22, end: 23 },
 };
+
+// Função para formatar horário (ex: 6 -> "06:00", 17.5 -> "17:30")
+export function formatMealTime(hour: number): string {
+  const hours = Math.floor(hour);
+  const minutes = (hour % 1) * 60;
+  return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+}
+
+// Função para verificar se o horário da refeição já começou
+export function isMealTimeStarted(mealType: string, actualDate: Date | undefined): boolean {
+  if (!actualDate) return false;
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+  
+  // Se é de um dia anterior, já passou
+  if (mealDate < today) return true;
+  
+  // Se é de um dia futuro, ainda não começou
+  if (mealDate > today) return false;
+  
+  // Se é hoje, verificar se já chegou no horário de início
+  const hour = now.getHours();
+  const minutes = now.getMinutes();
+  const currentTimeInMinutes = hour * 60 + minutes;
+  
+  const range = MEAL_TIME_RANGES[mealType];
+  if (!range) return true;
+  
+  const startTimeInMinutes = range.start * 60;
+  return currentTimeInMinutes >= startTimeInMinutes;
+}
 
 // Labels em português
 export const MEAL_LABELS: Record<string, string> = {

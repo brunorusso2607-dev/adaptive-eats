@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, UtensilsCrossed, Clock, ChevronDown, Flame } from "lucide-react";
-import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS } from "@/hooks/usePendingMeals";
+import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import { useMemo, useState } from "react";
 import {
@@ -116,6 +116,11 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
   };
 
   const mealLabel = nextMeal ? (MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type) : "";
+  const mealTimeRange = nextMeal ? MEAL_TIME_RANGES[nextMeal.meal_type] : null;
+  const mealTimeText = mealTimeRange 
+    ? `${formatMealTime(mealTimeRange.start)} às ${formatMealTime(mealTimeRange.end)}`
+    : "";
+  const showButtons = nextMeal ? isMealTimeStarted(nextMeal.meal_type, nextMeal.actual_date) : false;
 
   return (
     <div className="space-y-3">
@@ -136,7 +141,7 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
                       Próxima Refeição
                     </span>
                     <span className="text-xs text-muted-foreground">
-                      • {mealLabel}
+                      • {mealLabel} • {mealTimeText}
                     </span>
                   </div>
                   <h3 className="font-display font-semibold text-foreground truncate">
@@ -153,15 +158,17 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
               </div>
             </div>
 
-            {/* Ações */}
-            <PendingMealCard
-              meal={nextMeal}
-              onMarkComplete={handleMarkComplete}
-              onSkip={skipMeal}
-              onRefetch={refetch}
-              onStreakRefresh={onStreakRefresh}
-              compact
-            />
+            {/* Ações - só aparecem quando o horário da refeição começar */}
+            {showButtons && (
+              <PendingMealCard
+                meal={nextMeal}
+                onMarkComplete={handleMarkComplete}
+                onSkip={skipMeal}
+                onRefetch={refetch}
+                onStreakRefresh={onStreakRefresh}
+                compact
+              />
+            )}
           </CardContent>
         </Card>
       )}

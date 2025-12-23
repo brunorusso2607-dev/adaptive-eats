@@ -266,12 +266,24 @@ export default function NextMealCard(_props: NextMealCardProps) {
                 </span>
               )}
               {mealStatus === "critical" && (
-                <span className="text-[10px] bg-destructive/20 text-destructive px-1.5 py-0.5 rounded-full inline-block mt-1">
+                <span 
+                  className="text-[10px] px-1.5 py-0.5 rounded-full inline-block mt-1"
+                  style={{
+                    backgroundColor: dynamicStyles.backgroundColor,
+                    color: dynamicStyles.color,
+                  }}
+                >
                   Pendente há {minutesOverdue}min
                 </span>
               )}
               {mealStatus === "delayed" && (
-                <span className="text-[10px] bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 px-1.5 py-0.5 rounded-full inline-block mt-1">
+                <span 
+                  className="text-[10px] px-1.5 py-0.5 rounded-full inline-block mt-1"
+                  style={{
+                    backgroundColor: dynamicStyles.backgroundColor,
+                    color: dynamicStyles.color,
+                  }}
+                >
                   Atrasado
                 </span>
               )}

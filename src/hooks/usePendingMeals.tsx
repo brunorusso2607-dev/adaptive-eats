@@ -272,8 +272,8 @@ export function usePendingMeals() {
         return mealEndTime >= planCreatedAt;
       };
 
-      // Verificar se uma refeição já passou ou está no horário atual
-      const isMealPastOrCurrent = (mealType: string, actualDate: Date): boolean => {
+      // Verificar se uma refeição já passou (horário de FIM ultrapassado)
+      const isMealPast = (mealType: string, actualDate: Date): boolean => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
         const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
@@ -283,22 +283,46 @@ export function usePendingMeals() {
           return true;
         }
         
-        // Se é de um dia futuro, ainda não chegou
+        // Se é de um dia futuro, ainda não passou
         if (mealDate > today) {
           return false;
         }
         
-        // Se é hoje, verificar o horário
+        // Se é hoje, verificar se o horário de FIM já passou
         const hour = now.getHours();
         const minutes = now.getMinutes();
         const currentTimeInMinutes = hour * 60 + minutes;
         
         const range = MEAL_TIME_RANGES[mealType];
-        if (!range) return true; // Se não tem range definido, mostrar
+        if (!range) return false;
         
-        // Mostrar se já começou o horário da refeição (start)
+        const endTimeInMinutes = range.end * 60;
+        return currentTimeInMinutes >= endTimeInMinutes;
+      };
+
+      // Verificar se uma refeição é a atual (já começou mas ainda não terminou)
+      const isMealCurrent = (mealType: string, actualDate: Date): boolean => {
+        const now = new Date();
+        const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+        
+        // Só pode ser atual se for hoje
+        if (mealDate.getTime() !== today.getTime()) {
+          return false;
+        }
+        
+        const hour = now.getHours();
+        const minutes = now.getMinutes();
+        const currentTimeInMinutes = hour * 60 + minutes;
+        
+        const range = MEAL_TIME_RANGES[mealType];
+        if (!range) return false;
+        
         const startTimeInMinutes = range.start * 60;
-        return currentTimeInMinutes >= startTimeInMinutes;
+        const endTimeInMinutes = range.end * 60;
+        
+        // Atual = já começou E ainda não terminou
+        return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes;
       };
 
       // Converter para o formato esperado com data calculada
@@ -315,14 +339,19 @@ export function usePendingMeals() {
         meal.actual_date && isMealValidSinceCreation(meal.meal_type, meal.actual_date)
       );
 
-      // Filtrar refeições passadas ou atuais (atrasadas) - apenas das válidas
-      const overdueMeals = validMeals.filter(meal => 
-        meal.actual_date && isMealPastOrCurrent(meal.meal_type, meal.actual_date)
+      // Encontrar a refeição ATUAL (já começou mas ainda não terminou)
+      const currentMeal = validMeals.find(meal => 
+        meal.actual_date && isMealCurrent(meal.meal_type, meal.actual_date)
       );
 
-      // Encontrar a próxima refeição futura (que ainda não começou) - apenas das válidas
+      // Filtrar refeições PASSADAS (horário de fim já ultrapassado) - são as atrasadas
+      const overdueMeals = validMeals.filter(meal => 
+        meal.actual_date && isMealPast(meal.meal_type, meal.actual_date)
+      );
+
+      // Encontrar refeições FUTURAS (ainda não começaram) - apenas das válidas
       const futureMeals = validMeals.filter(meal => 
-        meal.actual_date && !isMealPastOrCurrent(meal.meal_type, meal.actual_date)
+        meal.actual_date && !isMealPast(meal.meal_type, meal.actual_date) && !isMealCurrent(meal.meal_type, meal.actual_date)
       );
 
       // Ordenar refeições futuras por data e horário (mais próxima primeiro)
@@ -335,8 +364,8 @@ export function usePendingMeals() {
         return MEAL_ORDER.indexOf(a.meal_type) - MEAL_ORDER.indexOf(b.meal_type);
       });
 
-      // Pegar apenas a primeira refeição futura (próxima refeição)
-      const nextFutureMeal = sortedFutureMeals.length > 0 ? [sortedFutureMeals[0]] : [];
+      // A "próxima refeição" é: refeição atual OU a primeira futura (se não há atual)
+      const nextMeal = currentMeal ? [currentMeal] : (sortedFutureMeals.length > 0 ? [sortedFutureMeals[0]] : []);
 
       // Ordenar atrasadas por data DECRESCENTE (mais recente primeiro)
       const sortedOverdueMeals = overdueMeals.sort((a, b) => {
@@ -348,9 +377,9 @@ export function usePendingMeals() {
         return MEAL_ORDER.indexOf(b.meal_type) - MEAL_ORDER.indexOf(a.meal_type);
       });
 
-      // Combinar: próxima refeição futura + atrasadas
+      // Combinar: próxima refeição + atrasadas
       // A próxima refeição vem primeiro para ser identificada como "on_time"
-      const combinedMeals = [...nextFutureMeal, ...sortedOverdueMeals];
+      const combinedMeals = [...nextMeal, ...sortedOverdueMeals];
 
       setPendingMeals(combinedMeals);
     } catch (error) {

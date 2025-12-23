@@ -33,6 +33,11 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type SubMenuItem = {
   path?: string;
@@ -141,7 +146,7 @@ export default function AdminDashboard() {
     const paddingLeft = depth * 12;
 
     if (item.path) {
-      return (
+      const linkContent = (
         <Link
           key={item.path}
           to={item.path}
@@ -149,13 +154,69 @@ export default function AdminDashboard() {
             "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
             isItemActive(item)
               ? "bg-primary text-primary-foreground shadow-glow"
-              : "text-muted-foreground hover:bg-card hover:text-foreground"
+              : "text-muted-foreground hover:bg-card hover:text-foreground",
+            sidebarCollapsed && "justify-center"
           )}
-          style={{ paddingLeft: `${12 + paddingLeft}px` }}
+          style={{ paddingLeft: sidebarCollapsed ? undefined : `${12 + paddingLeft}px` }}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
           {!sidebarCollapsed && <span>{item.label}</span>}
         </Link>
+      );
+
+      if (sidebarCollapsed) {
+        return (
+          <Tooltip key={item.path} delayDuration={0}>
+            <TooltipTrigger asChild>
+              {linkContent}
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">
+              {item.label}
+            </TooltipContent>
+          </Tooltip>
+        );
+      }
+
+      return linkContent;
+    }
+
+    const buttonContent = (
+      <Button
+        variant="ghost"
+        className={cn(
+          "w-full justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all h-auto",
+          openMenus.includes(item.label)
+            ? "bg-card/50 text-foreground"
+            : "text-muted-foreground hover:bg-card hover:text-foreground",
+          sidebarCollapsed && "justify-center"
+        )}
+        style={{ paddingLeft: sidebarCollapsed ? undefined : `${12 + paddingLeft}px` }}
+      >
+        <div className="flex items-center gap-3">
+          <item.icon className="w-4 h-4 flex-shrink-0" />
+          {!sidebarCollapsed && <span>{item.label}</span>}
+        </div>
+        {!sidebarCollapsed && (
+          <ChevronDown
+            className={cn(
+              "w-4 h-4 transition-transform duration-200",
+              openMenus.includes(item.label) && "rotate-180"
+            )}
+          />
+        )}
+      </Button>
+    );
+
+    if (sidebarCollapsed) {
+      return (
+        <Tooltip key={item.label} delayDuration={0}>
+          <TooltipTrigger asChild>
+            {buttonContent}
+          </TooltipTrigger>
+          <TooltipContent side="right" className="font-medium">
+            {item.label}
+          </TooltipContent>
+        </Tooltip>
       );
     }
 
@@ -166,35 +227,11 @@ export default function AdminDashboard() {
         onOpenChange={() => toggleMenu(item.label)}
       >
         <CollapsibleTrigger asChild>
-          <Button
-            variant="ghost"
-            className={cn(
-              "w-full justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all h-auto",
-              openMenus.includes(item.label)
-                ? "bg-card/50 text-foreground"
-                : "text-muted-foreground hover:bg-card hover:text-foreground"
-            )}
-            style={{ paddingLeft: `${12 + paddingLeft}px` }}
-          >
-            <div className="flex items-center gap-3">
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {!sidebarCollapsed && <span>{item.label}</span>}
-            </div>
-            {!sidebarCollapsed && (
-              <ChevronDown
-                className={cn(
-                  "w-4 h-4 transition-transform duration-200",
-                  openMenus.includes(item.label) && "rotate-180"
-                )}
-              />
-            )}
-          </Button>
+          {buttonContent}
         </CollapsibleTrigger>
-        {!sidebarCollapsed && (
-          <CollapsibleContent className="space-y-1 mt-1">
-            {item.subItems?.map((subItem) => renderMenuItem(subItem, depth + 1))}
-          </CollapsibleContent>
-        )}
+        <CollapsibleContent className="space-y-1 mt-1">
+          {item.subItems?.map((subItem) => renderMenuItem(subItem, depth + 1))}
+        </CollapsibleContent>
       </Collapsible>
     );
   };
@@ -226,18 +263,39 @@ export default function AdminDashboard() {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {/* Início */}
-          <Link
-            to="/admin"
-            className={cn(
-              "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
-              location.pathname === "/admin"
-                ? "bg-primary text-primary-foreground shadow-glow"
-                : "text-muted-foreground hover:bg-card hover:text-foreground"
-            )}
-          >
-            <Menu className="w-4 h-4 flex-shrink-0" />
-            {!sidebarCollapsed && <span>Início</span>}
-          </Link>
+          {sidebarCollapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Link
+                  to="/admin"
+                  className={cn(
+                    "flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                    location.pathname === "/admin"
+                      ? "bg-primary text-primary-foreground shadow-glow"
+                      : "text-muted-foreground hover:bg-card hover:text-foreground"
+                  )}
+                >
+                  <Menu className="w-4 h-4 flex-shrink-0" />
+                </Link>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">
+                Início
+              </TooltipContent>
+            </Tooltip>
+          ) : (
+            <Link
+              to="/admin"
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
+                location.pathname === "/admin"
+                  ? "bg-primary text-primary-foreground shadow-glow"
+                  : "text-muted-foreground hover:bg-card hover:text-foreground"
+              )}
+            >
+              <Menu className="w-4 h-4 flex-shrink-0" />
+              <span>Início</span>
+            </Link>
+          )}
 
           {/* Menu Items */}
           {mainMenuItems.map((item) => renderMenuItem(item))}
@@ -245,48 +303,85 @@ export default function AdminDashboard() {
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-border/50 space-y-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => navigate("/dashboard")}
-            className={cn(
-              "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
-              sidebarCollapsed && "justify-center"
-            )}
-          >
-            <ArrowLeft className="w-4 h-4 flex-shrink-0" />
-            {!sidebarCollapsed && <span>Voltar ao App</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={handleLogout}
-            className={cn(
-              "w-full justify-start gap-3 text-muted-foreground hover:text-destructive",
-              sidebarCollapsed && "justify-center"
-            )}
-          >
-            <LogOut className="w-4 h-4 flex-shrink-0" />
-            {!sidebarCollapsed && <span>Sair</span>}
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => setSidebarCollapsed(!sidebarCollapsed)}
-            className={cn(
-              "w-full justify-start gap-3 text-muted-foreground hover:text-foreground",
-              sidebarCollapsed && "justify-center"
-            )}
-          >
-            {sidebarCollapsed ? (
-              <PanelLeft className="w-4 h-4 flex-shrink-0" />
-            ) : (
-              <>
+          {sidebarCollapsed ? (
+            <>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => navigate("/dashboard")}
+                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  Voltar ao App
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleLogout}
+                    className="w-full justify-center text-muted-foreground hover:text-destructive"
+                  >
+                    <LogOut className="w-4 h-4 flex-shrink-0" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  Sair
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip delayDuration={0}>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setSidebarCollapsed(false)}
+                    className="w-full justify-center text-muted-foreground hover:text-foreground"
+                  >
+                    <PanelLeft className="w-4 h-4 flex-shrink-0" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right" className="font-medium">
+                  Expandir
+                </TooltipContent>
+              </Tooltip>
+            </>
+          ) : (
+            <>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => navigate("/dashboard")}
+                className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              >
+                <ArrowLeft className="w-4 h-4 flex-shrink-0" />
+                <span>Voltar ao App</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={handleLogout}
+                className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive"
+              >
+                <LogOut className="w-4 h-4 flex-shrink-0" />
+                <span>Sair</span>
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarCollapsed(true)}
+                className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+              >
                 <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
                 <span>Recolher</span>
-              </>
-            )}
-          </Button>
+              </Button>
+            </>
+          )}
         </div>
       </aside>
 

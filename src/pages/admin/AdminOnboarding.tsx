@@ -59,6 +59,19 @@ import {
   Baby,
   Zap,
   Minus,
+  Heart,
+  Apple,
+  Carrot,
+  Pizza,
+  Coffee,
+  Droplet,
+  Sun,
+  Moon,
+  Star,
+  Shield,
+  Ban,
+  XCircle,
+  CheckCircle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -75,6 +88,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   salad: Salad,
   leaf: Leaf,
   beef: Flame,
+  flame: Flame,
   "trending-down": TrendingDown,
   "trending-up": TrendingUp,
   scale: Scale,
@@ -88,8 +102,21 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   user: User,
   users: Users,
   baby: Baby,
-  flame: Flame,
   target: Target,
+  heart: Heart,
+  apple: Apple,
+  carrot: Carrot,
+  pizza: Pizza,
+  coffee: Coffee,
+  droplet: Droplet,
+  sun: Sun,
+  moon: Moon,
+  star: Star,
+  shield: Shield,
+  "alert-triangle": AlertTriangle,
+  ban: Ban,
+  "x-circle": XCircle,
+  "check-circle": CheckCircle,
 };
 
 type OnboardingOption = {
@@ -141,7 +168,7 @@ export default function AdminOnboarding() {
     sort_order: 0,
   });
 
-  const generateEmoji = async (label: string) => {
+  const generateIconName = async (label: string) => {
     if (!label.trim()) return;
     
     setIsGeneratingEmoji(true);
@@ -155,17 +182,17 @@ export default function AdminOnboarding() {
 
       if (error) {
         console.error("generate-emoji error:", error);
-        toast.error("Erro ao gerar emoji");
+        toast.error("Erro ao gerar ícone");
         return;
       }
       
-      if (data?.emoji) {
-        setFormData(prev => ({ ...prev, emoji: data.emoji }));
-        toast.success(`Emoji gerado: ${data.emoji}`);
+      if (data?.icon_name) {
+        setFormData(prev => ({ ...prev, icon_name: data.icon_name, emoji: "" }));
+        toast.success(`Ícone sugerido: ${data.icon_name}`);
       }
     } catch (error) {
-      console.error("Error generating emoji:", error);
-      toast.error("Erro ao gerar emoji");
+      console.error("Error generating icon:", error);
+      toast.error("Erro ao gerar ícone");
     } finally {
       setIsGeneratingEmoji(false);
     }
@@ -538,9 +565,9 @@ export default function AdminOnboarding() {
                 value={formData.label}
                 onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                 onBlur={(e) => {
-                  // Auto-generate emoji when label loses focus and emoji is empty
-                  if (e.target.value.trim() && !formData.emoji) {
-                    generateEmoji(e.target.value);
+                  // Auto-generate icon when label loses focus and icon_name is empty
+                  if (e.target.value.trim() && !formData.icon_name) {
+                    generateIconName(e.target.value);
                   }
                 }}
                 placeholder="Glúten"
@@ -548,22 +575,22 @@ export default function AdminOnboarding() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="emoji">Emoji</Label>
+              <Label htmlFor="icon_name">Ícone Lucide</Label>
               <div className="flex gap-2">
                 <Input
-                  id="emoji"
-                  value={formData.emoji}
-                  onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
-                  placeholder="🌾"
+                  id="icon_name"
+                  value={formData.icon_name}
+                  onChange={(e) => setFormData({ ...formData, icon_name: e.target.value })}
+                  placeholder="wheat, milk, egg, leaf, etc."
                   className="flex-1"
                 />
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
-                  onClick={() => generateEmoji(formData.label)}
+                  onClick={() => generateIconName(formData.label)}
                   disabled={isGeneratingEmoji || !formData.label.trim()}
-                  title="Gerar emoji com IA"
+                  title="Sugerir ícone com IA"
                 >
                   {isGeneratingEmoji ? (
                     <Loader2 className="w-4 h-4 animate-spin" />
@@ -572,19 +599,19 @@ export default function AdminOnboarding() {
                   )}
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Ícones disponíveis: wheat, milk, nut, fish, egg, bean, check, utensils, salad, leaf, flame, trending-down, trending-up, scale, clock, zap, timer, chef-hat, user, users, baby, target, apple, carrot, heart, droplet, alert-triangle, shield
+              </p>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="icon_name">Nome do Ícone Lucide</Label>
+              <Label htmlFor="emoji">Emoji (opcional - legado)</Label>
               <Input
-                id="icon_name"
-                value={formData.icon_name}
-                onChange={(e) => setFormData({ ...formData, icon_name: e.target.value })}
-                placeholder="wheat, milk, egg, leaf, etc."
+                id="emoji"
+                value={formData.emoji}
+                onChange={(e) => setFormData({ ...formData, emoji: e.target.value })}
+                placeholder="🌾"
               />
-              <p className="text-xs text-muted-foreground">
-                Nomes disponíveis: wheat, milk, nut, fish, egg, bean, check, utensils, salad, leaf, trending-down, trending-up, scale, clock, zap, timer, chef-hat, user, users, baby
-              </p>
             </div>
 
             <div className="space-y-2">

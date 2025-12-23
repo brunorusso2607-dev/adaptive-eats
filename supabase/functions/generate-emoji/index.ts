@@ -6,9 +6,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Lista de ícones Lucide disponíveis para sugestão
+const AVAILABLE_ICONS = [
+  "wheat", "milk", "nut", "fish", "egg", "bean", "check", "utensils", "salad", 
+  "leaf", "flame", "trending-down", "trending-up", "scale", "clock", "zap", 
+  "timer", "chef-hat", "user", "users", "baby", "target", "minus", "arrow-down", 
+  "arrow-up", "heart", "apple", "carrot", "pizza", "coffee", "droplet", "sun",
+  "moon", "star", "shield", "alert-triangle", "ban", "x-circle", "check-circle"
+];
+
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function callGeminiWithRetry(apiKey: string, label: string, maxRetries = 3): Promise<string> {
+  const availableIconsList = AVAILABLE_ICONS.join(", ");
+  
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
@@ -22,14 +33,41 @@ async function callGeminiWithRetry(apiKey: string, label: string, maxRetries = 3
             {
               parts: [
                 {
-                  text: `Return ONLY a single emoji that best represents this food/ingredient: "${label}". No text, just one emoji.`,
+                  text: `You are helping to select a minimalist line-art icon for a food/nutrition app.
+
+Given this food, ingredient or dietary concept: "${label}"
+
+Choose the BEST matching icon name from this list: ${availableIconsList}
+
+Rules:
+- Return ONLY the icon name, nothing else
+- Choose the most semantically relevant icon
+- For grains/gluten use "wheat"
+- For dairy use "milk" or "droplet"
+- For nuts/seeds use "nut"
+- For seafood use "fish"
+- For eggs use "egg"
+- For legumes use "bean"
+- For vegetables/plants use "leaf" or "salad" or "carrot"
+- For meat use "flame"
+- For fruits use "apple"
+- For allergies/warnings use "alert-triangle" or "shield"
+- For goals/targets use "target"
+- For calories/energy use "flame" or "zap"
+- For weight loss use "trending-down"
+- For weight gain use "trending-up"
+- For cooking use "chef-hat" or "utensils"
+- For time use "clock" or "timer"
+- If nothing fits well, use "utensils"
+
+Respond with only the icon name, no quotes, no punctuation.`,
                 },
               ],
             },
           ],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 10,
+            maxOutputTokens: 20,
           },
         }),
       }
@@ -37,7 +75,20 @@ async function callGeminiWithRetry(apiKey: string, label: string, maxRetries = 3
 
     if (response.ok) {
       const data = await response.json();
-      return data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "📌";
+      const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()?.toLowerCase() || "utensils";
+      
+      // Validate that the response is one of the available icons
+      const cleanedIcon = rawResponse.replace(/[^a-z-]/g, '');
+      if (AVAILABLE_ICONS.includes(cleanedIcon)) {
+        return cleanedIcon;
+      }
+      
+      // If not found, try to find a partial match
+      const partialMatch = AVAILABLE_ICONS.find(icon => 
+        cleanedIcon.includes(icon) || icon.includes(cleanedIcon)
+      );
+      
+      return partialMatch || "utensils";
     }
 
     if (response.status === 429) {
@@ -73,22 +124,18 @@ serve(async (req) => {
 
     const GOOGLE_AI_API_KEY = await getGeminiApiKey();
 
-    console.log("Generating emoji for:", label);
+    console.log("Generating icon for:", label);
 
-    const rawEmoji = await callGeminiWithRetry(GOOGLE_AI_API_KEY, label);
+    const iconName = await callGeminiWithRetry(GOOGLE_AI_API_KEY, label);
 
-    // Extract just the first emoji if there's extra text
-    const emojiMatch = rawEmoji.match(/\p{Emoji}/u);
-    const cleanEmoji = emojiMatch ? emojiMatch[0] : "📌";
-
-    console.log("Generated emoji:", cleanEmoji);
+    console.log("Generated icon:", iconName);
 
     return new Response(
-      JSON.stringify({ emoji: cleanEmoji }),
+      JSON.stringify({ emoji: iconName, icon_name: iconName }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    console.error("Error generating emoji:", error);
+    console.error("Error generating icon:", error);
     
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     const isRateLimit = errorMessage.includes("429");

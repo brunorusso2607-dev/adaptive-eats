@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, UtensilsCrossed, Clock, ChevronDown } from "lucide-react";
-import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
+import { Check, UtensilsCrossed, Clock, ChevronDown, Flame } from "lucide-react";
+import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import { useMemo, useState } from "react";
 import {
@@ -8,6 +8,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import { cn } from "@/lib/utils";
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
@@ -23,28 +24,30 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
     refetch,
   } = usePendingMeals();
 
-  // Separar refeição atual das atrasadas
-  const { currentMeal, overdueMeals } = useMemo(() => {
+  // Separar: próxima refeição (verde) vs atrasadas (amarela/vermelha)
+  const { nextMeal, overdueMeals } = useMemo(() => {
     if (pendingMeals.length === 0) {
-      return { currentMeal: null, overdueMeals: [] };
+      return { nextMeal: null, overdueMeals: [] };
     }
 
-    // A primeira refeição (mais recente/atual) é a "próxima"
-    const first = pendingMeals[0];
-    const status = getMealStatus(first.meal_type, first.actual_date, first.completed_at);
+    // Encontrar a primeira refeição que ainda está "on_time" ou a próxima a começar
+    // As refeições estão ordenadas por data decrescente, então precisamos inverter para encontrar a próxima
+    const mealsWithStatus = pendingMeals.map(meal => ({
+      ...meal,
+      status: getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at),
+    }));
+
+    // Encontrar a refeição que está on_time (será a próxima)
+    const onTimeMeal = mealsWithStatus.find(meal => meal.status === "on_time");
     
-    // Se está on_time, é a atual. O resto são atrasadas.
-    if (status === "on_time") {
-      return {
-        currentMeal: first,
-        overdueMeals: pendingMeals.slice(1),
-      };
-    }
-    
-    // Se todas estão atrasadas, não há "atual"
+    // Todas as outras são atrasadas (delayed ou critical)
+    const delayed = mealsWithStatus.filter(meal => 
+      meal.status === "delayed" || meal.status === "critical"
+    );
+
     return {
-      currentMeal: null,
-      overdueMeals: pendingMeals,
+      nextMeal: onTimeMeal || null,
+      overdueMeals: delayed,
     };
   }, [pendingMeals]);
 
@@ -112,64 +115,94 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
     return true;
   };
 
+  const mealLabel = nextMeal ? (MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type) : "";
+
   return (
-    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
-      <CollapsibleTrigger asChild>
-        <Card className="bg-[hsl(var(--surface-subtle))] border border-border/30 cursor-pointer hover:border-border/60 transition-colors">
-          <CardContent className="p-3">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center">
-                  <Clock className="w-4 h-4 text-muted-foreground" />
+    <div className="space-y-3">
+      {/* Card Verde Fixo - Próxima Refeição (sempre visível, fora do dropdown) */}
+      {nextMeal && (
+        <Card className="glass-card border-emerald-500/30 bg-emerald-500/5">
+          <CardContent className="p-4 space-y-3">
+            {/* Header */}
+            <div className="flex items-start justify-between gap-3">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+                  <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-foreground">
-                    Pendentes ({pendingMeals.length})
-                  </p>
-                  <p className="text-xs text-muted-foreground line-clamp-1">
-                    {pendingMeals[0]?.recipe_name?.substring(0, 28)}...
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                      Próxima Refeição
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      • {mealLabel}
+                    </span>
+                  </div>
+                  <h3 className="font-display font-semibold text-foreground truncate">
+                    {nextMeal.recipe_name}
+                  </h3>
                 </div>
               </div>
-              <ChevronDown 
-                className={`w-4 h-4 text-muted-foreground transition-transform duration-200 ${
-                  isOpen ? "rotate-180" : ""
-                }`} 
-              />
+
+              {/* Calorias */}
+              <div className="flex items-center gap-1 text-sm text-muted-foreground shrink-0">
+                <Flame className="w-4 h-4 text-orange-500" />
+                <span className="font-medium">{nextMeal.recipe_calories}</span>
+                <span className="text-xs">kcal</span>
+              </div>
             </div>
-          </CardContent>
-        </Card>
-      </CollapsibleTrigger>
-      
-      <CollapsibleContent className="space-y-2 mt-2">
-        {/* Próxima Refeição */}
-        {currentMeal && (
-          <div className="space-y-2">
-            <h3 className="text-sm font-medium text-foreground flex items-center gap-2">
-              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              Próxima Refeição
-            </h3>
+
+            {/* Ações */}
             <PendingMealCard
-              meal={currentMeal}
+              meal={nextMeal}
               onMarkComplete={handleMarkComplete}
               onSkip={skipMeal}
               onRefetch={refetch}
               onStreakRefresh={onStreakRefresh}
+              compact
             />
-          </div>
-        )}
+          </CardContent>
+        </Card>
+      )}
 
-        {/* Refeições Pendentes */}
-        {overdueMeals.length > 0 && (
-          <div className="space-y-2">
-            {currentMeal && (
-              <h3 className="text-xs font-medium text-muted-foreground flex items-center gap-2">
-                <Clock className="w-3.5 h-3.5" />
-                Atrasadas ({overdueMeals.length})
-              </h3>
-            )}
-            <div className="space-y-2">
-              {overdueMeals.map((meal) => (
+      {/* Dropdown de Refeições Atrasadas */}
+      {overdueMeals.length > 0 && (
+        <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+          <CollapsibleTrigger asChild>
+            <Card className="bg-destructive/5 border border-destructive/30 cursor-pointer hover:border-destructive/50 transition-colors">
+              <CardContent className="p-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-lg bg-destructive/20 flex items-center justify-center">
+                      <Clock className="w-4 h-4 text-destructive" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-destructive">
+                        Atrasadas ({overdueMeals.length})
+                      </p>
+                      <p className="text-xs text-muted-foreground line-clamp-1">
+                        {overdueMeals[0]?.recipe_name?.substring(0, 28)}...
+                      </p>
+                    </div>
+                  </div>
+                  <ChevronDown 
+                    className={cn(
+                      "w-4 h-4 text-destructive transition-transform duration-200",
+                      isOpen && "rotate-180"
+                    )} 
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          </CollapsibleTrigger>
+          
+          <CollapsibleContent className="space-y-2 mt-2">
+            {overdueMeals.map((meal) => {
+              const status = getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
+              const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.actual_date);
+              
+              return (
                 <PendingMealCard
                   key={meal.id}
                   meal={meal}
@@ -177,12 +210,28 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
                   onSkip={skipMeal}
                   onRefetch={refetch}
                   onStreakRefresh={onStreakRefresh}
+                  status={status}
+                  minutesOverdue={minutesOverdue}
                 />
-              ))}
-            </div>
-          </div>
-        )}
-      </CollapsibleContent>
-    </Collapsible>
+              );
+            })}
+          </CollapsibleContent>
+        </Collapsible>
+      )}
+
+      {/* Se não tem próxima refeição mas tem atrasadas, mostrar mensagem */}
+      {!nextMeal && overdueMeals.length > 0 && (
+        <Card className="glass-card border-muted">
+          <CardContent className="p-4 text-center">
+            <p className="text-sm text-muted-foreground">
+              Aguardando próxima refeição...
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Complete as refeições atrasadas acima
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </div>
   );
 }

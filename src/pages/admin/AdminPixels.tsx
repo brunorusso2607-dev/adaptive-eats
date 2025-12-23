@@ -335,7 +335,7 @@ export default function AdminPixels() {
         <CardContent>
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : pixels && pixels.length > 0 ? (
             <div className="space-y-4">

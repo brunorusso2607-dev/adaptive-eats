@@ -177,7 +177,7 @@ export default function AdminAIErrorLogs() {
           {/* Logs List */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
-              <Loader2 className="w-8 h-8 animate-spin text-primary" />
+              <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
           ) : filteredLogs && filteredLogs.length > 0 ? (
             <div className="space-y-3">

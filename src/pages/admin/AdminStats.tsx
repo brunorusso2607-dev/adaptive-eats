@@ -70,7 +70,7 @@ export default function AdminStats() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
@@ -80,43 +80,43 @@ export default function AdminStats() {
       title: "Total de Usuários",
       value: stats?.totalUsers || 0,
       icon: Users,
-      color: "text-blue-500",
-      bgColor: "bg-blue-500/10",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Receitas Criadas",
       value: stats?.totalRecipes || 0,
       icon: UtensilsCrossed,
-      color: "text-primary",
-      bgColor: "bg-primary/10",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Planos de Refeição",
       value: stats?.totalMealPlans || 0,
       icon: Calendar,
-      color: "text-accent",
-      bgColor: "bg-accent/10",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Planos Ativos",
       value: stats?.activeMealPlans || 0,
       icon: Target,
-      color: "text-green-500",
-      bgColor: "bg-green-500/10",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Novos Usuários (7 dias)",
       value: stats?.usersThisWeek || 0,
       icon: UserPlus,
-      color: "text-purple-500",
-      bgColor: "bg-purple-500/10",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
     {
       title: "Receitas Criadas (7 dias)",
       value: stats?.recipesThisWeek || 0,
       icon: ChefHat,
-      color: "text-orange-500",
-      bgColor: "bg-orange-500/10",
+      color: "text-muted-foreground",
+      bgColor: "bg-muted",
     },
   ];
 

@@ -381,8 +381,8 @@ export default function AdminSystemUsers() {
             <Card key={admin.id} className="glass-card hover:shadow-lg transition-shadow">
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                    <User className="w-6 h-6 text-primary-foreground" />
+                  <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                    <User className="w-6 h-6 text-muted-foreground" />
                   </div>
                   
                   <div className="flex-1 min-w-0">
@@ -640,8 +640,8 @@ export default function AdminSystemUsers() {
           {selectedAdmin && (
             <div className="space-y-6 py-4">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-primary to-accent flex items-center justify-center">
-                  <User className="w-7 h-7 text-primary-foreground" />
+                <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                  <User className="w-7 h-7 text-muted-foreground" />
                 </div>
                 <div>
                   <p className="font-medium text-foreground text-lg">
@@ -659,7 +659,7 @@ export default function AdminSystemUsers() {
               <div className="grid grid-cols-2 gap-4">
                 <Card className="bg-card/50">
                   <CardContent className="p-4 text-center">
-                    <p className="text-2xl font-bold text-primary">{selectedAdmin.actionsCount}</p>
+                    <p className="text-2xl font-bold text-foreground">{selectedAdmin.actionsCount}</p>
                     <p className="text-xs text-muted-foreground">Ações realizadas</p>
                   </CardContent>
                 </Card>

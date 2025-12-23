@@ -11,24 +11,71 @@ export type MealStatusColor = {
   sort_order: number;
 };
 
-// Cache global para evitar múltiplas requisições
+// Cache keys
+const STORAGE_KEY = "meal_status_colors_cache";
+const STORAGE_TIMESTAMP_KEY = "meal_status_colors_cache_timestamp";
+const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Memory cache
 let cachedColors: MealStatusColor[] | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Load from localStorage on module init
+function loadFromStorage(): MealStatusColor[] | null {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    const storedTimestamp = localStorage.getItem(STORAGE_TIMESTAMP_KEY);
+    
+    if (stored && storedTimestamp) {
+      const timestamp = parseInt(storedTimestamp, 10);
+      // Return cached data even if expired (will revalidate in background)
+      cachedColors = JSON.parse(stored);
+      cacheTimestamp = timestamp;
+      return cachedColors;
+    }
+  } catch (error) {
+    console.warn("Error loading colors from localStorage:", error);
+  }
+  return null;
+}
+
+// Save to localStorage
+function saveToStorage(colors: MealStatusColor[]): void {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(colors));
+    localStorage.setItem(STORAGE_TIMESTAMP_KEY, Date.now().toString());
+  } catch (error) {
+    console.warn("Error saving colors to localStorage:", error);
+  }
+}
+
+// Initialize from storage
+loadFromStorage();
 
 export function useMealStatusColors() {
   const [colors, setColors] = useState<MealStatusColor[]>(cachedColors || []);
   const [isLoading, setIsLoading] = useState(!cachedColors);
 
   const fetchColors = useCallback(async (forceRefresh = false) => {
-    if (!forceRefresh && cachedColors && Date.now() - cacheTimestamp < CACHE_DURATION) {
-      setColors(cachedColors);
+    const isCacheValid = cachedColors && Date.now() - cacheTimestamp < CACHE_DURATION;
+    
+    // If we have cached data and it's valid, use it
+    if (!forceRefresh && isCacheValid) {
+      setColors(cachedColors!);
       setIsLoading(false);
       return cachedColors;
     }
 
+    // If we have stale cache, use it but revalidate in background
+    const hasStaleCache = cachedColors && cachedColors.length > 0;
+    if (hasStaleCache && !forceRefresh) {
+      setColors(cachedColors!);
+      setIsLoading(false);
+    }
+
     try {
-      setIsLoading(true);
+      if (!hasStaleCache) setIsLoading(true);
+      
       const { data, error } = await supabase
         .from("meal_status_colors")
         .select("*")
@@ -46,14 +93,18 @@ export function useMealStatusColors() {
         sort_order: item.sort_order,
       }));
 
+      // Update memory cache
       cachedColors = formattedData;
       cacheTimestamp = Date.now();
+      
+      // Save to localStorage
+      saveToStorage(formattedData);
       
       setColors(formattedData);
       return formattedData;
     } catch (error) {
       console.error("Error fetching meal status colors:", error);
-      return [];
+      return cachedColors || [];
     } finally {
       setIsLoading(false);
     }
@@ -85,12 +136,25 @@ export function useMealStatusColors() {
     };
   }, [colors]);
 
+  // Clear cache (useful for admin after updates)
+  const clearCache = useCallback(() => {
+    cachedColors = null;
+    cacheTimestamp = 0;
+    try {
+      localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+    } catch (error) {
+      console.warn("Error clearing localStorage cache:", error);
+    }
+  }, []);
+
   return {
     colors,
     isLoading,
     refetch: () => fetchColors(true),
     getColorByStatus,
     getStyleByStatus,
+    clearCache,
   };
 }
 
@@ -142,9 +206,15 @@ export function useMealStatusColorsAdmin() {
 
       if (error) throw error;
 
-      // Invalidar cache global
+      // Invalidar cache global e localStorage
       cachedColors = null;
       cacheTimestamp = 0;
+      try {
+        localStorage.removeItem(STORAGE_KEY);
+        localStorage.removeItem(STORAGE_TIMESTAMP_KEY);
+      } catch (e) {
+        console.warn("Error clearing localStorage cache:", e);
+      }
 
       await fetchColors();
       return true;

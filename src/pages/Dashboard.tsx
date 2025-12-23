@@ -809,9 +809,9 @@ export default function Dashboard() {
                 {(userGoal === "emagrecer" || userGoal === "ganhar_peso" || userGoal === "manter") && weightData?.weight_current && (
                   <Card className="bg-card border border-border overflow-hidden">
                     <CardContent className="p-5">
-                      <div className="flex items-center justify-between mb-4">
+                      <div className="flex flex-col gap-3 mb-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center">
+                          <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center shrink-0">
                             {userGoal === "ganhar_peso" 
                               ? <TrendingUp className="w-4 h-4 text-muted-foreground" />
                               : userGoal === "manter"
@@ -819,7 +819,7 @@ export default function Dashboard() {
                                 : <TrendingDown className="w-4 h-4 text-muted-foreground" />
                             }
                           </div>
-                          <div>
+                          <div className="flex-1 min-w-0">
                             <h3 className="text-sm font-semibold text-foreground">
                               {userGoal === "ganhar_peso" 
                                 ? "Ganho de Peso" 
@@ -833,33 +833,33 @@ export default function Dashboard() {
                                 : `${weightData.weight_current}kg → ${weightData.weight_goal}kg`}
                             </p>
                           </div>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button 
-                            variant="outline"
-                            size="sm" 
-                            onClick={() => setShowWeightUpdateModal(true)}
-                            className="text-xs h-8 px-4 rounded-lg border-border font-medium"
-                          >
-                            <Scale className="w-3 h-3 mr-1.5" />
-                            Peso
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setShowWeightLossSetup(true)}
-                            className="text-xs h-8 px-4 rounded-lg border-border font-medium"
-                          >
-                            Editar
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={toggleWeightLossMode}
-                            className="text-xs h-8 px-4 rounded-lg border-border font-medium"
-                          >
-                            Desativar
-                          </Button>
+                          <div className="flex gap-1.5 shrink-0">
+                            <Button 
+                              variant="outline"
+                              size="sm" 
+                              onClick={() => setShowWeightUpdateModal(true)}
+                              className="text-xs h-7 px-2.5 rounded-lg border-border font-medium"
+                            >
+                              <Scale className="w-3 h-3 mr-1" />
+                              Peso
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={() => setShowWeightLossSetup(true)}
+                              className="text-xs h-7 px-2.5 rounded-lg border-border font-medium"
+                            >
+                              Editar
+                            </Button>
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              onClick={toggleWeightLossMode}
+                              className="text-xs h-7 px-2.5 rounded-lg border-border font-medium"
+                            >
+                              Desativar
+                            </Button>
+                          </div>
                         </div>
                       </div>
                       {weightData?.weight_current ? (

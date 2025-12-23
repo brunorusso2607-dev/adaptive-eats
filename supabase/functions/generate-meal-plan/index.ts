@@ -2,6 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
   buildMealPlanPrompt,
+  buildRegenerateMealPrompt,
   calculateMacroTargets,
   MEAL_TYPE_LABELS,
   type UserProfile,
@@ -17,6 +18,168 @@ const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[GENERATE-MEAL-PLAN] ${step}${detailsStr}`);
 };
+
+// Helper function to generate a single missing meal
+async function generateSingleMeal(
+  profile: UserProfile,
+  mealType: string,
+  targetCalories: number,
+  apiKey: string
+): Promise<any | null> {
+  try {
+    const prompt = buildRegenerateMealPrompt(profile, mealType, targetCalories);
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: {
+            temperature: 0.7,
+            topP: 0.9,
+            maxOutputTokens: 4000,
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      logStep(`Failed to generate missing meal ${mealType}`, { status: response.status });
+      return null;
+    }
+
+    const aiData = await response.json();
+    const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    if (!textContent) return null;
+
+    let cleanedJson = textContent.trim();
+    if (cleanedJson.startsWith("```json")) cleanedJson = cleanedJson.slice(7);
+    else if (cleanedJson.startsWith("```")) cleanedJson = cleanedJson.slice(3);
+    if (cleanedJson.endsWith("```")) cleanedJson = cleanedJson.slice(0, -3);
+    cleanedJson = cleanedJson.trim();
+
+    const mealData = JSON.parse(cleanedJson);
+    return {
+      meal_type: mealType,
+      recipe_name: mealData.recipe_name || `${MEAL_TYPE_LABELS[mealType]} Padrão`,
+      recipe_calories: Math.round(Number(mealData.recipe_calories) || targetCalories),
+      recipe_protein: Number(mealData.recipe_protein) || 20,
+      recipe_carbs: Number(mealData.recipe_carbs) || 30,
+      recipe_fat: Number(mealData.recipe_fat) || 15,
+      recipe_prep_time: Math.round(Number(mealData.recipe_prep_time) || 30),
+      recipe_ingredients: mealData.recipe_ingredients || [],
+      recipe_instructions: mealData.recipe_instructions || [],
+    };
+  } catch (error) {
+    logStep(`Error generating single meal ${mealType}`, { error: String(error) });
+    return null;
+  }
+}
+
+// Function to validate and complete missing meals
+async function validateAndCompleteMeals(
+  mealPlanData: any,
+  profile: UserProfile,
+  macros: { dailyCalories: number },
+  daysCount: number,
+  apiKey: string
+): Promise<any> {
+  // Determine expected meal types based on complexity
+  const mealsPerDay = profile.recipe_complexity === "rapida" ? 4 : 5;
+  const expectedMealTypes = mealsPerDay === 4 
+    ? ["cafe_manha", "almoco", "lanche", "jantar"]
+    : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+
+  // Target calories per meal
+  const caloriesPerMeal: Record<string, number> = {
+    cafe_manha: Math.round(macros.dailyCalories * 0.25),
+    almoco: Math.round(macros.dailyCalories * 0.30),
+    lanche: Math.round(macros.dailyCalories * 0.15),
+    jantar: Math.round(macros.dailyCalories * 0.25),
+    ceia: Math.round(macros.dailyCalories * 0.05),
+  };
+
+  let missingMealsCount = 0;
+  let completedMealsCount = 0;
+
+  // Ensure we have the expected number of days
+  while (mealPlanData.days.length < daysCount) {
+    mealPlanData.days.push({
+      day_index: mealPlanData.days.length,
+      day_name: getDayName(mealPlanData.days.length),
+      meals: []
+    });
+    logStep(`Added missing day ${mealPlanData.days.length}`);
+  }
+
+  // Check each day for missing meals
+  for (let dayIndex = 0; dayIndex < daysCount; dayIndex++) {
+    const day = mealPlanData.days[dayIndex];
+    if (!day) continue;
+
+    // Ensure meals array exists
+    if (!day.meals) day.meals = [];
+
+    // Get existing meal types for this day
+    const existingMealTypes = day.meals.map((m: any) => m.meal_type);
+
+    // Find missing meal types
+    const missingMealTypes = expectedMealTypes.filter(
+      (mealType) => !existingMealTypes.includes(mealType)
+    );
+
+    if (missingMealTypes.length > 0) {
+      logStep(`Day ${dayIndex} missing meals`, { missingMealTypes, existing: existingMealTypes });
+      missingMealsCount += missingMealTypes.length;
+
+      // Generate missing meals in parallel (batch of 3 to avoid rate limits)
+      for (let i = 0; i < missingMealTypes.length; i += 3) {
+        const batch = missingMealTypes.slice(i, i + 3);
+        const generatedMeals = await Promise.all(
+          batch.map((mealType) =>
+            generateSingleMeal(profile, mealType, caloriesPerMeal[mealType] || 400, apiKey)
+          )
+        );
+
+        // Add successfully generated meals to the day
+        for (const meal of generatedMeals) {
+          if (meal) {
+            day.meals.push(meal);
+            completedMealsCount++;
+            logStep(`Completed missing meal`, { dayIndex, mealType: meal.meal_type });
+          }
+        }
+
+        // Small delay between batches to avoid rate limits
+        if (i + 3 < missingMealTypes.length) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+        }
+      }
+    }
+
+    // Sort meals by meal type order
+    const mealOrder = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+    day.meals.sort((a: any, b: any) => {
+      return mealOrder.indexOf(a.meal_type) - mealOrder.indexOf(b.meal_type);
+    });
+  }
+
+  logStep("Validation complete", { 
+    totalMissing: missingMealsCount, 
+    completed: completedMealsCount,
+    stillMissing: missingMealsCount - completedMealsCount
+  });
+
+  return mealPlanData;
+}
+
+function getDayName(index: number): string {
+  const days = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
+  return days[index % 7];
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -197,6 +360,19 @@ serve(async (req) => {
 
     logStep("Meal plan parsed", { daysCount: mealPlanData.days?.length });
 
+    // ========================================
+    // VALIDAÇÃO E COMPLETAÇÃO DE REFEIÇÕES FALTANTES
+    // ========================================
+    mealPlanData = await validateAndCompleteMeals(
+      mealPlanData,
+      profile as UserProfile,
+      macros,
+      daysCount,
+      GOOGLE_AI_API_KEY
+    );
+
+    logStep("Meal plan validated and completed");
+
     // Calculate dates
     const start = startDate ? new Date(startDate) : new Date();
     const endDate = new Date(start);
@@ -272,6 +448,14 @@ serve(async (req) => {
         week_number: weekNumber || 1
       }))
     );
+
+    // Log final count per day for debugging
+    const mealsPerDayLog = mealPlanData.days.map((day: any, i: number) => ({
+      day: i,
+      mealsCount: day.meals?.length || 0,
+      mealTypes: day.meals?.map((m: any) => m.meal_type) || []
+    }));
+    logStep("Final meals distribution", mealsPerDayLog);
 
     const { error: itemsError } = await supabaseClient
       .from("meal_plan_items")

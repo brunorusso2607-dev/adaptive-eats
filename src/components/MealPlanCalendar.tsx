@@ -74,6 +74,29 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
 
+// Mapeamento de horários para cada refeição (horário de término)
+const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
+  cafe_manha: { start: 6, end: 10 },
+  almoco: { start: 10, end: 14 },
+  lanche: { start: 14, end: 17 },
+  jantar: { start: 17, end: 21 },
+  ceia: { start: 21, end: 24 },
+};
+
+// Verifica se uma refeição já passou do horário no dia atual
+const isMealPastTime = (mealType: string, selectedDay: DayInfo | undefined): boolean => {
+  if (!selectedDay?.isToday) return false;
+  
+  const now = new Date();
+  const currentHour = now.getHours();
+  const range = MEAL_TIME_RANGES[mealType];
+  
+  if (!range) return false;
+  
+  // A refeição passou se a hora atual é maior que o fim do horário
+  return currentHour >= range.end;
+};
+
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, userProfile }: MealPlanCalendarProps) {
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; meal: MealPlanItem | null; mealType: string }>({
     open: false,
@@ -381,19 +404,26 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           const meal = currentDayMeals.find(m => m.meal_type === mealType);
           const config = MEAL_CONFIG[mealType];
           const Icon = config.icon;
+          const isPastMeal = isMealPastTime(mealType, selectedDay);
 
           return (
             <Card 
               key={mealType} 
               className={cn(
-                "glass-card hover:border-primary/30 transition-all cursor-pointer group",
-                meal ? "border-border" : "border-dashed border-muted-foreground/30"
+                "glass-card transition-all",
+                isPastMeal 
+                  ? "opacity-50 cursor-not-allowed border-muted bg-muted/20" 
+                  : "hover:border-primary/30 cursor-pointer group",
+                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30"
               )}
-              onClick={() => meal && onSelectMeal(meal)}
+              onClick={() => !isPastMeal && meal && onSelectMeal(meal)}
             >
               <CardContent className="p-3 sm:p-4">
                 <div className="flex items-start gap-3 sm:gap-4">
-                  <div className={cn("w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0", config.color)}>
+                  <div className={cn(
+                    "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0", 
+                    isPastMeal ? "bg-muted text-muted-foreground" : config.color
+                  )}>
                     <Icon className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   
@@ -402,43 +432,50 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            {config.label}
+                            {config.label} {isPastMeal && "(passou)"}
                           </p>
-                          <h3 className="font-display font-semibold text-sm sm:text-base text-foreground group-hover:text-primary transition-colors line-clamp-2">
+                          <h3 className={cn(
+                            "font-display font-semibold text-sm sm:text-base line-clamp-2",
+                            isPastMeal 
+                              ? "text-muted-foreground" 
+                              : "text-foreground group-hover:text-primary transition-colors"
+                          )}>
                             {meal.recipe_name}
                           </h3>
                         </div>
-                        <div className="flex items-center gap-1 shrink-0">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="w-8 h-8 sm:w-10 sm:h-10"
-                            title="Gerar nova receita"
-                            onClick={(e) => openRegenerateDialog(meal, mealType, e)}
-                          >
-                            <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-primary transition-colors" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="w-8 h-8 sm:w-10 sm:h-10"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleFavorite(meal.id);
-                            }}
-                          >
-                            <Heart className={cn("w-4 h-4 sm:w-5 sm:h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
-                          </Button>
-                        </div>
+                        {!isPastMeal && (
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 sm:w-10 sm:h-10"
+                              title="Gerar nova receita"
+                              onClick={(e) => openRegenerateDialog(meal, mealType, e)}
+                            >
+                              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-primary transition-colors" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="w-8 h-8 sm:w-10 sm:h-10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleFavorite(meal.id);
+                              }}
+                            >
+                              <Heart className={cn("w-4 h-4 sm:w-5 sm:h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       
                       <div className="flex items-center gap-2 sm:gap-4 mt-1.5 sm:mt-2 text-xs sm:text-sm text-muted-foreground flex-wrap">
                         <span className="flex items-center gap-1">
-                          <Flame className="w-3 h-3 sm:w-4 sm:h-4 text-orange-500" />
+                          <Flame className={cn("w-3 h-3 sm:w-4 sm:h-4", isPastMeal ? "text-muted-foreground" : "text-orange-500")} />
                           {meal.recipe_calories} kcal
                         </span>
                         <span className="flex items-center gap-1">
-                          <Beef className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+                          <Beef className={cn("w-3 h-3 sm:w-4 sm:h-4", isPastMeal ? "text-muted-foreground" : "text-red-500")} />
                           {meal.recipe_protein}g
                         </span>
                         <span>{meal.recipe_prep_time} min</span>
@@ -447,7 +484,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                   ) : (
                     <div className="flex-1">
                       <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {config.label}
+                        {config.label} {isPastMeal && "(passou)"}
                       </p>
                       <p className="text-sm text-muted-foreground italic">Nenhuma receita definida</p>
                     </div>

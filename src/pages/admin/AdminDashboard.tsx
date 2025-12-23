@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useNavigate, Link, Outlet, useLocation } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
 import { 
   LayoutDashboard, 
@@ -25,7 +26,8 @@ import {
   Webhook,
   Sparkles,
   PanelLeftClose,
-  PanelLeft
+  PanelLeft,
+  X
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -38,6 +40,12 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 
 type SubMenuItem = {
   path?: string;
@@ -93,8 +101,10 @@ export default function AdminDashboard() {
   const navigate = useNavigate();
   const location = useLocation();
   const { isAdmin, isLoading } = useAdmin();
+  const isMobile = useIsMobile();
   const [openMenus, setOpenMenus] = useState<string[]>(["Relatórios", "Configurações"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = async () => {
     await supabase.auth.signOut();
@@ -115,6 +125,11 @@ export default function AdminDashboard() {
       ? location.pathname === item.path
       : location.pathname.startsWith(item.path) && item.path !== "/admin";
   };
+
+  // Close mobile menu on route change
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location.pathname]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -142,29 +157,31 @@ export default function AdminDashboard() {
     return null;
   }
 
-  const renderMenuItem = (item: SubMenuItem, depth: number = 0) => {
+  const renderMenuItem = (item: SubMenuItem, depth: number = 0, forMobile: boolean = false) => {
     const paddingLeft = depth * 12;
+    const isCollapsed = !forMobile && sidebarCollapsed;
 
     if (item.path) {
       const linkContent = (
         <Link
           key={item.path}
           to={item.path}
+          onClick={() => forMobile && setMobileMenuOpen(false)}
           className={cn(
             "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
             isItemActive(item)
               ? "bg-primary text-primary-foreground shadow-glow"
               : "text-muted-foreground hover:bg-card hover:text-foreground",
-            sidebarCollapsed && "justify-center"
+            isCollapsed && "justify-center"
           )}
-          style={{ paddingLeft: sidebarCollapsed ? undefined : `${12 + paddingLeft}px` }}
+          style={{ paddingLeft: isCollapsed ? undefined : `${12 + paddingLeft}px` }}
         >
           <item.icon className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && <span>{item.label}</span>}
+          {!isCollapsed && <span>{item.label}</span>}
         </Link>
       );
 
-      if (sidebarCollapsed) {
+      if (isCollapsed && !forMobile) {
         return (
           <Tooltip key={item.path} delayDuration={0}>
             <TooltipTrigger asChild>
@@ -188,15 +205,15 @@ export default function AdminDashboard() {
           openMenus.includes(item.label)
             ? "bg-card/50 text-foreground"
             : "text-muted-foreground hover:bg-card hover:text-foreground",
-          sidebarCollapsed && "justify-center"
+          isCollapsed && "justify-center"
         )}
-        style={{ paddingLeft: sidebarCollapsed ? undefined : `${12 + paddingLeft}px` }}
+        style={{ paddingLeft: isCollapsed ? undefined : `${12 + paddingLeft}px` }}
       >
         <div className="flex items-center gap-3">
           <item.icon className="w-4 h-4 flex-shrink-0" />
-          {!sidebarCollapsed && <span>{item.label}</span>}
+          {!isCollapsed && <span>{item.label}</span>}
         </div>
-        {!sidebarCollapsed && (
+        {!isCollapsed && (
           <ChevronDown
             className={cn(
               "w-4 h-4 transition-transform duration-200",
@@ -207,7 +224,7 @@ export default function AdminDashboard() {
       </Button>
     );
 
-    if (sidebarCollapsed) {
+    if (isCollapsed && !forMobile) {
       return (
         <Tooltip key={item.label} delayDuration={0}>
           <TooltipTrigger asChild>
@@ -230,44 +247,26 @@ export default function AdminDashboard() {
           {buttonContent}
         </CollapsibleTrigger>
         <CollapsibleContent className="space-y-1 mt-1">
-          {item.subItems?.map((subItem) => renderMenuItem(subItem, depth + 1))}
+          {item.subItems?.map((subItem) => renderMenuItem(subItem, depth + 1, forMobile))}
         </CollapsibleContent>
       </Collapsible>
     );
   };
 
-  return (
-    <div className="min-h-screen gradient-hero flex">
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          "fixed left-0 top-0 h-full bg-card/80 backdrop-blur-xl border-r border-border/50 z-50 transition-all duration-300 flex flex-col",
-          sidebarCollapsed ? "w-16" : "w-64"
-        )}
-      >
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-border/50">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow flex-shrink-0">
-              <Shield className="w-6 h-6 text-primary-foreground" />
-            </div>
-            {!sidebarCollapsed && (
-              <div className="overflow-hidden">
-                <h1 className="font-display text-lg font-bold text-foreground truncate">Painel Admin</h1>
-                <p className="text-xs text-muted-foreground truncate">Gerenciamento</p>
-              </div>
-            )}
-          </div>
-        </div>
+  const SidebarContent = ({ forMobile = false }: { forMobile?: boolean }) => {
+    const isCollapsed = !forMobile && sidebarCollapsed;
 
+    return (
+      <>
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {/* Início */}
-          {sidebarCollapsed ? (
+          {isCollapsed ? (
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
                 <Link
                   to="/admin"
+                  onClick={() => forMobile && setMobileMenuOpen(false)}
                   className={cn(
                     "flex items-center justify-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                     location.pathname === "/admin"
@@ -285,6 +284,7 @@ export default function AdminDashboard() {
           ) : (
             <Link
               to="/admin"
+              onClick={() => forMobile && setMobileMenuOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium transition-all",
                 location.pathname === "/admin"
@@ -298,12 +298,12 @@ export default function AdminDashboard() {
           )}
 
           {/* Menu Items */}
-          {mainMenuItems.map((item) => renderMenuItem(item))}
+          {mainMenuItems.map((item) => renderMenuItem(item, 0, forMobile))}
         </nav>
 
         {/* Sidebar Footer */}
         <div className="p-3 border-t border-border/50 space-y-2">
-          {sidebarCollapsed ? (
+          {isCollapsed ? (
             <>
               <Tooltip delayDuration={0}>
                 <TooltipTrigger asChild>
@@ -356,7 +356,10 @@ export default function AdminDashboard() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => navigate("/dashboard")}
+                onClick={() => {
+                  navigate("/dashboard");
+                  forMobile && setMobileMenuOpen(false);
+                }}
                 className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
               >
                 <ArrowLeft className="w-4 h-4 flex-shrink-0" />
@@ -371,18 +374,110 @@ export default function AdminDashboard() {
                 <LogOut className="w-4 h-4 flex-shrink-0" />
                 <span>Sair</span>
               </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarCollapsed(true)}
-                className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
-              >
-                <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
-                <span>Recolher</span>
-              </Button>
+              {!forMobile && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarCollapsed(true)}
+                  className="w-full justify-start gap-3 text-muted-foreground hover:text-foreground"
+                >
+                  <PanelLeftClose className="w-4 h-4 flex-shrink-0" />
+                  <span>Recolher</span>
+                </Button>
+              )}
             </>
           )}
         </div>
+      </>
+    );
+  };
+
+  // Mobile Layout
+  if (isMobile) {
+    return (
+      <div className="min-h-screen gradient-hero">
+        {/* Mobile Header */}
+        <header className="sticky top-0 z-50 bg-card/80 backdrop-blur-xl border-b border-border/50">
+          <div className="flex items-center justify-between p-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={() => setMobileMenuOpen(true)}
+              className="rounded-xl"
+            >
+              <Menu className="w-5 h-5" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center shadow-glow">
+                <Shield className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="font-display font-bold text-foreground">Admin</span>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleLogout}
+              className="rounded-xl text-muted-foreground hover:text-destructive"
+            >
+              <LogOut className="w-5 h-5" />
+            </Button>
+          </div>
+        </header>
+
+        {/* Mobile Sheet Menu */}
+        <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+          <SheetContent side="left" className="w-72 p-0 bg-card/95 backdrop-blur-xl flex flex-col">
+            <SheetHeader className="p-4 border-b border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow">
+                  <Shield className="w-6 h-6 text-primary-foreground" />
+                </div>
+                <div>
+                  <SheetTitle className="font-display text-lg font-bold text-foreground text-left">
+                    Painel Admin
+                  </SheetTitle>
+                  <p className="text-xs text-muted-foreground">Gerenciamento</p>
+                </div>
+              </div>
+            </SheetHeader>
+            <SidebarContent forMobile />
+          </SheetContent>
+        </Sheet>
+
+        {/* Main Content */}
+        <main className="p-4">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
+
+  // Desktop Layout
+  return (
+    <div className="min-h-screen gradient-hero flex">
+      {/* Desktop Sidebar */}
+      <aside
+        className={cn(
+          "fixed left-0 top-0 h-full bg-card/80 backdrop-blur-xl border-r border-border/50 z-50 transition-all duration-300 flex flex-col",
+          sidebarCollapsed ? "w-16" : "w-64"
+        )}
+      >
+        {/* Sidebar Header */}
+        <div className="p-4 border-b border-border/50">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-br from-primary to-accent rounded-xl flex items-center justify-center shadow-glow flex-shrink-0">
+              <Shield className="w-6 h-6 text-primary-foreground" />
+            </div>
+            {!sidebarCollapsed && (
+              <div className="overflow-hidden">
+                <h1 className="font-display text-lg font-bold text-foreground truncate">Painel Admin</h1>
+                <p className="text-xs text-muted-foreground truncate">Gerenciamento</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <SidebarContent />
       </aside>
 
       {/* Main Content */}

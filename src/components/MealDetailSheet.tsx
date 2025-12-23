@@ -95,9 +95,9 @@ export default function MealDetailSheet({
                     className="flex items-center justify-between py-2 border-b border-border/50 last:border-0"
                   >
                     <span className="text-sm">{ingredient.item}</span>
-                    <Badge variant="secondary" className="text-xs">
+                    <span className="text-xs text-muted-foreground">
                       {ingredient.quantity} {ingredient.unit}
-                    </Badge>
+                    </span>
                   </div>
                 ))}
               </div>

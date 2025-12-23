@@ -21,6 +21,7 @@ import {
   getMinutesOverdue
 } from "@/hooks/usePendingMeals";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
+import { useMealStatusColors } from "@/hooks/useMealStatusColors";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
@@ -44,23 +45,12 @@ interface PendingMealCardProps {
   minutesOverdue?: number;
 }
 
-const statusStyles: Record<MealStatus, { border: string; bg: string }> = {
-  on_time: { 
-    border: "border-primary/20", 
-    bg: "bg-primary/5"
-  },
-  delayed: { 
-    border: "border-accent/50", 
-    bg: "bg-accent/5"
-  },
-  critical: { 
-    border: "border-destructive/50", 
-    bg: "bg-destructive/5"
-  },
-  completed: { 
-    border: "border-primary/30", 
-    bg: "bg-primary/5"
-  },
+// Map internal status to database status keys
+const statusToDbKey: Record<MealStatus, string> = {
+  on_time: "on_time",
+  delayed: "alert",
+  critical: "late",
+  completed: "on_time",
 };
 
 const DAY_LABELS: Record<number, string> = {
@@ -90,11 +80,16 @@ export default function PendingMealCard({
   const [showDetailSheet, setShowDetailSheet] = useState(false);
 
   const { saveConsumption } = useMealConsumption();
+  const { getStyleByStatus } = useMealStatusColors();
 
   // Use external status/minutes if provided, otherwise calculate
   const mealStatus = externalStatus || getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
   const minutesOverdueValue = externalMinutesOverdue ?? getMinutesOverdue(meal.meal_type, meal.actual_date);
   const mealLabel = MEAL_LABELS[meal.meal_type] || meal.meal_type;
+  
+  // Get dynamic colors from database
+  const dbStatusKey = statusToDbKey[mealStatus];
+  const dynamicStyles = getStyleByStatus(dbStatusKey);
   
   // Get day abbreviation and formatted date (day/month)
   const dayAbbrev = DAY_LABELS[meal.day_of_week];
@@ -160,8 +155,6 @@ export default function PendingMealCard({
   const handleViewRecipe = () => {
     setShowDetailSheet(true);
   };
-
-  const styles = statusStyles[mealStatus];
 
   // Format overdue time
   const formatOverdue = (minutes: number) => {
@@ -278,11 +271,13 @@ export default function PendingMealCard({
 
   return (
     <Card 
-      className={cn(
-        "glass-card overflow-hidden transition-all duration-300",
-        styles.border,
-        styles.bg
-      )}
+      className="glass-card overflow-hidden transition-all duration-300"
+      style={{
+        backgroundColor: dynamicStyles.backgroundColor,
+        borderColor: dynamicStyles.borderColor,
+        borderWidth: dynamicStyles.borderColor ? '1px' : undefined,
+        borderStyle: dynamicStyles.borderColor ? 'solid' : undefined,
+      }}
     >
       <CardContent className="p-4 space-y-4">
         {/* Header com status */}

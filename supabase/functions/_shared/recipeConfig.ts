@@ -19,7 +19,6 @@ export interface UserProfile {
   goal?: string | null;
   dietary_preference?: string | null;
   calorie_goal?: string | null;
-  recipe_complexity?: string | null;
   context?: string | null;
   intolerances?: string[] | null;
 }
@@ -410,7 +409,7 @@ REGRAS (ordem de prioridade):
 2. SEGURANÇA: ${intolerancesStr} - NUNCA inclua ingredientes proibidos
 3. DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
 4. OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
-5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 min)" : COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}
+5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 min)" : COMPLEXITY_LABELS["equilibrada"]}
 6. CONTEXTO: ${CONTEXT_LABELS[profile.context || "individual"]}
 
 FORMATO JSON:
@@ -421,7 +420,7 @@ FORMATO JSON:
   "ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
   "instructions": ["Passo 1...", "Passo 2...", "Passo 3..."],
   "prep_time": ${isKidsMode ? 20 : 30},
-  "complexity": "${isKidsMode ? "rapida" : profile.recipe_complexity || "equilibrada"}",
+  "complexity": "${isKidsMode ? "rapida" : "equilibrada"}",
   "servings": ${profile.context === "familia" ? 4 : isKidsMode ? 3 : 2},
   "calories": ${isKidsMode ? 400 : isWeightLossMode ? 380 : isWeightGainMode ? 600 : 450},
   "protein": ${isWeightLossMode ? 30 : isWeightGainMode ? 40 : 25},
@@ -473,7 +472,8 @@ export function buildSingleDayPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const isKidsMode = profile.context === "modo_kids";
-  const complexity = profile.recipe_complexity || "equilibrada";
+  // Complexidade padrão: equilibrada (não vem mais do perfil do usuário)
+  const complexity = "equilibrada";
   const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
   const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes criativos e divertidos, sabores suaves, apresentação atraente." : "";

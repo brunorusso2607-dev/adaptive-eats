@@ -468,9 +468,6 @@ export type Database = {
           intolerances: string[] | null
           last_name: string | null
           onboarding_completed: boolean | null
-          recipe_complexity:
-            | Database["public"]["Enums"]["recipe_complexity"]
-            | null
           sex: string | null
           updated_at: string | null
           weight_current: number | null
@@ -493,9 +490,6 @@ export type Database = {
           intolerances?: string[] | null
           last_name?: string | null
           onboarding_completed?: boolean | null
-          recipe_complexity?:
-            | Database["public"]["Enums"]["recipe_complexity"]
-            | null
           sex?: string | null
           updated_at?: string | null
           weight_current?: number | null
@@ -518,9 +512,6 @@ export type Database = {
           intolerances?: string[] | null
           last_name?: string | null
           onboarding_completed?: boolean | null
-          recipe_complexity?:
-            | Database["public"]["Enums"]["recipe_complexity"]
-            | null
           sex?: string | null
           updated_at?: string | null
           weight_current?: number | null

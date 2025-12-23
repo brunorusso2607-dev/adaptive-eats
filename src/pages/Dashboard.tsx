@@ -725,12 +725,12 @@ export default function Dashboard() {
               {/* Home Principal */}
               <div className="space-y-4">
                 {/* Premium Header - Clean, minimal */}
-                <button 
-                  onClick={() => isSubscribed && setShowPlanSheet(true)}
-                  className="flex items-center justify-between w-full py-1 rounded-lg hover:bg-accent/50 transition-colors"
-                  disabled={!isSubscribed}
-                >
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between w-full py-1">
+                  <button 
+                    onClick={() => isSubscribed && setShowPlanSheet(true)}
+                    className="flex items-center gap-2 rounded-lg hover:bg-accent/50 transition-colors px-2 py-1 -ml-2"
+                    disabled={!isSubscribed}
+                  >
                     <span className="text-sm font-normal text-muted-foreground tracking-wide">
                       Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
                     </span>
@@ -740,13 +740,24 @@ export default function Dashboard() {
                         PRO
                       </span>
                     )}
+                  </button>
+                  
+                  <div className="flex items-center gap-2">
+                    {isSubscribed && subscription?.status === "trialing" && (
+                      <span className="text-xs text-muted-foreground">
+                        Trial
+                      </span>
+                    )}
+                    {/* Desktop Profile Button */}
+                    <button
+                      onClick={() => setShowProfileSheet(true)}
+                      className="hidden md:flex items-center justify-center w-9 h-9 rounded-full bg-muted hover:bg-accent transition-colors"
+                      title="Perfil e configurações"
+                    >
+                      <User className="w-4 h-4 text-muted-foreground" />
+                    </button>
                   </div>
-                  {isSubscribed && (
-                    <span className="text-xs text-muted-foreground">
-                      {subscription?.status === "trialing" ? "Trial" : ""}
-                    </span>
-                  )}
-                </button>
+                </div>
 
                 {/* Plan Details Sheet */}
                 {isSubscribed && activePlan && (

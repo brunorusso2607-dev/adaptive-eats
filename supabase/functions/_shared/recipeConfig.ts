@@ -480,45 +480,22 @@ export function buildMealPlanPrompt(
     ? `\nEVITAR (semana anterior): ${previousRecipes.slice(0, 10).join(", ")}` 
     : "";
 
-  return `Mestre Chef ReceitAI. Plano de ${daysCount} dias.
+  return `Chef ReceitAI. Plano ${daysCount} dias, ${mealsPerDay} refeições/dia.
 
-PERFIL: ${SEX_LABELS[profile.sex || ""] || "-"}, ${profile.age || "-"} anos, ${profile.weight_current || "-"}kg
-METAS: ${macros.dailyCalories}kcal/dia, ${macros.dailyProtein}g proteína
-OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
+PERFIL: ${profile.age || "-"}a, ${profile.weight_current || "-"}kg, ${GOAL_LABELS[profile.goal || "manter"]}
 DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
+METAS: ${macros.dailyCalories}kcal, ${macros.dailyProtein}g prot
 RESTRIÇÕES: ${intolerancesStr}
-CONTEXTO: ${CONTEXT_LABELS[profile.context || "individual"]}
 COMPLEXIDADE: ${COMPLEXITY_LABELS[profile.recipe_complexity || "equilibrada"]}${kidsNote}${avoidRecipes}
 
-ESTRUTURA: ${mealsPerDay} refeições (${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")})
+REFEIÇÕES: ${selectedMealTypes.map(m => MEAL_TYPE_LABELS[m]).join(", ")}
 
-REGRAS:
-1. NÃO repita receitas entre dias
-2. NUNCA inclua ingredientes das restrições
-3. Ingredientes comuns em supermercados BR
-4. Macros realistas por receita
+REGRAS: Sem repetir receitas. Sem ingredientes restritos. Max 5 ingredientes/receita. Max 4 passos/receita.
 
-JSON:
-{
-  "days": [{
-    "day_index": 0,
-    "day_name": "Segunda-feira",
-    "meals": [{
-      "meal_type": "cafe_manha",
-      "recipe_name": "Nome",
-      "recipe_calories": 400,
-      "recipe_protein": 20,
-      "recipe_carbs": 50,
-      "recipe_fat": 15,
-      "recipe_prep_time": 15,
-      "recipe_ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
-      "recipe_instructions": ["Passo 1", "Passo 2"],
-      "chef_tip": "Dica culinária"
-    }]
-  }]
-}
+FORMATO JSON COMPACTO:
+{"days":[{"day_index":0,"day_name":"Seg","meals":[{"meal_type":"cafe_manha","recipe_name":"Nome","recipe_calories":400,"recipe_protein":20,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,"recipe_ingredients":[{"item":"ing","quantity":"100","unit":"g"}],"recipe_instructions":["Passo"]}]}]}
 
-Responda APENAS com JSON.`;
+APENAS JSON válido, sem markdown.`;
 }
 
 /**

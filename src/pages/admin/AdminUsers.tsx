@@ -135,11 +135,24 @@ export default function AdminUsers() {
   const fetchUsers = async () => {
     setIsLoading(true);
     try {
+      // Primeiro, buscar todos os user_ids que são admin
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .eq("role", "admin");
+
+      const adminUserIds = (adminRoles || []).map((r) => r.user_id);
+
       let query = supabase
         .from("profiles")
         .select("id, email, created_at, onboarding_completed, dietary_preference, goal, context, age, sex, height, weight_current, weight_goal, activity_level, intolerances", { count: "exact" })
         .order("created_at", { ascending: false })
         .range(currentPage * PAGE_SIZE, (currentPage + 1) * PAGE_SIZE - 1);
+
+      // Excluir admins da listagem de clientes
+      if (adminUserIds.length > 0) {
+        query = query.not("id", "in", `(${adminUserIds.join(",")})`);
+      }
 
       if (searchTerm) {
         query = query.ilike("email", `%${searchTerm}%`);
@@ -149,18 +162,11 @@ export default function AdminUsers() {
 
       if (error) throw error;
 
-      const usersWithRoles = await Promise.all(
-        (data || []).map(async (user) => {
-          const { data: roleData } = await supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", user.id)
-            .eq("role", "admin")
-            .maybeSingle();
-          
-          return { ...user, isAdmin: !!roleData };
-        })
-      );
+      // Clientes não são admins, então isAdmin é sempre false
+      const usersWithRoles = (data || []).map((user) => ({
+        ...user,
+        isAdmin: false,
+      }));
 
       setUsers(usersWithRoles);
       setTotalCount(count || 0);

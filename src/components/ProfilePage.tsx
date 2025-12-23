@@ -18,7 +18,6 @@ type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
   calorie_goal: string | null;
-  recipe_complexity: string | null;
   context: string | null;
   weight_current: number | null;
   weight_goal: number | null;
@@ -76,7 +75,7 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, calorie_goal, recipe_complexity, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
+        .select("dietary_preference, goal, calorie_goal, context, weight_current, weight_goal, height, age, sex, activity_level, intolerances")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -100,7 +99,6 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
         .update({
           dietary_preference: editedProfile.dietary_preference as any,
           goal: editedProfile.goal as any,
-          recipe_complexity: editedProfile.recipe_complexity as any,
           context: editedProfile.context as any,
           weight_current: editedProfile.weight_current ? Number(editedProfile.weight_current) : null,
           weight_goal: editedProfile.weight_goal ? Number(editedProfile.weight_goal) : null,
@@ -300,26 +298,6 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
             </div>
           </div>
 
-          {/* Complexidade */}
-          <div className="space-y-1">
-            <Label className="text-xs">Complexidade das Receitas</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {onboardingOptions?.complexity.map((opt) => (
-                <button
-                  type="button"
-                  key={opt.option_id}
-                  onClick={() => setEditedProfile({ ...editedProfile, recipe_complexity: opt.option_id })}
-                  className={cn(
-                    "p-2 rounded-lg border text-xs transition-all touch-manipulation",
-                    editedProfile.recipe_complexity === opt.option_id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  )}
-                >
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* Contexto */}
           <div className="space-y-1">
             <Label className="text-xs">Contexto</Label>
@@ -489,10 +467,6 @@ export default function ProfilePage({ user, subscription, onLogout }: ProfilePag
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Dieta</p>
               <p className="text-sm font-medium">{getProfileLabel("dietary_preferences", profile.dietary_preference)}</p>
-            </div>
-            <div className="p-2 rounded-lg bg-muted/50">
-              <p className="text-xs text-muted-foreground">Complexidade das receitas</p>
-              <p className="text-sm font-medium">{getProfileLabel("complexity", profile.recipe_complexity)}</p>
             </div>
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Contexto</p>

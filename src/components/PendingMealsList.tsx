@@ -2,6 +2,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Check, UtensilsCrossed, Clock, ChevronDown, Flame } from "lucide-react";
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
+import MealDetailSheet from "./MealDetailSheet";
 import { useMemo, useState } from "react";
 import {
   Collapsible,
@@ -16,6 +17,7 @@ interface PendingMealsListProps {
 
 export default function PendingMealsList({ onStreakRefresh }: PendingMealsListProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [isRecipeSheetOpen, setIsRecipeSheetOpen] = useState(false);
   const {
     pendingMeals,
     isLoading,
@@ -158,6 +160,18 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
               </div>
             </div>
 
+            {/* Link "Visualizar receita" - aparece ANTES do horário da refeição */}
+            {!showButtons && (
+              <div className="flex justify-end">
+                <button
+                  onClick={() => setIsRecipeSheetOpen(true)}
+                  className="text-sm text-primary hover:text-primary/80 font-medium transition-colors"
+                >
+                  Visualizar receita
+                </button>
+              </div>
+            )}
+
             {/* Ações - só aparecem quando o horário da refeição começar */}
             {showButtons && (
               <PendingMealCard
@@ -239,6 +253,13 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
           </CardContent>
         </Card>
       )}
+
+      {/* Sheet de detalhes da receita */}
+      <MealDetailSheet
+        open={isRecipeSheetOpen}
+        onOpenChange={setIsRecipeSheetOpen}
+        meal={nextMeal}
+      />
     </div>
   );
 }

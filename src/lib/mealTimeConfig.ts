@@ -104,6 +104,12 @@ async function fetchMealTimeSettings(forceRefresh = false): Promise<void> {
         };
         labels[item.meal_type] = item.label;
         order.push(item.meal_type);
+        
+        // Adicionar alias "lanche" -> "lanche_tarde" para compatibilidade
+        if (item.meal_type === "lanche_tarde") {
+          ranges["lanche"] = ranges[item.meal_type];
+          labels["lanche"] = item.label;
+        }
       });
 
       cachedTimeRanges = ranges;

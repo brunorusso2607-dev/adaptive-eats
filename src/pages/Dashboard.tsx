@@ -844,7 +844,7 @@ export default function Dashboard() {
                 {/* 3. Próxima Refeição - Ação principal */}
                 <PendingMealsList 
                   onStreakRefresh={gamification.refresh} 
-                  onNavigateToMealPlan={() => setMobileActiveTab("meal-plan")}
+                  onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
                   userProfile={userProfile} 
                 />
 

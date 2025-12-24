@@ -2,26 +2,16 @@ import { useState } from "react";
 import { useMealTimeSettingsAdmin, MealTimeSetting } from "@/hooks/useMealTimeSettings";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Loader2, Pencil, Trash2, Plus, Clock, Save } from "lucide-react";
+import { Loader2, Pencil, Clock, Save } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 
 export default function AdminMealTimes() {
-  const { settings, isLoading, isSaving, updateSetting, createSetting, deleteSetting } = useMealTimeSettingsAdmin();
+  const { settings, isLoading, isSaving, updateSetting } = useMealTimeSettingsAdmin();
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editForm, setEditForm] = useState<Partial<MealTimeSetting>>({});
-  const [showAddDialog, setShowAddDialog] = useState(false);
-  const [newSetting, setNewSetting] = useState({
-    meal_type: "",
-    label: "",
-    start_hour: 0,
-    end_hour: 0,
-    sort_order: 0,
-  });
 
   const formatHour = (hour: number) => {
     const h = Math.floor(hour);
@@ -55,39 +45,6 @@ export default function AdminMealTimes() {
     setEditForm({});
   };
 
-  const handleDelete = async (id: string, label: string) => {
-    if (!confirm(`Tem certeza que deseja excluir "${label}"?`)) return;
-    
-    const success = await deleteSetting(id);
-    if (success) {
-      toast.success("Horário excluído com sucesso!");
-    } else {
-      toast.error("Erro ao excluir horário");
-    }
-  };
-
-  const handleAdd = async () => {
-    if (!newSetting.meal_type || !newSetting.label) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-
-    const success = await createSetting(newSetting);
-    if (success) {
-      toast.success("Horário adicionado com sucesso!");
-      setShowAddDialog(false);
-      setNewSetting({
-        meal_type: "",
-        label: "",
-        start_hour: 0,
-        end_hour: 0,
-        sort_order: settings.length + 1,
-      });
-    } else {
-      toast.error("Erro ao adicionar horário");
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="space-y-6">
@@ -112,98 +69,14 @@ export default function AdminMealTimes() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Clock className="w-6 h-6" />
-            Horário das Refeições
-          </h1>
-          <p className="text-muted-foreground">
-            Configure os horários de cada refeição do dia
-          </p>
-        </div>
-        
-        <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Adicionar Refeição
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Adicionar Nova Refeição</DialogTitle>
-              <DialogDescription>
-                Crie um novo tipo de refeição com seus horários
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="meal_type">Identificador (sem espaços)</Label>
-                <Input
-                  id="meal_type"
-                  placeholder="ex: lanche_noite"
-                  value={newSetting.meal_type}
-                  onChange={(e) => setNewSetting({ ...newSetting, meal_type: e.target.value.toLowerCase().replace(/\s/g, "_") })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="label">Nome exibido</Label>
-                <Input
-                  id="label"
-                  placeholder="ex: Lanche da Noite"
-                  value={newSetting.label}
-                  onChange={(e) => setNewSetting({ ...newSetting, label: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="start_hour">Hora de Início</Label>
-                  <Input
-                    id="start_hour"
-                    type="number"
-                    min={0}
-                    max={24}
-                    step={0.5}
-                    value={newSetting.start_hour}
-                    onChange={(e) => setNewSetting({ ...newSetting, start_hour: parseFloat(e.target.value) })}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="end_hour">Hora de Fim</Label>
-                  <Input
-                    id="end_hour"
-                    type="number"
-                    min={0}
-                    max={24}
-                    step={0.5}
-                    value={newSetting.end_hour}
-                    onChange={(e) => setNewSetting({ ...newSetting, end_hour: parseFloat(e.target.value) })}
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="sort_order">Ordem de exibição</Label>
-                <Input
-                  id="sort_order"
-                  type="number"
-                  min={1}
-                  value={newSetting.sort_order || settings.length + 1}
-                  onChange={(e) => setNewSetting({ ...newSetting, sort_order: parseInt(e.target.value) })}
-                />
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleAdd} disabled={isSaving}>
-                {isSaving && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                Adicionar
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Clock className="w-6 h-6" />
+          Horário das Refeições
+        </h1>
+        <p className="text-muted-foreground">
+          Configure os horários de cada refeição do dia
+        </p>
       </div>
 
       <Card>
@@ -241,7 +114,7 @@ export default function AdminMealTimes() {
                       setting.sort_order
                     )}
                   </TableCell>
-                  <TableCell className="font-mono text-sm">{setting.meal_type}</TableCell>
+                  <TableCell className="font-mono text-sm text-muted-foreground">{setting.meal_type}</TableCell>
                   <TableCell>
                     {editingId === setting.id ? (
                       <Input
@@ -302,23 +175,13 @@ export default function AdminMealTimes() {
                         </Button>
                       </div>
                     ) : (
-                      <div className="flex items-center justify-end gap-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleEdit(setting)}
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => handleDelete(setting.id, setting.label)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => handleEdit(setting)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
                     )}
                   </TableCell>
                 </TableRow>
@@ -333,7 +196,7 @@ export default function AdminMealTimes() {
           <CardTitle>Dicas</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>• O <strong>identificador</strong> é usado internamente e não pode conter espaços (use _ para separar palavras)</p>
+          <p>• O <strong>identificador</strong> é usado internamente pelo sistema</p>
           <p>• O <strong>nome</strong> é o que aparece para os usuários</p>
           <p>• Use valores decimais para horários com minutos (ex: 17.5 = 17:30)</p>
           <p>• A <strong>ordem</strong> define a sequência das refeições no dia</p>

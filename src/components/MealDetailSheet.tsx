@@ -1,4 +1,4 @@
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -41,8 +41,7 @@ const MEAL_LABELS: Record<string, string> = {
   ceia: "Ceia"
 };
 
-const MealDetailSheet = forwardRef<HTMLDivElement, MealDetailSheetProps>(
-  function MealDetailSheet({ open, onOpenChange, meal }, ref) {
+export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetailSheetProps) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
@@ -267,6 +266,4 @@ const MealDetailSheet = forwardRef<HTMLDivElement, MealDetailSheetProps>(
       />
     </>
   );
-});
-
-export default MealDetailSheet;
+}

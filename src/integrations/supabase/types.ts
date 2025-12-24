@@ -376,6 +376,81 @@ export type Database = {
         }
         Relationships: []
       }
+      food_corrections: {
+        Row: {
+          alternative_selected: string | null
+          corrected_calorias: number | null
+          corrected_carboidratos: number | null
+          corrected_gorduras: number | null
+          corrected_item: string
+          corrected_porcao: string | null
+          corrected_proteinas: number | null
+          correction_type: string
+          created_at: string
+          cuisine_origin: string | null
+          dish_context: string | null
+          id: string
+          image_hash: string | null
+          original_calorias: number | null
+          original_carboidratos: number | null
+          original_confianca: string | null
+          original_culinaria: string | null
+          original_gorduras: number | null
+          original_item: string
+          original_porcao: string | null
+          original_proteinas: number | null
+          user_id: string
+        }
+        Insert: {
+          alternative_selected?: string | null
+          corrected_calorias?: number | null
+          corrected_carboidratos?: number | null
+          corrected_gorduras?: number | null
+          corrected_item: string
+          corrected_porcao?: string | null
+          corrected_proteinas?: number | null
+          correction_type?: string
+          created_at?: string
+          cuisine_origin?: string | null
+          dish_context?: string | null
+          id?: string
+          image_hash?: string | null
+          original_calorias?: number | null
+          original_carboidratos?: number | null
+          original_confianca?: string | null
+          original_culinaria?: string | null
+          original_gorduras?: number | null
+          original_item: string
+          original_porcao?: string | null
+          original_proteinas?: number | null
+          user_id: string
+        }
+        Update: {
+          alternative_selected?: string | null
+          corrected_calorias?: number | null
+          corrected_carboidratos?: number | null
+          corrected_gorduras?: number | null
+          corrected_item?: string
+          corrected_porcao?: string | null
+          corrected_proteinas?: number | null
+          correction_type?: string
+          created_at?: string
+          cuisine_origin?: string | null
+          dish_context?: string | null
+          id?: string
+          image_hash?: string | null
+          original_calorias?: number | null
+          original_carboidratos?: number | null
+          original_confianca?: string | null
+          original_culinaria?: string | null
+          original_gorduras?: number | null
+          original_item?: string
+          original_porcao?: string | null
+          original_proteinas?: number | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       foods: {
         Row: {
           calories_per_100g: number

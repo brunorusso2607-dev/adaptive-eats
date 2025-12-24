@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import {
   Sheet,
   SheetContent,
@@ -41,11 +41,8 @@ const MEAL_LABELS: Record<string, string> = {
   ceia: "Ceia"
 };
 
-export default function MealDetailSheet({
-  open,
-  onOpenChange,
-  meal,
-}: MealDetailSheetProps) {
+const MealDetailSheet = forwardRef<HTMLDivElement, MealDetailSheetProps>(
+  function MealDetailSheet({ open, onOpenChange, meal }, ref) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
@@ -80,7 +77,8 @@ export default function MealDetailSheet({
     fat: meal.recipe_fat + localMacros.fat,
   };
 
-  const handleOpenSubstitution = (ingredient: Ingredient) => {
+  const handleOpenSubstitution = (ingredient: Ingredient, e: React.MouseEvent) => {
+    e.stopPropagation();
     setSelectedIngredient({
       item: ingredient.item,
       quantity: ingredient.quantity,
@@ -135,131 +133,140 @@ export default function MealDetailSheet({
   };
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[80vh] p-0">
-        <ScrollArea className="h-full">
-          <div className="p-6 space-y-6">
-            {/* Header */}
-            <div>
-              <Badge className="mb-2 bg-primary text-primary-foreground">
-                {MEAL_LABELS[meal.meal_type] || meal.meal_type}
-              </Badge>
-              <h2 className="font-display text-2xl font-bold text-foreground">
-                {meal.recipe_name}
-              </h2>
-            </div>
+    <>
+      <Sheet open={open} onOpenChange={onOpenChange}>
+        <SheetContent side="bottom" className="h-[80vh] p-0">
+          <ScrollArea className="h-full">
+            <div className="p-6 space-y-6">
+              {/* Header */}
+              <div>
+                <Badge className="mb-2 bg-primary text-primary-foreground">
+                  {MEAL_LABELS[meal.meal_type] || meal.meal_type}
+                </Badge>
+                <h2 className="font-display text-2xl font-bold text-foreground">
+                  {meal.recipe_name}
+                </h2>
+              </div>
 
-            {/* Quick Info */}
-            <div className="flex flex-wrap gap-4">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Clock className="w-4 h-4" />
-                <span>{meal.recipe_prep_time} min</span>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Users className="w-4 h-4" />
-                <span>2 porções</span>
-              </div>
-            </div>
-
-            {/* Nutrition Card */}
-            <Card className="glass-card border-primary/20 overflow-hidden">
-              <div className="gradient-primary px-4 py-2">
-                <h3 className="font-semibold text-primary-foreground text-sm">Informações Nutricionais (por porção)</h3>
-              </div>
-              <CardContent className="p-4">
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-orange-500/20 flex items-center justify-center mb-1">
-                      <Flame className="w-5 h-5 text-orange-500" />
-                    </div>
-                    <p className="text-lg font-bold">{Math.round(currentMacros.calories)}</p>
-                    <p className="text-xs text-muted-foreground">kcal</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-red-500/20 flex items-center justify-center mb-1">
-                      <Beef className="w-5 h-5 text-red-500" />
-                    </div>
-                    <p className="text-lg font-bold">{Math.round(currentMacros.protein * 10) / 10}g</p>
-                    <p className="text-xs text-muted-foreground">Proteína</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center mb-1">
-                      <Wheat className="w-5 h-5 text-amber-500" />
-                    </div>
-                    <p className="text-lg font-bold">{Math.round(currentMacros.carbs * 10) / 10}g</p>
-                    <p className="text-xs text-muted-foreground">Carbs</p>
-                  </div>
-                  <div className="text-center">
-                    <div className="w-10 h-10 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-1">
-                      <span className="text-lg">🧈</span>
-                    </div>
-                    <p className="text-lg font-bold">{Math.round(currentMacros.fat * 10) / 10}g</p>
-                    <p className="text-xs text-muted-foreground">Gordura</p>
-                  </div>
+              {/* Quick Info */}
+              <div className="flex flex-wrap gap-4">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Clock className="w-4 h-4" />
+                  <span>{meal.recipe_prep_time} min</span>
                 </div>
-              </CardContent>
-            </Card>
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Users className="w-4 h-4" />
+                  <span>2 porções</span>
+                </div>
+              </div>
 
-            {/* Ingredients */}
-            <Card className="glass-card">
-              <CardContent className="p-4">
-                <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                  🥗 Ingredientes
-                  <span className="text-xs text-muted-foreground font-normal ml-auto">
-                    Toque para substituir
-                  </span>
-                </h3>
-                <ul className="space-y-2">
-                  {ingredients.map((ingredient, index) => (
-                    <li 
-                      key={index} 
-                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
-                      onClick={() => handleOpenSubstitution(ingredient)}
-                    >
-                      <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                        <CheckCircle className="w-4 h-4 text-primary" />
+              {/* Nutrition Card */}
+              <Card className="glass-card border-primary/20 overflow-hidden">
+                <div className="gradient-primary px-4 py-2">
+                  <h3 className="font-semibold text-primary-foreground text-sm">Informações Nutricionais (por porção)</h3>
+                </div>
+                <CardContent className="p-4">
+                  <div className="grid grid-cols-4 gap-4">
+                    <div className="text-center">
+                      <div className="w-10 h-10 mx-auto rounded-full bg-orange-500/20 flex items-center justify-center mb-1">
+                        <Flame className="w-5 h-5 text-orange-500" />
                       </div>
-                      <span className="flex-1">
-                        <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
-                      </span>
-                      <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
+                      <p className="text-lg font-bold">{Math.round(currentMacros.calories)}</p>
+                      <p className="text-xs text-muted-foreground">kcal</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-10 h-10 mx-auto rounded-full bg-red-500/20 flex items-center justify-center mb-1">
+                        <Beef className="w-5 h-5 text-red-500" />
+                      </div>
+                      <p className="text-lg font-bold">{Math.round(currentMacros.protein * 10) / 10}g</p>
+                      <p className="text-xs text-muted-foreground">Proteína</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center mb-1">
+                        <Wheat className="w-5 h-5 text-amber-500" />
+                      </div>
+                      <p className="text-lg font-bold">{Math.round(currentMacros.carbs * 10) / 10}g</p>
+                      <p className="text-xs text-muted-foreground">Carbs</p>
+                    </div>
+                    <div className="text-center">
+                      <div className="w-10 h-10 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-1">
+                        <span className="text-lg">🧈</span>
+                      </div>
+                      <p className="text-lg font-bold">{Math.round(currentMacros.fat * 10) / 10}g</p>
+                      <p className="text-xs text-muted-foreground">Gordura</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
 
-            {/* Ingredient Substitution Sheet */}
-            <IngredientSubstitutionSheet
-              open={substitutionOpen}
-              onOpenChange={setSubstitutionOpen}
-              originalIngredient={selectedIngredient}
-              onSubstitute={handleSubstitute}
-            />
-
-            {/* Instructions */}
-            {instructions.length > 0 && (
+              {/* Ingredients */}
               <Card className="glass-card">
                 <CardContent className="p-4">
                   <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                    👨‍🍳 Modo de Preparo
+                    🥗 Ingredientes
+                    <span className="text-xs text-muted-foreground font-normal ml-auto">
+                      Toque em <RefreshCw className="w-3 h-3 inline" /> para substituir
+                    </span>
                   </h3>
-                  <ol className="space-y-4">
-                    {instructions.map((instruction, index) => (
-                      <li key={index} className="flex gap-4">
-                        <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
-                          {index + 1}
+                  <ul className="space-y-2">
+                    {ingredients.map((ingredient, index) => (
+                      <li 
+                        key={index} 
+                        className="flex items-center gap-3 p-2 rounded-lg"
+                      >
+                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                          <CheckCircle className="w-4 h-4 text-primary" />
                         </div>
-                        <p className="flex-1 pt-1">{instruction}</p>
+                        <span className="flex-1">
+                          <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
+                        </span>
+                        <button
+                          onClick={(e) => handleOpenSubstitution(ingredient, e)}
+                          className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors active:scale-95"
+                          aria-label={`Substituir ${ingredient.item}`}
+                        >
+                          <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                        </button>
                       </li>
                     ))}
-                  </ol>
+                  </ul>
                 </CardContent>
               </Card>
-            )}
-          </div>
-        </ScrollArea>
-      </SheetContent>
-    </Sheet>
+
+              {/* Instructions */}
+              {instructions.length > 0 && (
+                <Card className="glass-card">
+                  <CardContent className="p-4">
+                    <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+                      👨‍🍳 Modo de Preparo
+                    </h3>
+                    <ol className="space-y-4">
+                      {instructions.map((instruction, index) => (
+                        <li key={index} className="flex gap-4">
+                          <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
+                            {index + 1}
+                          </div>
+                          <p className="flex-1 pt-1">{instruction}</p>
+                        </li>
+                      ))}
+                    </ol>
+                  </CardContent>
+                </Card>
+              )}
+            </div>
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
+
+      {/* Ingredient Substitution Sheet - FORA do Sheet principal para evitar conflito de animação */}
+      <IngredientSubstitutionSheet
+        open={substitutionOpen}
+        onOpenChange={setSubstitutionOpen}
+        originalIngredient={selectedIngredient}
+        onSubstitute={handleSubstitute}
+      />
+    </>
   );
-}
+});
+
+export default MealDetailSheet;

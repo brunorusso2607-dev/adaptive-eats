@@ -199,7 +199,7 @@ export function CompactHealthCircles({
 
       {/* Water Tracker Sheet */}
       <Sheet open={waterSheetOpen} onOpenChange={setWaterSheetOpen}>
-        <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+        <SheetContent side="bottom" className="h-[80vh] p-6">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               <Droplets className="h-5 w-5 text-blue-500" />
@@ -207,7 +207,7 @@ export function CompactHealthCircles({
             </SheetTitle>
           </SheetHeader>
           
-          <div className="overflow-y-auto h-[calc(85vh-80px)]">
+          <div className="overflow-y-auto h-[calc(80vh-100px)]">
             <WaterTracker />
           </div>
         </SheetContent>
@@ -215,7 +215,7 @@ export function CompactHealthCircles({
 
       {/* Weight Sheet */}
       <Sheet open={weightSheetOpen} onOpenChange={setWeightSheetOpen}>
-        <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl px-5">
+        <SheetContent side="bottom" className="h-[80vh] p-6">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               {userGoal === "ganhar_peso" 

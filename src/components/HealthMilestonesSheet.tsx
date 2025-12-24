@@ -61,7 +61,7 @@ export default function HealthMilestonesSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[95vh] rounded-t-2xl">
+      <SheetContent side="bottom" className="h-[85vh] p-6">
         <SheetHeader className="pb-4">
           <SheetTitle className="text-lg font-semibold text-foreground">
             Seu Progresso

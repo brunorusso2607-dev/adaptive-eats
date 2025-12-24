@@ -106,7 +106,7 @@ export function MealSymptomHistorySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[90vh] flex flex-col">
+      <SheetContent side="bottom" className="h-[85vh] flex flex-col p-6">
         <SheetHeader className="pb-4 border-b">
           <SheetTitle className="flex items-center gap-2">
             <AlertTriangle className="h-5 w-5 text-orange-500" />

@@ -89,7 +89,7 @@ export function SymptomLogSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+      <SheetContent side="bottom" className="h-[80vh] p-6">
         <SheetHeader className="mb-4">
           <SheetTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-orange-500" />

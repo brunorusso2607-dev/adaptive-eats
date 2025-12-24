@@ -55,7 +55,7 @@ export default function MealDetailSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-2xl p-0">
+      <SheetContent side="bottom" className="h-[80vh] p-0">
         <ScrollArea className="h-full">
           <div className="p-6 space-y-6">
             {/* Header */}

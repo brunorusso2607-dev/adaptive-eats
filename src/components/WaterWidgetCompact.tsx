@@ -64,7 +64,7 @@ export function WaterWidgetCompact() {
         </button>
       </SheetTrigger>
       
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+      <SheetContent side="bottom" className="h-[80vh] p-6">
         <SheetHeader className="mb-4">
           <SheetTitle className="flex items-center gap-2">
             <Droplets className="h-5 w-5 text-blue-500" />

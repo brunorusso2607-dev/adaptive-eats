@@ -157,10 +157,10 @@ export default function RecipeCategorySheet({
         <SheetContent 
           side={step === "ingredients" ? "top" : "bottom"} 
           className={cn(
-            "px-0 flex flex-col",
+            "px-6 flex flex-col",
             step === "ingredients" 
-              ? "h-[100dvh] rounded-b-3xl pt-safe overflow-hidden" 
-              : "h-[85vh] rounded-t-3xl overflow-hidden"
+              ? "h-[95dvh] pt-safe overflow-hidden" 
+              : "h-[80vh] overflow-hidden"
           )}
         >
           {/* Wrapper para conteúdo */}

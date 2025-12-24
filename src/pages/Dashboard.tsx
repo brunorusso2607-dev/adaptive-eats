@@ -842,7 +842,11 @@ export default function Dashboard() {
                 <SafetyScoreCard />
 
                 {/* 3. Próxima Refeição - Ação principal */}
-                <PendingMealsList onStreakRefresh={gamification.refresh} userProfile={userProfile} />
+                <PendingMealsList 
+                  onStreakRefresh={gamification.refresh} 
+                  onNavigateToMealPlan={() => setMobileActiveTab("meal-plan")}
+                  userProfile={userProfile} 
+                />
 
                 {/* 4. Rastreador de Sintomas - Feedback */}
                 <SymptomTrackerCard 

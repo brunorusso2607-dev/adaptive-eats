@@ -226,7 +226,11 @@ export default function NextMealCard(_props: NextMealCardProps) {
 
   const styleKey = statusToStyleKey[mealStatus];
   const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.on_time;
-  const mealLabel = MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type;
+  
+  // Normalizar lanche -> lanche_tarde para buscar dados corretos
+  const normalizedMealType = nextMeal.meal_type === "lanche" ? "lanche_tarde" : nextMeal.meal_type;
+  const mealLabel = MEAL_LABELS[normalizedMealType] || MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type;
+  const timeRange = MEAL_TIME_RANGES[normalizedMealType] || MEAL_TIME_RANGES[nextMeal.meal_type];
 
   return (
     <Card 
@@ -277,13 +281,14 @@ export default function NextMealCard(_props: NextMealCardProps) {
                 <span className="text-xs text-muted-foreground">
                   {mealLabel}
                 </span>
-                <span className="text-xs text-muted-foreground">•</span>
-                <span className="text-xs text-muted-foreground">
-                  {MEAL_TIME_RANGES[nextMeal.meal_type] 
-                    ? `${MEAL_TIME_RANGES[nextMeal.meal_type].start}:00 às ${MEAL_TIME_RANGES[nextMeal.meal_type].end}:00`
-                    : ""
-                  }
-                </span>
+                {timeRange && (
+                  <>
+                    <span className="text-xs text-muted-foreground">•</span>
+                    <span className="text-xs text-muted-foreground">
+                      {`${String(timeRange.start).padStart(2, '0')}:00 às ${String(timeRange.end).padStart(2, '0')}:00`}
+                    </span>
+                  </>
+                )}
               </div>
               <h3 className="font-display font-semibold text-foreground truncate">
                 {nextMeal.recipe_name}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Check, 
@@ -10,7 +11,8 @@ import {
   AlertTriangle,
   UtensilsCrossed,
   Loader2,
-  Timer
+  Timer,
+  ChevronRight
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
@@ -48,6 +50,7 @@ const statusToStyleKey: Record<MealStatus, string> = {
 };
 
 export default function NextMealCard({ userProfile }: NextMealCardProps) {
+  const navigate = useNavigate();
   const {
     nextMeal,
     isLoading,
@@ -197,11 +200,27 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
   // No meal plan state - show message for debugging (can be removed later)
   if (!hasMealPlan) {
     return (
-      <Card className="glass-card border-border">
+      <Card 
+        className="glass-card border-border cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]"
+        onClick={() => navigate("/dashboard?tab=plano")}
+      >
         <CardContent className="p-4">
-          <p className="text-sm text-muted-foreground text-center">
-            Nenhum plano de refeições ativo
-          </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center">
+                <UtensilsCrossed className="w-5 h-5 text-muted-foreground" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-foreground">
+                  Nenhum plano de refeições ativo
+                </p>
+                <p className="text-xs text-primary flex items-center gap-1">
+                  Crie seu primeiro plano alimentar
+                  <ChevronRight className="w-3 h-3" />
+                </p>
+              </div>
+            </div>
+          </div>
         </CardContent>
       </Card>
     );

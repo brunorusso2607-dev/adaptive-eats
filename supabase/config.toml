@@ -47,3 +47,6 @@ verify_jwt = false
 
 [functions.analyze-label-photo]
 verify_jwt = false
+
+[functions.send-feedback-reminder]
+verify_jwt = false

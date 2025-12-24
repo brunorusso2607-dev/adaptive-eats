@@ -28,7 +28,7 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     tag: 'water-reminder',
-    data: { type: 'water-reminder' }
+    data: { type: 'water-reminder', url: '/dashboard' }
   };
   
   if (event.data) {
@@ -43,14 +43,11 @@ self.addEventListener('push', (event) => {
     body: data.body,
     icon: data.icon || '/icons/icon-192x192.png',
     badge: data.badge || '/icons/icon-72x72.png',
-    tag: data.tag || 'water-reminder',
-    requireInteraction: false,
+    tag: data.tag || 'notification',
+    requireInteraction: data.requireInteraction || false,
     vibrate: [200, 100, 200],
-    data: data.data,
-    actions: [
-      { action: 'add-water', title: '💧 +250ml' },
-      { action: 'dismiss', title: 'Dispensar' }
-    ]
+    data: data.data || { url: '/dashboard' },
+    actions: data.actions || []
   };
   
   event.waitUntil(
@@ -60,18 +57,17 @@ self.addEventListener('push', (event) => {
 
 // Notification click event
 self.addEventListener('notificationclick', (event) => {
-  console.log('[SW] Notification clicked:', event.action);
+  console.log('[SW] Notification clicked:', event.action, event.notification.data);
   
   event.notification.close();
   
   const action = event.action;
-  const notificationData = event.notification.data;
+  const notificationData = event.notification.data || {};
+  const targetUrl = notificationData.url || '/dashboard';
   
   if (action === 'add-water') {
-    // Open app with action to add water
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-        // If app is already open, focus it and send message
         for (const client of clientList) {
           if (client.url.includes('/dashboard') && 'focus' in client) {
             client.focus();
@@ -79,14 +75,27 @@ self.addEventListener('notificationclick', (event) => {
             return;
           }
         }
-        // Otherwise open new window
         if (clients.openWindow) {
           return clients.openWindow('/dashboard?action=add-water');
         }
       })
     );
+  } else if (action === 'open-feedback' || notificationData.type === 'meal-feedback') {
+    event.waitUntil(
+      clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+        for (const client of clientList) {
+          if ('focus' in client) {
+            client.focus();
+            client.postMessage({ type: 'OPEN_FEEDBACK' });
+            return;
+          }
+        }
+        if (clients.openWindow) {
+          return clients.openWindow('/dashboard?action=open-feedback');
+        }
+      })
+    );
   } else {
-    // Default: just open the app
     event.waitUntil(
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         for (const client of clientList) {
@@ -95,7 +104,7 @@ self.addEventListener('notificationclick', (event) => {
           }
         }
         if (clients.openWindow) {
-          return clients.openWindow('/dashboard');
+          return clients.openWindow(targetUrl);
         }
       })
     );

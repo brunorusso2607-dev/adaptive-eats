@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
-import { useNextMeal, MEAL_LABELS, MEAL_TIME_RANGES, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
+import { useNextMeal, getMealLabels, getMealTimeRanges, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -229,8 +229,10 @@ export default function NextMealCard(_props: NextMealCardProps) {
   
   // Normalizar lanche -> lanche_tarde para buscar dados corretos
   const normalizedMealType = nextMeal.meal_type === "lanche" ? "lanche_tarde" : nextMeal.meal_type;
-  const mealLabel = MEAL_LABELS[normalizedMealType] || MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type;
-  const timeRange = MEAL_TIME_RANGES[normalizedMealType] || MEAL_TIME_RANGES[nextMeal.meal_type];
+  const labels = getMealLabels();
+  const timeRanges = getMealTimeRanges();
+  const mealLabel = labels[normalizedMealType] || labels[nextMeal.meal_type] || nextMeal.meal_type;
+  const timeRange = timeRanges[normalizedMealType] || timeRanges[nextMeal.meal_type];
 
   return (
     <Card 

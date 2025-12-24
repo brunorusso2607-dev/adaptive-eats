@@ -28,12 +28,14 @@ export type NextMealData = {
   completed_at: string | null;
 };
 
-// Re-exportar para compatibilidade
-export const MEAL_TIME_RANGES = getMealTimeRangesSync();
-export const MEAL_LABELS = getMealLabelsSync();
+// Re-exportar funções para compatibilidade - SEMPRE usar as funções sync para valores atualizados
+export function getMealLabels() {
+  return getMealLabelsSync();
+}
 
-// Ordem das refeições - usar do banco, com fallback para 'lanche' se existir
-const MEAL_ORDER = getMealOrderSync();
+export function getMealTimeRanges() {
+  return getMealTimeRangesSync();
+}
 
 // Mapear tipos antigos para o novo padrão
 function normalizeMealType(mealType: string): string {

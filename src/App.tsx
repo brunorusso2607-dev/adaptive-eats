@@ -32,6 +32,7 @@ import AdminOnboarding from "./pages/admin/AdminOnboarding";
 import AdminMealTimes from "./pages/admin/AdminMealTimes";
 import AdminFeatureFlags from "./pages/admin/AdminFeatureFlags";
 import AdminIntoleranceMappings from "./pages/admin/AdminIntoleranceMappings";
+import AdminFoodCorrections from "./pages/admin/AdminFoodCorrections";
 
 const queryClient = new QueryClient();
 
@@ -75,6 +76,7 @@ function AppContent() {
           <Route path="meal-times" element={<AdminMealTimes />} />
           <Route path="feature-flags" element={<AdminFeatureFlags />} />
           <Route path="intolerance-mappings" element={<AdminIntoleranceMappings />} />
+          <Route path="food-corrections" element={<AdminFoodCorrections />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

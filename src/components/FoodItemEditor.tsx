@@ -26,6 +26,10 @@ type FoodItem = {
   corrigido_manualmente?: boolean;
   // Track if auto-correction was applied
   correcao_aplicada?: boolean;
+  // Track correction match type (exact or fuzzy)
+  correcao_tipo?: "exact" | "fuzzy";
+  // Track similarity percentage for fuzzy matches
+  correcao_similaridade?: number;
 };
 
 interface FoodItemEditorProps {
@@ -198,8 +202,12 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
                 </span>
               )}
               {food.correcao_aplicada && !food.corrigido_manualmente && (
-                <span className="text-xs px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-600">
-                  ✓ corrigido
+                <span className={`text-xs px-1.5 py-0.5 rounded ${
+                  food.correcao_tipo === "fuzzy" 
+                    ? "bg-cyan-500/20 text-cyan-600" 
+                    : "bg-teal-500/20 text-teal-600"
+                }`}>
+                  ✓ corrigido{food.correcao_tipo === "fuzzy" && food.correcao_similaridade ? ` (${food.correcao_similaridade}%)` : ""}
                 </span>
               )}
             </p>

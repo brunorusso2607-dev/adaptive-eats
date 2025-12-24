@@ -29,6 +29,8 @@ type FoodItem = {
   metodo_preparo_provavel?: string;
   corrigido_manualmente?: boolean;
   correcao_aplicada?: boolean; // Auto-correction was applied from saved corrections
+  correcao_tipo?: "exact" | "fuzzy"; // Type of correction match
+  correcao_similaridade?: number; // Similarity percentage for fuzzy matches
 };
 
 type IntoleranceAlert = {
@@ -116,9 +118,20 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
   const [perfilAplicado, setPerfilAplicado] = useState<PerfilUsuarioAplicado | null>(null);
   const [correcoesAplicadas, setCorrecoesAplicadas] = useState<{
-    quantidade: number;
-    itens: string[];
-    mensagem: string;
+    total: number;
+    exatas?: number;
+    fuzzy?: number;
+    detalhes?: string[];
+    matches?: Array<{
+      original: string;
+      matched: string;
+      similarity: number;
+      matchType: string;
+    }>;
+    // Legacy fields for backwards compatibility
+    quantidade?: number;
+    itens?: string[];
+    mensagem?: string;
   } | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<{
@@ -322,9 +335,22 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
         setCorrecoesAplicadas(data.correcoes_aplicadas || null);
         
         // Show toast about corrections applied
-        if (data.correcoes_aplicadas?.quantidade > 0) {
-          toast.success(`${data.correcoes_aplicadas.quantidade} correção(ões) aplicada(s) automaticamente!`, {
-            description: "Baseado em feedbacks anteriores",
+        const corrections = data.correcoes_aplicadas;
+        const totalCorrections = corrections?.total || corrections?.quantidade || 0;
+        
+        if (totalCorrections > 0) {
+          const fuzzyCount = corrections?.fuzzy || 0;
+          const exactCount = corrections?.exatas || 0;
+          
+          let description = "Baseado em feedbacks anteriores";
+          if (fuzzyCount > 0 && exactCount > 0) {
+            description = `${exactCount} exata(s), ${fuzzyCount} similar(es)`;
+          } else if (fuzzyCount > 0) {
+            description = `${fuzzyCount} correspondência(s) por similaridade`;
+          }
+          
+          toast.success(`${totalCorrections} correção(ões) aplicada(s) automaticamente!`, {
+            description,
             duration: 4000,
           });
         } else {

@@ -92,6 +92,143 @@ const INTOLERANCE_MAP: Record<string, string> = {
   'ovos': 'ovo'
 };
 
+// ========== FUZZY MATCHING UTILITIES ==========
+
+// Normalize text for comparison (remove accents, lowercase, trim)
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .trim()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "") // Remove accents
+    .replace(/[^a-z0-9\s]/g, "") // Keep only alphanumeric and spaces
+    .replace(/\s+/g, " "); // Normalize spaces
+}
+
+// Calculate Levenshtein distance between two strings
+function levenshteinDistance(str1: string, str2: string): number {
+  const m = str1.length;
+  const n = str2.length;
+  
+  // Create matrix
+  const dp: number[][] = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0));
+  
+  // Initialize first row and column
+  for (let i = 0; i <= m; i++) dp[i][0] = i;
+  for (let j = 0; j <= n; j++) dp[0][j] = j;
+  
+  // Fill the matrix
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      if (str1[i - 1] === str2[j - 1]) {
+        dp[i][j] = dp[i - 1][j - 1];
+      } else {
+        dp[i][j] = 1 + Math.min(
+          dp[i - 1][j],     // deletion
+          dp[i][j - 1],     // insertion
+          dp[i - 1][j - 1]  // substitution
+        );
+      }
+    }
+  }
+  
+  return dp[m][n];
+}
+
+// Calculate similarity score (0-1, where 1 is identical)
+function calculateSimilarity(str1: string, str2: string): number {
+  const normalized1 = normalizeText(str1);
+  const normalized2 = normalizeText(str2);
+  
+  // Exact match after normalization
+  if (normalized1 === normalized2) return 1;
+  
+  // Check if one contains the other (substring match)
+  if (normalized1.includes(normalized2) || normalized2.includes(normalized1)) {
+    const minLen = Math.min(normalized1.length, normalized2.length);
+    const maxLen = Math.max(normalized1.length, normalized2.length);
+    return 0.8 + (minLen / maxLen) * 0.2; // Score between 0.8 and 1.0
+  }
+  
+  // Word-based matching (check if key words match)
+  const words1 = normalized1.split(" ").filter(w => w.length > 2);
+  const words2 = normalized2.split(" ").filter(w => w.length > 2);
+  
+  if (words1.length > 0 && words2.length > 0) {
+    let matchingWords = 0;
+    for (const w1 of words1) {
+      for (const w2 of words2) {
+        if (w1 === w2 || w1.includes(w2) || w2.includes(w1)) {
+          matchingWords++;
+          break;
+        }
+      }
+    }
+    const wordMatchRatio = matchingWords / Math.max(words1.length, words2.length);
+    if (wordMatchRatio >= 0.5) {
+      return 0.7 + wordMatchRatio * 0.2; // Score between 0.7 and 0.9
+    }
+  }
+  
+  // Levenshtein-based similarity
+  const maxLen = Math.max(normalized1.length, normalized2.length);
+  if (maxLen === 0) return 1;
+  
+  const distance = levenshteinDistance(normalized1, normalized2);
+  return 1 - distance / maxLen;
+}
+
+// Find best matching correction with fuzzy matching
+function findBestCorrection(
+  foodItem: string,
+  correctionMap: Map<string, {
+    correctedItem: string;
+    calorias: number | null;
+    proteinas: number | null;
+    carboidratos: number | null;
+    gorduras: number | null;
+    porcao: string | null;
+    culinaria: string | null;
+  }>,
+  threshold: number = 0.75 // Minimum similarity score to consider a match
+): { correction: typeof correctionMap extends Map<string, infer V> ? V : never; matchType: "exact" | "fuzzy"; similarity: number; matchedKey: string } | null {
+  const normalizedFood = normalizeText(foodItem);
+  
+  // First, try exact match
+  for (const [key, correction] of correctionMap.entries()) {
+    const normalizedKey = normalizeText(key);
+    if (normalizedFood === normalizedKey) {
+      return { correction, matchType: "exact", similarity: 1.0, matchedKey: key };
+    }
+  }
+  
+  // Then, try fuzzy matching
+  let bestMatch: { key: string; correction: typeof correctionMap extends Map<string, infer V> ? V : never; similarity: number } | null = null;
+  
+  for (const [key, correction] of correctionMap.entries()) {
+    const similarity = calculateSimilarity(foodItem, key);
+    
+    if (similarity >= threshold) {
+      if (!bestMatch || similarity > bestMatch.similarity) {
+        bestMatch = { key, correction, similarity };
+      }
+    }
+  }
+  
+  if (bestMatch) {
+    return { 
+      correction: bestMatch.correction, 
+      matchType: "fuzzy", 
+      similarity: bestMatch.similarity,
+      matchedKey: bestMatch.key 
+    };
+  }
+  
+  return null;
+}
+
+// ========== END FUZZY MATCHING UTILITIES ==========
+
 // Calcular TMB (Taxa Metabólica Basal) usando fórmula de Mifflin-St Jeor
 function calculateTMB(weight: number, height: number, age: number, sex: string): number {
   if (sex === 'masculino') {
@@ -468,21 +605,35 @@ RULES:
       analysis.alertas_intolerancia = [];
     }
 
-    // ========== APPLY SAVED CORRECTIONS AUTOMATICALLY ==========
+    // ========== APPLY SAVED CORRECTIONS AUTOMATICALLY WITH FUZZY MATCHING ==========
     let correctionsApplied = 0;
     const appliedCorrectionsList: string[] = [];
+    const fuzzyMatchDetails: Array<{ original: string; matched: string; similarity: number; matchType: string }> = [];
 
     if (analysis.alimentos && correctionMap.size > 0) {
       for (let i = 0; i < analysis.alimentos.length; i++) {
         const food = analysis.alimentos[i];
-        const foodKey = food.item?.toLowerCase().trim() || "";
+        const foodItem = food.item || "";
         
-        // Check if we have a correction for this food item
-        const correction = correctionMap.get(foodKey);
-        if (correction) {
+        // Use fuzzy matching to find the best correction
+        const matchResult = findBestCorrection(foodItem, correctionMap, 0.75);
+        
+        if (matchResult) {
+          const { correction, matchType, similarity, matchedKey } = matchResult;
+          
           logStep("Applying saved correction", { 
             original: food.item, 
-            corrected: correction.correctedItem 
+            corrected: correction.correctedItem,
+            matchType,
+            similarity: Math.round(similarity * 100) + "%",
+            matchedKey
+          });
+          
+          fuzzyMatchDetails.push({
+            original: food.item,
+            matched: matchedKey,
+            similarity: Math.round(similarity * 100),
+            matchType
           });
           
           // Update the food item with corrected values
@@ -491,6 +642,8 @@ RULES:
             item: correction.correctedItem,
             item_original_ai: food.item, // Keep the original AI identification
             correcao_aplicada: true,
+            correcao_tipo: matchType, // Indicate if it was exact or fuzzy match
+            correcao_similaridade: Math.round(similarity * 100), // Similarity percentage
             porcao_estimada: correction.porcao || food.porcao_estimada,
             calorias: correction.calorias ?? food.calorias,
             macros: {
@@ -499,11 +652,12 @@ RULES:
               gorduras: correction.gorduras ?? food.macros?.gorduras ?? 0
             },
             culinaria_origem: correction.culinaria || food.culinaria_origem,
-            confianca_identificacao: "alta" // Corrections are trusted
+            confianca_identificacao: matchType === "exact" ? "alta" : "media" // Fuzzy matches get medium confidence
           };
           
           correctionsApplied++;
-          appliedCorrectionsList.push(`${food.item} → ${correction.correctedItem}`);
+          const matchLabel = matchType === "fuzzy" ? ` (${Math.round(similarity * 100)}% similar)` : "";
+          appliedCorrectionsList.push(`${food.item} → ${correction.correctedItem}${matchLabel}`);
         }
       }
       
@@ -529,11 +683,25 @@ RULES:
         };
         
         logStep("Totals recalculated after corrections", { 
-          correctionsApplied, 
+          correctionsApplied,
+          exactMatches: fuzzyMatchDetails.filter(d => d.matchType === "exact").length,
+          fuzzyMatches: fuzzyMatchDetails.filter(d => d.matchType === "fuzzy").length,
           appliedCorrectionsList,
+          fuzzyMatchDetails,
           newTotals: analysis.total_geral 
         });
       }
+    }
+    
+    // Add correction metadata to the response
+    if (correctionsApplied > 0) {
+      analysis.correcoes_aplicadas = {
+        total: correctionsApplied,
+        exatas: fuzzyMatchDetails.filter(d => d.matchType === "exact").length,
+        fuzzy: fuzzyMatchDetails.filter(d => d.matchType === "fuzzy").length,
+        detalhes: appliedCorrectionsList,
+        matches: fuzzyMatchDetails
+      };
     }
 
     // Check for error response from AI (not food detected)

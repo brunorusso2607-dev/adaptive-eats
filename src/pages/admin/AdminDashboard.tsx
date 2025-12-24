@@ -67,6 +67,7 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
       { path: "/admin/ai-error-logs", label: "Erros de IA", icon: AlertTriangle },
       { path: "/admin/analysis-feedback", label: "Feedbacks de Análise", icon: MessageSquare },
+      { path: "/admin/food-corrections", label: "Correções de Alimentos", icon: Wrench },
     ],
   },
   {

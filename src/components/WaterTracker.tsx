@@ -1,11 +1,13 @@
-import { useState, useEffect } from "react";
-import { Droplets, Plus, Settings, Trash2, Bell, BellOff, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { Droplets, Plus, Settings, Trash2, Bell, BellOff, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
 import { useWaterReminder } from "@/hooks/useWaterReminder";
+import { useWaterAchievements } from "@/hooks/useWaterAchievements";
 import { WaterSettingsSheet } from "./WaterSettingsSheet";
 import { WaterHistoryChart } from "./WaterHistoryChart";
+import { WaterAchievements } from "./WaterAchievements";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -30,6 +32,9 @@ import {
 const QUICK_AMOUNTS = [150, 200, 250, 300, 500];
 
 export function WaterTracker() {
+  // Water achievements hook
+  const { unlockedAchievements, hydrationStreak, refresh: refreshAchievements } = useWaterAchievements();
+
   const {
     settings,
     todayConsumption,
@@ -40,7 +45,7 @@ export function WaterTracker() {
     addWater,
     removeWater,
     updateSettings,
-  } = useWaterConsumption();
+  } = useWaterConsumption(refreshAchievements);
 
   const { notificationPermission, requestPermission } = useWaterReminder({
     settings,
@@ -213,6 +218,14 @@ export function WaterTracker() {
               <p className="text-sm text-muted-foreground mt-2">
                 Faltam {remaining}ml para sua meta
               </p>
+            )}
+
+            {/* Streak indicator */}
+            {hydrationStreak > 0 && (
+              <div className="flex items-center gap-1.5 mt-2 text-xs text-orange-600">
+                <Trophy className="h-3.5 w-3.5" />
+                <span>{hydrationStreak} dias na meta</span>
+              </div>
             )}
           </div>
 

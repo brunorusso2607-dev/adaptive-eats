@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { ArrowLeft, Droplets, TrendingUp, Target, Flame, Calendar } from "lucide-react";
+import { ArrowLeft, Droplets, TrendingUp, Target, Flame, Calendar, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useWaterHistory } from "@/hooks/useWaterHistory";
+import { WaterAchievements } from "./WaterAchievements";
 import { cn } from "@/lib/utils";
 import {
   BarChart,
@@ -283,6 +284,9 @@ export function WaterHistoryChart({ onBack }: WaterHistoryChartProps) {
               </div>
             </CardContent>
           </Card>
+
+          {/* Achievements Section */}
+          <WaterAchievements />
         </TabsContent>
       </Tabs>
     </div>

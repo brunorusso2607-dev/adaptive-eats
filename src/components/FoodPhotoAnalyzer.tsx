@@ -153,10 +153,50 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     };
   }, []);
 
+  // Save food correction to database
+  const saveFoodCorrection = useCallback(async (
+    originalFood: FoodItem, 
+    correctedFood: FoodItem, 
+    correctionType: 'manual' | 'alternative_selected',
+    alternativeSelected?: string
+  ) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      await supabase.from('food_corrections').insert({
+        user_id: user.id,
+        original_item: originalFood.item,
+        original_porcao: originalFood.porcao_estimada,
+        original_calorias: originalFood.calorias,
+        original_proteinas: originalFood.macros.proteinas,
+        original_carboidratos: originalFood.macros.carboidratos,
+        original_gorduras: originalFood.macros.gorduras,
+        original_confianca: originalFood.confianca_identificacao,
+        original_culinaria: originalFood.culinaria_origem,
+        corrected_item: correctedFood.item,
+        corrected_porcao: correctedFood.porcao_estimada,
+        corrected_calorias: correctedFood.calorias,
+        corrected_proteinas: correctedFood.macros.proteinas,
+        corrected_carboidratos: correctedFood.macros.carboidratos,
+        corrected_gorduras: correctedFood.macros.gorduras,
+        correction_type: correctionType,
+        alternative_selected: alternativeSelected,
+        dish_context: foodAnalysis?.prato_identificado?.nome,
+        cuisine_origin: correctedFood.culinaria_origem,
+      });
+      
+      console.log('Food correction saved successfully');
+    } catch (error) {
+      console.error('Error saving food correction:', error);
+    }
+  }, [foodAnalysis?.prato_identificado?.nome]);
+
   // Handle food item edit
   const handleFoodItemSave = useCallback((index: number, updatedFood: FoodItem) => {
     if (!foodAnalysis) return;
     
+    const originalFood = foodAnalysis.alimentos[index];
     const newAlimentos = [...foodAnalysis.alimentos];
     newAlimentos[index] = updatedFood;
     
@@ -183,24 +223,42 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       });
     }
 
-    toast.success("Alimento corrigido com sucesso!");
-  }, [foodAnalysis, metaDiaria, recalculateTotals]);
+    // Save correction to database
+    saveFoodCorrection(originalFood, updatedFood, 'manual');
+
+    toast.success("Alimento corrigido e salvo!");
+  }, [foodAnalysis, metaDiaria, recalculateTotals, saveFoodCorrection]);
 
   // Handle selecting alternative food name
   const handleSelectAlternative = useCallback((index: number, alternativeName: string) => {
     if (!foodAnalysis) return;
     
-    const food = foodAnalysis.alimentos[index];
+    const originalFood = foodAnalysis.alimentos[index];
     const updatedFood: FoodItem = {
-      ...food,
+      ...originalFood,
       item: alternativeName,
       corrigido_manualmente: true,
-      confianca_identificacao: "alta", // User confirmed
-      alternativas_possiveis: food.alternativas_possiveis?.filter(alt => alt !== alternativeName),
+      confianca_identificacao: "alta",
+      alternativas_possiveis: originalFood.alternativas_possiveis?.filter(alt => alt !== alternativeName),
     };
     
-    handleFoodItemSave(index, updatedFood);
-  }, [foodAnalysis, handleFoodItemSave]);
+    // Save to database with alternative_selected type
+    saveFoodCorrection(originalFood, updatedFood, 'alternative_selected', alternativeName);
+    
+    // Update local state
+    const newAlimentos = [...foodAnalysis.alimentos];
+    newAlimentos[index] = updatedFood;
+    
+    const newTotals = recalculateTotals(newAlimentos);
+    
+    setFoodAnalysis({
+      ...foodAnalysis,
+      alimentos: newAlimentos,
+      total_geral: newTotals,
+    });
+
+    toast.success("Alternativa selecionada e salva!");
+  }, [foodAnalysis, saveFoodCorrection, recalculateTotals]);
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;

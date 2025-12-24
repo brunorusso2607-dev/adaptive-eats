@@ -56,15 +56,15 @@ function calculateSimilarity(str1: string, str2: string): number {
   return 1 - distance / maxLen;
 }
 
-// Call Gemini AI for ingredient data
+// Call Google Gemini AI directly for ingredient data
 async function getIngredientFromAI(
   ingredientName: string, 
   context?: string
 ): Promise<any> {
-  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  const GOOGLE_AI_API_KEY = Deno.env.get('GOOGLE_AI_API_KEY');
   
-  if (!LOVABLE_API_KEY) {
-    throw new Error('LOVABLE_API_KEY not configured');
+  if (!GOOGLE_AI_API_KEY) {
+    throw new Error('GOOGLE_AI_API_KEY not configured');
   }
 
   const prompt = `Você é um banco de dados nutricional preciso. Retorne APENAS JSON válido, sem markdown.
@@ -94,31 +94,39 @@ IMPORTANTE:
 - Use valores realistas baseados em tabelas nutricionais conhecidas (TACO, USDA)
 - Se não tiver certeza, use confidence menor que 0.7`;
 
-  logStep('Calling Gemini AI', { ingredientName, context });
+  logStep('Calling Google Gemini AI directly', { ingredientName, context });
 
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: 'Você é um especialista em nutrição. Responda apenas com JSON válido.' },
-        { role: 'user', content: prompt }
-      ],
-    }),
-  });
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+    {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.3,
+          maxOutputTokens: 1024,
+        }
+      }),
+    }
+  );
 
   if (!response.ok) {
     const errorText = await response.text();
-    logStep('AI Error', { status: response.status, error: errorText });
-    throw new Error(`AI request failed: ${response.status}`);
+    logStep('Google AI Error', { status: response.status, error: errorText });
+    throw new Error(`Google AI request failed: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
   
   if (!content) {
     throw new Error('No content in AI response');

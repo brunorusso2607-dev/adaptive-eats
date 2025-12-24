@@ -11,7 +11,7 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-import { toast } from "sonner";
+
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
@@ -85,14 +85,8 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
   // No meal plan state
   if (!hasMealPlan) {
     const handleNavigate = () => {
-      console.log("[PendingMealsList] Card clicked!");
-      toast.info("Navegando para criar plano...");
       if (onNavigateToMealPlan) {
-        console.log("[PendingMealsList] Calling onNavigateToMealPlan");
         onNavigateToMealPlan();
-      } else {
-        console.log("[PendingMealsList] onNavigateToMealPlan is undefined!");
-        toast.error("Navegação não disponível");
       }
     };
 

@@ -1,9 +1,11 @@
-import { AlertCircle, Bell, TrendingUp } from "lucide-react";
+import { useState } from "react";
+import { AlertCircle, Bell, TrendingUp, History } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { SymptomIcon } from "./SymptomIcon";
 import { SymptomCorrelationChart } from "./SymptomCorrelationChart";
+import { MealSymptomHistorySheet } from "./MealSymptomHistorySheet";
 import { cn } from "@/lib/utils";
 
 interface SymptomTrackerCardProps {
@@ -18,6 +20,7 @@ const severityColors = {
 };
 
 export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrackerCardProps) {
+  const [historyOpen, setHistoryOpen] = useState(false);
   const { recentLogs, isLoading, symptomTypes } = useSymptomTracker();
 
   // Calculate stats
@@ -148,8 +151,24 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
           </div>
         )}
 
-        {/* Correlation Chart */}
-        <SymptomCorrelationChart />
+        {/* Correlation Chart - clickable to open history */}
+        <div 
+          className="cursor-pointer hover:opacity-80 transition-opacity"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <SymptomCorrelationChart />
+        </div>
+
+        {/* View History Button */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-full"
+          onClick={() => setHistoryOpen(true)}
+        >
+          <History className="h-4 w-4 mr-2" />
+          Ver histórico completo
+        </Button>
 
         {/* Empty state */}
         {recentLogs.length === 0 && pendingCount === 0 && (
@@ -159,6 +178,12 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
             <p className="text-xs">Nenhum sintoma registrado recentemente</p>
           </div>
         )}
+
+        {/* History Sheet */}
+        <MealSymptomHistorySheet
+          open={historyOpen}
+          onOpenChange={setHistoryOpen}
+        />
       </CardContent>
     </Card>
   );

@@ -262,33 +262,98 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
     return foodCorrelations.filter((f) => f.percentage >= 30);
   }, [foodCorrelations]);
 
-  // Check if food is related to user's intolerances
-  const isIntoleranceFood = useCallback((food: string) => {
+  // Comprehensive mapping of intolerances to related ingredients
+  const INTOLERANCE_INGREDIENTS: Record<string, string[]> = {
+    lactose: [
+      "leite", "queijo", "iogurte", "manteiga", "creme de leite", "nata", 
+      "requeijão", "cream cheese", "ricota", "mussarela", "muçarela", "parmesão", 
+      "gorgonzola", "provolone", "coalho", "cottage", "mascarpone", "brie", 
+      "camembert", "emmental", "gruyère", "gouda", "cheddar", "feta",
+      "chantilly", "doce de leite", "sorvete", "milk", "cheese", "butter",
+      "whey", "soro de leite", "lactose", "caseína", "caseinato"
+    ],
+    gluten: [
+      "trigo", "farinha de trigo", "pão", "macarrão", "massa", "biscoito", 
+      "bolacha", "bolo", "cerveja", "cevada", "centeio", "malte", "semolina",
+      "bulgur", "cuscuz", "couscous", "seitan", "wheat", "bread", "pasta",
+      "torrada", "croissant", "pizza", "empada", "empanada", "lasanha"
+    ],
+    ovo: [
+      "ovo", "ovos", "gema", "clara", "egg", "albumina", "maionese", "mayonnaise"
+    ],
+    soja: [
+      "soja", "tofu", "edamame", "missô", "miso", "shoyu", "molho de soja",
+      "lecitina de soja", "proteína de soja", "soy"
+    ],
+    amendoim: [
+      "amendoim", "pasta de amendoim", "peanut", "paçoca"
+    ],
+    castanhas: [
+      "castanha", "noz", "nozes", "amêndoa", "avelã", "pistache", "macadâmia",
+      "pecã", "cashew", "almond", "walnut", "hazelnut"
+    ],
+    frutos_do_mar: [
+      "camarão", "lagosta", "caranguejo", "siri", "mexilhão", "ostra", 
+      "lula", "polvo", "marisco", "shrimp", "lobster", "crab"
+    ],
+    peixe: [
+      "peixe", "salmão", "atum", "bacalhau", "tilápia", "sardinha", "anchova",
+      "fish", "salmon", "tuna"
+    ]
+  };
+
+  // Keywords that neutralize suspicion (e.g., "sem lactose" means it's lactose-free)
+  const SAFE_KEYWORDS: Record<string, string[]> = {
+    lactose: ["sem lactose", "zero lactose", "lactose free", "vegano", "vegan", "vegetal"],
+    gluten: ["sem glúten", "gluten free", "zero glúten"]
+  };
+
+  // Check if food has safe keywords that neutralize the intolerance concern
+  const hasSafeKeyword = useCallback((food: string, intolerance: string): boolean => {
     const foodLower = food.toLowerCase();
+    const safeWords = SAFE_KEYWORDS[intolerance.toLowerCase()] || [];
+    return safeWords.some(safe => foodLower.includes(safe));
+  }, []);
+
+  // Check if food is related to user's intolerances (intelligent matching)
+  const isIntoleranceFood = useCallback((food: string): boolean => {
+    const foodLower = food.toLowerCase();
+    
     return userProfile.intolerances.some(intolerance => {
       const intLower = intolerance.toLowerCase();
-      // Check for lactose-related foods
-      if (intLower === "lactose") {
-        const lactoseFoods = ["leite", "queijo", "iogurte", "manteiga", "creme", "nata", "requeijão", "cream cheese", "ricota", "mussarela", "parmesão", "gorgonzola", "provolone", "coalho"];
-        return lactoseFoods.some(lf => foodLower.includes(lf));
+      
+      // First check if food has safe keywords that neutralize concern
+      if (hasSafeKeyword(food, intLower)) {
+        return false;
       }
-      // Check for gluten-related foods
-      if (intLower === "gluten" || intLower === "glúten") {
-        const glutenFoods = ["trigo", "farinha", "pão", "macarrão", "massa", "biscoito", "bolacha", "bolo", "cerveja", "aveia", "cevada", "centeio"];
-        return glutenFoods.some(gf => foodLower.includes(gf));
-      }
-      // Generic check
-      return foodLower.includes(intLower);
+      
+      // Get the list of related ingredients for this intolerance
+      const relatedIngredients = INTOLERANCE_INGREDIENTS[intLower] || [];
+      
+      // Check if the food matches any related ingredient
+      const matchesIntolerance = relatedIngredients.some(ingredient => 
+        foodLower.includes(ingredient.toLowerCase())
+      );
+      
+      // Also do a generic check for the intolerance name itself
+      const genericMatch = foodLower.includes(intLower) && !hasSafeKeyword(food, intLower);
+      
+      return matchesIntolerance || genericMatch;
     });
-  }, [userProfile.intolerances]);
+  }, [userProfile.intolerances, hasSafeKeyword]);
 
   // Check if food is excluded by user
-  const isExcludedFood = useCallback((food: string) => {
+  const isExcludedFood = useCallback((food: string): boolean => {
     const foodLower = food.toLowerCase();
     return userProfile.excludedIngredients.some(excluded => 
       foodLower.includes(excluded.toLowerCase())
     );
   }, [userProfile.excludedIngredients]);
+  
+  // Check if food is truly suspect (related to intolerances OR manually excluded)
+  const isTrulySuspect = useCallback((food: string): boolean => {
+    return isIntoleranceFood(food) || isExcludedFood(food);
+  }, [isIntoleranceFood, isExcludedFood]);
 
   return {
     meals,
@@ -300,5 +365,6 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
     refetch: fetchHistory,
     isIntoleranceFood,
     isExcludedFood,
+    isTrulySuspect,
   };
 }

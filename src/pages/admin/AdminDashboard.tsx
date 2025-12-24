@@ -78,14 +78,15 @@ const mainMenuItems: SubMenuItem[] = [
         label: "Usuários", 
         icon: Users,
       },
-      { 
-        label: "Páginas", 
-        icon: FileText,
-        subItems: [
-          { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
-          { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
-        ],
-      },
+        { 
+          label: "Páginas", 
+          icon: FileText,
+          subItems: [
+            { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
+            { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
+            { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
+          ],
+        },
       { 
         label: "Integrações", 
         icon: Plug,

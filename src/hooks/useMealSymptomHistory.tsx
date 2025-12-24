@@ -41,6 +41,8 @@ export interface SymptomHistoryFilters {
 export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
   const [meals, setMeals] = useState<MealWithSymptoms[]>([]);
   const [userProfile, setUserProfile] = useState<UserProfile>({ intolerances: [], excludedIngredients: [] });
+  const [intoleranceMappings, setIntoleranceMappings] = useState<Record<string, string[]>>({});
+  const [safeKeywords, setSafeKeywords] = useState<Record<string, string[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,18 +58,50 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
         return;
       }
 
-      // Fetch user profile for intolerances
-      const { data: profile } = await supabase
-        .from("profiles")
-        .select("intolerances, excluded_ingredients")
-        .eq("id", session.user.id)
-        .single();
+      // Fetch user profile, intolerance mappings, and safe keywords in parallel
+      const [profileResult, mappingsResult, keywordsResult] = await Promise.all([
+        supabase
+          .from("profiles")
+          .select("intolerances, excluded_ingredients")
+          .eq("id", session.user.id)
+          .single(),
+        supabase
+          .from("intolerance_mappings")
+          .select("intolerance_key, ingredient"),
+        supabase
+          .from("intolerance_safe_keywords")
+          .select("intolerance_key, keyword"),
+      ]);
 
-      if (profile) {
+      if (profileResult.data) {
         setUserProfile({
-          intolerances: profile.intolerances || [],
-          excludedIngredients: profile.excluded_ingredients || [],
+          intolerances: profileResult.data.intolerances || [],
+          excludedIngredients: profileResult.data.excluded_ingredients || [],
         });
+      }
+
+      // Build intolerance mappings dictionary
+      if (mappingsResult.data) {
+        const mappingsDict: Record<string, string[]> = {};
+        for (const mapping of mappingsResult.data) {
+          if (!mappingsDict[mapping.intolerance_key]) {
+            mappingsDict[mapping.intolerance_key] = [];
+          }
+          mappingsDict[mapping.intolerance_key].push(mapping.ingredient.toLowerCase());
+        }
+        setIntoleranceMappings(mappingsDict);
+      }
+
+      // Build safe keywords dictionary
+      if (keywordsResult.data) {
+        const keywordsDict: Record<string, string[]> = {};
+        for (const kw of keywordsResult.data) {
+          if (!keywordsDict[kw.intolerance_key]) {
+            keywordsDict[kw.intolerance_key] = [];
+          }
+          keywordsDict[kw.intolerance_key].push(kw.keyword.toLowerCase());
+        }
+        setSafeKeywords(keywordsDict);
       }
 
       // Calculate date range
@@ -262,144 +296,12 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
     return foodCorrelations.filter((f) => f.percentage >= 30);
   }, [foodCorrelations]);
 
-  // Comprehensive mapping of intolerances to related ingredients
-  const INTOLERANCE_INGREDIENTS: Record<string, string[]> = {
-    lactose: [
-      "leite", "queijo", "iogurte", "manteiga", "creme de leite", "nata", 
-      "requeijão", "cream cheese", "ricota", "mussarela", "muçarela", "parmesão", 
-      "gorgonzola", "provolone", "coalho", "cottage", "mascarpone", "brie", 
-      "camembert", "emmental", "gruyère", "gouda", "cheddar", "feta",
-      "chantilly", "doce de leite", "sorvete", "milk", "cheese", "butter",
-      "whey", "soro de leite", "lactose", "caseína", "caseinato", "kefir",
-      "coalhada", "petit suisse", "leite condensado", "molho branco", "bechamel"
-    ],
-    gluten: [
-      "trigo", "farinha de trigo", "pão", "macarrão", "massa", "biscoito", 
-      "bolacha", "bolo", "cerveja", "cevada", "centeio", "malte", "semolina",
-      "bulgur", "cuscuz", "couscous", "seitan", "wheat", "bread", "pasta",
-      "torrada", "croissant", "pizza", "empada", "empanada", "lasanha",
-      "aveia", "oat", "espelta", "kamut", "triticale", "farinha", "panqueca",
-      "waffle", "pretzel", "bagel", "brioche", "focaccia", "ciabatta"
-    ],
-    ovo: [
-      "ovo", "ovos", "gema", "clara", "egg", "albumina", "maionese", "mayonnaise",
-      "omelete", "omelette", "fritada", "quiche", "suflê", "merengue", "pavlova"
-    ],
-    soja: [
-      "soja", "tofu", "edamame", "missô", "miso", "shoyu", "molho de soja",
-      "lecitina de soja", "proteína de soja", "soy", "tempeh", "natto",
-      "leite de soja", "óleo de soja"
-    ],
-    amendoim: [
-      "amendoim", "pasta de amendoim", "peanut", "paçoca", "pé de moleque",
-      "crocante de amendoim"
-    ],
-    castanhas: [
-      "castanha", "noz", "nozes", "amêndoa", "avelã", "pistache", "macadâmia",
-      "pecã", "cashew", "almond", "walnut", "hazelnut", "castanha de caju",
-      "castanha do pará", "pine nut", "pinhão"
-    ],
-    frutos_do_mar: [
-      "camarão", "lagosta", "caranguejo", "siri", "mexilhão", "ostra", 
-      "lula", "polvo", "marisco", "shrimp", "lobster", "crab", "vieira",
-      "sururu", "vôngole", "mariscos"
-    ],
-    peixe: [
-      "peixe", "salmão", "atum", "bacalhau", "tilápia", "sardinha", "anchova",
-      "fish", "salmon", "tuna", "truta", "robalo", "linguado", "pescada",
-      "merluza", "tambaqui", "pintado", "dourado", "cavala"
-    ],
-    frutose: [
-      "mel", "honey", "agave", "xarope de milho", "corn syrup", "hfcs",
-      "maçã", "apple", "pera", "pear", "manga", "mango", "melancia", "watermelon",
-      "uva", "grape", "cereja", "cherry", "figo", "fig", "tâmara", "date",
-      "suco de fruta", "fruit juice", "néctar", "geleia", "compota",
-      "xarope", "calda", "açúcar invertido"
-    ],
-    fodmap: [
-      "alho", "garlic", "cebola", "onion", "alho-poró", "leek", "cebolinha",
-      "shallot", "trigo", "wheat", "centeio", "rye", "cevada", "barley",
-      "feijão", "bean", "lentilha", "lentil", "grão de bico", "chickpea",
-      "ervilha", "pea", "maçã", "apple", "pera", "pear", "manga", "mango",
-      "melancia", "watermelon", "abacate", "avocado", "couve-flor", "cauliflower",
-      "cogumelo", "mushroom", "mel", "honey", "leite", "milk", "iogurte",
-      "sorvete", "ice cream", "alcachofra", "artichoke", "aspargo", "asparagus",
-      "beterraba", "beet", "repolho", "cabbage", "brócolis", "broccoli"
-    ],
-    histamina: [
-      "queijo curado", "aged cheese", "vinho", "wine", "cerveja", "beer",
-      "vinagre", "vinegar", "picles", "pickle", "chucrute", "sauerkraut",
-      "conserva", "fermentado", "fermented", "embutido", "salame", "salami",
-      "presunto", "ham", "bacon", "linguiça", "sausage", "atum", "tuna",
-      "sardinha", "anchova", "anchovy", "cavala", "mackerel", "arenque", "herring",
-      "frutos do mar", "seafood", "tomate", "tomato", "espinafre", "spinach",
-      "berinjela", "eggplant", "abacate", "avocado", "morango", "strawberry",
-      "banana", "kiwi", "abacaxi", "pineapple", "mamão", "papaya", "citrus",
-      "laranja", "orange", "limão", "lemon", "chocolate", "cacau", "cacao",
-      "nozes", "walnut", "castanha", "amendoim", "peanut"
-    ],
-    cafeina: [
-      "café", "coffee", "chá preto", "black tea", "chá verde", "green tea",
-      "chá mate", "mate", "energético", "energy drink", "guaraná", "cola",
-      "chocolate", "cacau", "cacao", "espresso", "cappuccino", "latte"
-    ],
-    sulfito: [
-      "vinho", "wine", "cerveja", "beer", "sidra", "cider", "vinagre", "vinegar",
-      "fruta seca", "dried fruit", "uva passa", "raisin", "damasco seco",
-      "dried apricot", "camarão", "shrimp", "batata", "potato", "molho",
-      "mostarda", "mustard", "conserva", "pickled"
-    ],
-    sorbitol: [
-      "maçã", "apple", "pera", "pear", "pêssego", "peach", "ameixa", "plum",
-      "cereja", "cherry", "damasco", "apricot", "chiclete", "gum",
-      "bala sem açúcar", "sugar-free candy", "adoçante", "sweetener"
-    ],
-    salicilato: [
-      "maçã", "apple", "damasco", "apricot", "mirtilo", "blueberry",
-      "cereja", "cherry", "uva", "grape", "laranja", "orange", "pêssego", "peach",
-      "ameixa", "plum", "morango", "strawberry", "tomate", "tomato",
-      "pepino", "cucumber", "pimentão", "pepper", "brócolis", "broccoli",
-      "abobrinha", "zucchini", "mel", "honey", "hortelã", "mint",
-      "orégano", "oregano", "alecrim", "rosemary", "tomilho", "thyme",
-      "curry", "páprica", "paprika", "cominho", "cumin", "canela", "cinnamon"
-    ],
-    milho: [
-      "milho", "corn", "fubá", "polenta", "canjica", "pipoca", "popcorn",
-      "amido de milho", "corn starch", "xarope de milho", "corn syrup",
-      "óleo de milho", "corn oil", "farinha de milho", "tortilha", "tortilla",
-      "nachos", "tacos", "cuscuz", "pamonha"
-    ],
-    niquel: [
-      "chocolate", "cacau", "cacao", "aveia", "oat", "castanha", "nut",
-      "amendoim", "peanut", "soja", "soy", "feijão", "bean", "lentilha", "lentil",
-      "ervilha", "pea", "espinafre", "spinach", "tomate", "tomato",
-      "alcachofra", "artichoke", "aspargo", "asparagus", "couve", "kale",
-      "brócolis", "broccoli", "grão integral", "whole grain", "centeio", "rye"
-    ]
-  };
-
-  // Keywords that neutralize suspicion (e.g., "sem lactose" means it's lactose-free)
-  const SAFE_KEYWORDS: Record<string, string[]> = {
-    lactose: ["sem lactose", "zero lactose", "lactose free", "vegano", "vegan", "vegetal", "plant-based"],
-    gluten: ["sem glúten", "gluten free", "zero glúten", "gluten-free"],
-    ovo: ["sem ovo", "egg free", "egg-free", "vegano", "vegan"],
-    soja: ["sem soja", "soy free", "soy-free"],
-    amendoim: ["sem amendoim", "peanut free", "peanut-free"],
-    castanhas: ["sem castanhas", "nut free", "nut-free", "sem nozes"],
-    frutose: ["sem frutose", "fructose free", "baixo fodmap", "low fodmap"],
-    fodmap: ["low fodmap", "baixo fodmap", "fodmap friendly"],
-    histamina: ["baixa histamina", "low histamine", "histamine free"],
-    cafeina: ["descafeinado", "decaf", "sem cafeína", "caffeine free"],
-    sulfito: ["sem sulfito", "sulfite free", "orgânico", "organic"],
-    milho: ["sem milho", "corn free", "corn-free"]
-  };
-
   // Check if food has safe keywords that neutralize the intolerance concern
   const hasSafeKeyword = useCallback((food: string, intolerance: string): boolean => {
     const foodLower = food.toLowerCase();
-    const safeWords = SAFE_KEYWORDS[intolerance.toLowerCase()] || [];
+    const safeWords = safeKeywords[intolerance.toLowerCase()] || [];
     return safeWords.some(safe => foodLower.includes(safe));
-  }, []);
+  }, [safeKeywords]);
 
   // Check if food is related to user's intolerances (intelligent matching)
   const isIntoleranceFood = useCallback((food: string): boolean => {
@@ -413,12 +315,12 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
         return false;
       }
       
-      // Get the list of related ingredients for this intolerance
-      const relatedIngredients = INTOLERANCE_INGREDIENTS[intLower] || [];
+      // Get the list of related ingredients for this intolerance from DB
+      const relatedIngredients = intoleranceMappings[intLower] || [];
       
       // Check if the food matches any related ingredient
       const matchesIntolerance = relatedIngredients.some(ingredient => 
-        foodLower.includes(ingredient.toLowerCase())
+        foodLower.includes(ingredient)
       );
       
       // Also do a generic check for the intolerance name itself
@@ -426,7 +328,7 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
       
       return matchesIntolerance || genericMatch;
     });
-  }, [userProfile.intolerances, hasSafeKeyword]);
+  }, [userProfile.intolerances, hasSafeKeyword, intoleranceMappings]);
 
   // Check if food is excluded by user
   const isExcludedFood = useCallback((food: string): boolean => {

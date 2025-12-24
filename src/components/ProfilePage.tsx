@@ -446,7 +446,10 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
     return (
       <div className="space-y-6">
         {/* Botão Editar */}
-        <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+        <Button 
+          className="w-full bg-primary text-primary-foreground hover:bg-[#D3D3D3] hover:text-foreground" 
+          onClick={() => setIsEditing(true)}
+        >
           <Pencil className="w-4 h-4 mr-2" />
           Editar dados
         </Button>
@@ -612,8 +615,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
 
         {/* Logout */}
         <Button 
-          variant="outline" 
-          className="w-full" 
+          className="w-full bg-primary text-primary-foreground hover:bg-[#D3D3D3] hover:text-foreground" 
           onClick={onLogout}
         >
           <LogOut className="w-4 h-4 mr-2" />

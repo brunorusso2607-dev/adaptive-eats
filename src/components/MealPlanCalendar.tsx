@@ -457,15 +457,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                         </div>
                         {!isPastMeal && (
                           <div className="flex items-center gap-1 shrink-0">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-8 h-8 sm:w-10 sm:h-10"
+                            <button
                               title="Gerar nova receita"
                               onClick={(e) => openRegenerateDialog(meal, mealType, e)}
+                              className="p-1 transition-colors"
                             >
-                              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-primary transition-colors" />
-                            </Button>
+                              <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-primary transition-colors stroke-[1.5]" />
+                            </button>
                             <FavoriteButton
                               isFavorite={meal.is_favorite}
                               onClick={() => onToggleFavorite(meal.id)}

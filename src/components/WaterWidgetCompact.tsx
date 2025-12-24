@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Droplets } from "lucide-react";
+import { Droplets, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
 import { WaterTracker } from "@/components/WaterTracker";
@@ -13,62 +13,94 @@ import {
 
 export function WaterWidgetCompact() {
   const [open, setOpen] = useState(false);
-  const { totalToday, settings, percentage, isLoading } = useWaterConsumption();
+  const { totalToday, settings, percentage, isLoading, addWater } = useWaterConsumption();
 
   const isGoalReached = percentage >= 100;
+  const cappedPercentage = Math.min(percentage, 100);
+
+  const handleQuickAdd = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await addWater(250);
+  };
 
   return (
-    <Sheet open={open} onOpenChange={setOpen}>
-      <SheetTrigger asChild>
-        <button
-          className={cn(
-            "relative flex items-center gap-1.5 px-2.5 py-1.5 rounded-full",
-            "bg-blue-500/10 hover:bg-blue-500/20 transition-colors",
-            "border border-blue-500/20",
-            isGoalReached && "bg-green-500/10 border-green-500/20 hover:bg-green-500/20"
-          )}
-        >
-          <Droplets 
+    <div className="flex items-center gap-1">
+      {/* Quick add button */}
+      <button
+        onClick={handleQuickAdd}
+        disabled={isLoading}
+        className={cn(
+          "flex items-center justify-center w-7 h-7 rounded-full",
+          "bg-blue-500/10 hover:bg-blue-500/20 transition-colors",
+          "border border-blue-500/20",
+          isGoalReached && "bg-green-500/10 border-green-500/20 hover:bg-green-500/20"
+        )}
+      >
+        <Plus className={cn(
+          "h-3.5 w-3.5",
+          isGoalReached ? "text-green-500" : "text-blue-500"
+        )} />
+      </button>
+
+      {/* Progress indicator - opens full tracker */}
+      <Sheet open={open} onOpenChange={setOpen}>
+        <SheetTrigger asChild>
+          <button
             className={cn(
-              "h-4 w-4",
-              isGoalReached ? "text-green-500" : "text-blue-500"
-            )} 
-          />
-          
-          {/* Mini progress bar */}
-          <div className="relative w-8 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div 
-              className={cn(
-                "absolute left-0 top-0 h-full rounded-full transition-all duration-300",
-                isGoalReached ? "bg-green-500" : "bg-blue-500"
-              )}
-              style={{ width: `${percentage}%` }}
-            />
-          </div>
-          
-          <span 
-            className={cn(
-              "text-xs font-medium",
-              isGoalReached ? "text-green-600" : "text-blue-600"
+              "relative flex items-center justify-center w-8 h-8 rounded-full",
+              "bg-blue-500/10 hover:bg-blue-500/20 transition-colors",
+              isGoalReached && "bg-green-500/10 hover:bg-green-500/20"
             )}
           >
-            {isLoading ? "..." : `${Math.round(percentage)}%`}
-          </span>
-        </button>
-      </SheetTrigger>
-      
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
-        <SheetHeader className="mb-4">
-          <SheetTitle className="flex items-center gap-2">
-            <Droplets className="h-5 w-5 text-blue-500" />
-            Hidratação
-          </SheetTitle>
-        </SheetHeader>
+            {/* Circular progress */}
+            <svg className="w-8 h-8 -rotate-90" viewBox="0 0 32 32">
+              <circle
+                cx="16"
+                cy="16"
+                r="13"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+                className="text-muted/30"
+              />
+              <circle
+                cx="16"
+                cy="16"
+                r="13"
+                fill="none"
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeDasharray={`${cappedPercentage * 0.817} 100`}
+                className={cn(
+                  "transition-all duration-300",
+                  isGoalReached ? "stroke-green-500" : "stroke-blue-500"
+                )}
+              />
+            </svg>
+            
+            {/* Icon in center */}
+            <Droplets 
+              className={cn(
+                "absolute h-3.5 w-3.5",
+                isGoalReached ? "text-green-500" : "text-blue-500"
+              )} 
+            />
+          </button>
+        </SheetTrigger>
         
-        <div className="overflow-y-auto h-[calc(85vh-80px)]">
-          <WaterTracker />
-        </div>
-      </SheetContent>
-    </Sheet>
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
+          <SheetHeader className="mb-4">
+            <SheetTitle className="flex items-center gap-2">
+              <Droplets className="h-5 w-5 text-blue-500" />
+              Hidratação
+            </SheetTitle>
+          </SheetHeader>
+          
+          <div className="overflow-y-auto h-[calc(85vh-80px)]">
+            <WaterTracker />
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
   );
 }

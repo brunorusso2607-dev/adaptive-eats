@@ -222,27 +222,34 @@ export function useNextMeal() {
         return;
       }
 
+      // DEBUG: Log das refeições antes da ordenação
+      console.log("[useNextMeal] ANTES ordenação - meals:", meals.map(m => ({ 
+        type: m.meal_type, 
+        name: m.recipe_name.substring(0, 25)
+      })));
+
       // Ordenar as refeições do dia pela ordem canônica (usando normalização)
-      // Isso garante que cafe_manha vem antes de almoco, que vem antes de lanche, etc.
+      // cafe_manha=0, almoco=1, lanche/lanche_tarde=2, jantar=3, ceia=4
       const sortedMeals = [...meals].sort((a, b) => {
         const indexA = getCanonicalIndex(a.meal_type);
         const indexB = getCanonicalIndex(b.meal_type);
+        console.log(`[useNextMeal] Comparando: ${a.meal_type}(${indexA}) vs ${b.meal_type}(${indexB})`);
         return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
       });
       
-      console.log("[useNextMeal] sortedMeals:", sortedMeals.map(m => ({ 
+      console.log("[useNextMeal] DEPOIS ordenação - sortedMeals:", sortedMeals.map(m => ({ 
         type: m.meal_type, 
         idx: getCanonicalIndex(m.meal_type), 
         completed: !!m.completed_at,
-        name: m.recipe_name.substring(0, 20)
+        name: m.recipe_name.substring(0, 25)
       })));
 
       // Pegar a primeira refeição não completada do dia (na ordem correta)
-      // Isso sempre mostra cafe_manha primeiro, depois almoco, etc.
       let nextMealData: NextMealData | null = null;
       
       for (const meal of sortedMeals) {
         if (!meal.completed_at) {
+          console.log("[useNextMeal] Selecionado como próxima refeição:", meal.meal_type, meal.recipe_name.substring(0, 25));
           nextMealData = {
             ...meal,
             recipe_ingredients: meal.recipe_ingredients as Ingredient[],

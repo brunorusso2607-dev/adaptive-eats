@@ -222,49 +222,33 @@ export function useNextMeal() {
         return;
       }
 
-      // Determinar qual refeição mostrar baseado no horário atual
-      const currentMealType = getCurrentMealType();
-      const currentMealIndex = getCanonicalIndex(currentMealType);
-      
-      console.log("[useNextMeal] currentMealType:", currentMealType, "currentMealIndex:", currentMealIndex);
-
-      // Procurar a próxima refeição não completada (apenas atual ou futura)
-      let nextMealData: NextMealData | null = null;
-
       // Ordenar as refeições do dia pela ordem canônica (usando normalização)
+      // Isso garante que cafe_manha vem antes de almoco, que vem antes de lanche, etc.
       const sortedMeals = [...meals].sort((a, b) => {
         const indexA = getCanonicalIndex(a.meal_type);
         const indexB = getCanonicalIndex(b.meal_type);
         return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
       });
       
-      console.log("[useNextMeal] sortedMeals:", sortedMeals.map(m => ({ type: m.meal_type, idx: getCanonicalIndex(m.meal_type), completed: !!m.completed_at })));
+      console.log("[useNextMeal] sortedMeals:", sortedMeals.map(m => ({ 
+        type: m.meal_type, 
+        idx: getCanonicalIndex(m.meal_type), 
+        completed: !!m.completed_at,
+        name: m.recipe_name.substring(0, 20)
+      })));
 
-      // Buscar a primeira refeição não completada a partir do horário atual
+      // Pegar a primeira refeição não completada do dia (na ordem correta)
+      // Isso sempre mostra cafe_manha primeiro, depois almoco, etc.
+      let nextMealData: NextMealData | null = null;
+      
       for (const meal of sortedMeals) {
-        const mealIndex = getCanonicalIndex(meal.meal_type);
-        // Considerar refeições do horário atual ou futuras
-        if (mealIndex >= currentMealIndex && !meal.completed_at) {
+        if (!meal.completed_at) {
           nextMealData = {
             ...meal,
             recipe_ingredients: meal.recipe_ingredients as Ingredient[],
             recipe_instructions: meal.recipe_instructions as string[],
           };
           break;
-        }
-      }
-      
-      // Se não encontrou nenhuma a partir do horário atual, pegar a primeira não completada
-      if (!nextMealData) {
-        for (const meal of sortedMeals) {
-          if (!meal.completed_at) {
-            nextMealData = {
-              ...meal,
-              recipe_ingredients: meal.recipe_ingredients as Ingredient[],
-              recipe_instructions: meal.recipe_instructions as string[],
-            };
-            break;
-          }
         }
       }
 

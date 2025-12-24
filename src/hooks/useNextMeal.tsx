@@ -35,10 +35,10 @@ export const MEAL_LABELS = getMealLabelsSync();
 // Ordem das refeições - usar do banco, com fallback para 'lanche' se existir
 const MEAL_ORDER = getMealOrderSync();
 
-// Mapear lanche <-> lanche_tarde para compatibilidade
+// Mapear tipos antigos para o novo padrão
 function normalizeMealType(mealType: string): string {
+  // "lanche" antigo -> "lanche_tarde" novo
   if (mealType === "lanche") return "lanche_tarde";
-  if (mealType === "lanche_tarde") return "lanche_tarde";
   return mealType;
 }
 
@@ -63,24 +63,19 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-// Índices fixos para ordenação (independente do banco)
-// IMPORTANTE: "lanche" no banco deve ter índice 2 (entre almoco e jantar)
+// Índices fixos para ordenação - usa lanche_tarde como padrão
 const MEAL_SORT_PRIORITY: Record<string, number> = {
   "cafe_manha": 0,
   "almoco": 1,
-  "lanche": 2,
   "lanche_tarde": 2,
   "jantar": 3,
   "ceia": 4,
 };
 
 function getMealSortIndex(mealType: string): number {
-  // Retorna o índice diretamente - "lanche" já está mapeado para 2
   const index = MEAL_SORT_PRIORITY[mealType];
   if (index !== undefined) return index;
-  
-  // Fallback para tipos desconhecidos
-  console.warn("[getMealSortIndex] Tipo de refeição desconhecido:", mealType);
+  console.warn("[getMealSortIndex] Tipo desconhecido:", mealType);
   return 999;
 }
 
@@ -163,8 +158,7 @@ export function getMinutesUntilStart(mealType: string): number {
 }
 
 export function useNextMeal() {
-  console.log("🔄 [useNextMeal] Hook inicializado - VERSÃO 4 (fix ordenação)");
-  
+  console.log("🔄 [useNextMeal] Hook v5 - nomenclatura corrigida");
   const [nextMeal, setNextMeal] = useState<NextMealData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMealPlan, setHasMealPlan] = useState(false);

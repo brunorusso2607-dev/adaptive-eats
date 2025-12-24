@@ -19,6 +19,7 @@ import AdminAnalytics from "./pages/admin/AdminAnalytics";
 import AdminPlans from "./pages/admin/AdminPlans";
 import AdminPromptSimulator from "./pages/admin/AdminPromptSimulator";
 import AdminAIErrorLogs from "./pages/admin/AdminAIErrorLogs";
+import AdminAnalysisFeedback from "./pages/admin/AdminAnalysisFeedback";
 import AdminPixels from "./pages/admin/AdminPixels";
 import AdminAppearance from "./pages/admin/AdminAppearance";
 import AdminWebhooks from "./pages/admin/AdminWebhooks";
@@ -54,6 +55,7 @@ function AppContent() {
           <Route path="users" element={<AdminUsers />} />
           <Route path="analytics" element={<AdminAnalytics />} />
           <Route path="ai-error-logs" element={<AdminAIErrorLogs />} />
+          <Route path="analysis-feedback" element={<AdminAnalysisFeedback />} />
           <Route path="plans" element={<AdminPlans />} />
           <Route path="prompt-simulator" element={<AdminPromptSimulator />} />
           <Route path="pixels" element={<AdminPixels />} />

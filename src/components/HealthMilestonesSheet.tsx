@@ -6,15 +6,18 @@ import {
 } from "@/components/ui/sheet";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Flame, Target, TrendingUp, Check, Lock } from "lucide-react";
+import { Flame, Target, TrendingUp, Check, Lock, UtensilsCrossed, Droplets } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { HEALTH_MILESTONES, type AchievementKey } from "@/hooks/useGamification";
+import { WATER_ACHIEVEMENTS, type WaterAchievementKey } from "@/hooks/useWaterAchievements";
 
 type HealthMilestonesSheetProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   level: number;
   totalXp: number;
+  mealXp?: number;
+  waterXp?: number;
   xpInLevel: number;
   xpForNextLevel: number;
   levelProgress: number;
@@ -25,6 +28,7 @@ type HealthMilestonesSheetProps = {
   mealsPlannedThisWeek: number;
   totalMealsCompleted: number;
   unlockedAchievements: AchievementKey[];
+  waterAchievements?: WaterAchievementKey[];
   newAchievements?: AchievementKey[];
 };
 
@@ -33,6 +37,8 @@ export default function HealthMilestonesSheet({
   onOpenChange,
   level,
   totalXp,
+  mealXp = 0,
+  waterXp = 0,
   xpInLevel,
   xpForNextLevel,
   levelProgress,
@@ -43,11 +49,15 @@ export default function HealthMilestonesSheet({
   mealsPlannedThisWeek,
   totalMealsCompleted,
   unlockedAchievements,
+  waterAchievements = [],
   newAchievements = [],
 }: HealthMilestonesSheetProps) {
   const allMilestones = Object.values(HEALTH_MILESTONES);
+  const allWaterAchievements = Object.values(WATER_ACHIEVEMENTS);
   const unlockedCount = unlockedAchievements.length;
   const totalCount = allMilestones.length;
+  const waterUnlockedCount = waterAchievements.length;
+  const waterTotalCount = allWaterAchievements.length;
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -103,6 +113,26 @@ export default function HealthMilestonesSheet({
               </div>
               <Progress value={levelProgress} variant="xp" className="h-2.5 bg-muted/50" />
             </div>
+
+            {/* XP Breakdown */}
+            {(mealXp > 0 || waterXp > 0) && (
+              <div className="flex gap-3 mt-3">
+                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                  <UtensilsCrossed className="w-4 h-4 text-orange-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Refeições</p>
+                    <p className="text-sm font-semibold text-foreground">{mealXp} XP</p>
+                  </div>
+                </div>
+                <div className="flex-1 flex items-center gap-2 px-3 py-2 rounded-lg bg-blue-500/10 border border-blue-500/20">
+                  <Droplets className="w-4 h-4 text-blue-500" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-muted-foreground">Hidratação</p>
+                    <p className="text-sm font-semibold text-foreground">{waterXp} XP</p>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <Separator className="bg-border/50" />

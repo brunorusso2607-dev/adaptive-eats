@@ -376,10 +376,14 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     goal_mode: initialData?.goal_mode || null,
   });
   
-  // Estado local para edição livre do campo altura
-  const [heightInput, setHeightInput] = useState(() => 
-    initialData?.height ? (initialData.height / 100).toFixed(2).replace('.', ',') : ""
-  );
+  // Estado local para edição livre do campo altura - formato X,XX
+  const [heightInput, setHeightInput] = useState(() => {
+    if (initialData?.height) {
+      const meters = (initialData.height / 100).toFixed(2);
+      return meters.replace('.', ',');
+    }
+    return "";
+  });
 
   const calculations = calculateMacros(data);
   const healthRisks = calculateHealthRisks(data);
@@ -803,35 +807,43 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               placeholder="1,75"
               value={heightInput}
               onChange={(e) => {
-                // Allow only numbers and comma
-                let value = e.target.value.replace(/[^0-9,]/g, '');
+                // Remove tudo exceto números
+                let digits = e.target.value.replace(/[^0-9]/g, '');
                 
-                // Handle comma as decimal separator - only allow one comma
-                const parts = value.split(',');
-                if (parts.length > 2) {
-                  value = parts[0] + ',' + parts.slice(1).join('');
+                // Limita a 3 dígitos (formato X,XX = altura máxima 2,99m)
+                if (digits.length > 3) {
+                  digits = digits.substring(0, 3);
                 }
                 
-                // Limit to 2 decimal places
-                if (parts[1] && parts[1].length > 2) {
-                  value = parts[0] + ',' + parts[1].substring(0, 2);
+                // Formata automaticamente com vírgula após primeiro dígito
+                let formatted = '';
+                if (digits.length === 0) {
+                  formatted = '';
+                } else if (digits.length === 1) {
+                  formatted = digits + ',';
+                } else {
+                  formatted = digits[0] + ',' + digits.substring(1);
                 }
                 
-                // Update local state for free editing
-                setHeightInput(value);
+                setHeightInput(formatted);
                 
-                // Convert to cm for data storage
-                const numericValue = parseFloat(value.replace(',', '.'));
-                if (!isNaN(numericValue) && numericValue > 0) {
-                  setData({ ...data, height: Math.round(numericValue * 100) });
+                // Converte para cm para armazenamento
+                if (digits.length >= 1) {
+                  const numericValue = parseFloat(digits[0] + '.' + digits.substring(1));
+                  if (!isNaN(numericValue) && numericValue > 0) {
+                    setData({ ...data, height: Math.round(numericValue * 100) });
+                  } else {
+                    setData({ ...data, height: null });
+                  }
                 } else {
                   setData({ ...data, height: null });
                 }
               }}
               onBlur={() => {
-                // Format on blur if there's a valid value
-                if (data.height) {
-                  setHeightInput((data.height / 100).toFixed(2).replace('.', ','));
+                // Completa com zeros se necessário (ex: "1," -> "1,00")
+                if (heightInput && data.height) {
+                  const meters = (data.height / 100).toFixed(2);
+                  setHeightInput(meters.replace('.', ','));
                 }
               }}
               className="h-12"

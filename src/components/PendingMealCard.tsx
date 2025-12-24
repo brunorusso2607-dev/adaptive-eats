@@ -197,7 +197,7 @@ export default function PendingMealCard({
   if (compact) {
     return (
       <>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleViewRecipe}
             disabled={isMarking || isSkipping}
@@ -207,6 +207,8 @@ export default function PendingMealCard({
             Receita
           </button>
 
+          <span className="text-muted-foreground/50">|</span>
+
           <button
             onClick={handleTrocarClick}
             disabled={isMarking || isSkipping}
@@ -215,6 +217,8 @@ export default function PendingMealCard({
             <RefreshCw className="w-4 h-4 text-primary stroke-[1.5]" />
             Trocar
           </button>
+
+          <span className="text-muted-foreground/50">|</span>
 
           <button
             onClick={handleFizClick}
@@ -228,6 +232,8 @@ export default function PendingMealCard({
             )}
             Feita
           </button>
+
+          <span className="text-muted-foreground/50">|</span>
 
           <button
             onClick={handleSkip}

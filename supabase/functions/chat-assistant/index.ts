@@ -1161,12 +1161,12 @@ serve(async (req) => {
     const model = hasImages ? "gemini-2.5-flash" : "gemini-2.5-flash-lite";
     logStep("Using model", { model });
 
-    // Build dynamic context based on current page
+    // Build dynamic context based on current page - REFORÇADO para evitar confusão com histórico
     const pageContextNote = currentPage 
-      ? `\n\n---\n\n# 📍 CONTEXTO ATUAL\n\nO admin está agora na página: **${currentPage.name}** (${currentPage.path})\n\n${currentPage.description}\n\nFoque suas respostas neste contexto! Se ele perguntar "o que eu posso fazer aqui?", responda especificamente sobre esta página.\n\n---\n\n`
+      ? `\n\n---\n\n# 📍 CONTEXTO ATUAL (IMPORTANTE!)\n\n⚠️ **ATENÇÃO**: O admin está AGORA na página: **${currentPage.name}** (${currentPage.path})\n\n${currentPage.description}\n\n**REGRA CRÍTICA**: Ignore qualquer referência a outras páginas que apareçam no histórico da conversa. O contexto que vale é ESTE, a página ATUAL onde o admin está agora. Se ele perguntar "onde estamos?" ou "qual página é essa?", responda com base NESTE contexto atual, não no histórico!\n\nFoque suas respostas neste contexto! Se ele perguntar "o que eu posso fazer aqui?", responda especificamente sobre esta página.\n\n---\n\n`
       : "";
 
-    // Build conversation parts
+    // Build conversation parts - contexto atual vem PRIMEIRO e também no FINAL para reforçar
     const conversationParts: any[] = [
       { text: RECEITAI_SYSTEM_PROMPT + pageContextNote }
     ];
@@ -1175,6 +1175,13 @@ serve(async (req) => {
     for (const msg of messages.slice(0, -1)) {
       conversationParts.push({
         text: `${msg.role === 'user' ? 'USUÁRIO' : 'ASSISTENTE'}: ${msg.content}`
+      });
+    }
+    
+    // Reforça o contexto atual ANTES da última mensagem para evitar confusão
+    if (currentPage && messages.length > 1) {
+      conversationParts.push({
+        text: `[SISTEMA: O admin MUDOU de página. Ele está AGORA em ${currentPage.name} (${currentPage.path}). Responda com base nesta página ATUAL, não no histórico.]`
       });
     }
 

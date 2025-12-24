@@ -337,30 +337,34 @@ export default function NextMealCard(_props: NextMealCardProps) {
           </div>
         </div>
 
-        {/* Ações - linha única com textos curtos */}
-        <div className="flex items-center gap-3">
+        {/* Ações - linha única com textos curtos e divisores */}
+        <div className="flex items-center">
           <button
             onClick={handleViewRecipe}
             disabled={isMarking || isSkipping}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 px-3 disabled:opacity-50"
           >
             <Eye className="w-4 h-4 text-primary stroke-[1.5]" />
             Receita
           </button>
 
+          <div className="w-px h-4 bg-border" />
+
           <button
             onClick={handleTrocarClick}
             disabled={isMarking || isSkipping}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 px-3 disabled:opacity-50"
           >
             <RefreshCw className="w-4 h-4 text-primary stroke-[1.5]" />
             Trocar
           </button>
 
+          <div className="w-px h-4 bg-border" />
+
           <button
             onClick={handleFizClick}
             disabled={isMarking || isSkipping}
-            className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
+            className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors py-1 px-3 disabled:opacity-50"
           >
             {isMarking ? (
               <Loader2 className="w-4 h-4 animate-spin" />
@@ -370,10 +374,12 @@ export default function NextMealCard(_props: NextMealCardProps) {
             Feita
           </button>
 
+          <div className="w-px h-4 bg-border" />
+
           <button
             onClick={handleSkip}
             disabled={isMarking || isSkipping}
-            className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
+            className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors py-1 px-3 disabled:opacity-50"
           >
             {isSkipping ? (
               <Loader2 className="w-4 h-4 animate-spin" />

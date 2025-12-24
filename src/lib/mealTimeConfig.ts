@@ -30,7 +30,7 @@ const DEFAULT_TIME_RANGES: MealTimeRanges = {
 const DEFAULT_LABELS: MealLabels = {
   cafe_manha: "Café da Manhã",
   almoco: "Almoço",
-  lanche: "Lanche",
+  lanche: "Lanche da Tarde", // Alias para lanche_tarde
   lanche_tarde: "Lanche da Tarde",
   jantar: "Jantar",
   ceia: "Ceia",

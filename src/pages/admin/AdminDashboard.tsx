@@ -29,7 +29,8 @@ import {
   PanelLeftClose,
   PanelLeft,
   X,
-  Clock
+  Clock,
+  ToggleLeft
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -97,6 +98,7 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/pixels", label: "Pixels", icon: Code2 },
       { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
+      { path: "/admin/feature-flags", label: "Feature Flags", icon: ToggleLeft },
     ],
   },
 ];

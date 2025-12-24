@@ -44,6 +44,7 @@ import { SymptomTrackerCard } from "@/components/SymptomTrackerCard";
 import { SafetyScoreCard } from "@/components/SafetyScoreCard";
 import { SymptomFeedbackModal } from "@/components/SymptomFeedbackModal";
 import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
+import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 
 type Recipe = {
   name: string;
@@ -138,6 +139,9 @@ export default function Dashboard() {
   
   // Admin check
   const { isAdmin } = useAdmin();
+  
+  // Feature flag for Kids Mode
+  const { isEnabled: isKidsModeEnabled } = useFeatureFlag("kids_mode");
   
   // Pending meals hook for badge
   const { pendingMeals, hasMealPlan: hasActiveMealPlan, refetch: refetchPendingMeals } = usePendingMeals();
@@ -1097,7 +1101,7 @@ export default function Dashboard() {
                   </Card>
 
                   {/* Modo Kids - Versão compacta no mobile */}
-                  {isSubscribed && activePlan === "premium" && (
+                  {isSubscribed && activePlan === "premium" && isKidsModeEnabled && (
                     <div className="md:hidden col-span-2">
                       <button 
                         className={cn(
@@ -1133,7 +1137,7 @@ export default function Dashboard() {
                   )}
 
                   {/* Modo Kids - Card desktop */}
-                  {isSubscribed && activePlan === "premium" && (
+                  {isSubscribed && activePlan === "premium" && isKidsModeEnabled && (
                     <Card 
                       className={cn(
                         "glass-card transition-all cursor-pointer group hidden md:block",

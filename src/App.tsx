@@ -31,6 +31,7 @@ import AdminGemini from "./pages/admin/AdminGemini";
 import AdminOnboarding from "./pages/admin/AdminOnboarding";
 import AdminMealTimes from "./pages/admin/AdminMealTimes";
 import AdminFeatureFlags from "./pages/admin/AdminFeatureFlags";
+import AdminIntoleranceMappings from "./pages/admin/AdminIntoleranceMappings";
 
 const queryClient = new QueryClient();
 
@@ -73,6 +74,7 @@ function AppContent() {
           <Route path="onboarding" element={<AdminOnboarding />} />
           <Route path="meal-times" element={<AdminMealTimes />} />
           <Route path="feature-flags" element={<AdminFeatureFlags />} />
+          <Route path="intolerance-mappings" element={<AdminIntoleranceMappings />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

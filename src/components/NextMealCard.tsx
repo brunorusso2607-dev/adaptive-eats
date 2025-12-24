@@ -11,11 +11,13 @@ import {
   AlertTriangle,
   UtensilsCrossed,
   Loader2,
-  Timer
+  Timer,
+  Heart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useNextMeal, MEAL_LABELS, MEAL_TIME_RANGES, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
@@ -53,10 +55,19 @@ export default function NextMealCard(_props: NextMealCardProps) {
 
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(nextMeal?.is_favorite || false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showFoodDrawer, setShowFoodDrawer] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [minutesUntilStart, setMinutesUntilStart] = useState(0);
+
+  // Sync isFavorite when nextMeal changes
+  useEffect(() => {
+    if (nextMeal) {
+      setIsFavorite(nextMeal.is_favorite || false);
+    }
+  }, [nextMeal?.id, nextMeal?.is_favorite]);
 
   // Atualiza contador a cada segundo quando status é "upcoming"
   useEffect(() => {
@@ -136,6 +147,29 @@ export default function NextMealCard(_props: NextMealCardProps) {
   // View recipe details
   const handleViewRecipe = () => {
     setShowDetailSheet(true);
+  };
+
+  // Toggle favorite
+  const handleToggleFavorite = async () => {
+    if (!nextMeal) return;
+    setIsTogglingFavorite(true);
+    try {
+      const newValue = !isFavorite;
+      const { error } = await supabase
+        .from("meal_plan_items")
+        .update({ is_favorite: newValue })
+        .eq("id", nextMeal.id);
+      
+      if (error) throw error;
+      
+      setIsFavorite(newValue);
+      toast.success(newValue ? "Adicionado aos favoritos" : "Removido dos favoritos");
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast.error("Erro ao atualizar favorito");
+    } finally {
+      setIsTogglingFavorite(false);
+    }
   };
 
   // Loading state
@@ -349,6 +383,26 @@ export default function NextMealCard(_props: NextMealCardProps) {
               <SkipForward className="w-3.5 h-3.5" />
             )}
             Não fiz
+          </Button>
+
+          {/* Botão favoritar alinhado à direita */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8 ml-auto transition-all",
+              isFavorite 
+                ? "text-rose-500 hover:text-rose-600" 
+                : "text-muted-foreground hover:text-rose-500"
+            )}
+            onClick={handleToggleFavorite}
+            disabled={isTogglingFavorite}
+          >
+            {isTogglingFavorite ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Heart className={cn("w-4 h-4 transition-all", isFavorite && "fill-current")} />
+            )}
           </Button>
         </div>
       </CardContent>

@@ -436,26 +436,73 @@ serve(async (req) => {
 
     logStep("Admin user authenticated", { userId: user.id });
 
-    const { messages } = await req.json();
+    const { messages, images } = await req.json();
     if (!messages || !Array.isArray(messages)) {
       throw new Error("Messages array is required");
     }
 
-    logStep("Processing chat", { messageCount: messages.length });
+    const hasImages = images && Array.isArray(images) && images.length > 0;
+    logStep("Processing chat", { messageCount: messages.length, hasImages, imageCount: images?.length || 0 });
 
     const GOOGLE_AI_API_KEY = await getGeminiApiKey();
 
-    // Build conversation with system prompt
-    const conversationParts = [
-      { text: RECEITAI_SYSTEM_PROMPT },
-      ...messages.map((msg: { role: string; content: string }) => ({
-        text: `${msg.role === 'user' ? 'USUÁRIO' : 'ASSISTENTE'}: ${msg.content}`
-      })),
-      { text: "ASSISTENTE:" }
+    // Use gemini-2.5-flash for vision (supports images) or flash-lite for text-only
+    const model = hasImages ? "gemini-2.5-flash" : "gemini-2.5-flash-lite";
+    logStep("Using model", { model });
+
+    // Build conversation parts
+    const conversationParts: any[] = [
+      { text: RECEITAI_SYSTEM_PROMPT }
     ];
 
+    // Add previous messages
+    for (const msg of messages.slice(0, -1)) {
+      conversationParts.push({
+        text: `${msg.role === 'user' ? 'USUÁRIO' : 'ASSISTENTE'}: ${msg.content}`
+      });
+    }
+
+    // Add the last user message with images if present
+    const lastMessage = messages[messages.length - 1];
+    if (lastMessage) {
+      if (hasImages) {
+        // Add text part first
+        conversationParts.push({
+          text: `USUÁRIO: ${lastMessage.content}\n\n[IMAGENS ANEXADAS - Por favor, analise visualmente as imagens acima e forneça feedback detalhado de design, UX/UI, cores, tipografia, espaçamentos e melhorias sugeridas]`
+        });
+        
+        // Add each image
+        for (const imageData of images) {
+          // Extract base64 data (remove data:image/xxx;base64, prefix if present)
+          let base64 = imageData;
+          let mimeType = "image/png";
+          
+          if (imageData.startsWith("data:")) {
+            const matches = imageData.match(/^data:([^;]+);base64,(.+)$/);
+            if (matches) {
+              mimeType = matches[1];
+              base64 = matches[2];
+            }
+          }
+          
+          conversationParts.push({
+            inlineData: {
+              mimeType,
+              data: base64
+            }
+          });
+        }
+      } else {
+        conversationParts.push({
+          text: `USUÁRIO: ${lastMessage.content}`
+        });
+      }
+    }
+
+    conversationParts.push({ text: "ASSISTENTE:" });
+
     const response = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${GOOGLE_AI_API_KEY}`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -463,7 +510,7 @@ serve(async (req) => {
           contents: [{ parts: conversationParts }],
           generationConfig: {
             temperature: 0.7,
-            maxOutputTokens: 4096,
+            maxOutputTokens: 8192,
           },
         }),
       }

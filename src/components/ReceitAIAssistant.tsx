@@ -3,15 +3,23 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff } from "lucide-react";
+import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+interface Attachment {
+  id: string;
+  file: File;
+  preview: string;
+  type: 'image' | 'file';
+}
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  attachments?: { name: string; preview?: string; type: 'image' | 'file' }[];
 }
 
 export default function ReceitAIAssistant() {
@@ -19,8 +27,10 @@ export default function ReceitAIAssistant() {
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [attachments, setAttachments] = useState<Attachment[]>([]);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
 
   // Initialize Speech Recognition
@@ -78,6 +88,68 @@ export default function ReceitAIAssistant() {
     };
   }, []);
 
+  // Handle paste event for screenshots
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+
+      for (let i = 0; i < items.length; i++) {
+        const item = items[i];
+        if (item.type.startsWith('image/')) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) {
+            addAttachment(file);
+            toast.success("Imagem colada!");
+          }
+          break;
+        }
+      }
+    };
+
+    document.addEventListener('paste', handlePaste);
+    return () => document.removeEventListener('paste', handlePaste);
+  }, []);
+
+  const addAttachment = (file: File) => {
+    const isImage = file.type.startsWith('image/');
+    const preview = isImage ? URL.createObjectURL(file) : '';
+    
+    const newAttachment: Attachment = {
+      id: crypto.randomUUID(),
+      file,
+      preview,
+      type: isImage ? 'image' : 'file'
+    };
+
+    setAttachments(prev => [...prev, newAttachment]);
+  };
+
+  const removeAttachment = (id: string) => {
+    setAttachments(prev => {
+      const attachment = prev.find(a => a.id === id);
+      if (attachment?.preview) {
+        URL.revokeObjectURL(attachment.preview);
+      }
+      return prev.filter(a => a.id !== id);
+    });
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    for (let i = 0; i < files.length; i++) {
+      addAttachment(files[i]);
+    }
+
+    // Reset input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const toggleListening = useCallback(() => {
     if (!recognitionRef.current) {
       toast.error("Reconhecimento de voz não suportado neste navegador");
@@ -109,32 +181,50 @@ export default function ReceitAIAssistant() {
     if (messages.length === 0) {
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou o **Assistente ReceitAI**. Conheço toda a estrutura do nosso aplicativo - banco de dados, fluxos, cálculos nutricionais, edge functions, e muito mais.\n\nPode me perguntar qualquer coisa sobre o ReceitAI! Por exemplo:\n\n• Como funciona o cálculo de calorias?\n• Quais tabelas existem no banco?\n• Explique o fluxo de análise de rótulos\n• Sugestões para melhorar o app",
+        content: "Olá! 👋 Sou o **Assistente ReceitAI**. Conheço toda a estrutura do nosso aplicativo - banco de dados, fluxos, cálculos nutricionais, edge functions, e muito mais.\n\nPode me perguntar qualquer coisa sobre o ReceitAI! Por exemplo:\n\n• Como funciona o cálculo de calorias?\n• Quais tabelas existem no banco?\n• Explique o fluxo de análise de rótulos\n• Sugestões para melhorar o app\n\n**Dica:** Use Ctrl+V para colar screenshots!",
         timestamp: new Date()
       }]);
     }
   }, []);
 
   const sendMessage = async () => {
-    if (!input.trim() || isLoading) return;
+    if ((!input.trim() && attachments.length === 0) || isLoading) return;
+
+    const messageAttachments = attachments.map(a => ({
+      name: a.file.name,
+      preview: a.preview,
+      type: a.type
+    }));
 
     const userMessage: Message = {
       role: "user",
-      content: input.trim(),
-      timestamp: new Date()
+      content: input.trim() || (attachments.length > 0 ? `[${attachments.length} arquivo(s) anexado(s)]` : ''),
+      timestamp: new Date(),
+      attachments: messageAttachments.length > 0 ? messageAttachments : undefined
     };
 
     setMessages(prev => [...prev, userMessage]);
     setInput("");
+    setAttachments([]);
     setIsLoading(true);
 
     try {
+      // Convert images to base64 for the API
+      const imageContents: string[] = [];
+      for (const att of attachments) {
+        if (att.type === 'image') {
+          const base64 = await fileToBase64(att.file);
+          imageContents.push(base64);
+        }
+      }
+
       const { data, error } = await supabase.functions.invoke("chat-assistant", {
         body: {
           messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
-          }))
+          })),
+          images: imageContents.length > 0 ? imageContents : undefined
         }
       });
 
@@ -163,6 +253,15 @@ export default function ReceitAIAssistant() {
     }
   };
 
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = error => reject(error);
+    });
+  };
+
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
@@ -176,6 +275,7 @@ export default function ReceitAIAssistant() {
       content: "Chat limpo! Como posso ajudar?",
       timestamp: new Date()
     }]);
+    setAttachments([]);
   };
 
   const formatContent = (content: string) => {
@@ -241,6 +341,27 @@ export default function ReceitAIAssistant() {
                     ? "bg-primary text-primary-foreground"
                     : "bg-muted"
                 )}>
+                  {/* Attachments */}
+                  {message.attachments && message.attachments.length > 0 && (
+                    <div className="flex flex-wrap gap-2 mb-2">
+                      {message.attachments.map((att, i) => (
+                        att.type === 'image' && att.preview ? (
+                          <img 
+                            key={i}
+                            src={att.preview} 
+                            alt={att.name}
+                            className="max-w-[150px] max-h-[100px] rounded-lg object-cover"
+                          />
+                        ) : (
+                          <div key={i} className="flex items-center gap-1 px-2 py-1 bg-background/20 rounded text-xs">
+                            <Paperclip className="w-3 h-3" />
+                            {att.name}
+                          </div>
+                        )
+                      ))}
+                    </div>
+                  )}
+                  
                   <div 
                     className="text-sm whitespace-pre-wrap"
                     dangerouslySetInnerHTML={{ __html: formatContent(message.content) }}
@@ -274,6 +395,36 @@ export default function ReceitAIAssistant() {
           </div>
         </ScrollArea>
 
+        {/* Attachment Preview */}
+        {attachments.length > 0 && (
+          <div className="flex flex-wrap gap-2 p-2 bg-muted/50 rounded-lg">
+            {attachments.map((att) => (
+              <div key={att.id} className="relative group">
+                {att.type === 'image' ? (
+                  <img 
+                    src={att.preview} 
+                    alt={att.file.name}
+                    className="w-16 h-16 object-cover rounded-lg border border-border"
+                  />
+                ) : (
+                  <div className="w-16 h-16 flex flex-col items-center justify-center bg-muted rounded-lg border border-border">
+                    <Paperclip className="w-5 h-5 text-muted-foreground" />
+                    <span className="text-[9px] text-muted-foreground mt-1 truncate max-w-[60px]">
+                      {att.file.name}
+                    </span>
+                  </div>
+                )}
+                <button
+                  onClick={() => removeAttachment(att.id)}
+                  className="absolute -top-1 -right-1 w-5 h-5 bg-destructive text-destructive-foreground rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Audio Wave Animation */}
         {isListening && (
           <div className="flex items-center justify-center gap-1 py-3 px-4 bg-primary/10 rounded-xl border border-primary/30">
@@ -294,14 +445,31 @@ export default function ReceitAIAssistant() {
           </div>
         )}
 
-        {/* Input Area with Microphone */}
+        {/* Input Area with Microphone and File Upload */}
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,.pdf,.doc,.docx,.txt"
+            onChange={handleFileSelect}
+            className="hidden"
+          />
+          <Button 
+            onClick={() => fileInputRef.current?.click()}
+            variant="outline"
+            size="icon"
+            disabled={isLoading}
+            title="Anexar arquivo (ou Ctrl+V para colar)"
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isListening ? "Fale agora..." : "Pergunte sobre o ReceitAI..."}
+            placeholder={isListening ? "Fale agora..." : "Pergunte ou cole uma imagem (Ctrl+V)..."}
             disabled={isLoading}
             className={cn("flex-1", isListening && "border-primary")}
           />
@@ -316,7 +484,7 @@ export default function ReceitAIAssistant() {
           </Button>
           <Button 
             onClick={sendMessage} 
-            disabled={isLoading || !input.trim()}
+            disabled={isLoading || (!input.trim() && attachments.length === 0)}
             size="icon"
           >
             <Send className="w-4 h-4" />

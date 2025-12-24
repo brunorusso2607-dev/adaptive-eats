@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfWeek, endOfWeek, format, subDays, parseISO, differenceInDays } from "date-fns";
 import confetti from "canvas-confetti";
+import { WATER_ACHIEVEMENTS, WaterAchievementKey } from "./useWaterAchievements";
 
 // Health milestones - professional naming, no emojis
 export const HEALTH_MILESTONES = {
@@ -91,6 +92,8 @@ export function calculateLevel(xp: number): { level: number; xpInLevel: number; 
 
 export type GamificationData = {
   totalXp: number;
+  mealXp: number;
+  waterXp: number;
   level: number;
   xpInLevel: number;
   xpForNextLevel: number;
@@ -102,6 +105,7 @@ export type GamificationData = {
   mealsCompletedThisWeek: number;
   mealsPlannedThisWeek: number;
   unlockedAchievements: AchievementKey[];
+  waterAchievements: WaterAchievementKey[];
   newAchievements: AchievementKey[];
   isLoading: boolean;
 };
@@ -109,6 +113,8 @@ export type GamificationData = {
 export function useGamification() {
   const [data, setData] = useState<GamificationData>({
     totalXp: 0,
+    mealXp: 0,
+    waterXp: 0,
     level: 1,
     xpInLevel: 0,
     xpForNextLevel: 100,
@@ -120,6 +126,7 @@ export function useGamification() {
     mealsCompletedThisWeek: 0,
     mealsPlannedThisWeek: 0,
     unlockedAchievements: [],
+    waterAchievements: [],
     newAchievements: [],
     isLoading: true,
   });
@@ -280,15 +287,25 @@ export function useGamification() {
         longestStreak,
         totalMealsCompleted,
         weeklyAdherence,
-        achievements
+        achievements.filter((a: string) => !a.startsWith("water_"))
       );
 
+      // Fetch water achievements for XP calculation
+      const waterAchievementKeys = achievements
+        .filter((a: string) => a.startsWith("water_"))
+        .map((a: string) => a.replace("water_", "") as WaterAchievementKey);
+
+      const waterXp = waterAchievementKeys.reduce((sum: number, key: WaterAchievementKey) => {
+        return sum + (WATER_ACHIEVEMENTS[key]?.xp || 0);
+      }, 0);
+
       const baseXp = totalMealsCompleted * 10;
-      const achievementXp = [...achievements, ...newAchievements].reduce((sum, key) => {
+      const mealAchievementXp = [...achievements.filter((a: string) => !a.startsWith("water_")), ...newAchievements].reduce((sum, key) => {
         const achievement = HEALTH_MILESTONES[key as AchievementKey];
         return sum + (achievement?.xp || 0);
       }, 0);
-      const totalXp = baseXp + achievementXp;
+      const mealXp = baseXp + mealAchievementXp;
+      const totalXp = mealXp + waterXp;
 
       const currentData = gamification || { total_xp: 0, longest_streak: 0, total_meals_completed: 0 };
       if (
@@ -318,6 +335,8 @@ export function useGamification() {
 
       setData({
         totalXp,
+        mealXp,
+        waterXp,
         level: levelInfo.level,
         xpInLevel: levelInfo.xpInLevel,
         xpForNextLevel: levelInfo.xpForNextLevel,
@@ -328,7 +347,8 @@ export function useGamification() {
         weeklyAdherence,
         mealsCompletedThisWeek,
         mealsPlannedThisWeek,
-        unlockedAchievements: [...achievements, ...newAchievements] as AchievementKey[],
+        unlockedAchievements: [...achievements.filter((a: string) => !a.startsWith("water_")), ...newAchievements] as AchievementKey[],
+        waterAchievements: waterAchievementKeys,
         newAchievements,
         isLoading: false,
       });

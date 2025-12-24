@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/sheet";
 import { cn } from "@/lib/utils";
 import { useSymptomTracker, SymptomType } from "@/hooks/useSymptomTracker";
+import { SymptomIcon } from "./SymptomIcon";
 
 interface SymptomLogSheetProps {
   open: boolean;
@@ -121,7 +122,12 @@ export function SymptomLogSheet({
                           : "bg-muted/50 hover:bg-muted border-transparent"
                       )}
                     >
-                      <span>{symptom.icon}</span>
+                      <SymptomIcon 
+                        name={symptom.name} 
+                        category={symptom.category}
+                        className={isSelected ? "text-primary-foreground" : undefined}
+                        size={14}
+                      />
                       <span>{symptom.name}</span>
                       {isSelected && <Check className="h-3.5 w-3.5" />}
                     </button>

@@ -1,9 +1,10 @@
 import { useState } from "react";
-import { AlertCircle, Plus, TrendingUp, Trash2, ChevronRight } from "lucide-react";
+import { AlertCircle, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { SymptomLogSheet } from "./SymptomLogSheet";
+import { SymptomIcon } from "./SymptomIcon";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -49,10 +50,10 @@ export function SymptomTrackerCard() {
   const topSymptom = Object.entries(mostCommonSymptom)
     .sort(([, a], [, b]) => b - a)[0];
 
-  // Get icon for symptom
-  const getSymptomIcon = (name: string) => {
+  // Get category for symptom
+  const getSymptomCategory = (name: string) => {
     const type = symptomTypes.find(t => t.name === name);
-    return type?.icon || "😣";
+    return type?.category;
   };
 
   if (isLoading) {
@@ -98,8 +99,12 @@ export function SymptomTrackerCard() {
             </div>
             {topSymptom && (
               <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-lg font-medium flex items-center gap-1">
-                  <span>{getSymptomIcon(topSymptom[0])}</span>
+                <p className="text-lg font-medium flex items-center gap-1.5">
+                  <SymptomIcon 
+                    name={topSymptom[0]} 
+                    category={getSymptomCategory(topSymptom[0])}
+                    size={18}
+                  />
                   <span className="truncate">{topSymptom[0]}</span>
                 </p>
                 <p className="text-xs text-muted-foreground">
@@ -124,9 +129,12 @@ export function SymptomTrackerCard() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         {log.symptoms.slice(0, 3).map((symptom, i) => (
-                          <span key={i} className="text-sm">
-                            {getSymptomIcon(symptom)}
-                          </span>
+                          <SymptomIcon 
+                            key={i}
+                            name={symptom} 
+                            category={getSymptomCategory(symptom)}
+                            size={16}
+                          />
                         ))}
                         {log.symptoms.length > 3 && (
                           <span className="text-xs text-muted-foreground">

@@ -1,5 +1,4 @@
 import { useState, useEffect } from "react";
-import { Button } from "@/components/ui/button";
 import { Heart, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -39,12 +38,6 @@ export function FavoriteButton({
     onClick();
   };
 
-  const sizeClasses = {
-    sm: "h-7 w-7",
-    md: "h-8 w-8",
-    lg: "h-10 w-10",
-  };
-
   const iconSizes = {
     sm: "w-3.5 h-3.5",
     md: "w-4 h-4",
@@ -52,12 +45,9 @@ export function FavoriteButton({
   };
 
   return (
-    <Button
-      variant="ghost"
-      size="icon"
+    <button
       className={cn(
-        sizeClasses[size],
-        "transition-all",
+        "p-1 transition-colors disabled:opacity-50",
         isFavorite 
           ? "text-rose-500 hover:text-rose-600" 
           : "text-muted-foreground hover:text-rose-500",
@@ -72,12 +62,12 @@ export function FavoriteButton({
         <Heart 
           className={cn(
             iconSizes[size],
-            "transition-all",
+            "transition-all stroke-[1.5]",
             isFavorite && "fill-current",
             isAnimating && "animate-heart-pulse"
           )} 
         />
       )}
-    </Button>
+    </button>
   );
 }

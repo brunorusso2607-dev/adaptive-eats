@@ -186,7 +186,7 @@ export function CompactHealthCircles({
 
       {/* Weight Sheet */}
       <Sheet open={weightSheetOpen} onOpenChange={setWeightSheetOpen}>
-        <SheetContent side="bottom" className="h-auto max-h-[90vh] rounded-t-3xl overflow-y-auto">
+        <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl px-5">
           <SheetHeader className="mb-4">
             <SheetTitle className="flex items-center gap-2">
               {userGoal === "ganhar_peso" 
@@ -203,6 +203,7 @@ export function CompactHealthCircles({
             </SheetTitle>
           </SheetHeader>
           
+          <div className="overflow-y-auto h-[calc(85vh-80px)]">
           {hasWeightGoal && calcs ? (
             <div className="space-y-4 pb-6">
               {/* Header info */}
@@ -306,6 +307,7 @@ export function CompactHealthCircles({
               </button>
             </div>
           )}
+          </div>
         </SheetContent>
       </Sheet>
     </>

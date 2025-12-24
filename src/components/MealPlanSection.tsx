@@ -404,7 +404,12 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="flex items-center gap-3 sm:gap-4">
           {onBack && (
-            <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onBack} 
+              className="shrink-0 bg-primary hover:bg-[#D3D3D3] hover:text-foreground text-primary-foreground rounded-xl"
+            >
               <ArrowLeft className="w-5 h-5" />
             </Button>
           )}

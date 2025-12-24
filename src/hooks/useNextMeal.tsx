@@ -86,8 +86,14 @@ function getMealStatus(mealType: string, completedAt: string | null): MealStatus
   const currentTimeInMinutes = hour * 60 + minutes;
   
   const timeRanges = getMealTimeRangesSync();
-  const range = timeRanges[mealType];
-  if (!range) return "on_time";
+  // Normalizar lanche -> lanche_tarde para buscar o range correto
+  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
+  const range = timeRanges[normalizedType] || timeRanges[mealType];
+  
+  if (!range) {
+    console.warn("[getMealStatus] Range não encontrado para:", mealType, "normalizado:", normalizedType);
+    return "on_time";
+  }
   
   const startTimeInMinutes = range.start * 60;
   const endTimeInMinutes = range.end * 60;
@@ -116,7 +122,8 @@ function getMinutesOverdue(mealType: string): number {
   const currentTimeInMinutes = hour * 60 + minutes;
   
   const timeRanges = getMealTimeRangesSync();
-  const range = timeRanges[mealType];
+  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
+  const range = timeRanges[normalizedType] || timeRanges[mealType];
   if (!range) return 0;
   
   const endTimeInMinutes = range.end * 60;
@@ -135,7 +142,8 @@ export function getMinutesUntilStart(mealType: string): number {
   const currentTimeInMinutes = hour * 60 + minutes;
   
   const timeRanges = getMealTimeRangesSync();
-  const range = timeRanges[mealType];
+  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
+  const range = timeRanges[normalizedType] || timeRanges[mealType];
   if (!range) return 0;
   
   const startTimeInMinutes = range.start * 60;

@@ -348,7 +348,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
             Receita
           </button>
 
-          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+          <div className="w-[1.5px] h-5 bg-muted-foreground/25" />
 
           <button
             onClick={handleTrocarClick}
@@ -359,7 +359,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
             Trocar
           </button>
 
-          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+          <div className="w-[1.5px] h-5 bg-muted-foreground/25" />
 
           <button
             onClick={handleFizClick}
@@ -374,7 +374,7 @@ export default function NextMealCard(_props: NextMealCardProps) {
             Feita
           </button>
 
-          <div className="w-px h-5 bg-gray-300 dark:bg-gray-600" />
+          <div className="w-[1.5px] h-5 bg-muted-foreground/25" />
 
           <button
             onClick={handleSkip}

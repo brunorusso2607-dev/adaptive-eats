@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
+import LegalDisclaimer from "./LegalDisclaimer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import FridgeScanner from "./FridgeScanner";
@@ -1008,6 +1009,9 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   </CardContent>
                 </Card>
               )}
+
+              {/* Legal Disclaimer */}
+              <LegalDisclaimer className="mt-2" />
 
               {/* Feedback and Reset buttons */}
               <div className="flex items-center justify-between">

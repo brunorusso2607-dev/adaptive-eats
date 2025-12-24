@@ -10,6 +10,7 @@ import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useActivityLog } from "@/hooks/useActivityLog";
+import LegalDisclaimer from "./LegalDisclaimer";
 
 type Ingredient = {
   item: string;
@@ -386,6 +387,9 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
         )}
         {isFavorited ? "Favoritada" : "Adicionar aos Favoritos"}
       </Button>
+
+      {/* Legal Disclaimer */}
+      <LegalDisclaimer className="mt-4" />
     </div>
   );
 }

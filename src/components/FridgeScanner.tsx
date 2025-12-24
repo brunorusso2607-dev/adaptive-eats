@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
+import LegalDisclaimer from "./LegalDisclaimer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -611,6 +612,9 @@ export default function FridgeScanner() {
             </>
           )}
         </Button>
+
+        {/* Legal Disclaimer */}
+        <LegalDisclaimer className="mt-2" />
 
         {/* Feedback and Back button */}
         <div className="flex items-center justify-between">

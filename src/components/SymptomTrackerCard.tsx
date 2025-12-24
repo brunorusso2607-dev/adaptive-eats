@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { AlertCircle, Bell, TrendingUp, History } from "lucide-react";
+import { AlertCircle, Bell, TrendingUp, History, Settings } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { SymptomIcon } from "./SymptomIcon";
 import { SymptomCorrelationChart } from "./SymptomCorrelationChart";
 import { MealSymptomHistorySheet } from "./MealSymptomHistorySheet";
+import { NotificationSettingsSheet } from "./NotificationSettingsSheet";
 import { cn } from "@/lib/utils";
 
 interface SymptomTrackerCardProps {
@@ -21,6 +22,7 @@ const severityColors = {
 
 export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrackerCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { recentLogs, isLoading, symptomTypes } = useSymptomTracker();
 
   // Calculate stats
@@ -59,10 +61,20 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <AlertCircle className="h-5 w-5 text-orange-500" />
-          Bem-estar
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <AlertCircle className="h-5 w-5 text-orange-500" />
+            Bem-estar
+          </CardTitle>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => setNotificationsOpen(true)}
+          >
+            <Settings className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -183,6 +195,11 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
         <MealSymptomHistorySheet
           open={historyOpen}
           onOpenChange={setHistoryOpen}
+        />
+
+        <NotificationSettingsSheet
+          open={notificationsOpen}
+          onOpenChange={setNotificationsOpen}
         />
       </CardContent>
     </Card>

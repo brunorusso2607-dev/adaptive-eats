@@ -12,7 +12,11 @@ interface IngredientSubstitutionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   originalIngredient: OriginalIngredient | null;
-  onSubstitute: (newIngredient: IngredientResult, originalItem: string) => void;
+  onSubstitute: (
+    newIngredient: IngredientResult, 
+    originalItem: string, 
+    originalNutrition: IngredientResult | null
+  ) => void;
 }
 
 function useDebounceValue<T>(value: T, delay: number): T {
@@ -85,7 +89,7 @@ export default function IngredientSubstitutionSheet({
 
   const handleSelect = (ingredient: IngredientResult) => {
     if (originalIngredient) {
-      onSubstitute(ingredient, originalIngredient.item);
+      onSubstitute(ingredient, originalIngredient.item, originalData);
       onOpenChange(false);
     }
   };

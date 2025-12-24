@@ -10,13 +10,13 @@ import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw } from "lucide
 import type { NextMealData } from "@/hooks/useNextMeal";
 import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
+import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
 
 interface MealDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   meal: NextMealData | null;
-  onUpdateIngredients?: (mealId: string, ingredients: Ingredient[]) => void;
 }
 
 interface Ingredient {
@@ -45,11 +45,11 @@ export default function MealDetailSheet({
   open,
   onOpenChange,
   meal,
-  onUpdateIngredients,
 }: MealDetailSheetProps) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
+  const { updateIngredients } = useMealIngredientUpdate();
 
   if (!meal) return null;
 
@@ -75,7 +75,7 @@ export default function MealDetailSheet({
     setSubstitutionOpen(true);
   };
 
-  const handleSubstitute = (newIngredient: IngredientResult, originalItem: string) => {
+  const handleSubstitute = async (newIngredient: IngredientResult, originalItem: string) => {
     const currentIngredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
     const updatedIngredients = currentIngredients.map((ing) =>
       ing.item === originalItem
@@ -83,8 +83,12 @@ export default function MealDetailSheet({
         : ing
     );
     setLocalIngredients(updatedIngredients);
-    onUpdateIngredients?.(meal.id, updatedIngredients);
-    toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+    
+    // Persist to database
+    const { success } = await updateIngredients(meal.id, updatedIngredients);
+    if (success) {
+      toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+    }
   };
 
   return (

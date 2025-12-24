@@ -14,46 +14,15 @@ export default defineConfig(({ mode }) => ({
     react(),
     mode === "development" && componentTagger(),
     VitePWA({
-      registerType: "autoUpdate", // Volta para autoUpdate - atualiza automaticamente
-      includeAssets: ["favicon.ico", "icons/*.png"],
+      registerType: "autoUpdate",
+      includeAssets: ["favicon.ico", "icons/*.png", "apple-touch-icon.png"],
       manifest: false, // Using external manifest.json
-      workbox: {
-        globPatterns: ["**/*.{js,css,html,ico,png,svg,woff2}"],
-        skipWaiting: true, // FORÇA atualização imediata do SW
-        clientsClaim: true, // Toma controle dos clientes imediatamente
-        // Não cachear o HTML para sempre ter a versão mais recente
-        navigateFallback: null,
-        runtimeCaching: [
-          {
-            // Cache de fontes - pode ser longo
-            urlPattern: /^https:\/\/fonts\.googleapis\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "google-fonts-cache",
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-          {
-            urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
-            handler: "CacheFirst",
-            options: {
-              cacheName: "gstatic-fonts-cache",
-              expiration: {
-                maxEntries: 10,
-                maxAgeSeconds: 60 * 60 * 24 * 365,
-              },
-              cacheableResponse: {
-                statuses: [0, 200],
-              },
-            },
-          },
-        ],
+      injectRegister: null, // We'll register SW manually to use our custom sw.js
+      strategies: "injectManifest",
+      srcDir: "public",
+      filename: "sw.js",
+      injectManifest: {
+        injectionPoint: undefined, // Don't inject workbox, use our custom SW
       },
     }),
   ].filter(Boolean),

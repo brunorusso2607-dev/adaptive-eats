@@ -1,12 +1,82 @@
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useLocation } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon } from "lucide-react";
+import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon, MapPin } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// Mapeamento de rotas para contexto amigável
+const PAGE_CONTEXT_MAP: Record<string, { name: string; description: string; quickActions: string[] }> = {
+  "/admin": {
+    name: "Dashboard Admin",
+    description: "Visão geral do painel administrativo",
+    quickActions: ["O que posso fazer aqui?", "Mostre as estatísticas principais"]
+  },
+  "/admin/users": {
+    name: "Gerenciar Usuários",
+    description: "Lista de usuários do app, suas assinaturas e perfis",
+    quickActions: ["Como filtrar usuários?", "Como exportar dados?", "Sugestões de melhoria"]
+  },
+  "/admin/analytics": {
+    name: "Analytics",
+    description: "Métricas de uso, retenção e engajamento do app",
+    quickActions: ["O que cada métrica significa?", "Como melhorar a retenção?"]
+  },
+  "/admin/ai-error-logs": {
+    name: "Logs de Erros de IA",
+    description: "Erros das funções de IA (analyze-food-photo, generate-recipe, etc.)",
+    quickActions: ["Como debugar erros?", "O que causa erros frequentes?"]
+  },
+  "/admin/plans": {
+    name: "Planos de Assinatura",
+    description: "Gerenciamento de planos Stripe (Essencial, Premium)",
+    quickActions: ["Como criar um novo plano?", "Como configurar trial?"]
+  },
+  "/admin/prompt-simulator": {
+    name: "Simulador de Prompts",
+    description: "Teste as funções de IA sem precisar usar o app como usuário",
+    quickActions: ["Como testar uma receita?", "Me dê um payload de exemplo", "Como funciona cada função?"]
+  },
+  "/admin/pixels": {
+    name: "Pixels de Tracking",
+    description: "Configuração de pixels Meta, Google, TikTok",
+    quickActions: ["Como adicionar um pixel?", "Quais eventos são disparados?"]
+  },
+  "/admin/appearance": {
+    name: "Aparência",
+    description: "Personalização visual: logo, cores, CSS customizado",
+    quickActions: ["Como mudar as cores?", "Como adicionar logo?", "Sugestões de paleta"]
+  },
+  "/admin/webhooks": {
+    name: "Webhooks",
+    description: "Configuração de webhooks para integrações externas",
+    quickActions: ["Como configurar um webhook?", "Quais eventos posso usar?"]
+  },
+  "/admin/system-users": {
+    name: "Usuários do Sistema",
+    description: "Gerenciamento de administradores",
+    quickActions: ["Como adicionar admin?", "Como funciona o sistema de roles?"]
+  },
+  "/admin/gemini": {
+    name: "Configurar Gemini",
+    description: "Configuração da chave de API do Google Gemini",
+    quickActions: ["Como obter uma API key?", "Como testar a conexão?"]
+  },
+  "/admin/onboarding": {
+    name: "Opções de Onboarding",
+    description: "Customização das opções do fluxo de onboarding",
+    quickActions: ["Como adicionar nova opção?", "Como reordenar?"]
+  },
+  "/admin/meal-times": {
+    name: "Horários de Refeições",
+    description: "Configuração dos horários de cada tipo de refeição",
+    quickActions: ["Como alterar horários?", "Quais são os tipos de refeição?"]
+  }
+};
 
 interface Attachment {
   id: string;
@@ -23,6 +93,7 @@ interface Message {
 }
 
 export default function ReceitAIAssistant() {
+  const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -32,6 +103,10 @@ export default function ReceitAIAssistant() {
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Detecta a página atual
+  const currentPath = location.pathname;
+  const pageContext = PAGE_CONTEXT_MAP[currentPath] || PAGE_CONTEXT_MAP["/admin"];
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -176,16 +251,16 @@ export default function ReceitAIAssistant() {
     }
   }, [messages]);
 
-  // Initial greeting
+  // Initial greeting - contextual based on current page
   useEffect(() => {
     if (messages.length === 0) {
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou o **Assistente ReceitAI** - especialista em **Design System** e **Arquitetura**.\n\nConheço toda a estrutura do app:\n\n• **Design**: Cores, tipografia, espaçamentos, componentes Shadcn\n• **Código**: React, TypeScript, Tailwind CSS\n• **Banco de dados**: Tabelas, relações, RLS\n• **Edge Functions**: Análise de fotos, geração de receitas\n• **UX**: Fluxos, gamificação, onboarding\n\n**Dica:** Cole screenshots com Ctrl+V para análise visual!",
+        content: `Opa! 👋 Bem-vindo à página **${pageContext.name}**!\n\n${pageContext.description}\n\nEstou aqui pra te ajudar com o que precisar. Conheço todas as páginas do admin e posso:\n\n• Explicar como cada funcionalidade funciona\n• Sugerir melhorias de UX/UI\n• Analisar screenshots (Ctrl+V pra colar)\n• Ajudar com código e arquitetura\n\nO que você quer saber?`,
         timestamp: new Date()
       }]);
     }
-  }, []);
+  }, [pageContext.name]);
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
@@ -224,7 +299,12 @@ export default function ReceitAIAssistant() {
             role: m.role,
             content: m.content
           })),
-          images: imageContents.length > 0 ? imageContents : undefined
+          images: imageContents.length > 0 ? imageContents : undefined,
+          currentPage: {
+            path: currentPath,
+            name: pageContext.name,
+            description: pageContext.description
+          }
         }
       });
 
@@ -295,13 +375,20 @@ export default function ReceitAIAssistant() {
   return (
     <Card className="glass-card">
       <CardHeader className="pb-3">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-            <Sparkles className="w-5 h-5 text-primary-foreground" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+              <Sparkles className="w-5 h-5 text-primary-foreground" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-display">Chef IA</CardTitle>
+              <CardDescription>Seu assistente amigo</CardDescription>
+            </div>
           </div>
-          <div>
-            <CardTitle className="text-lg font-display">Assistente ReceitAI</CardTitle>
-            <CardDescription>Especialista em Design System & Arquitetura</CardDescription>
+          {/* Current Page Indicator */}
+          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full">
+            <MapPin className="w-3 h-3 text-primary" />
+            <span className="text-xs font-medium text-muted-foreground">{pageContext.name}</span>
           </div>
         </div>
       </CardHeader>
@@ -486,13 +573,9 @@ export default function ReceitAIAssistant() {
           </Button>
         </div>
 
-        {/* Quick Actions */}
+        {/* Quick Actions - Dynamic based on current page */}
         <div className="flex flex-wrap gap-2">
-          {[
-            "Como funciona o cálculo de calorias?",
-            "Quais são as intolerâncias suportadas?",
-            "Explique a análise de rótulos",
-          ].map((suggestion) => (
+          {pageContext.quickActions.map((suggestion) => (
             <Button
               key={suggestion}
               variant="outline"

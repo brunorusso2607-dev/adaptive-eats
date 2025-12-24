@@ -36,6 +36,7 @@ import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
 import { useGamification } from "@/hooks/useGamification";
 import HealthProgressStrip from "@/components/HealthProgressStrip";
 import PlanDetailsSheet from "@/components/PlanDetailsSheet";
+import { WaterTracker } from "@/components/WaterTracker";
 
 type Recipe = {
   name: string;
@@ -966,6 +967,9 @@ export default function Dashboard() {
 
                 {/* Lista de Refeições Pendentes */}
                 <PendingMealsList onStreakRefresh={gamification.refresh} />
+
+                {/* Controle de Água */}
+                <WaterTracker />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

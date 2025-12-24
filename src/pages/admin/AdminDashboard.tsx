@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAdmin } from "@/hooks/useAdmin";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Button } from "@/components/ui/button";
+import FloatingChefIA from "@/components/FloatingChefIA";
 import { 
   LayoutDashboard, 
   Users, 
@@ -450,6 +451,9 @@ export default function AdminDashboard() {
         <main className="p-4">
           <Outlet />
         </main>
+
+        {/* Floating Chef IA */}
+        <FloatingChefIA />
       </div>
     );
   }
@@ -490,6 +494,9 @@ export default function AdminDashboard() {
           <Outlet />
         </div>
       </main>
+
+      {/* Floating Chef IA */}
+      <FloatingChefIA />
     </div>
   );
 }

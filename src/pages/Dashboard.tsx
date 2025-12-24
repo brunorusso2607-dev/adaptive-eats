@@ -503,6 +503,27 @@ export default function Dashboard() {
     return () => authSub.unsubscribe();
   }, [navigate]);
 
+  // Sync URL tab parameter with mobileActiveTab state
+  useEffect(() => {
+    const tabParam = searchParams.get("tab");
+    if (tabParam) {
+      // Map URL-friendly names to MobileNavTab values
+      const tabMap: Record<string, MobileNavTab> = {
+        "home": "home",
+        "plano": "meal-plan",
+        "meal-plan": "meal-plan",
+        "scan": "scan",
+        "camera": "scan",
+        "favorites": "favorites",
+        "profile": "profile",
+      };
+      const mappedTab = tabMap[tabParam];
+      if (mappedTab) {
+        setMobileActiveTab(mappedTab);
+      }
+    }
+  }, [searchParams]);
+
   useEffect(() => {
     if (searchParams.get("success") === "true") {
       toast.success("Assinatura ativada com sucesso! Aproveite seu trial de 7 dias.");

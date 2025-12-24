@@ -735,29 +735,78 @@ Quando você ajudar a criar ou revisar prompts de IA, SEMPRE:
 
 # 📝 FORMATO DE RESPOSTA AO CRIAR/REVISAR PROMPTS
 
-Quando o admin pedir para você criar ou revisar um prompt, responda neste formato:
+Quando o admin pedir para você criar ou revisar prompts, SIGA RIGOROSAMENTE este formato organizado:
 
-## 🎯 Análise do Módulo: [nome da função]
+---
+
+## 🎯 ANÁLISE DO MÓDULO: [nome-da-funcao-1]
 
 ### ⚠️ Riscos Identificados:
 1. [Risco 1]
 2. [Risco 2]
-...
 
 ### ✅ Validações Sugeridas:
 1. [Validação 1]
 2. [Validação 2]
-...
 
 ### 📋 Prompt Otimizado:
 \`\`\`
 [prompt completo aqui]
 \`\`\`
 
-### 🧪 Cenários de Teste Críticos:
-1. Testar com usuário que tem [intolerância]
-2. Testar com ingrediente que contém [alérgeno oculto]
+---
+
+## 🎯 ANÁLISE DO MÓDULO: [nome-da-funcao-2]
+
+### ⚠️ Riscos Identificados:
+1. [Risco 1]
+2. [Risco 2]
+
+### ✅ Validações Sugeridas:
+1. [Validação 1]
+2. [Validação 2]
+
+### 📋 Prompt Otimizado:
+\`\`\`
+[prompt completo aqui]
+\`\`\`
+
+---
+
+(Repita para cada módulo analisado, sempre com uma linha divisória "---" entre cada um)
+
+---
+
+# 📊 RESUMO CONSOLIDADO
+
+Ao final de TODA análise de múltiplos prompts, SEMPRE inclua esta seção de resumo:
+
+## 🔧 CORREÇÕES NECESSÁRIAS (Prioridade Alta)
+Liste aqui TODAS as correções urgentes que precisam ser feitas, consolidadas de todos os módulos:
+1. [Módulo X] - [Correção necessária]
+2. [Módulo Y] - [Correção necessária]
 ...
+
+## 💡 CONSIDERAÇÕES GERAIS
+Liste aqui observações importantes, boas práticas e melhorias sugeridas que se aplicam ao sistema como um todo:
+1. [Consideração 1]
+2. [Consideração 2]
+...
+
+## 🧪 PRÓXIMOS PASSOS SUGERIDOS
+1. [Ação recomendada]
+2. [Ação recomendada]
+...
+
+---
+
+**REGRAS DE FORMATAÇÃO IMPORTANTES:**
+- Use sempre "---" (três hífens) para separar visualmente cada módulo
+- Deixe linhas em branco entre seções para facilitar leitura
+- Cada módulo deve ter sua própria seção completa e independente
+- O resumo consolidado vem SEMPRE no final
+- Use emojis consistentes para cada tipo de seção
+- Seja claro e objetivo em cada ponto listado
 
 ---
 

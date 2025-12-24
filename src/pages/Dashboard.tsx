@@ -809,28 +809,7 @@ export default function Dashboard() {
                   />
                 )}
 
-                {/* Gamification Strip - XP + Streak */}
-                <HealthProgressStrip
-                  level={gamification.level}
-                  totalXp={gamification.totalXp}
-                  mealXp={gamification.mealXp}
-                  waterXp={gamification.waterXp}
-                  xpInLevel={gamification.xpInLevel}
-                  xpForNextLevel={gamification.xpForNextLevel}
-                  levelProgress={gamification.levelProgress}
-                  currentStreak={gamification.currentStreak}
-                  longestStreak={gamification.longestStreak}
-                  weeklyAdherence={gamification.weeklyAdherence}
-                  mealsCompletedThisWeek={gamification.mealsCompletedThisWeek}
-                  mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
-                  totalMealsCompleted={gamification.totalMealsCompleted}
-                  unlockedAchievements={gamification.unlockedAchievements}
-                  waterAchievements={gamification.waterAchievements}
-                  newAchievements={gamification.newAchievements}
-                  isLoading={gamification.isLoading}
-                />
-
-                {/* Safety Status Badge - Proteção de Intolerâncias */}
+                {/* 1. Proteção Ativa - Principal proposta de valor */}
                 <SafetyStatusBadge
                   intolerances={userProfile?.intolerances || []}
                   excludedIngredients={userProfile?.excluded_ingredients || []}
@@ -838,7 +817,19 @@ export default function Dashboard() {
                   isLoading={!userProfile}
                 />
 
-                {/* Main Recipe Card - Clean white card */}
+                {/* 2. Score de Segurança Alimentar - Status do dia */}
+                <SafetyScoreCard />
+
+                {/* 3. Próxima Refeição - Ação principal */}
+                <PendingMealsList onStreakRefresh={gamification.refresh} userProfile={userProfile} />
+
+                {/* 4. Rastreador de Sintomas - Feedback */}
+                <SymptomTrackerCard 
+                  pendingCount={symptomFeedback.pendingCount}
+                  onOpenFeedback={handleOpenFeedback}
+                />
+
+                {/* 5. Gerar Receita - Ferramenta secundária */}
                 <Card className="bg-card border border-border shadow-sm overflow-visible">
                   <CardContent className="p-5 space-y-4 overflow-visible">
                     <div className="flex items-center gap-4">
@@ -883,18 +874,26 @@ export default function Dashboard() {
                   </CardContent>
                 </Card>
 
-
-                {/* Lista de Refeições Pendentes */}
-                <PendingMealsList onStreakRefresh={gamification.refresh} userProfile={userProfile} />
-
-                {/* Rastreador de Sintomas */}
-                <SymptomTrackerCard 
-                  pendingCount={symptomFeedback.pendingCount}
-                  onOpenFeedback={handleOpenFeedback}
+                {/* 6. Gamificação - Discreto no final */}
+                <HealthProgressStrip
+                  level={gamification.level}
+                  totalXp={gamification.totalXp}
+                  mealXp={gamification.mealXp}
+                  waterXp={gamification.waterXp}
+                  xpInLevel={gamification.xpInLevel}
+                  xpForNextLevel={gamification.xpForNextLevel}
+                  levelProgress={gamification.levelProgress}
+                  currentStreak={gamification.currentStreak}
+                  longestStreak={gamification.longestStreak}
+                  weeklyAdherence={gamification.weeklyAdherence}
+                  mealsCompletedThisWeek={gamification.mealsCompletedThisWeek}
+                  mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
+                  totalMealsCompleted={gamification.totalMealsCompleted}
+                  unlockedAchievements={gamification.unlockedAchievements}
+                  waterAchievements={gamification.waterAchievements}
+                  newAchievements={gamification.newAchievements}
+                  isLoading={gamification.isLoading}
                 />
-
-                {/* Score de Segurança Alimentar */}
-                <SafetyScoreCard />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

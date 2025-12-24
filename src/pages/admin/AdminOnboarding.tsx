@@ -34,6 +34,7 @@ import {
   GripVertical,
   AlertTriangle,
   Wheat,
+  WheatOff,
   Utensils,
   Target,
   Flame,
@@ -41,13 +42,18 @@ import {
   Users,
   Sparkles,
   Milk,
+  MilkOff,
   Nut,
+  NutOff,
   Fish,
   FishOff,
   Egg,
+  EggOff,
   Bean,
+  BeanOff,
   Check,
   Leaf,
+  LeafyGreen,
   Salad,
   Scale,
   TrendingDown,
@@ -89,23 +95,93 @@ import {
   Martini,
   CupSoda,
   CircleDot,
+  Beef,
+  Bird,
+  Drumstick,
+  Ham,
+  Croissant,
+  Lollipop,
+  Vegan,
+  Bone,
+  Slice,
+  CircleOff,
+  Snowflake,
+  TreeDeciduous,
   type LucideIcon,
 } from "lucide-react";
 
 // Mapeamento de nomes de ícones para componentes Lucide
 const LUCIDE_ICONS: Record<string, LucideIcon> = {
+  // Grãos e cereais
   wheat: Wheat,
+  "wheat-off": WheatOff,
+  
+  // Laticínios
   milk: Milk,
+  "milk-off": MilkOff,
+  
+  // Oleaginosas
   nut: Nut,
+  "nut-off": NutOff,
+  
+  // Peixes e frutos do mar
   fish: Fish,
   "fish-off": FishOff,
+  
+  // Ovos
   egg: Egg,
+  "egg-off": EggOff,
+  
+  // Leguminosas
   bean: Bean,
-  check: Check,
-  utensils: Utensils,
-  salad: Salad,
+  "bean-off": BeanOff,
+  
+  // Carnes
+  beef: Beef,
+  bird: Bird,
+  drumstick: Drumstick,
+  ham: Ham,
+  bone: Bone,
+  
+  // Vegetais e folhas
   leaf: Leaf,
-  beef: Flame,
+  "leafy-green": LeafyGreen,
+  salad: Salad,
+  carrot: Carrot,
+  vegan: Vegan,
+  
+  // Frutas
+  apple: Apple,
+  banana: Banana,
+  cherry: Cherry,
+  citrus: Citrus,
+  grape: Grape,
+  
+  // Refeições
+  utensils: Utensils,
+  pizza: Pizza,
+  sandwich: Sandwich,
+  soup: Soup,
+  croissant: Croissant,
+  slice: Slice,
+  
+  // Doces e sobremesas
+  cookie: Cookie,
+  cake: Cake,
+  "ice-cream-cone": IceCreamCone,
+  popcorn: Popcorn,
+  candy: Candy,
+  lollipop: Lollipop,
+  
+  // Bebidas
+  coffee: Coffee,
+  beer: Beer,
+  wine: Wine,
+  martini: Martini,
+  "cup-soda": CupSoda,
+  droplet: Droplet,
+  
+  // Dieta e nutrição
   flame: Flame,
   "trending-down": TrendingDown,
   "trending-up": TrendingUp,
@@ -113,44 +189,36 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   minus: Minus,
   "arrow-down": ArrowDown,
   "arrow-up": ArrowUp,
+  
+  // Tempo e preparo
   clock: Clock,
   zap: Zap,
   timer: Timer,
   "chef-hat": ChefHat,
+  snowflake: Snowflake,
+  
+  // Pessoas
   user: User,
   users: Users,
   baby: Baby,
+  
+  // Status e indicadores
+  check: Check,
+  "check-circle": CheckCircle,
+  ban: Ban,
+  "x-circle": XCircle,
+  "circle-off": CircleOff,
+  "circle-dot": CircleDot,
   target: Target,
   heart: Heart,
-  apple: Apple,
-  carrot: Carrot,
-  pizza: Pizza,
-  coffee: Coffee,
-  droplet: Droplet,
-  sun: Sun,
-  moon: Moon,
   star: Star,
   shield: Shield,
   "alert-triangle": AlertTriangle,
-  ban: Ban,
-  "x-circle": XCircle,
-  "check-circle": CheckCircle,
-  banana: Banana,
-  cherry: Cherry,
-  citrus: Citrus,
-  grape: Grape,
-  sandwich: Sandwich,
-  soup: Soup,
-  cookie: Cookie,
-  cake: Cake,
-  "ice-cream-cone": IceCreamCone,
-  popcorn: Popcorn,
-  candy: Candy,
-  beer: Beer,
-  wine: Wine,
-  martini: Martini,
-  "cup-soda": CupSoda,
-  "circle-dot": CircleDot,
+  
+  // Outros
+  sun: Sun,
+  moon: Moon,
+  tree: TreeDeciduous,
 };
 
 type OnboardingOption = {

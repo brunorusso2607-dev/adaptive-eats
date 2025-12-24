@@ -7,9 +7,14 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut,
-  Wheat, Milk, Nut, Fish, FishOff, Egg, Bean, CircleSlash, Leaf, Salad, 
+  Wheat, WheatOff, Milk, MilkOff, Nut, NutOff, Fish, FishOff, 
+  Egg, EggOff, Bean, BeanOff, CircleSlash, Leaf, LeafyGreen, Salad, 
   Scale, TrendingDown, TrendingUp, Minus, Clock, Flame, Timer,
-  User, Users, Baby, type LucideIcon, X, Plus, CircleDot
+  User, Users, Baby, type LucideIcon, X, Plus, CircleDot,
+  Beef, Bird, Drumstick, Ham, Bone, Carrot, Apple, Banana,
+  Cherry, Citrus, Grape, Pizza, Sandwich, Soup, Cookie, Cake,
+  IceCreamCone, Popcorn, Candy, Coffee, Beer, Wine, CircleOff,
+  Croissant, Slice, Vegan, Ban, Snowflake, Lollipop
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -17,33 +22,95 @@ import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardi
 
 // Mapeamento de nomes de ícones para componentes Lucide
 const LUCIDE_ICONS: Record<string, LucideIcon> = {
+  // Grãos e cereais
   wheat: Wheat,
+  "wheat-off": WheatOff,
+  
+  // Laticínios
   milk: Milk,
+  "milk-off": MilkOff,
+  
+  // Oleaginosas
   nut: Nut,
+  "nut-off": NutOff,
+  
+  // Peixes e frutos do mar
   fish: Fish,
   "fish-off": FishOff,
+  
+  // Ovos
   egg: Egg,
+  "egg-off": EggOff,
+  
+  // Leguminosas
   bean: Bean,
-  check: Check,
-  utensils: CircleSlash,
-  salad: Salad,
+  "bean-off": BeanOff,
+  
+  // Carnes
+  beef: Beef,
+  bird: Bird,
+  drumstick: Drumstick,
+  ham: Ham,
+  bone: Bone,
+  
+  // Vegetais e folhas
   leaf: Leaf,
-  beef: Flame,
+  "leafy-green": LeafyGreen,
+  salad: Salad,
+  carrot: Carrot,
+  vegan: Vegan,
+  
+  // Frutas
+  apple: Apple,
+  banana: Banana,
+  cherry: Cherry,
+  citrus: Citrus,
+  grape: Grape,
+  
+  // Refeições
+  utensils: CircleSlash,
+  pizza: Pizza,
+  sandwich: Sandwich,
+  soup: Soup,
+  croissant: Croissant,
+  slice: Slice,
+  
+  // Doces e sobremesas
+  cookie: Cookie,
+  cake: Cake,
+  "ice-cream-cone": IceCreamCone,
+  popcorn: Popcorn,
+  candy: Candy,
+  lollipop: Lollipop,
+  
+  // Bebidas
+  coffee: Coffee,
+  beer: Beer,
+  wine: Wine,
+  
+  // Dieta e nutrição
+  flame: Flame,
   "trending-down": TrendingDown,
   "trending-up": TrendingUp,
   scale: Scale,
   minus: Minus,
-  "arrow-down": TrendingDown,
-  "arrow-up": TrendingUp,
+  snowflake: Snowflake,
+  
+  // Tempo e preparo
   clock: Clock,
   zap: Timer,
   timer: Timer,
   "chef-hat": ChefHat,
+  
+  // Pessoas
   user: User,
   users: Users,
   baby: Baby,
-  flame: Flame,
-  ban: CircleSlash,
+  
+  // Status e indicadores
+  check: Check,
+  ban: Ban,
+  "circle-off": CircleOff,
   "circle-dot": CircleDot,
 };
 

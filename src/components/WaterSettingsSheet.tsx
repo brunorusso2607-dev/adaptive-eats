@@ -1,8 +1,7 @@
 import { useState, useEffect } from "react";
-import { Droplets, Bell, Clock, Calculator, Sparkles } from "lucide-react";
+import { Droplets, Calculator, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Sheet,
@@ -38,20 +37,13 @@ const GOAL_OPTIONS = [
   { value: 4000, label: "4 litros" },
 ];
 
-const INTERVAL_OPTIONS = [
-  { value: 30, label: "30 minutos" },
-  { value: 60, label: "1 hora" },
-  { value: 90, label: "1h30" },
-  { value: 120, label: "2 horas" },
-];
-
 export function WaterSettingsSheet({
   open,
   onOpenChange,
   settings,
   onSave,
 }: WaterSettingsSheetProps) {
-  const [localSettings, setLocalSettings] = useState<WaterSettings>(settings);
+  const [localGoal, setLocalGoal] = useState(settings.daily_goal_ml);
   const [isSaving, setIsSaving] = useState(false);
   const [userWeight, setUserWeight] = useState<number | null>(null);
   const [useCalculatedGoal, setUseCalculatedGoal] = useState(false);
@@ -60,8 +52,8 @@ export function WaterSettingsSheet({
   const calculatedGoal = userWeight ? Math.round((userWeight * 35) / 100) * 100 : null;
 
   useEffect(() => {
-    setLocalSettings(settings);
-  }, [settings]);
+    setLocalGoal(settings.daily_goal_ml);
+  }, [settings.daily_goal_ml]);
 
   // Fetch user weight from profile
   useEffect(() => {
@@ -93,46 +85,35 @@ export function WaterSettingsSheet({
 
   const handleSave = async () => {
     setIsSaving(true);
-    const success = await onSave(localSettings);
+    const success = await onSave({ daily_goal_ml: localGoal });
     setIsSaving(false);
     if (success) {
       onOpenChange(false);
     }
   };
 
-  const handleReminderToggle = async (enabled: boolean) => {
-    setLocalSettings({ ...localSettings, reminder_enabled: enabled });
-    
-    if (enabled && "Notification" in window) {
-      const permission = await Notification.requestPermission();
-      if (permission !== "granted") {
-        setLocalSettings({ ...localSettings, reminder_enabled: false });
-      }
-    }
-  };
-
   const handleUseCalculatedGoal = () => {
     if (calculatedGoal) {
-      setLocalSettings({ ...localSettings, daily_goal_ml: calculatedGoal });
+      setLocalGoal(calculatedGoal);
       setUseCalculatedGoal(true);
     }
   };
 
   const handleSelectManualGoal = (value: string) => {
-    setLocalSettings({ ...localSettings, daily_goal_ml: parseInt(value) });
+    setLocalGoal(parseInt(value));
     setUseCalculatedGoal(false);
   };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-xl overflow-y-auto">
+      <SheetContent side="bottom" className="h-auto rounded-t-xl overflow-y-auto">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Droplets className="h-5 w-5 text-blue-500" />
-            Configurações de Água
+            Meta de Hidratação
           </SheetTitle>
           <SheetDescription>
-            Configure sua meta diária e lembretes
+            Configure sua meta diária de água
           </SheetDescription>
         </SheetHeader>
 
@@ -185,14 +166,14 @@ export function WaterSettingsSheet({
               {calculatedGoal ? "Ou escolha manualmente" : "Meta diária"}
             </Label>
             <Select
-              value={useCalculatedGoal ? "" : localSettings.daily_goal_ml.toString()}
+              value={useCalculatedGoal ? "" : localGoal.toString()}
               onValueChange={handleSelectManualGoal}
             >
               <SelectTrigger className={cn(useCalculatedGoal && "opacity-60")}>
                 <SelectValue placeholder="Selecione sua meta">
                   {useCalculatedGoal 
                     ? "Meta calculada ativa" 
-                    : GOAL_OPTIONS.find(o => o.value === localSettings.daily_goal_ml)?.label || "Selecione"
+                    : GOAL_OPTIONS.find(o => o.value === localGoal)?.label || "Selecione"
                   }
                 </SelectValue>
               </SelectTrigger>
@@ -215,112 +196,12 @@ export function WaterSettingsSheet({
           <div className="bg-muted/50 rounded-lg p-4 text-center">
             <p className="text-sm text-muted-foreground">Meta atual</p>
             <p className="text-3xl font-bold text-foreground">
-              {(localSettings.daily_goal_ml / 1000).toFixed(1)}L
+              {(localGoal / 1000).toFixed(1)}L
             </p>
             <p className="text-xs text-muted-foreground">
-              ≈ {Math.round(localSettings.daily_goal_ml / 250)} copos de 250ml
+              ≈ {Math.round(localGoal / 250)} copos de 250ml
             </p>
           </div>
-
-          {/* Reminder Toggle */}
-          <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
-              <Label className="flex items-center gap-2">
-                <Bell className="h-4 w-4" />
-                Lembretes
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Receba notificações para beber água
-              </p>
-            </div>
-            <Switch
-              checked={localSettings.reminder_enabled}
-              onCheckedChange={handleReminderToggle}
-            />
-          </div>
-
-          {localSettings.reminder_enabled && (
-            <>
-              {/* Reminder Interval */}
-              <div className="space-y-2">
-                <Label className="flex items-center gap-2">
-                  <Clock className="h-4 w-4" />
-                  Intervalo entre lembretes
-                </Label>
-                <Select
-                  value={localSettings.reminder_interval_minutes.toString()}
-                  onValueChange={(value) =>
-                    setLocalSettings({
-                      ...localSettings,
-                      reminder_interval_minutes: parseInt(value),
-                    })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o intervalo" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {INTERVAL_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value.toString()}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Active Hours */}
-              <div className="space-y-2">
-                <Label>Horário dos lembretes</Label>
-                <div className="flex items-center gap-2">
-                  <Select
-                    value={localSettings.reminder_start_hour.toString()}
-                    onValueChange={(value) =>
-                      setLocalSettings({
-                        ...localSettings,
-                        reminder_start_hour: parseInt(value),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <SelectItem key={i} value={i.toString()}>
-                          {i.toString().padStart(2, "0")}:00
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <span className="text-muted-foreground">até</span>
-                  <Select
-                    value={localSettings.reminder_end_hour.toString()}
-                    onValueChange={(value) =>
-                      setLocalSettings({
-                        ...localSettings,
-                        reminder_end_hour: parseInt(value),
-                      })
-                    }
-                  >
-                    <SelectTrigger className="w-24">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {Array.from({ length: 24 }, (_, i) => (
-                        <SelectItem key={i} value={i.toString()}>
-                          {i.toString().padStart(2, "0")}:00
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Você receberá lembretes apenas neste período
-                </p>
-              </div>
-            </>
-          )}
         </div>
 
         <SheetFooter className="pb-6">
@@ -329,7 +210,7 @@ export function WaterSettingsSheet({
             disabled={isSaving}
             className="w-full bg-blue-500 hover:bg-blue-600"
           >
-            {isSaving ? "Salvando..." : "Salvar configurações"}
+            {isSaving ? "Salvando..." : "Salvar meta"}
           </Button>
         </SheetFooter>
       </SheetContent>

@@ -300,17 +300,13 @@ export default function PendingMealCard({
             <div 
               className={cn(
                 "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                mealStatus === "critical" 
-                  ? "bg-destructive/20" 
-                  : mealStatus === "delayed"
-                    ? "bg-yellow-500/20"
-                    : "gradient-primary"
+                mealStatus === "critical" || mealStatus === "delayed"
+                  ? "bg-muted" 
+                  : "gradient-primary"
               )}
             >
-              {mealStatus === "critical" ? (
-                <AlertTriangle className="w-6 h-6 text-destructive" />
-              ) : mealStatus === "delayed" ? (
-                <Clock className="w-6 h-6 text-yellow-600 dark:text-yellow-400" />
+              {mealStatus === "critical" || mealStatus === "delayed" ? (
+                <UtensilsCrossed className="w-6 h-6 text-muted-foreground" />
               ) : (
                 <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
               )}

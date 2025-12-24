@@ -13,6 +13,7 @@ import FridgeScanner from "./FridgeScanner";
 type FoodItem = {
   item: string;
   item_original_language?: string;
+  item_original_ai?: string; // Original item name before correction was applied
   porcao_estimada: string;
   calorias: number;
   macros: {
@@ -27,6 +28,7 @@ type FoodItem = {
   ingredientes_provaveis_ocultos?: string[];
   metodo_preparo_provavel?: string;
   corrigido_manualmente?: boolean;
+  correcao_aplicada?: boolean; // Auto-correction was applied from saved corrections
 };
 
 type IntoleranceAlert = {
@@ -113,6 +115,11 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   const [metaDiaria, setMetaDiaria] = useState<MetaDiaria | null>(null);
   const [labelAnalysis, setLabelAnalysis] = useState<LabelAnalysis | null>(null);
   const [perfilAplicado, setPerfilAplicado] = useState<PerfilUsuarioAplicado | null>(null);
+  const [correcoesAplicadas, setCorrecoesAplicadas] = useState<{
+    quantidade: number;
+    itens: string[];
+    mensagem: string;
+  } | null>(null);
   const [notFoodError, setNotFoodError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<{
     categoria: string;
@@ -312,7 +319,17 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
         setFoodAnalysis(data.analysis);
         setMetaDiaria(data.meta_diaria || null);
         setPerfilAplicado(data.perfil_usuario_aplicado || null);
-        toast.success("Análise concluída!");
+        setCorrecoesAplicadas(data.correcoes_aplicadas || null);
+        
+        // Show toast about corrections applied
+        if (data.correcoes_aplicadas?.quantidade > 0) {
+          toast.success(`${data.correcoes_aplicadas.quantidade} correção(ões) aplicada(s) automaticamente!`, {
+            description: "Baseado em feedbacks anteriores",
+            duration: 4000,
+          });
+        } else {
+          toast.success("Análise concluída!");
+        }
       } else if (mode === "label") {
         const { data, error } = await supabase.functions.invoke("analyze-label-photo", {
           body: { 
@@ -399,6 +416,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setMetaDiaria(null);
     setLabelAnalysis(null);
     setPerfilAplicado(null);
+    setCorrecoesAplicadas(null);
     setNotFoodError(null);
     setCategoryError(null);
     setLabelStep("front");
@@ -417,6 +435,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       setMetaDiaria(null);
       setLabelAnalysis(null);
       setPerfilAplicado(null);
+      setCorrecoesAplicadas(null);
       setNotFoodError(null);
       setCategoryError(null);
       setLabelStep("front");

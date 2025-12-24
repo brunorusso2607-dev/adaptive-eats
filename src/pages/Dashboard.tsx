@@ -38,6 +38,7 @@ import HealthProgressStrip from "@/components/HealthProgressStrip";
 import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 import { WaterTracker } from "@/components/WaterTracker";
 import { WaterWidgetCompact } from "@/components/WaterWidgetCompact";
+import { SafetyStatusBadge } from "@/components/SafetyStatusBadge";
 
 type Recipe = {
   name: string;
@@ -125,6 +126,7 @@ export default function Dashboard() {
   // User profile for ingredient validation
   const [userProfile, setUserProfile] = useState<{
     intolerances?: string[] | null;
+    excluded_ingredients?: string[] | null;
     dietary_preference?: string | null;
   } | null>(null);
   
@@ -151,7 +153,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, dietary_preference, kids_mode")
+      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, dietary_preference, kids_mode")
       .eq("id", userId)
       .maybeSingle();
     
@@ -166,6 +168,7 @@ export default function Dashboard() {
       // Salvar dados do perfil para validação de ingredientes
       setUserProfile({
         intolerances: data?.intolerances,
+        excluded_ingredients: data?.excluded_ingredients,
         dietary_preference: data?.dietary_preference,
       });
       
@@ -790,6 +793,14 @@ export default function Dashboard() {
                   waterAchievements={gamification.waterAchievements}
                   newAchievements={gamification.newAchievements}
                   isLoading={gamification.isLoading}
+                />
+
+                {/* Safety Status Badge - Proteção de Intolerâncias */}
+                <SafetyStatusBadge
+                  intolerances={userProfile?.intolerances || []}
+                  excludedIngredients={userProfile?.excluded_ingredients || []}
+                  dietaryPreference={userProfile?.dietary_preference || "comum"}
+                  isLoading={!userProfile}
                 />
 
                 {/* Main Recipe Card - Clean white card */}

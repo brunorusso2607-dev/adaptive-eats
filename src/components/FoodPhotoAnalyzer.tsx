@@ -726,51 +726,51 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           {/* Food Analysis results */}
           {foodAnalysis && (
             <div className="space-y-4 animate-fade-in">
-              {/* Quick Intolerance Status Card - FIRST THING USER SEES */}
+              {/* SAFETY STATUS - THE MOST IMPORTANT THING */}
               {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`glass-card border-2 animate-reveal animate-reveal-1 ${
+                <Card className={`border-2 shadow-lg animate-reveal animate-reveal-1 ${
                   perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
-                    ? "border-red-500 bg-red-500/5" 
+                    ? "border-destructive bg-destructive/5" 
                     : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
                     ? "border-yellow-500 bg-yellow-500/5"
                     : "border-green-500 bg-green-500/5"
                 }`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
                       {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
                         <>
-                          <div className="w-12 h-12 rounded-full bg-red-500/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldX className="w-6 h-6 text-red-500" />
+                          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
+                            <ShieldX className="w-8 h-8 text-destructive" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-bold text-red-600 text-lg">⚠️ Contém Restrição</p>
-                            <p className="text-sm text-muted-foreground">
-                              {perfilAplicado.alertas_personalizados.find(a => a.status === "contem")?.restricao}
+                            <p className="font-bold text-destructive text-xl">⛔ NÃO RECOMENDADO</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Contém: <span className="font-semibold">{perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}</span>
                             </p>
                           </div>
                         </>
                       ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
                         <>
-                          <div className="w-12 h-12 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldAlert className="w-6 h-6 text-yellow-500" />
+                          <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
+                            <ShieldAlert className="w-8 h-8 text-yellow-500" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-bold text-yellow-600 text-lg">⚠️ Atenção</p>
-                            <p className="text-sm text-muted-foreground">
-                              Possível risco: {perfilAplicado.alertas_personalizados.find(a => a.status === "risco_potencial")?.restricao}
+                            <p className="font-bold text-yellow-600 text-xl">⚠️ VERIFICAR</p>
+                            <p className="text-sm text-muted-foreground mt-1">
+                              Possível risco: <span className="font-semibold">{perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}</span>
                             </p>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldCheck className="w-6 h-6 text-green-500 stroke-[1.5]" />
+                          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
+                            <ShieldCheck className="w-8 h-8 text-green-500" />
                           </div>
                           <div className="flex-1">
-                            <p className="font-bold text-green-600 text-lg flex items-center gap-1.5">
-                              <Check className="w-4 h-4 stroke-[1.5]" /> Alimento Seguro
+                            <p className="font-bold text-green-600 text-xl flex items-center gap-2">
+                              ✅ SEGURO PARA VOCÊ
                             </p>
-                            <p className="text-sm text-muted-foreground">
+                            <p className="text-sm text-muted-foreground mt-1">
                               Compatível com suas restrições alimentares
                             </p>
                           </div>

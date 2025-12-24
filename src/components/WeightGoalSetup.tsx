@@ -520,32 +520,50 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     }
     
     try {
-      // Se existe plano anterior, deletar primeiro
-      if (hasExistingPlan) {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (session) {
-          // Primeiro buscar os planos do usuário
-          const { data: existingPlans } = await supabase
-            .from("meal_plans")
-            .select("id")
-            .eq("user_id", session.user.id);
+      // SEMPRE excluir todos os planos existentes antes de criar um novo
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // Buscar TODOS os planos do usuário
+        const { data: existingPlans, error: fetchError } = await supabase
+          .from("meal_plans")
+          .select("id")
+          .eq("user_id", session.user.id);
+        
+        if (fetchError) {
+          console.error("[executeGeneratePlan] Erro ao buscar planos:", fetchError);
+        }
+        
+        // Deletar cada plano existente
+        if (existingPlans && existingPlans.length > 0) {
+          console.log("[executeGeneratePlan] Excluindo", existingPlans.length, "planos existentes...");
           
-          // Deletar cada plano (os items serão deletados por cascade ou RLS)
-          if (existingPlans && existingPlans.length > 0) {
-            for (const plan of existingPlans) {
-              // Deletar items do plano primeiro
-              await supabase
-                .from("meal_plan_items")
-                .delete()
-                .eq("meal_plan_id", plan.id);
-              
-              // Deletar o plano
-              await supabase
-                .from("meal_plans")
-                .delete()
-                .eq("id", plan.id);
+          for (const plan of existingPlans) {
+            // Deletar items do plano primeiro
+            const { error: itemsError } = await supabase
+              .from("meal_plan_items")
+              .delete()
+              .eq("meal_plan_id", plan.id);
+            
+            if (itemsError) {
+              console.error("[executeGeneratePlan] Erro ao deletar items do plano", plan.id, ":", itemsError);
+            }
+            
+            // Deletar o plano
+            const { error: planError } = await supabase
+              .from("meal_plans")
+              .delete()
+              .eq("id", plan.id);
+            
+            if (planError) {
+              console.error("[executeGeneratePlan] Erro ao deletar plano", plan.id, ":", planError);
+            } else {
+              console.log("[executeGeneratePlan] Plano excluído:", plan.id);
             }
           }
+          
+          console.log("[executeGeneratePlan] Todos os planos antigos excluídos com sucesso");
+        } else {
+          console.log("[executeGeneratePlan] Nenhum plano existente para excluir");
         }
       }
 

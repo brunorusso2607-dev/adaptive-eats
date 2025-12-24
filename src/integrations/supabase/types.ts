@@ -418,6 +418,48 @@ export type Database = {
         }
         Relationships: []
       }
+      intolerance_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          ingredient: string
+          intolerance_key: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          ingredient: string
+          intolerance_key: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          ingredient?: string
+          intolerance_key?: string
+        }
+        Relationships: []
+      }
+      intolerance_safe_keywords: {
+        Row: {
+          created_at: string
+          id: string
+          intolerance_key: string
+          keyword: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          intolerance_key: string
+          keyword: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          intolerance_key?: string
+          keyword?: string
+        }
+        Relationships: []
+      }
       meal_consumption: {
         Row: {
           consumed_at: string

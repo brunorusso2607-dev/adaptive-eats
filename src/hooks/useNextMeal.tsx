@@ -65,10 +65,11 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-// Índices fixos para ordenação - usa lanche_tarde como padrão
+// Índices fixos para ordenação - inclui aliases para compatibilidade
 const MEAL_SORT_PRIORITY: Record<string, number> = {
   "cafe_manha": 0,
   "almoco": 1,
+  "lanche": 2, // Alias para lanche_tarde
   "lanche_tarde": 2,
   "jantar": 3,
   "ceia": 4,

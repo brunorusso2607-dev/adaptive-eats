@@ -40,6 +40,127 @@ export interface CategoryContext {
 }
 
 // ============================================
+// MAPEAMENTO EXPANDIDO DE INGREDIENTES PROIBIDOS
+// ============================================
+// Lista COMPLETA de todos os ingredientes e derivados que JAMAIS
+// devem aparecer em receitas para usuários com cada intolerância
+
+export const FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
+  lactose: [
+    // Leite e derivados diretos
+    "leite", "leite integral", "leite desnatado", "leite semidesnatado", "leite em pó",
+    "leite condensado", "leite evaporado", "leite de vaca", "leite de cabra", "leite de búfala",
+    // Queijos
+    "queijo", "queijo muçarela", "queijo mussarela", "queijo parmesão", "queijo prato",
+    "queijo coalho", "queijo minas", "queijo cottage", "queijo ricota", "queijo gorgonzola",
+    "queijo provolone", "queijo brie", "queijo camembert", "queijo cheddar", "queijo gouda",
+    "queijo gruyère", "queijo feta", "queijo roquefort", "queijo mascarpone", "queijo cream cheese",
+    "queijo pecorino", "queijo manchego", "queijo emmental", "queijo suíço", "cream cheese",
+    // Creme e manteiga
+    "manteiga", "manteiga com sal", "manteiga sem sal", "manteiga ghee", "ghee",
+    "creme de leite", "creme de leite fresco", "nata", "chantilly", "chantili",
+    "creme chantilly", "creme fraîche", "creme azedo", "sour cream",
+    // Iogurte
+    "iogurte", "iogurte natural", "iogurte grego", "iogurte integral", "iogurte desnatado",
+    "coalhada", "kefir", "leite fermentado", "yakult",
+    // Requeijão e similares
+    "requeijão", "requeijão cremoso", "requeijão light", "catupiry", "polenguinho",
+    // Produtos processados com lactose
+    "whey", "whey protein", "proteína do soro do leite", "caseína", "caseinato",
+    "lactose", "soro de leite", "lactoalbumina", "lactoglobulina",
+    // Doces com lactose
+    "doce de leite", "brigadeiro", "leite moça", "pudim de leite",
+    // Outros
+    "fondue", "bechamel", "molho branco", "molho quatro queijos", "molho alfredo",
+  ],
+  
+  gluten: [
+    // Trigo e derivados
+    "trigo", "farinha de trigo", "farinha branca", "farinha integral", "farinha de rosca",
+    "farelo de trigo", "gérmen de trigo", "trigo integral", "trigo sarraceno",
+    // Pães
+    "pão", "pão francês", "pão de forma", "pão integral", "pão sírio", "pão árabe",
+    "pão ciabatta", "pão italiano", "pão de leite", "pão de queijo", "torrada",
+    "crouton", "croûton", "bruschetta", "focaccia", "bagel", "brioche",
+    // Massas
+    "macarrão", "espaguete", "penne", "fusilli", "farfalle", "lasanha", "nhoque",
+    "ravióli", "tortellini", "capeletti", "talharim", "fettuccine", "massa",
+    "massa folhada", "massa de pizza", "massa de torta", "massa de pastel",
+    // Cereais
+    "aveia", "aveia em flocos", "farelo de aveia", "cevada", "centeio", "malte",
+    "cerveja", "uísque", "whisky",
+    // Biscoitos e bolos
+    "biscoito", "bolacha", "cookie", "bolo", "bolo pronto", "mistura para bolo",
+    "wafer", "pretzel", "cream cracker",
+    // Empanados
+    "empanado", "milanesa", "breading", "nuggets", "croquete",
+    // Molhos
+    "molho shoyu", "shoyu", "molho de soja industrializado", "molho teriyaki",
+    "molho inglês", "molho barbecue industrializado",
+    // Outros
+    "seitan", "bulgur", "cuscuz de trigo", "semolina", "sêmola",
+  ],
+  
+  acucar: [
+    // Açúcares diretos
+    "açúcar", "açúcar refinado", "açúcar cristal", "açúcar mascavo", "açúcar demerara",
+    "açúcar de confeiteiro", "açúcar invertido", "açúcar de coco",
+    // Xaropes
+    "mel", "melado", "melaço", "xarope de milho", "xarope de glicose", "xarope de agave",
+    "xarope de bordo", "maple syrup", "xarope de frutose",
+    // Outros doces
+    "rapadura", "caramelo", "calda", "geleia", "compota", "doce",
+    // Adoçantes calóricos
+    "maltodextrina", "dextrose", "frutose",
+  ],
+  
+  amendoim: [
+    "amendoim", "amendoins", "pasta de amendoim", "manteiga de amendoim", "paçoca",
+    "óleo de amendoim", "farinha de amendoim", "pé de moleque",
+  ],
+  
+  frutos_mar: [
+    // Peixes
+    "peixe", "salmão", "atum", "tilápia", "bacalhau", "sardinha", "anchova",
+    "truta", "robalo", "dourado", "pescada", "merluza", "linguado", "badejo",
+    "cavala", "arenque", "carpa",
+    // Frutos do mar
+    "camarão", "camarões", "lagosta", "lagostim", "caranguejo", "siri",
+    "lula", "polvo", "mexilhão", "marisco", "ostra", "vieira", "berbigão",
+    "sururu", "vongole",
+    // Derivados
+    "óleo de peixe", "molho de peixe", "molho de ostra", "pasta de anchova",
+    "caldo de peixe", "fumet",
+  ],
+  
+  ovo: [
+    "ovo", "ovos", "ovo inteiro", "clara de ovo", "gema de ovo", "ovo caipira",
+    "ovo de codorna", "ovo cozido", "ovo frito", "ovo mexido", "omelete",
+    "fritada", "gemada", "merengue", "suspiro", "clara em neve",
+    // Produtos com ovo
+    "maionese", "aioli", "molho holandês", "molho béarnaise", "carbonara",
+    "massa fresca com ovo", "panqueca", "waffle", "brioche", "pão de ló",
+  ],
+  
+  soja: [
+    "soja", "grão de soja", "proteína de soja", "proteína texturizada de soja",
+    "tofu", "tofu firme", "tofu macio", "tofu defumado",
+    "leite de soja", "bebida de soja", "iogurte de soja",
+    "edamame", "missô", "molho shoyu", "shoyu", "tamari",
+    "tempeh", "natto", "óleo de soja", "lecitina de soja",
+  ],
+  
+  castanhas: [
+    "castanha", "castanhas", "castanha de caju", "castanha do pará", "castanha do brasil",
+    "nozes", "noz", "noz pecã", "noz moscada",
+    "amêndoa", "amêndoas", "farinha de amêndoa", "leite de amêndoa",
+    "avelã", "avelãs", "creme de avelã", "nutella",
+    "pistache", "pistaches", "macadâmia", "pinhão", "pinhões",
+    "pasta de castanha", "manteiga de amêndoa", "manteiga de castanha",
+  ],
+};
+
+// ============================================
 // LABELS - MAPEAMENTOS LEGÍVEIS
 // ============================================
 
@@ -205,6 +326,46 @@ export const MEAL_TYPE_EXAMPLES: Record<string, string[]> = {
 // ============================================
 // FUNÇÕES UTILITÁRIAS
 // ============================================
+
+/**
+ * Retorna lista COMPLETA de ingredientes proibidos para o usuário
+ * baseado em suas intolerâncias e alimentos excluídos manualmente
+ */
+export function getAllForbiddenIngredients(profile: UserProfile): string[] {
+  const forbidden: string[] = [];
+  
+  // Adiciona ingredientes de cada intolerância
+  const intolerances = profile.intolerances || [];
+  for (const intolerance of intolerances) {
+    if (intolerance !== "nenhuma" && FORBIDDEN_INGREDIENTS[intolerance]) {
+      forbidden.push(...FORBIDDEN_INGREDIENTS[intolerance]);
+    }
+  }
+  
+  // Adiciona ingredientes excluídos manualmente
+  const excluded = profile.excluded_ingredients || [];
+  forbidden.push(...excluded);
+  
+  // Remove duplicatas e retorna
+  return [...new Set(forbidden.map(i => i.toLowerCase()))];
+}
+
+/**
+ * Gera lista resumida de ingredientes proibidos para incluir no prompt
+ * (máximo 50 itens para não sobrecarregar)
+ */
+export function buildForbiddenIngredientsList(profile: UserProfile): string {
+  const forbidden = getAllForbiddenIngredients(profile);
+  
+  if (forbidden.length === 0) {
+    return "";
+  }
+  
+  // Pega os 50 mais importantes (os primeiros de cada categoria são os mais comuns)
+  const topForbidden = forbidden.slice(0, 50);
+  
+  return topForbidden.join(", ").toUpperCase();
+}
 
 /**
  * Calcula TMB (Taxa Metabólica Basal) e GET (Gasto Energético Total)
@@ -414,6 +575,7 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
 
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
+  const forbiddenList = buildForbiddenIngredientsList(profile);
   const categoryConstraint = buildCategoryConstraint(categoryContext || null);
   const kidsInstructions = buildKidsInstructions(isKidsMode);
   const weightLossInstructions = buildWeightLossInstructions(isWeightLossMode, macros);
@@ -430,37 +592,51 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
     ? `\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR): ${excludedIngredientsStr}`
     : "";
 
+  // Build forbidden ingredients list
+  const forbiddenBlock = forbiddenList 
+    ? `\n\n🚨🚨🚨 LISTA NEGRA DE INGREDIENTES - NUNCA USE NENHUM DESTES:\n${forbiddenList}\n🚨🚨🚨`
+    : "";
+
   // Build comprehensive safety block
   const safetyBlock = `
-🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA (VERIFICAR ANTES DE TUDO!)
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🚨🚨🚨 SEGURANÇA ALIMENTAR - PRIORIDADE ABSOLUTA 🚨🚨🚨                     ║
+║  VERIFICAR ANTES DE QUALQUER COISA! NÃO PROSSIGA SEM LER!                   ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-⛔ INTOLERÂNCIAS/ALERGIAS - JAMAIS INCLUIR:
+⛔ INTOLERÂNCIAS/ALERGIAS DO USUÁRIO - INGREDIENTES PROIBIDOS:
 ${intolerancesStr}
 ${excludedConstraint}
+${forbiddenBlock}
 
-📋 CHECKLIST DE SEGURANÇA (executar ANTES de gerar receita):
-□ Verificar CADA ingrediente contra a lista de intolerâncias
-□ Verificar ingredientes "escondidos" em molhos e temperos
-□ Verificar ingredientes excluídos manualmente pelo usuário
-□ Se qualquer ingrediente for duvidoso, NÃO incluir
+📋 CHECKLIST OBRIGATÓRIO (executar ANTES de gerar receita):
+✓ Verificar CADA ingrediente contra a LISTA NEGRA acima
+✓ Verificar ingredientes "escondidos" em molhos e temperos  
+✓ Verificar ingredientes excluídos manualmente pelo usuário
+✓ QUEIJOS VEGETAIS contêm caseína = PROIBIDOS para intolerantes a lactose
+✓ Se qualquer ingrediente for duvidoso, NÃO incluir
 
-⚠️ INGREDIENTES COMUNS PERIGOSOS:
-- LACTOSE: leite, queijo, manteiga, creme de leite, requeijão, iogurte, whey
-- GLÚTEN: farinha de trigo, pão, macarrão, biscoitos, molho shoyu
-- OVO: maionese tradicional, massas frescas, empanados
-- AMENDOIM/CASTANHAS: pastas, óleos, molhos asiáticos
+⚠️ ATENÇÃO ESPECIAL - INGREDIENTES QUE PARECEM SEGUROS MAS NÃO SÃO:
+- "Queijo vegetal" / "queijo sem lactose" → MUITOS contêm traços de leite
+- "Manteiga ghee" → É derivado de leite = PROIBIDO para lactose
+- "Molho shoyu" → Contém trigo = PROIBIDO para glúten
+- "Maionese" → Contém ovo = PROIBIDO para alergia a ovo
+- "Proteína isolada" → Pode conter soja ou leite
 
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+🔴 EM CASO DE DÚVIDA: NÃO INCLUA O INGREDIENTE!
 
-  return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas.
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  SE VOCÊ INCLUIR QUALQUER INGREDIENTE PROIBIDO, A RECEITA SERÁ REJEITADA   ║
+╚══════════════════════════════════════════════════════════════════════════════╝`;
+
+  return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas e SEGURAS.
 
 ${safetyBlock}
 ${categoryConstraint}
 ${specialModes}
 
-REGRAS (ordem de prioridade):
-1. 🚨 SEGURANÇA PRIMEIRO: NUNCA inclua ingredientes proibidos - verificar lista acima
+REGRAS (ordem de prioridade ESTRITA):
+1. 🚨 SEGURANÇA PRIMEIRO: NUNCA inclua ingredientes da LISTA NEGRA - verificar CADA ingrediente
 2. CATEGORIA: Se selecionada, a receita DEVE ser dessa categoria
 3. DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
 4. OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
@@ -510,14 +686,14 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
       if (parts.length > 0) filtersText = ` (${parts.join(", ")})`;
     }
 
-    return `Gere uma receita de "${categoryContext.subcategory}"${filtersText}. Exemplos: ${examples || categoryContext.subcategory}.`;
+    return `Gere uma receita de "${categoryContext.subcategory}"${filtersText}. Exemplos: ${examples || categoryContext.subcategory}. LEMBRE-SE: verificar a LISTA NEGRA de ingredientes antes de gerar!`;
   }
 
   if (type === "com_ingredientes" && ingredients) {
-    return `Receita usando: ${ingredients}. Pode adicionar ingredientes básicos.`;
+    return `Receita usando: ${ingredients}. Pode adicionar ingredientes básicos. ATENÇÃO: verificar se cada ingrediente está na LISTA NEGRA!`;
   }
 
-  return "Gere uma receita saudável para meu perfil.";
+  return "Gere uma receita saudável e SEGURA para meu perfil. Verifique a LISTA NEGRA de ingredientes!";
 }
 
 /**
@@ -533,6 +709,7 @@ export function buildSingleDayPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
+  const forbiddenList = buildForbiddenIngredientsList(profile);
   const isKidsMode = profile.context === "modo_kids";
   // Complexidade padrão: equilibrada (não vem mais do perfil do usuário)
   const complexity = "equilibrada";
@@ -545,7 +722,12 @@ export function buildSingleDayPrompt(
 
   // Build excluded ingredients constraint for meal plan
   const excludedConstraint = excludedIngredientsStr 
-    ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR):\n${excludedIngredientsStr}`
+    ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME:\n${excludedIngredientsStr}`
+    : "";
+
+  // Build forbidden list
+  const forbiddenBlock = forbiddenList 
+    ? `\n\n🚨 LISTA NEGRA - NUNCA USE NENHUM DESTES INGREDIENTES:\n${forbiddenList}`
     : "";
 
   const complexityInstructions: Record<string, string> = {
@@ -558,14 +740,24 @@ export function buildSingleDayPrompt(
 
 📅 Gere as 5 refeições para: ${dayName}
 
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! LER ANTES DE TUDO! 🚨          ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+⛔ RESTRIÇÕES DO USUÁRIO - JAMAIS INCLUIR ESTES INGREDIENTES:
+${intolerancesStr}${excludedConstraint}${forbiddenBlock}
+
+📋 ANTES DE GERAR CADA RECEITA:
+✓ Verificar CADA ingrediente contra as restrições acima
+✓ "Queijo vegetal" / "sem lactose" → VERIFICAR se realmente não tem lactose
+✓ Molhos prontos → Podem conter glúten ou leite escondido
+✓ EM CASO DE DÚVIDA: NÃO INCLUA!
+
 👤 PERFIL DO CLIENTE:
 • Dieta: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
 • Objetivo: ${GOAL_LABELS[profile.goal || "manter"]}
 • Meta diária: ${macros.dailyCalories}kcal, ${macros.dailyProtein}g proteína
 • Contexto: ${CONTEXT_LABELS[profile.context || "individual"]}
-
-🚫 RESTRIÇÕES ALIMENTARES (JAMAIS INCLUIR):
-${intolerancesStr}${excludedConstraint}
 
 ⏱️ COMPLEXIDADE: ${COMPLEXITY_LABELS[complexity]}
 ${complexityInstructions[complexity]}${kidsNote}${avoidRecipes}
@@ -579,6 +771,7 @@ ${selectedMealTypes.map((m, i) => `${i + 1}. ${MEAL_TYPE_LABELS[m]}`).join("\n")
 • Modo de preparo detalhado e claro
 • Macros realistas que somem ~${macros.dailyCalories}kcal no dia
 • Priorize ingredientes de fácil acesso no Brasil
+• 🚨 VERIFICAR CADA INGREDIENTE CONTRA AS RESTRIÇÕES!
 
 🔧 FORMATO JSON (responda APENAS com JSON válido):
 {"day_index":${dayIndex},"day_name":"${dayName}","meals":[
@@ -612,6 +805,7 @@ export function buildRegenerateMealPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
+  const forbiddenList = buildForbiddenIngredientsList(profile);
   const mealLabel = MEAL_TYPE_LABELS[mealType] || mealType;
   const mealExamples = MEAL_TYPE_EXAMPLES[mealType] || [];
   const isKidsMode = profile.context === "modo_kids";
@@ -623,20 +817,27 @@ export function buildRegenerateMealPrompt(
     ? `\nALIMENTOS PROIBIDOS (usuário não consome): ${excludedIngredientsStr}`
     : "";
 
+  // Build forbidden list
+  const forbiddenBlock = forbiddenList 
+    ? `\n\n🚨 LISTA NEGRA - NUNCA USE:\n${forbiddenList}`
+    : "";
+
   return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
 
-🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA!
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! 🚨                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
 
-⛔ JAMAIS INCLUIR (verificar ANTES de gerar):
-${intolerancesStr}${excludedConstraint}
+⛔ JAMAIS INCLUIR (verificar CADA ingrediente):
+${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 📋 CHECKLIST DE SEGURANÇA:
-□ Verificar CADA ingrediente contra intolerâncias
-□ Verificar ingredientes "escondidos" em molhos
-□ Verificar alimentos proibidos pelo usuário
+✓ Verificar CADA ingrediente contra intolerâncias
+✓ Verificar ingredientes "escondidos" em molhos
+✓ Verificar alimentos proibidos pelo usuário
+✓ EM CASO DE DÚVIDA: NÃO INCLUA!
 ${kidsNote}${ingredientsNote}
 
 REGRAS:

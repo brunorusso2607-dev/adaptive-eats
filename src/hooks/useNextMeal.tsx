@@ -74,7 +74,9 @@ const MEAL_SORT_PRIORITY: Record<string, number> = {
 };
 
 function getMealSortIndex(mealType: string): number {
-  return MEAL_SORT_PRIORITY[mealType] ?? 999;
+  // Normalizar lanche -> lanche_tarde para ordenação
+  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
+  return MEAL_SORT_PRIORITY[normalizedType] ?? MEAL_SORT_PRIORITY[mealType] ?? 999;
 }
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
@@ -172,8 +174,11 @@ export function useNextMeal() {
       }
 
       // Buscar plano ativo
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Usar data local para cálculos
+      const now = new Date();
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      console.log("[useNextMeal] Hora local:", now.toLocaleString('pt-BR'), "| UTC:", now.toISOString());
       
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
@@ -201,7 +206,6 @@ export function useNextMeal() {
       // Parsing correta da data para evitar problemas de timezone
       const [year, month, day] = activePlan.start_date.split('-').map(Number);
       const planStartDate = new Date(year, month - 1, day); // month é 0-indexed
-      planStartDate.setHours(0, 0, 0, 0);
       
       const diffTime = today.getTime() - planStartDate.getTime();
       const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -212,12 +216,13 @@ export function useNextMeal() {
       
       // Se hoje é antes do início do plano, não há refeição
       if (daysSinceStart < 0) {
+        console.log("[useNextMeal] Plano ainda não começou, daysSinceStart:", daysSinceStart);
         setNextMeal(null);
         setIsLoading(false);
         return;
       }
       
-      console.log("[useNextMeal] today:", today.toISOString(), "planStart:", planStartDate.toISOString(), "daysSinceStart:", daysSinceStart, "dayOfWeek:", dayOfWeek, "weekNumber:", weekNumber, "planId:", activePlanId);
+      console.log("[useNextMeal] today:", today.toLocaleDateString('pt-BR'), "planStart:", planStartDate.toLocaleDateString('pt-BR'), "daysSinceStart:", daysSinceStart, "dayOfWeek:", dayOfWeek, "weekNumber:", weekNumber, "planId:", activePlanId);
       
       // Buscar refeições sem ordenação do SQL - ordenamos no JavaScript
       const { data: meals, error: mealsError } = await supabase
@@ -237,23 +242,31 @@ export function useNextMeal() {
         return;
       }
 
+      // Log detalhado para debug
+      console.log("[useNextMeal] Refeições do banco:", meals.map(m => ({
+        type: m.meal_type,
+        sortIndex: getMealSortIndex(m.meal_type),
+        completed: !!m.completed_at,
+        name: m.recipe_name?.substring(0, 20)
+      })));
+
       // Ordenar as refeições usando mapa direto: cafe_manha=0, almoco=1, lanche=2, jantar=3, ceia=4
-      console.log("[useNextMeal] ANTES ordenação:", meals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(", "));
-      
       const sortedMeals = [...meals].sort((a, b) => {
         const indexA = getMealSortIndex(a.meal_type);
         const indexB = getMealSortIndex(b.meal_type);
+        console.log(`[useNextMeal] Comparando: ${a.meal_type}(${indexA}) vs ${b.meal_type}(${indexB}) = ${indexA - indexB}`);
         return indexA - indexB;
       });
       
-      console.log("[useNextMeal] DEPOIS ordenação:", sortedMeals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(", "));
+      console.log("[useNextMeal] Após ordenação:", sortedMeals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(" -> "));
 
       // Pegar a primeira refeição não completada do dia
       let nextMealData: NextMealData | null = null;
       
       for (const meal of sortedMeals) {
+        console.log(`[useNextMeal] Verificando: ${meal.meal_type}, completed_at: ${meal.completed_at}`);
         if (!meal.completed_at) {
-          console.log("[useNextMeal] ✅ Selecionando próxima refeição:", meal.meal_type, "-", meal.recipe_name.substring(0, 30));
+          console.log("[useNextMeal] ✅ Selecionando próxima refeição:", meal.meal_type, "-", meal.recipe_name?.substring(0, 30));
           nextMealData = {
             ...meal,
             recipe_ingredients: meal.recipe_ingredients as Ingredient[],

@@ -215,13 +215,18 @@ export default function WeightUpdateModal({
                 <Label htmlFor="new-weight">Novo peso (kg)</Label>
                 <Input
                   id="new-weight"
-                  type="number"
-                  step="0.1"
-                  min="30"
-                  max="300"
+                  type="text"
+                  inputMode="numeric"
+                  pattern="[0-9]*"
+                  maxLength={3}
                   value={newWeight}
-                  onChange={(e) => setNewWeight(e.target.value)}
-                  placeholder="Ex: 56.5"
+                  onChange={(e) => {
+                    const value = e.target.value.replace(/[^0-9]/g, "");
+                    if (value.length <= 3) {
+                      setNewWeight(value);
+                    }
+                  }}
+                  placeholder="Ex: 75"
                   className="text-lg font-semibold text-center"
                   autoFocus
                 />

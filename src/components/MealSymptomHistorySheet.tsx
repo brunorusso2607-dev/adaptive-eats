@@ -68,6 +68,7 @@ export function MealSymptomHistorySheet({
     isLoading,
     isIntoleranceFood,
     isExcludedFood,
+    isTrulySuspect,
   } = useMealSymptomHistory(filters);
 
   const handleExportCSV = () => {
@@ -181,7 +182,7 @@ export function MealSymptomHistorySheet({
             <Skeleton className="h-16 w-full rounded-xl" />
           </div>
         ) : (
-          <div className="overflow-y-auto h-[calc(80vh-180px)] space-y-3">
+          <div className="overflow-y-auto h-[calc(80vh-220px)] space-y-3">
             {meals.length === 0 ? (
               <div className="text-center py-16">
                 <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
@@ -193,17 +194,21 @@ export function MealSymptomHistorySheet({
                 <MealCard
                   key={`${meal.mealId}-${index}`}
                   meal={meal}
-                  isSuspect={(food: string) =>
-                    suspectFoods.some((s) => s.food === food)
-                  }
-                  isIntoleranceFood={isIntoleranceFood}
-                  isExcludedFood={isExcludedFood}
+                  isTrulySuspect={isTrulySuspect}
                   onExcludeFood={handleExcludeFood}
+                  userIntolerances={userProfile.intolerances}
                 />
               ))
             )}
           </div>
         )}
+        
+        {/* Disclaimer */}
+        <div className="pt-3 mt-3 border-t">
+          <p className="text-[10px] text-muted-foreground/60 text-center leading-relaxed">
+            ⚠️ Este rastreamento é apenas informativo e não substitui orientação médica profissional.
+          </p>
+        </div>
       </SheetContent>
     </Sheet>
   );
@@ -211,29 +216,27 @@ export function MealSymptomHistorySheet({
 
 function MealCard({
   meal,
-  isSuspect,
-  isIntoleranceFood,
-  isExcludedFood,
+  isTrulySuspect,
   onExcludeFood,
+  userIntolerances,
 }: {
   meal: MealWithSymptoms;
-  isSuspect: (food: string) => boolean;
-  isIntoleranceFood: (food: string) => boolean;
-  isExcludedFood: (food: string) => boolean;
+  isTrulySuspect: (food: string) => boolean;
   onExcludeFood: (food: string) => void;
+  userIntolerances: string[];
 }) {
   const [isOpen, setIsOpen] = useState(false);
   const severity = severityConfig[meal.severity as keyof typeof severityConfig];
   const displayName = meal.recipeName || "Refeição";
 
-  // Count problematic ingredients
+  // Get all ingredients
   const ingredients = meal.recipeIngredients.length > 0 
     ? meal.recipeIngredients.map(i => i.item) 
     : meal.foods;
   
-  const problematicCount = ingredients.filter(
-    food => isSuspect(food) || isIntoleranceFood(food) || isExcludedFood(food)
-  ).length;
+  // Count only TRULY problematic ingredients (related to intolerances)
+  const suspectIngredients = ingredients.filter(food => isTrulySuspect(food));
+  const hasSuspects = suspectIngredients.length > 0;
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -262,9 +265,13 @@ function MealCard({
 
             {/* Indicators */}
             <div className="flex items-center gap-2 shrink-0">
-              {problematicCount > 0 && (
-                <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-                  {problematicCount} item{problematicCount > 1 ? 's' : ''}
+              {hasSuspects ? (
+                <span className="text-xs text-orange-600 bg-orange-500/10 px-2 py-0.5 rounded-full">
+                  {suspectIngredients.length} suspeito{suspectIngredients.length > 1 ? 's' : ''}
+                </span>
+              ) : (
+                <span className="text-xs text-muted-foreground/60">
+                  ?
                 </span>
               )}
               <ChevronDown className={cn(
@@ -298,28 +305,38 @@ function MealCard({
           {ingredients.length > 0 && (
             <div>
               <p className="text-xs text-muted-foreground mb-2">
-                Ingredientes {problematicCount > 0 && <span className="text-orange-500">• {problematicCount} suspeito{problematicCount > 1 ? 's' : ''}</span>}
+                Ingredientes
+                {hasSuspects && (
+                  <span className="text-orange-500 ml-1">
+                    • {suspectIngredients.length} relacionado{suspectIngredients.length > 1 ? 's' : ''} às suas intolerâncias
+                  </span>
+                )}
               </p>
               <div className="flex flex-wrap gap-1.5">
-                {(meal.recipeIngredients.length > 0 ? meal.recipeIngredients : meal.foods.map(f => ({ item: f, quantity: '', unit: '' }))).map((ingredient, i) => {
+                {(meal.recipeIngredients.length > 0 
+                  ? meal.recipeIngredients 
+                  : meal.foods.map(f => ({ item: f, quantity: '', unit: '' }))
+                ).map((ingredient, i) => {
                   const item = typeof ingredient === 'string' ? ingredient : ingredient.item;
-                  const isProblematic = isSuspect(item) || isIntoleranceFood(item) || isExcludedFood(item);
+                  const isSuspect = isTrulySuspect(item);
                   
                   return (
                     <button
                       key={i}
                       onClick={(e) => {
                         e.stopPropagation();
-                        if (isProblematic) {
+                        if (!isSuspect) {
                           onExcludeFood(item);
                         }
                       }}
+                      disabled={isSuspect}
                       className={cn(
                         "text-xs px-2 py-1 rounded-md transition-colors",
-                        isProblematic 
-                          ? "bg-orange-500/10 text-orange-700 hover:bg-orange-500/20" 
-                          : "bg-muted text-muted-foreground"
+                        isSuspect 
+                          ? "bg-orange-500/15 text-orange-700 border border-orange-500/30" 
+                          : "bg-muted text-muted-foreground hover:bg-muted/80"
                       )}
+                      title={isSuspect ? "Relacionado à sua intolerância" : "Clique para adicionar à lista de exclusões"}
                     >
                       {item}
                       {typeof ingredient !== 'string' && ingredient.quantity && (
@@ -331,6 +348,22 @@ function MealCard({
                   );
                 })}
               </div>
+            </div>
+          )}
+
+          {/* No suspects message */}
+          {!hasSuspects && ingredients.length > 0 && (
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+              <p className="text-xs text-blue-700 dark:text-blue-300">
+                <span className="font-medium">ℹ️ Nenhum ingrediente suspeito identificado.</span>
+                <br />
+                <span className="opacity-80">
+                  O sintoma pode ter outra causa (estresse, quantidade consumida, horário, 
+                  {userIntolerances.length > 0 
+                    ? " ou ingrediente não mapeado para suas intolerâncias)." 
+                    : " ou atualize suas intolerâncias no perfil)."}
+                </span>
+              </p>
             </div>
           )}
 

@@ -43,6 +43,7 @@ import {
   Milk,
   Nut,
   Fish,
+  FishOff,
   Egg,
   Bean,
   Check,
@@ -87,6 +88,7 @@ import {
   Wine,
   Martini,
   CupSoda,
+  CircleDot,
   type LucideIcon,
 } from "lucide-react";
 
@@ -96,6 +98,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   milk: Milk,
   nut: Nut,
   fish: Fish,
+  "fish-off": FishOff,
   egg: Egg,
   bean: Bean,
   check: Check,
@@ -147,6 +150,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   wine: Wine,
   martini: Martini,
   "cup-soda": CupSoda,
+  "circle-dot": CircleDot,
 };
 
 type OnboardingOption = {

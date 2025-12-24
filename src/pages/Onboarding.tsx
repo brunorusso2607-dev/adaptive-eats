@@ -7,9 +7,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
   ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut,
-  Wheat, Milk, Nut, Fish, Egg, Bean, CircleSlash, Leaf, Salad, 
+  Wheat, Milk, Nut, Fish, FishOff, Egg, Bean, CircleSlash, Leaf, Salad, 
   Scale, TrendingDown, TrendingUp, Minus, Clock, Flame, Timer,
-  User, Users, Baby, type LucideIcon, X, Plus
+  User, Users, Baby, type LucideIcon, X, Plus, CircleDot
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   milk: Milk,
   nut: Nut,
   fish: Fish,
+  "fish-off": FishOff,
   egg: Egg,
   bean: Bean,
   check: Check,
@@ -43,6 +44,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   baby: Baby,
   flame: Flame,
   ban: CircleSlash,
+  "circle-dot": CircleDot,
 };
 
 const getIcon = (option: { option_id: string; icon_name?: string | null }): LucideIcon | null => {
@@ -54,8 +56,10 @@ const getIcon = (option: { option_id: string; icon_name?: string | null }): Luci
   const FALLBACK_MAP: Record<string, LucideIcon> = {
     gluten: Wheat,
     lactose: Milk,
+    peanut: CircleDot,
     nuts: Nut,
     seafood: Fish,
+    fish: Fish,
     eggs: Egg,
     soy: Bean,
     none: Check,

@@ -10,7 +10,8 @@ import {
   Eye,
   AlertTriangle,
   UtensilsCrossed,
-  Loader2
+  Loader2,
+  Heart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { 
@@ -21,6 +22,7 @@ import {
   getMinutesOverdue
 } from "@/hooks/usePendingMeals";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
@@ -75,6 +77,8 @@ export default function PendingMealCard({
 }: PendingMealCardProps) {
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(meal.is_favorite || false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [showFoodDrawer, setShowFoodDrawer] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
@@ -155,6 +159,28 @@ export default function PendingMealCard({
     setShowDetailSheet(true);
   };
 
+  // Toggle favorite
+  const handleToggleFavorite = async () => {
+    setIsTogglingFavorite(true);
+    try {
+      const newValue = !isFavorite;
+      const { error } = await supabase
+        .from("meal_plan_items")
+        .update({ is_favorite: newValue })
+        .eq("id", meal.id);
+      
+      if (error) throw error;
+      
+      setIsFavorite(newValue);
+      toast.success(newValue ? "Adicionado aos favoritos" : "Removido dos favoritos");
+    } catch (error) {
+      console.error("Error toggling favorite:", error);
+      toast.error("Erro ao atualizar favorito");
+    } finally {
+      setIsTogglingFavorite(false);
+    }
+  };
+
   // Format overdue time
   const formatOverdue = (minutes: number) => {
     if (minutes >= 1440) {
@@ -223,6 +249,26 @@ export default function PendingMealCard({
               <SkipForward className="w-3.5 h-3.5" />
             )}
             Não fiz
+          </Button>
+
+          {/* Botão favoritar alinhado à direita */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8 ml-auto transition-all",
+              isFavorite 
+                ? "text-rose-500 hover:text-rose-600" 
+                : "text-muted-foreground hover:text-rose-500"
+            )}
+            onClick={handleToggleFavorite}
+            disabled={isTogglingFavorite}
+          >
+            {isTogglingFavorite ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Heart className={cn("w-4 h-4 transition-all", isFavorite && "fill-current")} />
+            )}
           </Button>
         </div>
 
@@ -381,6 +427,26 @@ export default function PendingMealCard({
               <SkipForward className="w-3.5 h-3.5" />
             )}
             Não fiz
+          </Button>
+
+          {/* Botão favoritar alinhado à direita */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "h-8 w-8 ml-auto transition-all",
+              isFavorite 
+                ? "text-rose-500 hover:text-rose-600" 
+                : "text-muted-foreground hover:text-rose-500"
+            )}
+            onClick={handleToggleFavorite}
+            disabled={isTogglingFavorite}
+          >
+            {isTogglingFavorite ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Heart className={cn("w-4 h-4 transition-all", isFavorite && "fill-current")} />
+            )}
           </Button>
         </div>
       </CardContent>

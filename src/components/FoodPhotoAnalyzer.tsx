@@ -1,10 +1,11 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import LegalDisclaimer from "./LegalDisclaimer";
+import FoodItemEditor from "./FoodItemEditor";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import FridgeScanner from "./FridgeScanner";
@@ -25,6 +26,7 @@ type FoodItem = {
   ingredientes_visiveis?: string[];
   ingredientes_provaveis_ocultos?: string[];
   metodo_preparo_provavel?: string;
+  corrigido_manualmente?: boolean;
 };
 
 type IntoleranceAlert = {
@@ -132,6 +134,73 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
+  // Recalculate totals when food items are edited
+  const recalculateTotals = useCallback((alimentos: FoodItem[]) => {
+    const totals = alimentos.reduce(
+      (acc, food) => ({
+        calorias_totais: acc.calorias_totais + food.calorias,
+        proteinas_totais: acc.proteinas_totais + food.macros.proteinas,
+        carboidratos_totais: acc.carboidratos_totais + food.macros.carboidratos,
+        gorduras_totais: acc.gorduras_totais + food.macros.gorduras,
+      }),
+      { calorias_totais: 0, proteinas_totais: 0, carboidratos_totais: 0, gorduras_totais: 0 }
+    );
+    return {
+      calorias_totais: Math.round(totals.calorias_totais),
+      proteinas_totais: Math.round(totals.proteinas_totais * 10) / 10,
+      carboidratos_totais: Math.round(totals.carboidratos_totais * 10) / 10,
+      gorduras_totais: Math.round(totals.gorduras_totais * 10) / 10,
+    };
+  }, []);
+
+  // Handle food item edit
+  const handleFoodItemSave = useCallback((index: number, updatedFood: FoodItem) => {
+    if (!foodAnalysis) return;
+    
+    const newAlimentos = [...foodAnalysis.alimentos];
+    newAlimentos[index] = updatedFood;
+    
+    const newTotals = recalculateTotals(newAlimentos);
+    
+    setFoodAnalysis({
+      ...foodAnalysis,
+      alimentos: newAlimentos,
+      total_geral: newTotals,
+    });
+
+    // Update meta diária if exists
+    if (metaDiaria) {
+      const newCaloriasRefeicao = newTotals.calorias_totais;
+      const newCaloriasRestantes = metaDiaria.meta_calorica_diaria - newCaloriasRefeicao;
+      const newPercentual = Math.round((newCaloriasRefeicao / metaDiaria.meta_calorica_diaria) * 100);
+      
+      setMetaDiaria({
+        ...metaDiaria,
+        calorias_esta_refeicao: newCaloriasRefeicao,
+        calorias_restantes: newCaloriasRestantes,
+        percentual_consumido: newPercentual,
+        status: newPercentual <= 30 ? 'leve' : newPercentual <= 50 ? 'moderado' : newPercentual <= 75 ? 'substancial' : 'pesado',
+      });
+    }
+
+    toast.success("Alimento corrigido com sucesso!");
+  }, [foodAnalysis, metaDiaria, recalculateTotals]);
+
+  // Handle selecting alternative food name
+  const handleSelectAlternative = useCallback((index: number, alternativeName: string) => {
+    if (!foodAnalysis) return;
+    
+    const food = foodAnalysis.alimentos[index];
+    const updatedFood: FoodItem = {
+      ...food,
+      item: alternativeName,
+      corrigido_manualmente: true,
+      confianca_identificacao: "alta", // User confirmed
+      alternativas_possiveis: food.alternativas_possiveis?.filter(alt => alt !== alternativeName),
+    };
+    
+    handleFoodItemSave(index, updatedFood);
+  }, [foodAnalysis, handleFoodItemSave]);
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
@@ -1047,116 +1116,28 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
-              {/* Individual items with confidence levels */}
+              {/* Individual items with confidence levels - Now editable */}
               <Card className="glass-card">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-base flex items-center justify-between">
-                    <span>Alimentos Identificados</span>
+                    <span className="flex items-center gap-2">
+                      Alimentos Identificados
+                      <Pencil className="w-3 h-3 text-muted-foreground" />
+                    </span>
                     <span className="text-xs font-normal text-muted-foreground">
-                      Toque para detalhes
+                      Toque para editar
                     </span>
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {foodAnalysis.alimentos.map((food, index) => (
-                    <details
+                    <FoodItemEditor
                       key={index}
-                      className="group"
-                    >
-                      <summary className="flex items-center justify-between p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors list-none">
-                        <div className="flex items-center gap-2">
-                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
-                            food.confianca_identificacao === "baixa" 
-                              ? "bg-yellow-500" 
-                              : food.confianca_identificacao === "media"
-                              ? "bg-blue-500"
-                              : "bg-green-500"
-                          }`} />
-                          <div>
-                            <p className="font-medium text-foreground">{food.item}</p>
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <p className="text-xs text-muted-foreground">{food.porcao_estimada}</p>
-                              {food.culinaria_origem && (
-                                <span className="text-xs text-primary/70">• {food.culinaria_origem}</span>
-                              )}
-                              {food.confianca_identificacao && food.confianca_identificacao !== "alta" && (
-                                <span className={`text-xs ${
-                                  food.confianca_identificacao === "baixa" ? "text-yellow-600" : "text-blue-600"
-                                }`}>
-                                  • {food.confianca_identificacao}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <p className="font-semibold text-foreground">{food.calorias} kcal</p>
-                          <p className="text-xs text-muted-foreground">
-                            P:{food.macros.proteinas}g C:{food.macros.carboidratos}g G:{food.macros.gorduras}g
-                          </p>
-                        </div>
-                      </summary>
-                      
-                      {/* Expanded details */}
-                      <div className="mt-2 p-3 rounded-lg bg-muted/30 border border-muted space-y-2 text-sm">
-                        {food.item_original_language && food.item_original_language !== food.item && (
-                          <p className="text-muted-foreground">
-                            <span className="font-medium">Nome original:</span> {food.item_original_language}
-                          </p>
-                        )}
-                        
-                        {food.metodo_preparo_provavel && (
-                          <p className="text-muted-foreground">
-                            <span className="font-medium">Preparo:</span> {food.metodo_preparo_provavel}
-                          </p>
-                        )}
-                        
-                        {food.ingredientes_visiveis && food.ingredientes_visiveis.length > 0 && (
-                          <div>
-                            <p className="font-medium text-foreground mb-1">Ingredientes visíveis:</p>
-                            <div className="flex flex-wrap gap-1">
-                              {food.ingredientes_visiveis.map((ing, i) => (
-                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">
-                                  {ing}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {food.ingredientes_provaveis_ocultos && food.ingredientes_provaveis_ocultos.length > 0 && (
-                          <div>
-                            <p className="font-medium text-foreground mb-1 flex items-center gap-1">
-                              <AlertCircle className="w-3 h-3 text-yellow-500" />
-                              Ingredientes prováveis (não visíveis):
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {food.ingredientes_provaveis_ocultos.map((ing, i) => (
-                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600">
-                                  {ing}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                        
-                        {food.alternativas_possiveis && food.alternativas_possiveis.length > 0 && (
-                          <div className="pt-2 border-t border-muted">
-                            <p className="font-medium text-foreground mb-1 flex items-center gap-1">
-                              <HelpCircle className="w-3 h-3 text-blue-500" />
-                              Também pode ser:
-                            </p>
-                            <div className="flex flex-wrap gap-1">
-                              {food.alternativas_possiveis.map((alt, i) => (
-                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
-                                  {alt}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </details>
+                      food={food}
+                      index={index}
+                      onSave={handleFoodItemSave}
+                      onSelectAlternative={handleSelectAlternative}
+                    />
                   ))}
                 </CardContent>
               </Card>

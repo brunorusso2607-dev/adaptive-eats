@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import { getAIPrompt } from "../_shared/getAIPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -116,8 +117,12 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const GOOGLE_AI_API_KEY = await getGeminiApiKey();
-    logStep("Gemini API key fetched from database");
+    // Fetch AI configuration from database
+    const [GOOGLE_AI_API_KEY, promptConfig] = await Promise.all([
+      getGeminiApiKey(),
+      getAIPrompt("analyze-label-photo")
+    ]);
+    logStep("Gemini API key and prompt config fetched from database", { model: promptConfig.model });
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -404,7 +409,7 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
 
     // Função para fazer a chamada Gemini
     const callGemini = async () => {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${promptConfig.model}:generateContent?key=${GOOGLE_AI_API_KEY}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

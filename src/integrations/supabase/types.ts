@@ -80,6 +80,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_prompts: {
+        Row: {
+          created_at: string
+          description: string
+          function_id: string
+          id: string
+          is_active: boolean
+          model: string
+          name: string
+          system_prompt: string
+          updated_at: string
+          user_prompt_example: string | null
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          function_id: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          name: string
+          system_prompt: string
+          updated_at?: string
+          user_prompt_example?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          function_id?: string
+          id?: string
+          is_active?: boolean
+          model?: string
+          name?: string
+          system_prompt?: string
+          updated_at?: string
+          user_prompt_example?: string | null
+        }
+        Relationships: []
+      }
       api_integrations: {
         Row: {
           api_key_encrypted: string | null

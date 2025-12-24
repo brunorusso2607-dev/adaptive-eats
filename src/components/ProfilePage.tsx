@@ -7,8 +7,9 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink
 } from "lucide-react";
+import { Link } from "react-router-dom";
 import LegalDisclaimer from "./LegalDisclaimer";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -587,6 +588,26 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
             Termos e Avisos Legais
           </h3>
           <LegalDisclaimer variant="full" />
+          
+          {/* Links para páginas legais */}
+          <div className="flex flex-col gap-2 pt-2">
+            <Link 
+              to="/termos-de-uso" 
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <FileText className="w-4 h-4" />
+              Termos de Uso
+              <ExternalLink className="w-3 h-3 ml-auto" />
+            </Link>
+            <Link 
+              to="/politica-privacidade" 
+              className="flex items-center gap-2 text-sm text-primary hover:underline"
+            >
+              <Shield className="w-4 h-4" />
+              Política de Privacidade
+              <ExternalLink className="w-3 h-3 ml-auto" />
+            </Link>
+          </div>
         </div>
 
         {/* Logout */}

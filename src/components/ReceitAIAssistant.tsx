@@ -4,10 +4,18 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon, MapPin } from "lucide-react";
+import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon, MapPin, History, Plus, ChevronDown } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useChatMemory } from "@/hooks/useChatMemory";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from "@/components/ui/dropdown-menu";
 
 // Mapeamento de rotas para contexto amigável
 const PAGE_CONTEXT_MAP: Record<string, { name: string; description: string; quickActions: string[] }> = {
@@ -99,10 +107,24 @@ export default function ReceitAIAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Hook de memória persistente
+  const {
+    conversationId,
+    conversations,
+    isLoadingHistory,
+    userId,
+    createConversation,
+    saveMessage,
+    switchConversation,
+    startNewChat,
+    deleteConversation
+  } = useChatMemory();
 
   // Detecta a página atual
   const currentPath = location.pathname;
@@ -251,16 +273,20 @@ export default function ReceitAIAssistant() {
     }
   }, [messages]);
 
-  // Initial greeting - contextual based on current page
+  // Initial greeting - contextual based on current page (only for new chats)
   useEffect(() => {
-    if (messages.length === 0) {
+    if (messages.length === 0 && !conversationId) {
+      const greeting = conversations.length > 0 
+        ? `Opa! 👋 Que bom te ver de novo na página **${pageContext.name}**!\n\n${pageContext.description}\n\nLembro das nossas conversas anteriores! Você pode acessar o histórico clicando no ícone 📜 acima.\n\nNo que posso te ajudar agora?`
+        : `Opa! 👋 Bem-vindo à página **${pageContext.name}**!\n\n${pageContext.description}\n\nEstou aqui pra te ajudar com o que precisar. Conheço todas as páginas do admin e posso:\n\n• Explicar como cada funcionalidade funciona\n• Sugerir melhorias de UX/UI\n• Analisar screenshots (Ctrl+V pra colar)\n• Ajudar com código e arquitetura\n\nO que você quer saber?`;
+      
       setMessages([{
         role: "assistant",
-        content: `Opa! 👋 Bem-vindo à página **${pageContext.name}**!\n\n${pageContext.description}\n\nEstou aqui pra te ajudar com o que precisar. Conheço todas as páginas do admin e posso:\n\n• Explicar como cada funcionalidade funciona\n• Sugerir melhorias de UX/UI\n• Analisar screenshots (Ctrl+V pra colar)\n• Ajudar com código e arquitetura\n\nO que você quer saber?`,
+        content: greeting,
         timestamp: new Date()
       }]);
     }
-  }, [pageContext.name]);
+  }, [pageContext.name, conversationId, conversations.length]);
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;
@@ -282,6 +308,20 @@ export default function ReceitAIAssistant() {
     setInput("");
     setAttachments([]);
     setIsLoading(true);
+
+    // Create conversation if needed and save user message
+    let activeConvId = conversationId;
+    if (!activeConvId && userId) {
+      activeConvId = await createConversation(userMessage.content);
+    }
+
+    if (activeConvId && userId) {
+      await saveMessage(userMessage, activeConvId, {
+        path: currentPath,
+        name: pageContext.name,
+        description: pageContext.description
+      });
+    }
 
     try {
       // Convert images to base64 for the API
@@ -311,11 +351,18 @@ export default function ReceitAIAssistant() {
       if (error) throw error;
 
       if (data.success) {
-        setMessages(prev => [...prev, {
+        const assistantMessage: Message = {
           role: "assistant",
           content: data.message,
           timestamp: new Date()
-        }]);
+        };
+        
+        setMessages(prev => [...prev, assistantMessage]);
+
+        // Save assistant message
+        if (activeConvId && userId) {
+          await saveMessage(assistantMessage, activeConvId);
+        }
       } else {
         throw new Error(data.error || "Erro desconhecido");
       }
@@ -350,12 +397,30 @@ export default function ReceitAIAssistant() {
   };
 
   const clearChat = () => {
+    startNewChat();
     setMessages([{
       role: "assistant",
       content: "Chat limpo! Como posso ajudar?",
       timestamp: new Date()
     }]);
     setAttachments([]);
+  };
+
+  const handleLoadConversation = async (convId: string) => {
+    const loadedMessages = await switchConversation(convId);
+    if (loadedMessages.length > 0) {
+      setMessages(loadedMessages);
+      toast.success("Conversa carregada!");
+    }
+  };
+
+  const handleNewChat = () => {
+    startNewChat();
+    setMessages([{
+      role: "assistant",
+      content: `Opa! 👋 Nova conversa iniciada!\n\nVocê está na página **${pageContext.name}**. No que posso te ajudar?`,
+      timestamp: new Date()
+    }]);
   };
 
   const formatContent = (content: string) => {
@@ -382,13 +447,57 @@ export default function ReceitAIAssistant() {
             </div>
             <div>
               <CardTitle className="text-lg font-display">Chef IA</CardTitle>
-              <CardDescription>Seu assistente amigo</CardDescription>
+              <CardDescription>
+                {conversationId ? "Conversa salva" : "Seu assistente amigo"}
+              </CardDescription>
             </div>
           </div>
-          {/* Current Page Indicator */}
-          <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full">
-            <MapPin className="w-3 h-3 text-primary" />
-            <span className="text-xs font-medium text-muted-foreground">{pageContext.name}</span>
+          
+          <div className="flex items-center gap-2">
+            {/* History Dropdown */}
+            {userId && conversations.length > 0 && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <History className="w-3.5 h-3.5" />
+                    <span className="hidden sm:inline text-xs">Histórico</span>
+                    <ChevronDown className="w-3 h-3" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-64">
+                  <DropdownMenuItem onClick={handleNewChat} className="gap-2">
+                    <Plus className="w-4 h-4" />
+                    Nova conversa
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {conversations.map((conv) => (
+                    <DropdownMenuItem
+                      key={conv.id}
+                      onClick={() => handleLoadConversation(conv.id)}
+                      className="flex flex-col items-start gap-0.5"
+                    >
+                      <span className="text-sm truncate w-full">
+                        {conv.title || "Conversa sem título"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {new Date(conv.updated_at).toLocaleDateString("pt-BR", {
+                          day: "2-digit",
+                          month: "short",
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </span>
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+
+            {/* Current Page Indicator */}
+            <div className="flex items-center gap-1.5 px-3 py-1.5 bg-muted rounded-full">
+              <MapPin className="w-3 h-3 text-primary" />
+              <span className="text-xs font-medium text-muted-foreground">{pageContext.name}</span>
+            </div>
           </div>
         </div>
       </CardHeader>

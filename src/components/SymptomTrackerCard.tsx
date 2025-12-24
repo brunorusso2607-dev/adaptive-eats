@@ -1,24 +1,14 @@
-import { useState } from "react";
-import { AlertCircle, Plus, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
+import { AlertCircle, Bell, TrendingUp } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
-import { SymptomLogSheet } from "./SymptomLogSheet";
 import { SymptomIcon } from "./SymptomIcon";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-  AlertDialogTrigger,
-} from "@/components/ui/alert-dialog";
+
+interface SymptomTrackerCardProps {
+  pendingCount: number;
+  onOpenFeedback: () => void;
+}
 
 const severityColors = {
   leve: "bg-yellow-500/10 text-yellow-700 border-yellow-500/20",
@@ -26,15 +16,8 @@ const severityColors = {
   severo: "bg-red-500/10 text-red-700 border-red-500/20",
 };
 
-const severityLabels = {
-  leve: "Leve",
-  moderado: "Moderado",
-  severo: "Severo",
-};
-
-export function SymptomTrackerCard() {
-  const { recentLogs, isLoading, deleteLog, symptomTypes } = useSymptomTracker();
-  const [sheetOpen, setSheetOpen] = useState(false);
+export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrackerCardProps) {
+  const { recentLogs, isLoading, symptomTypes } = useSymptomTracker();
 
   // Calculate stats
   const totalLogsThisWeek = recentLogs.length;
@@ -70,142 +53,109 @@ export function SymptomTrackerCard() {
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader className="pb-2">
-          <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <AlertCircle className="h-5 w-5 text-orange-500" />
-              Rastreador de Sintomas
-            </CardTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="text-muted-foreground"
-              onClick={() => setSheetOpen(true)}
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Registrar
-            </Button>
-          </div>
-        </CardHeader>
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2 text-lg">
+          <AlertCircle className="h-5 w-5 text-orange-500" />
+          Bem-estar
+        </CardTitle>
+      </CardHeader>
 
-        <CardContent className="space-y-4">
-          {/* Stats Summary */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-2xl font-bold">{totalLogsThisWeek}</p>
-              <p className="text-xs text-muted-foreground">Registros (7 dias)</p>
-            </div>
-            {topSymptom && (
-              <div className="bg-muted/50 rounded-lg p-3">
-                <p className="text-lg font-medium flex items-center gap-1.5">
-                  <SymptomIcon 
-                    name={topSymptom[0]} 
-                    category={getSymptomCategory(topSymptom[0])}
-                    size={18}
-                  />
-                  <span className="truncate">{topSymptom[0]}</span>
-                </p>
-                <p className="text-xs text-muted-foreground">
-                  Mais frequente ({topSymptom[1]}x)
-                </p>
-              </div>
-            )}
-          </div>
-
-          {/* Recent Logs */}
-          {recentLogs.length > 0 ? (
-            <div className="space-y-2">
-              <h4 className="text-sm font-medium text-muted-foreground">
-                Registros recentes
-              </h4>
-              <div className="space-y-2 max-h-48 overflow-y-auto">
-                {recentLogs.slice(0, 5).map((log) => (
-                  <div
-                    key={log.id}
-                    className="flex items-center justify-between p-2 bg-muted/30 rounded-lg"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        {log.symptoms.slice(0, 3).map((symptom, i) => (
-                          <SymptomIcon 
-                            key={i}
-                            name={symptom} 
-                            category={getSymptomCategory(symptom)}
-                            size={16}
-                          />
-                        ))}
-                        {log.symptoms.length > 3 && (
-                          <span className="text-xs text-muted-foreground">
-                            +{log.symptoms.length - 3}
-                          </span>
-                        )}
-                        <span className={cn(
-                          "text-xs px-2 py-0.5 rounded-full border",
-                          severityColors[log.severity]
-                        )}>
-                          {severityLabels[log.severity]}
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {format(new Date(log.logged_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
-                      </p>
-                    </div>
-                    
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive shrink-0"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Remover registro?</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Esta ação não pode ser desfeita.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                          <AlertDialogAction onClick={() => deleteLog(log.id)}>
-                            Remover
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="text-center py-6 text-muted-foreground">
-              <AlertCircle className="h-8 w-8 mx-auto mb-2 opacity-50" />
-              <p className="text-sm">Nenhum sintoma registrado</p>
-              <p className="text-xs">Registre como você se sente após as refeições</p>
-            </div>
-          )}
-
-          {/* CTA Button */}
+      <CardContent className="space-y-4">
+        {/* Pending Feedback Alert */}
+        {pendingCount > 0 && (
           <Button
             variant="outline"
-            className="w-full"
-            onClick={() => setSheetOpen(true)}
+            className="w-full h-auto py-3 flex items-center gap-3 justify-between border-orange-500/30 bg-orange-500/5 hover:bg-orange-500/10"
+            onClick={onOpenFeedback}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Como você está se sentindo?
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-full bg-orange-500/20 flex items-center justify-center">
+                <Bell className="h-4 w-4 text-orange-600" />
+              </div>
+              <div className="text-left">
+                <p className="font-medium text-sm">
+                  {pendingCount} {pendingCount === 1 ? "refeição aguarda" : "refeições aguardam"} feedback
+                </p>
+                <p className="text-xs text-muted-foreground">Toque para responder</p>
+              </div>
+            </div>
+            <span className="text-xs bg-orange-500 text-white px-2 py-1 rounded-full">
+              {pendingCount}
+            </span>
           </Button>
-        </CardContent>
-      </Card>
+        )}
 
-      <SymptomLogSheet
-        open={sheetOpen}
-        onOpenChange={setSheetOpen}
-      />
-    </>
+        {/* Stats Summary */}
+        <div className="grid grid-cols-2 gap-3">
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-2xl font-bold">{totalLogsThisWeek}</p>
+            <p className="text-xs text-muted-foreground">Sintomas (7 dias)</p>
+          </div>
+          {topSymptom ? (
+            <div className="bg-muted/50 rounded-lg p-3">
+              <p className="text-sm font-medium flex items-center gap-1.5">
+                <SymptomIcon
+                  name={topSymptom[0]}
+                  category={getSymptomCategory(topSymptom[0])}
+                  size={16}
+                />
+                <span className="truncate">{topSymptom[0]}</span>
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Mais frequente ({topSymptom[1]}x)
+              </p>
+            </div>
+          ) : (
+            <div className="bg-muted/50 rounded-lg p-3">
+              <div className="flex items-center gap-1.5 text-green-600">
+                <TrendingUp className="h-4 w-4" />
+                <p className="text-sm font-medium">Tudo bem!</p>
+              </div>
+              <p className="text-xs text-muted-foreground">Sem sintomas recentes</p>
+            </div>
+          )}
+        </div>
+
+        {/* Recent symptoms preview (read-only) */}
+        {recentLogs.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-sm font-medium text-muted-foreground">
+              Últimos registros
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {recentLogs.slice(0, 3).flatMap(log => 
+                log.symptoms.slice(0, 2).map((symptom, i) => (
+                  <span
+                    key={`${log.id}-${i}`}
+                    className={cn(
+                      "flex items-center gap-1 px-2 py-1 rounded-full text-xs border",
+                      severityColors[log.severity]
+                    )}
+                  >
+                    <SymptomIcon
+                      name={symptom}
+                      category={getSymptomCategory(symptom)}
+                      size={12}
+                      className="opacity-70"
+                    />
+                    {symptom}
+                  </span>
+                ))
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Empty state */}
+        {recentLogs.length === 0 && pendingCount === 0 && (
+          <div className="text-center py-4 text-muted-foreground">
+            <TrendingUp className="h-8 w-8 mx-auto mb-2 text-green-500 opacity-50" />
+            <p className="text-sm">Tudo tranquilo por aqui!</p>
+            <p className="text-xs">Nenhum sintoma registrado recentemente</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }

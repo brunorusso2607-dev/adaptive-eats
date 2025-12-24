@@ -41,6 +41,8 @@ import { WaterWidgetCompact } from "@/components/WaterWidgetCompact";
 import { SafetyStatusBadge } from "@/components/SafetyStatusBadge";
 import { SymptomTrackerCard } from "@/components/SymptomTrackerCard";
 import { SafetyScoreCard } from "@/components/SafetyScoreCard";
+import { SymptomFeedbackModal } from "@/components/SymptomFeedbackModal";
+import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
 
 type Recipe = {
   name: string;
@@ -147,6 +149,26 @@ export default function Dashboard() {
   
   // Daily consumption hook
   const { consumption: dailyConsumption, refetch: refetchDailyConsumption } = useDailyConsumption();
+  
+  // Symptom feedback hook
+  const symptomFeedback = usePendingSymptomFeedback();
+  const [showSymptomModal, setShowSymptomModal] = useState(false);
+  const [currentFeedbackMeal, setCurrentFeedbackMeal] = useState<typeof symptomFeedback.pendingMeals[0] | null>(null);
+  
+  // Auto-show modal when there are pending meals
+  useEffect(() => {
+    if (symptomFeedback.pendingMeals.length > 0 && !showSymptomModal && !symptomFeedback.isLoading) {
+      setCurrentFeedbackMeal(symptomFeedback.pendingMeals[0]);
+      setShowSymptomModal(true);
+    }
+  }, [symptomFeedback.pendingMeals, symptomFeedback.isLoading]);
+  
+  const handleOpenFeedback = () => {
+    if (symptomFeedback.pendingMeals.length > 0) {
+      setCurrentFeedbackMeal(symptomFeedback.pendingMeals[0]);
+      setShowSymptomModal(true);
+    }
+  };
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -992,7 +1014,10 @@ export default function Dashboard() {
                 <WaterTracker />
 
                 {/* Rastreador de Sintomas */}
-                <SymptomTrackerCard />
+                <SymptomTrackerCard 
+                  pendingCount={symptomFeedback.pendingCount}
+                  onOpenFeedback={handleOpenFeedback}
+                />
 
                 {/* Score de Segurança Alimentar */}
                 <SafetyScoreCard />
@@ -1342,6 +1367,15 @@ export default function Dashboard() {
           }}
         />
       )}
+
+      {/* Symptom Feedback Modal */}
+      <SymptomFeedbackModal
+        open={showSymptomModal}
+        onOpenChange={setShowSymptomModal}
+        meal={currentFeedbackMeal}
+        onMarkWell={symptomFeedback.markAsWell}
+        onMarkSymptoms={symptomFeedback.markWithSymptoms}
+      />
 
       {/* Mobile Bottom Navigation */}
       {isSubscribed && (

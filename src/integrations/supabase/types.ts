@@ -392,6 +392,7 @@ export type Database = {
         Row: {
           consumed_at: string
           created_at: string
+          feedback_status: string
           followed_plan: boolean
           id: string
           meal_plan_item_id: string | null
@@ -405,6 +406,7 @@ export type Database = {
         Insert: {
           consumed_at?: string
           created_at?: string
+          feedback_status?: string
           followed_plan?: boolean
           id?: string
           meal_plan_item_id?: string | null
@@ -418,6 +420,7 @@ export type Database = {
         Update: {
           consumed_at?: string
           created_at?: string
+          feedback_status?: string
           followed_plan?: boolean
           id?: string
           meal_plan_item_id?: string | null

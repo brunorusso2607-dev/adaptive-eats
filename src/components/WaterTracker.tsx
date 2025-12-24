@@ -28,6 +28,12 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 
 const QUICK_AMOUNTS = [150, 200, 250, 300, 500];
 
@@ -59,6 +65,8 @@ export function WaterTracker() {
   const [isAdding, setIsAdding] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(250);
   const [isPulsing, setIsPulsing] = useState(false);
+  const [customAmount, setCustomAmount] = useState("");
+  const [customPopoverOpen, setCustomPopoverOpen] = useState(false);
 
   // Trigger pulse animation when amount changes
   useEffect(() => {
@@ -71,6 +79,15 @@ export function WaterTracker() {
     setIsAdding(true);
     await addWater(selectedAmount);
     setIsAdding(false);
+  };
+
+  const handleCustomAmountSubmit = () => {
+    const amount = parseInt(customAmount);
+    if (amount > 0 && amount <= 2000) {
+      setSelectedAmount(amount);
+      setCustomPopoverOpen(false);
+      setCustomAmount("");
+    }
   };
 
   const handleEnableNotifications = async () => {
@@ -239,7 +256,7 @@ export function WaterTracker() {
           </div>
 
           {/* Quick Amount Selection Buttons */}
-          <div className="grid grid-cols-5 gap-2">
+          <div className="grid grid-cols-6 gap-2">
             {QUICK_AMOUNTS.map((amount) => (
               <Button
                 key={amount}
@@ -260,6 +277,54 @@ export function WaterTracker() {
                 {amount}ml
               </Button>
             ))}
+            
+            {/* Custom Amount Button */}
+            <Popover open={customPopoverOpen} onOpenChange={setCustomPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant={!QUICK_AMOUNTS.includes(selectedAmount) ? "default" : "outline"}
+                  size="sm"
+                  className={cn(
+                    "flex flex-col h-auto py-2 text-xs transition-all duration-200",
+                    !QUICK_AMOUNTS.includes(selectedAmount)
+                      ? "bg-blue-500 hover:bg-blue-600 text-white scale-105" 
+                      : "hover:border-blue-400"
+                  )}
+                >
+                  <Plus className={cn(
+                    "h-3 w-3 mb-1",
+                    !QUICK_AMOUNTS.includes(selectedAmount) ? "text-white" : "text-blue-500"
+                  )} />
+                  {!QUICK_AMOUNTS.includes(selectedAmount) ? `${selectedAmount}ml` : "Outro"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-48 p-3" align="center">
+                <div className="space-y-2">
+                  <p className="text-sm font-medium">Quantidade (ml)</p>
+                  <div className="flex gap-2">
+                    <Input
+                      type="number"
+                      placeholder="Ex: 350"
+                      value={customAmount}
+                      onChange={(e) => setCustomAmount(e.target.value)}
+                      min={1}
+                      max={2000}
+                      className="h-8 text-sm"
+                      onKeyDown={(e) => e.key === "Enter" && handleCustomAmountSubmit()}
+                    />
+                    <Button 
+                      size="sm" 
+                      className="h-8 px-3 bg-blue-500 hover:bg-blue-600"
+                      onClick={handleCustomAmountSubmit}
+                      disabled={!customAmount || parseInt(customAmount) <= 0}
+                    >
+                      OK
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">Máx: 2000ml</p>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
 
           {/* Action Buttons */}

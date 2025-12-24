@@ -274,6 +274,26 @@ export default function ReceitAIAssistant() {
           </div>
         </ScrollArea>
 
+        {/* Audio Wave Animation */}
+        {isListening && (
+          <div className="flex items-center justify-center gap-1 py-3 px-4 bg-primary/10 rounded-xl border border-primary/30">
+            <div className="flex items-center gap-1 h-6">
+              {[...Array(5)].map((_, i) => (
+                <div
+                  key={i}
+                  className="w-1 bg-primary rounded-full"
+                  style={{
+                    animation: `audioWave 0.5s ease-in-out infinite`,
+                    animationDelay: `${i * 0.1}s`,
+                    height: '100%',
+                  }}
+                />
+              ))}
+            </div>
+            <span className="ml-3 text-sm text-primary font-medium">Ouvindo...</span>
+          </div>
+        )}
+
         {/* Input Area with Microphone */}
         <div className="flex gap-2">
           <Input
@@ -281,9 +301,9 @@ export default function ReceitAIAssistant() {
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder={isListening ? "Ouvindo..." : "Pergunte sobre o ReceitAI..."}
+            placeholder={isListening ? "Fale agora..." : "Pergunte sobre o ReceitAI..."}
             disabled={isLoading}
-            className={cn("flex-1", isListening && "border-primary animate-pulse")}
+            className={cn("flex-1", isListening && "border-primary")}
           />
           <Button 
             onClick={toggleListening}

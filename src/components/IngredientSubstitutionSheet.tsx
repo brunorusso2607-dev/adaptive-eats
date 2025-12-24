@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
-
 interface IngredientSubstitutionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -97,23 +97,23 @@ export default function IngredientSubstitutionSheet({
   if (!originalIngredient) return null;
 
   return (
-    <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl flex flex-col">
-        <SheetHeader className="pb-4 shrink-0">
-          <SheetTitle className="text-left">Substituir Ingrediente</SheetTitle>
-          <SheetDescription className="text-left">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-md mx-auto max-h-[85vh] flex flex-col p-0 gap-0">
+        <DialogHeader className="p-6 pb-4 shrink-0">
+          <DialogTitle>Substituir Ingrediente</DialogTitle>
+          <DialogDescription asChild>
             <span className="flex items-center gap-2 flex-wrap">
               <Badge variant="secondary">{originalIngredient.quantity} {originalIngredient.unit}</Badge>
               <span className="font-medium">{originalIngredient.item}</span>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
               <span className="text-muted-foreground">novo ingrediente</span>
             </span>
-          </SheetDescription>
-        </SheetHeader>
+          </DialogDescription>
+        </DialogHeader>
 
         {/* Search Input */}
-        <div className="relative mb-4 shrink-0">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+        <div className="relative px-6 pb-4 shrink-0">
+          <Search className="absolute left-9 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar ingrediente substituto..."
             value={searchQuery}
@@ -124,98 +124,100 @@ export default function IngredientSubstitutionSheet({
         </div>
 
         {/* Results */}
-        <div className="space-y-3 overflow-y-auto flex-1 pb-4">
-          {isLoading && (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-6 h-6 animate-spin text-primary" />
-              <span className="ml-2 text-muted-foreground">Buscando...</span>
-            </div>
-          )}
+        <ScrollArea className="flex-1 px-6">
+          <div className="space-y-3 pb-6">
+            {isLoading && (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+                <span className="ml-2 text-muted-foreground">Buscando...</span>
+              </div>
+            )}
 
-          {!isLoading && searchQuery.length >= 2 && results.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>Nenhum ingrediente encontrado</p>
-              <p className="text-sm">Tente outro termo de busca</p>
-            </div>
-          )}
+            {!isLoading && searchQuery.length >= 2 && results.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Nenhum ingrediente encontrado</p>
+                <p className="text-sm">Tente outro termo de busca</p>
+              </div>
+            )}
 
-          {!isLoading && results.map((ingredient) => {
-            const diff = calculateMacrosDiff(originalData, ingredient);
-            
-            return (
-              <Card 
-                key={ingredient.id} 
-                className="cursor-pointer hover:border-primary/50 transition-colors"
-                onClick={() => handleSelect(ingredient)}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div>
-                      <h4 className="font-medium">{ingredient.name}</h4>
-                      {ingredient.category && (
-                        <Badge variant="outline" className="text-xs mt-1">
-                          {ingredient.category}
-                        </Badge>
-                      )}
-                    </div>
-                    <Button size="sm" variant="ghost" className="shrink-0">
-                      Selecionar
-                    </Button>
-                  </div>
-
-                  {/* Macros comparison */}
-                  <div className="grid grid-cols-4 gap-2 text-center border-t pt-3">
-                    <div>
-                      <div className="flex items-center justify-center gap-1 text-orange-500">
-                        <Flame className="w-3 h-3" />
-                        <span className="font-semibold text-sm">{ingredient.calories_per_100g}</span>
+            {!isLoading && results.map((ingredient) => {
+              const diff = calculateMacrosDiff(originalData, ingredient);
+              
+              return (
+                <Card 
+                  key={ingredient.id} 
+                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  onClick={() => handleSelect(ingredient)}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between mb-3">
+                      <div>
+                        <h4 className="font-medium">{ingredient.name}</h4>
+                        {ingredient.category && (
+                          <Badge variant="outline" className="text-xs mt-1">
+                            {ingredient.category}
+                          </Badge>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground">kcal</p>
-                      <MacroDiffBadge value={diff.calories} unit="" label="kcal" />
+                      <Button size="sm" variant="ghost" className="shrink-0">
+                        Selecionar
+                      </Button>
                     </div>
-                    <div>
-                      <div className="flex items-center justify-center gap-1 text-red-500">
-                        <Beef className="w-3 h-3" />
-                        <span className="font-semibold text-sm">{ingredient.protein_per_100g}g</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">prot</p>
-                      <MacroDiffBadge value={diff.protein} unit="g" label="" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-center gap-1 text-amber-500">
-                        <Wheat className="w-3 h-3" />
-                        <span className="font-semibold text-sm">{ingredient.carbs_per_100g}g</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">carb</p>
-                      <MacroDiffBadge value={diff.carbs} unit="g" label="" />
-                    </div>
-                    <div>
-                      <div className="flex items-center justify-center gap-1 text-yellow-500">
-                        <span className="text-xs">🧈</span>
-                        <span className="font-semibold text-sm">{ingredient.fat_per_100g}g</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">gord</p>
-                      <MacroDiffBadge value={diff.fat} unit="g" label="" />
-                    </div>
-                  </div>
 
-                  <p className="text-xs text-muted-foreground text-center mt-2">
-                    Valores por 100g
-                  </p>
-                </CardContent>
-              </Card>
-            );
-          })}
+                    {/* Macros comparison */}
+                    <div className="grid grid-cols-4 gap-2 text-center border-t pt-3">
+                      <div>
+                        <div className="flex items-center justify-center gap-1 text-orange-500">
+                          <Flame className="w-3 h-3" />
+                          <span className="font-semibold text-sm">{ingredient.calories_per_100g}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">kcal</p>
+                        <MacroDiffBadge value={diff.calories} unit="" label="kcal" />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-center gap-1 text-red-500">
+                          <Beef className="w-3 h-3" />
+                          <span className="font-semibold text-sm">{ingredient.protein_per_100g}g</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">prot</p>
+                        <MacroDiffBadge value={diff.protein} unit="g" label="" />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-center gap-1 text-amber-500">
+                          <Wheat className="w-3 h-3" />
+                          <span className="font-semibold text-sm">{ingredient.carbs_per_100g}g</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">carb</p>
+                        <MacroDiffBadge value={diff.carbs} unit="g" label="" />
+                      </div>
+                      <div>
+                        <div className="flex items-center justify-center gap-1 text-yellow-500">
+                          <span className="text-xs">🧈</span>
+                          <span className="font-semibold text-sm">{ingredient.fat_per_100g}g</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">gord</p>
+                        <MacroDiffBadge value={diff.fat} unit="g" label="" />
+                      </div>
+                    </div>
 
-          {!isLoading && searchQuery.length < 2 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-              <p>Digite pelo menos 2 caracteres</p>
-              <p className="text-sm">para buscar ingredientes</p>
-            </div>
-          )}
-        </div>
-      </SheetContent>
-    </Sheet>
+                    <p className="text-xs text-muted-foreground text-center mt-2">
+                      Valores por 100g
+                    </p>
+                  </CardContent>
+                </Card>
+              );
+            })}
+
+            {!isLoading && searchQuery.length < 2 && (
+              <div className="text-center py-8 text-muted-foreground">
+                <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p>Digite pelo menos 2 caracteres</p>
+                <p className="text-sm">para buscar ingredientes</p>
+              </div>
+            )}
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
   );
 }

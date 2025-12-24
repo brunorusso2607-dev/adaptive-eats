@@ -57,10 +57,11 @@ export function WaterTracker() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [selectedAmount, setSelectedAmount] = useState(250);
 
-  const handleAddWater = async (amount: number) => {
+  const handleAddWater = async () => {
     setIsAdding(true);
-    await addWater(amount);
+    await addWater(selectedAmount);
     setIsAdding(false);
   };
 
@@ -229,18 +230,25 @@ export function WaterTracker() {
             )}
           </div>
 
-          {/* Quick Add Buttons */}
+          {/* Quick Amount Selection Buttons */}
           <div className="grid grid-cols-5 gap-2">
             {QUICK_AMOUNTS.map((amount) => (
               <Button
                 key={amount}
-                variant="outline"
+                variant={selectedAmount === amount ? "default" : "outline"}
                 size="sm"
-                className="flex flex-col h-auto py-2 text-xs"
-                onClick={() => handleAddWater(amount)}
-                disabled={isAdding}
+                className={cn(
+                  "flex flex-col h-auto py-2 text-xs transition-all duration-200",
+                  selectedAmount === amount 
+                    ? "bg-blue-500 hover:bg-blue-600 text-white scale-105" 
+                    : "hover:border-blue-400"
+                )}
+                onClick={() => setSelectedAmount(amount)}
               >
-                <Droplets className="h-3 w-3 mb-1 text-blue-500" />
+                <Droplets className={cn(
+                  "h-3 w-3 mb-1",
+                  selectedAmount === amount ? "text-white" : "text-blue-500"
+                )} />
                 {amount}ml
               </Button>
             ))}
@@ -250,12 +258,12 @@ export function WaterTracker() {
           <div className="flex items-center gap-2">
             <Button
               variant="default"
-              className="flex-1 bg-blue-500 hover:bg-blue-600"
-              onClick={() => handleAddWater(250)}
+              className="flex-1 bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+              onClick={handleAddWater}
               disabled={isAdding}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Adicionar 250ml
+              Adicionar {selectedAmount}ml
             </Button>
             <Button
               variant="outline"

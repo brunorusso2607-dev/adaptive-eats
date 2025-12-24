@@ -606,13 +606,18 @@ serve(async (req) => {
 
     logStep("Admin user authenticated", { userId: user.id });
 
-    const { messages, images } = await req.json();
+    const { messages, images, currentPage } = await req.json();
     if (!messages || !Array.isArray(messages)) {
       throw new Error("Messages array is required");
     }
 
     const hasImages = images && Array.isArray(images) && images.length > 0;
-    logStep("Processing chat", { messageCount: messages.length, hasImages, imageCount: images?.length || 0 });
+    logStep("Processing chat", { 
+      messageCount: messages.length, 
+      hasImages, 
+      imageCount: images?.length || 0,
+      currentPage: currentPage?.path || "unknown"
+    });
 
     const GOOGLE_AI_API_KEY = await getGeminiApiKey();
 
@@ -620,9 +625,14 @@ serve(async (req) => {
     const model = hasImages ? "gemini-2.5-flash" : "gemini-2.5-flash-lite";
     logStep("Using model", { model });
 
+    // Build dynamic context based on current page
+    const pageContextNote = currentPage 
+      ? `\n\n---\n\n# 📍 CONTEXTO ATUAL\n\nO admin está agora na página: **${currentPage.name}** (${currentPage.path})\n\n${currentPage.description}\n\nFoque suas respostas neste contexto! Se ele perguntar "o que eu posso fazer aqui?", responda especificamente sobre esta página.\n\n---\n\n`
+      : "";
+
     // Build conversation parts
     const conversationParts: any[] = [
-      { text: RECEITAI_SYSTEM_PROMPT }
+      { text: RECEITAI_SYSTEM_PROMPT + pageContextNote }
     ];
 
     // Add previous messages

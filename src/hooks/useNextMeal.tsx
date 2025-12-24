@@ -231,18 +231,22 @@ export function useNextMeal() {
       }
 
       // Ordenar as refeições usando mapa direto: cafe_manha=0, almoco=1, lanche=2, jantar=3, ceia=4
+      console.log("[useNextMeal] ANTES ordenação:", meals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(", "));
+      
       const sortedMeals = [...meals].sort((a, b) => {
-        return getMealSortIndex(a.meal_type) - getMealSortIndex(b.meal_type);
+        const indexA = getMealSortIndex(a.meal_type);
+        const indexB = getMealSortIndex(b.meal_type);
+        return indexA - indexB;
       });
       
-      console.log("[useNextMeal] Refeições ordenadas:", sortedMeals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(", "));
+      console.log("[useNextMeal] DEPOIS ordenação:", sortedMeals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(", "));
 
       // Pegar a primeira refeição não completada do dia
       let nextMealData: NextMealData | null = null;
       
       for (const meal of sortedMeals) {
         if (!meal.completed_at) {
-          console.log("[useNextMeal] Próxima refeição:", meal.meal_type);
+          console.log("[useNextMeal] ✅ Selecionando próxima refeição:", meal.meal_type, "-", meal.recipe_name.substring(0, 30));
           nextMealData = {
             ...meal,
             recipe_ingredients: meal.recipe_ingredients as Ingredient[],

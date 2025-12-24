@@ -509,7 +509,20 @@ export default function ReceitAIAssistant() {
         {/* Messages Area - Increased height */}
         <ScrollArea ref={scrollAreaRef} className="h-[600px] pr-4">
           <div className="space-y-4">
-            {messages.map((message, index) => (
+            {/* Loading History Indicator */}
+            {isLoadingHistory && (
+              <div className="flex flex-col items-center justify-center py-12 gap-3">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center">
+                  <Loader2 className="w-6 h-6 text-primary animate-spin" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-medium text-foreground">Carregando conversa...</p>
+                  <p className="text-xs text-muted-foreground mt-1">Recuperando seu histórico</p>
+                </div>
+              </div>
+            )}
+
+            {!isLoadingHistory && messages.map((message, index) => (
               <div
                 key={index}
                 className={cn(
@@ -574,7 +587,7 @@ export default function ReceitAIAssistant() {
               </div>
             ))}
 
-            {isLoading && (
+            {isLoading && !isLoadingHistory && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
                   <Bot className="w-4 h-4 text-muted-foreground" />

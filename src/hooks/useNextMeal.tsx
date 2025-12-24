@@ -32,8 +32,15 @@ export type NextMealData = {
 export const MEAL_TIME_RANGES = getMealTimeRangesSync();
 export const MEAL_LABELS = getMealLabelsSync();
 
-// Ordem das refeições - usar do banco
+// Ordem das refeições - usar do banco, com fallback para 'lanche' se existir
 const MEAL_ORDER = getMealOrderSync();
+
+// Mapear lanche <-> lanche_tarde para compatibilidade
+function normalizeMealType(mealType: string): string {
+  if (mealType === "lanche") return "lanche_tarde";
+  if (mealType === "lanche_tarde") return "lanche_tarde";
+  return mealType;
+}
 
 function getCurrentMealType(): string {
   const hour = new Date().getHours();
@@ -47,7 +54,7 @@ function getCurrentMealType(): string {
     }
   }
   
-  // Verificar ceia
+  // Verificar ceia (refeição noturna que pode cruzar meia-noite)
   const ceiaRange = timeRanges["ceia"];
   if (ceiaRange && (hour >= ceiaRange.start || hour < 6)) {
     return "ceia";
@@ -55,6 +62,9 @@ function getCurrentMealType(): string {
   
   return mealOrder[0] || "cafe_manha";
 }
+
+// Ordem canônica para ordenar refeições do dia
+const CANONICAL_MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "lanche_tarde", "jantar", "ceia"];
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
   if (completedAt) return "completed";
@@ -206,25 +216,49 @@ export function useNextMeal() {
         return;
       }
 
-      // Determinar qual refeição mostrar
+      // Determinar qual refeição mostrar baseado no horário atual
       const currentMealType = getCurrentMealType();
-      const currentMealIndex = MEAL_ORDER.indexOf(currentMealType);
+      
+      // Usar CANONICAL_MEAL_ORDER para garantir ordem correta independente do banco
+      const currentMealIndex = CANONICAL_MEAL_ORDER.findIndex(type => 
+        type === currentMealType || normalizeMealType(type) === normalizeMealType(currentMealType)
+      );
 
       // Procurar a próxima refeição não completada (apenas atual ou futura)
-      // Não mostra refeições passadas que não foram marcadas como feitas
       let nextMealData: NextMealData | null = null;
 
-      // Buscar apenas a partir da refeição atual (não mostra passadas)
-      for (let i = currentMealIndex; i < MEAL_ORDER.length; i++) {
-        const mealType = MEAL_ORDER[i];
-        const meal = meals.find(m => m.meal_type === mealType && !m.completed_at);
-        if (meal) {
+      // Ordenar as refeições do dia pela ordem canônica
+      const sortedMeals = [...meals].sort((a, b) => {
+        const indexA = CANONICAL_MEAL_ORDER.indexOf(a.meal_type);
+        const indexB = CANONICAL_MEAL_ORDER.indexOf(b.meal_type);
+        return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
+      });
+
+      // Buscar a primeira refeição não completada a partir do horário atual
+      for (const meal of sortedMeals) {
+        const mealIndex = CANONICAL_MEAL_ORDER.indexOf(meal.meal_type);
+        // Considerar refeições do horário atual ou futuras
+        if (mealIndex >= currentMealIndex && !meal.completed_at) {
           nextMealData = {
             ...meal,
             recipe_ingredients: meal.recipe_ingredients as Ingredient[],
             recipe_instructions: meal.recipe_instructions as string[],
           };
           break;
+        }
+      }
+      
+      // Se não encontrou nenhuma a partir do horário atual, pegar a primeira não completada
+      if (!nextMealData) {
+        for (const meal of sortedMeals) {
+          if (!meal.completed_at) {
+            nextMealData = {
+              ...meal,
+              recipe_ingredients: meal.recipe_ingredients as Ingredient[],
+              recipe_instructions: meal.recipe_instructions as string[],
+            };
+            break;
+          }
         }
       }
 

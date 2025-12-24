@@ -38,7 +38,7 @@ import { useGamification } from "@/hooks/useGamification";
 import HealthProgressStrip from "@/components/HealthProgressStrip";
 import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 import { WaterTracker } from "@/components/WaterTracker";
-import { WaterWidgetCompact } from "@/components/WaterWidgetCompact";
+import { CompactHealthCircles } from "@/components/CompactHealthCircles";
 import { SafetyStatusBadge } from "@/components/SafetyStatusBadge";
 import { SymptomTrackerCard } from "@/components/SymptomTrackerCard";
 import { SafetyScoreCard } from "@/components/SafetyScoreCard";
@@ -774,7 +774,6 @@ export default function Dashboard() {
                         </span>
                       )}
                     </button>
-                    <WaterWidgetCompact />
                   </div>
                   
                   {/* Actions: Notification Bell + Desktop Profile Dropdown */}
@@ -1207,8 +1206,10 @@ export default function Dashboard() {
                     </Card>
                   )}
 
-
                 </div>
+
+                {/* Compact Health Circles - Water & Weight at bottom */}
+                <CompactHealthCircles />
 
               </div>
             </>

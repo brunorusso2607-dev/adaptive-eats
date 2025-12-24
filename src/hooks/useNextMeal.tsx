@@ -63,8 +63,14 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-// Ordem canônica para ordenar refeições do dia
-const CANONICAL_MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "lanche_tarde", "jantar", "ceia"];
+// Ordem canônica para ordenar refeições do dia (apenas tipos canônicos)
+const CANONICAL_MEAL_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+
+// Função para encontrar o índice canônico de um meal_type
+function getCanonicalIndex(mealType: string): number {
+  const normalized = normalizeMealType(mealType);
+  return CANONICAL_MEAL_ORDER.indexOf(normalized);
+}
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
   if (completedAt) return "completed";
@@ -218,25 +224,25 @@ export function useNextMeal() {
 
       // Determinar qual refeição mostrar baseado no horário atual
       const currentMealType = getCurrentMealType();
+      const currentMealIndex = getCanonicalIndex(currentMealType);
       
-      // Usar CANONICAL_MEAL_ORDER para garantir ordem correta independente do banco
-      const currentMealIndex = CANONICAL_MEAL_ORDER.findIndex(type => 
-        type === currentMealType || normalizeMealType(type) === normalizeMealType(currentMealType)
-      );
+      console.log("[useNextMeal] currentMealType:", currentMealType, "currentMealIndex:", currentMealIndex);
 
       // Procurar a próxima refeição não completada (apenas atual ou futura)
       let nextMealData: NextMealData | null = null;
 
-      // Ordenar as refeições do dia pela ordem canônica
+      // Ordenar as refeições do dia pela ordem canônica (usando normalização)
       const sortedMeals = [...meals].sort((a, b) => {
-        const indexA = CANONICAL_MEAL_ORDER.indexOf(a.meal_type);
-        const indexB = CANONICAL_MEAL_ORDER.indexOf(b.meal_type);
+        const indexA = getCanonicalIndex(a.meal_type);
+        const indexB = getCanonicalIndex(b.meal_type);
         return (indexA === -1 ? 999 : indexA) - (indexB === -1 ? 999 : indexB);
       });
+      
+      console.log("[useNextMeal] sortedMeals:", sortedMeals.map(m => ({ type: m.meal_type, idx: getCanonicalIndex(m.meal_type), completed: !!m.completed_at })));
 
       // Buscar a primeira refeição não completada a partir do horário atual
       for (const meal of sortedMeals) {
-        const mealIndex = CANONICAL_MEAL_ORDER.indexOf(meal.meal_type);
+        const mealIndex = getCanonicalIndex(meal.meal_type);
         // Considerar refeições do horário atual ou futuras
         if (mealIndex >= currentMealIndex && !meal.completed_at) {
           nextMealData = {

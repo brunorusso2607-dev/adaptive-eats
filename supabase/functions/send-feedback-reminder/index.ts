@@ -140,9 +140,20 @@ serve(async (req) => {
       });
 
       try {
+        // Insert notification into database
+        await supabase.from("notifications").insert({
+          user_id: sub.user_id,
+          title: "🍽️ Como você se sentiu?",
+          message: pendingCount === 1
+            ? "Uma refeição aguarda seu feedback"
+            : `${pendingCount} refeições aguardam seu feedback`,
+          type: "meal",
+          action_url: "/dashboard",
+        });
+
         // For a production implementation, you would use a web-push library
         // or implement the full encryption protocol. For now, we log the intent.
-        console.log(`Would send notification to user ${sub.user_id}: ${payload}`);
+        console.log(`Sent notification to user ${sub.user_id}: ${payload}`);
         sentCount++;
       } catch (err: any) {
         console.error(`Failed to send to ${sub.endpoint}:`, err.message);

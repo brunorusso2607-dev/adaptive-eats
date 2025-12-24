@@ -130,7 +130,18 @@ serve(async (req) => {
         ],
       });
 
-      console.log(`Would send water reminder to user ${sub.user_id}: ${userData.percentage}% of goal`);
+      const message = messages[Math.floor(Math.random() * messages.length)];
+
+      // Insert notification into database
+      await supabase.from("notifications").insert({
+        user_id: sub.user_id,
+        title: "💧 Hora de beber água!",
+        message: message,
+        type: "reminder",
+        action_url: "/dashboard",
+      });
+
+      console.log(`Sent water reminder to user ${sub.user_id}: ${userData.percentage}% of goal`);
       sentCount++;
     }
 

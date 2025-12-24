@@ -807,8 +807,24 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               placeholder="1,75"
               value={heightInput}
               onChange={(e) => {
+                const rawValue = e.target.value;
+                
+                // Se o usuário apagou tudo, permitir campo vazio
+                if (rawValue === '' || rawValue === ',') {
+                  setHeightInput('');
+                  setData({ ...data, height: null });
+                  return;
+                }
+                
                 // Remove tudo exceto números
-                let digits = e.target.value.replace(/[^0-9]/g, '');
+                let digits = rawValue.replace(/[^0-9]/g, '');
+                
+                // Se não há dígitos após limpar, esvaziar
+                if (digits.length === 0) {
+                  setHeightInput('');
+                  setData({ ...data, height: null });
+                  return;
+                }
                 
                 // Limita a 3 dígitos (formato X,XX = altura máxima 2,99m)
                 if (digits.length > 3) {
@@ -817,9 +833,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
                 
                 // Formata automaticamente com vírgula após primeiro dígito
                 let formatted = '';
-                if (digits.length === 0) {
-                  formatted = '';
-                } else if (digits.length === 1) {
+                if (digits.length === 1) {
                   formatted = digits + ',';
                 } else {
                   formatted = digits[0] + ',' + digits.substring(1);
@@ -828,20 +842,16 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
                 setHeightInput(formatted);
                 
                 // Converte para cm para armazenamento
-                if (digits.length >= 1) {
-                  const numericValue = parseFloat(digits[0] + '.' + digits.substring(1));
-                  if (!isNaN(numericValue) && numericValue > 0) {
-                    setData({ ...data, height: Math.round(numericValue * 100) });
-                  } else {
-                    setData({ ...data, height: null });
-                  }
+                const numericValue = parseFloat(digits[0] + '.' + (digits.substring(1) || '0'));
+                if (!isNaN(numericValue) && numericValue > 0) {
+                  setData({ ...data, height: Math.round(numericValue * 100) });
                 } else {
                   setData({ ...data, height: null });
                 }
               }}
               onBlur={() => {
                 // Completa com zeros se necessário (ex: "1," -> "1,00")
-                if (heightInput && data.height) {
+                if (data.height) {
                   const meters = (data.height / 100).toFixed(2);
                   setHeightInput(meters.replace('.', ','));
                 }

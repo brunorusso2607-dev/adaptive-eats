@@ -1,5 +1,6 @@
-import { Shield, ShieldCheck, ShieldAlert, AlertTriangle } from "lucide-react";
+import { Shield, ShieldCheck } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { RestrictionIcon } from "./RestrictionIcon";
 
 interface SafetyStatusBadgeProps {
   intolerances: string[];
@@ -9,25 +10,25 @@ interface SafetyStatusBadgeProps {
 }
 
 // Mapeamento de intolerâncias para labels amigáveis
-const INTOLERANCE_LABELS: Record<string, { label: string; icon: string }> = {
-  lactose: { label: "Sem Lactose", icon: "🥛" },
-  gluten: { label: "Sem Glúten", icon: "🌾" },
-  amendoim: { label: "Sem Amendoim", icon: "🥜" },
-  oleaginosas: { label: "Sem Oleaginosas", icon: "🌰" },
-  frutos_do_mar: { label: "Sem Frutos do Mar", icon: "🦐" },
-  peixe: { label: "Sem Peixe", icon: "🐟" },
-  ovo: { label: "Sem Ovo", icon: "🥚" },
-  soja: { label: "Sem Soja", icon: "🫘" },
-  acucar: { label: "Sem Açúcar", icon: "🍬" },
+const INTOLERANCE_LABELS: Record<string, string> = {
+  lactose: "Sem Lactose",
+  gluten: "Sem Glúten",
+  amendoim: "Sem Amendoim",
+  oleaginosas: "Sem Oleaginosas",
+  frutos_do_mar: "Sem Frutos do Mar",
+  peixe: "Sem Peixe",
+  ovo: "Sem Ovo",
+  soja: "Sem Soja",
+  acucar: "Sem Açúcar",
 };
 
-const DIET_LABELS: Record<string, { label: string; icon: string }> = {
-  vegetariana: { label: "Vegetariana", icon: "🥗" },
-  vegana: { label: "Vegana", icon: "🌱" },
-  low_carb: { label: "Low Carb", icon: "🥩" },
-  pescetariana: { label: "Pescetariana", icon: "🐠" },
-  cetogenica: { label: "Cetogênica", icon: "🥑" },
-  flexitariana: { label: "Flexitariana", icon: "🍽️" },
+const DIET_LABELS: Record<string, string> = {
+  vegetariana: "Vegetariana",
+  vegana: "Vegana",
+  low_carb: "Low Carb",
+  pescetariana: "Pescetariana",
+  cetogenica: "Cetogênica",
+  flexitariana: "Flexitariana",
 };
 
 export function SafetyStatusBadge({
@@ -58,18 +59,22 @@ export function SafetyStatusBadge({
     );
   }
 
-  const activeRestrictions: Array<{ label: string; icon: string; type: "intolerance" | "excluded" | "diet" }> = [];
+  const activeRestrictions: Array<{ 
+    label: string; 
+    key: string; 
+    type: "intolerance" | "excluded" | "diet" 
+  }> = [];
 
   // Adicionar intolerâncias
   for (const intolerance of intolerances) {
     const key = intolerance.toLowerCase();
-    const info = INTOLERANCE_LABELS[key];
-    if (info) {
-      activeRestrictions.push({ ...info, type: "intolerance" });
+    const label = INTOLERANCE_LABELS[key];
+    if (label) {
+      activeRestrictions.push({ label, key, type: "intolerance" });
     } else {
       activeRestrictions.push({ 
         label: `Sem ${intolerance}`, 
-        icon: "🚫", 
+        key: "excluded",
         type: "intolerance" 
       });
     }
@@ -79,16 +84,16 @@ export function SafetyStatusBadge({
   for (const ingredient of excludedIngredients) {
     activeRestrictions.push({
       label: `Sem ${ingredient}`,
-      icon: "⛔",
+      key: "excluded",
       type: "excluded",
     });
   }
 
   // Adicionar preferência alimentar
   if (dietaryPreference && dietaryPreference !== "comum") {
-    const dietInfo = DIET_LABELS[dietaryPreference];
-    if (dietInfo) {
-      activeRestrictions.push({ ...dietInfo, type: "diet" });
+    const label = DIET_LABELS[dietaryPreference];
+    if (label) {
+      activeRestrictions.push({ label, key: dietaryPreference, type: "diet" });
     }
   }
 
@@ -106,7 +111,7 @@ export function SafetyStatusBadge({
           <Badge
             key={`${restriction.label}-${index}`}
             variant="secondary"
-            className={`text-xs px-2 py-0.5 ${
+            className={`text-xs px-2 py-0.5 flex items-center gap-1 ${
               restriction.type === "intolerance" 
                 ? "bg-destructive/10 text-destructive border-destructive/20" 
                 : restriction.type === "excluded"
@@ -114,7 +119,11 @@ export function SafetyStatusBadge({
                 : "bg-primary/10 text-primary border-primary/20"
             }`}
           >
-            <span className="mr-1">{restriction.icon}</span>
+            <RestrictionIcon 
+              restriction={restriction.key} 
+              type={restriction.type}
+              size={12}
+            />
             {restriction.label}
           </Badge>
         ))}

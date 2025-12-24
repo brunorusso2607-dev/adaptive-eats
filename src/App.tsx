@@ -10,6 +10,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Activate from "./pages/Activate";
 import Onboarding from "./pages/Onboarding";
+import TermsOfUse from "./pages/TermsOfUse";
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 import NotFound from "./pages/NotFound";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminHome from "./pages/admin/AdminHome";
@@ -48,6 +50,8 @@ function AppContent() {
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/ativar" element={<Activate />} />
         <Route path="/onboarding" element={<Onboarding />} />
+        <Route path="/termos-de-uso" element={<TermsOfUse />} />
+        <Route path="/politica-privacidade" element={<PrivacyPolicy />} />
         
         {/* Admin Routes */}
         <Route path="/admin" element={<AdminDashboard />}>

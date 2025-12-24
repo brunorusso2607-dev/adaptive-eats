@@ -488,7 +488,10 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     return (
       <>
         {/* Botão Editar */}
-        <Button variant="outline" className="w-full" onClick={() => setIsEditing(true)}>
+        <Button 
+          className="w-full bg-primary text-primary-foreground hover:bg-[#D3D3D3] hover:text-foreground" 
+          onClick={() => setIsEditing(true)}
+        >
           <Pencil className="w-4 h-4 mr-2" />
           Editar dados
         </Button>
@@ -625,8 +628,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
 
         {/* Logout */}
         <Button 
-          variant="outline" 
-          className="w-full" 
+          className="w-full bg-primary text-primary-foreground hover:bg-[#D3D3D3] hover:text-foreground" 
           onClick={() => {
             setIsOpen(false);
             onLogout();

@@ -277,20 +277,17 @@ export default function ReceitAIAssistant() {
     }
   }, [messages]);
 
-  // Initial greeting - only show if no messages loaded and not loading
+  // Initial greeting - only for truly new users with no history
   useEffect(() => {
-    if (messages.length === 0 && !conversationId && !isLoadingHistory) {
-      const greeting = conversations.length > 0 
-        ? `Opa! 👋 Que bom te ver de novo na página **${pageContext.name}**!\n\n${pageContext.description}\n\nLembro das nossas conversas anteriores! Você pode acessar o histórico clicando em "Histórico" acima.\n\nNo que posso te ajudar agora?`
-        : `Opa! 👋 Bem-vindo à página **${pageContext.name}**!\n\n${pageContext.description}\n\nEstou aqui pra te ajudar com o que precisar. Conheço todas as páginas do admin e posso:\n\n• Explicar como cada funcionalidade funciona\n• Sugerir melhorias de UX/UI\n• Analisar screenshots (Ctrl+V pra colar)\n• Ajudar com código e arquitetura\n\nO que você quer saber?`;
-      
+    // Only show greeting if: not loading, no conversation loaded, no messages, AND no previous conversations exist
+    if (!isLoadingHistory && !conversationId && messages.length === 0 && conversations.length === 0) {
       setMessages([{
         role: "assistant",
-        content: greeting,
+        content: `Olá! Sou o Chef IA, seu assistente. Como posso ajudar?`,
         timestamp: new Date()
       }]);
     }
-  }, [pageContext.name, conversationId, conversations.length, isLoadingHistory]);
+  }, [isLoadingHistory, conversationId, conversations.length]);
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;

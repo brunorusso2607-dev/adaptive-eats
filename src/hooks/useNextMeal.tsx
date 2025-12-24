@@ -63,21 +63,18 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-// Mapa direto de meal_type para índice de ordenação
-// cafe_manha=0, almoco=1, lanche/lanche_tarde=2, jantar=3, ceia=4
-const MEAL_SORT_ORDER: Record<string, number> = {
-  "cafe_manha": 0,
-  "almoco": 1,
-  "lanche": 2,
-  "lanche_tarde": 2,
-  "jantar": 3,
-  "ceia": 4
-};
-
-// Função para encontrar o índice de ordenação de um meal_type
+// VERSÃO 3 - Mapa simples e direto para ordenação
+// cafe_manha SEMPRE primeiro (índice 0), lanche SEMPRE depois (índice 2)
 function getMealSortIndex(mealType: string): number {
-  const index = MEAL_SORT_ORDER[mealType];
-  return index !== undefined ? index : 999;
+  switch (mealType) {
+    case "cafe_manha": return 0;
+    case "almoco": return 1;
+    case "lanche": return 2;
+    case "lanche_tarde": return 2;
+    case "jantar": return 3;
+    case "ceia": return 4;
+    default: return 999;
+  }
 }
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
@@ -151,6 +148,8 @@ export function getMinutesUntilStart(mealType: string): number {
 }
 
 export function useNextMeal() {
+  console.log("🔄 [useNextMeal] Hook inicializado - VERSÃO 3");
+  
   const [nextMeal, setNextMeal] = useState<NextMealData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMealPlan, setHasMealPlan] = useState(false);

@@ -98,9 +98,9 @@ export function SafetyStatusBadge({
   }
 
   return (
-    <div className="flex flex-col gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+    <div className="flex flex-col gap-2 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
       <div className="flex items-center gap-2">
-        <ShieldCheck className="w-4 h-4 text-primary" />
+        <ShieldCheck className="w-4 h-4 text-emerald-600" />
         <span className="text-sm font-medium text-foreground">
           Proteção Ativa
         </span>
@@ -111,13 +111,7 @@ export function SafetyStatusBadge({
           <Badge
             key={`${restriction.label}-${index}`}
             variant="secondary"
-            className={`text-xs px-2 py-0.5 flex items-center gap-1 ${
-              restriction.type === "intolerance" 
-                ? "bg-destructive/10 text-destructive border-destructive/20" 
-                : restriction.type === "excluded"
-                ? "bg-orange-500/10 text-orange-600 border-orange-500/20"
-                : "bg-primary/10 text-primary border-primary/20"
-            }`}
+            className="text-xs px-2 py-0.5 flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20"
           >
             <RestrictionIcon 
               restriction={restriction.key} 

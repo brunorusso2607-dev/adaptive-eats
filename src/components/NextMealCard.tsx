@@ -11,10 +11,10 @@ import {
   AlertTriangle,
   UtensilsCrossed,
   Loader2,
-  Timer,
-  Heart
+  Timer
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "./FavoriteButton";
 import { useNextMeal, MEAL_LABELS, MEAL_TIME_RANGES, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { supabase } from "@/integrations/supabase/client";
@@ -386,24 +386,12 @@ export default function NextMealCard(_props: NextMealCardProps) {
           </Button>
 
           {/* Botão favoritar alinhado à direita */}
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "h-8 w-8 ml-auto transition-all",
-              isFavorite 
-                ? "text-rose-500 hover:text-rose-600" 
-                : "text-muted-foreground hover:text-rose-500"
-            )}
+          <FavoriteButton
+            isFavorite={isFavorite}
+            isLoading={isTogglingFavorite}
             onClick={handleToggleFavorite}
-            disabled={isTogglingFavorite}
-          >
-            {isTogglingFavorite ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Heart className={cn("w-4 h-4 transition-all", isFavorite && "fill-current")} />
-            )}
-          </Button>
+            className="ml-auto"
+          />
         </div>
       </CardContent>
 

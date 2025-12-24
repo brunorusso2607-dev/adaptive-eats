@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, Heart, X, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
+import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FavoriteButton } from "./FavoriteButton";
 import {
   Select,
   SelectContent,
@@ -465,17 +466,11 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                             >
                               <RefreshCw className="w-4 h-4 sm:w-5 sm:h-5 text-muted-foreground hover:text-primary transition-colors" />
                             </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="w-8 h-8 sm:w-10 sm:h-10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onToggleFavorite(meal.id);
-                              }}
-                            >
-                              <Heart className={cn("w-4 h-4 sm:w-5 sm:h-5", meal.is_favorite && "fill-red-500 text-red-500")} />
-                            </Button>
+                            <FavoriteButton
+                              isFavorite={meal.is_favorite}
+                              onClick={() => onToggleFavorite(meal.id)}
+                              size="lg"
+                            />
                           </div>
                         )}
                       </div>

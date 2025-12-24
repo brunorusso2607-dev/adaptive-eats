@@ -27,7 +27,8 @@
 
     /* Primary - Vibrant orange #FF6B00 */
     --primary: 25 100% 50%;
-    --primary-foreground: 0 0% 83%; /* #D3D3D3 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 0 0% 83%; /* #D3D3D3 */
 
     /* Secondary - Light gray surface */
     --secondary: 214 20% 96%;
@@ -108,7 +109,8 @@
     --popover-foreground: 210 20% 95%;
 
     --primary: 25 95% 55%;
-    --primary-foreground: 0 0% 83%; /* #D3D3D3 */
+    --primary-foreground: 0 0% 100%;
+    --primary-hover: 0 0% 83%; /* #D3D3D3 */
 
     --secondary: 220 15% 16%;
     --secondary-foreground: 210 20% 90%;
@@ -227,6 +229,11 @@
 
   .gradient-primary {
     background: var(--gradient-primary);
+  }
+
+  .gradient-primary:hover {
+    background: hsl(var(--primary-hover));
+    color: hsl(var(--foreground));
   }
 
   .gradient-accent {

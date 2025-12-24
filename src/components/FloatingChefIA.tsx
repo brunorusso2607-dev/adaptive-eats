@@ -800,93 +800,107 @@ export default function FloatingChefIA() {
         </div>
       )}
 
-      {/* Audio Wave Animation */}
+      {/* Audio Wave Animation - Expanded when listening */}
       {isListening && (
-        <div className="flex items-center justify-center gap-1 py-2 px-3 bg-primary/10 border-t border-primary/30">
-          <div className="flex items-center gap-0.5 h-4">
-            {[...Array(5)].map((_, i) => (
+        <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-gradient-to-b from-primary/5 to-primary/15 border-t border-primary/30">
+          <div className="flex items-center gap-1 h-12">
+            {[...Array(9)].map((_, i) => (
               <div
                 key={i}
-                className="w-0.5 bg-primary rounded-full"
+                className="w-1 bg-primary rounded-full"
                 style={{
-                  animation: `audioWave 0.5s ease-in-out infinite`,
-                  animationDelay: `${i * 0.1}s`,
+                  animation: `audioWave 0.6s ease-in-out infinite`,
+                  animationDelay: `${i * 0.08}s`,
                   height: '100%',
                 }}
               />
             ))}
           </div>
-          <span className="ml-2 text-xs text-primary font-medium">Ouvindo...</span>
+          <div className="flex flex-col items-center gap-1">
+            <span className="text-sm text-primary font-semibold">Gravando...</span>
+            <span className="text-xs text-muted-foreground">Fale sua mensagem. Clique no microfone para parar.</span>
+          </div>
+          <Button
+            onClick={toggleListening}
+            variant="destructive"
+            size="lg"
+            className="mt-2 gap-2"
+          >
+            <MicOff className="w-5 h-5" />
+            Parar Gravação
+          </Button>
         </div>
       )}
 
-      {/* Input */}
-      <div className="p-3 border-t border-border bg-background">
-        <div className="flex gap-1.5">
-          <input
-            ref={fileInputRef}
-            type="file"
-            multiple
-            accept="image/*,.pdf,.doc,.docx,.txt"
-            onChange={handleFileSelect}
-            className="hidden"
-          />
-          <Button 
-            onClick={() => fileInputRef.current?.click()}
-            variant="ghost"
-            size="icon"
-            className="w-8 h-8 shrink-0"
-            disabled={isLoading}
-          >
-            <Paperclip className="w-4 h-4" />
-          </Button>
-          <Input
-            ref={inputRef}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            placeholder={isListening ? "Fale..." : "Pergunte algo..."}
-            disabled={isLoading}
-            className={cn("flex-1 h-8 text-sm", isListening && "border-primary")}
-          />
-          <Button 
-            onClick={toggleListening}
-            variant={isListening ? "destructive" : "ghost"}
-            size="icon"
-            className="w-8 h-8 shrink-0"
-            disabled={isLoading}
-          >
-            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
-          </Button>
-          <Button 
-            onClick={sendMessage} 
-            disabled={isLoading || (!input.trim() && attachments.length === 0)}
-            size="icon"
-            className="w-8 h-8 shrink-0"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-
-        {/* Quick Actions */}
-        <div className="flex flex-wrap gap-1 mt-2">
-          {pageContext.quickActions.slice(0, 2).map((suggestion) => (
-            <Button
-              key={suggestion}
-              variant="outline"
-              size="sm"
-              className="text-[10px] h-6 px-2"
-              onClick={() => {
-                setInput(suggestion);
-                inputRef.current?.focus();
-              }}
+      {/* Input - Hidden when listening */}
+      {!isListening && (
+        <div className="p-3 border-t border-border bg-background">
+          <div className="flex gap-1.5">
+            <input
+              ref={fileInputRef}
+              type="file"
+              multiple
+              accept="image/*,.pdf,.doc,.docx,.txt"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+            <Button 
+              onClick={() => fileInputRef.current?.click()}
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8 shrink-0"
               disabled={isLoading}
             >
-              {suggestion}
+              <Paperclip className="w-4 h-4" />
             </Button>
-          ))}
+            <Input
+              ref={inputRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Pergunte algo..."
+              disabled={isLoading}
+              className="flex-1 h-8 text-sm"
+            />
+            <Button 
+              onClick={toggleListening}
+              variant="ghost"
+              size="icon"
+              className="w-8 h-8 shrink-0"
+              disabled={isLoading}
+            >
+              <Mic className="w-4 h-4" />
+            </Button>
+            <Button 
+              onClick={sendMessage} 
+              disabled={isLoading || (!input.trim() && attachments.length === 0)}
+              size="icon"
+              className="w-8 h-8 shrink-0"
+            >
+              <Send className="w-4 h-4" />
+            </Button>
+          </div>
+
+          {/* Quick Actions */}
+          <div className="flex flex-wrap gap-1 mt-2">
+            {pageContext.quickActions.slice(0, 2).map((suggestion) => (
+              <Button
+                key={suggestion}
+                variant="outline"
+                size="sm"
+                className="text-[10px] h-6 px-2"
+                onClick={() => {
+                  setInput(suggestion);
+                  inputRef.current?.focus();
+                }}
+                disabled={isLoading}
+              >
+                {suggestion}
+              </Button>
+            ))}
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

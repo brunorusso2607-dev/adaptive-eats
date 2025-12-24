@@ -83,10 +83,19 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
 
   // No meal plan state
   if (!hasMealPlan) {
+    const handleNavigate = () => {
+      console.log("[PendingMealsList] Card clicked, onNavigateToMealPlan:", !!onNavigateToMealPlan);
+      if (onNavigateToMealPlan) {
+        onNavigateToMealPlan();
+      }
+    };
+
     return (
       <Card 
         className="glass-card border-border cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]"
-        onClick={onNavigateToMealPlan}
+        onClick={handleNavigate}
+        role="button"
+        tabIndex={0}
       >
         <CardContent className="p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">

@@ -1,5 +1,6 @@
+import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, UtensilsCrossed, Clock, ChevronDown, Flame, Eye } from "lucide-react";
+import { Check, UtensilsCrossed, Clock, ChevronDown, Flame, Eye, ChevronRight } from "lucide-react";
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import MealDetailSheet from "./MealDetailSheet";
@@ -22,6 +23,7 @@ interface PendingMealsListProps {
 }
 
 export default function PendingMealsList({ onStreakRefresh, userProfile }: PendingMealsListProps) {
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = useState(false);
   const [isRecipeSheetOpen, setIsRecipeSheetOpen] = useState(false);
   const {
@@ -83,7 +85,10 @@ export default function PendingMealsList({ onStreakRefresh, userProfile }: Pendi
   // No meal plan state
   if (!hasMealPlan) {
     return (
-      <Card className="glass-card border-border">
+      <Card 
+        className="glass-card border-border cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]"
+        onClick={() => navigate("/dashboard?tab=plano")}
+      >
         <CardContent className="p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
             <UtensilsCrossed className="w-8 h-8 text-muted-foreground" />
@@ -91,8 +96,9 @@ export default function PendingMealsList({ onStreakRefresh, userProfile }: Pendi
           <p className="text-sm text-muted-foreground">
             Nenhum plano de refeições ativo
           </p>
-          <p className="text-xs text-muted-foreground mt-1">
-            Crie um plano para ver suas refeições aqui
+          <p className="text-xs text-primary mt-1 flex items-center justify-center gap-1">
+            Crie seu primeiro plano alimentar
+            <ChevronRight className="w-3 h-3" />
           </p>
         </CardContent>
       </Card>

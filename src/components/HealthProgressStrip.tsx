@@ -1,18 +1,22 @@
 import { useState } from "react";
 import { Progress } from "@/components/ui/progress";
-import { Flame, ChevronRight } from "lucide-react";
+import { Flame, ChevronRight, Droplets, UtensilsCrossed } from "lucide-react";
 import { cn } from "@/lib/utils";
 import HealthMilestonesSheet from "./HealthMilestonesSheet";
 import type { AchievementKey } from "@/hooks/useGamification";
+import type { WaterAchievementKey } from "@/hooks/useWaterAchievements";
 
 type HealthProgressStripProps = {
   level: number;
   totalXp: number;
+  mealXp?: number;
+  waterXp?: number;
   xpInLevel: number;
   xpForNextLevel: number;
   levelProgress: number;
   currentStreak: number;
   unlockedAchievements: AchievementKey[];
+  waterAchievements?: WaterAchievementKey[];
   newAchievements?: AchievementKey[];
   weeklyAdherence: number;
   mealsCompletedThisWeek: number;
@@ -25,11 +29,14 @@ type HealthProgressStripProps = {
 export default function HealthProgressStrip({
   level,
   totalXp,
+  mealXp = 0,
+  waterXp = 0,
   xpInLevel,
   xpForNextLevel,
   levelProgress,
   currentStreak,
   unlockedAchievements,
+  waterAchievements = [],
   newAchievements = [],
   weeklyAdherence,
   mealsCompletedThisWeek,
@@ -98,6 +105,8 @@ export default function HealthProgressStrip({
         onOpenChange={setIsSheetOpen}
         level={level}
         totalXp={totalXp}
+        mealXp={mealXp}
+        waterXp={waterXp}
         xpInLevel={xpInLevel}
         xpForNextLevel={xpForNextLevel}
         levelProgress={levelProgress}
@@ -108,6 +117,7 @@ export default function HealthProgressStrip({
         mealsPlannedThisWeek={mealsPlannedThisWeek}
         totalMealsCompleted={totalMealsCompleted}
         unlockedAchievements={unlockedAchievements}
+        waterAchievements={waterAchievements}
         newAchievements={newAchievements}
       />
     </>

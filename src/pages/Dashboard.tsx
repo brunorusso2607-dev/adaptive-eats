@@ -775,6 +775,8 @@ export default function Dashboard() {
                 <HealthProgressStrip
                   level={gamification.level}
                   totalXp={gamification.totalXp}
+                  mealXp={gamification.mealXp}
+                  waterXp={gamification.waterXp}
                   xpInLevel={gamification.xpInLevel}
                   xpForNextLevel={gamification.xpForNextLevel}
                   levelProgress={gamification.levelProgress}
@@ -785,6 +787,7 @@ export default function Dashboard() {
                   mealsPlannedThisWeek={gamification.mealsPlannedThisWeek}
                   totalMealsCompleted={gamification.totalMealsCompleted}
                   unlockedAchievements={gamification.unlockedAchievements}
+                  waterAchievements={gamification.waterAchievements}
                   newAchievements={gamification.newAchievements}
                   isLoading={gamification.isLoading}
                 />

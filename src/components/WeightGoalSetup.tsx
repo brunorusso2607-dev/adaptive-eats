@@ -375,6 +375,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     activity_level: initialData?.activity_level || "moderate",
     goal_mode: initialData?.goal_mode || null,
   });
+  
+  // Estado local para edição livre do campo altura
+  const [heightInput, setHeightInput] = useState(() => 
+    initialData?.height ? (initialData.height / 100).toFixed(2).replace('.', ',') : ""
+  );
 
   const calculations = calculateMacros(data);
   const healthRisks = calculateHealthRisks(data);
@@ -796,12 +801,12 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               type="text"
               inputMode="decimal"
               placeholder="1,75"
-              value={data.height ? (data.height / 100).toFixed(2).replace('.', ',') : ""}
+              value={heightInput}
               onChange={(e) => {
                 // Allow only numbers and comma
                 let value = e.target.value.replace(/[^0-9,]/g, '');
                 
-                // Handle comma as decimal separator
+                // Handle comma as decimal separator - only allow one comma
                 const parts = value.split(',');
                 if (parts.length > 2) {
                   value = parts[0] + ',' + parts.slice(1).join('');
@@ -812,12 +817,21 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
                   value = parts[0] + ',' + parts[1].substring(0, 2);
                 }
                 
-                // Convert to cm for storage
+                // Update local state for free editing
+                setHeightInput(value);
+                
+                // Convert to cm for data storage
                 const numericValue = parseFloat(value.replace(',', '.'));
                 if (!isNaN(numericValue) && numericValue > 0) {
                   setData({ ...data, height: Math.round(numericValue * 100) });
-                } else if (value === '' || value === '0' || value === '0,') {
+                } else {
                   setData({ ...data, height: null });
+                }
+              }}
+              onBlur={() => {
+                // Format on blur if there's a valid value
+                if (data.height) {
+                  setHeightInput((data.height / 100).toFixed(2).replace('.', ','));
                 }
               }}
               className="h-12"

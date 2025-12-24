@@ -982,7 +982,7 @@ export default function Dashboard() {
                 )}
 
                 {/* Lista de Refeições Pendentes */}
-                <PendingMealsList onStreakRefresh={gamification.refresh} />
+                <PendingMealsList onStreakRefresh={gamification.refresh} userProfile={userProfile} />
 
                 {/* Controle de Água */}
                 <WaterTracker />

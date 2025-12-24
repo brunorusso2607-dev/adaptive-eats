@@ -21,9 +21,15 @@ import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
 import MealDetailSheet from "./MealDetailSheet";
+import MealSubstanceBadges from "./MealSubstanceBadges";
 
-// eslint-disable-next-line @typescript-eslint/no-empty-object-type
-interface NextMealCardProps {}
+interface NextMealCardProps {
+  userProfile?: {
+    intolerances?: string[] | null;
+    dietary_preference?: string | null;
+    excluded_ingredients?: string[] | null;
+  } | null;
+}
 
 // Status colors (fixed)
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
@@ -41,7 +47,7 @@ const statusToStyleKey: Record<MealStatus, string> = {
   upcoming: "on_time",
 };
 
-export default function NextMealCard(_props: NextMealCardProps) {
+export default function NextMealCard({ userProfile }: NextMealCardProps) {
   const {
     nextMeal,
     isLoading,
@@ -295,6 +301,10 @@ export default function NextMealCard(_props: NextMealCardProps) {
               <h3 className="font-display font-semibold text-foreground truncate">
                 {nextMeal.recipe_name}
               </h3>
+              <MealSubstanceBadges 
+                ingredients={nextMeal.recipe_ingredients} 
+                userProfile={userProfile}
+              />
               {mealStatus === "upcoming" && minutesUntilStart > 0 && (
                 <span className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 mt-1">
                   <Timer className="w-3 h-3" />

@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { Droplets, Plus, Settings, Trash2, Bell, BellOff } from "lucide-react";
+import { Droplets, Plus, Settings, Trash2, Bell, BellOff, TrendingUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
 import { useWaterReminder } from "@/hooks/useWaterReminder";
 import { WaterSettingsSheet } from "./WaterSettingsSheet";
+import { WaterHistoryChart } from "./WaterHistoryChart";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -49,6 +50,7 @@ export function WaterTracker() {
   });
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [showHistory, setShowHistory] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
 
   const handleAddWater = async (amount: number) => {
@@ -75,6 +77,11 @@ export function WaterTracker() {
         </CardContent>
       </Card>
     );
+  }
+
+  // Show history view
+  if (showHistory) {
+    return <WaterHistoryChart onBack={() => setShowHistory(false)} />;
   }
 
   const showNotificationPrompt = 
@@ -226,7 +233,7 @@ export function WaterTracker() {
             ))}
           </div>
 
-          {/* Custom Amount */}
+          {/* Action Buttons */}
           <div className="flex items-center gap-2">
             <Button
               variant="default"
@@ -236,6 +243,14 @@ export function WaterTracker() {
             >
               <Plus className="h-4 w-4 mr-2" />
               Adicionar 250ml
+            </Button>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => setShowHistory(true)}
+              className="shrink-0"
+            >
+              <TrendingUp className="h-4 w-4" />
             </Button>
           </div>
 

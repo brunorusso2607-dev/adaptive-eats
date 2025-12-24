@@ -917,6 +917,66 @@ export type Database = {
         }
         Relationships: []
       }
+      water_consumption: {
+        Row: {
+          amount_ml: number
+          consumed_at: string
+          created_at: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          amount_ml?: number
+          consumed_at?: string
+          created_at?: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          amount_ml?: number
+          consumed_at?: string
+          created_at?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      water_settings: {
+        Row: {
+          created_at: string
+          daily_goal_ml: number
+          id: string
+          reminder_enabled: boolean
+          reminder_end_hour: number
+          reminder_interval_minutes: number
+          reminder_start_hour: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          daily_goal_ml?: number
+          id?: string
+          reminder_enabled?: boolean
+          reminder_end_hour?: number
+          reminder_interval_minutes?: number
+          reminder_start_hour?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          daily_goal_ml?: number
+          id?: string
+          reminder_enabled?: boolean
+          reminder_end_hour?: number
+          reminder_interval_minutes?: number
+          reminder_start_hour?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       weight_history: {
         Row: {
           goal_weight: number | null

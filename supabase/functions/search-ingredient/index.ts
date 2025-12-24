@@ -1,0 +1,341 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const logStep = (step: string, details?: any) => {
+  console.log(`[SEARCH-INGREDIENT] ${step}`, details ? JSON.stringify(details) : '');
+};
+
+// Normalize text: remove accents, lowercase
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+// Calculate similarity between two strings (Levenshtein-based)
+function calculateSimilarity(str1: string, str2: string): number {
+  const s1 = normalizeText(str1);
+  const s2 = normalizeText(str2);
+  
+  if (s1 === s2) return 1;
+  if (s1.includes(s2) || s2.includes(s1)) return 0.9;
+  
+  const maxLen = Math.max(s1.length, s2.length);
+  if (maxLen === 0) return 1;
+  
+  // Simple Levenshtein distance
+  const matrix: number[][] = [];
+  for (let i = 0; i <= s1.length; i++) {
+    matrix[i] = [i];
+  }
+  for (let j = 0; j <= s2.length; j++) {
+    matrix[0][j] = j;
+  }
+  for (let i = 1; i <= s1.length; i++) {
+    for (let j = 1; j <= s2.length; j++) {
+      if (s1[i - 1] === s2[j - 1]) {
+        matrix[i][j] = matrix[i - 1][j - 1];
+      } else {
+        matrix[i][j] = Math.min(
+          matrix[i - 1][j - 1] + 1,
+          matrix[i][j - 1] + 1,
+          matrix[i - 1][j] + 1
+        );
+      }
+    }
+  }
+  
+  const distance = matrix[s1.length][s2.length];
+  return 1 - distance / maxLen;
+}
+
+// Call Gemini AI for ingredient data
+async function getIngredientFromAI(
+  ingredientName: string, 
+  context?: string
+): Promise<any> {
+  const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+  
+  if (!LOVABLE_API_KEY) {
+    throw new Error('LOVABLE_API_KEY not configured');
+  }
+
+  const prompt = `Você é um banco de dados nutricional preciso. Retorne APENAS JSON válido, sem markdown.
+
+Ingrediente: "${ingredientName}"
+${context ? `Contexto culinário: "${context}"` : ''}
+
+Retorne exatamente neste formato JSON:
+{
+  "name": "nome padronizado em português",
+  "name_en": "nome em inglês",
+  "aliases": ["sinônimo1", "sinônimo2"],
+  "cuisine_origin": "origem culinária (brazilian, japanese, italian, etc)",
+  "per_100g": {
+    "calories": número,
+    "protein": número,
+    "carbs": número,
+    "fat": número,
+    "fiber": número ou null
+  },
+  "confidence": 0.85,
+  "notes": "observações se houver ou null"
+}
+
+IMPORTANTE: 
+- Valores nutricionais devem ser por 100g do alimento
+- Use valores realistas baseados em tabelas nutricionais conhecidas (TACO, USDA)
+- Se não tiver certeza, use confidence menor que 0.7`;
+
+  logStep('Calling Gemini AI', { ingredientName, context });
+
+  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      model: 'google/gemini-2.5-flash',
+      messages: [
+        { role: 'system', content: 'Você é um especialista em nutrição. Responda apenas com JSON válido.' },
+        { role: 'user', content: prompt }
+      ],
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    logStep('AI Error', { status: response.status, error: errorText });
+    throw new Error(`AI request failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.choices?.[0]?.message?.content;
+  
+  if (!content) {
+    throw new Error('No content in AI response');
+  }
+
+  // Parse JSON from response (handle markdown code blocks)
+  let jsonStr = content;
+  if (content.includes('```json')) {
+    jsonStr = content.split('```json')[1].split('```')[0];
+  } else if (content.includes('```')) {
+    jsonStr = content.split('```')[1].split('```')[0];
+  }
+
+  const parsed = JSON.parse(jsonStr.trim());
+  logStep('AI Response parsed', { name: parsed.name, calories: parsed.per_100g?.calories });
+  
+  return parsed;
+}
+
+// Save ingredient to database
+async function saveIngredientToDatabase(
+  supabase: any, 
+  aiData: any
+): Promise<any> {
+  const normalizedName = normalizeText(aiData.name);
+  
+  // Validate data before saving
+  if (!aiData.per_100g?.calories || aiData.per_100g.calories > 900) {
+    logStep('Invalid calorie data, skipping save', { calories: aiData.per_100g?.calories });
+    return null;
+  }
+
+  const insertData = {
+    name: aiData.name,
+    name_normalized: normalizedName,
+    calories_per_100g: aiData.per_100g.calories,
+    protein_per_100g: aiData.per_100g.protein || 0,
+    carbs_per_100g: aiData.per_100g.carbs || 0,
+    fat_per_100g: aiData.per_100g.fat || 0,
+    fiber_per_100g: aiData.per_100g.fiber || null,
+    aliases: aiData.aliases || [],
+    cuisine_origin: aiData.cuisine_origin || null,
+    source: 'ai_generated',
+    confidence: aiData.confidence || 0.85,
+    verified: false,
+    search_count: 1,
+  };
+
+  const { data, error } = await supabase
+    .from('foods')
+    .insert(insertData)
+    .select()
+    .single();
+
+  if (error) {
+    logStep('Error saving to database', { error: error.message });
+    // If duplicate, try to find existing
+    if (error.code === '23505') {
+      const { data: existing } = await supabase
+        .from('foods')
+        .select('*')
+        .ilike('name_normalized', normalizedName)
+        .limit(1)
+        .maybeSingle();
+      return existing;
+    }
+    return null;
+  }
+
+  logStep('Saved new ingredient', { id: data.id, name: data.name });
+  return data;
+}
+
+serve(async (req) => {
+  // Handle CORS preflight
+  if (req.method === 'OPTIONS') {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { query, context, limit = 5 } = await req.json();
+    
+    if (!query || typeof query !== 'string') {
+      return new Response(
+        JSON.stringify({ error: 'Query parameter is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    logStep('Search started', { query, context, limit });
+
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const normalizedQuery = normalizeText(query);
+    
+    // 1. Search in database - exact match
+    let { data: exactMatches } = await supabase
+      .from('foods')
+      .select('*')
+      .or(`name_normalized.ilike.%${normalizedQuery}%,aliases.cs.{${query}}`)
+      .limit(limit);
+
+    if (exactMatches && exactMatches.length > 0) {
+      logStep('Found in database', { count: exactMatches.length, source: 'database' });
+      
+      // Increment search count for the first result
+      await supabase
+        .from('foods')
+        .update({ search_count: (exactMatches[0].search_count || 0) + 1 })
+        .eq('id', exactMatches[0].id);
+
+      // Sort by similarity
+      exactMatches.sort((a, b) => {
+        const simA = calculateSimilarity(query, a.name);
+        const simB = calculateSimilarity(query, b.name);
+        return simB - simA;
+      });
+
+      return new Response(
+        JSON.stringify({
+          source: 'database',
+          results: exactMatches.map(food => ({
+            id: food.id,
+            name: food.name,
+            calories_per_100g: food.calories_per_100g,
+            protein_per_100g: food.protein_per_100g,
+            carbs_per_100g: food.carbs_per_100g,
+            fat_per_100g: food.fat_per_100g,
+            fiber_per_100g: food.fiber_per_100g,
+            cuisine_origin: food.cuisine_origin,
+            confidence: food.confidence || 1,
+            verified: food.verified,
+          })),
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // 2. Search in aliases table
+    const { data: aliasMatches } = await supabase
+      .from('ingredient_aliases')
+      .select('food_id, alias, foods(*)')
+      .ilike('alias', `%${normalizedQuery}%`)
+      .limit(limit);
+
+    if (aliasMatches && aliasMatches.length > 0) {
+      const foods = aliasMatches
+        .filter(a => a.foods)
+        .map(a => a.foods);
+
+      if (foods.length > 0) {
+        logStep('Found via aliases', { count: foods.length, source: 'aliases' });
+        
+        return new Response(
+          JSON.stringify({
+            source: 'aliases',
+            results: foods.map((food: any) => ({
+              id: food.id,
+              name: food.name,
+              calories_per_100g: food.calories_per_100g,
+              protein_per_100g: food.protein_per_100g,
+              carbs_per_100g: food.carbs_per_100g,
+              fat_per_100g: food.fat_per_100g,
+              fiber_per_100g: food.fiber_per_100g,
+              cuisine_origin: food.cuisine_origin,
+              confidence: food.confidence || 1,
+              verified: food.verified,
+            })),
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // 3. Fallback to AI
+    logStep('Not found in database, calling AI', { query });
+    
+    const aiData = await getIngredientFromAI(query, context);
+    
+    // Save to database for future use
+    const savedFood = await saveIngredientToDatabase(supabase, aiData);
+    
+    const result = {
+      id: savedFood?.id || null,
+      name: aiData.name,
+      name_en: aiData.name_en,
+      calories_per_100g: aiData.per_100g.calories,
+      protein_per_100g: aiData.per_100g.protein,
+      carbs_per_100g: aiData.per_100g.carbs,
+      fat_per_100g: aiData.per_100g.fat,
+      fiber_per_100g: aiData.per_100g.fiber,
+      cuisine_origin: aiData.cuisine_origin,
+      confidence: aiData.confidence,
+      verified: false,
+      notes: aiData.notes,
+    };
+
+    logStep('Returning AI result', { name: result.name, saved: !!savedFood });
+
+    return new Response(
+      JSON.stringify({
+        source: 'ai',
+        results: [result],
+      }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+
+  } catch (error: unknown) {
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    logStep('Error', { message: errorMessage, stack: errorStack });
+    
+    return new Response(
+      JSON.stringify({ error: errorMessage }),
+      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+    );
+  }
+});

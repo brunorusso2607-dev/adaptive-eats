@@ -167,7 +167,9 @@ export function useNextMeal() {
 
       // Calcular day_of_week baseado na data de início do plano
       // O banco usa day_of_week como dias desde o início do plano: 0=primeiro dia, 1=segundo dia, etc.
-      const planStartDate = new Date(activePlan.start_date);
+      // Parsing correta da data para evitar problemas de timezone
+      const [year, month, day] = activePlan.start_date.split('-').map(Number);
+      const planStartDate = new Date(year, month - 1, day); // month é 0-indexed
       planStartDate.setHours(0, 0, 0, 0);
       
       const diffTime = today.getTime() - planStartDate.getTime();

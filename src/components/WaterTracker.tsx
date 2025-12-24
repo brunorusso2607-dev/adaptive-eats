@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Droplets, Plus, Settings, Trash2, Bell, BellOff, TrendingUp, Trophy } from "lucide-react";
+import { Droplets, Plus, Settings, Trash2, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
@@ -22,12 +22,6 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from "@/components/ui/tooltip";
 import {
   Popover,
   PopoverContent,
@@ -53,7 +47,8 @@ export function WaterTracker() {
     updateSettings,
   } = useWaterConsumption(refreshAchievements);
 
-  const { notificationPermission, requestPermission } = useWaterReminder({
+  // Water reminder hook - apenas para lógica interna de lembretes
+  useWaterReminder({
     settings,
     totalToday,
     percentage,
@@ -90,12 +85,6 @@ export function WaterTracker() {
     }
   };
 
-  const handleEnableNotifications = async () => {
-    const granted = await requestPermission();
-    if (granted) {
-      await updateSettings({ reminder_enabled: true });
-    }
-  };
 
   if (isLoading) {
     return (
@@ -115,10 +104,6 @@ export function WaterTracker() {
     return <WaterHistoryChart onBack={() => setShowHistory(false)} />;
   }
 
-  const showNotificationPrompt = 
-    settings.reminder_enabled && 
-    notificationPermission !== "granted" && 
-    "Notification" in window;
 
   return (
     <>
@@ -129,74 +114,17 @@ export function WaterTracker() {
               <Droplets className="h-5 w-5 text-blue-500" />
               Consumo de Água
             </CardTitle>
-            <div className="flex items-center gap-1">
-              {/* Notification Status Indicator */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8"
-                      onClick={settings.reminder_enabled && notificationPermission !== "granted" 
-                        ? handleEnableNotifications 
-                        : undefined}
-                    >
-                      {settings.reminder_enabled && notificationPermission === "granted" ? (
-                        <Bell className="h-4 w-4 text-blue-500" />
-                      ) : settings.reminder_enabled ? (
-                        <Bell className="h-4 w-4 text-amber-500" />
-                      ) : (
-                        <BellOff className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    {settings.reminder_enabled && notificationPermission === "granted" 
-                      ? "Lembretes ativos" 
-                      : settings.reminder_enabled 
-                        ? "Clique para ativar notificações"
-                        : "Lembretes desativados"}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-              
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8"
-                onClick={() => setSettingsOpen(true)}
-              >
-                <Settings className="h-4 w-4" />
-              </Button>
-            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Notification Permission Banner */}
-          {showNotificationPrompt && (
-            <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-              <div className="flex items-center gap-3">
-                <Bell className="h-5 w-5 text-amber-500 shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
-                    Ative as notificações
-                  </p>
-                  <p className="text-xs text-amber-600/80 dark:text-amber-400/80">
-                    Receba lembretes para beber água
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="shrink-0 border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
-                  onClick={handleEnableNotifications}
-                >
-                  Ativar
-                </Button>
-              </div>
-            </div>
-          )}
 
           {/* Progress Circle */}
           <div className="flex flex-col items-center py-4">

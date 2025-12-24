@@ -270,42 +270,128 @@ export function useMealSymptomHistory(filters: SymptomHistoryFilters) {
       "gorgonzola", "provolone", "coalho", "cottage", "mascarpone", "brie", 
       "camembert", "emmental", "gruyère", "gouda", "cheddar", "feta",
       "chantilly", "doce de leite", "sorvete", "milk", "cheese", "butter",
-      "whey", "soro de leite", "lactose", "caseína", "caseinato"
+      "whey", "soro de leite", "lactose", "caseína", "caseinato", "kefir",
+      "coalhada", "petit suisse", "leite condensado", "molho branco", "bechamel"
     ],
     gluten: [
       "trigo", "farinha de trigo", "pão", "macarrão", "massa", "biscoito", 
       "bolacha", "bolo", "cerveja", "cevada", "centeio", "malte", "semolina",
       "bulgur", "cuscuz", "couscous", "seitan", "wheat", "bread", "pasta",
-      "torrada", "croissant", "pizza", "empada", "empanada", "lasanha"
+      "torrada", "croissant", "pizza", "empada", "empanada", "lasanha",
+      "aveia", "oat", "espelta", "kamut", "triticale", "farinha", "panqueca",
+      "waffle", "pretzel", "bagel", "brioche", "focaccia", "ciabatta"
     ],
     ovo: [
-      "ovo", "ovos", "gema", "clara", "egg", "albumina", "maionese", "mayonnaise"
+      "ovo", "ovos", "gema", "clara", "egg", "albumina", "maionese", "mayonnaise",
+      "omelete", "omelette", "fritada", "quiche", "suflê", "merengue", "pavlova"
     ],
     soja: [
       "soja", "tofu", "edamame", "missô", "miso", "shoyu", "molho de soja",
-      "lecitina de soja", "proteína de soja", "soy"
+      "lecitina de soja", "proteína de soja", "soy", "tempeh", "natto",
+      "leite de soja", "óleo de soja"
     ],
     amendoim: [
-      "amendoim", "pasta de amendoim", "peanut", "paçoca"
+      "amendoim", "pasta de amendoim", "peanut", "paçoca", "pé de moleque",
+      "crocante de amendoim"
     ],
     castanhas: [
       "castanha", "noz", "nozes", "amêndoa", "avelã", "pistache", "macadâmia",
-      "pecã", "cashew", "almond", "walnut", "hazelnut"
+      "pecã", "cashew", "almond", "walnut", "hazelnut", "castanha de caju",
+      "castanha do pará", "pine nut", "pinhão"
     ],
     frutos_do_mar: [
       "camarão", "lagosta", "caranguejo", "siri", "mexilhão", "ostra", 
-      "lula", "polvo", "marisco", "shrimp", "lobster", "crab"
+      "lula", "polvo", "marisco", "shrimp", "lobster", "crab", "vieira",
+      "sururu", "vôngole", "mariscos"
     ],
     peixe: [
       "peixe", "salmão", "atum", "bacalhau", "tilápia", "sardinha", "anchova",
-      "fish", "salmon", "tuna"
+      "fish", "salmon", "tuna", "truta", "robalo", "linguado", "pescada",
+      "merluza", "tambaqui", "pintado", "dourado", "cavala"
+    ],
+    frutose: [
+      "mel", "honey", "agave", "xarope de milho", "corn syrup", "hfcs",
+      "maçã", "apple", "pera", "pear", "manga", "mango", "melancia", "watermelon",
+      "uva", "grape", "cereja", "cherry", "figo", "fig", "tâmara", "date",
+      "suco de fruta", "fruit juice", "néctar", "geleia", "compota",
+      "xarope", "calda", "açúcar invertido"
+    ],
+    fodmap: [
+      "alho", "garlic", "cebola", "onion", "alho-poró", "leek", "cebolinha",
+      "shallot", "trigo", "wheat", "centeio", "rye", "cevada", "barley",
+      "feijão", "bean", "lentilha", "lentil", "grão de bico", "chickpea",
+      "ervilha", "pea", "maçã", "apple", "pera", "pear", "manga", "mango",
+      "melancia", "watermelon", "abacate", "avocado", "couve-flor", "cauliflower",
+      "cogumelo", "mushroom", "mel", "honey", "leite", "milk", "iogurte",
+      "sorvete", "ice cream", "alcachofra", "artichoke", "aspargo", "asparagus",
+      "beterraba", "beet", "repolho", "cabbage", "brócolis", "broccoli"
+    ],
+    histamina: [
+      "queijo curado", "aged cheese", "vinho", "wine", "cerveja", "beer",
+      "vinagre", "vinegar", "picles", "pickle", "chucrute", "sauerkraut",
+      "conserva", "fermentado", "fermented", "embutido", "salame", "salami",
+      "presunto", "ham", "bacon", "linguiça", "sausage", "atum", "tuna",
+      "sardinha", "anchova", "anchovy", "cavala", "mackerel", "arenque", "herring",
+      "frutos do mar", "seafood", "tomate", "tomato", "espinafre", "spinach",
+      "berinjela", "eggplant", "abacate", "avocado", "morango", "strawberry",
+      "banana", "kiwi", "abacaxi", "pineapple", "mamão", "papaya", "citrus",
+      "laranja", "orange", "limão", "lemon", "chocolate", "cacau", "cacao",
+      "nozes", "walnut", "castanha", "amendoim", "peanut"
+    ],
+    cafeina: [
+      "café", "coffee", "chá preto", "black tea", "chá verde", "green tea",
+      "chá mate", "mate", "energético", "energy drink", "guaraná", "cola",
+      "chocolate", "cacau", "cacao", "espresso", "cappuccino", "latte"
+    ],
+    sulfito: [
+      "vinho", "wine", "cerveja", "beer", "sidra", "cider", "vinagre", "vinegar",
+      "fruta seca", "dried fruit", "uva passa", "raisin", "damasco seco",
+      "dried apricot", "camarão", "shrimp", "batata", "potato", "molho",
+      "mostarda", "mustard", "conserva", "pickled"
+    ],
+    sorbitol: [
+      "maçã", "apple", "pera", "pear", "pêssego", "peach", "ameixa", "plum",
+      "cereja", "cherry", "damasco", "apricot", "chiclete", "gum",
+      "bala sem açúcar", "sugar-free candy", "adoçante", "sweetener"
+    ],
+    salicilato: [
+      "maçã", "apple", "damasco", "apricot", "mirtilo", "blueberry",
+      "cereja", "cherry", "uva", "grape", "laranja", "orange", "pêssego", "peach",
+      "ameixa", "plum", "morango", "strawberry", "tomate", "tomato",
+      "pepino", "cucumber", "pimentão", "pepper", "brócolis", "broccoli",
+      "abobrinha", "zucchini", "mel", "honey", "hortelã", "mint",
+      "orégano", "oregano", "alecrim", "rosemary", "tomilho", "thyme",
+      "curry", "páprica", "paprika", "cominho", "cumin", "canela", "cinnamon"
+    ],
+    milho: [
+      "milho", "corn", "fubá", "polenta", "canjica", "pipoca", "popcorn",
+      "amido de milho", "corn starch", "xarope de milho", "corn syrup",
+      "óleo de milho", "corn oil", "farinha de milho", "tortilha", "tortilla",
+      "nachos", "tacos", "cuscuz", "pamonha"
+    ],
+    niquel: [
+      "chocolate", "cacau", "cacao", "aveia", "oat", "castanha", "nut",
+      "amendoim", "peanut", "soja", "soy", "feijão", "bean", "lentilha", "lentil",
+      "ervilha", "pea", "espinafre", "spinach", "tomate", "tomato",
+      "alcachofra", "artichoke", "aspargo", "asparagus", "couve", "kale",
+      "brócolis", "broccoli", "grão integral", "whole grain", "centeio", "rye"
     ]
   };
 
   // Keywords that neutralize suspicion (e.g., "sem lactose" means it's lactose-free)
   const SAFE_KEYWORDS: Record<string, string[]> = {
-    lactose: ["sem lactose", "zero lactose", "lactose free", "vegano", "vegan", "vegetal"],
-    gluten: ["sem glúten", "gluten free", "zero glúten"]
+    lactose: ["sem lactose", "zero lactose", "lactose free", "vegano", "vegan", "vegetal", "plant-based"],
+    gluten: ["sem glúten", "gluten free", "zero glúten", "gluten-free"],
+    ovo: ["sem ovo", "egg free", "egg-free", "vegano", "vegan"],
+    soja: ["sem soja", "soy free", "soy-free"],
+    amendoim: ["sem amendoim", "peanut free", "peanut-free"],
+    castanhas: ["sem castanhas", "nut free", "nut-free", "sem nozes"],
+    frutose: ["sem frutose", "fructose free", "baixo fodmap", "low fodmap"],
+    fodmap: ["low fodmap", "baixo fodmap", "fodmap friendly"],
+    histamina: ["baixa histamina", "low histamine", "histamine free"],
+    cafeina: ["descafeinado", "decaf", "sem cafeína", "caffeine free"],
+    sulfito: ["sem sulfito", "sulfite free", "orgânico", "organic"],
+    milho: ["sem milho", "corn free", "corn-free"]
   };
 
   // Check if food has safe keywords that neutralize the intolerance concern

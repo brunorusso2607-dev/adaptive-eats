@@ -134,10 +134,10 @@ serve(async (req) => {
     if (!user) throw new Error("User not authenticated");
     logStep("User authenticated", { userId: user.id });
 
-    // Fetch user's intolerances from profile
+    // Fetch user's intolerances and excluded ingredients from profile
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("intolerances, dietary_preference")
+      .select("intolerances, dietary_preference, excluded_ingredients")
       .eq("id", user.id)
       .single();
 
@@ -147,7 +147,8 @@ serve(async (req) => {
 
     const userIntolerances = profile?.intolerances || [];
     const dietaryPreference = profile?.dietary_preference || "comum";
-    logStep("User profile loaded", { intolerances: userIntolerances, dietaryPreference });
+    const excludedIngredients = profile?.excluded_ingredients || [];
+    logStep("User profile loaded", { intolerances: userIntolerances, dietaryPreference, excludedIngredients });
 
     const { imageBase64, step } = await req.json();
     if (!imageBase64) throw new Error("No image provided");
@@ -173,6 +174,11 @@ serve(async (req) => {
       }
     }
 
+    // Add excluded ingredients to watch list
+    if (excludedIngredients.length > 0) {
+      ingredientsToWatch.push(...excludedIngredients.map((i: string) => i.toLowerCase()));
+    }
+
     // Add dietary preference restrictions
     let dietaryRestrictions = "";
     let dietaryIngredientsToWatch: string[] = [];
@@ -188,6 +194,11 @@ serve(async (req) => {
     }
 
     ingredientsToWatch = [...new Set([...ingredientsToWatch, ...dietaryIngredientsToWatch])];
+
+    // Build excluded ingredients context for prompt
+    const excludedContext = excludedIngredients.length > 0 
+      ? `- Ingredientes Excluídos Manualmente: ${excludedIngredients.join(", ").toUpperCase()}`
+      : "";
 
     // INTELLIGENT IDENTIFICATION AND ANALYSIS PROMPT - PESSIMISTIC VERSION
     const systemPrompt = `You are an EXPERT in food label analysis. Your job is to PROTECT the user from consuming something harmful.
@@ -227,6 +238,7 @@ POSSIBLE CATEGORIES:
 ### USER PROFILE (CRITICAL - PROTECT THIS USER!):
 - Intolerances: ${intoleranceLabels.length > 0 ? intoleranceLabels.join(", ").toUpperCase() : "None registered"}
 - Dietary preference: ${dietaryPreference.toUpperCase()}
+${excludedContext}
 ${dietaryRestrictions}
 
 ---

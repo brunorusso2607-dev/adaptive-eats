@@ -430,13 +430,38 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
     ? `\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR): ${excludedIngredientsStr}`
     : "";
 
+  // Build comprehensive safety block
+  const safetyBlock = `
+🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA (VERIFICAR ANTES DE TUDO!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⛔ INTOLERÂNCIAS/ALERGIAS - JAMAIS INCLUIR:
+${intolerancesStr}
+${excludedConstraint}
+
+📋 CHECKLIST DE SEGURANÇA (executar ANTES de gerar receita):
+□ Verificar CADA ingrediente contra a lista de intolerâncias
+□ Verificar ingredientes "escondidos" em molhos e temperos
+□ Verificar ingredientes excluídos manualmente pelo usuário
+□ Se qualquer ingrediente for duvidoso, NÃO incluir
+
+⚠️ INGREDIENTES COMUNS PERIGOSOS:
+- LACTOSE: leite, queijo, manteiga, creme de leite, requeijão, iogurte, whey
+- GLÚTEN: farinha de trigo, pão, macarrão, biscoitos, molho shoyu
+- OVO: maionese tradicional, massas frescas, empanados
+- AMENDOIM/CASTANHAS: pastas, óleos, molhos asiáticos
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`;
+
   return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas.
+
+${safetyBlock}
 ${categoryConstraint}
 ${specialModes}
 
 REGRAS (ordem de prioridade):
-1. CATEGORIA: Se selecionada, a receita DEVE ser dessa categoria
-2. SEGURANÇA: ${intolerancesStr} - NUNCA inclua ingredientes proibidos${excludedConstraint}
+1. 🚨 SEGURANÇA PRIMEIRO: NUNCA inclua ingredientes proibidos - verificar lista acima
+2. CATEGORIA: Se selecionada, a receita DEVE ser dessa categoria
 3. DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
 4. OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
 5. COMPLEXIDADE: ${isKidsMode ? "rápida (até 20 min)" : COMPLEXITY_LABELS["equilibrada"]}
@@ -447,6 +472,12 @@ FORMATO JSON:
   "name": "Nome da Receita",
   "description": "Descrição em 1 frase",
   "safety_status": "${safetyStatus}",
+  "is_safe": true,
+  "safety_check": {
+    "verified_against_intolerances": true,
+    "verified_against_excluded": true,
+    "contains_hidden_allergens": false
+  },
   "ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
   "instructions": ["Passo 1...", "Passo 2...", "Passo 3..."],
   "prep_time": ${isKidsMode ? 20 : 30},
@@ -459,7 +490,7 @@ FORMATO JSON:
   "chef_tip": "Dica de técnica culinária"
 }
 
-Valores nutricionais são POR PORÇÃO. Responda APENAS com JSON.`;
+Valores nutricionais são POR PORÇÃO. Responda APENAS com JSON.`
 }
 
 /**
@@ -594,13 +625,24 @@ export function buildRegenerateMealPrompt(
 
   return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
 
+🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
-RESTRIÇÕES: ${intolerancesStr}${excludedConstraint}${kidsNote}${ingredientsNote}
+
+⛔ JAMAIS INCLUIR (verificar ANTES de gerar):
+${intolerancesStr}${excludedConstraint}
+
+📋 CHECKLIST DE SEGURANÇA:
+□ Verificar CADA ingrediente contra intolerâncias
+□ Verificar ingredientes "escondidos" em molhos
+□ Verificar alimentos proibidos pelo usuário
+${kidsNote}${ingredientsNote}
 
 REGRAS:
-1. ~${targetCalories} calorias
-2. NUNCA ingredientes das restrições ou alimentos proibidos
-3. Exemplos: ${mealExamples.join(", ")}
+1. 🚨 SEGURANÇA PRIMEIRO: NUNCA ingredientes das restrições
+2. ~${targetCalories} calorias
+3. Exemplos apropriados: ${mealExamples.join(", ")}
 
 JSON:
 {
@@ -610,6 +652,7 @@ JSON:
   "recipe_carbs": 30,
   "recipe_fat": 15,
   "recipe_prep_time": ${isKidsMode ? 20 : 30},
+  "is_safe": true,
   "recipe_ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
   "recipe_instructions": ["Passo 1", "Passo 2"],
   "chef_tip": "Dica culinária"

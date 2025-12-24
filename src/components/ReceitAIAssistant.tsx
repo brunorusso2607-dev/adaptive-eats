@@ -146,6 +146,13 @@ export default function ReceitAIAssistant() {
         recognition.interimResults = true;
         recognition.lang = 'pt-BR';
 
+        // Keep track of the base input before interim results
+        let baseInput = '';
+        
+        recognition.onstart = () => {
+          baseInput = input; // Capture current input when recording starts
+        };
+
         recognition.onresult = (event: any) => {
           let finalTranscript = '';
           let interimTranscript = '';
@@ -159,10 +166,14 @@ export default function ReceitAIAssistant() {
             }
           }
 
-          if (finalTranscript) {
-            setInput(prev => prev + finalTranscript);
-          } else if (interimTranscript) {
+          // Show interim results while speaking
+          if (interimTranscript && !finalTranscript) {
             setInput(interimTranscript);
+          }
+          
+          // When final, set only the final transcript (not cumulative)
+          if (finalTranscript) {
+            setInput(finalTranscript);
           }
         };
 

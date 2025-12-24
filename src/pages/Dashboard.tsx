@@ -733,22 +733,24 @@ export default function Dashboard() {
               <div className="space-y-4">
                 {/* Premium Header - Clean, minimal */}
                 <div className="flex items-center justify-between w-full py-1">
-                  <button 
-                    onClick={() => isSubscribed && setShowPlanSheet(true)}
-                    className="flex items-center gap-2 rounded-lg hover:bg-accent/50 transition-colors px-2 py-1 -ml-2"
-                    disabled={!isSubscribed}
-                  >
-                    <span className="text-sm font-normal text-muted-foreground tracking-wide">
-                      Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
-                    </span>
-                    {isSubscribed && (
-                      <span className="badge-pro">
-                        <Crown className="w-3 h-3" />
-                        PRO
+                  <div className="flex items-center gap-3">
+                    <button 
+                      onClick={() => isSubscribed && setShowPlanSheet(true)}
+                      className="flex items-center gap-2 rounded-lg hover:bg-accent/50 transition-colors px-2 py-1 -ml-2"
+                      disabled={!isSubscribed}
+                    >
+                      <span className="text-sm font-normal text-muted-foreground tracking-wide">
+                        Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
                       </span>
-                    )}
+                      {isSubscribed && (
+                        <span className="badge-pro">
+                          <Crown className="w-3 h-3" />
+                          PRO
+                        </span>
+                      )}
+                    </button>
                     <WaterWidgetCompact />
-                  </button>
+                  </div>
                   
                   {/* Desktop Profile Dropdown */}
                   <DesktopProfileDropdown

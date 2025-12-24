@@ -790,13 +790,36 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               <Ruler className="w-4 h-4 text-muted-foreground" />
-              Altura (cm)
+              Altura (m)
             </Label>
             <Input
-              type="number"
-              placeholder="175"
-              value={data.height || ""}
-              onChange={(e) => setData({ ...data, height: e.target.value ? parseInt(e.target.value) : null })}
+              type="text"
+              inputMode="decimal"
+              placeholder="1,75"
+              value={data.height ? (data.height / 100).toFixed(2).replace('.', ',') : ""}
+              onChange={(e) => {
+                // Allow only numbers and comma
+                let value = e.target.value.replace(/[^0-9,]/g, '');
+                
+                // Handle comma as decimal separator
+                const parts = value.split(',');
+                if (parts.length > 2) {
+                  value = parts[0] + ',' + parts.slice(1).join('');
+                }
+                
+                // Limit to 2 decimal places
+                if (parts[1] && parts[1].length > 2) {
+                  value = parts[0] + ',' + parts[1].substring(0, 2);
+                }
+                
+                // Convert to cm for storage
+                const numericValue = parseFloat(value.replace(',', '.'));
+                if (!isNaN(numericValue) && numericValue > 0) {
+                  setData({ ...data, height: Math.round(numericValue * 100) });
+                } else if (value === '' || value === '0' || value === '0,') {
+                  setData({ ...data, height: null });
+                }
+              }}
               className="h-12"
             />
           </div>

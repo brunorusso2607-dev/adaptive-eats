@@ -378,3 +378,13 @@ body.ingredients-scroll-lock {
   width: 100% !important;
   height: 100% !important;
 }
+
+/* Audio Wave Animation for Voice Input */
+@keyframes audioWave {
+  0%, 100% {
+    transform: scaleY(0.3);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}

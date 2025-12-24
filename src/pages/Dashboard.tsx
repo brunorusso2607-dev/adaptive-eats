@@ -615,6 +615,7 @@ export default function Dashboard() {
 
   // Handle mobile tab navigation
   const handleMobileTabChange = (tab: MobileNavTab) => {
+    console.log("[Dashboard] handleMobileTabChange called with tab:", tab);
     setMobileActiveTab(tab);
     // Reset other views when changing tabs
     setShowRecipe(false);
@@ -626,6 +627,7 @@ export default function Dashboard() {
     setShowFoodAnalyzer(false);
     
     if (tab === "meal-plan") {
+      console.log("[Dashboard] Setting showMealPlan to true");
       setShowMealPlan(true);
     } else {
       setShowMealPlan(false);
@@ -670,6 +672,8 @@ export default function Dashboard() {
             <div className="flex justify-center py-8">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
+          ) : showMealPlan ? (
+            <MealPlanSection key={mealPlanKey} onBack={() => setShowMealPlan(false)} />
           ) : isSubscribed ? (
             showWeightLossSetup ? (
               <WeightGoalSetup
@@ -750,8 +754,6 @@ export default function Dashboard() {
                   setShowList(null);
                 }}
               />
-            ) : showMealPlan ? (
-              <MealPlanSection key={mealPlanKey} onBack={() => setShowMealPlan(false)} />
             ) : showFoodAnalyzer ? (
               selectedPhotoMode ? (
                 <FoodPhotoAnalyzer 

@@ -301,6 +301,29 @@ ${contextInfo}
 - Para margarinas, iogurtes, molhos, embutidos: SEMPRE alerta se não confirmar versão "sem"
 - Priorize ingredientes in natura (frutas, vegetais, carnes frescas) = naturalmente seguros
 
+=== REGRAS CRÍTICAS PARA SUGESTÃO DE RECEITAS ===
+
+⚠️ NUNCA USE INGREDIENTES NÃO IDENTIFICADOS EM RECEITAS:
+- Se um item tiver confiança "baixa" ou confianca_percentual < 70%, NÃO o inclua em receitas
+- Se um item for marcado como "nao_identificado" ou "verificar", NÃO o use em receitas
+- SOMENTE sugira receitas com ingredientes que você identificou com ALTA CONFIANÇA
+
+⚠️ APENAS INGREDIENTES SEGUROS NAS RECEITAS:
+- Verifique CADA ingrediente sugerido contra as intolerâncias do usuário
+- Se um ingrediente pode conter alérgenos (ex: margarina com lactose), NÃO use na receita
+- Priorize ingredientes IN NATURA que são naturalmente seguros
+
+⚠️ TRANSPARÊNCIA SOBRE INGREDIENTES EXTRAS:
+- Se a receita precisa de um ingrediente que NÃO está na geladeira, liste claramente em "ingredientes_extras"
+- Para ingredientes extras que podem conter alérgenos (ex: caldo de legumes), especifique "caldo de legumes CASEIRO ou SEM [alérgeno]"
+
+=== COMUNICAÇÃO DE INCERTEZAS ===
+
+Para cada ingrediente identificado, seja transparente sobre:
+- O QUE você consegue ver vs o que você está INFERINDO
+- Quando a identificação foi feita por "embalagem" ou "contexto" vs "rótulo"
+- Quando recomenda que o usuário VERIFIQUE manualmente
+
 IMPORTANTE: Se a imagem NÃO for de geladeira/despensa, responda:
 {"notFridge": true, "message": "Por favor, fotografe o interior da sua geladeira ou despensa"}
 
@@ -312,10 +335,13 @@ IMPORTANTE: Se a imagem NÃO for de geladeira/despensa, responda:
       "quantidade_estimada": "quantidade aproximada",
       "confianca": "alta|media|baixa",
       "confianca_percentual": 0-100,
+      "pode_usar_em_receita": true|false,
+      "motivo_restricao": "Se pode_usar_em_receita=false, explicar o motivo (baixa confiança, contém alérgeno, etc.)",
       "alerta_seguranca": "Alerta se aplicável, ou null",
-      "tipo": "in_natura|industrializado",
+      "tipo": "in_natura|industrializado|nao_identificado",
       "substancias_detectadas": ["Lista de alérgenos detectados ou presumidos"],
-      "identificado_por": "rotulo|embalagem|marca|contexto"
+      "identificado_por": "rotulo|embalagem|marca|contexto|incerto",
+      "recomendacao_verificacao": "Texto sugerindo que o usuário verifique o rótulo, se aplicável"
     }
   ],
   "receitas_sugeridas": [
@@ -324,14 +350,27 @@ IMPORTANTE: Se a imagem NÃO for de geladeira/despensa, responda:
       "descricao": "Breve descrição da receita",
       "tempo_preparo": 30,
       "dificuldade": "fácil|média|difícil",
-      "ingredientes_da_geladeira": ["ingrediente1", "ingrediente2"],
-      "ingredientes_extras": ["ingrediente básico que pode precisar"],
+      "ingredientes_da_geladeira": ["APENAS ingredientes com alta confiança e seguros"],
+      "ingredientes_extras": ["ingredientes necessários com especificação de versão segura se aplicável"],
       "calorias_estimadas": 350,
       "instrucoes_resumidas": ["Passo 1", "Passo 2", "Passo 3"],
+      "seguro_para_usuario": true|false,
       "alerta_receita": "Alerta geral sobre a receita se aplicável, ou null"
     }
   ],
+  "ingredientes_nao_utilizados": [
+    {
+      "nome": "nome do ingrediente não usado",
+      "motivo": "Por que não foi incluído em receitas (baixa confiança, contém alérgeno, não identificado)"
+    }
+  ],
   "alertas_gerais": ["Lista de alertas importantes sobre segurança alimentar"],
+  "resumo_seguranca": {
+    "ingredientes_seguros": 0,
+    "ingredientes_risco": 0,
+    "ingredientes_verificar": 0,
+    "mensagem": "Resumo claro sobre a segurança dos ingredientes identificados"
+  },
   "dica": "Uma dica rápida sobre os ingredientes"
 }`;
 

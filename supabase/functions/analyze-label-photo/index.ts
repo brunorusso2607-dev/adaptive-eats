@@ -339,12 +339,28 @@ Search IN THE PHOTO for seals, texts, or clear indications:
       "status": "seguro|risco_potencial|contem",
       "motivo": "Explanation in Portuguese",
       "restricao_afetada": "sugar|lactose|gluten|etc",
-      "fonte": "imagem"
+      "fonte": "imagem",
+      "nome_tecnico": "Technical/scientific name if applicable",
+      "sinonimos_detectados": ["List of synonyms found that map to this allergen"]
+    }
+  ],
+  "avisos_contaminacao_cruzada": [
+    {
+      "texto_original": "Exact text from the label (e.g., 'Pode conter traços de amendoim')",
+      "alergenos_mencionados": ["peanut", "tree nuts", etc.],
+      "afeta_usuario": true|false,
+      "restricao_afetada": "Which user restriction this affects"
     }
   ],
   "alertas": [],
   "analise_seguranca": "Analysis explanation in Portuguese",
-  "recomendacao": "Final recommendation in Portuguese"
+  "recomendacao": "Final recommendation in Portuguese",
+  "resumo_verificacao": {
+    "ingredientes_verificados": 0,
+    "ingredientes_problematicos": 0,
+    "contaminacao_cruzada_detectada": true|false,
+    "status_final": "SEGURO|RISCO POTENCIAL|CONTÉM [intolerância(s)]"
+  }
 }
 
 ### If you DID NOT READ the ingredient list (REQUEST PHOTO):
@@ -365,13 +381,22 @@ Search IN THE PHOTO for seals, texts, or clear indications:
       "status": "risco_potencial",
       "motivo": "Produto industrializado tipicamente contém este ingrediente",
       "restricao_afetada": "[user restriction]",
-      "fonte": "conhecimento"
+      "fonte": "conhecimento",
+      "nome_tecnico": null,
+      "sinonimos_detectados": []
     }
   ],
+  "avisos_contaminacao_cruzada": [],
   "alertas": ["Não foi possível confirmar os ingredientes"],
   "analise_seguranca": "Não posso garantir que é seguro sem ver a lista de ingredientes",
   "recomendacao": "Tire foto da tabela de ingredientes para confirmar",
-  "mensagem_segunda_foto": "Para sua segurança, tire foto da lista de ingredientes (geralmente no verso ou lateral da embalagem)."
+  "mensagem_segunda_foto": "Para sua segurança, tire foto da lista de ingredientes (geralmente no verso ou lateral da embalagem).",
+  "resumo_verificacao": {
+    "ingredientes_verificados": 0,
+    "ingredientes_problematicos": 0,
+    "contaminacao_cruzada_detectada": false,
+    "status_final": "RISCO POTENCIAL - Ingredientes não verificados"
+  }
 }
 
 ---
@@ -389,6 +414,41 @@ Search IN THE PHOTO for seals, texts, or clear indications:
 5. **CROSS-REFERENCE EVERYTHING:** Analyze ALL visible ingredients and cross with ALL user restrictions.
 
 6. **VEGAN products** are safe for lactose and egg automatically.
+
+---
+
+## 🚨 CONTAMINAÇÃO CRUZADA (CRÍTICO):
+
+### SEMPRE PROCURE E REPORTE AVISOS DE CONTAMINAÇÃO:
+- "Pode conter traços de..."
+- "Produzido em ambiente que processa..."
+- "Fabricado em equipamento compartilhado com..."
+- "Contém traços de..."
+- "May contain traces of..."
+
+### CLASSIFICAÇÃO DE CONTAMINAÇÃO CRUZADA:
+- Se o aviso menciona QUALQUER intolerância do usuário → veredicto: "risco_potencial"
+- Se o aviso é genérico ("pode conter alérgenos") → veredicto: "risco_potencial" com alerta
+
+### RESPOSTA OBRIGATÓRIA PARA CONTAMINAÇÃO:
+No JSON de resposta, SEMPRE inclua o campo "avisos_contaminacao_cruzada" listando todos os avisos encontrados.
+
+---
+
+## 📋 VERIFICAÇÃO COMPLETA DE INGREDIENTES:
+
+Para CADA ingrediente na lista, verifique:
+1. Nome direto do ingrediente (ex: "leite", "trigo")
+2. Nomes técnicos/científicos (ex: "caseína", "maltodextrina") 
+3. Códigos E (ex: "E322" = lecitina, pode ser de soja)
+4. Derivados e subprodutos (ex: "soro de leite" = lactose)
+
+### MAPEAMENTO COMPLETO DE SINÔNIMOS:
+- GLÚTEN: trigo, centeio, cevada, aveia, malte, amido modificado, proteína de trigo, E1404-E1452 (alguns amidos)
+- LACTOSE: leite, caseína, caseinato, soro de leite, whey, lactoalbumina, lactoglobulina, buttermilk, ghee
+- OVO: albumina, ovalbumina, lisozima, lecitina de ovo, globulina, livetina
+- SOJA: lecitina (E322), proteína de soja, óleo de soja, molho de soja, tempeh, tofu
+- AMENDOIM: pasta de amendoim, óleo de amendoim, arachis hypogaea
 
 ---
 

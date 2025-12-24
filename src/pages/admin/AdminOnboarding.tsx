@@ -171,6 +171,7 @@ const LUCIDE_ICONS: Record<string, LucideIcon> = {
   "ice-cream-cone": IceCreamCone,
   popcorn: Popcorn,
   candy: Candy,
+  "candy-off": Ban, // Usando Ban como fallback para candy-off (açúcar)
   lollipop: Lollipop,
   
   // Bebidas

@@ -1055,7 +1055,14 @@ export type Database = {
     Enums: {
       app_role: "admin" | "user"
       calorie_goal: "reduzir" | "manter" | "aumentar" | "definir_depois"
-      dietary_preference: "comum" | "vegetariana" | "vegana" | "low_carb"
+      dietary_preference:
+        | "comum"
+        | "vegetariana"
+        | "vegana"
+        | "low_carb"
+        | "pescetariana"
+        | "cetogenica"
+        | "flexitariana"
       recipe_complexity: "rapida" | "equilibrada" | "elaborada"
       user_context: "individual" | "familia" | "modo_kids"
       user_goal: "emagrecer" | "manter" | "ganhar_peso"
@@ -1188,7 +1195,15 @@ export const Constants = {
     Enums: {
       app_role: ["admin", "user"],
       calorie_goal: ["reduzir", "manter", "aumentar", "definir_depois"],
-      dietary_preference: ["comum", "vegetariana", "vegana", "low_carb"],
+      dietary_preference: [
+        "comum",
+        "vegetariana",
+        "vegana",
+        "low_carb",
+        "pescetariana",
+        "cetogenica",
+        "flexitariana",
+      ],
       recipe_complexity: ["rapida", "equilibrada", "elaborada"],
       user_context: ["individual", "familia", "modo_kids"],
       user_goal: ["emagrecer", "manter", "ganhar_peso"],

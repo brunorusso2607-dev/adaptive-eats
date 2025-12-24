@@ -1209,7 +1209,14 @@ export default function Dashboard() {
                 </div>
 
                 {/* Compact Health Circles - Water & Weight at bottom */}
-                <CompactHealthCircles />
+                <CompactHealthCircles
+                  userGoal={userGoal}
+                  weightData={weightData}
+                  dailyConsumption={dailyConsumption}
+                  onOpenWeightSetup={() => setShowWeightLossSetup(true)}
+                  onOpenWeightUpdate={() => setShowWeightUpdateModal(true)}
+                  onOpenWeightHistory={() => setShowWeightHistory(true)}
+                />
 
               </div>
             </>

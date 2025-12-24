@@ -42,8 +42,8 @@ interface PendingMealCardProps {
 // Status colors (fixed)
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
   on_time: { backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'rgba(34, 197, 94, 1)', borderColor: 'rgba(34, 197, 94, 0.3)' },
-  alert: { backgroundColor: 'rgba(251, 191, 36, 0.1)', color: 'rgba(217, 119, 6, 1)', borderColor: 'rgba(251, 191, 36, 0.3)' },
-  late: { backgroundColor: 'rgba(239, 68, 68, 0.1)', color: 'rgba(239, 68, 68, 1)', borderColor: 'rgba(239, 68, 68, 0.3)' },
+  alert: { backgroundColor: '#FFFFFF', color: 'rgba(217, 119, 6, 1)', borderColor: 'rgba(251, 191, 36, 0.5)' },
+  late: { backgroundColor: '#FFFFFF', color: 'rgba(239, 68, 68, 1)', borderColor: 'rgba(239, 68, 68, 0.5)' },
 };
 
 // Map internal status to style keys
@@ -361,7 +361,7 @@ export default function PendingMealCard({
         </div>
 
         {/* Ações - linha única com textos curtos */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button
             onClick={handleViewRecipe}
             disabled={isMarking || isSkipping}
@@ -371,6 +371,8 @@ export default function PendingMealCard({
             Receita
           </button>
 
+          <span className="text-muted-foreground/50">|</span>
+
           <button
             onClick={handleTrocarClick}
             disabled={isMarking || isSkipping}
@@ -379,6 +381,8 @@ export default function PendingMealCard({
             <RefreshCw className="w-4 h-4 text-primary stroke-[1.5]" />
             Trocar
           </button>
+
+          <span className="text-muted-foreground/50">|</span>
 
           <button
             onClick={handleFizClick}
@@ -392,6 +396,8 @@ export default function PendingMealCard({
             )}
             Feita
           </button>
+
+          <span className="text-muted-foreground/50">|</span>
 
           <button
             onClick={handleSkip}

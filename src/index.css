@@ -232,8 +232,14 @@
   }
 
   .gradient-primary:hover {
-    background: hsl(var(--primary-hover));
+    background: #D3D3D3;
     color: hsl(var(--foreground));
+  }
+
+  /* Hover cinza para bg-primary */
+  .bg-primary:hover {
+    background: #D3D3D3 !important;
+    color: hsl(var(--foreground)) !important;
   }
 
   .gradient-accent {

@@ -44,7 +44,7 @@ export default function MobileBottomNav({
                   "w-14 h-14 rounded-full",
                   "bg-primary text-primary-foreground",
                   "shadow-lg shadow-primary/25",
-                  "hover:scale-105 active:scale-95",
+                  "hover:bg-[#D3D3D3] hover:text-foreground hover:scale-105 active:scale-95",
                   isActive && "ring-4 ring-primary/20"
                 )}
               >

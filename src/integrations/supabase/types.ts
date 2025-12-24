@@ -779,6 +779,77 @@ export type Database = {
         }
         Relationships: []
       }
+      symptom_logs: {
+        Row: {
+          created_at: string
+          id: string
+          logged_at: string
+          meal_consumption_id: string | null
+          notes: string | null
+          severity: string
+          symptoms: string[]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          meal_consumption_id?: string | null
+          notes?: string | null
+          severity?: string
+          symptoms?: string[]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          logged_at?: string
+          meal_consumption_id?: string | null
+          notes?: string | null
+          severity?: string
+          symptoms?: string[]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "symptom_logs_meal_consumption_id_fkey"
+            columns: ["meal_consumption_id"]
+            isOneToOne: false
+            referencedRelation: "meal_consumption"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      symptom_types: {
+        Row: {
+          category: string
+          created_at: string
+          icon: string
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          icon?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       tracking_pixels: {
         Row: {
           api_token: string | null

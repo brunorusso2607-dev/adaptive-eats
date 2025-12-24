@@ -41,3 +41,9 @@ verify_jwt = false
 
 [functions.chat-assistant]
 verify_jwt = false
+
+[functions.analyze-symptom-patterns]
+verify_jwt = false
+
+[functions.analyze-label-photo]
+verify_jwt = false

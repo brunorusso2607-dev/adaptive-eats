@@ -39,6 +39,8 @@ import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 import { WaterTracker } from "@/components/WaterTracker";
 import { WaterWidgetCompact } from "@/components/WaterWidgetCompact";
 import { SafetyStatusBadge } from "@/components/SafetyStatusBadge";
+import { SymptomTrackerCard } from "@/components/SymptomTrackerCard";
+import { SafetyScoreCard } from "@/components/SafetyScoreCard";
 
 type Recipe = {
   name: string;
@@ -988,6 +990,12 @@ export default function Dashboard() {
 
                 {/* Controle de Água */}
                 <WaterTracker />
+
+                {/* Rastreador de Sintomas */}
+                <SymptomTrackerCard />
+
+                {/* Score de Segurança Alimentar */}
+                <SafetyScoreCard />
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

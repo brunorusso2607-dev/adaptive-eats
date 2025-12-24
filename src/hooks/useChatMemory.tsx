@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -17,11 +17,18 @@ interface ChatConversation {
   updated_at: string;
 }
 
-export function useChatMemory() {
+export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => void) {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
-  const [isLoadingHistory, setIsLoadingHistory] = useState(false);
+  const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
+  const onMessagesLoadedRef = useRef(onMessagesLoaded);
+
+  // Keep ref updated
+  useEffect(() => {
+    onMessagesLoadedRef.current = onMessagesLoaded;
+  }, [onMessagesLoaded]);
 
   // Check auth and get user id
   useEffect(() => {
@@ -38,29 +45,6 @@ export function useChatMemory() {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  // Load conversations list
-  const loadConversations = useCallback(async () => {
-    if (!userId) return;
-
-    try {
-      const { data, error } = await supabase
-        .from("chat_conversations")
-        .select("*")
-        .eq("user_id", userId)
-        .order("updated_at", { ascending: false })
-        .limit(10);
-
-      if (error) throw error;
-      setConversations(data || []);
-    } catch (error) {
-      console.error("Error loading conversations:", error);
-    }
-  }, [userId]);
-
-  useEffect(() => {
-    loadConversations();
-  }, [loadConversations]);
 
   // Load messages from a conversation
   const loadMessages = useCallback(async (convId: string): Promise<ChatMessage[]> => {
@@ -88,6 +72,80 @@ export function useChatMemory() {
     } finally {
       setIsLoadingHistory(false);
     }
+  }, [userId]);
+
+  // Load conversations list
+  const loadConversations = useCallback(async () => {
+    if (!userId) return;
+
+    try {
+      const { data, error } = await supabase
+        .from("chat_conversations")
+        .select("*")
+        .eq("user_id", userId)
+        .order("updated_at", { ascending: false })
+        .limit(10);
+
+      if (error) throw error;
+      setConversations(data || []);
+      return data || [];
+    } catch (error) {
+      console.error("Error loading conversations:", error);
+      return [];
+    }
+  }, [userId]);
+
+  // Initial load - auto-load last conversation
+  useEffect(() => {
+    const initializeChat = async () => {
+      if (!userId || hasInitializedRef.current) return;
+      
+      hasInitializedRef.current = true;
+      setIsLoadingHistory(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("chat_conversations")
+          .select("*")
+          .eq("user_id", userId)
+          .order("updated_at", { ascending: false })
+          .limit(10);
+
+        if (error) throw error;
+        setConversations(data || []);
+
+        // Auto-load last conversation
+        if (data && data.length > 0) {
+          const lastConv = data[0];
+          setConversationId(lastConv.id);
+          
+          const { data: messagesData, error: messagesError } = await supabase
+            .from("chat_messages")
+            .select("*")
+            .eq("conversation_id", lastConv.id)
+            .order("created_at", { ascending: true });
+
+          if (!messagesError && messagesData && messagesData.length > 0) {
+            const messages = messagesData.map(msg => ({
+              id: msg.id,
+              role: msg.role as "user" | "assistant",
+              content: msg.content,
+              timestamp: new Date(msg.created_at),
+            }));
+            
+            if (onMessagesLoadedRef.current) {
+              onMessagesLoadedRef.current(messages);
+            }
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing chat:", error);
+      } finally {
+        setIsLoadingHistory(false);
+      }
+    };
+
+    initializeChat();
   }, [userId]);
 
   // Create a new conversation

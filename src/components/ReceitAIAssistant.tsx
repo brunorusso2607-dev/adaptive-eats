@@ -107,11 +107,19 @@ export default function ReceitAIAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+
+  // Detecta a página atual
+  const currentPath = location.pathname;
+  const pageContext = PAGE_CONTEXT_MAP[currentPath] || PAGE_CONTEXT_MAP["/admin"];
+
+  // Callback para quando mensagens são carregadas do histórico
+  const handleMessagesLoaded = useCallback((loadedMessages: Message[]) => {
+    setMessages(loadedMessages);
+  }, []);
 
   // Hook de memória persistente
   const {
@@ -124,11 +132,7 @@ export default function ReceitAIAssistant() {
     switchConversation,
     startNewChat,
     deleteConversation
-  } = useChatMemory();
-
-  // Detecta a página atual
-  const currentPath = location.pathname;
-  const pageContext = PAGE_CONTEXT_MAP[currentPath] || PAGE_CONTEXT_MAP["/admin"];
+  } = useChatMemory(handleMessagesLoaded);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -273,11 +277,11 @@ export default function ReceitAIAssistant() {
     }
   }, [messages]);
 
-  // Initial greeting - contextual based on current page (only for new chats)
+  // Initial greeting - only show if no messages loaded and not loading
   useEffect(() => {
-    if (messages.length === 0 && !conversationId) {
+    if (messages.length === 0 && !conversationId && !isLoadingHistory) {
       const greeting = conversations.length > 0 
-        ? `Opa! 👋 Que bom te ver de novo na página **${pageContext.name}**!\n\n${pageContext.description}\n\nLembro das nossas conversas anteriores! Você pode acessar o histórico clicando no ícone 📜 acima.\n\nNo que posso te ajudar agora?`
+        ? `Opa! 👋 Que bom te ver de novo na página **${pageContext.name}**!\n\n${pageContext.description}\n\nLembro das nossas conversas anteriores! Você pode acessar o histórico clicando em "Histórico" acima.\n\nNo que posso te ajudar agora?`
         : `Opa! 👋 Bem-vindo à página **${pageContext.name}**!\n\n${pageContext.description}\n\nEstou aqui pra te ajudar com o que precisar. Conheço todas as páginas do admin e posso:\n\n• Explicar como cada funcionalidade funciona\n• Sugerir melhorias de UX/UI\n• Analisar screenshots (Ctrl+V pra colar)\n• Ajudar com código e arquitetura\n\nO que você quer saber?`;
       
       setMessages([{
@@ -286,7 +290,7 @@ export default function ReceitAIAssistant() {
         timestamp: new Date()
       }]);
     }
-  }, [pageContext.name, conversationId, conversations.length]);
+  }, [pageContext.name, conversationId, conversations.length, isLoadingHistory]);
 
   const sendMessage = async () => {
     if ((!input.trim() && attachments.length === 0) || isLoading) return;

@@ -121,6 +121,8 @@ export function SymptomFeedbackModal({
     energia: "Energia",
     pele: "Pele",
     respiratorio: "Respiratórios",
+    cardiovascular: "Cardiovascular",
+    sono: "Sono",
   };
 
   if (!meal) return null;

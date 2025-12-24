@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield, Settings } from "lucide-react";
 import { DesktopProfileDropdown } from "@/components/DesktopProfileDropdown";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
@@ -776,14 +777,19 @@ export default function Dashboard() {
                     <WaterWidgetCompact />
                   </div>
                   
-                  {/* Desktop Profile Dropdown */}
-                  <DesktopProfileDropdown
-                    user={user}
-                    isSubscribed={isSubscribed}
-                    subscriptionStatus={subscription?.status}
-                    onOpenProfile={() => setShowProfileSheet(true)}
-                    onLogout={handleLogout}
-                  />
+                  {/* Actions: Notification Bell + Desktop Profile Dropdown */}
+                  <div className="flex items-center gap-1">
+                    <NotificationBell 
+                      onOpenSettings={() => navigate("/settings")} 
+                    />
+                    <DesktopProfileDropdown
+                      user={user}
+                      isSubscribed={isSubscribed}
+                      subscriptionStatus={subscription?.status}
+                      onOpenProfile={() => setShowProfileSheet(true)}
+                      onLogout={handleLogout}
+                    />
+                  </div>
                 </div>
 
                 {/* Plan Details Sheet */}

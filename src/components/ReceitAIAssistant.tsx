@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon, MapPin, History, Plus, ChevronDown } from "lucide-react";
+import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, Paperclip, X, Image as ImageIcon, MapPin, History, Plus, ChevronDown, Search } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -107,10 +107,12 @@ export default function ReceitAIAssistant() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [attachments, setAttachments] = useState<Attachment[]>([]);
+  const [historySearch, setHistorySearch] = useState("");
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recognitionRef = useRef<any>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   // Detecta a página atual
   const currentPath = location.pathname;
@@ -457,7 +459,7 @@ export default function ReceitAIAssistant() {
           <div className="flex items-center gap-2">
             {/* History Dropdown */}
             {userId && conversations.length > 0 && (
-              <DropdownMenu>
+              <DropdownMenu onOpenChange={(open) => { if (!open) setHistorySearch(""); }}>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="sm" className="gap-1.5">
                     <History className="w-3.5 h-3.5" />
@@ -465,31 +467,63 @@ export default function ReceitAIAssistant() {
                     <ChevronDown className="w-3 h-3" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-64">
+                <DropdownMenuContent align="end" className="w-72">
+                  {/* Search Input */}
+                  <div className="px-2 py-1.5">
+                    <div className="relative">
+                      <Search className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                      <input
+                        ref={searchInputRef}
+                        type="text"
+                        placeholder="Buscar conversas..."
+                        value={historySearch}
+                        onChange={(e) => setHistorySearch(e.target.value)}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => e.stopPropagation()}
+                        className="w-full pl-7 pr-2 py-1.5 text-xs bg-muted border-0 rounded-md focus:outline-none focus:ring-1 focus:ring-primary"
+                      />
+                    </div>
+                  </div>
+                  <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleNewChat} className="gap-2">
                     <Plus className="w-4 h-4" />
                     Nova conversa
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  {conversations.map((conv) => (
-                    <DropdownMenuItem
-                      key={conv.id}
-                      onClick={() => handleLoadConversation(conv.id)}
-                      className="flex flex-col items-start gap-0.5"
-                    >
-                      <span className="text-sm truncate w-full">
-                        {conv.title || "Conversa sem título"}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground">
-                        {new Date(conv.updated_at).toLocaleDateString("pt-BR", {
-                          day: "2-digit",
-                          month: "short",
-                          hour: "2-digit",
-                          minute: "2-digit"
-                        })}
-                      </span>
-                    </DropdownMenuItem>
-                  ))}
+                  <ScrollArea className="max-h-[200px]">
+                    {conversations
+                      .filter(conv => 
+                        !historySearch || 
+                        (conv.title?.toLowerCase().includes(historySearch.toLowerCase()))
+                      )
+                      .map((conv) => (
+                        <DropdownMenuItem
+                          key={conv.id}
+                          onClick={() => handleLoadConversation(conv.id)}
+                          className="flex flex-col items-start gap-0.5"
+                        >
+                          <span className="text-sm truncate w-full">
+                            {conv.title || "Conversa sem título"}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground">
+                            {new Date(conv.updated_at).toLocaleDateString("pt-BR", {
+                              day: "2-digit",
+                              month: "short",
+                              hour: "2-digit",
+                              minute: "2-digit"
+                            })}
+                          </span>
+                        </DropdownMenuItem>
+                      ))}
+                    {conversations.filter(conv => 
+                      !historySearch || 
+                      (conv.title?.toLowerCase().includes(historySearch.toLowerCase()))
+                    ).length === 0 && (
+                      <div className="px-2 py-3 text-center text-xs text-muted-foreground">
+                        Nenhuma conversa encontrada
+                      </div>
+                    )}
+                  </ScrollArea>
                 </DropdownMenuContent>
               </DropdownMenu>
             )}

@@ -9,7 +9,6 @@ import {
 } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -121,22 +120,22 @@ export function MealSymptomHistorySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] flex flex-col p-0">
-        <SheetHeader className="px-6 py-4 border-b bg-background/95 backdrop-blur">
-          <SheetTitle className="text-base font-medium">
+      <SheetContent side="bottom" className="h-[80vh] p-6">
+        <SheetHeader className="mb-4">
+          <SheetTitle className="text-lg font-semibold">
             Histórico de Sintomas
           </SheetTitle>
         </SheetHeader>
 
-        {/* Filters - Clean and minimal */}
-        <div className="flex items-center gap-2 px-6 py-3 border-b bg-muted/30">
+        {/* Filters */}
+        <div className="flex items-center gap-2 mb-4">
           <Select
             value={filters.days.toString()}
             onValueChange={(v) =>
               setFilters((f) => ({ ...f, days: parseInt(v) as 0 | 7 | 14 | 21 | 30 }))
             }
           >
-            <SelectTrigger className="w-28 h-8 text-xs bg-background">
+            <SelectTrigger className="w-28 h-9">
               <SelectValue>{getDaysLabel(filters.days)}</SelectValue>
             </SelectTrigger>
             <SelectContent>
@@ -154,7 +153,7 @@ export function MealSymptomHistorySheet({
               setFilters((f) => ({ ...f, severity: v === "all" ? undefined : v }))
             }
           >
-            <SelectTrigger className="w-28 h-8 text-xs bg-background">
+            <SelectTrigger className="w-28 h-9">
               <SelectValue placeholder="Severidade" />
             </SelectTrigger>
             <SelectContent>
@@ -167,45 +166,43 @@ export function MealSymptomHistorySheet({
 
           <div className="flex-1" />
 
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExportCSV}>
-            <FileSpreadsheet className="h-4 w-4 text-muted-foreground" />
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleExportCSV}>
+            <FileSpreadsheet className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleExportPDF}>
-            <FileText className="h-4 w-4 text-muted-foreground" />
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleExportPDF}>
+            <FileText className="h-4 w-4" />
           </Button>
         </div>
 
         {isLoading ? (
-          <div className="space-y-2 p-6">
+          <div className="space-y-3">
             <Skeleton className="h-16 w-full rounded-xl" />
             <Skeleton className="h-16 w-full rounded-xl" />
             <Skeleton className="h-16 w-full rounded-xl" />
           </div>
         ) : (
-          <ScrollArea className="flex-1">
-            <div className="p-4 space-y-2">
-              {meals.length === 0 ? (
-                <div className="text-center py-16">
-                  <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
-                  <p className="text-sm text-muted-foreground">Nenhum sintoma registrado</p>
-                  <p className="text-xs text-muted-foreground/70 mt-1">Continue assim!</p>
-                </div>
-              ) : (
-                meals.map((meal, index) => (
-                  <MealCard
-                    key={`${meal.mealId}-${index}`}
-                    meal={meal}
-                    isSuspect={(food: string) =>
-                      suspectFoods.some((s) => s.food === food)
-                    }
-                    isIntoleranceFood={isIntoleranceFood}
-                    isExcludedFood={isExcludedFood}
-                    onExcludeFood={handleExcludeFood}
-                  />
-                ))
-              )}
-            </div>
-          </ScrollArea>
+          <div className="overflow-y-auto h-[calc(80vh-180px)] space-y-3">
+            {meals.length === 0 ? (
+              <div className="text-center py-16">
+                <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
+                <p className="text-sm text-muted-foreground">Nenhum sintoma registrado</p>
+                <p className="text-xs text-muted-foreground/70 mt-1">Continue assim!</p>
+              </div>
+            ) : (
+              meals.map((meal, index) => (
+                <MealCard
+                  key={`${meal.mealId}-${index}`}
+                  meal={meal}
+                  isSuspect={(food: string) =>
+                    suspectFoods.some((s) => s.food === food)
+                  }
+                  isIntoleranceFood={isIntoleranceFood}
+                  isExcludedFood={isExcludedFood}
+                  onExcludeFood={handleExcludeFood}
+                />
+              ))
+            )}
+          </div>
         )}
       </SheetContent>
     </Sheet>

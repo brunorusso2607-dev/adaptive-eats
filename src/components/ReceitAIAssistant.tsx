@@ -181,7 +181,7 @@ export default function ReceitAIAssistant() {
     if (messages.length === 0) {
       setMessages([{
         role: "assistant",
-        content: "Olá! 👋 Sou o **Assistente ReceitAI**. Conheço toda a estrutura do nosso aplicativo - banco de dados, fluxos, cálculos nutricionais, edge functions, e muito mais.\n\nPode me perguntar qualquer coisa sobre o ReceitAI! Por exemplo:\n\n• Como funciona o cálculo de calorias?\n• Quais tabelas existem no banco?\n• Explique o fluxo de análise de rótulos\n• Sugestões para melhorar o app\n\n**Dica:** Use Ctrl+V para colar screenshots!",
+        content: "Olá! 👋 Sou o **Assistente ReceitAI** - especialista em **Design System** e **Arquitetura**.\n\nConheço toda a estrutura do app:\n\n• **Design**: Cores, tipografia, espaçamentos, componentes Shadcn\n• **Código**: React, TypeScript, Tailwind CSS\n• **Banco de dados**: Tabelas, relações, RLS\n• **Edge Functions**: Análise de fotos, geração de receitas\n• **UX**: Fluxos, gamificação, onboarding\n\n**Dica:** Cole screenshots com Ctrl+V para análise visual!",
         timestamp: new Date()
       }]);
     }
@@ -295,24 +295,19 @@ export default function ReceitAIAssistant() {
   return (
     <Card className="glass-card">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-primary-foreground" />
-            </div>
-            <div>
-              <CardTitle className="text-lg font-display">Assistente ReceitAI</CardTitle>
-              <CardDescription>Pergunte qualquer coisa sobre o sistema</CardDescription>
-            </div>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>
-          <Button variant="ghost" size="icon" onClick={clearChat} title="Limpar chat">
-            <Trash2 className="w-4 h-4" />
-          </Button>
+          <div>
+            <CardTitle className="text-lg font-display">Assistente ReceitAI</CardTitle>
+            <CardDescription>Especialista em Design System & Arquitetura</CardDescription>
+          </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Messages Area */}
-        <ScrollArea ref={scrollAreaRef} className="h-[400px] pr-4">
+        {/* Messages Area - Increased height */}
+        <ScrollArea ref={scrollAreaRef} className="h-[600px] pr-4">
           <div className="space-y-4">
             {messages.map((message, index) => (
               <div

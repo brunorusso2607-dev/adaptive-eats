@@ -42,6 +42,19 @@ export function SafetyScoreCard() {
       ? "Atenção" 
       : "Crítico";
 
+  // Mensagens motivacionais baseadas no score
+  const motivationalMessage = score >= 90
+    ? "Incrível! Seu corpo agradece cada escolha consciente que você faz."
+    : score >= 80
+      ? "Parabéns! Você está no caminho certo para uma vida mais saudável."
+      : score >= 70
+        ? "Muito bem! Continue assim e seu bem-estar vai melhorar cada dia mais."
+        : score >= 60
+          ? "Você está progredindo! Pequenas mudanças fazem grande diferença."
+          : score >= 40
+            ? "Cada passo conta. Vamos juntos identificar o que pode melhorar?"
+            : "Estamos aqui para ajudar. Vamos descobrir o que está causando desconforto.";
+
   // Calculate stroke dash for circular progress
   const circumference = 2 * Math.PI * 40;
   const strokeDashoffset = circumference - (score / 100) * circumference;
@@ -105,6 +118,18 @@ export function SafetyScoreCard() {
                 : `${analysis.totalSymptomDays} dia(s) com sintomas nos últimos ${analysis.totalDays} dias`}
             </p>
           </div>
+        </div>
+
+        {/* Motivational Message */}
+        <div className={cn(
+          "rounded-lg px-4 py-3 text-sm",
+          score >= 80 
+            ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400" 
+            : score >= 60 
+              ? "bg-amber-500/10 text-amber-700 dark:text-amber-400" 
+              : "bg-red-500/10 text-red-700 dark:text-red-400"
+        )}>
+          <p className="leading-relaxed">{motivationalMessage}</p>
         </div>
 
         {/* AI Insights */}

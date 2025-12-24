@@ -808,6 +808,8 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               value={heightInput}
               onChange={(e) => {
                 const rawValue = e.target.value;
+                const previousValue = heightInput;
+                const isDeleting = rawValue.length < previousValue.length;
                 
                 // Se o usuário apagou tudo, permitir campo vazio
                 if (rawValue === '' || rawValue === ',') {
@@ -831,7 +833,18 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
                   digits = digits.substring(0, 3);
                 }
                 
-                // Formata automaticamente com vírgula após primeiro dígito
+                // Se está deletando e só tem 1 dígito, permitir sem vírgula
+                // Isso permite que o usuário delete o último dígito no próximo backspace
+                if (isDeleting && digits.length === 1) {
+                  setHeightInput(digits);
+                  const numericValue = parseFloat(digits + '.0');
+                  if (!isNaN(numericValue) && numericValue > 0) {
+                    setData({ ...data, height: Math.round(numericValue * 100) });
+                  }
+                  return;
+                }
+                
+                // Formata automaticamente com vírgula após primeiro dígito (só quando digitando)
                 let formatted = '';
                 if (digits.length === 1) {
                   formatted = digits + ',';

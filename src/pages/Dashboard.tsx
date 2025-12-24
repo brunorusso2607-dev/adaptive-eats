@@ -37,6 +37,7 @@ import { useGamification } from "@/hooks/useGamification";
 import HealthProgressStrip from "@/components/HealthProgressStrip";
 import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 import { WaterTracker } from "@/components/WaterTracker";
+import { WaterWidgetCompact } from "@/components/WaterWidgetCompact";
 
 type Recipe = {
   name: string;
@@ -743,6 +744,7 @@ export default function Dashboard() {
                         PRO
                       </span>
                     )}
+                    <WaterWidgetCompact />
                   </button>
                   
                   {/* Desktop Profile Dropdown */}

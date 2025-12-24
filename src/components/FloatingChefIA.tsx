@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, 
   Paperclip, X, MapPin, History, Plus, ChevronDown, Search,
-  Minimize2, Maximize2, GripVertical
+  Minimize2, Maximize2, GripVertical, Square
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -107,6 +107,7 @@ export default function FloatingChefIA() {
   const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [isMaximized, setIsMaximized] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -532,11 +533,13 @@ export default function FloatingChefIA() {
   return (
     <div 
       ref={chatRef}
-      style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
+      style={isMaximized ? { inset: '1rem' } : { right: `${position.x}px`, bottom: `${position.y}px` }}
       className={cn(
-        "fixed z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)]",
-        "bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden",
-        !isDragging && "animate-in slide-in-from-bottom-4 duration-300"
+        "fixed z-50 bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300",
+        isMaximized 
+          ? "w-auto h-auto" 
+          : "w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)]",
+        !isDragging && !isMaximized && "animate-in slide-in-from-bottom-4 duration-300"
       )}
     >
       {/* Header */}
@@ -640,11 +643,23 @@ export default function FloatingChefIA() {
             </DropdownMenu>
           )}
           
+          {/* Maximize/Restore Button */}
+          <Button
+            variant="ghost"
+            size="icon"
+            className="w-8 h-8"
+            onClick={() => setIsMaximized(!isMaximized)}
+            title={isMaximized ? "Restaurar tamanho" : "Maximizar"}
+          >
+            {isMaximized ? <Square className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
+          </Button>
+          
           <Button
             variant="ghost"
             size="icon"
             className="w-8 h-8"
             onClick={() => setIsMinimized(true)}
+            title="Minimizar"
           >
             <Minimize2 className="w-4 h-4" />
           </Button>
@@ -653,6 +668,7 @@ export default function FloatingChefIA() {
             size="icon"
             className="w-8 h-8"
             onClick={() => setIsOpen(false)}
+            title="Fechar"
           >
             <X className="w-4 h-4" />
           </Button>

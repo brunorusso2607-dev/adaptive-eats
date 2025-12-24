@@ -64,6 +64,7 @@ function getCurrentMealType(): string {
 }
 
 // Índices fixos para ordenação (independente do banco)
+// IMPORTANTE: "lanche" no banco deve ter índice 2 (entre almoco e jantar)
 const MEAL_SORT_PRIORITY: Record<string, number> = {
   "cafe_manha": 0,
   "almoco": 1,
@@ -74,9 +75,13 @@ const MEAL_SORT_PRIORITY: Record<string, number> = {
 };
 
 function getMealSortIndex(mealType: string): number {
-  // Normalizar lanche -> lanche_tarde para ordenação
-  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
-  return MEAL_SORT_PRIORITY[normalizedType] ?? MEAL_SORT_PRIORITY[mealType] ?? 999;
+  // Retorna o índice diretamente - "lanche" já está mapeado para 2
+  const index = MEAL_SORT_PRIORITY[mealType];
+  if (index !== undefined) return index;
+  
+  // Fallback para tipos desconhecidos
+  console.warn("[getMealSortIndex] Tipo de refeição desconhecido:", mealType);
+  return 999;
 }
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
@@ -158,7 +163,7 @@ export function getMinutesUntilStart(mealType: string): number {
 }
 
 export function useNextMeal() {
-  console.log("🔄 [useNextMeal] Hook inicializado - VERSÃO 3");
+  console.log("🔄 [useNextMeal] Hook inicializado - VERSÃO 4 (fix ordenação)");
   
   const [nextMeal, setNextMeal] = useState<NextMealData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -250,33 +255,31 @@ export function useNextMeal() {
         name: m.recipe_name?.substring(0, 20)
       })));
 
-      // Ordenar as refeições usando mapa direto: cafe_manha=0, almoco=1, lanche=2, jantar=3, ceia=4
+      // Ordenar as refeições: cafe_manha=0, almoco=1, lanche=2, jantar=3, ceia=4
       const sortedMeals = [...meals].sort((a, b) => {
         const indexA = getMealSortIndex(a.meal_type);
         const indexB = getMealSortIndex(b.meal_type);
-        console.log(`[useNextMeal] Comparando: ${a.meal_type}(${indexA}) vs ${b.meal_type}(${indexB}) = ${indexA - indexB}`);
         return indexA - indexB;
       });
       
-      console.log("[useNextMeal] Após ordenação:", sortedMeals.map(m => `${m.meal_type}(${getMealSortIndex(m.meal_type)})`).join(" -> "));
+      console.log("[useNextMeal] Refeições ordenadas:", sortedMeals.map(m => 
+        `${m.meal_type}(idx=${getMealSortIndex(m.meal_type)}, done=${!!m.completed_at})`
+      ).join(" → "));
 
       // Pegar a primeira refeição não completada do dia
-      let nextMealData: NextMealData | null = null;
+      const nextMealItem = sortedMeals.find(meal => !meal.completed_at);
       
-      for (const meal of sortedMeals) {
-        console.log(`[useNextMeal] Verificando: ${meal.meal_type}, completed_at: ${meal.completed_at}`);
-        if (!meal.completed_at) {
-          console.log("[useNextMeal] ✅ Selecionando próxima refeição:", meal.meal_type, "-", meal.recipe_name?.substring(0, 30));
-          nextMealData = {
-            ...meal,
-            recipe_ingredients: meal.recipe_ingredients as Ingredient[],
-            recipe_instructions: meal.recipe_instructions as string[],
-          };
-          break;
-        }
+      if (nextMealItem) {
+        console.log("[useNextMeal] ✅ Próxima refeição selecionada:", nextMealItem.meal_type, "-", nextMealItem.recipe_name?.substring(0, 30));
+        setNextMeal({
+          ...nextMealItem,
+          recipe_ingredients: nextMealItem.recipe_ingredients as Ingredient[],
+          recipe_instructions: nextMealItem.recipe_instructions as string[],
+        });
+      } else {
+        console.log("[useNextMeal] Todas as refeições do dia foram completadas");
+        setNextMeal(null);
       }
-
-      setNextMeal(nextMealData);
     } catch (error) {
       console.error("Error fetching next meal:", error);
     } finally {

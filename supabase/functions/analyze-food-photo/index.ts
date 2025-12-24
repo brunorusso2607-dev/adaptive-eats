@@ -113,25 +113,15 @@ function calculateTDEE(tmb: number, activityLevel: string): number {
   return tmb * (multipliers[activityLevel] || 1.55);
 }
 
-// Calcular meta calórica baseada no objetivo
-function calculateDailyGoal(tdee: number, goal: string, calorieGoal: string): number {
-  if (calorieGoal === 'definir_depois') {
-    // Se não definiu, usa o objetivo de peso
-    if (goal === 'emagrecer') {
-      return Math.round(tdee * 0.8); // Déficit de 20%
-    } else if (goal === 'ganhar_peso') {
-      return Math.round(tdee * 1.15); // Superávit de 15%
-    }
-    return Math.round(tdee);
+// Calcular meta calórica baseada no objetivo do usuário
+function calculateDailyGoal(tdee: number, goal: string): number {
+  // Baseado no objetivo de peso do perfil
+  if (goal === 'emagrecer') {
+    return Math.round(tdee * 0.8); // Déficit de 20%
+  } else if (goal === 'ganhar_peso') {
+    return Math.round(tdee * 1.15); // Superávit de 15%
   }
-  
-  // Baseado na preferência de calorias
-  if (calorieGoal === 'reduzir') {
-    return Math.round(tdee * 0.8);
-  } else if (calorieGoal === 'aumentar') {
-    return Math.round(tdee * 1.15);
-  }
-  return Math.round(tdee);
+  return Math.round(tdee); // manter peso
 }
 
 serve(async (req) => {
@@ -164,7 +154,7 @@ serve(async (req) => {
     // Fetch user's full profile for calorie calculation
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("intolerances, dietary_preference, weight_current, height, age, sex, activity_level, goal, calorie_goal")
+      .select("intolerances, excluded_ingredients, dietary_preference, weight_current, height, age, sex, activity_level, goal")
       .eq("id", user.id)
       .single();
 
@@ -173,24 +163,30 @@ serve(async (req) => {
     }
 
     const userIntolerances = profile?.intolerances || [];
+    const excludedIngredients = profile?.excluded_ingredients || [];
     const dietaryPreference = profile?.dietary_preference || "comum";
     
     // Calcular meta calórica diária
     let dailyCalorieGoal: number | null = null;
     if (profile?.weight_current && profile?.height && profile?.age && profile?.sex) {
+      // Normalizar sexo para o formato esperado pela função
+      const normalizedSex = profile.sex === 'male' ? 'masculino' : 
+                            profile.sex === 'female' ? 'feminino' : 
+                            profile.sex;
       const tmb = calculateTMB(
         profile.weight_current,
         profile.height,
         profile.age,
-        profile.sex
+        normalizedSex
       );
       const tdee = calculateTDEE(tmb, profile.activity_level || 'moderate');
-      dailyCalorieGoal = calculateDailyGoal(tdee, profile.goal || 'manter', profile.calorie_goal || 'manter');
+      dailyCalorieGoal = calculateDailyGoal(tdee, profile.goal || 'manter');
       logStep("Daily calorie goal calculated", { tmb, tdee, dailyCalorieGoal });
     }
     
     logStep("User profile loaded", { 
       intolerances: userIntolerances, 
+      excludedIngredients,
       dietaryPreference,
       dailyCalorieGoal 
     });
@@ -206,7 +202,9 @@ serve(async (req) => {
 
     // Build intolerance context for the prompt with expanded synonyms
     let intoleranceContext = "";
-    if (userIntolerances.length > 0 || dietaryPreference !== "comum") {
+    const hasRestrictions = userIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "comum";
+    
+    if (hasRestrictions) {
       let synonymsList: string[] = [];
       for (const intolerance of userIntolerances) {
         const key = INTOLERANCE_MAP[intolerance.toLowerCase()] || intolerance.toLowerCase();
@@ -214,14 +212,18 @@ serve(async (req) => {
         synonymsList = [...synonymsList, ...synonyms];
       }
       
+      // Adicionar ingredientes excluídos manualmente à lista de verificação
+      const allExcluded = [...synonymsList, ...excludedIngredients.map((i: string) => i.toLowerCase())];
+      
       intoleranceContext = `
 IMPORTANTE - RESTRIÇÕES ALIMENTARES DO USUÁRIO:
 ${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${userIntolerances.join(", ")}` : ""}
+${excludedIngredients.length > 0 ? `- Ingredientes Excluídos Manualmente: ${excludedIngredients.join(", ")}` : ""}
 ${dietaryPreference === "vegetariana" ? "- Dieta: VEGETARIANA (não consome carne, peixe, frutos do mar)" : ""}
 ${dietaryPreference === "vegana" ? "- Dieta: VEGANA (não consome nenhum produto de origem animal)" : ""}
 
-INGREDIENTES/PRATOS A VERIFICAR (podem conter alérgenos):
-${synonymsList.slice(0, 50).join(', ')}
+INGREDIENTES/PRATOS A VERIFICAR (podem conter alérgenos ou ingredientes excluídos):
+${allExcluded.slice(0, 60).join(', ')}
 
 Você DEVE analisar cada alimento identificado e verificar se contém ou pode conter ingredientes problemáticos para essas restrições.
 Considere também ingredientes "escondidos" em molhos, temperos e preparações.
@@ -247,8 +249,8 @@ ${intoleranceContext}
 
 3. CÁLCULO NUTRICIONAL: Calcule calorias e macros (Proteínas, Carboidratos, Gorduras).
 
-${userIntolerances.length > 0 || dietaryPreference !== "comum" ? `4. VERIFICAÇÃO DE SEGURANÇA ALIMENTAR (CRÍTICO):
-   - Cruze CADA ingrediente identificado com TODAS as intolerâncias do usuário
+${hasRestrictions ? `4. VERIFICAÇÃO DE SEGURANÇA ALIMENTAR (CRÍTICO):
+   - Cruze CADA ingrediente identificado com TODAS as intolerâncias e ingredientes excluídos do usuário
    - Analise ingredientes "escondidos" em molhos, temperos e preparações
    - Em caso de QUALQUER dúvida, classifique como risco` : ""}
 
@@ -531,6 +533,42 @@ REGRAS:
       });
     }
     
+    // Adicionar verificação de ingredientes excluídos manualmente
+    for (const excludedIngredient of excludedIngredients) {
+      let found = false;
+      let foundFood = "";
+      const excludedLower = excludedIngredient.toLowerCase();
+      
+      if (analysis.alimentos) {
+        for (const food of analysis.alimentos) {
+          const foodName = food.item?.toLowerCase() || "";
+          const ingredientesVisiveis = (food.ingredientes_visiveis || []).map((i: string) => i.toLowerCase());
+          const ingredientesOcultos = (food.ingredientes_provaveis_ocultos || []).map((i: string) => i.toLowerCase());
+          
+          // Verificar no nome do alimento e nos ingredientes identificados
+          if (
+            foodName.includes(excludedLower) ||
+            ingredientesVisiveis.some((i: string) => i.includes(excludedLower)) ||
+            ingredientesOcultos.some((i: string) => i.includes(excludedLower))
+          ) {
+            found = true;
+            foundFood = food.item;
+            break;
+          }
+        }
+      }
+      
+      if (found) {
+        alertasPersonalizados.push({
+          ingrediente: foundFood,
+          restricao: excludedIngredient,
+          status: "contem",
+          mensagem: `⚠️ ATENÇÃO: "${foundFood}" pode conter ${excludedIngredient.toUpperCase()}, que você excluiu da sua dieta`,
+          icone: "🔴"
+        });
+      }
+    }
+    
     // Ordenar alertas: primeiro os problemas, depois os seguros
     alertasPersonalizados.sort((a, b) => {
       const order = { "contem": 0, "risco_potencial": 1, "seguro": 2 };
@@ -540,6 +578,7 @@ REGRAS:
     // Adicionar ao response
     const perfilUsuarioAplicado = {
       intolerances: userIntolerances,
+      excluded_ingredients: excludedIngredients,
       dietary_preference: dietaryPreference,
       alertas_personalizados: alertasPersonalizados,
       resumo: alertasPersonalizados.some(a => a.status === "contem")

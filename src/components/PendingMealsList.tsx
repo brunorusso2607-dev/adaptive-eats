@@ -1,4 +1,3 @@
-import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { Check, UtensilsCrossed, Clock, ChevronDown, Flame, Eye, ChevronRight } from "lucide-react";
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
@@ -15,6 +14,7 @@ import { cn } from "@/lib/utils";
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
+  onNavigateToMealPlan?: () => void;
   userProfile?: {
     intolerances?: string[] | null;
     dietary_preference?: string | null;
@@ -22,8 +22,7 @@ interface PendingMealsListProps {
   } | null;
 }
 
-export default function PendingMealsList({ onStreakRefresh, userProfile }: PendingMealsListProps) {
-  const navigate = useNavigate();
+export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan, userProfile }: PendingMealsListProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isRecipeSheetOpen, setIsRecipeSheetOpen] = useState(false);
   const {
@@ -87,7 +86,7 @@ export default function PendingMealsList({ onStreakRefresh, userProfile }: Pendi
     return (
       <Card 
         className="glass-card border-border cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]"
-        onClick={() => navigate("/dashboard?tab=plano")}
+        onClick={onNavigateToMealPlan}
       >
         <CardContent className="p-6 text-center">
           <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">

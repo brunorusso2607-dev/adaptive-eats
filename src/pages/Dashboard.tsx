@@ -615,7 +615,6 @@ export default function Dashboard() {
 
   // Handle mobile tab navigation
   const handleMobileTabChange = (tab: MobileNavTab) => {
-    console.log("[Dashboard] handleMobileTabChange called with tab:", tab);
     setMobileActiveTab(tab);
     // Reset other views when changing tabs
     setShowRecipe(false);
@@ -627,7 +626,6 @@ export default function Dashboard() {
     setShowFoodAnalyzer(false);
     
     if (tab === "meal-plan") {
-      console.log("[Dashboard] Setting showMealPlan to true");
       setShowMealPlan(true);
     } else {
       setShowMealPlan(false);

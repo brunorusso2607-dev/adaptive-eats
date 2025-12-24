@@ -1,8 +1,12 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle } from "lucide-react";
+import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw } from "lucide-react";
 import { cn } from "@/lib/utils";
+import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
+import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
+import { toast } from "sonner";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -25,6 +29,7 @@ type MealRecipeDetailProps = {
   meal: MealPlanItem;
   onBack: () => void;
   onToggleFavorite: () => void;
+  onUpdateIngredients?: (ingredients: Ingredient[]) => void;
 };
 
 const MEAL_LABELS: Record<string, string> = {
@@ -35,7 +40,27 @@ const MEAL_LABELS: Record<string, string> = {
   ceia: "Ceia"
 };
 
-export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: MealRecipeDetailProps) {
+export default function MealRecipeDetail({ meal, onBack, onToggleFavorite, onUpdateIngredients }: MealRecipeDetailProps) {
+  const [substitutionOpen, setSubstitutionOpen] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>(meal.recipe_ingredients);
+
+  const handleOpenSubstitution = (ingredient: Ingredient) => {
+    setSelectedIngredient(ingredient);
+    setSubstitutionOpen(true);
+  };
+
+  const handleSubstitute = (newIngredient: IngredientResult, originalItem: string) => {
+    const updatedIngredients = localIngredients.map((ing) =>
+      ing.item === originalItem
+        ? { ...ing, item: newIngredient.name }
+        : ing
+    );
+    setLocalIngredients(updatedIngredients);
+    onUpdateIngredients?.(updatedIngredients);
+    toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+  };
+
   return (
     <div className="space-y-6 animate-fade-in">
       {/* Header */}
@@ -118,21 +143,37 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
         <CardContent className="p-4">
           <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
             🥗 Ingredientes
+            <span className="text-xs text-muted-foreground font-normal ml-auto">
+              Toque para substituir
+            </span>
           </h3>
           <ul className="space-y-2">
-            {meal.recipe_ingredients.map((ingredient, index) => (
-              <li key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+            {localIngredients.map((ingredient, index) => (
+              <li 
+                key={index} 
+                className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                onClick={() => handleOpenSubstitution(ingredient)}
+              >
                 <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <CheckCircle className="w-4 h-4 text-primary" />
                 </div>
-                <span>
+                <span className="flex-1">
                   <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
                 </span>
+                <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
               </li>
             ))}
           </ul>
         </CardContent>
       </Card>
+
+      {/* Ingredient Substitution Sheet */}
+      <IngredientSubstitutionSheet
+        open={substitutionOpen}
+        onOpenChange={setSubstitutionOpen}
+        originalIngredient={selectedIngredient}
+        onSubstitute={handleSubstitute}
+      />
 
       {/* Instructions */}
       <Card className="glass-card">

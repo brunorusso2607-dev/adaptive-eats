@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Droplets, Plus, Settings, Trash2, Bell, BellOff, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -58,6 +58,14 @@ export function WaterTracker() {
   const [showHistory, setShowHistory] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(250);
+  const [isPulsing, setIsPulsing] = useState(false);
+
+  // Trigger pulse animation when amount changes
+  useEffect(() => {
+    setIsPulsing(true);
+    const timer = setTimeout(() => setIsPulsing(false), 300);
+    return () => clearTimeout(timer);
+  }, [selectedAmount]);
 
   const handleAddWater = async () => {
     setIsAdding(true);
@@ -258,7 +266,10 @@ export function WaterTracker() {
           <div className="flex items-center gap-2">
             <Button
               variant="default"
-              className="flex-1 bg-blue-500 hover:bg-blue-600 transition-all duration-200"
+              className={cn(
+                "flex-1 bg-blue-500 hover:bg-blue-600 transition-all duration-200",
+                isPulsing && "animate-[pulse_0.3s_ease-in-out] scale-105"
+              )}
               onClick={handleAddWater}
               disabled={isAdding}
             >

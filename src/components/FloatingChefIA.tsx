@@ -156,29 +156,35 @@ export default function FloatingChefIA() {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
       if (SpeechRecognition) {
         const recognition = new SpeechRecognition();
-        recognition.continuous = false;
+        recognition.continuous = true; // Permite gravação contínua
         recognition.interimResults = true;
         recognition.lang = 'pt-BR';
+        recognition.maxAlternatives = 1;
+
+        let fullTranscript = '';
+
+        recognition.onstart = () => {
+          fullTranscript = '';
+        };
 
         recognition.onresult = (event: any) => {
-          let finalTranscript = '';
           let interimTranscript = '';
+          let finalTranscript = '';
 
           for (let i = event.resultIndex; i < event.results.length; i++) {
             const transcript = event.results[i][0].transcript;
             if (event.results[i].isFinal) {
-              finalTranscript += transcript;
+              finalTranscript += transcript + ' ';
             } else {
-              interimTranscript += transcript;
+              interimTranscript = transcript;
             }
           }
 
-          if (interimTranscript && !finalTranscript) {
-            setInput(interimTranscript);
-          }
-          
           if (finalTranscript) {
-            setInput(finalTranscript);
+            fullTranscript += finalTranscript;
+            setInput(fullTranscript.trim());
+          } else if (interimTranscript) {
+            setInput((fullTranscript + interimTranscript).trim());
           }
         };
 
@@ -191,6 +197,8 @@ export default function FloatingChefIA() {
           setIsListening(false);
           if (event.error === 'not-allowed') {
             toast.error("Permissão de microfone negada");
+          } else if (event.error === 'no-speech') {
+            toast.error("Nenhuma fala detectada");
           }
         };
 

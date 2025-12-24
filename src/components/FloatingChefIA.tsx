@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, 
   Paperclip, X, MapPin, History, Plus, ChevronDown, Search,
-  Minimize2, Maximize2
+  Minimize2, Maximize2, GripVertical
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -114,6 +114,13 @@ export default function FloatingChefIA() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [historySearch, setHistorySearch] = useState("");
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  
+  // Drag state
+  const [position, setPosition] = useState({ x: 24, y: 24 }); // Distance from bottom-right
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
+  const chatRef = useRef<HTMLDivElement>(null);
+  
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -196,6 +203,44 @@ export default function FloatingChefIA() {
       }
     };
   }, []);
+
+  // Drag handlers
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+    dragStartRef.current = {
+      x: e.clientX,
+      y: e.clientY,
+      posX: position.x,
+      posY: position.y
+    };
+  }, [position]);
+
+  useEffect(() => {
+    if (!isDragging) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaX = dragStartRef.current.x - e.clientX;
+      const deltaY = dragStartRef.current.y - e.clientY;
+      
+      const newX = Math.max(0, Math.min(window.innerWidth - 420, dragStartRef.current.posX + deltaX));
+      const newY = Math.max(0, Math.min(window.innerHeight - 620, dragStartRef.current.posY + deltaY));
+      
+      setPosition({ x: newX, y: newY });
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [isDragging]);
 
   // Clear new message indicator when opening chat
   useEffect(() => {
@@ -424,8 +469,9 @@ export default function FloatingChefIA() {
     return (
       <button
         onClick={() => setIsOpen(true)}
+        style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
         className={cn(
-          "fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg",
+          "fixed z-50 w-14 h-14 rounded-full shadow-lg",
           "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground",
           "flex items-center justify-center transition-all duration-300",
           "hover:scale-110 hover:shadow-xl active:scale-95",
@@ -445,7 +491,19 @@ export default function FloatingChefIA() {
   // Minimized state
   if (isMinimized) {
     return (
-      <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-card border border-border rounded-full shadow-lg px-4 py-2">
+      <div 
+        style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
+        className="fixed z-50 flex items-center gap-2 bg-card border border-border rounded-full shadow-lg px-4 py-2"
+      >
+        <div 
+          onMouseDown={handleMouseDown}
+          className={cn(
+            "cursor-grab active:cursor-grabbing p-1 -ml-2 rounded hover:bg-muted/50 transition-colors",
+            isDragging && "cursor-grabbing"
+          )}
+        >
+          <GripVertical className="w-4 h-4 text-muted-foreground" />
+        </div>
         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
           <Sparkles className="w-4 h-4 text-primary-foreground" />
         </div>
@@ -472,10 +530,30 @@ export default function FloatingChefIA() {
 
   // Full chat window
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden animate-in slide-in-from-bottom-4 duration-300">
+    <div 
+      ref={chatRef}
+      style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
+      className={cn(
+        "fixed z-50 w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)]",
+        "bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden",
+        !isDragging && "animate-in slide-in-from-bottom-4 duration-300"
+      )}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/30">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
+          {/* Drag handle */}
+          <div 
+            onMouseDown={handleMouseDown}
+            className={cn(
+              "cursor-grab active:cursor-grabbing p-1.5 -ml-2 rounded-lg hover:bg-muted/80 transition-colors",
+              isDragging && "cursor-grabbing bg-muted"
+            )}
+            title="Arraste para mover"
+          >
+            <GripVertical className="w-4 h-4 text-muted-foreground" />
+          </div>
+          
           <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-primary/60 flex items-center justify-center">
             <Sparkles className="w-5 h-5 text-primary-foreground" />
           </div>

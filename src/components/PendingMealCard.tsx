@@ -1,6 +1,5 @@
 import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { 
   Check, 
   RefreshCw, 
@@ -198,58 +197,50 @@ export default function PendingMealCard({
   if (compact) {
     return (
       <>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
+        <div className="flex items-center gap-3">
+          <button
             onClick={handleViewRecipe}
             disabled={isMarking || isSkipping}
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-4 h-4 text-primary stroke-[1.5]" />
             Receita
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
+          <button
             onClick={handleTrocarClick}
             disabled={isMarking || isSkipping}
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-4 h-4 text-primary stroke-[1.5]" />
             Trocar
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+          <button
             onClick={handleFizClick}
             disabled={isMarking || isSkipping}
+            className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
             {isMarking ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Check className="w-3.5 h-3.5" />
+              <Check className="w-4 h-4 stroke-[1.5]" />
             )}
             Feita
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-destructive"
+          <button
             onClick={handleSkip}
             disabled={isMarking || isSkipping}
+            className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
             {isSkipping ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <SkipForward className="w-3.5 h-3.5" />
+              <SkipForward className="w-4 h-4 stroke-[1.5]" />
             )}
             Não fiz
-          </Button>
+          </button>
 
           {/* Botão favoritar alinhado à direita */}
           <FavoriteButton
@@ -364,58 +355,50 @@ export default function PendingMealCard({
         </div>
 
         {/* Ações - linha única com textos curtos */}
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
+        <div className="flex items-center gap-3">
+          <button
             onClick={handleViewRecipe}
             disabled={isMarking || isSkipping}
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
-            <Eye className="w-3.5 h-3.5" />
+            <Eye className="w-4 h-4 text-primary stroke-[1.5]" />
             Receita
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1"
+          <button
             onClick={handleTrocarClick}
             disabled={isMarking || isSkipping}
+            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
-            <RefreshCw className="w-3.5 h-3.5" />
+            <RefreshCw className="w-4 h-4 text-primary stroke-[1.5]" />
             Trocar
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-950"
+          <button
             onClick={handleFizClick}
             disabled={isMarking || isSkipping}
+            className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
             {isMarking ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Check className="w-3.5 h-3.5" />
+              <Check className="w-4 h-4 stroke-[1.5]" />
             )}
             Feita
-          </Button>
+          </button>
 
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-8 px-2 text-xs gap-1 text-muted-foreground hover:text-destructive"
+          <button
             onClick={handleSkip}
             disabled={isMarking || isSkipping}
+            className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
             {isSkipping ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <SkipForward className="w-3.5 h-3.5" />
+              <SkipForward className="w-4 h-4 stroke-[1.5]" />
             )}
             Não fiz
-          </Button>
+          </button>
 
           {/* Botão favoritar alinhado à direita */}
           <FavoriteButton

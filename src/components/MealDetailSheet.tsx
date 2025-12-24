@@ -49,7 +49,13 @@ export default function MealDetailSheet({
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
-  const { updateIngredients } = useMealIngredientUpdate();
+  const [localMacros, setLocalMacros] = useState({
+    calories: 0,
+    protein: 0,
+    carbs: 0,
+    fat: 0,
+  });
+  const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
 
   if (!meal) return null;
 
@@ -66,6 +72,14 @@ export default function MealDetailSheet({
   const ingredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
   const instructions = (meal.recipe_instructions || []) as unknown as string[];
 
+  // Current macros (original + any adjustments)
+  const currentMacros = {
+    calories: meal.recipe_calories + localMacros.calories,
+    protein: meal.recipe_protein + localMacros.protein,
+    carbs: meal.recipe_carbs + localMacros.carbs,
+    fat: meal.recipe_fat + localMacros.fat,
+  };
+
   const handleOpenSubstitution = (ingredient: Ingredient) => {
     setSelectedIngredient({
       item: ingredient.item,
@@ -75,8 +89,14 @@ export default function MealDetailSheet({
     setSubstitutionOpen(true);
   };
 
-  const handleSubstitute = async (newIngredient: IngredientResult, originalItem: string) => {
+  const handleSubstitute = async (
+    newIngredient: IngredientResult, 
+    originalItem: string,
+    originalNutrition: IngredientResult | null
+  ) => {
     const currentIngredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
+    const originalIng = currentIngredients.find(ing => ing.item === originalItem);
+    
     const updatedIngredients = currentIngredients.map((ing) =>
       ing.item === originalItem
         ? { ...ing, item: newIngredient.name }
@@ -84,8 +104,31 @@ export default function MealDetailSheet({
     );
     setLocalIngredients(updatedIngredients);
     
-    // Persist to database
-    const { success } = await updateIngredients(meal.id, updatedIngredients);
+    // Calculate macros difference
+    const macrosDiff = calculateMacrosDiff(
+      originalNutrition,
+      newIngredient,
+      originalIng?.quantity || "100",
+      originalIng?.unit || "g"
+    );
+
+    // Update local macros state
+    const newMacros = {
+      calories: localMacros.calories + (macrosDiff.recipe_calories || 0),
+      protein: localMacros.protein + (macrosDiff.recipe_protein || 0),
+      carbs: localMacros.carbs + (macrosDiff.recipe_carbs || 0),
+      fat: localMacros.fat + (macrosDiff.recipe_fat || 0),
+    };
+    setLocalMacros(newMacros);
+
+    // Persist to database with updated macros
+    const { success } = await updateIngredients(meal.id, updatedIngredients, {
+      recipe_calories: meal.recipe_calories + newMacros.calories,
+      recipe_protein: meal.recipe_protein + newMacros.protein,
+      recipe_carbs: meal.recipe_carbs + newMacros.carbs,
+      recipe_fat: meal.recipe_fat + newMacros.fat,
+    });
+    
     if (success) {
       toast.success(`${originalItem} substituído por ${newIngredient.name}`);
     }
@@ -129,28 +172,28 @@ export default function MealDetailSheet({
                     <div className="w-10 h-10 mx-auto rounded-full bg-orange-500/20 flex items-center justify-center mb-1">
                       <Flame className="w-5 h-5 text-orange-500" />
                     </div>
-                    <p className="text-lg font-bold">{meal.recipe_calories}</p>
+                    <p className="text-lg font-bold">{Math.round(currentMacros.calories)}</p>
                     <p className="text-xs text-muted-foreground">kcal</p>
                   </div>
                   <div className="text-center">
                     <div className="w-10 h-10 mx-auto rounded-full bg-red-500/20 flex items-center justify-center mb-1">
                       <Beef className="w-5 h-5 text-red-500" />
                     </div>
-                    <p className="text-lg font-bold">{meal.recipe_protein}g</p>
+                    <p className="text-lg font-bold">{Math.round(currentMacros.protein * 10) / 10}g</p>
                     <p className="text-xs text-muted-foreground">Proteína</p>
                   </div>
                   <div className="text-center">
                     <div className="w-10 h-10 mx-auto rounded-full bg-amber-500/20 flex items-center justify-center mb-1">
                       <Wheat className="w-5 h-5 text-amber-500" />
                     </div>
-                    <p className="text-lg font-bold">{meal.recipe_carbs}g</p>
+                    <p className="text-lg font-bold">{Math.round(currentMacros.carbs * 10) / 10}g</p>
                     <p className="text-xs text-muted-foreground">Carbs</p>
                   </div>
                   <div className="text-center">
                     <div className="w-10 h-10 mx-auto rounded-full bg-yellow-500/20 flex items-center justify-center mb-1">
                       <span className="text-lg">🧈</span>
                     </div>
-                    <p className="text-lg font-bold">{meal.recipe_fat}g</p>
+                    <p className="text-lg font-bold">{Math.round(currentMacros.fat * 10) / 10}g</p>
                     <p className="text-xs text-muted-foreground">Gordura</p>
                   </div>
                 </div>

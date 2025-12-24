@@ -33,9 +33,9 @@ const sheetVariants = cva(
   {
     variants: {
       side: {
-        top: "left-2 right-2 top-2 border border-border/50 rounded-xl p-6 data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top max-w-lg mx-auto",
+        top: "left-3 right-3 top-3 border border-border/50 rounded-2xl p-6 data-[state=closed]:slide-out-to-top data-[state=open]:slide-in-from-top sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-full sm:max-w-md",
         bottom:
-          "left-2 right-2 bottom-2 border border-border/50 rounded-xl pt-0 px-0 pb-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom max-w-lg mx-auto",
+          "left-3 right-3 bottom-3 border border-border/50 rounded-2xl pt-0 px-0 pb-0 data-[state=closed]:slide-out-to-bottom data-[state=open]:slide-in-from-bottom sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-full sm:max-w-md",
         left: "inset-y-0 left-0 h-full w-3/4 border-r border-border/50 p-6 data-[state=closed]:slide-out-to-left data-[state=open]:slide-in-from-left sm:max-w-sm",
         right:
           "inset-y-0 right-0 h-full w-3/4 border-l border-border/50 p-6 data-[state=closed]:slide-out-to-right data-[state=open]:slide-in-from-right sm:max-w-sm",

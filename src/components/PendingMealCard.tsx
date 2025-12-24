@@ -26,6 +26,7 @@ import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
 import MealDetailSheet from "./MealDetailSheet";
+import MealSubstanceBadges from "./MealSubstanceBadges";
 
 interface PendingMealCardProps {
   meal: PendingMealData;
@@ -37,6 +38,11 @@ interface PendingMealCardProps {
   compact?: boolean;
   status?: MealStatus;
   minutesOverdue?: number;
+  userProfile?: {
+    intolerances?: string[] | null;
+    dietary_preference?: string | null;
+    excluded_ingredients?: string[] | null;
+  } | null;
 }
 
 // Status colors (fixed)
@@ -72,7 +78,8 @@ export default function PendingMealCard({
   onStreakRefresh,
   compact = false,
   status: externalStatus,
-  minutesOverdue: externalMinutesOverdue
+  minutesOverdue: externalMinutesOverdue,
+  userProfile
 }: PendingMealCardProps) {
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
@@ -345,6 +352,10 @@ export default function PendingMealCard({
               <h3 className="font-display font-semibold text-foreground truncate">
                 {meal.recipe_name}
               </h3>
+              <MealSubstanceBadges 
+                ingredients={meal.recipe_ingredients} 
+                userProfile={userProfile}
+              />
             </div>
           </div>
 

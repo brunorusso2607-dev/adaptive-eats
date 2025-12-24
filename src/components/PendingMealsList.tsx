@@ -3,6 +3,7 @@ import { Check, UtensilsCrossed, Clock, ChevronDown, Flame, Eye } from "lucide-r
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import MealDetailSheet from "./MealDetailSheet";
+import MealSubstanceBadges from "./MealSubstanceBadges";
 import { useMemo, useState } from "react";
 import {
   Collapsible,
@@ -13,9 +14,14 @@ import { cn } from "@/lib/utils";
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
+  userProfile?: {
+    intolerances?: string[] | null;
+    dietary_preference?: string | null;
+    excluded_ingredients?: string[] | null;
+  } | null;
 }
 
-export default function PendingMealsList({ onStreakRefresh }: PendingMealsListProps) {
+export default function PendingMealsList({ onStreakRefresh, userProfile }: PendingMealsListProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isRecipeSheetOpen, setIsRecipeSheetOpen] = useState(false);
   const {
@@ -149,6 +155,10 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
                   <h3 className="font-display font-semibold text-foreground truncate">
                     {nextMeal.recipe_name}
                   </h3>
+                  <MealSubstanceBadges 
+                    ingredients={nextMeal.recipe_ingredients} 
+                    userProfile={userProfile}
+                  />
                 </div>
               </div>
 
@@ -180,6 +190,7 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
                 onSkip={skipMeal}
                 onRefetch={refetch}
                 onStreakRefresh={onStreakRefresh}
+                userProfile={userProfile}
                 compact
               />
               </div>
@@ -231,6 +242,7 @@ export default function PendingMealsList({ onStreakRefresh }: PendingMealsListPr
                   onStreakRefresh={onStreakRefresh}
                   status={status}
                   minutesOverdue={minutesOverdue}
+                  userProfile={userProfile}
                 />
               );
             })}

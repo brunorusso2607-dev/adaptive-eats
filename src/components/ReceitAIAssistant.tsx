@@ -497,23 +497,39 @@ export default function ReceitAIAssistant() {
                         (conv.title?.toLowerCase().includes(historySearch.toLowerCase()))
                       )
                       .map((conv) => (
-                        <DropdownMenuItem
+                        <div
                           key={conv.id}
-                          onClick={() => handleLoadConversation(conv.id)}
-                          className="flex flex-col items-start gap-0.5"
+                          className="flex items-center justify-between px-2 py-1.5 hover:bg-accent rounded-sm group"
                         >
-                          <span className="text-sm truncate w-full">
-                            {conv.title || "Conversa sem título"}
-                          </span>
-                          <span className="text-[10px] text-muted-foreground">
-                            {new Date(conv.updated_at).toLocaleDateString("pt-BR", {
-                              day: "2-digit",
-                              month: "short",
-                              hour: "2-digit",
-                              minute: "2-digit"
-                            })}
-                          </span>
-                        </DropdownMenuItem>
+                          <button
+                            onClick={() => handleLoadConversation(conv.id)}
+                            className="flex flex-col items-start gap-0.5 flex-1 text-left min-w-0"
+                          >
+                            <span className="text-sm truncate w-full">
+                              {conv.title || "Conversa sem título"}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(conv.updated_at).toLocaleDateString("pt-BR", {
+                                day: "2-digit",
+                                month: "short",
+                                hour: "2-digit",
+                                minute: "2-digit"
+                              })}
+                            </span>
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (confirm("Excluir esta conversa?")) {
+                                deleteConversation(conv.id);
+                              }
+                            }}
+                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-destructive/10 rounded transition-opacity"
+                            title="Excluir conversa"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                          </button>
+                        </div>
                       ))}
                     {conversations.filter(conv => 
                       !historySearch || 

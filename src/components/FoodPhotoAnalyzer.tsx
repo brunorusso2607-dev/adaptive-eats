@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check } from "lucide-react";
+import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import FridgeScanner from "./FridgeScanner";
@@ -1008,15 +1009,21 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
-              {/* Reset button */}
-              <Button
-                variant="outline"
-                onClick={resetAnalysis}
-                className="w-full"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Analisar Outra Foto
-              </Button>
+              {/* Feedback and Reset buttons */}
+              <div className="flex items-center justify-between">
+                <AnalysisFeedbackButton 
+                  analysisType="food" 
+                  analysisData={{ foodAnalysis, perfilAplicado, metaDiaria }} 
+                />
+                <Button
+                  variant="outline"
+                  onClick={resetAnalysis}
+                  size="sm"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Nova Análise
+                </Button>
+              </div>
             </div>
           )}
 
@@ -1153,15 +1160,21 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </CardContent>
               </Card>
 
-              {/* Reset button */}
-              <Button
-                variant="outline"
-                onClick={resetAnalysis}
-                className="w-full"
-              >
-                <RotateCcw className="w-4 h-4 mr-2" />
-                Verificar Outro Rótulo
-              </Button>
+              {/* Feedback and Reset buttons */}
+              <div className="flex items-center justify-between">
+                <AnalysisFeedbackButton 
+                  analysisType="label" 
+                  analysisData={{ labelAnalysis, perfilAplicado }} 
+                />
+                <Button
+                  variant="outline"
+                  onClick={resetAnalysis}
+                  size="sm"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Novo Rótulo
+                </Button>
+              </div>
             </div>
           )}
         </>

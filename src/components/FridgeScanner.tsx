@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert } from "lucide-react";
+import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -611,15 +612,21 @@ export default function FridgeScanner() {
           )}
         </Button>
 
-        {/* Back button */}
-        <Button
-          variant="outline"
-          onClick={resetAll}
-          className="w-full"
-        >
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Fotografar Novamente
-        </Button>
+        {/* Feedback and Back button */}
+        <div className="flex items-center justify-between">
+          <AnalysisFeedbackButton 
+            analysisType="fridge" 
+            analysisData={analysis} 
+          />
+          <Button
+            variant="outline"
+            onClick={resetAll}
+            size="sm"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Nova Análise
+          </Button>
+        </div>
       </div>
     );
   }

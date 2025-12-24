@@ -50,6 +50,42 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_analysis_feedback: {
+        Row: {
+          analysis_data: Json | null
+          analysis_type: string
+          created_at: string
+          description: string | null
+          feedback_type: string
+          id: string
+          image_reference: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          analysis_data?: Json | null
+          analysis_type: string
+          created_at?: string
+          description?: string | null
+          feedback_type: string
+          id?: string
+          image_reference?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          analysis_data?: Json | null
+          analysis_type?: string
+          created_at?: string
+          description?: string | null
+          feedback_type?: string
+          id?: string
+          image_reference?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_error_logs: {
         Row: {
           created_at: string

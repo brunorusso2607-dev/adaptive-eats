@@ -191,6 +191,50 @@ serve(async (req) => {
       dailyCalorieGoal 
     });
 
+    // ========== FETCH SAVED CORRECTIONS FOR AUTO-IMPROVEMENT ==========
+    const { data: savedCorrections, error: correctionsError } = await supabaseClient
+      .from("food_corrections")
+      .select("original_item, corrected_item, corrected_calorias, corrected_proteinas, corrected_carboidratos, corrected_gorduras, corrected_porcao, cuisine_origin")
+      .order("created_at", { ascending: false })
+      .limit(500);
+
+    if (correctionsError) {
+      logStep("Corrections fetch error (non-blocking)", { error: correctionsError.message });
+    }
+
+    // Build correction map for quick lookups (case-insensitive)
+    const correctionMap = new Map<string, {
+      correctedItem: string;
+      calorias: number | null;
+      proteinas: number | null;
+      carboidratos: number | null;
+      gorduras: number | null;
+      porcao: string | null;
+      culinaria: string | null;
+    }>();
+
+    if (savedCorrections && savedCorrections.length > 0) {
+      for (const correction of savedCorrections) {
+        const key = correction.original_item.toLowerCase().trim();
+        // Only store the first (most recent) correction for each item
+        if (!correctionMap.has(key)) {
+          correctionMap.set(key, {
+            correctedItem: correction.corrected_item,
+            calorias: correction.corrected_calorias,
+            proteinas: correction.corrected_proteinas,
+            carboidratos: correction.corrected_carboidratos,
+            gorduras: correction.corrected_gorduras,
+            porcao: correction.corrected_porcao,
+            culinaria: correction.cuisine_origin
+          });
+        }
+      }
+      logStep("Corrections loaded for auto-improvement", { 
+        totalCorrections: savedCorrections.length,
+        uniqueItems: correctionMap.size 
+      });
+    }
+
     const { imageBase64 } = await req.json();
     if (!imageBase64) throw new Error("No image provided");
     logStep("Image received", { imageSize: imageBase64.length });
@@ -424,6 +468,74 @@ RULES:
       analysis.alertas_intolerancia = [];
     }
 
+    // ========== APPLY SAVED CORRECTIONS AUTOMATICALLY ==========
+    let correctionsApplied = 0;
+    const appliedCorrectionsList: string[] = [];
+
+    if (analysis.alimentos && correctionMap.size > 0) {
+      for (let i = 0; i < analysis.alimentos.length; i++) {
+        const food = analysis.alimentos[i];
+        const foodKey = food.item?.toLowerCase().trim() || "";
+        
+        // Check if we have a correction for this food item
+        const correction = correctionMap.get(foodKey);
+        if (correction) {
+          logStep("Applying saved correction", { 
+            original: food.item, 
+            corrected: correction.correctedItem 
+          });
+          
+          // Update the food item with corrected values
+          analysis.alimentos[i] = {
+            ...food,
+            item: correction.correctedItem,
+            item_original_ai: food.item, // Keep the original AI identification
+            correcao_aplicada: true,
+            porcao_estimada: correction.porcao || food.porcao_estimada,
+            calorias: correction.calorias ?? food.calorias,
+            macros: {
+              proteinas: correction.proteinas ?? food.macros?.proteinas ?? 0,
+              carboidratos: correction.carboidratos ?? food.macros?.carboidratos ?? 0,
+              gorduras: correction.gorduras ?? food.macros?.gorduras ?? 0
+            },
+            culinaria_origem: correction.culinaria || food.culinaria_origem,
+            confianca_identificacao: "alta" // Corrections are trusted
+          };
+          
+          correctionsApplied++;
+          appliedCorrectionsList.push(`${food.item} → ${correction.correctedItem}`);
+        }
+      }
+      
+      // Recalculate totals if corrections were applied
+      if (correctionsApplied > 0) {
+        let totalCalorias = 0;
+        let totalProteinas = 0;
+        let totalCarboidratos = 0;
+        let totalGorduras = 0;
+        
+        for (const food of analysis.alimentos) {
+          totalCalorias += food.calorias || 0;
+          totalProteinas += food.macros?.proteinas || 0;
+          totalCarboidratos += food.macros?.carboidratos || 0;
+          totalGorduras += food.macros?.gorduras || 0;
+        }
+        
+        analysis.total_geral = {
+          calorias_totais: Math.round(totalCalorias),
+          proteinas_totais: Math.round(totalProteinas * 10) / 10,
+          carboidratos_totais: Math.round(totalCarboidratos * 10) / 10,
+          gorduras_totais: Math.round(totalGorduras * 10) / 10
+        };
+        
+        logStep("Totals recalculated after corrections", { 
+          correctionsApplied, 
+          appliedCorrectionsList,
+          newTotals: analysis.total_geral 
+        });
+      }
+    }
+
     // Check for error response from AI (not food detected)
     if (analysis.erro) {
       logStep("Not food detected", { message: analysis.erro });
@@ -636,14 +748,20 @@ RULES:
       alertCount: analysis.alertas_intolerancia?.length || 0,
       personalizedAlerts: alertasPersonalizados.length,
       hasMetaDiaria: !!metaDiaria,
-      profileApplied: true
+      profileApplied: true,
+      correctionsApplied
     });
 
     return new Response(JSON.stringify({
       success: true,
       analysis,
       meta_diaria: metaDiaria,
-      perfil_usuario_aplicado: perfilUsuarioAplicado
+      perfil_usuario_aplicado: perfilUsuarioAplicado,
+      correcoes_aplicadas: correctionsApplied > 0 ? {
+        quantidade: correctionsApplied,
+        itens: appliedCorrectionsList,
+        mensagem: `${correctionsApplied} correção(ões) aplicada(s) automaticamente baseado em feedbacks anteriores`
+      } : null
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

@@ -8,6 +8,7 @@ import { Pencil, Check, X, Flame, Beef, Wheat, Droplets, AlertCircle, HelpCircle
 type FoodItem = {
   item: string;
   item_original_language?: string;
+  item_original_ai?: string; // Original item name before correction was applied
   porcao_estimada: string;
   calorias: number;
   macros: {
@@ -23,6 +24,8 @@ type FoodItem = {
   metodo_preparo_provavel?: string;
   // Track if item was manually corrected
   corrigido_manualmente?: boolean;
+  // Track if auto-correction was applied
+  correcao_aplicada?: boolean;
 };
 
 interface FoodItemEditorProps {
@@ -178,6 +181,8 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
           <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
             food.corrigido_manualmente 
               ? "bg-purple-500"
+              : food.correcao_aplicada
+              ? "bg-teal-500"
               : food.confianca_identificacao === "baixa" 
               ? "bg-yellow-500" 
               : food.confianca_identificacao === "media"
@@ -192,13 +197,23 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
                   editado
                 </span>
               )}
+              {food.correcao_aplicada && !food.corrigido_manualmente && (
+                <span className="text-xs px-1.5 py-0.5 rounded bg-teal-500/20 text-teal-600">
+                  ✓ corrigido
+                </span>
+              )}
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs text-muted-foreground">{food.porcao_estimada}</p>
               {food.culinaria_origem && (
                 <span className="text-xs text-primary/70">• {food.culinaria_origem}</span>
               )}
-              {!food.corrigido_manualmente && food.confianca_identificacao && food.confianca_identificacao !== "alta" && (
+              {food.item_original_ai && food.item_original_ai !== food.item && (
+                <span className="text-xs text-muted-foreground italic">
+                  (IA: {food.item_original_ai})
+                </span>
+              )}
+              {!food.corrigido_manualmente && !food.correcao_aplicada && food.confianca_identificacao && food.confianca_identificacao !== "alta" && (
                 <span className={`text-xs ${
                   food.confianca_identificacao === "baixa" ? "text-yellow-600" : "text-blue-600"
                 }`}>

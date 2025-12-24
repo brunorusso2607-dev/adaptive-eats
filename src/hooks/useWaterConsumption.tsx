@@ -25,7 +25,10 @@ const DEFAULT_SETTINGS: WaterSettings = {
   reminder_end_hour: 22,
 };
 
-export function useWaterConsumption() {
+// Callback type for achievement check
+type AchievementCheckCallback = () => void;
+
+export function useWaterConsumption(onAchievementCheck?: AchievementCheckCallback) {
   const [settings, setSettings] = useState<WaterSettings>(DEFAULT_SETTINGS);
   const [todayConsumption, setTodayConsumption] = useState<WaterConsumption[]>([]);
   const [totalToday, setTotalToday] = useState(0);
@@ -121,6 +124,11 @@ export function useWaterConsumption() {
           title: "💧 Água registrada",
           description: `+${amount_ml}ml adicionados`,
         });
+      }
+
+      // Check for achievements after adding water
+      if (onAchievementCheck) {
+        setTimeout(() => onAchievementCheck(), 500);
       }
 
       return true;

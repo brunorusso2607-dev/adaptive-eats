@@ -11,6 +11,7 @@ import FridgeScanner from "./FridgeScanner";
 
 type FoodItem = {
   item: string;
+  item_original_language?: string;
   porcao_estimada: string;
   calorias: number;
   macros: {
@@ -18,6 +19,12 @@ type FoodItem = {
     carboidratos: number;
     gorduras: number;
   };
+  confianca_identificacao?: "alta" | "media" | "baixa";
+  alternativas_possiveis?: string[];
+  culinaria_origem?: string;
+  ingredientes_visiveis?: string[];
+  ingredientes_provaveis_ocultos?: string[];
+  metodo_preparo_provavel?: string;
 };
 
 type IntoleranceAlert = {
@@ -36,6 +43,13 @@ type MetaDiaria = {
   mensagem: string;
 };
 
+type PratoIdentificado = {
+  nome?: string;
+  culinaria?: string;
+  descricao_curta?: string;
+  confianca?: "alta" | "media" | "baixa";
+};
+
 type FoodAnalysis = {
   alimentos: FoodItem[];
   total_geral: {
@@ -46,6 +60,8 @@ type FoodAnalysis = {
   };
   observacoes: string;
   alertas_intolerancia?: IntoleranceAlert[];
+  prato_identificado?: PratoIdentificado;
+  perguntas_seguranca?: string[];
 };
 
 type PersonalizedAlert = {
@@ -972,31 +988,198 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
-              {/* Individual items */}
+              {/* Dish identification - show when confidence is not high */}
+              {foodAnalysis.prato_identificado && (
+                <Card className={`glass-card border ${
+                  foodAnalysis.prato_identificado.confianca === "baixa" 
+                    ? "border-yellow-500/30" 
+                    : foodAnalysis.prato_identificado.confianca === "media"
+                    ? "border-blue-500/30"
+                    : "border-green-500/30"
+                }`}>
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                        foodAnalysis.prato_identificado.confianca === "baixa" 
+                          ? "bg-yellow-500/20" 
+                          : foodAnalysis.prato_identificado.confianca === "media"
+                          ? "bg-blue-500/20"
+                          : "bg-green-500/20"
+                      }`}>
+                        {foodAnalysis.prato_identificado.confianca === "baixa" ? (
+                          <HelpCircle className="w-5 h-5 text-yellow-500" />
+                        ) : foodAnalysis.prato_identificado.confianca === "media" ? (
+                          <AlertCircle className="w-5 h-5 text-blue-500" />
+                        ) : (
+                          <Check className="w-5 h-5 text-green-500" />
+                        )}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-foreground">{foodAnalysis.prato_identificado.nome || "Prato não identificado"}</p>
+                          {foodAnalysis.prato_identificado.culinaria && (
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                              {foodAnalysis.prato_identificado.culinaria}
+                            </span>
+                          )}
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            foodAnalysis.prato_identificado.confianca === "baixa" 
+                              ? "bg-yellow-500/20 text-yellow-600" 
+                              : foodAnalysis.prato_identificado.confianca === "media"
+                              ? "bg-blue-500/20 text-blue-600"
+                              : "bg-green-500/20 text-green-600"
+                          }`}>
+                            Confiança {foodAnalysis.prato_identificado.confianca}
+                          </span>
+                        </div>
+                        {foodAnalysis.prato_identificado.descricao_curta && (
+                          <p className="text-xs text-muted-foreground mt-1">{foodAnalysis.prato_identificado.descricao_curta}</p>
+                        )}
+                        {foodAnalysis.prato_identificado.confianca !== "alta" && (
+                          <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3" />
+                            A identificação pode não estar 100% correta. Verifique os itens abaixo.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Individual items with confidence levels */}
               <Card className="glass-card">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base">Alimentos Identificados</CardTitle>
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span>Alimentos Identificados</span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Toque para detalhes
+                    </span>
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-2">
                   {foodAnalysis.alimentos.map((food, index) => (
-                    <div
+                    <details
                       key={index}
-                      className="flex items-center justify-between p-3 rounded-lg bg-muted/50"
+                      className="group"
                     >
-                      <div>
-                        <p className="font-medium text-foreground">{food.item}</p>
-                        <p className="text-xs text-muted-foreground">{food.porcao_estimada}</p>
+                      <summary className="flex items-center justify-between p-3 rounded-lg bg-muted/50 cursor-pointer hover:bg-muted/70 transition-colors list-none">
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
+                            food.confianca_identificacao === "baixa" 
+                              ? "bg-yellow-500" 
+                              : food.confianca_identificacao === "media"
+                              ? "bg-blue-500"
+                              : "bg-green-500"
+                          }`} />
+                          <div>
+                            <p className="font-medium text-foreground">{food.item}</p>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <p className="text-xs text-muted-foreground">{food.porcao_estimada}</p>
+                              {food.culinaria_origem && (
+                                <span className="text-xs text-primary/70">• {food.culinaria_origem}</span>
+                              )}
+                              {food.confianca_identificacao && food.confianca_identificacao !== "alta" && (
+                                <span className={`text-xs ${
+                                  food.confianca_identificacao === "baixa" ? "text-yellow-600" : "text-blue-600"
+                                }`}>
+                                  • {food.confianca_identificacao}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-semibold text-foreground">{food.calorias} kcal</p>
+                          <p className="text-xs text-muted-foreground">
+                            P:{food.macros.proteinas}g C:{food.macros.carboidratos}g G:{food.macros.gorduras}g
+                          </p>
+                        </div>
+                      </summary>
+                      
+                      {/* Expanded details */}
+                      <div className="mt-2 p-3 rounded-lg bg-muted/30 border border-muted space-y-2 text-sm">
+                        {food.item_original_language && food.item_original_language !== food.item && (
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Nome original:</span> {food.item_original_language}
+                          </p>
+                        )}
+                        
+                        {food.metodo_preparo_provavel && (
+                          <p className="text-muted-foreground">
+                            <span className="font-medium">Preparo:</span> {food.metodo_preparo_provavel}
+                          </p>
+                        )}
+                        
+                        {food.ingredientes_visiveis && food.ingredientes_visiveis.length > 0 && (
+                          <div>
+                            <p className="font-medium text-foreground mb-1">Ingredientes visíveis:</p>
+                            <div className="flex flex-wrap gap-1">
+                              {food.ingredientes_visiveis.map((ing, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-green-500/10 text-green-600">
+                                  {ing}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {food.ingredientes_provaveis_ocultos && food.ingredientes_provaveis_ocultos.length > 0 && (
+                          <div>
+                            <p className="font-medium text-foreground mb-1 flex items-center gap-1">
+                              <AlertCircle className="w-3 h-3 text-yellow-500" />
+                              Ingredientes prováveis (não visíveis):
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {food.ingredientes_provaveis_ocultos.map((ing, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/10 text-yellow-600">
+                                  {ing}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                        
+                        {food.alternativas_possiveis && food.alternativas_possiveis.length > 0 && (
+                          <div className="pt-2 border-t border-muted">
+                            <p className="font-medium text-foreground mb-1 flex items-center gap-1">
+                              <HelpCircle className="w-3 h-3 text-blue-500" />
+                              Também pode ser:
+                            </p>
+                            <div className="flex flex-wrap gap-1">
+                              {food.alternativas_possiveis.map((alt, i) => (
+                                <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-600">
+                                  {alt}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        )}
                       </div>
-                      <div className="text-right">
-                        <p className="font-semibold text-foreground">{food.calorias} kcal</p>
-                        <p className="text-xs text-muted-foreground">
-                          P:{food.macros.proteinas}g C:{food.macros.carboidratos}g G:{food.macros.gorduras}g
-                        </p>
-                      </div>
-                    </div>
+                    </details>
                   ))}
                 </CardContent>
               </Card>
+
+              {/* Safety questions */}
+              {foodAnalysis.perguntas_seguranca && foodAnalysis.perguntas_seguranca.length > 0 && (
+                <Card className="glass-card border-blue-500/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-blue-600">
+                      <HelpCircle className="w-5 h-5" />
+                      Pergunte antes de comer
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {foodAnalysis.perguntas_seguranca.map((pergunta, index) => (
+                      <div key={index} className="p-3 rounded-lg bg-blue-500/10 border border-blue-500/20 text-sm text-foreground flex items-start gap-2">
+                        <span className="text-blue-500 font-bold">{index + 1}.</span>
+                        <span>{pergunta}</span>
+                      </div>
+                    ))}
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Notes */}
               {foodAnalysis.observacoes && (

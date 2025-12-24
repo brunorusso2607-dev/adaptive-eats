@@ -1,9 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Bot, User, Send, Loader2, Sparkles, Trash2 } from "lucide-react";
+import { Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -18,8 +18,81 @@ export default function ReceitAIAssistant() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [isListening, setIsListening] = useState(false);
   const scrollAreaRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const recognitionRef = useRef<any>(null);
+
+  // Initialize Speech Recognition
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+      if (SpeechRecognition) {
+        const recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'pt-BR';
+
+        recognition.onresult = (event: any) => {
+          let finalTranscript = '';
+          let interimTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; i++) {
+            const transcript = event.results[i][0].transcript;
+            if (event.results[i].isFinal) {
+              finalTranscript += transcript;
+            } else {
+              interimTranscript += transcript;
+            }
+          }
+
+          if (finalTranscript) {
+            setInput(prev => prev + finalTranscript);
+          } else if (interimTranscript) {
+            setInput(interimTranscript);
+          }
+        };
+
+        recognition.onend = () => {
+          setIsListening(false);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsListening(false);
+          if (event.error === 'not-allowed') {
+            toast.error("Permissão de microfone negada");
+          } else if (event.error !== 'aborted') {
+            toast.error("Erro no reconhecimento de voz");
+          }
+        };
+
+        recognitionRef.current = recognition;
+      }
+    }
+
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.abort();
+      }
+    };
+  }, []);
+
+  const toggleListening = useCallback(() => {
+    if (!recognitionRef.current) {
+      toast.error("Reconhecimento de voz não suportado neste navegador");
+      return;
+    }
+
+    if (isListening) {
+      recognitionRef.current.stop();
+      setIsListening(false);
+    } else {
+      setInput("");
+      recognitionRef.current.start();
+      setIsListening(true);
+    }
+  }, [isListening]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -106,17 +179,13 @@ export default function ReceitAIAssistant() {
   };
 
   const formatContent = (content: string) => {
-    // Simple markdown-like formatting
     return content
       .split('\n')
       .map((line, i) => {
-        // Bold text
         line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-        // Bullet points
         if (line.startsWith('• ') || line.startsWith('- ')) {
           return `<li key="${i}" class="ml-4">${line.substring(2)}</li>`;
         }
-        // Code blocks
         line = line.replace(/`(.*?)`/g, '<code class="bg-muted px-1 rounded text-xs">$1</code>');
         return line;
       })
@@ -153,7 +222,6 @@ export default function ReceitAIAssistant() {
                   message.role === "user" ? "flex-row-reverse" : "flex-row"
                 )}
               >
-                {/* Avatar */}
                 <div className={cn(
                   "w-8 h-8 rounded-lg flex items-center justify-center shrink-0",
                   message.role === "user" 
@@ -167,7 +235,6 @@ export default function ReceitAIAssistant() {
                   )}
                 </div>
 
-                {/* Message Bubble */}
                 <div className={cn(
                   "rounded-2xl px-4 py-3 max-w-[85%]",
                   message.role === "user"
@@ -191,7 +258,6 @@ export default function ReceitAIAssistant() {
               </div>
             ))}
 
-            {/* Loading Indicator */}
             {isLoading && (
               <div className="flex gap-3">
                 <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
@@ -208,17 +274,26 @@ export default function ReceitAIAssistant() {
           </div>
         </ScrollArea>
 
-        {/* Input Area */}
+        {/* Input Area with Microphone */}
         <div className="flex gap-2">
           <Input
             ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={handleKeyPress}
-            placeholder="Pergunte sobre o ReceitAI..."
+            placeholder={isListening ? "Ouvindo..." : "Pergunte sobre o ReceitAI..."}
             disabled={isLoading}
-            className="flex-1"
+            className={cn("flex-1", isListening && "border-primary animate-pulse")}
           />
+          <Button 
+            onClick={toggleListening}
+            variant={isListening ? "destructive" : "outline"}
+            size="icon"
+            disabled={isLoading}
+            title={isListening ? "Parar de ouvir" : "Falar"}
+          >
+            {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </Button>
           <Button 
             onClick={sendMessage} 
             disabled={isLoading || !input.trim()}

@@ -140,11 +140,13 @@ export function useNextMeal() {
         return;
       }
 
-      // Buscar plano ativo do mês atual
+      // Buscar plano ativo
       const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id")
+        .select("id, start_date")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -160,21 +162,36 @@ export function useNextMeal() {
       }
 
       setHasMealPlan(true);
-      const activePlanId = plans[0].id;
+      const activePlan = plans[0];
+      const activePlanId = activePlan.id;
 
-      // Buscar refeições do dia atual
-      // O banco usa: 0 = Segunda, 1 = Terça, ..., 6 = Domingo
-      // getDay() retorna: 0 = Domingo, 1 = Segunda, ..., 6 = Sábado
-      const jsDay = today.getDay(); // 0 = domingo, 6 = sábado
-      const dayOfWeek = jsDay === 0 ? 6 : jsDay - 1; // Converte para 0=Segunda, 6=Domingo
+      // Calcular day_of_week baseado na data de início do plano
+      // O banco usa day_of_week como dias desde o início do plano: 0=primeiro dia, 1=segundo dia, etc.
+      const planStartDate = new Date(activePlan.start_date);
+      planStartDate.setHours(0, 0, 0, 0);
       
-      console.log("[useNextMeal] today:", today.toISOString(), "jsDay:", jsDay, "dayOfWeek:", dayOfWeek, "planId:", activePlanId);
+      const diffTime = today.getTime() - planStartDate.getTime();
+      const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Calcular qual semana e dia do plano
+      const weekNumber = Math.floor(daysSinceStart / 7) + 1;
+      const dayOfWeek = daysSinceStart % 7;
+      
+      // Se hoje é antes do início do plano, não há refeição
+      if (daysSinceStart < 0) {
+        setNextMeal(null);
+        setIsLoading(false);
+        return;
+      }
+      
+      console.log("[useNextMeal] today:", today.toISOString(), "planStart:", planStartDate.toISOString(), "daysSinceStart:", daysSinceStart, "dayOfWeek:", dayOfWeek, "weekNumber:", weekNumber, "planId:", activePlanId);
       
       const { data: meals, error: mealsError } = await supabase
         .from("meal_plan_items")
         .select("*")
         .eq("meal_plan_id", activePlanId)
         .eq("day_of_week", dayOfWeek)
+        .eq("week_number", weekNumber)
         .order("meal_type", { ascending: true });
 
       if (mealsError) throw mealsError;

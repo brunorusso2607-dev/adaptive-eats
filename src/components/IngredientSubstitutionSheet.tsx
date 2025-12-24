@@ -94,25 +94,25 @@ export default function IngredientSubstitutionSheet({
     }
   };
 
+  if (!originalIngredient) return null;
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
-        <SheetHeader className="pb-4">
+      <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl flex flex-col">
+        <SheetHeader className="pb-4 shrink-0">
           <SheetTitle className="text-left">Substituir Ingrediente</SheetTitle>
           <SheetDescription className="text-left">
-            {originalIngredient && (
-              <span className="flex items-center gap-2">
-                <Badge variant="secondary">{originalIngredient.quantity} {originalIngredient.unit}</Badge>
-                <span className="font-medium">{originalIngredient.item}</span>
-                <ArrowRight className="w-4 h-4 text-muted-foreground" />
-                <span className="text-muted-foreground">novo ingrediente</span>
-              </span>
-            )}
+            <span className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary">{originalIngredient.quantity} {originalIngredient.unit}</Badge>
+              <span className="font-medium">{originalIngredient.item}</span>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              <span className="text-muted-foreground">novo ingrediente</span>
+            </span>
           </SheetDescription>
         </SheetHeader>
 
         {/* Search Input */}
-        <div className="relative mb-4">
+        <div className="relative mb-4 shrink-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
             placeholder="Buscar ingrediente substituto..."
@@ -124,7 +124,7 @@ export default function IngredientSubstitutionSheet({
         </div>
 
         {/* Results */}
-        <div className="space-y-3 overflow-y-auto max-h-[calc(85vh-200px)] pb-4">
+        <div className="space-y-3 overflow-y-auto flex-1 pb-4">
           {isLoading && (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-primary" />

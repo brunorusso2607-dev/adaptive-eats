@@ -701,11 +701,14 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               Peso Atual (kg)
             </Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="75"
               value={data.weight_current || ""}
               onChange={(e) => {
-                const newWeight = e.target.value ? parseFloat(e.target.value) : null;
+                // Remove tudo exceto números e limita a 3 dígitos
+                let digits = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
+                const newWeight = digits ? parseFloat(digits) : null;
                 setData({ 
                   ...data, 
                   weight_current: newWeight,
@@ -726,10 +729,15 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
                 Peso Desejado (kg)
               </Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 placeholder="70"
                 value={data.weight_goal || ""}
-                onChange={(e) => setData({ ...data, weight_goal: e.target.value ? parseFloat(e.target.value) : null })}
+                onChange={(e) => {
+                  // Remove tudo exceto números e limita a 3 dígitos
+                  let digits = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
+                  setData({ ...data, weight_goal: digits ? parseFloat(digits) : null });
+                }}
                 className={cn(
                   "h-12 transition-colors",
                   hasDangerRisk && "border-red-500 focus-visible:ring-red-500"
@@ -878,10 +886,15 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               Idade
             </Label>
             <Input
-              type="number"
+              type="text"
+              inputMode="numeric"
               placeholder="30"
               value={data.age || ""}
-              onChange={(e) => setData({ ...data, age: e.target.value ? parseInt(e.target.value) : null })}
+              onChange={(e) => {
+                // Remove tudo exceto números e limita a 3 dígitos
+                let digits = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
+                setData({ ...data, age: digits ? parseInt(digits) : null });
+              }}
               className="h-12"
             />
           </div>

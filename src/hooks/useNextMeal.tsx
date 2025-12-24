@@ -63,18 +63,18 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-// VERSÃO 3 - Mapa simples e direto para ordenação
-// cafe_manha SEMPRE primeiro (índice 0), lanche SEMPRE depois (índice 2)
+// Índices fixos para ordenação (independente do banco)
+const MEAL_SORT_PRIORITY: Record<string, number> = {
+  "cafe_manha": 0,
+  "almoco": 1,
+  "lanche": 2,
+  "lanche_tarde": 2,
+  "jantar": 3,
+  "ceia": 4,
+};
+
 function getMealSortIndex(mealType: string): number {
-  switch (mealType) {
-    case "cafe_manha": return 0;
-    case "almoco": return 1;
-    case "lanche": return 2;
-    case "lanche_tarde": return 2;
-    case "jantar": return 3;
-    case "ceia": return 4;
-    default: return 999;
-  }
+  return MEAL_SORT_PRIORITY[mealType] ?? 999;
 }
 
 function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
@@ -219,13 +219,13 @@ export function useNextMeal() {
       
       console.log("[useNextMeal] today:", today.toISOString(), "planStart:", planStartDate.toISOString(), "daysSinceStart:", daysSinceStart, "dayOfWeek:", dayOfWeek, "weekNumber:", weekNumber, "planId:", activePlanId);
       
+      // Buscar refeições sem ordenação do SQL - ordenamos no JavaScript
       const { data: meals, error: mealsError } = await supabase
         .from("meal_plan_items")
         .select("*")
         .eq("meal_plan_id", activePlanId)
         .eq("day_of_week", dayOfWeek)
-        .eq("week_number", weekNumber)
-        .order("meal_type", { ascending: true });
+        .eq("week_number", weekNumber);
 
       if (mealsError) throw mealsError;
 

@@ -106,7 +106,7 @@ export function WaterSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto rounded-t-xl overflow-y-auto">
+      <SheetContent side="bottom" className="h-auto max-h-[80vh] overflow-y-auto p-6">
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2">
             <Droplets className="h-5 w-5 text-blue-500" />

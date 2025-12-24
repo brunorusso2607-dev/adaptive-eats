@@ -47,7 +47,7 @@ export default function PlanDetailsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="rounded-t-3xl max-h-[85vh]">
+      <SheetContent side="bottom" className="max-h-[80vh] p-6">
         <SheetHeader className="text-center pb-4">
           <div className="mx-auto w-14 h-14 gradient-xp rounded-2xl flex items-center justify-center mb-3 shadow-[var(--shadow-glow-xp)]">
             <Crown className="w-7 h-7 text-white" />

@@ -162,7 +162,7 @@ export function NotificationSettingsSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto max-h-[85vh] overflow-y-auto">
+      <SheetContent side="bottom" className="h-auto max-h-[80vh] overflow-y-auto p-6">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />

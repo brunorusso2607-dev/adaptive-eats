@@ -453,45 +453,98 @@ export type Database = {
       }
       foods: {
         Row: {
+          aliases: string[] | null
           calories_per_100g: number
           carbs_per_100g: number
           category: string | null
+          confidence: number | null
           created_at: string
+          cuisine_origin: string | null
           fat_per_100g: number
           fiber_per_100g: number | null
           id: string
           name: string
           name_normalized: string
           protein_per_100g: number
+          search_count: number | null
           sodium_per_100g: number | null
+          source: string | null
+          verified: boolean | null
         }
         Insert: {
+          aliases?: string[] | null
           calories_per_100g?: number
           carbs_per_100g?: number
           category?: string | null
+          confidence?: number | null
           created_at?: string
+          cuisine_origin?: string | null
           fat_per_100g?: number
           fiber_per_100g?: number | null
           id?: string
           name: string
           name_normalized: string
           protein_per_100g?: number
+          search_count?: number | null
           sodium_per_100g?: number | null
+          source?: string | null
+          verified?: boolean | null
         }
         Update: {
+          aliases?: string[] | null
           calories_per_100g?: number
           carbs_per_100g?: number
           category?: string | null
+          confidence?: number | null
           created_at?: string
+          cuisine_origin?: string | null
           fat_per_100g?: number
           fiber_per_100g?: number | null
           id?: string
           name?: string
           name_normalized?: string
           protein_per_100g?: number
+          search_count?: number | null
           sodium_per_100g?: number | null
+          source?: string | null
+          verified?: boolean | null
         }
         Relationships: []
+      }
+      ingredient_aliases: {
+        Row: {
+          alias: string
+          created_at: string
+          food_id: string | null
+          id: string
+          language: string | null
+          region: string | null
+        }
+        Insert: {
+          alias: string
+          created_at?: string
+          food_id?: string | null
+          id?: string
+          language?: string | null
+          region?: string | null
+        }
+        Update: {
+          alias?: string
+          created_at?: string
+          food_id?: string | null
+          id?: string
+          language?: string | null
+          region?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ingredient_aliases_food_id_fkey"
+            columns: ["food_id"]
+            isOneToOne: false
+            referencedRelation: "foods"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       intolerance_mappings: {
         Row: {
@@ -1394,6 +1447,10 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      normalize_ingredient_name: {
+        Args: { input_text: string }
+        Returns: string
       }
     }
     Enums: {

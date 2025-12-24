@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Play, RotateCcw, Copy, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ReceitAIAssistant from "@/components/ReceitAIAssistant";
 
 type FunctionType = "generate-recipe" | "generate-meal-plan" | "analyze-food-photo" | "analyze-fridge-photo";
 
@@ -192,6 +193,9 @@ export default function AdminPromptSimulator() {
           </CardContent>
         </Card>
       )}
+
+      {/* ReceitAI Assistant */}
+      <ReceitAIAssistant />
     </div>
   );
 }

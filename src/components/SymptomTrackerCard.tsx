@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { SymptomIcon } from "./SymptomIcon";
+import { SymptomCorrelationChart } from "./SymptomCorrelationChart";
 import { cn } from "@/lib/utils";
 
 interface SymptomTrackerCardProps {
@@ -146,6 +147,9 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
             </div>
           </div>
         )}
+
+        {/* Correlation Chart */}
+        <SymptomCorrelationChart />
 
         {/* Empty state */}
         {recentLogs.length === 0 && pendingCount === 0 && (

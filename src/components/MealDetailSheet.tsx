@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   Sheet,
   SheetContent,
@@ -5,13 +6,17 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Flame, Beef, Wheat, Users, CheckCircle } from "lucide-react";
+import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw } from "lucide-react";
 import type { NextMealData } from "@/hooks/useNextMeal";
+import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
+import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
+import { toast } from "sonner";
 
 interface MealDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   meal: NextMealData | null;
+  onUpdateIngredients?: (mealId: string, ingredients: Ingredient[]) => void;
 }
 
 interface Ingredient {
@@ -40,18 +45,47 @@ export default function MealDetailSheet({
   open,
   onOpenChange,
   meal,
+  onUpdateIngredients,
 }: MealDetailSheetProps) {
+  const [substitutionOpen, setSubstitutionOpen] = useState(false);
+  const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
+
   if (!meal) return null;
 
   const rawIngredients = (meal.recipe_ingredients || []) as unknown as RawIngredient[];
-  const ingredients: Ingredient[] = rawIngredients
+  const parsedIngredients: Ingredient[] = rawIngredients
     .filter((i) => i && (typeof i.item === 'string' || typeof i.name === 'string'))
     .map((i) => ({ 
       item: i.item || i.name || '', 
       quantity: i.quantity || '',
       unit: i.unit || ''
     }));
+  
+  // Use local state if modified, otherwise use parsed
+  const ingredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
   const instructions = (meal.recipe_instructions || []) as unknown as string[];
+
+  const handleOpenSubstitution = (ingredient: Ingredient) => {
+    setSelectedIngredient({
+      item: ingredient.item,
+      quantity: ingredient.quantity,
+      unit: ingredient.unit || ''
+    });
+    setSubstitutionOpen(true);
+  };
+
+  const handleSubstitute = (newIngredient: IngredientResult, originalItem: string) => {
+    const currentIngredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
+    const updatedIngredients = currentIngredients.map((ing) =>
+      ing.item === originalItem
+        ? { ...ing, item: newIngredient.name }
+        : ing
+    );
+    setLocalIngredients(updatedIngredients);
+    onUpdateIngredients?.(meal.id, updatedIngredients);
+    toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+  };
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -124,21 +158,37 @@ export default function MealDetailSheet({
               <CardContent className="p-4">
                 <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
                   🥗 Ingredientes
+                  <span className="text-xs text-muted-foreground font-normal ml-auto">
+                    Toque para substituir
+                  </span>
                 </h3>
                 <ul className="space-y-2">
                   {ingredients.map((ingredient, index) => (
-                    <li key={index} className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors">
+                    <li 
+                      key={index} 
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer group"
+                      onClick={() => handleOpenSubstitution(ingredient)}
+                    >
                       <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                         <CheckCircle className="w-4 h-4 text-primary" />
                       </div>
-                      <span>
+                      <span className="flex-1">
                         <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
                       </span>
+                      <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                     </li>
                   ))}
                 </ul>
               </CardContent>
             </Card>
+
+            {/* Ingredient Substitution Sheet */}
+            <IngredientSubstitutionSheet
+              open={substitutionOpen}
+              onOpenChange={setSubstitutionOpen}
+              originalIngredient={selectedIngredient}
+              onSubstitute={handleSubstitute}
+            />
 
             {/* Instructions */}
             {instructions.length > 0 && (

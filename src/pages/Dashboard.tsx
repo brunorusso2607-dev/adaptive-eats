@@ -860,14 +860,13 @@ export default function Dashboard() {
                                 : `${weightData.weight_current}kg → ${weightData.weight_goal}kg`}
                             </p>
                           </div>
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
+                          <button 
                             onClick={() => setShowWeightLossSetup(true)}
-                            className="text-xs h-7 px-2.5 rounded-lg border-border font-medium shrink-0"
+                            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 shrink-0"
                           >
+                            <Settings className="w-4 h-4 text-primary stroke-[1.5]" />
                             Editar
-                          </Button>
+                          </button>
                         </div>
                       </div>
                       {weightData?.weight_current ? (

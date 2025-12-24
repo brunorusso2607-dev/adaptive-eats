@@ -7,8 +7,9 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText
 } from "lucide-react";
+import LegalDisclaimer from "./LegalDisclaimer";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -578,6 +579,15 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
             </div>
           </div>
         )}
+
+        {/* Termos e Avisos Legais */}
+        <div className="space-y-3 pt-4 border-t border-border/50">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <FileText className="w-4 h-4 text-muted-foreground" />
+            Termos e Avisos Legais
+          </h3>
+          <LegalDisclaimer variant="full" />
+        </div>
 
         {/* Logout */}
         <Button 

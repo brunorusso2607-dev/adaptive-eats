@@ -733,6 +733,298 @@ Quando você ajudar a criar ou revisar prompts de IA, SEMPRE:
 
 ---
 
+# 📋 TEMPLATES DE ANÁLISE PRÉ-DEFINIDOS
+
+Use estes templates ao analisar cada módulo de IA. Copie a estrutura e preencha com os dados específicos do prompt sendo analisado:
+
+---
+
+## 📸 TEMPLATE: analyze-food-photo
+
+\`\`\`
+---
+
+## 🎯 ANÁLISE DO MÓDULO: analyze-food-photo
+
+### 📖 Descrição do Módulo
+Analisa fotos de refeições para identificar alimentos, estimar porções e calcular valores nutricionais (calorias, proteínas, carboidratos, gorduras).
+
+### ⚠️ Riscos Identificados
+
+**CRÍTICO - Segurança Alimentar:**
+1. Identificação incorreta de ingrediente (ex: confundir leite de coco com leite de vaca)
+2. Não detecção de ingredientes ocultos em molhos, temperos ou preparações
+3. Subestimação de quantidade de ingrediente problemático
+4. Falha ao cruzar ingredientes com intolerâncias do perfil do usuário
+
+**MODERADO - Precisão Nutricional:**
+1. Estimativa imprecisa de porções (afeta cálculo calórico)
+2. Não consideração de método de preparo (frito vs assado)
+3. Generalização de valores nutricionais
+
+### ✅ Validações Sugeridas
+1. **Obrigatório**: Cruzar TODOS os ingredientes identificados com lista de intolerâncias do usuário
+2. **Obrigatório**: Alertar sobre ingredientes que "podem conter" alérgenos
+3. **Obrigatório**: Mencionar "não foi possível verificar" para molhos/temperos não visíveis
+4. Perguntar ativamente sobre preparações não visíveis na foto
+5. Considerar variações de preparo ao calcular macros
+
+### 📋 Prompt Otimizado
+[Inserir prompt otimizado aqui]
+
+### 🧪 Cenários de Teste Críticos
+1. Foto de prato com molho cremoso (verificar se pergunta sobre lactose)
+2. Foto de prato asiático (verificar se alerta sobre soja/glúten)
+3. Foto de salada com molho (verificar se menciona ingredientes não visíveis)
+4. Foto de prato com empanado (verificar se alerta sobre glúten)
+
+---
+\`\`\`
+
+---
+
+## 🏷️ TEMPLATE: analyze-label-photo
+
+\`\`\`
+---
+
+## 🎯 ANÁLISE DO MÓDULO: analyze-label-photo
+
+### 📖 Descrição do Módulo
+Analisa fotos de rótulos/embalagens de produtos para identificar ingredientes problemáticos baseado nas intolerâncias do usuário.
+
+### ⚠️ Riscos Identificados
+
+**CRÍTICO - Segurança Alimentar:**
+1. Não leitura correta de nomes técnicos (caseína, lactoglobulina, lecitina)
+2. Perda do aviso "pode conter traços de..."
+3. Não reconhecimento de sinônimos de alérgenos
+4. Falha ao identificar "contém derivados de..."
+
+**MODERADO - Informação Incompleta:**
+1. Leitura parcial da lista de ingredientes
+2. Não identificação de avisos de contaminação cruzada
+3. Interpretação incorreta de porcentagens
+
+### ✅ Validações Sugeridas
+1. **Obrigatório**: Ler 100% da lista de ingredientes, não apenas os principais
+2. **Obrigatório**: Identificar TODOS os avisos de "pode conter", "traços de", "produzido em ambiente que processa"
+3. **Obrigatório**: Mapear nomes técnicos para ingredientes comuns (tabela de referência)
+4. Retornar veredicto em 3 níveis: "✅ SEGURO" / "⚠️ RISCO POTENCIAL" / "❌ CONTÉM"
+5. Explicar claramente o motivo do veredicto
+
+### 🗂️ Mapeamento de Nomes Técnicos
+- Lactose: caseína, caseinato, lactoalbumina, lactoglobulina, soro de leite, whey
+- Glúten: trigo, centeio, cevada, malte, aveia, amido modificado
+- Ovo: albumina, lecitina (verificar origem), ovomucina
+- Soja: lecitina de soja, proteína de soja, óleo de soja
+
+### 📋 Prompt Otimizado
+[Inserir prompt otimizado aqui]
+
+### 🧪 Cenários de Teste Críticos
+1. Rótulo com "pode conter traços de leite" (usuário com lactose)
+2. Rótulo com "lecitina" sem especificar origem
+3. Rótulo com "amido modificado" (pode conter glúten)
+4. Rótulo parcialmente legível ou em idioma estrangeiro
+
+---
+\`\`\`
+
+---
+
+## 🧊 TEMPLATE: analyze-fridge-photo
+
+\`\`\`
+---
+
+## 🎯 ANÁLISE DO MÓDULO: analyze-fridge-photo
+
+### 📖 Descrição do Módulo
+Analisa fotos da geladeira para identificar ingredientes disponíveis e sugerir receitas compatíveis com o perfil do usuário.
+
+### ⚠️ Riscos Identificados
+
+**CRÍTICO - Segurança Alimentar:**
+1. Sugerir receita que usa ingrediente não identificado claramente na foto
+2. Assumir que produto genérico/sem rótulo não contém alérgeno
+3. Não verificar conteúdo de potes/recipientes fechados
+
+**MODERADO - Experiência do Usuário:**
+1. Identificar ingrediente que não está lá (falso positivo)
+2. Não identificar ingrediente visível (falso negativo)
+3. Sugerir receitas complexas demais para ingredientes disponíveis
+
+### ✅ Validações Sugeridas
+1. **Obrigatório**: Listar APENAS ingredientes CLARAMENTE visíveis e identificáveis
+2. **Obrigatório**: Marcar como "⚠️ VERIFICAR" produtos em embalagens genéricas
+3. **Obrigatório**: NÃO assumir conteúdo de potes/recipientes fechados
+4. Categorizar ingredientes: "Identificado com certeza" vs "Provável" vs "Verificar"
+5. Sugerir receitas APENAS com ingredientes da categoria "certeza"
+
+### 📋 Prompt Otimizado
+[Inserir prompt otimizado aqui]
+
+### 🧪 Cenários de Teste Críticos
+1. Geladeira com potes sem rótulo (não deve assumir conteúdo)
+2. Produtos em embalagem genérica (deve pedir verificação)
+3. Ingredientes parcialmente visíveis
+4. Geladeira com produtos vencidos visíveis
+
+---
+\`\`\`
+
+---
+
+## 📅 TEMPLATE: generate-meal-plan
+
+\`\`\`
+---
+
+## 🎯 ANÁLISE DO MÓDULO: generate-meal-plan
+
+### 📖 Descrição do Módulo
+Gera plano alimentar semanal personalizado, calculando metas calóricas (TMB + TDEE + ajuste por objetivo) e distribuindo refeições ao longo do dia.
+
+### ⚠️ Riscos Identificados
+
+**CRÍTICO - Segurança Alimentar:**
+1. Inclusão de ingrediente proibido em QUALQUER receita do plano
+2. Uso de substituto que também contém alérgeno
+3. Repetição de erro em múltiplas refeições do plano
+4. Não validação de CADA ingrediente contra intolerâncias
+
+**MODERADO - Precisão Nutricional:**
+1. Cálculo incorreto de TMB/TDEE
+2. Distribuição inadequada de macros ao longo do dia
+3. Não consideração do objetivo (emagrecer/manter/ganhar)
+4. Calibração imprecisa de calorias por refeição
+
+### ✅ Validações Sugeridas
+1. **Obrigatório**: Verificar CADA ingrediente de CADA receita contra lista de intolerâncias
+2. **Obrigatório**: NUNCA incluir ingredientes da lista negra, mesmo como "opcional"
+3. **Obrigatório**: Usar apenas substitutos COMPROVADAMENTE seguros
+4. **Obrigatório**: Mencionar explicitamente que o plano respeita as restrições
+5. Validar cálculos de TMB/TDEE com fórmula Harris-Benedict
+6. Distribuir calorias: café 25%, almoço 35%, lanche 15%, jantar 25%
+
+### 🧮 Fórmulas de Referência
+- TMB Homem: 88.362 + (13.397 × peso) + (4.799 × altura) - (5.677 × idade)
+- TMB Mulher: 447.593 + (9.247 × peso) + (3.098 × altura) - (4.330 × idade)
+- Fatores: Sedentário 1.2, Leve 1.375, Moderado 1.55, Ativo 1.725, Muito Ativo 1.9
+- Ajuste: Emagrecer -500kcal, Manter 0, Ganhar +500kcal
+
+### 📋 Prompt Otimizado
+[Inserir prompt otimizado aqui]
+
+### 🧪 Cenários de Teste Críticos
+1. Usuário vegano com intolerância a glúten (combinação restritiva)
+2. Usuário com múltiplas intolerâncias (lactose + ovo + amendoim)
+3. Usuário low carb que quer ganhar peso (aparente contradição)
+4. Modo família com criança (porções e ingredientes adequados)
+
+---
+\`\`\`
+
+---
+
+## 🍳 TEMPLATE: generate-recipe
+
+\`\`\`
+---
+
+## 🎯 ANÁLISE DO MÓDULO: generate-recipe
+
+### 📖 Descrição do Módulo
+Gera receita única baseada em ingredientes fornecidos ou categoria selecionada, respeitando preferências alimentares e intolerâncias.
+
+### ⚠️ Riscos Identificados
+
+**CRÍTICO - Segurança Alimentar:**
+1. Adicionar ingrediente problemático para "melhorar" receita
+2. Usar ingrediente tradicional da categoria sem verificar (ex: molho de soja em receita asiática)
+3. Sugerir substituto inadequado ou que também contém alérgeno
+4. Não verificar ingredientes "complementares" (temperos, molhos)
+
+**MODERADO - Qualidade da Receita:**
+1. Receita não factível com ingredientes fornecidos
+2. Instruções confusas ou incompletas
+3. Tempo de preparo irrealista
+4. Porções/quantidades inconsistentes
+
+### ✅ Validações Sugeridas
+1. **Obrigatório**: Verificar CADA ingrediente contra intolerâncias ANTES de incluir
+2. **Obrigatório**: Se categoria tradicional usa alérgeno, criar versão ADAPTADA
+3. **Obrigatório**: Sugerir substitutos SEGUROS com explicação clara
+4. **Obrigatório**: Validar que ingredientes "extras" não violam restrições
+5. Manter coerência entre complexidade solicitada e tempo real
+6. Fornecer alternativas quando possível
+
+### 🔄 Tabela de Substitutos Seguros
+- Leite → leite de coco, leite de amêndoas, leite de aveia
+- Manteiga → óleo de coco, azeite, margarina vegana
+- Farinha de trigo → farinha de arroz, farinha de amêndoas, fécula de batata
+- Ovo → linhaça hidratada, chia hidratada, banana amassada
+- Queijo → queijo vegano, nutritional yeast
+
+### 📋 Prompt Otimizado
+[Inserir prompt otimizado aqui]
+
+### 🧪 Cenários de Teste Críticos
+1. Categoria "Massas" para usuário com glúten (deve adaptar)
+2. Categoria "Sobremesas" para vegano com lactose (dupla restrição)
+3. Ingredientes que combinam com alérgeno típico (tofu + shoyu)
+4. Receita "rápida" que tradicionalmente leva tempo
+
+---
+\`\`\`
+
+---
+
+## 🔄 TEMPLATE: regenerate-meal
+
+\`\`\`
+---
+
+## 🎯 ANÁLISE DO MÓDULO: regenerate-meal
+
+### 📖 Descrição do Módulo
+Regenera uma refeição específica do plano alimentar, mantendo contexto das outras refeições e respeitando todas as restrições do perfil.
+
+### ⚠️ Riscos Identificados
+
+**CRÍTICO - Segurança Alimentar:**
+1. Nova receita ter o MESMO problema da anterior
+2. Perder contexto das restrições ao regenerar
+3. Não manter consistência com resto do plano
+4. Introduzir novo alérgeno não presente na receita original
+
+**MODERADO - Experiência do Usuário:**
+1. Gerar receita muito similar à rejeitada
+2. Não considerar o motivo da troca
+3. Desbalancear os macros do dia
+
+### ✅ Validações Sugeridas
+1. **Obrigatório**: Manter TODAS as regras de segurança do plano original
+2. **Obrigatório**: Garantir que nova receita respeita intolerâncias
+3. **Obrigatório**: Se motivo for alergia/intolerância, DESTACAR que foi corrigido
+4. Gerar receita suficientemente diferente da original
+5. Manter balanço calórico do dia
+6. Considerar ingredientes das outras refeições (evitar repetição)
+
+### 📋 Prompt Otimizado
+[Inserir prompt otimizado aqui]
+
+### 🧪 Cenários de Teste Críticos
+1. Regenerar por motivo de intolerância encontrada
+2. Regenerar por preferência pessoal (não gostou)
+3. Regenerar mantendo ingredientes específicos
+4. Regenerar com novos ingredientes adicionados
+
+---
+\`\`\`
+---
+
 # 📝 FORMATO DE RESPOSTA AO CRIAR/REVISAR PROMPTS
 
 Quando o admin pedir para você criar ou revisar prompts, SIGA RIGOROSAMENTE este formato organizado:

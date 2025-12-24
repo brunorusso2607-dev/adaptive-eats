@@ -1096,30 +1096,12 @@ export default function Dashboard() {
                     </CardContent>
                   </Card>
 
-                  {/* Histórico e Modo Kids - Versão compacta no mobile */}
-                  <div className="md:hidden grid grid-cols-2 gap-2 col-span-2">
-                    <button 
-                      className="flex items-center gap-3 p-3 glass-card border-border/50 hover:border-primary/30 transition-all rounded-xl"
-                      onClick={() => setShowList("history")}
-                    >
-                      <div className="w-10 h-10 bg-purple-500/20 rounded-lg flex items-center justify-center shrink-0">
-                        <History className="w-5 h-5 text-purple-500" />
-                      </div>
-                      <div className="text-left min-w-0">
-                        <h3 className="font-display font-semibold text-foreground text-sm truncate">
-                          Histórico
-                        </h3>
-                        <p className="text-xs text-muted-foreground truncate">
-                          Receitas anteriores
-                        </p>
-                      </div>
-                    </button>
-
-                    {/* Modo Kids - Mobile Toggle */}
-                    {isSubscribed && activePlan === "premium" && (
+                  {/* Modo Kids - Versão compacta no mobile */}
+                  {isSubscribed && activePlan === "premium" && (
+                    <div className="md:hidden col-span-2">
                       <button 
                         className={cn(
-                          "flex items-center gap-3 p-3 glass-card transition-all rounded-xl",
+                          "flex items-center gap-3 p-3 glass-card transition-all rounded-xl w-full",
                           kidsMode 
                             ? "border-pink-500/50 bg-pink-500/5" 
                             : "border-border/50 hover:border-primary/30"
@@ -1147,28 +1129,8 @@ export default function Dashboard() {
                           </p>
                         </div>
                       </button>
-                    )}
-                  </div>
-                  
-                  {/* Histórico - Card desktop */}
-                  <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group hidden md:block"
-                    onClick={() => setShowList("history")}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className="w-12 h-12 mx-auto bg-purple-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <History className="w-6 h-6 text-purple-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Histórico
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Receitas anteriores
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  )}
 
                   {/* Modo Kids - Card desktop */}
                   {isSubscribed && activePlan === "premium" && (

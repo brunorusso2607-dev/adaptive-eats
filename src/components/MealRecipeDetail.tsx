@@ -6,6 +6,7 @@ import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, Refres
 import { cn } from "@/lib/utils";
 import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
+import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
 
 type Ingredient = { item: string; quantity: string; unit: string };
@@ -29,7 +30,6 @@ type MealRecipeDetailProps = {
   meal: MealPlanItem;
   onBack: () => void;
   onToggleFavorite: () => void;
-  onUpdateIngredients?: (ingredients: Ingredient[]) => void;
 };
 
 const MEAL_LABELS: Record<string, string> = {
@@ -40,25 +40,30 @@ const MEAL_LABELS: Record<string, string> = {
   ceia: "Ceia"
 };
 
-export default function MealRecipeDetail({ meal, onBack, onToggleFavorite, onUpdateIngredients }: MealRecipeDetailProps) {
+export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: MealRecipeDetailProps) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>(meal.recipe_ingredients);
+  const { updateIngredients } = useMealIngredientUpdate();
 
   const handleOpenSubstitution = (ingredient: Ingredient) => {
     setSelectedIngredient(ingredient);
     setSubstitutionOpen(true);
   };
 
-  const handleSubstitute = (newIngredient: IngredientResult, originalItem: string) => {
+  const handleSubstitute = async (newIngredient: IngredientResult, originalItem: string) => {
     const updatedIngredients = localIngredients.map((ing) =>
       ing.item === originalItem
         ? { ...ing, item: newIngredient.name }
         : ing
     );
     setLocalIngredients(updatedIngredients);
-    onUpdateIngredients?.(updatedIngredients);
-    toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+    
+    // Persist to database
+    const { success } = await updateIngredients(meal.id, updatedIngredients);
+    if (success) {
+      toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+    }
   };
 
   return (

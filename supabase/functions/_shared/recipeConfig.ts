@@ -59,6 +59,9 @@ export const DIETARY_LABELS: Record<string, string> = {
   vegetariana: "vegetariana (sem carnes vermelhas, aves e peixes, mas permite ovos e laticínios)",
   vegana: "vegana (100% vegetal, sem NENHUM produto de origem animal: carnes, ovos, leite, mel, queijo)",
   low_carb: "low carb (baixo carboidrato, priorizar proteínas e gorduras boas, evitar açúcares e amidos)",
+  pescetariana: "pescetariana (sem carnes vermelhas e aves, mas permite peixes, frutos do mar, ovos e laticínios)",
+  cetogenica: "cetogênica/keto (muito baixo carboidrato, alta gordura, moderada proteína - evitar grãos, açúcares, frutas doces, tubérculos)",
+  flexitariana: "flexitariana (majoritariamente vegetariana, com consumo ocasional e moderado de carnes - priorizar vegetais)",
 };
 
 export const GOAL_LABELS: Record<string, string> = {

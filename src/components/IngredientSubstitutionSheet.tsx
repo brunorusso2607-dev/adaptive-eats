@@ -68,22 +68,31 @@ export default function IngredientSubstitutionSheet({
   // Original ingredient data for comparison
   const [originalData, setOriginalData] = useState<IngredientResult | null>(null);
 
+  // Reset state immediately when dialog opens/closes
   useEffect(() => {
-    if (open && originalIngredient) {
-      // Search for original ingredient to get its macro data
-      searchIngredient(originalIngredient.item).then((results) => {
-        if (results.length > 0) {
-          setOriginalData(results[0]);
-        }
-      });
+    if (open) {
+      // Reset all state first
       setSearchQuery("");
       setSelectedIngredient(null);
-    } else {
-      clearResults();
       setOriginalData(null);
+      clearResults();
+      
+      // Then fetch original data if ingredient exists
+      if (originalIngredient) {
+        searchIngredient(originalIngredient.item).then((results) => {
+          if (results.length > 0) {
+            setOriginalData(results[0]);
+          }
+        });
+      }
+    } else {
+      // Clean up when closing
+      setSearchQuery("");
       setSelectedIngredient(null);
+      setOriginalData(null);
+      clearResults();
     }
-  }, [open, originalIngredient, searchIngredient, clearResults]);
+  }, [open, originalIngredient?.item]);
 
   useEffect(() => {
     if (debouncedQuery.length >= 2) {

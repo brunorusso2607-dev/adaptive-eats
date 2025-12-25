@@ -25,17 +25,19 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
   const [historyOpen, setHistoryOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<HealthPeriod>(7);
   
-  const { analysis, isLoading: isLoadingAnalysis } = useSymptomAnalysis(selectedPeriod);
+  const { analysis, isLoading: isLoadingAnalysis } = useSymptomAnalysis(30); // Always 30 days for main score
   const { 
     wellMealsCount, 
     totalMealsCount, 
     symptomsCount, 
-    score, 
     isLoading: isLoadingStats 
   } = useHealthStats(selectedPeriod);
   const { recentLogs, symptomTypes } = useSymptomTracker();
 
   const isLoading = isLoadingAnalysis || isLoadingStats;
+  
+  // Use safetyScore from analysis for main display
+  const score = analysis?.safetyScore ?? 100;
 
   // Filter recent logs by selected period
   const filteredLogs = recentLogs.filter(log => {
@@ -168,7 +170,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
             <div className="absolute inset-0 flex flex-col items-center justify-center">
               <div className="flex items-baseline">
                 <span className={cn("text-3xl font-bold", scoreColor)}>{score}</span>
-                <span className={cn("text-lg font-medium", scoreColor)}>%</span>
+                <span className={cn("text-lg font-medium text-muted-foreground")}>/100</span>
               </div>
             </div>
           </div>

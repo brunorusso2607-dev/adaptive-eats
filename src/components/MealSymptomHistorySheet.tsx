@@ -265,13 +265,9 @@ function MealCard({
 
             {/* Indicators */}
             <div className="flex items-center gap-2 shrink-0">
-              {hasSuspects ? (
+              {hasSuspects && (
                 <span className="text-xs text-orange-600 bg-orange-500/10 px-2 py-0.5 rounded-full">
                   {suspectIngredients.length} suspeito{suspectIngredients.length > 1 ? 's' : ''}
-                </span>
-              ) : (
-                <span className="text-xs text-muted-foreground/60">
-                  ?
                 </span>
               )}
               <ChevronDown className={cn(

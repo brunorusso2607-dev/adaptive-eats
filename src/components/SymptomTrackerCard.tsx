@@ -1,8 +1,9 @@
 import { useState } from "react";
-import { AlertCircle, Bell, TrendingUp, History, Settings } from "lucide-react";
+import { AlertCircle, Bell, TrendingUp, History, Settings, CheckCircle2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
+import { useWellMealsCount } from "@/hooks/useWellMealsCount";
 import { SymptomIcon } from "./SymptomIcon";
 import { SymptomCorrelationChart } from "./SymptomCorrelationChart";
 import { MealSymptomHistorySheet } from "./MealSymptomHistorySheet";
@@ -24,6 +25,7 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
   const [historyOpen, setHistoryOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const { recentLogs, isLoading, symptomTypes } = useSymptomTracker();
+  const { count: wellMealsCount, isLoading: isLoadingWellMeals } = useWellMealsCount(7);
 
   // Calculate stats
   const totalLogsThisWeek = recentLogs.length;
@@ -45,7 +47,7 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
     return type?.category;
   };
 
-  if (isLoading) {
+  if (isLoading || isLoadingWellMeals) {
     return (
       <Card className="animate-pulse">
         <CardHeader className="pb-2">
@@ -104,34 +106,46 @@ export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrac
 
         {/* Stats Summary */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="bg-muted/50 rounded-lg p-3">
-            <p className="text-2xl font-bold">{totalLogsThisWeek}</p>
+          {/* Well meals counter */}
+          <div className="bg-green-500/10 rounded-lg p-3 border border-green-500/20">
+            <div className="flex items-center gap-1.5">
+              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <p className="text-2xl font-bold text-green-700">{wellMealsCount}</p>
+            </div>
+            <p className="text-xs text-green-600/80">Refeições bem (7 dias)</p>
+          </div>
+          
+          {/* Symptoms counter */}
+          <div className={cn(
+            "rounded-lg p-3 border",
+            totalLogsThisWeek > 0 
+              ? "bg-orange-500/10 border-orange-500/20" 
+              : "bg-muted/50 border-transparent"
+          )}>
+            <p className={cn(
+              "text-2xl font-bold",
+              totalLogsThisWeek > 0 ? "text-orange-700" : "text-foreground"
+            )}>{totalLogsThisWeek}</p>
             <p className="text-xs text-muted-foreground">Sintomas (7 dias)</p>
           </div>
-          {topSymptom ? (
-            <div className="bg-muted/50 rounded-lg p-3">
-              <p className="text-sm font-medium flex items-center gap-1.5">
-                <SymptomIcon
-                  name={topSymptom[0]}
-                  category={getSymptomCategory(topSymptom[0])}
-                  size={16}
-                />
-                <span className="truncate">{topSymptom[0]}</span>
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Mais frequente ({topSymptom[1]}x)
-              </p>
-            </div>
-          ) : (
-            <div className="bg-muted/50 rounded-lg p-3">
-              <div className="flex items-center gap-1.5 text-green-600">
-                <TrendingUp className="h-4 w-4" />
-                <p className="text-sm font-medium">Tudo bem!</p>
-              </div>
-              <p className="text-xs text-muted-foreground">Sem sintomas recentes</p>
-            </div>
-          )}
         </div>
+
+        {/* Top symptom indicator */}
+        {topSymptom && (
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-sm font-medium flex items-center gap-1.5">
+              <SymptomIcon
+                name={topSymptom[0]}
+                category={getSymptomCategory(topSymptom[0])}
+                size={16}
+              />
+              <span className="truncate">{topSymptom[0]}</span>
+              <span className="text-xs text-muted-foreground ml-auto">
+                Mais frequente ({topSymptom[1]}x)
+              </span>
+            </p>
+          </div>
+        )}
 
         {/* Recent symptoms preview (read-only) */}
         {recentLogs.length > 0 && (

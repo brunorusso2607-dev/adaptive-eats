@@ -1,8 +1,9 @@
-import { useState, useEffect } from "react";
+import { useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Scale, Ruler, Calendar, User, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { usePhysicalInputHandlers } from "@/hooks/usePhysicalInputHandlers";
 
 export type PhysicalData = {
   weight_current: number | null;
@@ -34,104 +35,38 @@ export default function PhysicalDataInputs({
   showWeightGoal = true,
   className 
 }: PhysicalDataInputsProps) {
-  // Estado local para edição livre do campo altura - formato X,XX
-  const [heightInput, setHeightInput] = useState(() => {
-    if (data.height) {
-      const meters = (data.height / 100).toFixed(2);
-      return meters.replace('.', ',');
-    }
-    return "";
-  });
+  const {
+    heightInput,
+    syncHeightInput,
+    handleWeightInput,
+    handleHeightInput,
+    handleHeightBlur,
+    handleAgeInput,
+  } = usePhysicalInputHandlers(data.height);
 
   // Sincronizar heightInput quando data.height mudar externamente
   useEffect(() => {
-    if (data.height) {
-      const meters = (data.height / 100).toFixed(2);
-      const formatted = meters.replace('.', ',');
-      if (formatted !== heightInput) {
-        setHeightInput(formatted);
-      }
-    } else if (!data.height && heightInput) {
-      setHeightInput("");
-    }
-  }, [data.height]);
+    syncHeightInput(data.height);
+  }, [data.height, syncHeightInput]);
 
   const handleWeightChange = (field: 'weight_current' | 'weight_goal', value: string) => {
-    // Remove tudo exceto números e limita a 3 dígitos
-    const digits = value.replace(/[^0-9]/g, '').substring(0, 3);
     onChange({ 
       ...data, 
-      [field]: digits ? parseFloat(digits) : null 
+      [field]: handleWeightInput(value) 
     });
   };
 
   const handleHeightChange = (rawValue: string) => {
-    const previousValue = heightInput;
-    const isDeleting = rawValue.length < previousValue.length;
-    
-    // Se o usuário apagou tudo, permitir campo vazio
-    if (rawValue === '' || rawValue === ',') {
-      setHeightInput('');
-      onChange({ ...data, height: null });
-      return;
-    }
-    
-    // Remove tudo exceto números
-    let digits = rawValue.replace(/[^0-9]/g, '');
-    
-    // Se não há dígitos após limpar, esvaziar
-    if (digits.length === 0) {
-      setHeightInput('');
-      onChange({ ...data, height: null });
-      return;
-    }
-    
-    // Limita a 3 dígitos (formato X,XX = altura máxima 2,99m)
-    if (digits.length > 3) {
-      digits = digits.substring(0, 3);
-    }
-    
-    // Se está deletando e só tem 1 dígito, permitir sem vírgula
-    if (isDeleting && digits.length === 1) {
-      setHeightInput(digits);
-      const numericValue = parseFloat(digits + '.0');
-      if (!isNaN(numericValue) && numericValue > 0) {
-        onChange({ ...data, height: Math.round(numericValue * 100) });
-      }
-      return;
-    }
-    
-    // Formata automaticamente com vírgula após primeiro dígito
-    let formatted = '';
-    if (digits.length === 1) {
-      formatted = digits + ',';
-    } else {
-      formatted = digits[0] + ',' + digits.substring(1);
-    }
-    
-    setHeightInput(formatted);
-    
-    // Converte para cm para armazenamento
-    const numericValue = parseFloat(digits[0] + '.' + (digits.substring(1) || '0'));
-    if (!isNaN(numericValue) && numericValue > 0) {
-      onChange({ ...data, height: Math.round(numericValue * 100) });
-    } else {
-      onChange({ ...data, height: null });
-    }
+    const { heightInCm } = handleHeightInput(rawValue);
+    onChange({ ...data, height: heightInCm });
   };
 
-  const handleHeightBlur = () => {
-    // Completa com zeros se necessário (ex: "1," -> "1,00")
-    if (data.height) {
-      const meters = (data.height / 100).toFixed(2);
-      setHeightInput(meters.replace('.', ','));
-    }
+  const onHeightBlur = () => {
+    handleHeightBlur(data.height);
   };
 
   const handleAgeChange = (value: string) => {
-    // Remove tudo exceto números e limita a 3 dígitos
-    const digits = value.replace(/[^0-9]/g, '').substring(0, 3);
-    onChange({ ...data, age: digits ? parseInt(digits) : null });
+    onChange({ ...data, age: handleAgeInput(value) });
   };
 
   return (
@@ -183,7 +118,7 @@ export default function PhysicalDataInputs({
             placeholder="1,75"
             value={heightInput}
             onChange={(e) => handleHeightChange(e.target.value)}
-            onBlur={handleHeightBlur}
+            onBlur={onHeightBlur}
             className="h-10"
           />
         </div>

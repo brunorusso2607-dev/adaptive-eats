@@ -15,6 +15,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import WeightProgressBar from "@/components/WeightProgressBar";
+import { usePhysicalInputHandlers } from "@/hooks/usePhysicalInputHandlers";
 
 type GoalMode = "lose" | "gain" | "maintain";
 
@@ -376,14 +377,14 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     goal_mode: initialData?.goal_mode || null,
   });
   
-  // Estado local para edição livre do campo altura - formato X,XX
-  const [heightInput, setHeightInput] = useState(() => {
-    if (initialData?.height) {
-      const meters = (initialData.height / 100).toFixed(2);
-      return meters.replace('.', ',');
-    }
-    return "";
-  });
+  // Hook compartilhado para validação de inputs físicos
+  const {
+    heightInput,
+    handleWeightInput,
+    handleHeightInput,
+    handleHeightBlur,
+    handleAgeInput,
+  } = usePhysicalInputHandlers(initialData?.height || null);
 
   const calculations = calculateMacros(data);
   const healthRisks = calculateHealthRisks(data);
@@ -706,9 +707,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               placeholder="75"
               value={data.weight_current || ""}
               onChange={(e) => {
-                // Remove tudo exceto números e limita a 3 dígitos
-                let digits = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
-                const newWeight = digits ? parseFloat(digits) : null;
+                const newWeight = handleWeightInput(e.target.value);
                 setData({ 
                   ...data, 
                   weight_current: newWeight,
@@ -734,9 +733,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
                 placeholder="70"
                 value={data.weight_goal || ""}
                 onChange={(e) => {
-                  // Remove tudo exceto números e limita a 3 dígitos
-                  let digits = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
-                  setData({ ...data, weight_goal: digits ? parseFloat(digits) : null });
+                  setData({ ...data, weight_goal: handleWeightInput(e.target.value) });
                 }}
                 className={cn(
                   "h-12 transition-colors",
@@ -815,68 +812,10 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               placeholder="1,75"
               value={heightInput}
               onChange={(e) => {
-                const rawValue = e.target.value;
-                const previousValue = heightInput;
-                const isDeleting = rawValue.length < previousValue.length;
-                
-                // Se o usuário apagou tudo, permitir campo vazio
-                if (rawValue === '' || rawValue === ',') {
-                  setHeightInput('');
-                  setData({ ...data, height: null });
-                  return;
-                }
-                
-                // Remove tudo exceto números
-                let digits = rawValue.replace(/[^0-9]/g, '');
-                
-                // Se não há dígitos após limpar, esvaziar
-                if (digits.length === 0) {
-                  setHeightInput('');
-                  setData({ ...data, height: null });
-                  return;
-                }
-                
-                // Limita a 3 dígitos (formato X,XX = altura máxima 2,99m)
-                if (digits.length > 3) {
-                  digits = digits.substring(0, 3);
-                }
-                
-                // Se está deletando e só tem 1 dígito, permitir sem vírgula
-                // Isso permite que o usuário delete o último dígito no próximo backspace
-                if (isDeleting && digits.length === 1) {
-                  setHeightInput(digits);
-                  const numericValue = parseFloat(digits + '.0');
-                  if (!isNaN(numericValue) && numericValue > 0) {
-                    setData({ ...data, height: Math.round(numericValue * 100) });
-                  }
-                  return;
-                }
-                
-                // Formata automaticamente com vírgula após primeiro dígito (só quando digitando)
-                let formatted = '';
-                if (digits.length === 1) {
-                  formatted = digits + ',';
-                } else {
-                  formatted = digits[0] + ',' + digits.substring(1);
-                }
-                
-                setHeightInput(formatted);
-                
-                // Converte para cm para armazenamento
-                const numericValue = parseFloat(digits[0] + '.' + (digits.substring(1) || '0'));
-                if (!isNaN(numericValue) && numericValue > 0) {
-                  setData({ ...data, height: Math.round(numericValue * 100) });
-                } else {
-                  setData({ ...data, height: null });
-                }
+                const { heightInCm } = handleHeightInput(e.target.value);
+                setData({ ...data, height: heightInCm });
               }}
-              onBlur={() => {
-                // Completa com zeros se necessário (ex: "1," -> "1,00")
-                if (data.height) {
-                  const meters = (data.height / 100).toFixed(2);
-                  setHeightInput(meters.replace('.', ','));
-                }
-              }}
+              onBlur={() => handleHeightBlur(data.height)}
               className="h-12"
             />
           </div>
@@ -891,9 +830,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
               placeholder="30"
               value={data.age || ""}
               onChange={(e) => {
-                // Remove tudo exceto números e limita a 3 dígitos
-                let digits = e.target.value.replace(/[^0-9]/g, '').substring(0, 3);
-                setData({ ...data, age: digits ? parseInt(digits) : null });
+                setData({ ...data, age: handleAgeInput(e.target.value) });
               }}
               className="h-12"
             />

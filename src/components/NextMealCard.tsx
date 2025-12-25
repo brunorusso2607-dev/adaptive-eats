@@ -61,6 +61,16 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
     refetch,
   } = useNextMeal();
 
+  // DEBUG: Log logo após obter dados do hook
+  console.log("🍽️ [NextMealCard INIT]", {
+    isLoading,
+    hasMealPlan,
+    hasNextMeal: !!nextMeal,
+    mealStatus,
+    mealType: nextMeal?.meal_type,
+    recipeName: nextMeal?.recipe_name?.substring(0, 30)
+  });
+
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);

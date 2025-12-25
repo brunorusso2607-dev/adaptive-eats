@@ -388,12 +388,20 @@ serve(async (req) => {
         ];
         const randomMessage = reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
         
+        // Get current unread notification count for this user
+        const { count: unreadCount } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", plan.user_id)
+          .eq("is_read", false);
+        
         const notificationPayload = {
           title: randomMessage,
           body: `${mealItem.recipe_name} • ${mealItem.recipe_calories} kcal`,
           icon: "/icons/icon-192x192.png",
           badge: "/icons/icon-72x72.png",
           tag: `meal-reminder-${mealSetting.meal_type}`,
+          badgeCount: (unreadCount || 0) + 1, // Include the new notification being sent
           data: {
             type: "meal_reminder",
             mealType: mealSetting.meal_type,

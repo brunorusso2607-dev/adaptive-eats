@@ -7,6 +7,7 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Select,
@@ -27,10 +28,14 @@ import {
   CheckCircle2,
   AlertCircle,
   HelpCircle,
+  FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import { useMealHistory, MealStatus, MealHistoryItem, MealHistoryFilters } from "@/hooks/useMealHistory";
 import { SymptomIcon } from "./SymptomIcon";
 import { cn } from "@/lib/utils";
+import { exportMealHistoryToCSV, exportMealHistoryToPDF } from "@/lib/exportMealHistory";
+import { toast } from "sonner";
 
 interface MealHistorySheetProps {
   open: boolean;
@@ -80,6 +85,15 @@ export function MealHistorySheet({
   });
 
   const { meals, isLoading } = useMealHistory(filters);
+
+  const handleExportCSV = () => {
+    exportMealHistoryToCSV(meals, filters.days);
+    toast.success("Relatório CSV exportado!");
+  };
+
+  const handleExportPDF = () => {
+    exportMealHistoryToPDF(meals, filters.days);
+  };
 
   const getDaysLabel = (days: number) => {
     if (days === 0) return "Hoje";
@@ -157,6 +171,15 @@ export function MealHistorySheet({
               <SelectItem value="pending">Pendentes</SelectItem>
             </SelectContent>
           </Select>
+
+          <div className="flex-1" />
+
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleExportCSV}>
+            <FileSpreadsheet className="h-4 w-4" />
+          </Button>
+          <Button variant="outline" size="icon" className="h-9 w-9" onClick={handleExportPDF}>
+            <FileText className="h-4 w-4" />
+          </Button>
         </div>
 
         {isLoading ? (

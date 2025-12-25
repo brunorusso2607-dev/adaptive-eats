@@ -286,6 +286,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
         open={isRecipeSheetOpen}
         onOpenChange={setIsRecipeSheetOpen}
         meal={nextMeal}
+        isFutureMeal={!showButtons}
       />
     </div>
   );

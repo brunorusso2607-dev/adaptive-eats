@@ -40,8 +40,7 @@ import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 import { WaterTracker } from "@/components/WaterTracker";
 import { CompactHealthCircles } from "@/components/CompactHealthCircles";
 import { SafetyStatusBadge } from "@/components/SafetyStatusBadge";
-import { SymptomTrackerCard } from "@/components/SymptomTrackerCard";
-import { SafetyScoreCard } from "@/components/SafetyScoreCard";
+import { HealthCard } from "@/components/HealthCard";
 import { SymptomFeedbackModal } from "@/components/SymptomFeedbackModal";
 import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
@@ -862,20 +861,17 @@ export default function Dashboard() {
                   onUpdate={refetchUserProfile}
                 />
 
-                {/* 2. Score de Segurança Alimentar - Status do dia */}
-                <SafetyScoreCard />
+                {/* 2. Card de Saúde Unificado */}
+                <HealthCard 
+                  pendingCount={symptomFeedback.pendingCount}
+                  onOpenFeedback={handleOpenFeedback}
+                />
 
                 {/* 3. Próxima Refeição - Ação principal */}
                 <PendingMealsList 
                   onStreakRefresh={gamification.refresh} 
                   onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
                   userProfile={userProfile} 
-                />
-
-                {/* 4. Rastreador de Sintomas - Feedback */}
-                <SymptomTrackerCard 
-                  pendingCount={symptomFeedback.pendingCount}
-                  onOpenFeedback={handleOpenFeedback}
                 />
 
                 {/* 5. Gerar Receita - Ferramenta secundária */}

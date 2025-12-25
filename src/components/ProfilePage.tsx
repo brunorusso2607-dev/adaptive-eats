@@ -9,6 +9,7 @@ import {
   Activity, Target, AlertCircle, Utensils, LogOut,
   TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink
 } from "lucide-react";
+import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Link } from "react-router-dom";
 import LegalDisclaimer from "./LegalDisclaimer";
 import { Badge } from "@/components/ui/badge";
@@ -233,95 +234,27 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
 
     return (
       <div className="space-y-6">
-        {/* Dados Físicos */}
+        {/* Dados Físicos - Componente Reutilizável */}
         <div className="space-y-3">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <Activity className="w-4 h-4 text-primary" />
             Dados Físicos
           </h3>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <Label className="text-xs">Peso Atual (kg)</Label>
-              <Input
-                type="number"
-                value={editedProfile.weight_current || ""}
-                onChange={(e) => setEditedProfile({ ...editedProfile, weight_current: e.target.value ? parseFloat(e.target.value) : null })}
-                placeholder="75"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Peso Meta (kg)</Label>
-              <Input
-                type="number"
-                value={editedProfile.weight_goal || ""}
-                onChange={(e) => setEditedProfile({ ...editedProfile, weight_goal: e.target.value ? parseFloat(e.target.value) : null })}
-                placeholder="70"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Altura (cm)</Label>
-              <Input
-                type="number"
-                value={editedProfile.height || ""}
-                onChange={(e) => setEditedProfile({ ...editedProfile, height: e.target.value ? parseInt(e.target.value) : null })}
-                placeholder="175"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs">Idade</Label>
-              <Input
-                type="number"
-                value={editedProfile.age || ""}
-                onChange={(e) => setEditedProfile({ ...editedProfile, age: e.target.value ? parseInt(e.target.value) : null })}
-                placeholder="30"
-              />
-            </div>
-          </div>
-
-          {/* Sexo */}
-          <div className="space-y-1">
-            <Label className="text-xs">Sexo Biológico</Label>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { id: "male", label: "Masculino", color: "text-blue-500" }, 
-                { id: "female", label: "Feminino", color: "text-pink-500" }
-              ].map((opt) => (
-                <button
-                  type="button"
-                  key={opt.id}
-                  onClick={() => setEditedProfile({ ...editedProfile, sex: opt.id })}
-                  className={cn(
-                    "p-2 rounded-lg border-2 text-center transition-all text-sm touch-manipulation flex items-center justify-center gap-1.5",
-                    editedProfile.sex === opt.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <User className={cn("w-4 h-4 stroke-[1.5]", opt.color)} />
-                  {opt.label}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Nível de Atividade */}
-          <div className="space-y-1">
-            <Label className="text-xs">Nível de Atividade</Label>
-            <div className="grid grid-cols-1 gap-1">
-              {Object.entries(ACTIVITY_LABELS).map(([id, label]) => (
-                <button
-                  type="button"
-                  key={id}
-                  onClick={() => setEditedProfile({ ...editedProfile, activity_level: id })}
-                  className={cn(
-                    "p-2 rounded-lg border text-left text-sm transition-all flex items-center justify-between touch-manipulation",
-                    editedProfile.activity_level === id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <span>{label}</span>
-                  {editedProfile.activity_level === id && <Check className="w-4 h-4 text-primary" />}
-                </button>
-              ))}
-            </div>
-          </div>
+          <PhysicalDataInputs
+            data={{
+              weight_current: editedProfile.weight_current,
+              weight_goal: editedProfile.weight_goal,
+              height: editedProfile.height,
+              age: editedProfile.age,
+              sex: editedProfile.sex,
+              activity_level: editedProfile.activity_level,
+            }}
+            onChange={(newData) => setEditedProfile({
+              ...editedProfile,
+              ...newData,
+            })}
+            showWeightGoal={true}
+          />
         </div>
 
         {/* Objetivo */}

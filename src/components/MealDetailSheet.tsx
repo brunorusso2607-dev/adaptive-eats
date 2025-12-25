@@ -293,9 +293,17 @@ export default function MealDetailSheet({
             <div className="p-6 pb-24 space-y-6">
               {/* Header */}
               <div>
-                <Badge className="mb-2 bg-primary text-primary-foreground">
-                  {MEAL_LABELS[meal.meal_type] || meal.meal_type}
-                </Badge>
+                <div className="flex items-center gap-2 mb-2">
+                  <Badge className="bg-primary text-primary-foreground">
+                    {MEAL_LABELS[meal.meal_type] || meal.meal_type}
+                  </Badge>
+                  {isPastMeal && (
+                    <Badge variant="secondary" className="bg-muted text-muted-foreground">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Atrasada
+                    </Badge>
+                  )}
+                </div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
                   {localRecipeName || meal.recipe_name}
                 </h2>

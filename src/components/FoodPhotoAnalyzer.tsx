@@ -324,8 +324,17 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
         if (error) throw error;
         if (data.error) throw new Error(data.error);
 
-        if (data.notFood) {
-          setNotFoodError(data.message || "Não foi possível identificar alimentos na imagem.");
+        // NEW: Handle structured category error with detailed feedback
+        if (data.categoryError || data.notFood) {
+          if (data.categoryError && data.categoria_detectada) {
+            setCategoryError({
+              categoria: data.categoria_detectada,
+              descricao: data.objeto_identificado || "",
+              mensagem: data.message || "Não consegui identificar comida nesta imagem."
+            });
+          } else {
+            setNotFoodError(data.message || "Não foi possível identificar alimentos na imagem.");
+          }
           return;
         }
 
@@ -538,61 +547,85 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   // Helper para obter ícone e cor baseado na categoria detectada
   const getCategoryFeedback = (categoria: string) => {
     switch (categoria) {
+      case "pessoa_corpo":
+        return {
+          icon: <User className="w-8 h-8 text-indigo-500 stroke-[1.5]" />,
+          bgColor: "bg-indigo-500/10",
+          borderColor: "border-indigo-500/30",
+          title: "Ops! Isso não é comida 😅",
+          subtitle: "Parece ser uma pessoa ou parte do corpo"
+        };
+      case "animal_pet":
+        return {
+          icon: <Cat className="w-8 h-8 text-purple-500 stroke-[1.5]" />,
+          bgColor: "bg-purple-500/10",
+          borderColor: "border-purple-500/30",
+          title: "Que fofura! 🐾",
+          subtitle: "Mas preciso de uma foto do seu prato"
+        };
+      case "objeto_domestico":
+        return {
+          icon: <Package className="w-8 h-8 text-blue-500 stroke-[1.5]" />,
+          bgColor: "bg-blue-500/10",
+          borderColor: "border-blue-500/30",
+          title: "Objeto Detectado",
+          subtitle: "Não consegui identificar comida nesta imagem"
+        };
+      case "paisagem_ambiente":
+        return {
+          icon: <ImageOff className="w-8 h-8 text-cyan-500 stroke-[1.5]" />,
+          bgColor: "bg-cyan-500/10",
+          borderColor: "border-cyan-500/30",
+          title: "Bela paisagem! 🌅",
+          subtitle: "Mas preciso ver seu prato de comida"
+        };
+      case "documento_tela":
+        return {
+          icon: <FileText className="w-8 h-8 text-gray-500 stroke-[1.5]" />,
+          bgColor: "bg-gray-500/10",
+          borderColor: "border-gray-500/30",
+          title: "Documento ou Tela",
+          subtitle: "Use o modo 'Rótulo' para analisar rótulos de produtos"
+        };
+      case "veiculo":
+        return {
+          icon: <Package className="w-8 h-8 text-slate-500 stroke-[1.5]" />,
+          bgColor: "bg-slate-500/10",
+          borderColor: "border-slate-500/30",
+          title: "Veículo Detectado 🚗",
+          subtitle: "Isso não parece ser comida"
+        };
+      case "roupa_acessorio":
+        return {
+          icon: <Package className="w-8 h-8 text-pink-500 stroke-[1.5]" />,
+          bgColor: "bg-pink-500/10",
+          borderColor: "border-pink-500/30",
+          title: "Roupa ou Acessório 👗",
+          subtitle: "Preciso ver uma foto do seu prato"
+        };
+      case "imagem_abstrata":
+        return {
+          icon: <ImageOff className="w-8 h-8 text-red-500 stroke-[1.5]" />,
+          bgColor: "bg-red-500/10",
+          borderColor: "border-red-500/30",
+          title: "Imagem Confusa",
+          subtitle: "Não consegui identificar o conteúdo claramente"
+        };
       case "planta_decorativa":
         return {
           icon: <Leaf className="w-8 h-8 text-green-500 stroke-[1.5]" />,
           bgColor: "bg-green-500/10",
           borderColor: "border-green-500/30",
-          title: "Planta Detectada"
-        };
-      case "alimento_natural":
-        return {
-          icon: <Flame className="w-8 h-8 text-orange-500 stroke-[1.5]" />,
-          bgColor: "bg-orange-500/10",
-          borderColor: "border-orange-500/30",
-          title: "Alimento Natural"
-        };
-      case "objeto_nao_alimenticio":
-        return {
-          icon: <Package className="w-8 h-8 text-blue-500 stroke-[1.5]" />,
-          bgColor: "bg-blue-500/10",
-          borderColor: "border-blue-500/30",
-          title: "Objeto Detectado"
-        };
-      case "animal_vivo":
-        return {
-          icon: <Cat className="w-8 h-8 text-purple-500 stroke-[1.5]" />,
-          bgColor: "bg-purple-500/10",
-          borderColor: "border-purple-500/30",
-          title: "Animal Detectado"
-        };
-      case "pessoa_ambiente":
-        return {
-          icon: <User className="w-8 h-8 text-indigo-500 stroke-[1.5]" />,
-          bgColor: "bg-indigo-500/10",
-          borderColor: "border-indigo-500/30",
-          title: "Pessoa ou Ambiente"
-        };
-      case "documento_outro":
-        return {
-          icon: <FileText className="w-8 h-8 text-gray-500 stroke-[1.5]" />,
-          bgColor: "bg-gray-500/10",
-          borderColor: "border-gray-500/30",
-          title: "Documento"
-        };
-      case "imagem_ilegivel":
-        return {
-          icon: <ImageOff className="w-8 h-8 text-red-500 stroke-[1.5]" />,
-          bgColor: "bg-red-500/10",
-          borderColor: "border-red-500/30",
-          title: "Imagem Ilegível"
+          title: "Planta Detectada 🌿",
+          subtitle: "Linda! Mas preciso ver comida"
         };
       default:
         return {
           icon: <AlertCircle className="w-8 h-8 text-yellow-500 stroke-[1.5]" />,
           bgColor: "bg-yellow-500/10",
           borderColor: "border-yellow-500/30",
-          title: "Conteúdo Não Identificado"
+          title: "Não Reconhecido",
+          subtitle: "Não consegui identificar comida nesta imagem"
         };
     }
   };
@@ -826,30 +859,36 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
             {/* Category validation error - dynamic feedback */}
             {categoryError && (
               <CardContent className="p-4">
-                <div className={`flex flex-col items-center gap-4 text-center p-4 rounded-xl border ${getCategoryFeedback(categoryError.categoria).bgColor} ${getCategoryFeedback(categoryError.categoria).borderColor}`}>
-                  <div className="w-16 h-16 rounded-full bg-background flex items-center justify-center shadow-sm">
+                <div className={`flex flex-col items-center gap-4 text-center p-5 rounded-xl border-2 ${getCategoryFeedback(categoryError.categoria).bgColor} ${getCategoryFeedback(categoryError.categoria).borderColor}`}>
+                  <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-md">
                     {getCategoryFeedback(categoryError.categoria).icon}
                   </div>
-                  <div className="space-y-1">
-                    <h3 className="font-semibold text-foreground">
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-foreground">
                       {getCategoryFeedback(categoryError.categoria).title}
                     </h3>
+                    <p className="text-sm text-muted-foreground">
+                      {getCategoryFeedback(categoryError.categoria).subtitle}
+                    </p>
                     {categoryError.descricao && (
-                      <p className="text-xs text-muted-foreground italic">
-                        Detectado: {categoryError.descricao}
-                      </p>
+                      <div className="mt-2 px-3 py-1.5 bg-background/50 rounded-lg inline-block">
+                        <p className="text-xs text-muted-foreground">
+                          <span className="font-medium">Identificado:</span> {categoryError.descricao}
+                        </p>
+                      </div>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
                     {categoryError.mensagem}
                   </p>
                   <Button
                     variant="default"
                     onClick={resetAnalysis}
                     className="mt-2 gradient-primary"
+                    size="lg"
                   >
-                    <RotateCcw className="w-4 h-4 mr-2" />
-                    Tentar Outra Foto
+                    <Camera className="w-5 h-5 mr-2" />
+                    Tirar Foto do Prato
                   </Button>
                 </div>
               </CardContent>

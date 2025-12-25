@@ -138,6 +138,18 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     ? `${formatMealTime(mealTimeRange.start)} às ${formatMealTime(mealTimeRange.end)}`
     : "";
   const showButtons = nextMeal ? isMealTimeStarted(nextMeal.meal_type, nextMeal.actual_date) : false;
+  
+  // DEBUG: Log para verificar se showButtons está correto
+  if (nextMeal) {
+    const now = new Date();
+    console.log("🍽️ [PendingMealsList DEBUG]", {
+      mealType: nextMeal.meal_type,
+      actualDate: nextMeal.actual_date,
+      currentTime: `${now.getHours()}:${now.getMinutes()}`,
+      showButtons,
+      shouldShowButtons: showButtons ? "SIM - botões visíveis" : "NÃO - só olho visível"
+    });
+  }
 
   return (
     <div className="space-y-3">

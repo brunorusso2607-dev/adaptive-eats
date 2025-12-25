@@ -83,8 +83,8 @@ export function PushPermissionPrompt() {
     setIsVisible(false);
   };
 
-  // Show debug card when push is not supported
-  if (!isSupported && !isLoading) {
+  // Show debug card when push is not supported (show immediately, don't wait for loading)
+  if (!isLoading && !isSupported) {
     return (
       <Card className="border-destructive/30 bg-destructive/5 relative overflow-hidden">
         <CardContent className="p-4">
@@ -115,6 +115,11 @@ export function PushPermissionPrompt() {
         </CardContent>
       </Card>
     );
+  }
+
+  // While loading, show nothing
+  if (isLoading) {
+    return null;
   }
 
   if (!isVisible) {

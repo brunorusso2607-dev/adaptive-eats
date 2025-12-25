@@ -115,6 +115,12 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     originalItem: string,
     originalNutrition: IngredientResult | null
   ) => {
+    console.log("[MealDetailSheet] handleSubstitute called", {
+      newIngredient: newIngredient.name,
+      originalItem,
+      mealId: meal.id,
+    });
+    
     const currentIngredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
     const originalIng = currentIngredients.find(ing => ing.item === originalItem);
     
@@ -142,6 +148,8 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     };
     setLocalMacros(newMacros);
 
+    console.log("[MealDetailSheet] Calling updateIngredients...");
+    
     // Persist to database with updated macros
     const { success } = await updateIngredients(meal.id, updatedIngredients, {
       recipe_calories: meal.recipe_calories + newMacros.calories,
@@ -149,6 +157,8 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       recipe_carbs: meal.recipe_carbs + newMacros.carbs,
       recipe_fat: meal.recipe_fat + newMacros.fat,
     });
+    
+    console.log("[MealDetailSheet] updateIngredients result:", { success });
     
     if (success) {
       toast.success(`${originalItem} substituído por ${newIngredient.name}`);
@@ -158,15 +168,21 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
       
       // Store substitution info for rename dialog
-      setLastSubstitution({
+      const substitutionData = {
         originalIngredient: originalItem,
         newIngredient: newIngredient.name,
-      });
+      };
+      console.log("[MealDetailSheet] Setting lastSubstitution:", substitutionData);
+      setLastSubstitution(substitutionData);
       
       // Wait for substitution dialog to close, then open rename dialog
+      console.log("[MealDetailSheet] Scheduling rename dialog to open in 300ms...");
       setTimeout(() => {
+        console.log("[MealDetailSheet] Opening rename dialog now");
         setRenameDialogOpen(true);
       }, 300);
+    } else {
+      console.log("[MealDetailSheet] updateIngredients failed, rename dialog will NOT open");
     }
   };
 
@@ -325,10 +341,14 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       />
 
       {/* Recipe Rename Dialog - Appears after successful substitution */}
+      {console.log("[MealDetailSheet] Render check - lastSubstitution:", lastSubstitution, "renameDialogOpen:", renameDialogOpen)}
       {lastSubstitution && (
         <RecipeRenameDialog
           open={renameDialogOpen}
-          onOpenChange={setRenameDialogOpen}
+          onOpenChange={(open) => {
+            console.log("[MealDetailSheet] RecipeRenameDialog onOpenChange:", open);
+            setRenameDialogOpen(open);
+          }}
           currentName={localRecipeName || meal.recipe_name}
           originalIngredient={lastSubstitution.originalIngredient}
           newIngredient={lastSubstitution.newIngredient}

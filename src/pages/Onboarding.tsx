@@ -438,7 +438,7 @@ export default function Onboarding() {
               }}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center"
             >
-              Prefiro não receber notificações
+              Agora não
             </button>
           </div>
         );

@@ -74,16 +74,18 @@ self.addEventListener('notificationclick', (event) => {
   
   event.notification.close();
   
-  // Clear app badge when notification is clicked
-  if ('clearAppBadge' in self.navigator) {
-    self.navigator.clearAppBadge().catch(err => {
-      console.log('[SW] Clear badge error:', err);
-    });
-  }
-  
   const action = event.action;
   const notificationData = event.notification.data || {};
-  const targetUrl = notificationData.url || '/dashboard';
+  const notificationId = notificationData.notificationId;
+  let targetUrl = notificationData.url || '/dashboard';
+  
+  // Append notificationId to URL so the app can mark it as read
+  if (notificationId) {
+    const separator = targetUrl.includes('?') ? '&' : '?';
+    targetUrl = `${targetUrl}${separator}markAsRead=${notificationId}`;
+  }
+  
+  console.log('[SW] Target URL:', targetUrl);
   
   if (action === 'add-water') {
     event.waitUntil(
@@ -91,12 +93,12 @@ self.addEventListener('notificationclick', (event) => {
         for (const client of clientList) {
           if (client.url.includes('/dashboard') && 'focus' in client) {
             client.focus();
-            client.postMessage({ type: 'ADD_WATER', amount: 250 });
+            client.postMessage({ type: 'ADD_WATER', amount: 250, notificationId });
             return;
           }
         }
         if (clients.openWindow) {
-          return clients.openWindow('/dashboard?action=add-water');
+          return clients.openWindow(`/dashboard?action=add-water${notificationId ? `&markAsRead=${notificationId}` : ''}`);
         }
       })
     );
@@ -106,12 +108,12 @@ self.addEventListener('notificationclick', (event) => {
         for (const client of clientList) {
           if ('focus' in client) {
             client.focus();
-            client.postMessage({ type: 'OPEN_FEEDBACK' });
+            client.postMessage({ type: 'OPEN_FEEDBACK', notificationId });
             return;
           }
         }
         if (clients.openWindow) {
-          return clients.openWindow('/dashboard?action=open-feedback');
+          return clients.openWindow(`/dashboard?action=open-feedback${notificationId ? `&markAsRead=${notificationId}` : ''}`);
         }
       })
     );
@@ -120,7 +122,12 @@ self.addEventListener('notificationclick', (event) => {
       clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
         for (const client of clientList) {
           if ('focus' in client) {
-            return client.focus();
+            client.focus();
+            // Send message to mark notification as read
+            if (notificationId) {
+              client.postMessage({ type: 'MARK_NOTIFICATION_READ', notificationId });
+            }
+            return;
           }
         }
         if (clients.openWindow) {

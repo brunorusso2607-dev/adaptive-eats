@@ -119,36 +119,45 @@ serve(async (req) => {
       const pendingCount = pendingCountByUser[sub.user_id] || 0;
       if (pendingCount === 0) continue;
 
-      const payload = JSON.stringify({
-        title: "🍽️ Como você se sentiu?",
-        body: pendingCount === 1
-          ? "Uma refeição aguarda seu feedback"
-          : `${pendingCount} refeições aguardam seu feedback`,
-        icon: "/icons/icon-192x192.png",
-        badge: "/icons/icon-72x72.png",
-        tag: "meal-feedback",
-        requireInteraction: true,
-        data: {
-          type: "meal-feedback",
-          url: "/dashboard",
-          pendingCount,
-        },
-        actions: [
-          { action: "open-feedback", title: "Responder" },
-          { action: "dismiss", title: "Depois" },
-        ],
-      });
+      const messageBody = pendingCount === 1
+        ? "Uma refeição aguarda seu feedback"
+        : `${pendingCount} refeições aguardam seu feedback`;
 
       try {
-        // Insert notification into database
-        await supabase.from("notifications").insert({
+        // Insert notification into database and get the ID
+        const { data: insertedNotif } = await supabase.from("notifications").insert({
           user_id: sub.user_id,
           title: "🍽️ Como você se sentiu?",
-          message: pendingCount === 1
-            ? "Uma refeição aguarda seu feedback"
-            : `${pendingCount} refeições aguardam seu feedback`,
+          message: messageBody,
           type: "meal",
           action_url: "/dashboard",
+        }).select("id").single();
+
+        // Get current unread count for badge
+        const { count: unreadCount } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", sub.user_id)
+          .eq("is_read", false);
+
+        const payload = JSON.stringify({
+          title: "🍽️ Como você se sentiu?",
+          body: messageBody,
+          icon: "/icons/icon-192x192.png",
+          badge: "/icons/icon-72x72.png",
+          tag: "meal-feedback",
+          badgeCount: unreadCount || 1,
+          requireInteraction: true,
+          data: {
+            type: "meal-feedback",
+            url: "/dashboard",
+            pendingCount,
+            notificationId: insertedNotif?.id || null,
+          },
+          actions: [
+            { action: "open-feedback", title: "Responder" },
+            { action: "dismiss", title: "Depois" },
+          ],
         });
 
         // For a production implementation, you would use a web-push library

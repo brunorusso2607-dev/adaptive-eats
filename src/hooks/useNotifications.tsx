@@ -47,7 +47,16 @@ export function useNotifications() {
           n.id === notificationId ? { ...n, is_read: true } : n
         )
       );
-      setUnreadCount((prev) => Math.max(0, prev - 1));
+      setUnreadCount((prev) => {
+        const newCount = Math.max(0, prev - 1);
+        // Update app badge
+        if (newCount === 0 && 'clearAppBadge' in navigator) {
+          (navigator as any).clearAppBadge().catch(() => {});
+        } else if ('setAppBadge' in navigator) {
+          (navigator as any).setAppBadge(newCount).catch(() => {});
+        }
+        return newCount;
+      });
     }
   }, []);
 
@@ -66,6 +75,10 @@ export function useNotifications() {
         prev.map((n) => ({ ...n, is_read: true }))
       );
       setUnreadCount(0);
+      // Clear app badge when all notifications are read
+      if ('clearAppBadge' in navigator) {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
     }
   }, []);
 
@@ -116,7 +129,14 @@ export function useNotifications() {
         (payload) => {
           const newNotif = payload.new as Notification;
           setNotifications((prev) => [newNotif, ...prev]);
-          setUnreadCount((prev) => prev + 1);
+          setUnreadCount((prev) => {
+            const newCount = prev + 1;
+            // Update app badge with new count
+            if ('setAppBadge' in navigator) {
+              (navigator as any).setAppBadge(newCount).catch(() => {});
+            }
+            return newCount;
+          });
         }
       )
       .subscribe();

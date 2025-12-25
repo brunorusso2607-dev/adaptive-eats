@@ -1,9 +1,9 @@
 import { useState } from "react";
-import { Shield, TrendingUp, ChevronRight, Lightbulb, Bell } from "lucide-react";
+import { Shield, ChevronRight, Lightbulb, Bell } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSymptomAnalysis } from "@/hooks/useSymptomAnalysis";
-import { useWellMealsCount } from "@/hooks/useWellMealsCount";
+import { useHealthStats, HealthPeriod } from "@/hooks/useHealthStats";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { MealSymptomHistorySheet } from "./MealSymptomHistorySheet";
 import { SymptomIcon } from "./SymptomIcon";
@@ -14,18 +14,41 @@ interface HealthCardProps {
   onOpenFeedback?: () => void;
 }
 
+const PERIOD_OPTIONS: { value: HealthPeriod; label: string }[] = [
+  { value: 7, label: "7d" },
+  { value: 14, label: "14d" },
+  { value: 21, label: "21d" },
+  { value: 30, label: "30d" },
+];
+
 export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
-  const { analysis, isLoading: isLoadingAnalysis } = useSymptomAnalysis(30);
-  const { count: wellMealsCount, isLoading: isLoadingWellMeals } = useWellMealsCount(7);
+  const [selectedPeriod, setSelectedPeriod] = useState<HealthPeriod>(7);
+  
+  const { analysis, isLoading: isLoadingAnalysis } = useSymptomAnalysis(selectedPeriod);
+  const { 
+    wellMealsCount, 
+    totalMealsCount, 
+    symptomsCount, 
+    score, 
+    isLoading: isLoadingStats 
+  } = useHealthStats(selectedPeriod);
   const { recentLogs, symptomTypes } = useSymptomTracker();
 
-  const isLoading = isLoadingAnalysis || isLoadingWellMeals;
+  const isLoading = isLoadingAnalysis || isLoadingStats;
 
-  // Calculate most common symptom
-  const mostCommonSymptom = recentLogs.length > 0
+  // Filter recent logs by selected period
+  const filteredLogs = recentLogs.filter(log => {
+    const logDate = new Date(log.logged_at);
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - selectedPeriod);
+    return logDate >= startDate;
+  });
+
+  // Calculate most common symptom from filtered logs
+  const mostCommonSymptom = filteredLogs.length > 0
     ? Object.entries(
-        recentLogs
+        filteredLogs
           .flatMap(log => log.symptoms)
           .reduce((acc, symptom) => {
             acc[symptom] = (acc[symptom] || 0) + 1;
@@ -50,9 +73,6 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
       </Card>
     );
   }
-
-  const score = analysis?.safetyScore ?? 100;
-  const symptomsCount = recentLogs.length;
   
   // Score color and status
   const scoreColor = score >= 80 
@@ -60,12 +80,6 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
     : score >= 60 
       ? "text-amber-500" 
       : "text-red-500";
-
-  const statusLabel = score >= 80 
-    ? "Excelente" 
-    : score >= 60 
-      ? "Atenção" 
-      : "Cuidado";
 
   const statusMessage = score >= 90
     ? "Seu corpo está em harmonia"
@@ -90,18 +104,38 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
             <Shield className="h-4 w-4 text-primary" />
             Saúde
           </div>
-          {pendingCount > 0 && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-500/10"
-              onClick={onOpenFeedback}
-            >
-              <Bell className="h-3.5 w-3.5 mr-1" />
-              {pendingCount} pendente{pendingCount > 1 ? "s" : ""}
-            </Button>
-          )}
+          <div className="flex items-center gap-1">
+            {pendingCount > 0 && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-xs text-orange-600 hover:text-orange-700 hover:bg-orange-500/10"
+                onClick={onOpenFeedback}
+              >
+                <Bell className="h-3.5 w-3.5 mr-1" />
+                {pendingCount}
+              </Button>
+            )}
+          </div>
         </CardTitle>
+        
+        {/* Period Filter */}
+        <div className="flex items-center gap-1 mt-2">
+          {PERIOD_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              onClick={() => setSelectedPeriod(option.value)}
+              className={cn(
+                "px-2.5 py-1 text-xs rounded-full transition-colors",
+                selectedPeriod === option.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted/50 text-muted-foreground hover:bg-muted"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
+        </div>
       </CardHeader>
 
       <CardContent className="space-y-4">
@@ -132,11 +166,22 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
               />
             </svg>
             <div className="absolute inset-0 flex flex-col items-center justify-center">
-              <span className={cn("text-3xl font-bold", scoreColor)}>{score}</span>
-              <span className="text-[10px] text-muted-foreground">de 100</span>
+              <div className="flex items-baseline">
+                <span className={cn("text-3xl font-bold", scoreColor)}>{score}</span>
+                <span className={cn("text-lg font-medium", scoreColor)}>%</span>
+              </div>
             </div>
           </div>
-          <p className="text-sm text-muted-foreground mt-2">{statusMessage}</p>
+          <p className="text-sm text-muted-foreground mt-2 text-center">{statusMessage}</p>
+          
+          {/* Contextual Info */}
+          <p className="text-xs text-muted-foreground mt-1">
+            {totalMealsCount > 0 ? (
+              <span className="font-medium text-foreground">{wellMealsCount} de {totalMealsCount}</span>
+            ) : (
+              <span>Nenhuma</span>
+            )} refeições OK nos últimos {selectedPeriod} dias
+          </p>
         </div>
 
         {/* Metrics Row */}
@@ -145,7 +190,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
             <div className="flex items-center justify-center gap-1.5">
               <span className="text-xl font-semibold text-green-600">{wellMealsCount}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">refeições OK (7d)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">refeições OK ({selectedPeriod}d)</p>
           </div>
           
           <div className="text-center p-3 rounded-lg bg-muted/30">
@@ -155,7 +200,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
                 symptomsCount > 0 ? "text-orange-600" : "text-foreground"
               )}>{symptomsCount}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">sintomas (7d)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">sintomas ({selectedPeriod}d)</p>
           </div>
         </div>
 
@@ -190,10 +235,10 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
         )}
 
         {/* Empty State */}
-        {recentLogs.length === 0 && score >= 80 && (
+        {filteredLogs.length === 0 && score >= 80 && (
           <div className="text-center py-2">
             <p className="text-xs text-muted-foreground">
-              ✨ Nenhum sintoma nos últimos 7 dias
+              ✨ Nenhum sintoma nos últimos {selectedPeriod} dias
             </p>
           </div>
         )}

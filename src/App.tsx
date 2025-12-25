@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useAppSettings } from "@/hooks/useAppSettings";
 import { useAutoUpdate } from "@/hooks/useAutoUpdate";
+import { NotificationHandler } from "@/components/NotificationHandler";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -45,6 +46,8 @@ function AppContent() {
   
   return (
     <BrowserRouter>
+      {/* Global notification handler - processes markAsRead params on any page */}
+      <NotificationHandler />
       <Toaster />
       <Sonner />
       <Routes>

@@ -6,20 +6,27 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw } from "lucide-react";
+import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, Check, SkipForward, Loader2, X } from "lucide-react";
 import type { NextMealData } from "@/hooks/useNextMeal";
 import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
 import RecipeRenameDialog from "@/components/RecipeRenameDialog";
+import MealConfirmDialog from "@/components/MealConfirmDialog";
+import FoodSearchDrawer from "@/components/FoodSearchDrawer";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
+import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { cn } from "@/lib/utils";
 
 interface MealDetailSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   meal: NextMealData | null;
+  canSwap?: boolean; // Se pode mostrar botão "Trocar"
+  onRefetch?: () => void;
+  onStreakRefresh?: () => void;
 }
 
 interface Ingredient {
@@ -44,7 +51,14 @@ const MEAL_LABELS: Record<string, string> = {
   ceia: "Ceia"
 };
 
-export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetailSheetProps) {
+export default function MealDetailSheet({ 
+  open, 
+  onOpenChange, 
+  meal, 
+  canSwap = true,
+  onRefetch,
+  onStreakRefresh 
+}: MealDetailSheetProps) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
@@ -62,8 +76,15 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     originalIngredient: string;
     newIngredient: string;
   } | null>(null);
+
+  // State for action dialogs
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [showFoodDrawer, setShowFoodDrawer] = useState(false);
+  const [isMarking, setIsMarking] = useState(false);
+  const [isSkipping, setIsSkipping] = useState(false);
   
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
+  const { saveConsumption } = useMealConsumption();
   const queryClient = useQueryClient();
 
   // Parse ingredients from meal
@@ -115,12 +136,6 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     originalItem: string,
     originalNutrition: IngredientResult | null
   ) => {
-    console.log("[MealDetailSheet] handleSubstitute called", {
-      newIngredient: newIngredient.name,
-      originalItem,
-      mealId: meal.id,
-    });
-    
     const currentIngredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
     const originalIng = currentIngredients.find(ing => ing.item === originalItem);
     
@@ -147,8 +162,6 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       fat: localMacros.fat + (macrosDiff.recipe_fat || 0),
     };
     setLocalMacros(newMacros);
-
-    console.log("[MealDetailSheet] Calling updateIngredients...");
     
     // Persist to database with updated macros
     const { success } = await updateIngredients(meal.id, updatedIngredients, {
@@ -158,31 +171,20 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       recipe_fat: meal.recipe_fat + newMacros.fat,
     });
     
-    console.log("[MealDetailSheet] updateIngredients result:", { success });
-    
     if (success) {
       toast.success(`${originalItem} substituído por ${newIngredient.name}`);
-      // Invalidate queries to refetch updated data
       queryClient.invalidateQueries({ queryKey: ["meal-plan-items"] });
       queryClient.invalidateQueries({ queryKey: ["next-meal"] });
       queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
       
-      // Store substitution info for rename dialog
-      const substitutionData = {
+      setLastSubstitution({
         originalIngredient: originalItem,
         newIngredient: newIngredient.name,
-      };
-      console.log("[MealDetailSheet] Setting lastSubstitution:", substitutionData);
-      setLastSubstitution(substitutionData);
+      });
       
-      // Wait for substitution dialog to close, then open rename dialog
-      console.log("[MealDetailSheet] Scheduling rename dialog to open in 300ms...");
       setTimeout(() => {
-        console.log("[MealDetailSheet] Opening rename dialog now");
         setRenameDialogOpen(true);
       }, 300);
-    } else {
-      console.log("[MealDetailSheet] updateIngredients failed, rename dialog will NOT open");
     }
   };
 
@@ -200,18 +202,79 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     setLocalRecipeName(newName);
     toast.success("Nome da receita atualizado!");
     
-    // Invalidate queries
     queryClient.invalidateQueries({ queryKey: ["meal-plan-items"] });
     queryClient.invalidateQueries({ queryKey: ["next-meal"] });
     queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
   };
 
+  // Ações do sticky footer
+  const handleConfirmAsPlanned = async () => {
+    setShowConfirmDialog(false);
+    setIsMarking(true);
+
+    const result = await saveConsumption({
+      mealPlanItemId: meal.id,
+      followedPlan: true,
+      items: [],
+      totalCalories: meal.recipe_calories,
+      totalProtein: meal.recipe_protein,
+      totalCarbs: meal.recipe_carbs,
+      totalFat: meal.recipe_fat,
+    });
+
+    setIsMarking(false);
+
+    if (result.success) {
+      toast.success("Refeição marcada como feita! 🎉");
+      onOpenChange(false); // Fechar o sheet
+      onRefetch?.();
+      onStreakRefresh?.();
+    } else {
+      toast.error("Erro ao marcar refeição");
+    }
+  };
+
+  const handleConfirmDifferent = () => {
+    setShowConfirmDialog(false);
+    setShowFoodDrawer(true);
+  };
+
+  const handleSkip = async () => {
+    setIsSkipping(true);
+    
+    const { error } = await supabase
+      .from("meal_plan_items")
+      .update({ completed_at: new Date().toISOString() })
+      .eq("id", meal.id);
+
+    setIsSkipping(false);
+
+    if (!error) {
+      toast.info("Refeição pulada");
+      onOpenChange(false);
+      onRefetch?.();
+    } else {
+      toast.error("Erro ao pular refeição");
+    }
+  };
+
+  const handleFoodDrawerSuccess = () => {
+    onOpenChange(false);
+    onRefetch?.();
+    onStreakRefresh?.();
+  };
+
+  const handleTrocarClick = () => {
+    setShowFoodDrawer(true);
+  };
+
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[80vh] p-0">
-          <ScrollArea className="h-full">
-            <div className="p-6 space-y-6">
+        <SheetContent side="bottom" className="h-[85vh] p-0 flex flex-col">
+          {/* Scrollable content */}
+          <ScrollArea className="flex-1">
+            <div className="p-6 pb-24 space-y-6">
               {/* Header */}
               <div>
                 <Badge className="mb-2 bg-primary text-primary-foreground">
@@ -329,10 +392,55 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
               )}
             </div>
           </ScrollArea>
+
+          {/* Sticky Footer - Sempre visível */}
+          <div className="sticky bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 safe-area-footer">
+            <div className="flex items-center gap-3">
+              {/* Trocar - só se canSwap */}
+              {canSwap && (
+                <button
+                  onClick={handleTrocarClick}
+                  disabled={isMarking || isSkipping}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors disabled:opacity-50"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Trocar
+                </button>
+              )}
+
+              {/* Feita */}
+              <button
+                onClick={() => setShowConfirmDialog(true)}
+                disabled={isMarking || isSkipping}
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-colors disabled:opacity-50"
+              >
+                {isMarking ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4" />
+                )}
+                Feita
+              </button>
+
+              {/* Não fiz */}
+              <button
+                onClick={handleSkip}
+                disabled={isMarking || isSkipping}
+                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground font-medium transition-colors disabled:opacity-50"
+              >
+                {isSkipping ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <X className="w-4 h-4" />
+                )}
+                Não fiz
+              </button>
+            </div>
+          </div>
         </SheetContent>
       </Sheet>
 
-      {/* Ingredient Substitution Sheet - FORA do Sheet principal para evitar conflito de animação */}
+      {/* Ingredient Substitution Sheet */}
       <IngredientSubstitutionSheet
         open={substitutionOpen}
         onOpenChange={setSubstitutionOpen}
@@ -340,21 +448,35 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
         onSubstitute={handleSubstitute}
       />
 
-      {/* Recipe Rename Dialog - Appears after successful substitution */}
-      {console.log("[MealDetailSheet] Render check - lastSubstitution:", lastSubstitution, "renameDialogOpen:", renameDialogOpen)}
+      {/* Recipe Rename Dialog */}
       {lastSubstitution && (
         <RecipeRenameDialog
           open={renameDialogOpen}
-          onOpenChange={(open) => {
-            console.log("[MealDetailSheet] RecipeRenameDialog onOpenChange:", open);
-            setRenameDialogOpen(open);
-          }}
+          onOpenChange={setRenameDialogOpen}
           currentName={localRecipeName || meal.recipe_name}
           originalIngredient={lastSubstitution.originalIngredient}
           newIngredient={lastSubstitution.newIngredient}
           onConfirm={handleRenameRecipe}
         />
       )}
+
+      {/* Confirm Dialog */}
+      <MealConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        mealName={meal.recipe_name}
+        onConfirmAsPlanned={handleConfirmAsPlanned}
+        onConfirmDifferent={handleConfirmDifferent}
+      />
+
+      {/* Food Search Drawer */}
+      <FoodSearchDrawer
+        open={showFoodDrawer}
+        onOpenChange={setShowFoodDrawer}
+        mealPlanItemId={meal.id}
+        mealType={meal.meal_type}
+        onSuccess={handleFoodDrawerSuccess}
+      />
     </>
   );
 }

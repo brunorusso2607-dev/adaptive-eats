@@ -1,8 +1,9 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, Loader2, Droplets, Clock, UtensilsCrossed } from "lucide-react";
+import { Bell, BellOff, Loader2, Droplets, Clock, UtensilsCrossed, Send } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   Sheet,
   SheetContent,
@@ -82,6 +83,56 @@ export function NotificationSettingsSheet({
   });
   const [isLoadingWater, setIsLoadingWater] = useState(true);
   const [isLoadingMeal, setIsLoadingMeal] = useState(true);
+  const [isSendingMealTest, setIsSendingMealTest] = useState(false);
+
+  const sendMealReminderTest = async () => {
+    if (mealSettings.enabled_meals.length === 0) {
+      toast({
+        title: "Nenhuma refeição selecionada",
+        description: "Selecione ao menos uma refeição para testar o lembrete",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsSendingMealTest(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) {
+        throw new Error("Usuário não autenticado");
+      }
+
+      // Get first enabled meal for test
+      const testMealType = mealSettings.enabled_meals[0];
+      const testMeal = mealTimeSettings.find(m => m.meal_type === testMealType);
+      const mealLabel = testMeal?.label || testMealType;
+
+      const response = await supabase.functions.invoke("send-test-notification", {
+        body: {
+          title: `🍽️ Hora da ${mealLabel}!`,
+          message: `Este é um teste do lembrete de refeição. Seu próximo lembrete será ${mealSettings.reminder_minutes_before === 0 ? "no horário" : `${mealSettings.reminder_minutes_before} min antes`}.`,
+        },
+      });
+
+      if (response.error) {
+        throw response.error;
+      }
+
+      toast({
+        title: "Notificação enviada!",
+        description: "Verifique se recebeu a notificação de teste de refeição",
+      });
+    } catch (error: any) {
+      console.error("Error sending meal test notification:", error);
+      toast({
+        title: "Erro ao enviar",
+        description: error.message || "Não foi possível enviar a notificação de teste",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSendingMealTest(false);
+    }
+  };
 
   // Fetch water reminder settings
   useEffect(() => {
@@ -423,6 +474,22 @@ export function NotificationSettingsSheet({
                             ))}
                           </div>
                         </div>
+
+                        {/* Test button */}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="w-full"
+                          onClick={sendMealReminderTest}
+                          disabled={isSendingMealTest}
+                        >
+                          {isSendingMealTest ? (
+                            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                          ) : (
+                            <Send className="h-4 w-4 mr-2" />
+                          )}
+                          Testar lembrete de refeição
+                        </Button>
                       </>
                     )}
                   </div>

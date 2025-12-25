@@ -82,6 +82,7 @@ export default function MealDetailSheet({
   const [showFoodDrawer, setShowFoodDrawer] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
+  const [footerVisible, setFooterVisible] = useState(false);
   
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const { saveConsumption } = useMealConsumption();
@@ -106,6 +107,17 @@ export default function MealDetailSheet({
       setLastSubstitution(null);
     }
   }, [meal?.id]);
+
+  // Animate footer when sheet opens
+  useEffect(() => {
+    if (open) {
+      setFooterVisible(false);
+      const timer = setTimeout(() => setFooterVisible(true), 200);
+      return () => clearTimeout(timer);
+    } else {
+      setFooterVisible(false);
+    }
+  }, [open]);
 
   if (!meal) return null;
   
@@ -393,8 +405,15 @@ export default function MealDetailSheet({
             </div>
           </ScrollArea>
 
-          {/* Sticky Footer - Sempre visível */}
-          <div className="sticky bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 safe-area-footer">
+          {/* Sticky Footer - Sempre visível com animação */}
+          <div 
+            className={cn(
+              "sticky bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 safe-area-footer transition-all duration-300 ease-out",
+              footerVisible 
+                ? "opacity-100 translate-y-0" 
+                : "opacity-0 translate-y-5"
+            )}
+          >
             <div className="flex items-center gap-3">
               {/* Trocar - só se canSwap */}
               {canSwap && (

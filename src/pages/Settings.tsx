@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, Droplets, UtensilsCrossed, Clock, Loader2 } from "lucide-react";
+import { ArrowLeft, Bell, Droplets, UtensilsCrossed, Clock, Loader2, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { toast } from "sonner";
 
 export default function Settings() {
@@ -22,6 +24,8 @@ export default function Settings() {
     unsubscribe,
   } = usePushSubscription();
 
+  const { settings: mealTimeSettings } = useMealTimeSettings();
+
   const [waterSettings, setWaterSettings] = useState({
     reminder_enabled: true,
     reminder_start_hour: 8,
@@ -29,12 +33,23 @@ export default function Settings() {
     reminder_interval_minutes: 60,
     daily_goal_ml: 2000,
   });
+
+  const [mealSettings, setMealSettings] = useState({
+    enabled: true,
+    reminder_minutes_before: 0,
+    enabled_meals: [] as string[],
+  });
+
   const [isLoadingWater, setIsLoadingWater] = useState(true);
+  const [isLoadingMeal, setIsLoadingMeal] = useState(true);
   const [isSavingWater, setIsSavingWater] = useState(false);
+  const [isSavingMeal, setIsSavingMeal] = useState(false);
+  const [isSendingMealTest, setIsSendingMealTest] = useState(false);
 
   useEffect(() => {
     fetchWaterSettings();
-  }, []);
+    fetchMealSettings();
+  }, [mealTimeSettings]);
 
   const fetchWaterSettings = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -58,6 +73,33 @@ export default function Settings() {
     setIsLoadingWater(false);
   };
 
+  const fetchMealSettings = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data } = await supabase
+      .from("meal_reminder_settings")
+      .select("*")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    if (data) {
+      setMealSettings({
+        enabled: data.enabled,
+        reminder_minutes_before: data.reminder_minutes_before,
+        enabled_meals: data.enabled_meals || [],
+      });
+    } else {
+      // Default: all meals enabled
+      const defaultMeals = mealTimeSettings.map(m => m.meal_type);
+      setMealSettings(prev => ({
+        ...prev,
+        enabled_meals: defaultMeals.length > 0 ? defaultMeals : ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"]
+      }));
+    }
+    setIsLoadingMeal(false);
+  };
+
   const saveWaterSettings = async () => {
     setIsSavingWater(true);
     const { data: { session } } = await supabase.auth.getSession();
@@ -77,6 +119,63 @@ export default function Settings() {
       toast.success("Configurações salvas");
     }
     setIsSavingWater(false);
+  };
+
+  const saveMealSettings = async () => {
+    setIsSavingMeal(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("meal_reminder_settings")
+      .upsert({
+        user_id: session.user.id,
+        ...mealSettings,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: "user_id" });
+
+    if (error) {
+      toast.error("Erro ao salvar configurações");
+    } else {
+      toast.success("Configurações de refeição salvas");
+    }
+    setIsSavingMeal(false);
+  };
+
+  const handleMealToggle = (mealType: string) => {
+    const newMeals = mealSettings.enabled_meals.includes(mealType)
+      ? mealSettings.enabled_meals.filter(m => m !== mealType)
+      : [...mealSettings.enabled_meals, mealType];
+    setMealSettings(prev => ({ ...prev, enabled_meals: newMeals }));
+  };
+
+  const sendMealReminderTest = async () => {
+    if (mealSettings.enabled_meals.length === 0) {
+      toast.error("Selecione ao menos uma refeição");
+      return;
+    }
+
+    setIsSendingMealTest(true);
+    try {
+      const testMealType = mealSettings.enabled_meals[0];
+      const testMeal = mealTimeSettings.find(m => m.meal_type === testMealType);
+      const mealLabel = testMeal?.label || testMealType;
+
+      const { error } = await supabase.functions.invoke("send-test-notification", {
+        body: {
+          title: `🍽️ Hora da ${mealLabel}!`,
+          message: `Este é um teste do lembrete de refeição.`,
+        },
+      });
+
+      if (error) throw error;
+      toast.success("Notificação de teste enviada!");
+    } catch (err) {
+      console.error("Error sending meal test:", err);
+      toast.error("Erro ao enviar notificação de teste");
+    } finally {
+      setIsSendingMealTest(false);
+    }
   };
 
   const [isSendingTest, setIsSendingTest] = useState(false);
@@ -333,7 +432,7 @@ export default function Settings() {
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <UtensilsCrossed className="h-5 w-5 text-primary" />
+              <UtensilsCrossed className="h-5 w-5 text-orange-500" />
               <CardTitle className="text-base">Feedback de Refeições</CardTitle>
             </div>
             <CardDescription>

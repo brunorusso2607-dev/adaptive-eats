@@ -157,12 +157,16 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       queryClient.invalidateQueries({ queryKey: ["next-meal"] });
       queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
       
-      // Store substitution info and open rename dialog
+      // Store substitution info for rename dialog
       setLastSubstitution({
         originalIngredient: originalItem,
         newIngredient: newIngredient.name,
       });
-      setRenameDialogOpen(true);
+      
+      // Wait for substitution dialog to close, then open rename dialog
+      setTimeout(() => {
+        setRenameDialogOpen(true);
+      }, 300);
     }
   };
 

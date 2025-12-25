@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, UtensilsCrossed, Clock, ChevronDown, Flame, Eye, ChevronRight } from "lucide-react";
+import { UtensilsCrossed, ChevronDown, Flame, Eye, ChevronRight, Check } from "lucide-react";
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import MealDetailSheet from "./MealDetailSheet";
@@ -132,11 +132,6 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     );
   }
 
-  // Handle mark complete through the hook
-  const handleMarkComplete = async (mealId: string) => {
-    return true;
-  };
-
   const mealLabel = nextMeal ? (MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type) : "";
   const mealTimeRange = nextMeal ? MEAL_TIME_RANGES[nextMeal.meal_type] : null;
   const mealTimeText = mealTimeRange 
@@ -200,8 +195,6 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
               <div className="mt-3">
               <PendingMealCard
                 meal={nextMeal}
-                onMarkComplete={handleMarkComplete}
-                onSkip={skipMeal}
                 onRefetch={refetch}
                 onStreakRefresh={onStreakRefresh}
                 userProfile={userProfile}
@@ -250,8 +243,6 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                 <PendingMealCard
                   key={meal.id}
                   meal={meal}
-                  onMarkComplete={handleMarkComplete}
-                  onSkip={skipMeal}
                   onRefetch={refetch}
                   onStreakRefresh={onStreakRefresh}
                   status={status}

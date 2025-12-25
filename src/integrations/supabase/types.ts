@@ -745,6 +745,36 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_reminder_settings: {
+        Row: {
+          created_at: string
+          enabled: boolean
+          enabled_meals: string[]
+          id: string
+          reminder_minutes_before: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enabled?: boolean
+          enabled_meals?: string[]
+          id?: string
+          reminder_minutes_before?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enabled?: boolean
+          enabled_meals?: string[]
+          id?: string
+          reminder_minutes_before?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meal_status_colors: {
         Row: {
           background_color: string

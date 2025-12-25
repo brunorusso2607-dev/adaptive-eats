@@ -25,6 +25,7 @@ import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
 import PendingMealsList from "@/components/PendingMealsList";
+import { DailyMealProgress } from "@/components/DailyMealProgress";
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import WeightHistoryChart from "@/components/WeightHistoryChart";
@@ -867,12 +868,15 @@ export default function Dashboard() {
                   onOpenFeedback={handleOpenFeedback}
                 />
 
-                {/* 3. Próxima Refeição - Ação principal */}
-                <PendingMealsList 
-                  onStreakRefresh={gamification.refresh} 
-                  onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
-                  userProfile={userProfile} 
-                />
+                {/* 3. Progresso do Dia + Próxima Refeição */}
+                <div className="space-y-1">
+                  <DailyMealProgress />
+                  <PendingMealsList 
+                    onStreakRefresh={gamification.refresh} 
+                    onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
+                    userProfile={userProfile} 
+                  />
+                </div>
 
                 {/* 5. Gerar Receita - Ferramenta secundária */}
                 <Card className="bg-card border border-border shadow-sm overflow-visible">

@@ -23,10 +23,18 @@ export function usePushSubscription() {
 
   // Check if push is supported
   useEffect(() => {
-    const supported =
-      "serviceWorker" in navigator &&
-      "PushManager" in window &&
-      "Notification" in window;
+    const hasServiceWorker = "serviceWorker" in navigator;
+    const hasPushManager = "PushManager" in window;
+    const hasNotification = "Notification" in window;
+    
+    // Debug logging for iOS troubleshooting
+    console.log("[Push Debug] serviceWorker:", hasServiceWorker);
+    console.log("[Push Debug] PushManager:", hasPushManager);
+    console.log("[Push Debug] Notification:", hasNotification);
+    console.log("[Push Debug] standalone mode:", (window.navigator as any).standalone);
+    console.log("[Push Debug] display-mode:", window.matchMedia('(display-mode: standalone)').matches);
+    
+    const supported = hasServiceWorker && hasPushManager && hasNotification;
     setIsSupported(supported);
 
     if (supported) {

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useSymptomAnalysis } from "@/hooks/useSymptomAnalysis";
 import { useHealthStats, HealthPeriod } from "@/hooks/useHealthStats";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
-import { MealSymptomHistorySheet } from "./MealSymptomHistorySheet";
+import { MealHistorySheet } from "./MealHistorySheet";
 import { SymptomIcon } from "./SymptomIcon";
 import { cn } from "@/lib/utils";
 
@@ -255,7 +255,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
         </button>
 
         {/* History Sheet */}
-        <MealSymptomHistorySheet
+        <MealHistorySheet
           open={historyOpen}
           onOpenChange={setHistoryOpen}
         />

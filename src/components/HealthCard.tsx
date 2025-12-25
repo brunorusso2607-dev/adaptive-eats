@@ -1,11 +1,13 @@
 import { useState } from "react";
-import { Shield, ChevronRight, Lightbulb, Bell } from "lucide-react";
+import { Shield, ChevronRight, Lightbulb, Bell, TrendingUp, ChevronDown } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useSymptomAnalysis } from "@/hooks/useSymptomAnalysis";
 import { useHealthStats, HealthPeriod } from "@/hooks/useHealthStats";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { MealHistorySheet } from "./MealHistorySheet";
+import { HealthScoreChart } from "./HealthScoreChart";
 import { SymptomIcon } from "./SymptomIcon";
 import { cn } from "@/lib/utils";
 
@@ -23,6 +25,7 @@ const PERIOD_OPTIONS: { value: HealthPeriod; label: string }[] = [
 
 export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [chartOpen, setChartOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<HealthPeriod>(7);
   
   const { analysis, isLoading: isLoadingAnalysis } = useSymptomAnalysis(30); // Always 30 days for main score
@@ -244,6 +247,27 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
             </p>
           </div>
         )}
+
+        {/* Evolution Chart - Collapsible */}
+        <Collapsible open={chartOpen} onOpenChange={setChartOpen}>
+          <CollapsibleTrigger asChild>
+            <button className="w-full flex items-center justify-between text-sm text-muted-foreground hover:text-foreground transition-colors py-2 px-1 rounded-lg hover:bg-muted/50">
+              <div className="flex items-center gap-1.5">
+                <TrendingUp className="h-4 w-4" />
+                <span>Ver evolução</span>
+              </div>
+              <ChevronDown className={cn(
+                "h-4 w-4 transition-transform",
+                chartOpen && "rotate-180"
+              )} />
+            </button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <div className="pt-2 pb-1">
+              <HealthScoreChart days={selectedPeriod} />
+            </div>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Action Button */}
         <button

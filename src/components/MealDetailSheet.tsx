@@ -9,10 +9,12 @@ import { Badge } from "@/components/ui/badge";
 import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw } from "lucide-react";
 import type { NextMealData } from "@/hooks/useNextMeal";
 import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
+import RecipeRenameDialog from "@/components/RecipeRenameDialog";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 
 interface MealDetailSheetProps {
   open: boolean;
@@ -52,6 +54,15 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     carbs: 0,
     fat: 0,
   });
+  const [localRecipeName, setLocalRecipeName] = useState("");
+  
+  // State for rename dialog
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [lastSubstitution, setLastSubstitution] = useState<{
+    originalIngredient: string;
+    newIngredient: string;
+  } | null>(null);
+  
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const queryClient = useQueryClient();
 
@@ -70,6 +81,8 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     if (meal) {
       setLocalIngredients([]);
       setLocalMacros({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+      setLocalRecipeName("");
+      setLastSubstitution(null);
     }
   }, [meal?.id]);
 
@@ -143,7 +156,34 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       queryClient.invalidateQueries({ queryKey: ["meal-plan-items"] });
       queryClient.invalidateQueries({ queryKey: ["next-meal"] });
       queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
+      
+      // Store substitution info and open rename dialog
+      setLastSubstitution({
+        originalIngredient: originalItem,
+        newIngredient: newIngredient.name,
+      });
+      setRenameDialogOpen(true);
     }
+  };
+
+  const handleRenameRecipe = async (newName: string) => {
+    const { error } = await supabase
+      .from("meal_plan_items")
+      .update({ recipe_name: newName })
+      .eq("id", meal.id);
+
+    if (error) {
+      toast.error("Erro ao renomear receita");
+      throw error;
+    }
+
+    setLocalRecipeName(newName);
+    toast.success("Nome da receita atualizado!");
+    
+    // Invalidate queries
+    queryClient.invalidateQueries({ queryKey: ["meal-plan-items"] });
+    queryClient.invalidateQueries({ queryKey: ["next-meal"] });
+    queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
   };
 
   return (
@@ -158,7 +198,7 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
                   {MEAL_LABELS[meal.meal_type] || meal.meal_type}
                 </Badge>
                 <h2 className="font-display text-2xl font-bold text-foreground">
-                  {meal.recipe_name}
+                  {localRecipeName || meal.recipe_name}
                 </h2>
               </div>
 
@@ -279,6 +319,18 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
         originalIngredient={selectedIngredient}
         onSubstitute={handleSubstitute}
       />
+
+      {/* Recipe Rename Dialog - Appears after successful substitution */}
+      {lastSubstitution && (
+        <RecipeRenameDialog
+          open={renameDialogOpen}
+          onOpenChange={setRenameDialogOpen}
+          currentName={localRecipeName || meal.recipe_name}
+          originalIngredient={lastSubstitution.originalIngredient}
+          newIngredient={lastSubstitution.newIngredient}
+          onConfirm={handleRenameRecipe}
+        />
+      )}
     </>
   );
 }

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Shield, ShieldCheck, Settings, Check, Loader2 } from "lucide-react";
+import { Shield, ShieldCheck, Pencil, Check, Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { RestrictionIcon } from "./RestrictionIcon";
@@ -127,7 +127,7 @@ export function SafetyStatusBadge({
               Nenhuma restrição alimentar configurada
             </span>
           </div>
-          <Settings className="w-4 h-4 text-muted-foreground" />
+          <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
         </button>
         
         <EditSheet 
@@ -197,7 +197,7 @@ export function SafetyStatusBadge({
             className="p-1.5 rounded-md hover:bg-emerald-500/10 transition-colors"
             aria-label="Editar intolerâncias"
           >
-            <Settings className="w-4 h-4 text-emerald-600" />
+            <Pencil className="w-3.5 h-3.5 text-emerald-600" />
           </button>
         </div>
         
@@ -206,7 +206,7 @@ export function SafetyStatusBadge({
             <Badge
               key={`${restriction.label}-${index}`}
               variant="secondary"
-              className="text-xs px-2 py-0.5 flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 cursor-default"
+              className="text-xs px-2 py-0.5 flex items-center gap-1 bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border-emerald-500/20 cursor-default pointer-events-none"
             >
               <RestrictionIcon 
                 restriction={restriction.key} 

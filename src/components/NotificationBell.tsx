@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Bell, Check, Trash2, Settings, Droplets, UtensilsCrossed, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -29,6 +30,7 @@ const getNotificationIcon = (type: string) => {
 };
 
 export function NotificationBell({ onOpenSettings }: NotificationBellProps) {
+  const [open, setOpen] = useState(false);
   const {
     notifications,
     unreadCount,
@@ -39,8 +41,18 @@ export function NotificationBell({ onOpenSettings }: NotificationBellProps) {
     clearAll,
   } = useNotifications();
 
+  // Clear app badge when popover opens
+  useEffect(() => {
+    if (open && unreadCount > 0) {
+      // Clear the app badge when viewing notifications
+      if ('clearAppBadge' in navigator) {
+        (navigator as any).clearAppBadge().catch(() => {});
+      }
+    }
+  }, [open, unreadCount]);
+
   return (
-    <Popover>
+    <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button
           variant="ghost"

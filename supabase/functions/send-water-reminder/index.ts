@@ -441,16 +441,33 @@ serve(async (req) => {
       
       const message = messages[Math.floor(Math.random() * messages.length)];
 
+      // First, insert the notification to get its ID
+      const { data: insertedNotif } = await supabase.from("notifications").insert({
+        user_id: sub.user_id,
+        title: "💧 Hora de beber água!",
+        message: message,
+        type: "reminder",
+        action_url: "/dashboard",
+      }).select("id").single();
+
+      // Get current unread count for badge
+      const { count: unreadCount } = await supabase
+        .from("notifications")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", sub.user_id)
+        .eq("is_read", false);
+
       const pushPayload = {
         title: "💧 Hora de beber água!",
         body: message,
         icon: "/icons/icon-192x192.png",
         badge: "/icons/icon-72x72.png",
         tag: "water-reminder",
-        badgeCount: 1,
+        badgeCount: unreadCount || 1,
         data: {
           type: "water-reminder",
           url: "/dashboard",
+          notificationId: insertedNotif?.id || null,
         },
         actions: [
           { action: "add-water", title: "💧 +250ml" },
@@ -458,7 +475,7 @@ serve(async (req) => {
         ],
       };
 
-      console.log(`[WATER-REMINDER] Sending push to user ${sub.user_id}`);
+      console.log(`[WATER-REMINDER] Sending push to user ${sub.user_id} with notificationId: ${insertedNotif?.id}`);
 
       const result = await sendPushNotification(
         sub.endpoint,
@@ -473,15 +490,6 @@ serve(async (req) => {
       if (result.success) {
         sentCount++;
         console.log(`[WATER-REMINDER] Push sent to user ${sub.user_id}: ${userData.percentage}% of goal`);
-
-        // Also insert notification into database for the bell
-        await supabase.from("notifications").insert({
-          user_id: sub.user_id,
-          title: "💧 Hora de beber água!",
-          message: message,
-          type: "reminder",
-          action_url: "/dashboard",
-        });
       } else if (result.status === 410) {
         console.log(`[WATER-REMINDER] Subscription expired for user ${sub.user_id}`);
         expiredSubscriptions.push(sub.id);

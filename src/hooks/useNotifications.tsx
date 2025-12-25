@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
 export type Notification = {
@@ -29,6 +30,28 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [searchParams, setSearchParams] = useSearchParams();
+
+  // Mark notification as read by ID (for auto-marking when clicked from push)
+  const markNotificationAsReadById = useCallback(async (notificationId: string) => {
+    console.log('[Notifications] Auto-marking as read:', notificationId);
+    
+    const { error } = await supabase
+      .from("notifications")
+      .update({ is_read: true })
+      .eq("id", notificationId);
+
+    if (!error) {
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, is_read: true } : n))
+      );
+      setUnreadCount((prev) => {
+        const newCount = Math.max(0, prev - 1);
+        updateAppBadge(newCount);
+        return newCount;
+      });
+    }
+  }, []);
 
   const fetchNotifications = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -125,6 +148,34 @@ export function useNotifications() {
     }
   }, []);
 
+  // Handle markAsRead query parameter (from push notification click)
+  useEffect(() => {
+    const notificationId = searchParams.get('markAsRead');
+    if (notificationId) {
+      console.log('[Notifications] Found markAsRead param:', notificationId);
+      markNotificationAsReadById(notificationId);
+      // Remove the query param after handling
+      searchParams.delete('markAsRead');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [searchParams, setSearchParams, markNotificationAsReadById]);
+
+  // Handle messages from Service Worker
+  useEffect(() => {
+    const handleServiceWorkerMessage = (event: MessageEvent) => {
+      console.log('[Notifications] SW message received:', event.data);
+      if (event.data?.type === 'MARK_NOTIFICATION_READ' && event.data.notificationId) {
+        markNotificationAsReadById(event.data.notificationId);
+      }
+    };
+
+    navigator.serviceWorker?.addEventListener('message', handleServiceWorkerMessage);
+    
+    return () => {
+      navigator.serviceWorker?.removeEventListener('message', handleServiceWorkerMessage);
+    };
+  }, [markNotificationAsReadById]);
+
   useEffect(() => {
     fetchNotifications();
 
@@ -173,5 +224,6 @@ export function useNotifications() {
     deleteNotification,
     clearAll,
     refetch: fetchNotifications,
+    markNotificationAsReadById,
   };
 }

@@ -401,14 +401,21 @@ serve(async (req) => {
       );
     }
 
-    // Also insert notification into database for the bell
-    await supabase.from("notifications").insert({
+    // Insert notification into database and get the ID
+    const { data: insertedNotif } = await supabase.from("notifications").insert({
       user_id: user.id,
       title: "🎉 Teste de notificação!",
       message: "As notificações push estão funcionando!",
       type: "test",
       action_url: "/dashboard",
-    });
+    }).select("id").single();
+
+    // Get current unread count for badge
+    const { count: unreadCount } = await supabase
+      .from("notifications")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .eq("is_read", false);
 
     // Push notification payload
     const pushPayload = {
@@ -417,9 +424,11 @@ serve(async (req) => {
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-72x72.png",
       tag: "test-notification",
+      badgeCount: unreadCount || 1,
       data: {
         url: "/dashboard",
         timestamp: Date.now(),
+        notificationId: insertedNotif?.id || null,
       },
     };
 

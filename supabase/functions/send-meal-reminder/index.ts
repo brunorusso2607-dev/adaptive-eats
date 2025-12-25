@@ -388,6 +388,15 @@ serve(async (req) => {
         ];
         const randomMessage = reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
         
+        // First, create in-app notification to get the ID
+        const { data: insertedNotif } = await supabase.from("notifications").insert({
+          user_id: plan.user_id,
+          title: randomMessage,
+          message: `${mealItem.recipe_name} • ${mealItem.recipe_calories} kcal`,
+          type: "reminder",
+          action_url: "/dashboard"
+        }).select("id").single();
+        
         // Get current unread notification count for this user
         const { count: unreadCount } = await supabase
           .from("notifications")
@@ -401,19 +410,20 @@ serve(async (req) => {
           icon: "/icons/icon-192x192.png",
           badge: "/icons/icon-72x72.png",
           tag: `meal-reminder-${mealSetting.meal_type}`,
-          badgeCount: (unreadCount || 0) + 1, // Include the new notification being sent
+          badgeCount: unreadCount || 1,
           data: {
             type: "meal_reminder",
             mealType: mealSetting.meal_type,
             mealItemId: mealItem.id,
-            url: "/dashboard"
+            url: "/dashboard",
+            notificationId: insertedNotif?.id || null
           }
         };
         
+        console.log(`Sending meal reminder to user ${plan.user_id} for ${mealSetting.label} with notificationId: ${insertedNotif?.id}`);
+        
         // Send push notification to all subscriptions
         for (const subscription of subscriptions) {
-          console.log(`Sending meal reminder to user ${plan.user_id} for ${mealSetting.label}`);
-          
           const result = await sendPushNotification(
             {
               endpoint: subscription.endpoint,
@@ -439,15 +449,6 @@ serve(async (req) => {
             console.error(`Failed to send push: ${result.error}`);
           }
         }
-        
-        // Also create in-app notification
-        await supabase.from("notifications").insert({
-          user_id: plan.user_id,
-          title: randomMessage,
-          message: `${mealItem.recipe_name} • ${mealItem.recipe_calories} kcal`,
-          type: "reminder",
-          action_url: "/dashboard"
-        });
       }
     }
     

@@ -279,6 +279,126 @@ export default function Settings() {
           </CardContent>
         </Card>
 
+        {/* Meal Reminders */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <UtensilsCrossed className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Lembretes de Refeição</CardTitle>
+            </div>
+            <CardDescription>
+              Configure alertas para os horários das suas refeições
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            {isLoadingMeal ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Lembretes ativos</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Receber alertas nos horários das refeições
+                    </p>
+                  </div>
+                  <Switch
+                    checked={mealSettings.enabled}
+                    onCheckedChange={(checked) =>
+                      setMealSettings((prev) => ({
+                        ...prev,
+                        enabled: checked,
+                      }))
+                    }
+                  />
+                </div>
+
+                {mealSettings.enabled && (
+                  <>
+                    <Separator />
+
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          Quando lembrar
+                        </Label>
+                        <span className="text-sm font-medium">
+                          {mealSettings.reminder_minutes_before === 0
+                            ? "No horário"
+                            : `${mealSettings.reminder_minutes_before} min antes`}
+                        </span>
+                      </div>
+                      <Slider
+                        value={[mealSettings.reminder_minutes_before]}
+                        onValueChange={([value]) =>
+                          setMealSettings((prev) => ({
+                            ...prev,
+                            reminder_minutes_before: value,
+                          }))
+                        }
+                        min={0}
+                        max={30}
+                        step={5}
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label>Refeições com lembrete</Label>
+                      <div className="grid grid-cols-2 gap-2">
+                        {mealTimeSettings.map(meal => (
+                          <div
+                            key={meal.meal_type}
+                            className="flex items-center space-x-2 rounded-lg border p-2"
+                          >
+                            <Checkbox
+                              id={`meal-settings-${meal.meal_type}`}
+                              checked={mealSettings.enabled_meals.includes(meal.meal_type)}
+                              onCheckedChange={() => handleMealToggle(meal.meal_type)}
+                            />
+                            <Label
+                              htmlFor={`meal-settings-${meal.meal_type}`}
+                              className="text-sm cursor-pointer font-normal"
+                            >
+                              {meal.label}
+                            </Label>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                <div className="flex gap-2">
+                  <Button
+                    onClick={saveMealSettings}
+                    disabled={isSavingMeal}
+                    className="flex-1"
+                  >
+                    {isSavingMeal && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                    Salvar
+                  </Button>
+                  {mealSettings.enabled && isSubscribed && (
+                    <Button
+                      variant="outline"
+                      onClick={sendMealReminderTest}
+                      disabled={isSendingMealTest}
+                    >
+                      {isSendingMealTest ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Send className="h-4 w-4" />
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Water Reminders */}
         <Card>
           <CardHeader>

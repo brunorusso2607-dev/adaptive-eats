@@ -7,7 +7,7 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell
 } from "lucide-react";
 import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Link } from "react-router-dom";
@@ -144,6 +144,21 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
+
+  const sendTestNotification = async () => {
+    setIsSendingTestNotification(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-test-notification");
+      if (error) throw error;
+      toast.success("Notificação de teste enviada! Verifique seu dispositivo.");
+    } catch (err) {
+      console.error("Error sending test notification:", err);
+      toast.error("Erro ao enviar notificação de teste");
+    } finally {
+      setIsSendingTestNotification(false);
+    }
+  };
 
   const { data: onboardingOptions } = useOnboardingOptions();
 
@@ -584,6 +599,24 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
           <p className="font-medium text-sm">{user?.email}</p>
         </div>
       </div>
+
+      {/* Test Notification Button */}
+      {!isEditing && (
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={sendTestNotification}
+          disabled={isSendingTestNotification}
+          className="w-full"
+        >
+          {isSendingTestNotification ? (
+            <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          ) : (
+            <Bell className="h-4 w-4 mr-2" />
+          )}
+          Testar notificação push
+        </Button>
+      )}
 
       {/* Plano */}
       {subscription?.subscribed && !isEditing && (

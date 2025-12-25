@@ -75,6 +75,9 @@ export default function PendingMealCard({
   
   // Determina se pode trocar - apenas refeições do dia atual (on_time ou delayed, mas não critical/passadas)
   const canSwap = mealStatus === "on_time" || mealStatus === "delayed";
+  
+  // Refeição passada = status crítico (não pode substituir ingredientes)
+  const isPastMeal = mealStatus === "critical";
 
   // Get fixed colors
   const styleKey = statusToStyleKey[mealStatus];
@@ -120,6 +123,7 @@ export default function PendingMealCard({
           onOpenChange={setShowDetailSheet}
           meal={meal}
           canSwap={canSwap}
+          isPastMeal={isPastMeal}
           onRefetch={onRefetch}
           onStreakRefresh={onStreakRefresh}
         />
@@ -216,6 +220,7 @@ export default function PendingMealCard({
         onOpenChange={setShowDetailSheet}
         meal={meal}
         canSwap={canSwap}
+        isPastMeal={isPastMeal}
         onRefetch={onRefetch}
         onStreakRefresh={onStreakRefresh}
       />

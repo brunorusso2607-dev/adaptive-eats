@@ -26,6 +26,7 @@ interface MealDetailSheetProps {
   meal: NextMealData | null;
   canSwap?: boolean; // Se pode mostrar botão "Trocar"
   isFutureMeal?: boolean; // Se é uma refeição futura (esconde botões Feita/Não fiz)
+  isPastMeal?: boolean; // Se é uma refeição passada (desabilita substituição de ingredientes)
   onRefetch?: () => void;
   onStreakRefresh?: () => void;
 }
@@ -58,6 +59,7 @@ export default function MealDetailSheet({
   meal, 
   canSwap = true,
   isFutureMeal = false,
+  isPastMeal = false,
   onRefetch,
   onStreakRefresh 
 }: MealDetailSheetProps) {
@@ -355,9 +357,11 @@ export default function MealDetailSheet({
                 <CardContent className="p-4">
                   <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
                     🥗 Ingredientes
-                    <span className="text-xs text-muted-foreground font-normal ml-auto">
-                      Toque em <RefreshCw className="w-3 h-3 inline" /> para substituir
-                    </span>
+                    {!isPastMeal && (
+                      <span className="text-xs text-muted-foreground font-normal ml-auto">
+                        Toque em <RefreshCw className="w-3 h-3 inline" /> para substituir
+                      </span>
+                    )}
                   </h3>
                   <ul className="space-y-2">
                     {ingredients.map((ingredient, index) => (
@@ -371,13 +375,15 @@ export default function MealDetailSheet({
                         <span className="flex-1">
                           <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
                         </span>
-                        <button
-                          onClick={(e) => handleOpenSubstitution(ingredient, e)}
-                          className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors active:scale-95"
-                          aria-label={`Substituir ${ingredient.item}`}
-                        >
-                          <RefreshCw className="w-4 h-4 text-muted-foreground" />
-                        </button>
+                        {!isPastMeal && (
+                          <button
+                            onClick={(e) => handleOpenSubstitution(ingredient, e)}
+                            className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors active:scale-95"
+                            aria-label={`Substituir ${ingredient.item}`}
+                          >
+                            <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                          </button>
+                        )}
                       </li>
                     ))}
                   </ul>

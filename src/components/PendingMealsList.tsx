@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { UtensilsCrossed, ChevronDown, Flame, Eye, ChevronRight, Check } from "lucide-react";
+import { UtensilsCrossed, ChevronDown, Flame, ChevronRight, Check } from "lucide-react";
 import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import MealDetailSheet from "./MealDetailSheet";
@@ -174,14 +174,14 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                 </div>
               </div>
 
-              {/* Calorias + Ícone do olho (sempre visível agora como indicador visual) */}
-              <div className="flex flex-col items-end gap-1 shrink-0">
+              {/* Calorias + Seta indicando ação */}
+              <div className="flex items-center gap-1 shrink-0">
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Flame className="w-4 h-4 text-orange-500" />
                   <span className="font-medium">{nextMeal.recipe_calories}</span>
                   <span className="text-xs">kcal</span>
                 </div>
-                <Eye className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
+                <ChevronRight className="w-4 h-4 text-muted-foreground" />
               </div>
             </div>
 

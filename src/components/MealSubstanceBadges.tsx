@@ -1,4 +1,4 @@
-import { AlertTriangle } from "lucide-react";
+import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { useIngredientConflictCheck, type ConflictType } from "@/hooks/useIngredientConflictCheck";
 import { useMemo } from "react";
 
@@ -39,6 +39,16 @@ export default function MealSubstanceBadges({
 }: MealSubstanceBadgesProps) {
   const { checkConflict } = useIngredientConflictCheck(userProfile);
   
+  // Check if user has any restrictions configured
+  const hasUserRestrictions = useMemo(() => {
+    if (!userProfile) return false;
+    const hasIntolerances = (userProfile.intolerances?.length ?? 0) > 0;
+    const hasExcluded = (userProfile.excluded_ingredients?.length ?? 0) > 0;
+    const hasDietaryRestriction = userProfile.dietary_preference && 
+      userProfile.dietary_preference !== "comum";
+    return hasIntolerances || hasExcluded || hasDietaryRestriction;
+  }, [userProfile]);
+  
   const conflicts = useMemo(() => {
     if (!userProfile || !ingredients) return [];
     
@@ -75,10 +85,19 @@ export default function MealSubstanceBadges({
     return Array.from(conflictMap.values());
   }, [ingredients, userProfile, checkConflict]);
   
-  if (conflicts.length === 0) return null;
+  // Show "Safe for you" badge when user has restrictions but meal has no conflicts
+  const isSafeForUser = hasUserRestrictions && conflicts.length === 0;
   
   // Modo compacto: apenas um ícone com tooltip/número
   if (compact) {
+    if (isSafeForUser) {
+      return (
+        <div className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+          <ShieldCheck className="w-3.5 h-3.5" />
+        </div>
+      );
+    }
+    if (conflicts.length === 0) return null;
     return (
       <div className="flex items-center gap-1 text-amber-600 dark:text-amber-400">
         <AlertTriangle className="w-3.5 h-3.5" />
@@ -86,6 +105,20 @@ export default function MealSubstanceBadges({
       </div>
     );
   }
+  
+  // Show safe badge when applicable
+  if (isSafeForUser) {
+    return (
+      <div className="flex flex-wrap gap-1 mt-1">
+        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+          <ShieldCheck className="w-3 h-3" />
+          Seguro para você
+        </span>
+      </div>
+    );
+  }
+  
+  if (conflicts.length === 0) return null;
   
   return (
     <div className="flex flex-wrap gap-1 mt-1">

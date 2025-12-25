@@ -79,11 +79,27 @@ export default function Settings() {
     setIsSavingWater(false);
   };
 
+  const [isSendingTest, setIsSendingTest] = useState(false);
+
   const handlePushToggle = async (enabled: boolean) => {
     if (enabled) {
       await subscribe();
     } else {
       await unsubscribe();
+    }
+  };
+
+  const sendTestNotification = async () => {
+    setIsSendingTest(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("send-test-notification");
+      if (error) throw error;
+      toast.success("Notificação de teste enviada!");
+    } catch (err) {
+      console.error("Error sending test notification:", err);
+      toast.error("Erro ao enviar notificação de teste");
+    } finally {
+      setIsSendingTest(false);
     }
   };
 
@@ -125,21 +141,39 @@ export default function Settings() {
                 Permissão negada. Ative as notificações nas configurações do navegador.
               </p>
             ) : (
-              <div className="flex items-center justify-between">
-                <div className="space-y-0.5">
-                  <Label htmlFor="push-toggle">Ativar notificações</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Lembretes de hidratação e feedback de refeições
-                  </p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label htmlFor="push-toggle">Ativar notificações</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Lembretes de hidratação e feedback de refeições
+                    </p>
+                  </div>
+                  {pushLoading ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Switch
+                      id="push-toggle"
+                      checked={isSubscribed}
+                      onCheckedChange={handlePushToggle}
+                    />
+                  )}
                 </div>
-                {pushLoading ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Switch
-                    id="push-toggle"
-                    checked={isSubscribed}
-                    onCheckedChange={handlePushToggle}
-                  />
+                {isSubscribed && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={sendTestNotification}
+                    disabled={isSendingTest}
+                    className="w-full"
+                  >
+                    {isSendingTest ? (
+                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                    ) : (
+                      <Bell className="h-4 w-4 mr-2" />
+                    )}
+                    Enviar notificação de teste
+                  </Button>
                 )}
               </div>
             )}

@@ -238,22 +238,6 @@ serve(async (req) => {
       });
     }
     
-    // Find meals that are starting now (within a 5-minute window at the start hour)
-    const mealsToRemind = mealTimeSettings.filter((setting: { start_hour: number }) => {
-      const startTimeInMinutes = setting.start_hour * 60;
-      // Send notification in the first 5 minutes of the meal window
-      return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < startTimeInMinutes + 5;
-    });
-    
-    if (mealsToRemind.length === 0) {
-      console.log("No meals starting now");
-      return new Response(JSON.stringify({ success: true, message: "No meals to remind" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-    
-    console.log(`Found ${mealsToRemind.length} meals to remind:`, mealsToRemind.map((m: { label: string }) => m.label));
-    
     // Get all active meal plans
     const today = now.toISOString().split('T')[0];
     const { data: activePlans, error: plansError } = await supabase
@@ -273,10 +257,73 @@ serve(async (req) => {
     
     console.log(`Found ${activePlans.length} active meal plans`);
     
-    let notificationsSent = 0;
+    // Get user reminder settings
+    const userIds = activePlans.map(p => p.user_id);
+    const { data: reminderSettings, error: reminderError } = await supabase
+      .from("meal_reminder_settings")
+      .select("*")
+      .in("user_id", userIds);
     
-    for (const mealSetting of mealsToRemind) {
-      for (const plan of activePlans) {
+    if (reminderError) {
+      console.error("Error fetching reminder settings:", reminderError);
+    }
+    
+    // Create a map of user settings (default: enabled with all meals)
+    const userSettingsMap = new Map<string, { enabled: boolean; reminder_minutes_before: number; enabled_meals: string[] }>();
+    const defaultMeals = mealTimeSettings.map((m: { meal_type: string }) => m.meal_type);
+    
+    for (const userId of userIds) {
+      // Default settings if user hasn't configured
+      userSettingsMap.set(userId, {
+        enabled: true,
+        reminder_minutes_before: 0,
+        enabled_meals: defaultMeals,
+      });
+    }
+    
+    if (reminderSettings) {
+      for (const setting of reminderSettings) {
+        userSettingsMap.set(setting.user_id, {
+          enabled: setting.enabled,
+          reminder_minutes_before: setting.reminder_minutes_before,
+          enabled_meals: setting.enabled_meals || defaultMeals,
+        });
+      }
+    }
+    
+    let notificationsSent = 0;
+    const mealsNotified: string[] = [];
+    
+    for (const plan of activePlans) {
+      const userSettings = userSettingsMap.get(plan.user_id);
+      
+      // Skip if user disabled reminders
+      if (!userSettings || !userSettings.enabled) {
+        console.log(`User ${plan.user_id} has reminders disabled`);
+        continue;
+      }
+      
+      // Calculate the time to check (current time + reminder_minutes_before)
+      // This means if user wants 15 min before, we check if meal starts in 15 min
+      const checkTimeInMinutes = currentTimeInMinutes + userSettings.reminder_minutes_before;
+      
+      // Find meals that should trigger a reminder now
+      const mealsToRemind = mealTimeSettings.filter((setting: { meal_type: string; start_hour: number }) => {
+        // Skip if user disabled this meal type
+        if (!userSettings.enabled_meals.includes(setting.meal_type)) {
+          return false;
+        }
+        
+        const startTimeInMinutes = setting.start_hour * 60;
+        // Send notification in the first 5 minutes of the check window
+        return checkTimeInMinutes >= startTimeInMinutes && checkTimeInMinutes < startTimeInMinutes + 5;
+      });
+      
+      if (mealsToRemind.length === 0) {
+        continue;
+      }
+      
+      for (const mealSetting of mealsToRemind) {
         // Calculate day of week based on plan start date
         const [year, month, day] = plan.start_date.split('-').map(Number);
         const planStartDate = new Date(year, month - 1, day);
@@ -330,10 +377,14 @@ serve(async (req) => {
         }
         
         // Create notification message
+        const timeText = userSettings.reminder_minutes_before > 0 
+          ? `em ${userSettings.reminder_minutes_before} minutos` 
+          : "agora";
+        
         const reminderMessages = [
-          `🍽️ Hora do ${mealSetting.label}!`,
-          `⏰ Está na hora do seu ${mealSetting.label}!`,
-          `🥗 ${mealSetting.label} pronto para você!`,
+          `🍽️ ${mealSetting.label} ${timeText}!`,
+          `⏰ Hora do ${mealSetting.label}!`,
+          `🥗 Prepare seu ${mealSetting.label}!`,
         ];
         const randomMessage = reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
         
@@ -368,6 +419,9 @@ serve(async (req) => {
           
           if (result.success) {
             notificationsSent++;
+            if (!mealsNotified.includes(mealSetting.label)) {
+              mealsNotified.push(mealSetting.label);
+            }
             console.log(`✅ Push sent successfully for ${mealSetting.label}`);
           } else if (result.status === 410 || result.status === 404) {
             // Subscription expired, remove it
@@ -395,7 +449,7 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         notificationsSent,
-        mealsChecked: mealsToRemind.map((m: { label: string }) => m.label)
+        mealsChecked: mealsNotified
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

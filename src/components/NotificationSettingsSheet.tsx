@@ -1,7 +1,8 @@
 import { useState, useEffect } from "react";
-import { Bell, BellOff, Loader2, Droplets, Clock } from "lucide-react";
+import { Bell, BellOff, Loader2, Droplets, Clock, UtensilsCrossed } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Sheet,
   SheetContent,
@@ -17,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
@@ -27,11 +29,23 @@ interface WaterReminderSettings {
   reminder_end_hour: number;
 }
 
+interface MealReminderSettings {
+  enabled: boolean;
+  reminder_minutes_before: number;
+  enabled_meals: string[];
+}
+
 const INTERVAL_OPTIONS = [
   { value: 30, label: "30 minutos" },
   { value: 60, label: "1 hora" },
   { value: 90, label: "1h30" },
   { value: 120, label: "2 horas" },
+];
+
+const MEAL_REMINDER_OPTIONS = [
+  { value: 0, label: "No horário" },
+  { value: 15, label: "15 min antes" },
+  { value: 30, label: "30 min antes" },
 ];
 
 interface NotificationSettingsSheetProps {
@@ -53,13 +67,21 @@ export function NotificationSettingsSheet({
   } = usePushSubscription();
 
   const { toast } = useToast();
+  const { settings: mealTimeSettings } = useMealTimeSettings();
+  
   const [waterSettings, setWaterSettings] = useState<WaterReminderSettings>({
     reminder_enabled: true,
     reminder_interval_minutes: 60,
     reminder_start_hour: 8,
     reminder_end_hour: 22,
   });
+  const [mealSettings, setMealSettings] = useState<MealReminderSettings>({
+    enabled: true,
+    reminder_minutes_before: 0,
+    enabled_meals: [],
+  });
   const [isLoadingWater, setIsLoadingWater] = useState(true);
+  const [isLoadingMeal, setIsLoadingMeal] = useState(true);
 
   // Fetch water reminder settings
   useEffect(() => {
@@ -93,6 +115,45 @@ export function NotificationSettingsSheet({
 
     fetchWaterSettings();
   }, [open]);
+
+  // Fetch meal reminder settings
+  useEffect(() => {
+    const fetchMealSettings = async () => {
+      if (!open) return;
+      
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data } = await supabase
+          .from("meal_reminder_settings")
+          .select("enabled, reminder_minutes_before, enabled_meals")
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (data) {
+          setMealSettings({
+            enabled: data.enabled,
+            reminder_minutes_before: data.reminder_minutes_before,
+            enabled_meals: data.enabled_meals || [],
+          });
+        } else {
+          // Default: all meals enabled
+          const defaultMeals = mealTimeSettings.map(m => m.meal_type);
+          setMealSettings(prev => ({
+            ...prev,
+            enabled_meals: defaultMeals.length > 0 ? defaultMeals : ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"]
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching meal settings:", error);
+      } finally {
+        setIsLoadingMeal(false);
+      }
+    };
+
+    fetchMealSettings();
+  }, [open, mealTimeSettings]);
 
   const handleToggle = async (enabled: boolean) => {
     if (enabled) {
@@ -160,9 +221,73 @@ export function NotificationSettingsSheet({
     }
   };
 
+  const handleMealReminderToggle = async (enabled: boolean) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { error } = await supabase
+        .from("meal_reminder_settings")
+        .upsert({
+          user_id: user.id,
+          enabled,
+          reminder_minutes_before: mealSettings.reminder_minutes_before,
+          enabled_meals: mealSettings.enabled_meals,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+
+      if (error) throw error;
+
+      setMealSettings({ ...mealSettings, enabled });
+      toast({
+        title: enabled ? "Lembretes ativados" : "Lembretes desativados",
+        description: enabled 
+          ? "Você receberá lembretes de refeições" 
+          : "Lembretes de refeição desativados",
+      });
+    } catch (error) {
+      console.error("Error updating meal reminder:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível atualizar configurações",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const updateMealSetting = async (key: keyof MealReminderSettings, value: number | string[]) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const newSettings = { ...mealSettings, [key]: value };
+
+      const { error } = await supabase
+        .from("meal_reminder_settings")
+        .upsert({
+          user_id: user.id,
+          ...newSettings,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "user_id" });
+
+      if (error) throw error;
+
+      setMealSettings(newSettings);
+    } catch (error) {
+      console.error("Error updating meal setting:", error);
+    }
+  };
+
+  const handleMealToggle = (mealType: string) => {
+    const newMeals = mealSettings.enabled_meals.includes(mealType)
+      ? mealSettings.enabled_meals.filter(m => m !== mealType)
+      : [...mealSettings.enabled_meals, mealType];
+    updateMealSetting("enabled_meals", newMeals);
+  };
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-auto max-h-[80vh] overflow-y-auto p-6">
+      <SheetContent side="bottom" className="h-auto max-h-[85vh] overflow-y-auto p-6">
         <SheetHeader className="pb-4">
           <SheetTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
@@ -221,6 +346,85 @@ export function NotificationSettingsSheet({
                     <p className="text-sm text-primary">
                       ✓ Notificações push ativadas para este dispositivo.
                     </p>
+                  </div>
+
+                  {/* Meal Reminders Section */}
+                  <div className="border-t pt-4 space-y-4">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <UtensilsCrossed className="h-4 w-4 text-primary" />
+                      <span className="text-sm font-medium">Lembretes de Refeição</span>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-base">Lembrar das refeições</Label>
+                        <p className="text-sm text-muted-foreground">
+                          Receba alertas nos horários das refeições
+                        </p>
+                      </div>
+                      {isLoadingMeal ? (
+                        <Loader2 className="h-5 w-5 animate-spin" />
+                      ) : (
+                        <Switch
+                          checked={mealSettings.enabled}
+                          onCheckedChange={handleMealReminderToggle}
+                        />
+                      )}
+                    </div>
+
+                    {mealSettings.enabled && (
+                      <>
+                        {/* Reminder timing */}
+                        <div className="space-y-2">
+                          <Label className="flex items-center gap-2 text-sm">
+                            <Clock className="h-4 w-4" />
+                            Quando lembrar
+                          </Label>
+                          <Select
+                            value={mealSettings.reminder_minutes_before.toString()}
+                            onValueChange={(value) =>
+                              updateMealSetting("reminder_minutes_before", parseInt(value))
+                            }
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Selecione" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {MEAL_REMINDER_OPTIONS.map((option) => (
+                                <SelectItem key={option.value} value={option.value.toString()}>
+                                  {option.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Individual meals */}
+                        <div className="space-y-2">
+                          <Label className="text-sm">Refeições com lembrete</Label>
+                          <div className="grid grid-cols-2 gap-2">
+                            {mealTimeSettings.map(meal => (
+                              <div
+                                key={meal.meal_type}
+                                className="flex items-center space-x-2 rounded-lg border p-2"
+                              >
+                                <Checkbox
+                                  id={`meal-${meal.meal_type}`}
+                                  checked={mealSettings.enabled_meals.includes(meal.meal_type)}
+                                  onCheckedChange={() => handleMealToggle(meal.meal_type)}
+                                />
+                                <Label
+                                  htmlFor={`meal-${meal.meal_type}`}
+                                  className="text-sm cursor-pointer font-normal"
+                                >
+                                  {meal.label}
+                                </Label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
 
                   {/* Water Reminders Section */}
@@ -327,8 +531,9 @@ export function NotificationSettingsSheet({
               <div className="text-xs text-muted-foreground border-t pt-4">
                 <p>As notificações incluem:</p>
                 <ul className="list-disc list-inside mt-1 space-y-0.5">
-                  <li>Lembretes de feedback (2-24h após refeição)</li>
+                  <li>Lembretes de refeições do plano alimentar</li>
                   <li>Lembretes de hidratação</li>
+                  <li>Lembretes de feedback (2-24h após refeição)</li>
                 </ul>
               </div>
             </>

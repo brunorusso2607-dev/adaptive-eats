@@ -247,7 +247,7 @@ export function CompactHealthCircles({
                     setWeightSheetOpen(false);
                     onOpenWeightSetup?.();
                   }}
-                  className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                  className="p-1.5 rounded-md hover:bg-muted transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   aria-label="Editar peso"
                 >
                   <Pencil className="w-3.5 h-3.5 text-muted-foreground" />

@@ -28,6 +28,7 @@ self.addEventListener('push', (event) => {
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',
     tag: 'water-reminder',
+    badgeCount: 1,
     data: { type: 'water-reminder', url: '/dashboard' }
   };
   
@@ -50,9 +51,21 @@ self.addEventListener('push', (event) => {
     actions: data.actions || []
   };
   
-  event.waitUntil(
-    self.registration.showNotification(data.title, options)
-  );
+  // Set app badge for iOS (requires a number)
+  const badgePromises = [];
+  if ('setAppBadge' in self.navigator) {
+    const badgeCount = data.badgeCount || 1;
+    console.log('[SW] Setting app badge:', badgeCount);
+    badgePromises.push(
+      self.navigator.setAppBadge(badgeCount).catch(err => {
+        console.log('[SW] Badge error:', err);
+      })
+    );
+  }
+  
+  badgePromises.push(self.registration.showNotification(data.title, options));
+  
+  event.waitUntil(Promise.all(badgePromises));
 });
 
 // Notification click event
@@ -60,6 +73,13 @@ self.addEventListener('notificationclick', (event) => {
   console.log('[SW] Notification clicked:', event.action, event.notification.data);
   
   event.notification.close();
+  
+  // Clear app badge when notification is clicked
+  if ('clearAppBadge' in self.navigator) {
+    self.navigator.clearAppBadge().catch(err => {
+      console.log('[SW] Clear badge error:', err);
+    });
+  }
   
   const action = event.action;
   const notificationData = event.notification.data || {};

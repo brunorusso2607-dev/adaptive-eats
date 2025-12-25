@@ -434,7 +434,7 @@ export default function Onboarding() {
 
             <button
               onClick={() => {
-                localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
+                localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, new Date().toISOString());
               }}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center"
             >

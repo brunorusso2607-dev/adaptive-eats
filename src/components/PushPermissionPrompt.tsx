@@ -16,14 +16,19 @@ export function PushPermissionPrompt() {
     // - Already subscribed
     // - Permission was denied (user blocked it)
     // - Still loading
-    // - User already dismissed the prompt
     if (!isSupported || isSubscribed || permission === "denied" || isLoading) {
       return;
     }
 
-    const wasDismissed = localStorage.getItem(PUSH_PROMPT_DISMISSED_KEY);
-    if (wasDismissed) {
-      return;
+    // Check if dismissed and if 7 days have passed
+    const dismissedAt = localStorage.getItem(PUSH_PROMPT_DISMISSED_KEY);
+    if (dismissedAt) {
+      const dismissedDate = new Date(dismissedAt);
+      const now = new Date();
+      const daysDiff = (now.getTime() - dismissedDate.getTime()) / (1000 * 60 * 60 * 24);
+      if (daysDiff < 7) {
+        return;
+      }
     }
 
     // Show prompt after a short delay for better UX
@@ -42,7 +47,7 @@ export function PushPermissionPrompt() {
   };
 
   const handleDismiss = () => {
-    localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
+    localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, new Date().toISOString());
     setIsVisible(false);
   };
 

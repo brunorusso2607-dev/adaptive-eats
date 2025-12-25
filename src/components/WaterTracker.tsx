@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Droplets, Plus, Pencil, Trash2, TrendingUp, Trophy } from "lucide-react";
+import { Droplets, Plus, Pencil, Trash2, TrendingUp, Trophy, Bell } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
@@ -8,6 +8,7 @@ import { useWaterAchievements } from "@/hooks/useWaterAchievements";
 import { WaterSettingsSheet } from "./WaterSettingsSheet";
 import { WaterHistoryChart } from "./WaterHistoryChart";
 import { WaterAchievements } from "./WaterAchievements";
+import { WaterReminderSettings } from "./WaterReminderSettings";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -56,6 +57,7 @@ export function WaterTracker() {
   });
 
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [reminderSettingsOpen, setReminderSettingsOpen] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
   const [selectedAmount, setSelectedAmount] = useState(250);
@@ -114,14 +116,26 @@ export function WaterTracker() {
               <Droplets className="h-5 w-5 text-blue-500" />
               Consumo de Água
             </CardTitle>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-8 w-8"
-              onClick={() => setSettingsOpen(true)}
-            >
-              <Pencil className="h-3.5 w-3.5" />
-            </Button>
+            <div className="flex items-center gap-1">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setReminderSettingsOpen(true)}
+                title="Configurar lembretes"
+              >
+                <Bell className={settings.reminder_enabled ? "h-3.5 w-3.5 text-blue-500" : "h-3.5 w-3.5"} />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                onClick={() => setSettingsOpen(true)}
+                title="Configurar meta"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -336,6 +350,13 @@ export function WaterTracker() {
       <WaterSettingsSheet
         open={settingsOpen}
         onOpenChange={setSettingsOpen}
+        settings={settings}
+        onSave={updateSettings}
+      />
+
+      <WaterReminderSettings
+        open={reminderSettingsOpen}
+        onOpenChange={setReminderSettingsOpen}
         settings={settings}
         onSave={updateSettings}
       />

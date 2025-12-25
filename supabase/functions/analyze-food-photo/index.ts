@@ -742,11 +742,33 @@ RULES:
 
     // Check for error response from AI (not food detected)
     if (analysis.erro) {
-      logStep("Not food detected", { message: analysis.erro });
+      logStep("Not food detected", { 
+        erro: analysis.erro,
+        categoria: analysis.categoria_detectada,
+        objeto: analysis.objeto_identificado 
+      });
+      
+      // New structured error format
+      if (analysis.erro === "imagem_nao_alimenticia") {
+        return new Response(JSON.stringify({
+          success: false,
+          notFood: true,
+          categoryError: true,
+          categoria_detectada: analysis.categoria_detectada || "desconhecido",
+          objeto_identificado: analysis.objeto_identificado || "",
+          message: analysis.mensagem || "Não consegui identificar comida nesta imagem.",
+          dica: analysis.dica || "Tire uma foto do seu prato de cima com boa iluminação."
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      // Legacy error format fallback
       return new Response(JSON.stringify({
         success: false,
         notFood: true,
-        message: analysis.erro
+        message: typeof analysis.erro === 'string' ? analysis.erro : "Não foi possível identificar alimentos na imagem."
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,

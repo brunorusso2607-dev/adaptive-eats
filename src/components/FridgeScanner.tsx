@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert, Cat, Package, ImageOff } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import LegalDisclaimer from "./LegalDisclaimer";
 import { toast } from "sonner";
@@ -59,6 +59,12 @@ export default function FridgeScanner() {
   const [analysis, setAnalysis] = useState<FridgeAnalysis | null>(null);
   const [currentStep, setCurrentStep] = useState<AnalysisStep>("upload");
   const [notFridgeError, setNotFridgeError] = useState<string | null>(null);
+  const [categoryError, setCategoryError] = useState<{
+    categoria: string;
+    descricao: string;
+    mensagem: string;
+    dica?: string;
+  } | null>(null);
   const [savingRecipeIndex, setSavingRecipeIndex] = useState<number | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -140,8 +146,18 @@ export default function FridgeScanner() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      if (data.notFridge) {
-        setNotFridgeError(data.message || "Não foi possível identificar uma geladeira ou despensa na imagem.");
+      // NEW: Handle structured category error with detailed feedback
+      if (data.categoryError || data.notFridge) {
+        if (data.categoryError && data.categoria_detectada) {
+          setCategoryError({
+            categoria: data.categoria_detectada,
+            descricao: data.objeto_identificado || "",
+            mensagem: data.message || "Esta imagem não parece ser de uma geladeira ou despensa.",
+            dica: data.dica
+          });
+        } else {
+          setNotFridgeError(data.message || "Não foi possível identificar uma geladeira ou despensa na imagem.");
+        }
         return;
       }
 
@@ -248,7 +264,70 @@ export default function FridgeScanner() {
     setAnalysis(null);
     setCurrentStep("upload");
     setNotFridgeError(null);
+    setCategoryError(null);
     setActiveSlot(null);
+  };
+
+  // Helper para obter ícone e cor baseado na categoria detectada
+  const getCategoryFeedback = (categoria: string) => {
+    switch (categoria) {
+      case "pessoa_corpo":
+        return {
+          icon: <User className="w-8 h-8 text-indigo-500 stroke-[1.5]" />,
+          bgColor: "bg-indigo-500/10",
+          borderColor: "border-indigo-500/30",
+          title: "Ops! Isso não é uma geladeira 😅",
+          subtitle: "Parece ser uma pessoa ou parte do corpo"
+        };
+      case "animal_pet":
+        return {
+          icon: <Cat className="w-8 h-8 text-purple-500 stroke-[1.5]" />,
+          bgColor: "bg-purple-500/10",
+          borderColor: "border-purple-500/30",
+          title: "Que fofura! 🐾",
+          subtitle: "Mas preciso ver o interior da sua geladeira"
+        };
+      case "prato_comida":
+        return {
+          icon: <UtensilsCrossed className="w-8 h-8 text-orange-500 stroke-[1.5]" />,
+          bgColor: "bg-orange-500/10",
+          borderColor: "border-orange-500/30",
+          title: "Prato de Comida Detectado 🍽️",
+          subtitle: "Use o modo 'Foto do Prato' para analisar refeições"
+        };
+      case "objeto_domestico":
+        return {
+          icon: <Package className="w-8 h-8 text-blue-500 stroke-[1.5]" />,
+          bgColor: "bg-blue-500/10",
+          borderColor: "border-blue-500/30",
+          title: "Objeto Detectado",
+          subtitle: "Preciso ver o interior da sua geladeira"
+        };
+      case "paisagem_ambiente":
+        return {
+          icon: <ImageOff className="w-8 h-8 text-cyan-500 stroke-[1.5]" />,
+          bgColor: "bg-cyan-500/10",
+          borderColor: "border-cyan-500/30",
+          title: "Ambiente Detectado",
+          subtitle: "Abra a geladeira e fotografe o interior"
+        };
+      case "documento_tela":
+        return {
+          icon: <Package className="w-8 h-8 text-gray-500 stroke-[1.5]" />,
+          bgColor: "bg-gray-500/10",
+          borderColor: "border-gray-500/30",
+          title: "Documento ou Tela",
+          subtitle: "Use o modo 'Rótulo' para analisar rótulos de produtos"
+        };
+      default:
+        return {
+          icon: <AlertTriangle className="w-8 h-8 text-yellow-500 stroke-[1.5]" />,
+          bgColor: "bg-yellow-500/10",
+          borderColor: "border-yellow-500/30",
+          title: "Não Reconhecido",
+          subtitle: "Não consegui identificar uma geladeira nesta imagem"
+        };
+    }
   };
 
   // Hidden inputs for camera/gallery
@@ -433,8 +512,53 @@ export default function FridgeScanner() {
           </>
         )}
 
-        {/* Error message */}
-        {notFridgeError && (
+        {/* Category validation error - detailed feedback */}
+        {categoryError && (
+          <Card className={`glass-card border-2 ${getCategoryFeedback(categoryError.categoria).borderColor}`}>
+            <CardContent className="p-5">
+              <div className={`flex flex-col items-center gap-4 text-center p-4 rounded-xl ${getCategoryFeedback(categoryError.categoria).bgColor}`}>
+                <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-md">
+                  {getCategoryFeedback(categoryError.categoria).icon}
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-foreground">
+                    {getCategoryFeedback(categoryError.categoria).title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {getCategoryFeedback(categoryError.categoria).subtitle}
+                  </p>
+                  {categoryError.descricao && (
+                    <div className="mt-2 px-3 py-1.5 bg-background/50 rounded-lg inline-block">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium">Identificado:</span> {categoryError.descricao}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                  {categoryError.mensagem}
+                </p>
+                {categoryError.dica && (
+                  <p className="text-xs text-muted-foreground italic">
+                    💡 {categoryError.dica}
+                  </p>
+                )}
+                <Button
+                  variant="default"
+                  onClick={resetAll}
+                  className="mt-2 gradient-primary"
+                  size="lg"
+                >
+                  <Camera className="w-5 h-5 mr-2" />
+                  Fotografar Geladeira
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Simple error message (legacy) */}
+        {notFridgeError && !categoryError && (
           <Card className="glass-card border-yellow-500/30">
             <CardContent className="p-4">
               <div className="flex flex-col items-center gap-3 text-center">
@@ -442,6 +566,14 @@ export default function FridgeScanner() {
                   <AlertTriangle className="w-6 h-6 text-yellow-500" />
                 </div>
                 <p className="text-muted-foreground">{notFridgeError}</p>
+                <Button
+                  variant="outline"
+                  onClick={resetAll}
+                  className="mt-2"
+                >
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Tentar Novamente
+                </Button>
               </div>
             </CardContent>
           </Card>

@@ -478,11 +478,32 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
 
     const analysis = JSON.parse(jsonMatch[0]);
     
-    if (analysis.notFridge) {
-      logStep('Not a fridge image');
+    // Check for error response from AI (not fridge detected)
+    if (analysis.erro) {
+      logStep('Not a fridge image - structured error', { 
+        erro: analysis.erro,
+        categoria: analysis.categoria_detectada,
+        objeto: analysis.objeto_identificado 
+      });
+      
       return new Response(JSON.stringify({
         notFridge: true,
-        message: analysis.message
+        categoryError: true,
+        categoria_detectada: analysis.categoria_detectada || "desconhecido",
+        objeto_identificado: analysis.objeto_identificado || "",
+        message: analysis.mensagem || "Esta imagem não parece ser de uma geladeira ou despensa.",
+        dica: analysis.dica || "Abra a geladeira e fotografe o interior mostrando os produtos."
+      }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+    
+    // Legacy format fallback
+    if (analysis.notFridge) {
+      logStep('Not a fridge image - legacy');
+      return new Response(JSON.stringify({
+        notFridge: true,
+        message: analysis.message || "Por favor, fotografe o interior da sua geladeira ou despensa."
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });

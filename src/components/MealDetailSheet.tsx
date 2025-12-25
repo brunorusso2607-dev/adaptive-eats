@@ -25,6 +25,7 @@ interface MealDetailSheetProps {
   onOpenChange: (open: boolean) => void;
   meal: NextMealData | null;
   canSwap?: boolean; // Se pode mostrar botão "Trocar"
+  isFutureMeal?: boolean; // Se é uma refeição futura (esconde botões Feita/Não fiz)
   onRefetch?: () => void;
   onStreakRefresh?: () => void;
 }
@@ -56,6 +57,7 @@ export default function MealDetailSheet({
   onOpenChange, 
   meal, 
   canSwap = true,
+  isFutureMeal = false,
   onRefetch,
   onStreakRefresh 
 }: MealDetailSheetProps) {
@@ -420,40 +422,47 @@ export default function MealDetailSheet({
                 <button
                   onClick={handleTrocarClick}
                   disabled={isMarking || isSkipping}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors disabled:opacity-50"
+                  className={cn(
+                    "flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors disabled:opacity-50",
+                    isFutureMeal ? "flex-1" : "flex-1"
+                  )}
                 >
                   <RefreshCw className="w-4 h-4" />
                   Trocar
                 </button>
               )}
 
-              {/* Feita */}
-              <button
-                onClick={() => setShowConfirmDialog(true)}
-                disabled={isMarking || isSkipping}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-colors disabled:opacity-50"
-              >
-                {isMarking ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                Feita
-              </button>
+              {/* Feita - esconde se for refeição futura */}
+              {!isFutureMeal && (
+                <button
+                  onClick={() => setShowConfirmDialog(true)}
+                  disabled={isMarking || isSkipping}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-colors disabled:opacity-50"
+                >
+                  {isMarking ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  Feita
+                </button>
+              )}
 
-              {/* Não fiz */}
-              <button
-                onClick={handleSkip}
-                disabled={isMarking || isSkipping}
-                className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground font-medium transition-colors disabled:opacity-50"
-              >
-                {isSkipping ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <X className="w-4 h-4" />
-                )}
-                Não fiz
-              </button>
+              {/* Não fiz - esconde se for refeição futura */}
+              {!isFutureMeal && (
+                <button
+                  onClick={handleSkip}
+                  disabled={isMarking || isSkipping}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground font-medium transition-colors disabled:opacity-50"
+                >
+                  {isSkipping ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <X className="w-4 h-4" />
+                  )}
+                  Não fiz
+                </button>
+              )}
             </div>
           </div>
         </SheetContent>

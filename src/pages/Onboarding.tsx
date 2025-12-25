@@ -6,18 +6,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
 import { getOnboardingIcon } from "@/lib/iconUtils";
+import { usePushSubscription } from "@/hooks/usePushSubscription";
+
+const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
 const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
   { id: 2, title: "Preferência", description: "Qual sua preferência alimentar?" },
   { id: 3, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
   { id: 4, title: "Objetivo", description: "Qual seu objetivo?" },
+  { id: 5, title: "Notificações", description: "Receba lembretes importantes" },
 ];
 
 type ProfileData = {
@@ -40,6 +44,12 @@ export default function Onboarding() {
   const [ingredientInput, setIngredientInput] = useState("");
 
   const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
+  const { 
+    isSupported: isPushSupported, 
+    isSubscribed: isPushSubscribed, 
+    permission: pushPermission,
+    subscribe: subscribePush 
+  } = usePushSubscription();
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -80,7 +90,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 4) {
+    if (currentStep < 5) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -373,6 +383,66 @@ export default function Onboarding() {
           </div>
         );
 
+      case 5:
+        return (
+          <div className="space-y-6">
+            <div className="text-center py-4">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-primary/10 flex items-center justify-center">
+                <Bell className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="font-medium text-lg mb-2">Fique por dentro!</h3>
+              <p className="text-sm text-muted-foreground">
+                Receba lembretes de hidratação e alertas sobre suas refeições para manter sua saúde em dia.
+              </p>
+            </div>
+
+            {!isPushSupported ? (
+              <div className="bg-muted/50 rounded-lg p-4 text-center">
+                <BellOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                <p className="text-sm text-muted-foreground">
+                  Notificações não são suportadas neste navegador
+                </p>
+              </div>
+            ) : pushPermission === "denied" ? (
+              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                <p className="text-sm text-destructive text-center">
+                  Notificações foram bloqueadas. Para ativar, vá nas configurações do navegador.
+                </p>
+              </div>
+            ) : isPushSubscribed ? (
+              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                <p className="text-sm text-primary text-center flex items-center justify-center gap-2">
+                  <Check className="w-4 h-4" />
+                  Notificações ativadas!
+                </p>
+              </div>
+            ) : (
+              <Button
+                size="lg"
+                className="w-full h-14"
+                onClick={async () => {
+                  const success = await subscribePush();
+                  if (success) {
+                    localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
+                  }
+                }}
+              >
+                <Bell className="w-5 h-5 mr-2" />
+                Ativar Notificações
+              </Button>
+            )}
+
+            <button
+              onClick={() => {
+                localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
+              }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center"
+            >
+              Prefiro não receber notificações
+            </button>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -456,11 +526,11 @@ export default function Onboarding() {
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === 4 ? (
+          ) : currentStep === 5 ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === 4 ? "Concluir" : "Próximo"}
-          {currentStep < 4 && <ArrowRight className="w-4 h-4 ml-2" />}
+          {currentStep === 5 ? "Concluir" : "Próximo"}
+          {currentStep < 5 && <ArrowRight className="w-4 h-4 ml-2" />}
         </Button>
       </footer>
     </div>

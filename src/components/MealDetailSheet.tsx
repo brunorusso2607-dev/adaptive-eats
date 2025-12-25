@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -12,6 +12,7 @@ import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionShee
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface MealDetailSheetProps {
   open: boolean;
@@ -52,10 +53,10 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     fat: 0,
   });
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
+  const queryClient = useQueryClient();
 
-  if (!meal) return null;
-
-  const rawIngredients = (meal.recipe_ingredients || []) as unknown as RawIngredient[];
+  // Parse ingredients from meal
+  const rawIngredients = (meal?.recipe_ingredients || []) as unknown as RawIngredient[];
   const parsedIngredients: Ingredient[] = rawIngredients
     .filter((i) => i && (typeof i.item === 'string' || typeof i.name === 'string'))
     .map((i) => ({ 
@@ -63,6 +64,16 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
       quantity: i.quantity || '',
       unit: i.unit || ''
     }));
+
+  // Reset local state when meal changes
+  useEffect(() => {
+    if (meal) {
+      setLocalIngredients([]);
+      setLocalMacros({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+    }
+  }, [meal?.id]);
+
+  if (!meal) return null;
   
   // Use local state if modified, otherwise use parsed
   const ingredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
@@ -128,6 +139,10 @@ export default function MealDetailSheet({ open, onOpenChange, meal }: MealDetail
     
     if (success) {
       toast.success(`${originalItem} substituído por ${newIngredient.name}`);
+      // Invalidate queries to refetch updated data
+      queryClient.invalidateQueries({ queryKey: ["meal-plan-items"] });
+      queryClient.invalidateQueries({ queryKey: ["next-meal"] });
+      queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
     }
   };
 

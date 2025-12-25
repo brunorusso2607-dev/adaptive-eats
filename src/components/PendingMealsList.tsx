@@ -185,18 +185,6 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
               </div>
             </div>
 
-            {/* Ações - só aparecem quando o horário da refeição começar */}
-            {showButtons && (
-              <div className="mt-3">
-              <PendingMealCard
-                meal={nextMeal}
-                onRefetch={refetch}
-                onStreakRefresh={onStreakRefresh}
-                userProfile={userProfile}
-                compact
-              />
-              </div>
-            )}
           </CardContent>
         </Card>
       )}

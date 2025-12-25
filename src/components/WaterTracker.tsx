@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Droplets, Plus, Settings, Trash2, TrendingUp, Trophy } from "lucide-react";
+import { Droplets, Plus, Pencil, Trash2, TrendingUp, Trophy } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
@@ -120,7 +120,7 @@ export function WaterTracker() {
               className="h-8 w-8"
               onClick={() => setSettingsOpen(true)}
             >
-              <Settings className="h-4 w-4" />
+              <Pencil className="h-3.5 w-3.5" />
             </Button>
           </div>
         </CardHeader>

@@ -263,6 +263,42 @@ REGRAS DE SEGURANÇA:
 
     const systemPrompt = `You are a WORLD-CLASS EXPERT in FOOD SAFETY and GLOBAL CUISINE with encyclopedic knowledge of products from all countries.
 
+=== STEP ZERO - IMAGE CLASSIFICATION (EXECUTE FIRST!) ===
+
+BEFORE analyzing any fridge contents, you MUST classify what type of image this is.
+
+POSSIBLE CATEGORIES:
+- "geladeira_aberta": Open refrigerator showing contents inside
+- "despensa_armario": Pantry, cabinet, or food storage area
+- "freezer": Freezer compartment or standalone freezer
+- "pessoa_corpo": Person, body part (hand, face, leg, arm, torso, foot, selfie)
+- "animal_pet": Pet, animal, wildlife (dog, cat, bird, etc.)
+- "objeto_domestico": Furniture, electronics, household item (NOT fridge)
+- "paisagem_ambiente": Landscape, room without fridge focus, outdoor environment
+- "documento_tela": Screen, phone, document, food label (use label analyzer instead)
+- "prato_comida": Prepared food/meal on a plate (use food photo analyzer instead)
+- "veiculo": Car, motorcycle, bicycle, any vehicle
+- "imagem_abstrata": Blurry, unclear, too dark, too bright to identify
+
+⚠️ IF NOT "geladeira_aberta", "despensa_armario", OR "freezer", return IMMEDIATELY:
+
+{
+  "erro": "imagem_invalida",
+  "categoria_detectada": "[exact category from list above]",
+  "objeto_identificado": "[Describe EXACTLY what you see: e.g., 'perna humana', 'cachorro na cozinha', 'prato de comida pronto', 'sala de estar']",
+  "confianca": "alta|media|baixa",
+  "mensagem": "Esta imagem não parece ser de uma geladeira ou despensa. Parece ser [description in Portuguese]. Por favor, tire uma foto do interior da sua geladeira ou despensa.",
+  "dica": "Abra a geladeira e fotografe o interior mostrando os produtos nas prateleiras."
+}
+
+CRITICAL RULES:
+- NEVER try to analyze fridge contents if the image is not a fridge/pantry
+- NEVER suggest recipes based on non-fridge images
+- BE STRICT: If you see a person, pet, prepared meal, or anything that is NOT a fridge interior, return the error format above
+- When in doubt, return the error format rather than guessing
+
+=== IF AND ONLY IF THE IMAGE IS A FRIDGE/PANTRY, CONTINUE BELOW ===
+
 ${dietaryContext}
 ${intoleranceContext}
 ${goalContext}
@@ -349,8 +385,9 @@ Known products and their typical allergens (from any country):
 
 === RESPONSE FORMAT (JSON required) ===
 
-IMPORTANT: If the image is NOT a fridge/pantry, respond:
-{"notFridge": true, "message": "Please photograph the inside of your fridge or pantry"}
+REMEMBER: If the image is NOT a fridge/pantry, you MUST return the "erro": "imagem_invalida" format from STEP ZERO above. Never try to analyze non-fridge images.
+
+FOR VALID FRIDGE/PANTRY IMAGES, respond with:
 
 {
   "ingredientes_identificados": [

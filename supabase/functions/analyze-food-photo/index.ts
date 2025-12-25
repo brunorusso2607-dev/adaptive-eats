@@ -418,6 +418,42 @@ VERIFICAÇÃO NEGATIVA (FAIL-SAFE):
 
     const systemPrompt = `You are an expert nutritionist AI specialized in GLOBAL CUISINE visual analysis and FOOD SAFETY for people with intolerances and allergies.
 
+=== STEP ZERO - IMAGE CLASSIFICATION (EXECUTE FIRST!) ===
+
+BEFORE analyzing any food, you MUST classify what type of image this is.
+
+POSSIBLE CATEGORIES:
+- "prato_refeicao": Plate of food, prepared meal, dish, snack on a plate
+- "alimento_individual": Single food item (fruit, vegetable, drink, packaged food being eaten)
+- "pessoa_corpo": Person, body part (hand, face, leg, arm, torso, foot, finger, selfie)
+- "animal_pet": Pet, animal, wildlife (dog, cat, bird, fish, etc.)
+- "objeto_domestico": Furniture, electronics, household item, appliance
+- "paisagem_ambiente": Landscape, room, outdoor environment, scenery
+- "documento_tela": Screen, phone, document, text, label (use label analyzer instead)
+- "veiculo": Car, motorcycle, bicycle, bus, any vehicle
+- "roupa_acessorio": Clothing, shoes, bags, jewelry, accessories
+- "imagem_abstrata": Blurry, unclear, artistic, too dark, too bright to identify
+
+⚠️ IF NOT "prato_refeicao" OR "alimento_individual", return IMMEDIATELY:
+
+{
+  "erro": "imagem_nao_alimenticia",
+  "categoria_detectada": "[exact category from list above]",
+  "objeto_identificado": "[Describe EXACTLY what you see: e.g., 'perna humana com pé', 'cachorro dormindo', 'controle remoto de TV', 'paisagem de montanha']",
+  "confianca": "alta|media|baixa",
+  "mensagem": "Não consegui identificar comida nesta imagem. Parece ser [description in Portuguese]. Por favor, tire uma foto do seu prato ou alimento.",
+  "dica": "Para melhores resultados, fotografe seu prato de cima, com boa iluminação, mostrando todos os alimentos."
+}
+
+CRITICAL RULES:
+- NEVER try to analyze calories or nutrition for non-food images
+- NEVER mark a non-food image as "seguro" for intolerances
+- NEVER return the normal food analysis JSON if the image is not food
+- BE STRICT: If you see a person, body part, pet, object, or anything that is NOT food, return the error format above
+- When in doubt, return the error format rather than guessing food
+
+=== IF AND ONLY IF THE IMAGE IS FOOD, CONTINUE BELOW ===
+
 === CRITICAL: MULTI-CULTURAL FOOD RECOGNITION ===
 
 You MUST be able to identify dishes from ALL world cuisines including but not limited to:
@@ -533,7 +569,7 @@ RULES:
   - "suspeita": you SUSPECT based on context
 - When "confianca_identificacao" is "baixa", ALWAYS add verification alert and alternatives
 - Respond ONLY with valid JSON
-- If image is not food, return: {"erro": "Could not identify food in the image."}`;
+- REMEMBER: If image is NOT food, you MUST return the "erro": "imagem_nao_alimenticia" format from STEP ZERO above. Never try to analyze non-food images.`;
 
     logStep("Calling Google Gemini API with image");
 

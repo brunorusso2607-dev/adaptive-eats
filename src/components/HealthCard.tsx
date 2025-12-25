@@ -202,7 +202,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
                 symptomsCount > 0 ? "text-orange-600" : "text-foreground"
               )}>{symptomsCount}</span>
             </div>
-            <p className="text-[11px] text-muted-foreground mt-0.5">sintomas ({selectedPeriod}d)</p>
+            <p className="text-[11px] text-muted-foreground mt-0.5">com sintomas ({selectedPeriod}d)</p>
           </div>
         </div>
 

@@ -41,15 +41,12 @@ export function NotificationBell({ onOpenSettings }: NotificationBellProps) {
     clearAll,
   } = useNotifications();
 
-  // Clear app badge when popover opens
+  // Mark all as read and clear app badge when popover opens
   useEffect(() => {
     if (open && unreadCount > 0) {
-      // Clear the app badge when viewing notifications
-      if ('clearAppBadge' in navigator) {
-        (navigator as any).clearAppBadge().catch(() => {});
-      }
+      markAllAsRead();
     }
-  }, [open, unreadCount]);
+  }, [open]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

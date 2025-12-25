@@ -12,6 +12,19 @@ export type Notification = {
   created_at: string;
 };
 
+// Helper to update app badge
+const updateAppBadge = (count: number) => {
+  if (count === 0) {
+    if ('clearAppBadge' in navigator) {
+      (navigator as any).clearAppBadge().catch(() => {});
+    }
+  } else {
+    if ('setAppBadge' in navigator) {
+      (navigator as any).setAppBadge(count).catch(() => {});
+    }
+  }
+};
+
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -30,7 +43,10 @@ export function useNotifications() {
 
     if (!error && data) {
       setNotifications(data as Notification[]);
-      setUnreadCount(data.filter((n) => !n.is_read).length);
+      const unread = data.filter((n) => !n.is_read).length;
+      setUnreadCount(unread);
+      // Sync app badge with actual unread count from database
+      updateAppBadge(unread);
     }
     setIsLoading(false);
   }, []);
@@ -49,12 +65,7 @@ export function useNotifications() {
       );
       setUnreadCount((prev) => {
         const newCount = Math.max(0, prev - 1);
-        // Update app badge
-        if (newCount === 0 && 'clearAppBadge' in navigator) {
-          (navigator as any).clearAppBadge().catch(() => {});
-        } else if ('setAppBadge' in navigator) {
-          (navigator as any).setAppBadge(newCount).catch(() => {});
-        }
+        updateAppBadge(newCount);
         return newCount;
       });
     }
@@ -75,10 +86,7 @@ export function useNotifications() {
         prev.map((n) => ({ ...n, is_read: true }))
       );
       setUnreadCount(0);
-      // Clear app badge when all notifications are read
-      if ('clearAppBadge' in navigator) {
-        (navigator as any).clearAppBadge().catch(() => {});
-      }
+      updateAppBadge(0);
     }
   }, []);
 
@@ -89,11 +97,14 @@ export function useNotifications() {
       .eq("id", notificationId);
 
     if (!error) {
-      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
-      // Update unread count if deleted was unread
       const deletedNotif = notifications.find((n) => n.id === notificationId);
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
       if (deletedNotif && !deletedNotif.is_read) {
-        setUnreadCount((prev) => Math.max(0, prev - 1));
+        setUnreadCount((prev) => {
+          const newCount = Math.max(0, prev - 1);
+          updateAppBadge(newCount);
+          return newCount;
+        });
       }
     }
   }, [notifications]);
@@ -110,11 +121,20 @@ export function useNotifications() {
     if (!error) {
       setNotifications([]);
       setUnreadCount(0);
+      updateAppBadge(0);
     }
   }, []);
 
   useEffect(() => {
     fetchNotifications();
+
+    // Sync badge when app becomes visible (user returns to app)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchNotifications();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
 
     // Subscribe to realtime updates
     const channel = supabase
@@ -131,10 +151,7 @@ export function useNotifications() {
           setNotifications((prev) => [newNotif, ...prev]);
           setUnreadCount((prev) => {
             const newCount = prev + 1;
-            // Update app badge with new count
-            if ('setAppBadge' in navigator) {
-              (navigator as any).setAppBadge(newCount).catch(() => {});
-            }
+            updateAppBadge(newCount);
             return newCount;
           });
         }
@@ -142,6 +159,7 @@ export function useNotifications() {
       .subscribe();
 
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
       supabase.removeChannel(channel);
     };
   }, [fetchNotifications]);

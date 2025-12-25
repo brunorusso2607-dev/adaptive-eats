@@ -138,24 +138,15 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     ? `${formatMealTime(mealTimeRange.start)} às ${formatMealTime(mealTimeRange.end)}`
     : "";
   const showButtons = nextMeal ? isMealTimeStarted(nextMeal.meal_type, nextMeal.actual_date) : false;
-  
-  // DEBUG: Log para verificar se showButtons está correto
-  if (nextMeal) {
-    const now = new Date();
-    console.log("🍽️ [PendingMealsList DEBUG]", {
-      mealType: nextMeal.meal_type,
-      actualDate: nextMeal.actual_date,
-      currentTime: `${now.getHours()}:${now.getMinutes()}`,
-      showButtons,
-      shouldShowButtons: showButtons ? "SIM - botões visíveis" : "NÃO - só olho visível"
-    });
-  }
 
   return (
     <div className="space-y-3">
       {/* Card Verde Fixo - Próxima Refeição (sempre visível, fora do dropdown) */}
       {nextMeal && (
-        <Card className="glass-card border-emerald-500/30 bg-emerald-500/5">
+        <Card 
+          className="glass-card border-emerald-500/30 bg-emerald-500/5 cursor-pointer hover:bg-emerald-500/10 transition-colors active:scale-[0.99]"
+          onClick={() => setIsRecipeSheetOpen(true)}
+        >
           <CardContent className="p-4">
             {/* Header */}
             <div className="flex items-start justify-between gap-3">
@@ -183,22 +174,14 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                 </div>
               </div>
 
-              {/* Calorias + Ícone do olho */}
+              {/* Calorias + Ícone do olho (sempre visível agora como indicador visual) */}
               <div className="flex flex-col items-end gap-1 shrink-0">
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
                   <Flame className="w-4 h-4 text-orange-500" />
                   <span className="font-medium">{nextMeal.recipe_calories}</span>
                   <span className="text-xs">kcal</span>
                 </div>
-                {!showButtons && (
-                  <button
-                    onClick={() => setIsRecipeSheetOpen(true)}
-                    className="p-1 text-muted-foreground hover:text-primary transition-colors"
-                    aria-label="Visualizar receita"
-                  >
-                    <Eye className="w-4 h-4" strokeWidth={1.5} />
-                  </button>
-                )}
+                <Eye className="w-4 h-4 text-muted-foreground" strokeWidth={1.5} />
               </div>
             </div>
 

@@ -357,7 +357,12 @@ export default function MealDetailSheet({
                 <CardContent className="p-4">
                   <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
                     🥗 Ingredientes
-                    {!isPastMeal && (
+                    {isPastMeal ? (
+                      <span className="text-xs text-muted-foreground/60 font-normal ml-auto flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        Somente leitura
+                      </span>
+                    ) : (
                       <span className="text-xs text-muted-foreground font-normal ml-auto">
                         Toque em <RefreshCw className="w-3 h-3 inline" /> para substituir
                       </span>
@@ -367,10 +372,19 @@ export default function MealDetailSheet({
                     {ingredients.map((ingredient, index) => (
                       <li 
                         key={index} 
-                        className="flex items-center gap-3 p-2 rounded-lg"
+                        className={cn(
+                          "flex items-center gap-3 p-2 rounded-lg",
+                          isPastMeal && "opacity-70"
+                        )}
                       >
-                        <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                          <CheckCircle className="w-4 h-4 text-primary" />
+                        <div className={cn(
+                          "w-6 h-6 rounded-full flex items-center justify-center shrink-0",
+                          isPastMeal ? "bg-muted" : "bg-primary/10"
+                        )}>
+                          <CheckCircle className={cn(
+                            "w-4 h-4",
+                            isPastMeal ? "text-muted-foreground" : "text-primary"
+                          )} />
                         </div>
                         <span className="flex-1">
                           <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Droplets, Scale, TrendingUp, TrendingDown, Settings, Target } from "lucide-react";
+import { Droplets, Scale, TrendingUp, TrendingDown, Pencil, Target } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
 import { WaterTracker } from "@/components/WaterTracker";
@@ -247,10 +247,10 @@ export function CompactHealthCircles({
                     setWeightSheetOpen(false);
                     onOpenWeightSetup?.();
                   }}
-                  className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors"
+                  className="p-1.5 rounded-md hover:bg-muted transition-colors"
+                  aria-label="Editar peso"
                 >
-                  <Settings className="w-4 h-4 text-primary stroke-[1.5]" />
-                  Editar
+                  <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
                 </button>
               </div>
 

@@ -427,64 +427,66 @@ export default function MealDetailSheet({
             </div>
           </ScrollArea>
 
-          {/* Sticky Footer - Sempre visível com animação */}
-          <div 
-            className={cn(
-              "sticky bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 safe-area-footer transition-all duration-300 ease-out",
-              footerVisible 
-                ? "opacity-100 translate-y-0" 
-                : "opacity-0 translate-y-5"
-            )}
-          >
-            <div className="flex items-center gap-3">
-              {/* Trocar - só se canSwap */}
-              {canSwap && (
-                <button
-                  onClick={handleTrocarClick}
-                  disabled={isMarking || isSkipping}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors disabled:opacity-50",
-                    isFutureMeal ? "flex-1" : "flex-1"
-                  )}
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Trocar
-                </button>
+          {/* Sticky Footer - Esconde para refeições passadas */}
+          {!isPastMeal && (
+            <div 
+              className={cn(
+                "sticky bottom-0 left-0 right-0 border-t bg-background/95 backdrop-blur-sm p-4 safe-area-footer transition-all duration-300 ease-out",
+                footerVisible 
+                  ? "opacity-100 translate-y-0" 
+                  : "opacity-0 translate-y-5"
               )}
+            >
+              <div className="flex items-center gap-3">
+                {/* Trocar - só se canSwap */}
+                {canSwap && (
+                  <button
+                    onClick={handleTrocarClick}
+                    disabled={isMarking || isSkipping}
+                    className={cn(
+                      "flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors disabled:opacity-50",
+                      isFutureMeal ? "flex-1" : "flex-1"
+                    )}
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Trocar
+                  </button>
+                )}
 
-              {/* Feita - esconde se for refeição futura */}
-              {!isFutureMeal && (
-                <button
-                  onClick={() => setShowConfirmDialog(true)}
-                  disabled={isMarking || isSkipping}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-colors disabled:opacity-50"
-                >
-                  {isMarking ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Check className="w-4 h-4" />
-                  )}
-                  Feita
-                </button>
-              )}
+                {/* Feita - esconde se for refeição futura */}
+                {!isFutureMeal && (
+                  <button
+                    onClick={() => setShowConfirmDialog(true)}
+                    disabled={isMarking || isSkipping}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-emerald-500 hover:bg-emerald-600 text-white font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isMarking ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Check className="w-4 h-4" />
+                    )}
+                    Feita
+                  </button>
+                )}
 
-              {/* Não fiz - esconde se for refeição futura */}
-              {!isFutureMeal && (
-                <button
-                  onClick={handleSkip}
-                  disabled={isMarking || isSkipping}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground font-medium transition-colors disabled:opacity-50"
-                >
-                  {isSkipping ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <X className="w-4 h-4" />
-                  )}
-                  Não fiz
-                </button>
-              )}
+                {/* Não fiz - esconde se for refeição futura */}
+                {!isFutureMeal && (
+                  <button
+                    onClick={handleSkip}
+                    disabled={isMarking || isSkipping}
+                    className="flex-1 flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-destructive/10 hover:text-destructive text-muted-foreground font-medium transition-colors disabled:opacity-50"
+                  >
+                    {isSkipping ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <X className="w-4 h-4" />
+                    )}
+                    Não fiz
+                  </button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
         </SheetContent>
       </Sheet>
 

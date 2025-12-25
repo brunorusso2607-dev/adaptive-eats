@@ -259,10 +259,13 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
   const mealLabel = labels[normalizedMealType] || labels[nextMeal.meal_type] || nextMeal.meal_type;
   const timeRange = timeRanges[normalizedMealType] || timeRanges[nextMeal.meal_type];
 
+  // Verificar se é uma refeição futura (status "upcoming")
+  const isFutureMeal = mealStatus === "upcoming";
+
   return (
     <Card 
       className={cn(
-        "overflow-hidden transition-all duration-300 rounded-xl shadow-sm",
+        "overflow-hidden transition-all duration-300 rounded-xl shadow-sm cursor-pointer hover:shadow-md active:scale-[0.99]",
         mealStatus === "critical" && "animate-pulse"
       )}
       style={{
@@ -271,6 +274,7 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
         borderWidth: '1px',
         borderStyle: 'solid',
       }}
+      onClick={handleViewRecipe}
     >
       <CardContent className="p-4 space-y-4">
         {/* Header com status */}
@@ -367,9 +371,12 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
         </div>
 
         {/* Ações - linha única com textos curtos e divisores */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
           <button
-            onClick={handleViewRecipe}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleViewRecipe();
+            }}
             disabled={isMarking || isSkipping}
             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
@@ -380,7 +387,10 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
           <span className="text-black dark:text-white opacity-50">•</span>
 
           <button
-            onClick={handleTrocarClick}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleTrocarClick();
+            }}
             disabled={isMarking || isSkipping}
             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
@@ -388,35 +398,46 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
             Trocar
           </button>
 
-          <span className="text-black dark:text-white opacity-50">•</span>
+          {/* Só mostra Feita e Não fiz se NÃO for refeição futura */}
+          {!isFutureMeal && (
+            <>
+              <span className="text-black dark:text-white opacity-50">•</span>
 
-          <button
-            onClick={handleFizClick}
-            disabled={isMarking || isSkipping}
-            className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
-          >
-            {isMarking ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Check className="w-4 h-4 stroke-[1.5]" />
-            )}
-            Feita
-          </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFizClick();
+                }}
+                disabled={isMarking || isSkipping}
+                className="text-sm text-emerald-600 hover:text-emerald-700 dark:text-emerald-400 dark:hover:text-emerald-300 flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
+              >
+                {isMarking ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Check className="w-4 h-4 stroke-[1.5]" />
+                )}
+                Feita
+              </button>
 
-          <span className="text-black dark:text-white opacity-50">•</span>
+              <span className="text-black dark:text-white opacity-50">•</span>
 
-          <button
-            onClick={handleSkip}
-            disabled={isMarking || isSkipping}
-            className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
-          >
-            {isSkipping ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <SkipForward className="w-4 h-4 stroke-[1.5]" />
-            )}
-            Não fiz
-          </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleSkip();
+                }}
+                disabled={isMarking || isSkipping}
+                className="text-sm text-muted-foreground hover:text-destructive flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
+              >
+                {isSkipping ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <SkipForward className="w-4 h-4 stroke-[1.5]" />
+                )}
+                Não fiz
+              </button>
+            </>
+          )}
 
           {/* Botão favoritar alinhado à direita */}
           <FavoriteButton
@@ -449,6 +470,8 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
         open={showDetailSheet}
         onOpenChange={setShowDetailSheet}
         meal={nextMeal}
+        isFutureMeal={isFutureMeal}
+        onRefetch={refetch}
       />
     </Card>
   );

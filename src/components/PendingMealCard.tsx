@@ -106,7 +106,7 @@ export default function PendingMealCard({
   // Modo compact: apenas abre o sheet (usado dentro do NextMealCard)
   if (compact) {
     return (
-      <>
+      <div onClick={(e) => e.stopPropagation()}>
         <button
           onClick={handleCardClick}
           className="w-full text-left text-sm text-muted-foreground hover:text-primary flex items-center gap-1.5 transition-colors py-1"
@@ -123,7 +123,7 @@ export default function PendingMealCard({
           onRefetch={onRefetch}
           onStreakRefresh={onStreakRefresh}
         />
-      </>
+      </div>
     );
   }
 

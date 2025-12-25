@@ -221,6 +221,25 @@ export default function Dashboard() {
     }
   };
 
+  const refetchUserProfile = async () => {
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+    if (!currentUser) return;
+    
+    const { data } = await supabase
+      .from("profiles")
+      .select("intolerances, excluded_ingredients, dietary_preference")
+      .eq("id", currentUser.id)
+      .maybeSingle();
+    
+    if (data) {
+      setUserProfile({
+        intolerances: data.intolerances,
+        excluded_ingredients: data.excluded_ingredients,
+        dietary_preference: data.dietary_preference,
+      });
+    }
+  };
+
   const toggleWeightLossMode = async () => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
@@ -836,6 +855,7 @@ export default function Dashboard() {
                   excludedIngredients={userProfile?.excluded_ingredients || []}
                   dietaryPreference={userProfile?.dietary_preference || "comum"}
                   isLoading={!userProfile}
+                  onUpdate={refetchUserProfile}
                 />
 
                 {/* 2. Score de Segurança Alimentar - Status do dia */}

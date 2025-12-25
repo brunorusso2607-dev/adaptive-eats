@@ -45,6 +45,7 @@ import { SafetyScoreCard } from "@/components/SafetyScoreCard";
 import { SymptomFeedbackModal } from "@/components/SymptomFeedbackModal";
 import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 
 type Recipe = {
   name: string;
@@ -848,6 +849,9 @@ export default function Dashboard() {
                     isActive={isSubscribed}
                   />
                 )}
+
+                {/* Push Permission Prompt - First access */}
+                <PushPermissionPrompt />
 
                 {/* 1. Proteção Ativa - Principal proposta de valor */}
                 <SafetyStatusBadge

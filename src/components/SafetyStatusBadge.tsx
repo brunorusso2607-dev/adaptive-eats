@@ -9,10 +9,11 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
-import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
+import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { getOnboardingIcon } from "@/lib/iconUtils";
 
 interface SafetyStatusBadgeProps {
   intolerances: string[];
@@ -275,34 +276,41 @@ function EditSheet({
               </p>
               
               <div className="grid grid-cols-2 gap-2">
-                {options?.intolerances
-                  .filter(opt => opt.option_id !== "none")
-                  .map((option) => {
-                    const isSelected = selectedIntolerances.includes(option.option_id);
-                    return (
-                      <button
-                        key={option.id}
-                        onClick={() => toggleIntolerance(option.option_id)}
-                        className={cn(
-                          "flex items-center gap-2 p-3 rounded-xl border transition-all text-left",
-                          isSelected
-                            ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
-                            : "bg-muted/30 border-border/50 hover:bg-muted/50"
-                        )}
-                      >
-                        <span className="text-lg">{option.emoji}</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{option.label}</p>
-                          {option.description && (
-                            <p className="text-xs text-muted-foreground truncate">{option.description}</p>
+                  {options?.intolerances
+                    .filter(opt => opt.option_id !== "none")
+                    .map((option) => {
+                      const isSelected = selectedIntolerances.includes(option.option_id);
+                      const IconComponent = getOnboardingIcon(option);
+                      return (
+                        <button
+                          key={option.id}
+                          onClick={() => toggleIntolerance(option.option_id)}
+                          className={cn(
+                            "flex items-center gap-2 p-3 rounded-xl border transition-all text-left",
+                            isSelected
+                              ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400"
+                              : "bg-muted/30 border-border/50 hover:bg-muted/50"
                           )}
-                        </div>
-                        {isSelected && (
-                          <Check className="w-4 h-4 text-emerald-500 shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
+                        >
+                          <div className="w-6 h-6 flex items-center justify-center">
+                            {IconComponent ? (
+                              <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                            ) : (
+                              <span className="text-lg">•</span>
+                            )}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{option.label}</p>
+                            {option.description && (
+                              <p className="text-xs text-muted-foreground truncate">{option.description}</p>
+                            )}
+                          </div>
+                          {isSelected && (
+                            <Check className="w-4 h-4 text-emerald-500 shrink-0" />
+                          )}
+                        </button>
+                      );
+                    })}
               </div>
               
               {selectedIntolerances.length === 0 && (

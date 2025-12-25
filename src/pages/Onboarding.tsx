@@ -6,151 +6,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut,
-  Wheat, WheatOff, Milk, MilkOff, Nut, NutOff, Fish, FishOff, 
-  Egg, EggOff, Bean, BeanOff, CircleSlash, Leaf, LeafyGreen, Salad, 
-  Scale, TrendingDown, TrendingUp, Minus, Clock, Flame, Timer,
-  User, Users, Baby, type LucideIcon, X, Plus, CircleDot,
-  Beef, Bird, Drumstick, Ham, Bone, Carrot, Apple, Banana,
-  Cherry, Citrus, Grape, Pizza, Sandwich, Soup, Cookie, Cake,
-  IceCreamCone, Popcorn, Candy, Coffee, Beer, Wine, CircleOff,
-  Croissant, Slice, Vegan, Ban, Snowflake, Lollipop
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
-
-// Mapeamento de nomes de ícones para componentes Lucide
-const LUCIDE_ICONS: Record<string, LucideIcon> = {
-  // Grãos e cereais
-  wheat: Wheat,
-  "wheat-off": WheatOff,
-  
-  // Laticínios
-  milk: Milk,
-  "milk-off": MilkOff,
-  
-  // Oleaginosas
-  nut: Nut,
-  "nut-off": NutOff,
-  
-  // Peixes e frutos do mar
-  fish: Fish,
-  "fish-off": FishOff,
-  
-  // Ovos
-  egg: Egg,
-  "egg-off": EggOff,
-  
-  // Leguminosas
-  bean: Bean,
-  "bean-off": BeanOff,
-  
-  // Carnes
-  beef: Beef,
-  bird: Bird,
-  drumstick: Drumstick,
-  ham: Ham,
-  bone: Bone,
-  
-  // Vegetais e folhas
-  leaf: Leaf,
-  "leafy-green": LeafyGreen,
-  salad: Salad,
-  carrot: Carrot,
-  vegan: Vegan,
-  
-  // Frutas
-  apple: Apple,
-  banana: Banana,
-  cherry: Cherry,
-  citrus: Citrus,
-  grape: Grape,
-  
-  // Refeições
-  utensils: CircleSlash,
-  pizza: Pizza,
-  sandwich: Sandwich,
-  soup: Soup,
-  croissant: Croissant,
-  slice: Slice,
-  
-  // Doces e sobremesas
-  cookie: Cookie,
-  cake: Cake,
-  "ice-cream-cone": IceCreamCone,
-  popcorn: Popcorn,
-  candy: Candy,
-  "candy-off": Ban, // Usando Ban como fallback para candy-off
-  lollipop: Lollipop,
-  
-  // Bebidas
-  coffee: Coffee,
-  beer: Beer,
-  wine: Wine,
-  
-  // Dieta e nutrição
-  flame: Flame,
-  "trending-down": TrendingDown,
-  "trending-up": TrendingUp,
-  scale: Scale,
-  minus: Minus,
-  snowflake: Snowflake,
-  
-  // Tempo e preparo
-  clock: Clock,
-  zap: Timer,
-  timer: Timer,
-  "chef-hat": ChefHat,
-  
-  // Pessoas
-  user: User,
-  users: Users,
-  baby: Baby,
-  
-  // Status e indicadores
-  check: Check,
-  ban: Ban,
-  "circle-off": CircleOff,
-  "circle-dot": CircleDot,
-};
-
-const getIcon = (option: { option_id: string; icon_name?: string | null }): LucideIcon | null => {
-  // Prioriza icon_name do banco de dados
-  if (option.icon_name && LUCIDE_ICONS[option.icon_name]) {
-    return LUCIDE_ICONS[option.icon_name];
-  }
-  // Fallback para mapeamento por option_id (compatibilidade)
-  const FALLBACK_MAP: Record<string, LucideIcon> = {
-    gluten: Wheat,
-    lactose: Milk,
-    peanut: CircleDot,
-    nuts: Nut,
-    seafood: Fish,
-    fish: Fish,
-    eggs: Egg,
-    soy: Bean,
-    none: Check,
-    nenhuma: Check,
-    comum: Salad,
-    vegetariana: Leaf,
-    vegana: Leaf,
-    low_carb: Flame,
-    emagrecer: TrendingDown,
-    manter: Minus,
-    ganhar_peso: TrendingUp,
-    reduzir: TrendingDown,
-    aumentar: TrendingUp,
-    definir_depois: Clock,
-    rapida: Timer,
-    equilibrada: Scale,
-    elaborada: ChefHat,
-    individual: User,
-    familia: Users,
-    modo_kids: Baby,
-  };
-  return FALLBACK_MAP[option.option_id] || null;
-};
+import { getOnboardingIcon } from "@/lib/iconUtils";
 
 const STEPS = [
   { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
@@ -286,7 +147,7 @@ export default function Onboarding() {
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.intolerances.map((item) => {
-              const IconComponent = getIcon(item);
+              const IconComponent = getOnboardingIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -316,7 +177,7 @@ export default function Onboarding() {
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.dietary_preferences.map((item) => {
-              const IconComponent = getIcon(item);
+              const IconComponent = getOnboardingIcon(item);
               return (
                 <button
                   key={item.option_id}
@@ -359,7 +220,7 @@ export default function Onboarding() {
                 <div className="flex flex-wrap gap-2">
                   {options.excluded_ingredients.map((item) => {
                     const isSelected = profile.excluded_ingredients.includes(item.label.toLowerCase());
-                    const IconComponent = getIcon(item);
+                    const IconComponent = getOnboardingIcon(item);
                     return (
                       <button
                         key={item.option_id}
@@ -481,7 +342,7 @@ export default function Onboarding() {
         return (
           <div className="space-y-3">
             {options.goals.map((item) => {
-              const IconComponent = getIcon(item);
+              const IconComponent = getOnboardingIcon(item);
               return (
                 <button
                   key={item.option_id}

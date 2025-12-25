@@ -261,6 +261,7 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
 
   // Verificar se é uma refeição futura (status "upcoming")
   const isFutureMeal = mealStatus === "upcoming";
+  console.log("[NextMealCard] mealStatus:", mealStatus, "isFutureMeal:", isFutureMeal, "meal:", nextMeal?.recipe_name);
 
   return (
     <Card 

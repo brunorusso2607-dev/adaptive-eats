@@ -294,7 +294,9 @@ export function useNextMeal() {
 
   const mealStatus = useMemo<MealStatus>(() => {
     if (!nextMeal) return "on_time";
-    return getMealStatus(nextMeal.meal_type, nextMeal.completed_at);
+    const status = getMealStatus(nextMeal.meal_type, nextMeal.completed_at);
+    console.log("[useNextMeal] mealStatus calculado:", status, "para meal_type:", nextMeal.meal_type);
+    return status;
   }, [nextMeal]);
 
   const minutesOverdue = useMemo(() => {

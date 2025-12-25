@@ -16,8 +16,9 @@ function PushDebugInfo() {
       "PushManager": "PushManager" in window,
       "Notification": "Notification" in window,
       "standalone (iOS)": (window.navigator as any).standalone ?? false,
-      "display-mode standalone": window.matchMedia('(display-mode: standalone)').matches,
-      "Notification.permission": "Notification" in window ? Notification.permission : "N/A",
+      "display-mode": window.matchMedia('(display-mode: standalone)').matches,
+      "permission": "Notification" in window ? Notification.permission : "N/A",
+      "userAgent iOS": /iPhone|iPad|iPod/.test(navigator.userAgent),
     };
     setDebugInfo(info);
   }, []);
@@ -26,9 +27,9 @@ function PushDebugInfo() {
     <div className="mt-2 p-2 bg-muted/50 rounded text-xs font-mono space-y-1">
       <p className="font-semibold text-muted-foreground mb-1">Debug Info:</p>
       {Object.entries(debugInfo).map(([key, value]) => (
-        <div key={key} className="flex justify-between">
-          <span className="text-muted-foreground">{key}:</span>
-          <span className={value === true || value === "granted" ? "text-green-600" : value === false ? "text-red-600" : "text-yellow-600"}>
+        <div key={key} className="flex justify-between gap-2">
+          <span className="text-muted-foreground truncate">{key}:</span>
+          <span className={value === true || value === "granted" ? "text-green-600 font-semibold" : value === false ? "text-red-600 font-semibold" : "text-yellow-600"}>
             {String(value)}
           </span>
         </div>
@@ -148,14 +149,27 @@ export function PushPermissionPrompt() {
                 Receba lembretes de hidratação e feedback de refeições
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
               <Button size="sm" onClick={handleEnable}>
                 Ativar
               </Button>
               <Button size="sm" variant="ghost" onClick={handleDismiss}>
                 Agora não
               </Button>
+              <Collapsible open={showDebug} onOpenChange={setShowDebug}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 gap-1 text-xs">
+                    <Bug className="h-3 w-3" />
+                    Debug
+                  </Button>
+                </CollapsibleTrigger>
+              </Collapsible>
             </div>
+            <Collapsible open={showDebug} onOpenChange={setShowDebug}>
+              <CollapsibleContent>
+                <PushDebugInfo />
+              </CollapsibleContent>
+            </Collapsible>
           </div>
         </div>
       </CardContent>

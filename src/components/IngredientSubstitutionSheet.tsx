@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 interface IngredientSubstitutionSheetProps {
@@ -59,6 +59,8 @@ export default function IngredientSubstitutionSheet({
   onSubstitute,
 }: IngredientSubstitutionSheetProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedIngredient, setSelectedIngredient] = useState<IngredientResult | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const debouncedQuery = useDebounceValue(searchQuery, 300);
   
   const { results, isLoading, searchIngredient, calculateMacrosDiff, clearResults } = useIngredientSubstitution();
@@ -75,9 +77,11 @@ export default function IngredientSubstitutionSheet({
         }
       });
       setSearchQuery("");
+      setSelectedIngredient(null);
     } else {
       clearResults();
       setOriginalData(null);
+      setSelectedIngredient(null);
     }
   }, [open, originalIngredient, searchIngredient, clearResults]);
 
@@ -88,9 +92,18 @@ export default function IngredientSubstitutionSheet({
   }, [debouncedQuery, searchIngredient, originalIngredient]);
 
   const handleSelect = (ingredient: IngredientResult) => {
-    if (originalIngredient) {
-      onSubstitute(ingredient, originalIngredient.item, originalData);
+    setSelectedIngredient(ingredient);
+  };
+
+  const handleConfirmSubstitution = async () => {
+    if (!originalIngredient || !selectedIngredient) return;
+    
+    setIsSaving(true);
+    try {
+      await onSubstitute(selectedIngredient, originalIngredient.item, originalData);
       onOpenChange(false);
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -142,26 +155,38 @@ export default function IngredientSubstitutionSheet({
 
             {!isLoading && results.map((ingredient) => {
               const diff = calculateMacrosDiff(originalData, ingredient);
+              const isSelected = selectedIngredient?.id === ingredient.id;
               
               return (
                 <Card 
                   key={ingredient.id} 
-                  className="cursor-pointer hover:border-primary/50 transition-colors"
+                  className={cn(
+                    "cursor-pointer transition-all",
+                    isSelected 
+                      ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
+                      : "hover:border-primary/50"
+                  )}
                   onClick={() => handleSelect(ingredient)}
                 >
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between mb-3">
                       <div>
-                        <h4 className="font-medium">{ingredient.name}</h4>
+                        <h4 className="font-medium flex items-center gap-2">
+                          {ingredient.name}
+                          {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
+                        </h4>
                         {ingredient.category && (
                           <Badge variant="outline" className="text-xs mt-1">
                             {ingredient.category}
                           </Badge>
                         )}
                       </div>
-                      <Button size="sm" variant="ghost" className="shrink-0">
-                        Selecionar
-                      </Button>
+                      <Badge 
+                        variant={isSelected ? "default" : "secondary"} 
+                        className="shrink-0"
+                      >
+                        {isSelected ? "Selecionado" : "Selecionar"}
+                      </Badge>
                     </div>
 
                     {/* Macros comparison */}
@@ -217,6 +242,35 @@ export default function IngredientSubstitutionSheet({
             )}
           </div>
         </ScrollArea>
+
+        {/* Confirm Button - Fixed at bottom */}
+        {selectedIngredient && (
+          <div className="p-6 pt-4 border-t shrink-0 bg-background">
+            <div className="flex items-center gap-3 mb-3 text-sm">
+              <span className="text-muted-foreground">Substituindo:</span>
+              <Badge variant="outline">{originalIngredient.item}</Badge>
+              <ArrowRight className="w-4 h-4 text-muted-foreground" />
+              <Badge variant="default">{selectedIngredient.name}</Badge>
+            </div>
+            <Button 
+              onClick={handleConfirmSubstitution} 
+              className="w-full"
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Salvando...
+                </>
+              ) : (
+                <>
+                  <Check className="w-4 h-4 mr-2" />
+                  Confirmar Substituição
+                </>
+              )}
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );

@@ -181,7 +181,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
                       size={14}
                     />
                     <span className="font-medium text-foreground">{mostCommonSymptom[0]}</span>
-                    {" — sintoma mais frequente ({mostCommonSymptom[1]}x)"}
+                    {` — sintoma mais frequente (${mostCommonSymptom[1]}x)`}
                   </p>
                 ) : null}
               </div>

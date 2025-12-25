@@ -29,31 +29,28 @@ export function useHealthStats(days: HealthPeriod = 7) {
     startDate.setDate(startDate.getDate() - days);
 
     try {
-      // Fetch well meals count
+      // Fetch well meals count (includes 'well' and 'auto_well')
       const { count: wellCount } = await supabase
         .from("meal_consumption")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
-        .eq("feedback_status", "well")
+        .in("feedback_status", ["well", "auto_well"])
         .gte("consumed_at", startDate.toISOString());
 
-      // Fetch total meals count (all consumed meals in period)
-      const { count: totalCount } = await supabase
+      // Fetch meals with symptoms
+      const { count: symptomsCount } = await supabase
         .from("meal_consumption")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
+        .eq("feedback_status", "symptoms")
         .gte("consumed_at", startDate.toISOString());
 
-      // Fetch symptoms count
-      const { count: symptoms } = await supabase
-        .from("symptom_logs")
-        .select("*", { count: "exact", head: true })
-        .eq("user_id", user.id)
-        .gte("logged_at", startDate.toISOString());
+      // Total = well + symptoms (excluding pending)
+      const totalEvaluated = (wellCount || 0) + (symptomsCount || 0);
 
       setWellMealsCount(wellCount || 0);
-      setTotalMealsCount(totalCount || 0);
-      setSymptomsCount(symptoms || 0);
+      setTotalMealsCount(totalEvaluated);
+      setSymptomsCount(symptomsCount || 0);
     } catch (error) {
       console.error("Error fetching health stats:", error);
     } finally {

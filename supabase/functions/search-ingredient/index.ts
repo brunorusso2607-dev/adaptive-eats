@@ -69,15 +69,30 @@ async function getIngredientFromAI(
 
   const prompt = `Você é um banco de dados nutricional preciso. Retorne APENAS JSON válido, sem markdown.
 
-Ingrediente: "${ingredientName}"
+Ingrediente buscado: "${ingredientName}"
 ${context ? `Contexto culinário: "${context}"` : ''}
+
+REGRA CRÍTICA: Você deve retornar APENAS INGREDIENTES PUROS, nunca receitas prontas.
+
+Exemplos de INGREDIENTES PUROS (permitidos):
+- Leite, Farinha de trigo, Ovo, Açúcar, Manteiga, Frango, Arroz, Feijão, Tomate, Cebola
+
+Exemplos de RECEITAS PRONTAS (NÃO PERMITIDOS):
+- Pudim, Bolo, Pizza, Lasanha, Strogonoff, Brigadeiro, Coxinha, Feijoada, Moqueca, Risoto, Torta
+
+Se o usuário buscar algo que é uma receita pronta (como "pudim", "bolo", "pizza"), você DEVE:
+1. Retornar o ingrediente principal relacionado
+2. Exemplo: "pudim" → retornar "Leite condensado" ou "Leite"
+3. Exemplo: "bolo" → retornar "Farinha de trigo"
+4. Exemplo: "pizza" → retornar "Massa de pizza" ou "Farinha de trigo"
 
 Retorne exatamente neste formato JSON:
 {
-  "name": "nome padronizado em português",
+  "name": "nome do INGREDIENTE em português",
   "name_en": "nome em inglês",
   "aliases": ["sinônimo1", "sinônimo2"],
   "cuisine_origin": "origem culinária (brazilian, japanese, italian, etc)",
+  "is_recipe": false,
   "per_100g": {
     "calories": número,
     "protein": número,
@@ -92,7 +107,8 @@ Retorne exatamente neste formato JSON:
 IMPORTANTE: 
 - Valores nutricionais devem ser por 100g do alimento
 - Use valores realistas baseados em tabelas nutricionais conhecidas (TACO, USDA)
-- Se não tiver certeza, use confidence menor que 0.7`;
+- Se não tiver certeza, use confidence menor que 0.7
+- NUNCA retorne receitas prontas como pudim, bolo, pizza, etc.`;
 
   logStep('Calling Google Gemini AI directly', { ingredientName, context });
 
@@ -173,6 +189,7 @@ async function saveIngredientToDatabase(
     confidence: aiData.confidence || 0.85,
     verified: false,
     search_count: 1,
+    is_recipe: aiData.is_recipe === true, // Mark as recipe if AI detects it
   };
 
   const { data, error } = await supabase

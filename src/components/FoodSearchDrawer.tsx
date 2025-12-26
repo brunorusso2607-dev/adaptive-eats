@@ -11,6 +11,7 @@ import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
+import { suggestServingByName } from "@/lib/servingSuggestion";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -235,6 +236,15 @@ export default function FoodSearchDrawer({
         // Calculate per 100g if portion is different
         const multiplier = 100 / suggestion.portion_grams;
         
+        // Use auto-suggestion for serving unit based on food name
+        const servingSuggestion = suggestServingByName(suggestion.name);
+        const suggestedUnit = servingSuggestion.servingUnit;
+        const suggestedSize = servingSuggestion.defaultServingSize;
+        
+        // Use AI portion if it's more specific, otherwise use category-based suggestion
+        const finalServingSize = suggestion.portion_grams || suggestedSize;
+        const finalServingUnit = suggestion.portion_grams && suggestion.portion_grams !== 100 ? 'un' : suggestedUnit;
+        
         const { data: newFood, error } = await supabase
           .from("foods")
           .insert({
@@ -247,8 +257,8 @@ export default function FoodSearchDrawer({
             source: "ai_suggestion",
             verified: false,
             confidence: suggestion.confidence === "alta" ? 0.9 : suggestion.confidence === "média" ? 0.7 : 0.5,
-            serving_unit: 'un',
-            default_serving_size: suggestion.portion_grams,
+            serving_unit: finalServingUnit,
+            default_serving_size: finalServingSize,
           })
           .select()
           .single();

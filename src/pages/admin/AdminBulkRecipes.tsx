@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChefHat, Play, Loader2, CheckCircle, AlertCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, ChefHat, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -36,10 +36,32 @@ const CATEGORIES = [
   { key: 'kids', label: 'Modo Kids' },
 ];
 
+// Países configurados no sistema
+const COUNTRIES = [
+  // América
+  { code: 'BR', name: 'Brasil', flag: '🇧🇷', language: 'pt-BR', region: 'América do Sul' },
+  { code: 'US', name: 'Estados Unidos', flag: '🇺🇸', language: 'en-US', region: 'América do Norte' },
+  { code: 'MX', name: 'México', flag: '🇲🇽', language: 'es-MX', region: 'América do Norte' },
+  { code: 'AR', name: 'Argentina', flag: '🇦🇷', language: 'es-AR', region: 'América do Sul' },
+  { code: 'CO', name: 'Colômbia', flag: '🇨🇴', language: 'es-CO', region: 'América do Sul' },
+  { code: 'CL', name: 'Chile', flag: '🇨🇱', language: 'es-CL', region: 'América do Sul' },
+  { code: 'PE', name: 'Peru', flag: '🇵🇪', language: 'es-PE', region: 'América do Sul' },
+  // Europa
+  { code: 'GB', name: 'Reino Unido', flag: '🇬🇧', language: 'en-GB', region: 'Europa' },
+  { code: 'PT', name: 'Portugal', flag: '🇵🇹', language: 'pt-PT', region: 'Europa' },
+  { code: 'ES', name: 'Espanha', flag: '🇪🇸', language: 'es-ES', region: 'Europa' },
+  { code: 'FR', name: 'França', flag: '🇫🇷', language: 'fr-FR', region: 'Europa' },
+  { code: 'IT', name: 'Itália', flag: '🇮🇹', language: 'it-IT', region: 'Europa' },
+  { code: 'DE', name: 'Alemanha', flag: '🇩🇪', language: 'de-DE', region: 'Europa' },
+  // Ásia
+  { code: 'JP', name: 'Japão', flag: '🇯🇵', language: 'ja-JP', region: 'Ásia' },
+];
+
 interface GenerationLog {
   id: string;
   mealType: string;
   category: string;
+  country: string;
   inserted: number;
   status: 'pending' | 'running' | 'success' | 'error';
   error?: string;
@@ -51,6 +73,7 @@ export default function AdminBulkRecipes() {
   const [stats, setStats] = useState({ total: 0, byType: {} as Record<string, number> });
   const [selectedMealType, setSelectedMealType] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
+  const [selectedCountry, setSelectedCountry] = useState<string>('BR');
   const [batchSize, setBatchSize] = useState(10);
   const [targetTotal, setTargetTotal] = useState(500);
   const [logs, setLogs] = useState<GenerationLog[]>([]);
@@ -59,7 +82,9 @@ export default function AdminBulkRecipes() {
 
   useEffect(() => {
     fetchStats();
-  }, []);
+  }, [selectedCountry]);
+
+  const selectedCountryData = COUNTRIES.find(c => c.code === selectedCountry) || COUNTRIES[0];
 
   const fetchStats = async () => {
     setIsLoading(true);
@@ -68,7 +93,7 @@ export default function AdminBulkRecipes() {
         .from('simple_meals')
         .select('meal_type, country_code')
         .eq('is_active', true)
-        .eq('country_code', 'BR');
+        .eq('country_code', selectedCountry);
 
       if (error) throw error;
 
@@ -91,14 +116,15 @@ export default function AdminBulkRecipes() {
   };
 
   const generateBatch = async (mealType: string, category: string) => {
-    const logId = `${mealType}-${category}-${Date.now()}`;
+    const logId = `${mealType}-${category}-${selectedCountry}-${Date.now()}`;
     
     setLogs(prev => [...prev, {
       id: logId,
       mealType,
       category,
+      country: selectedCountryData.flag,
       inserted: 0,
-      status: 'running',
+      status: 'running' as const,
     }]);
 
     try {
@@ -107,8 +133,8 @@ export default function AdminBulkRecipes() {
           mealType,
           category,
           quantity: batchSize,
-          countryCode: 'BR',
-          languageCode: 'pt-BR',
+          countryCode: selectedCountry,
+          languageCode: selectedCountryData.language,
         },
       });
 
@@ -207,11 +233,51 @@ export default function AdminBulkRecipes() {
       </div>
 
       <div className="container max-w-4xl mx-auto px-4 py-6 space-y-6">
+        {/* Country Selector */}
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="pt-6">
+            <div className="flex items-center gap-4">
+              <Globe className="h-6 w-6 text-primary" />
+              <div className="flex-1">
+                <Label className="text-sm font-medium mb-2 block">País para geração de receitas</Label>
+                <Select value={selectedCountry} onValueChange={setSelectedCountry}>
+                  <SelectTrigger className="w-full bg-background">
+                    <SelectValue>
+                      <span className="flex items-center gap-2">
+                        {selectedCountryData.flag} {selectedCountryData.name}
+                      </span>
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    {/* Agrupar por região */}
+                    {['América do Sul', 'América do Norte', 'Europa', 'Ásia'].map(region => (
+                      <div key={region}>
+                        <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                          {region}
+                        </div>
+                        {COUNTRIES.filter(c => c.region === region).map(country => (
+                          <SelectItem key={country.code} value={country.code}>
+                            <span className="flex items-center gap-2">
+                              {country.flag} {country.name}
+                            </span>
+                          </SelectItem>
+                        ))}
+                      </div>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Stats Card */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center justify-between">
-              Estatísticas Atuais
+              <span className="flex items-center gap-2">
+                Estatísticas {selectedCountryData.flag} {selectedCountryData.name}
+              </span>
               <Button variant="ghost" size="sm" onClick={fetchStats} disabled={isLoading}>
                 <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               </Button>
@@ -219,7 +285,7 @@ export default function AdminBulkRecipes() {
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Total de receitas BR:</span>
+              <span className="text-muted-foreground">Total de receitas:</span>
               <Badge variant="secondary" className="text-lg px-3 py-1">
                 {stats.total} / {targetTotal}
               </Badge>
@@ -391,6 +457,7 @@ export default function AdminBulkRecipes() {
                       {log.status === 'running' && <Loader2 className="h-4 w-4 animate-spin text-yellow-500" />}
                       {log.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
                       {log.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
+                      <span>{log.country}</span>
                       <span>{log.mealType}</span>
                       <span className="text-muted-foreground">•</span>
                       <span className="text-muted-foreground">{log.category}</span>

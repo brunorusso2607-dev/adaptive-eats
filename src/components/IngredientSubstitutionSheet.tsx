@@ -128,8 +128,11 @@ export default function IngredientSubstitutionSheet({
     }
   }, [open, originalIngredient?.item, getSuggestions]);
 
+  // Clear selection when user starts a new search
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
+      // Clear selection when searching for something new
+      setSelectedIngredient(null);
       searchIngredient(debouncedQuery, originalIngredient?.item);
     }
   }, [debouncedQuery, searchIngredient, originalIngredient]);

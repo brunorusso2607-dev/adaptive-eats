@@ -11,7 +11,10 @@ const logStep = (step: string, details?: any) => {
 };
 
 // Normalize text: remove accents, lowercase
-function normalizeText(text: string): string {
+function normalizeText(text: string | undefined | null): string {
+  if (!text || typeof text !== 'string') {
+    return '';
+  }
   return text
     .toLowerCase()
     .normalize('NFD')
@@ -167,6 +170,12 @@ async function saveIngredientToDatabase(
   supabase: any, 
   aiData: any
 ): Promise<any> {
+  // Validate aiData.name before proceeding
+  if (!aiData?.name || typeof aiData.name !== 'string') {
+    logStep('Invalid AI data - missing name', { aiData });
+    return null;
+  }
+
   const normalizedName = normalizeText(aiData.name);
   
   // Validate data before saving

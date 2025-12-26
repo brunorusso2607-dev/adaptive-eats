@@ -71,15 +71,12 @@ type MealPlanCalendarProps = {
 const DAY_NAMES_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAY_NAMES_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
-// Standardized meal types - internal keys that work across all languages
-// The frontend always uses these internal keys
-const MEAL_TYPES_ORDERED = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"] as const;
+// Standard meal types - internal keys used across the system
+const MEAL_TYPES_ORDERED = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] as const;
 
 const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: string }> = {
   cafe_manha: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
   almoco: { icon: UtensilsCrossed, label: "Almoço", color: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
-  lanche_tarde: { icon: Cookie, label: "Lanche", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
-  // Legacy support for old data
   lanche: { icon: Cookie, label: "Lanche", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
   jantar: { icon: Moon, label: "Jantar", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
@@ -466,11 +463,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       {/* Meals List */}
       <div className="space-y-3 sm:space-y-4">
         {MEAL_TYPES_ORDERED.map((mealType) => {
-          // Find meal matching this type (also check legacy 'lanche' for 'lanche_tarde')
-          const meal = currentDayMeals.find(m => 
-            m.meal_type === mealType || 
-            (mealType === "lanche_tarde" && m.meal_type === "lanche")
-          );
+          const meal = currentDayMeals.find(m => m.meal_type === mealType);
           const config = MEAL_CONFIG[mealType];
           const Icon = config.icon;
           const isPastMeal = isMealPastTime(mealType, selectedDay);

@@ -6,6 +6,7 @@ import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, Ref
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
+import { DietaryCompatibilitySummary } from "./DietaryCompatibilitySummary";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import {
   Select,
@@ -116,7 +117,25 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   const [isRegenerating, setIsRegenerating] = useState(false);
 
   // Dietary compatibility hook
-  const { getCompatibility, hasProfile } = useDietaryCompatibility(userProfile?.dietary_preference);
+  const { getCompatibility, hasProfile, isLoading: isLoadingCompatibility } = useDietaryCompatibility(userProfile?.dietary_preference);
+
+  // Calculate compatibility counts for all meals in the plan
+  const compatibilityCounts = useMemo(() => {
+    const counts = { good: 0, moderate: 0, incompatible: 0, unknown: 0, total: 0 };
+    
+    if (!hasProfile || !mealPlan.items) return counts;
+    
+    mealPlan.items.forEach(meal => {
+      const { compatibility } = getCompatibility(meal.recipe_name);
+      counts.total++;
+      if (compatibility === 'good') counts.good++;
+      else if (compatibility === 'moderate') counts.moderate++;
+      else if (compatibility === 'incompatible') counts.incompatible++;
+      else counts.unknown++;
+    });
+    
+    return counts;
+  }, [mealPlan.items, getCompatibility, hasProfile]);
 
   // Use the current month for dynamic weeks calculation
   const currentDate = new Date();
@@ -284,7 +303,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         </Button>
       </div>
 
-      {/* Week Selector - Dynamic weeks */}
+      {/* Dietary Compatibility Summary */}
+      <DietaryCompatibilitySummary 
+        counts={compatibilityCounts}
+        isLoading={isLoadingCompatibility}
+        hasProfile={hasProfile}
+      />
+
       <div className="space-y-1.5">
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Semana

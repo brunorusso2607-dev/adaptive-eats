@@ -1209,51 +1209,81 @@ export type Database = {
       }
       simple_meals: {
         Row: {
+          ai_generated: boolean | null
           calories: number
           carbs: number
+          compatible_meal_times: string[] | null
+          component_type: string | null
+          country_code: string | null
           created_at: string
           description: string | null
           fat: number
           id: string
+          image_url: string | null
           ingredients: Json
           is_active: boolean
+          language_code: string | null
           meal_type: string
           name: string
           prep_time: number
           protein: number
+          rating: number | null
+          rating_count: number | null
           sort_order: number
+          source_name: string | null
+          source_url: string | null
           updated_at: string
         }
         Insert: {
+          ai_generated?: boolean | null
           calories?: number
           carbs?: number
+          compatible_meal_times?: string[] | null
+          component_type?: string | null
+          country_code?: string | null
           created_at?: string
           description?: string | null
           fat?: number
           id?: string
+          image_url?: string | null
           ingredients?: Json
           is_active?: boolean
+          language_code?: string | null
           meal_type: string
           name: string
           prep_time?: number
           protein?: number
+          rating?: number | null
+          rating_count?: number | null
           sort_order?: number
+          source_name?: string | null
+          source_url?: string | null
           updated_at?: string
         }
         Update: {
+          ai_generated?: boolean | null
           calories?: number
           carbs?: number
+          compatible_meal_times?: string[] | null
+          component_type?: string | null
+          country_code?: string | null
           created_at?: string
           description?: string | null
           fat?: number
           id?: string
+          image_url?: string | null
           ingredients?: Json
           is_active?: boolean
+          language_code?: string | null
           meal_type?: string
           name?: string
           prep_time?: number
           protein?: number
+          rating?: number | null
+          rating_count?: number | null
           sort_order?: number
+          source_name?: string | null
+          source_url?: string | null
           updated_at?: string
         }
         Relationships: []

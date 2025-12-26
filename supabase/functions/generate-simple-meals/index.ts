@@ -1064,11 +1064,11 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
     const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
+    if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY não configurada");
     if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) throw new Error("Supabase não configurado");
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
@@ -1263,25 +1263,29 @@ GERE AS ${quantity} RECEITAS AGORA:`;
 
     console.log(`[generate-simple-meals] Chamando API com country: ${countryCode}, category: ${categoryLabel}`);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
+        contents: [
+          {
+            parts: [
+              { text: systemPrompt + "\n\n" + userPrompt }
+            ]
+          }
         ],
-        temperature: 0.85,
+        generationConfig: {
+          temperature: 0.85,
+          maxOutputTokens: 8192,
+        }
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("[generate-simple-meals] Erro na API:", response.status, errorText);
+      console.error("[generate-simple-meals] Erro na API Gemini:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit excedido. Tente novamente em alguns minutos." }), {
@@ -1289,9 +1293,9 @@ GERE AS ${quantity} RECEITAS AGORA:`;
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes." }), {
-          status: 402,
+      if (response.status === 403) {
+        return new Response(JSON.stringify({ error: "Chave de API inválida ou sem permissão." }), {
+          status: 403,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
@@ -1299,12 +1303,12 @@ GERE AS ${quantity} RECEITAS AGORA:`;
     }
 
     const aiResponse = await response.json();
-    let content = aiResponse.choices?.[0]?.message?.content || "";
+    let content = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text || "";
     
     // Clean markdown if present
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    console.log("[generate-simple-meals] Resposta recebida, parseando JSON...");
+    console.log("[generate-simple-meals] Resposta recebida do Gemini, parseando JSON...");
 
     let recipes;
     try {

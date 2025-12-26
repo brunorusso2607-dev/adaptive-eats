@@ -165,7 +165,7 @@ export default function IngredientSubstitutionSheet({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md mx-auto max-h-[85vh] flex flex-col p-0 gap-0">
+      <DialogContent className="max-w-md mx-auto h-[85vh] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 shrink-0">
           <DialogTitle>Substituir Ingrediente</DialogTitle>
           <DialogDescription asChild>
@@ -220,7 +220,8 @@ export default function IngredientSubstitutionSheet({
         </div>
 
         {/* Results - with proper scroll */}
-        <ScrollArea className="flex-1 min-h-0 px-6">
+        <div className="flex-1 min-h-0 overflow-hidden">
+          <ScrollArea className="h-full px-6">
           <div className="space-y-2 pb-6">
             {isLoading && (
               <div className="flex items-center justify-center py-6">
@@ -337,7 +338,8 @@ export default function IngredientSubstitutionSheet({
               </div>
             )}
           </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
 
         {/* Confirm Button - Fixed at bottom */}
         {selectedIngredient && (

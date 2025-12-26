@@ -1288,6 +1288,126 @@ export type Database = {
         }
         Relationships: []
       }
+      spoonacular_config: {
+        Row: {
+          api_key_encrypted: string | null
+          api_key_masked: string | null
+          auto_run_hour: number
+          created_at: string
+          current_region_index: number
+          daily_limit: number
+          id: string
+          is_active: boolean
+          is_auto_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          api_key_encrypted?: string | null
+          api_key_masked?: string | null
+          auto_run_hour?: number
+          created_at?: string
+          current_region_index?: number
+          daily_limit?: number
+          id?: string
+          is_active?: boolean
+          is_auto_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          api_key_encrypted?: string | null
+          api_key_masked?: string | null
+          auto_run_hour?: number
+          created_at?: string
+          current_region_index?: number
+          daily_limit?: number
+          id?: string
+          is_active?: boolean
+          is_auto_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      spoonacular_import_logs: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          cuisine: string
+          error_message: string | null
+          id: string
+          recipes_failed: number
+          recipes_imported: number
+          region: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          cuisine: string
+          error_message?: string | null
+          id?: string
+          recipes_failed?: number
+          recipes_imported?: number
+          region: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          cuisine?: string
+          error_message?: string | null
+          id?: string
+          recipes_failed?: number
+          recipes_imported?: number
+          region?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      spoonacular_region_queue: {
+        Row: {
+          created_at: string
+          cuisines: string[]
+          id: string
+          is_active: boolean
+          last_import_at: string | null
+          priority: number
+          region_code: string
+          region_name: string
+          total_imported: number
+          updated_at: string
+          use_ai_fallback: boolean
+        }
+        Insert: {
+          created_at?: string
+          cuisines?: string[]
+          id?: string
+          is_active?: boolean
+          last_import_at?: string | null
+          priority?: number
+          region_code: string
+          region_name: string
+          total_imported?: number
+          updated_at?: string
+          use_ai_fallback?: boolean
+        }
+        Update: {
+          created_at?: string
+          cuisines?: string[]
+          id?: string
+          is_active?: boolean
+          last_import_at?: string | null
+          priority?: number
+          region_code?: string
+          region_name?: string
+          total_imported?: number
+          updated_at?: string
+          use_ai_fallback?: boolean
+        }
+        Relationships: []
+      }
       symptom_logs: {
         Row: {
           created_at: string

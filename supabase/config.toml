@@ -68,3 +68,6 @@ verify_jwt = false
 
 [functions.fetch-spoonacular-recipes]
 verify_jwt = false
+
+[functions.test-spoonacular-key]
+verify_jwt = false

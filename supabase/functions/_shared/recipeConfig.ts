@@ -615,6 +615,192 @@ export const DIETARY_LABELS: Record<string, string> = {
   flexitariana: "flexitariana (majoritariamente vegetariana, com consumo ocasional e moderado de carnes - priorizar vegetais)",
 };
 
+// ============================================
+// INGREDIENTES PROIBIDOS POR DIETA
+// ============================================
+// Lista de ingredientes que JAMAIS devem aparecer em receitas
+// para usuários com cada preferência dietética
+
+export const DIETARY_FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
+  vegetariana: [
+    // Carnes vermelhas
+    "carne", "carne bovina", "carne de boi", "bife", "picanha", "filé mignon", "alcatra", "patinho",
+    "acém", "músculo", "costela bovina", "carne moída", "hambúrguer de carne", "carne seca",
+    "charque", "carne de porco", "lombo", "pernil", "bacon", "panceta", "linguiça de porco",
+    "salsicha", "presunto", "mortadela", "copa", "salame", "calabresa",
+    "carne de cordeiro", "cordeiro", "carneiro", "cabrito",
+    // Aves
+    "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "frango desfiado",
+    "carne de frango", "peru", "pato", "chester", "galinha", "canja de galinha",
+    // Peixes
+    "peixe", "salmão", "tilápia", "bacalhau", "atum", "sardinha", "pescada", "robalo", "dourado",
+    "namorado", "linguado", "merluza", "truta", "pacu", "pintado", "surubim", "pirarucu",
+    // Frutos do mar
+    "camarão", "lagosta", "caranguejo", "siri", "lula", "polvo", "mexilhão", "ostra", "vieira",
+    "marisco", "frutos do mar",
+    // Produtos derivados de carne
+    "caldo de carne", "caldo de galinha", "caldo de frango", "extrato de carne", "gelatina",
+    "banha", "gordura de porco", "toucinho",
+  ],
+  vegana: [
+    // Tudo de vegetariana +
+    "carne", "carne bovina", "carne de boi", "bife", "picanha", "filé mignon", "alcatra", "patinho",
+    "acém", "músculo", "costela bovina", "carne moída", "hambúrguer de carne", "carne seca",
+    "charque", "carne de porco", "lombo", "pernil", "bacon", "panceta", "linguiça de porco",
+    "salsicha", "presunto", "mortadela", "copa", "salame", "calabresa",
+    "carne de cordeiro", "cordeiro", "carneiro", "cabrito",
+    "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "frango desfiado",
+    "peru", "pato", "chester", "galinha",
+    "peixe", "salmão", "tilápia", "bacalhau", "atum", "sardinha", "pescada", "robalo",
+    "camarão", "lagosta", "caranguejo", "siri", "lula", "polvo", "mexilhão", "ostra", "vieira",
+    "caldo de carne", "caldo de galinha", "caldo de frango", "extrato de carne", "gelatina",
+    "banha", "gordura de porco", "toucinho",
+    // Laticínios
+    "leite", "leite integral", "leite desnatado", "leite condensado", "leite em pó",
+    "queijo", "queijo muçarela", "queijo parmesão", "queijo prato", "queijo cottage", "queijo ricota",
+    "cream cheese", "requeijão", "catupiry",
+    "manteiga", "creme de leite", "nata", "chantilly", "iogurte", "coalhada", "kefir",
+    "whey", "whey protein", "caseína", "soro de leite",
+    // Ovos
+    "ovo", "ovos", "clara de ovo", "gema de ovo", "ovo cozido", "ovo frito", "omelete",
+    "maionese", "maionese tradicional",
+    // Mel e derivados
+    "mel", "mel de abelha", "própolis", "geleia real",
+  ],
+  pescetariana: [
+    // Apenas carnes vermelhas e aves
+    "carne", "carne bovina", "carne de boi", "bife", "picanha", "filé mignon", "alcatra", "patinho",
+    "acém", "músculo", "costela bovina", "carne moída", "hambúrguer de carne", "carne seca",
+    "charque", "carne de porco", "lombo", "pernil", "bacon", "panceta", "linguiça de porco",
+    "salsicha", "presunto", "mortadela", "copa", "salame", "calabresa",
+    "carne de cordeiro", "cordeiro", "carneiro", "cabrito",
+    "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "frango desfiado",
+    "peru", "pato", "chester", "galinha",
+    "caldo de carne", "caldo de galinha", "caldo de frango",
+    "banha", "gordura de porco", "toucinho",
+  ],
+  low_carb: [
+    // Carboidratos refinados e açúcares
+    "açúcar", "açúcar refinado", "açúcar mascavo", "açúcar demerara", "açúcar cristal",
+    "mel", "melado", "xarope de milho", "xarope de glicose", "xarope de agave",
+    "pão", "pão francês", "pão de forma", "pão integral", "torrada",
+    "arroz branco", "arroz", "macarrão", "espaguete", "massa", "lasanha",
+    "batata", "batata inglesa", "batata frita", "purê de batata",
+    "farinha de trigo", "farinha branca", "amido de milho", "maisena",
+    "biscoito", "bolacha", "bolo", "doce", "sobremesa açucarada",
+    "refrigerante", "suco industrializado", "suco de caixinha",
+    "cerveja", "bebida alcoólica doce",
+  ],
+  cetogenica: [
+    // Ainda mais restritivo que low_carb
+    "açúcar", "açúcar refinado", "açúcar mascavo", "açúcar demerara", "mel", "melado",
+    "xarope de milho", "xarope de glicose", "xarope de agave",
+    "pão", "pão francês", "pão de forma", "torrada", "croissant", "bolo",
+    "arroz", "arroz branco", "arroz integral", "macarrão", "massa", "lasanha",
+    "batata", "batata inglesa", "batata doce", "mandioca", "macaxeira", "aipim",
+    "inhame", "cará", "batata baroa", "mandioquinha",
+    "farinha de trigo", "farinha", "amido de milho", "maisena", "polvilho",
+    "feijão", "feijão preto", "feijão carioca", "lentilha", "grão de bico", "ervilha",
+    "milho", "pipoca", "canjica",
+    "banana", "manga", "uva", "abacaxi", "melancia", "frutas doces",
+    "biscoito", "bolacha", "doce", "sobremesa",
+    "refrigerante", "suco de fruta", "suco industrializado",
+  ],
+};
+
+/**
+ * Retorna lista de ingredientes proibidos por preferência dietética
+ */
+export function getDietaryForbiddenIngredients(dietaryPreference: string | null | undefined): string[] {
+  if (!dietaryPreference || dietaryPreference === "comum" || dietaryPreference === "flexitariana") {
+    return [];
+  }
+  
+  return DIETARY_FORBIDDEN_INGREDIENTS[dietaryPreference] || [];
+}
+
+/**
+ * Retorna lista COMPLETA de ingredientes proibidos para o usuário
+ * baseado em suas intolerâncias, preferência dietética e alimentos excluídos manualmente
+ */
+export function getAllForbiddenIngredientsWithDiet(profile: UserProfile): string[] {
+  const forbidden: string[] = [];
+  
+  // Adiciona ingredientes de cada intolerância
+  const intolerances = profile.intolerances || [];
+  for (const intolerance of intolerances) {
+    if (intolerance !== "nenhuma" && FORBIDDEN_INGREDIENTS[intolerance]) {
+      forbidden.push(...FORBIDDEN_INGREDIENTS[intolerance]);
+    }
+  }
+  
+  // Adiciona ingredientes proibidos pela preferência dietética
+  const dietaryForbidden = getDietaryForbiddenIngredients(profile.dietary_preference);
+  forbidden.push(...dietaryForbidden);
+  
+  // Adiciona ingredientes excluídos manualmente
+  const excluded = profile.excluded_ingredients || [];
+  forbidden.push(...excluded);
+  
+  // Remove duplicatas e retorna
+  return [...new Set(forbidden.map(i => i.toLowerCase()))];
+}
+
+/**
+ * Gera lista resumida de ingredientes proibidos incluindo dieta para incluir no prompt
+ */
+export function buildForbiddenIngredientsListWithDiet(profile: UserProfile): string {
+  const forbidden = getAllForbiddenIngredientsWithDiet(profile);
+  
+  if (forbidden.length === 0) {
+    return "";
+  }
+  
+  // Pega os 80 mais importantes para cobrir dietas
+  const topForbidden = forbidden.slice(0, 80);
+  
+  return topForbidden.join(", ").toUpperCase();
+}
+
+/**
+ * Gera bloco de restrições dietéticas para o prompt
+ */
+export function buildDietaryRestrictionBlock(profile: UserProfile): string {
+  const preference = profile.dietary_preference;
+  
+  if (!preference || preference === "comum") {
+    return "";
+  }
+  
+  const dietLabel = DIETARY_LABELS[preference] || preference;
+  const forbiddenIngredients = getDietaryForbiddenIngredients(preference);
+  
+  if (forbiddenIngredients.length === 0) {
+    return "";
+  }
+  
+  // Pega os 30 principais ingredientes para o bloco específico
+  const mainForbidden = forbiddenIngredients.slice(0, 30).join(", ").toUpperCase();
+  
+  return `
+╔══════════════════════════════════════════════════════════════════════════════╗
+║  🥗 DIETA ${dietLabel.toUpperCase()} - RESTRIÇÕES OBRIGATÓRIAS                             ║
+╚══════════════════════════════════════════════════════════════════════════════╝
+
+⛔ INGREDIENTES PROIBIDOS PELA DIETA ${preference.toUpperCase()}:
+${mainForbidden}
+
+📋 REGRAS DA DIETA:
+${preference === "vegetariana" ? "✓ PERMITIDO: ovos, leite, queijos, mel\n✗ PROIBIDO: qualquer tipo de carne, peixe, frutos do mar" : ""}
+${preference === "vegana" ? "✗ PROIBIDO: QUALQUER produto de origem animal (carnes, ovos, leite, mel, queijo, manteiga, iogurte)\n✓ USE APENAS: ingredientes 100% vegetais" : ""}
+${preference === "pescetariana" ? "✓ PERMITIDO: peixes, frutos do mar, ovos, laticínios\n✗ PROIBIDO: carnes vermelhas, aves (frango, peru, pato)" : ""}
+${preference === "low_carb" ? "✗ EVITAR: açúcares, pães, arroz, massas, batatas, farinhas\n✓ PRIORIZAR: proteínas, vegetais baixos em carb, gorduras boas" : ""}
+${preference === "cetogenica" ? "✗ PROIBIDO: carboidratos (pães, arroz, massas, batatas, feijões, frutas doces)\n✓ PRIORIZAR: gorduras saudáveis, proteínas moderadas, vegetais folhosos" : ""}
+
+🔴 SE QUALQUER RECEITA CONTIVER INGREDIENTE PROIBIDO, SERÁ REJEITADA!
+`;
+}
+
 export const GOAL_LABELS: Record<string, string> = {
   emagrecer: "emagrecimento (déficit calórico controlado, foco em saciedade e proteína)",
   manter: "manutenção de peso (calorias equilibradas)",
@@ -1140,7 +1326,8 @@ export function buildSingleDayPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
-  const forbiddenList = buildForbiddenIngredientsList(profile);
+  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile); // Updated to include dietary restrictions
+  const dietaryBlock = buildDietaryRestrictionBlock(profile); // New dietary block
   const isKidsMode = profile.context === "modo_kids";
   const complexity = "equilibrada";
   const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
@@ -1179,7 +1366,7 @@ export function buildSingleDayPrompt(
 
 📅 Gere as 5 refeições para: ${dayName}
 🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receitas típicas desta culinária!
-
+${dietaryBlock}
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! LER ANTES DE TUDO! 🚨          ║
 ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -1246,7 +1433,8 @@ export function buildRegenerateMealPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
-  const forbiddenList = buildForbiddenIngredientsList(profile);
+  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile); // Updated to include dietary restrictions
+  const dietaryBlock = buildDietaryRestrictionBlock(profile); // New dietary block
   
   // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
@@ -1268,7 +1456,7 @@ export function buildRegenerateMealPrompt(
 
   return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
 🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receita típica desta culinária!
-
+${dietaryBlock}
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! 🚨                             ║
 ╚══════════════════════════════════════════════════════════════════════════════╝

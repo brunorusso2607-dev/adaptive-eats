@@ -3,7 +3,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine } from "lucide-react";
+import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
+import { checkUserIntoleranceConflict, getIntoleranceLabel } from "@/lib/intoleranceDetection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -173,9 +174,35 @@ export default function FoodSearchDrawer({
     }
   }, [foods, isLoading, searchQuery, fetchAISuggestions]);
 
+  // Check for intolerance conflicts using both methods
+  const checkFoodConflicts = useCallback((foodName: string) => {
+    // First check with hook (ingredient-based)
+    const ingredientConflict = checkConflict(foodName);
+    if (ingredientConflict) {
+      return ingredientConflict;
+    }
+    
+    // Then check with detection function (name-based for processed foods)
+    if (userProfile?.intolerances) {
+      const { hasConflict, conflicts } = checkUserIntoleranceConflict(
+        foodName,
+        userProfile.intolerances
+      );
+      if (hasConflict && conflicts.length > 0) {
+        return {
+          ingredient: foodName,
+          restriction: conflicts[0],
+          restrictionLabel: `intolerante a ${getIntoleranceLabel(conflicts[0])}`,
+        };
+      }
+    }
+    
+    return null;
+  }, [checkConflict, userProfile]);
+
   const handleAddFood = useCallback((food: Food) => {
     // Check for conflicts
-    const conflict = checkConflict(food.name);
+    const conflict = checkFoodConflicts(food.name);
     
     if (conflict) {
       setConflictDialog({ open: true, food, conflict });
@@ -183,7 +210,7 @@ export default function FoodSearchDrawer({
     }
 
     addFoodToList(food);
-  }, [checkConflict]);
+  }, [checkFoodConflicts]);
 
   const addFoodToList = (food: Food) => {
     const defaultServing = food.default_serving_size || 100;
@@ -209,8 +236,28 @@ export default function FoodSearchDrawer({
     setShowAISuggestions(false);
   };
 
+  // State for AI suggestion conflict
+  const [aiConflictDialog, setAiConflictDialog] = useState<{ 
+    open: boolean; 
+    suggestion: AISuggestion | null; 
+    conflict: { ingredient: string; restriction: string; restrictionLabel: string } | null 
+  }>({
+    open: false,
+    suggestion: null,
+    conflict: null,
+  });
+
   // Add AI suggestion as food (first save to database, then add to list)
-  const handleAddAISuggestion = async (suggestion: AISuggestion) => {
+  const handleAddAISuggestion = async (suggestion: AISuggestion, skipConflictCheck = false) => {
+    // Check for intolerance conflicts first (unless skipping)
+    if (!skipConflictCheck) {
+      const conflict = checkFoodConflicts(suggestion.name);
+      if (conflict) {
+        setAiConflictDialog({ open: true, suggestion, conflict });
+        return;
+      }
+    }
+
     try {
       const normalizedName = suggestion.name
         .toLowerCase()
@@ -319,6 +366,13 @@ export default function FoodSearchDrawer({
       addFoodToList(conflictDialog.food);
     }
     setConflictDialog({ open: false, food: null, conflict: null });
+  };
+
+  const handleConfirmAIConflict = () => {
+    if (aiConflictDialog.suggestion) {
+      handleAddAISuggestion(aiConflictDialog.suggestion, true);
+    }
+    setAiConflictDialog({ open: false, suggestion: null, conflict: null });
   };
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
@@ -718,6 +772,39 @@ export default function FoodSearchDrawer({
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmConflict}>
               Adicionar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Suggestion Conflict Dialog */}
+      <AlertDialog
+        open={aiConflictDialog.open}
+        onOpenChange={(open) =>
+          !open && setAiConflictDialog({ open: false, suggestion: null, conflict: null })
+        }
+      >
+        <AlertDialogContent className="max-w-sm">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-medium flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              {aiConflictDialog.suggestion?.name}
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 pt-2">
+                <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
+                  ⚠️ Este alimento pode conter {aiConflictDialog.conflict?.restriction && getIntoleranceLabel(aiConflictDialog.conflict.restriction)}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  De acordo com seu perfil, você é {aiConflictDialog.conflict?.restrictionLabel}. Deseja adicionar mesmo assim?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmAIConflict}>
+              Adicionar mesmo assim
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

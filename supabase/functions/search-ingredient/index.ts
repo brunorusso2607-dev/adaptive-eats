@@ -42,6 +42,16 @@ const ALLOWED_INGREDIENT_CATEGORIES = [
   'cremes',
   'leites',
   'iogurtes',
+  // Categorias adicionais de ingredientes válidos
+  'oleaginosas',
+  'proteinas vegetais',
+  'embutidos',
+  'cereais matinais',
+  'complementos',
+  'enlatados',
+  'fibras',
+  'paes',
+  'molhos',
 ];
 
 const logStep = (step: string, details?: any) => {

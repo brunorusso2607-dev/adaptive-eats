@@ -7,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
-import { Progress } from "@/components/ui/progress";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Dialog,
@@ -24,10 +23,16 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { 
   Utensils, 
   Key, 
-  Calendar, 
   Loader2, 
   Save, 
   Play, 
@@ -41,10 +46,13 @@ import {
   History,
   MapPin,
   TrendingUp,
-  Zap
+  Zap,
+  UtensilsCrossed,
+  Filter,
+  AlertCircle
 } from "lucide-react";
 import { toast } from "sonner";
-import { format, formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface SpoonacularConfig {
@@ -84,10 +92,29 @@ interface ImportLog {
   completed_at: string | null;
 }
 
+interface ImportedRecipe {
+  id: string;
+  name: string;
+  meal_type: string;
+  calories: number;
+  country_code: string | null;
+  source_name: string | null;
+  created_at: string;
+}
+
+const MEAL_TYPE_LABELS: Record<string, string> = {
+  cafe_manha: "Café da manhã",
+  almoco: "Almoço",
+  lanche_tarde: "Lanche",
+  jantar: "Jantar",
+  ceia: "Ceia",
+};
+
 export default function AdminSpoonacular() {
   const [config, setConfig] = useState<SpoonacularConfig | null>(null);
   const [regions, setRegions] = useState<RegionQueue[]>([]);
   const [logs, setLogs] = useState<ImportLog[]>([]);
+  const [recipes, setRecipes] = useState<ImportedRecipe[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isApiKeyDialogOpen, setIsApiKeyDialogOpen] = useState(false);
   const [apiKey, setApiKey] = useState("");
@@ -95,18 +122,25 @@ export default function AdminSpoonacular() {
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ valid: boolean; message?: string; quota?: { used: number | null; remaining: number | null } } | null>(null);
   const [isImporting, setIsImporting] = useState(false);
+  const [recipeFilter, setRecipeFilter] = useState<string>("all");
+  const [totalRecipes, setTotalRecipes] = useState(0);
 
   useEffect(() => {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    fetchRecipes();
+  }, [recipeFilter]);
+
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [configResult, regionsResult, logsResult] = await Promise.all([
+      const [configResult, regionsResult, logsResult, countResult] = await Promise.all([
         supabase.from("spoonacular_config").select("*").maybeSingle(),
         supabase.from("spoonacular_region_queue").select("*").order("priority"),
         supabase.from("spoonacular_import_logs").select("*").order("created_at", { ascending: false }).limit(20),
+        supabase.from("simple_meals").select("id", { count: "exact", head: true }).not("source_name", "is", null),
       ]);
 
       if (configResult.error) throw configResult.error;
@@ -116,11 +150,36 @@ export default function AdminSpoonacular() {
       setConfig(configResult.data);
       setRegions(regionsResult.data || []);
       setLogs(logsResult.data || []);
+      setTotalRecipes(countResult.count || 0);
+      
+      // Fetch recipes
+      await fetchRecipes();
     } catch (error) {
       console.error("Erro ao buscar dados:", error);
       toast.error("Erro ao carregar dados");
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchRecipes = async () => {
+    try {
+      let query = supabase
+        .from("simple_meals")
+        .select("id, name, meal_type, calories, country_code, source_name, created_at")
+        .not("source_name", "is", null)
+        .order("created_at", { ascending: false })
+        .limit(50);
+
+      if (recipeFilter !== "all") {
+        query = query.eq("meal_type", recipeFilter);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setRecipes(data || []);
+    } catch (error) {
+      console.error("Erro ao buscar receitas:", error);
     }
   };
 
@@ -354,7 +413,7 @@ export default function AdminSpoonacular() {
           className="gap-2"
         >
           {isImporting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-          Gerar 15 Receitas
+          Gerar {config?.daily_limit || 10} Receitas
         </Button>
       </div>
 
@@ -560,6 +619,88 @@ export default function AdminSpoonacular() {
         </CardContent>
       </Card>
 
+      {/* Imported Recipes */}
+      <Card className="glass-card">
+        <CardHeader>
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <UtensilsCrossed className="w-5 h-5 text-primary" />
+              <div>
+                <CardTitle className="text-lg">Receitas Importadas</CardTitle>
+                <p className="text-sm text-muted-foreground">
+                  {totalRecipes} receitas do Spoonacular
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Filter className="w-4 h-4 text-muted-foreground" />
+              <Select value={recipeFilter} onValueChange={setRecipeFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="Filtrar por tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os tipos</SelectItem>
+                  <SelectItem value="cafe_manha">Café da manhã</SelectItem>
+                  <SelectItem value="almoco">Almoço</SelectItem>
+                  <SelectItem value="lanche_tarde">Lanche</SelectItem>
+                  <SelectItem value="jantar">Jantar</SelectItem>
+                  <SelectItem value="ceia">Ceia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          {recipes.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <UtensilsCrossed className="w-12 h-12 mx-auto mb-3 opacity-50" />
+              <p>Nenhuma receita importada ainda</p>
+            </div>
+          ) : (
+            <ScrollArea className="h-[400px]">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Calorias</TableHead>
+                    <TableHead>Origem</TableHead>
+                    <TableHead>Fonte</TableHead>
+                    <TableHead>Data</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {recipes.map((recipe) => (
+                    <TableRow key={recipe.id}>
+                      <TableCell className="font-medium max-w-[200px] truncate">
+                        {recipe.name}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="secondary" className="text-xs">
+                          {MEAL_TYPE_LABELS[recipe.meal_type] || recipe.meal_type}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{recipe.calories} kcal</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-xs">
+                          {recipe.country_code || "—"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm max-w-[120px] truncate">
+                        {recipe.source_name || "—"}
+                      </TableCell>
+                      <TableCell className="text-muted-foreground text-sm">
+                        {formatDistanceToNow(new Date(recipe.created_at), { addSuffix: true, locale: ptBR })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </ScrollArea>
+          )}
+        </CardContent>
+      </Card>
+
       {/* Import History */}
       <Card className="glass-card">
         <CardHeader>
@@ -610,6 +751,30 @@ export default function AdminSpoonacular() {
               </Table>
             </ScrollArea>
           )}
+        </CardContent>
+      </Card>
+
+      {/* API Limit Info */}
+      <Card className="border-amber-500/30 bg-amber-500/5">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-500 mt-0.5" />
+            <div>
+              <p className="font-medium text-amber-600">Limites da API Spoonacular</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                O plano gratuito oferece <strong>50 pontos/dia</strong>. Cada busca de receita custa ~1.5 pontos. 
+                Planos pagos: $29/mo (150 pontos), $79/mo (500 pontos), $159/mo (1500 pontos).
+                <a 
+                  href="https://spoonacular.com/food-api/pricing" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-primary underline ml-1"
+                >
+                  Ver preços
+                </a>
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
 

@@ -490,8 +490,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0 flex-1">
-                          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                            {config.label} {isPastMeal && "(passou)"}
+                          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                            {config.label}
+                            {isPastMeal && (
+                              <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
+                                Passou
+                              </Badge>
+                            )}
                           </p>
                           <h3 className={cn(
                             "font-display font-semibold text-sm sm:text-base line-clamp-2",
@@ -546,8 +551,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                     </div>
                   ) : (
                     <div className="flex-1">
-                      <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                        {config.label} {isPastMeal && "(passou)"}
+                      <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                        {config.label}
+                        {isPastMeal && (
+                          <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
+                            Passou
+                          </Badge>
+                        )}
                       </p>
                       <p className="text-sm text-muted-foreground italic">Nenhuma receita definida</p>
                     </div>

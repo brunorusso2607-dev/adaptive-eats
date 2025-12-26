@@ -65,3 +65,6 @@ verify_jwt = false
 
 [functions.analyze-food-intolerances]
 verify_jwt = false
+
+[functions.fetch-spoonacular-recipes]
+verify_jwt = false

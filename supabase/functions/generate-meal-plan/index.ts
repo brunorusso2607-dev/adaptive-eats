@@ -602,11 +602,13 @@ serve(async (req) => {
         .neq("id", mealPlanIdToUse);
     }
 
-    // Insert meal plan items (meal_type already normalized during validation)
-    const items = mealPlanData.days.flatMap((day: any) =>
+    // Insert meal plan items
+    // day_of_week is the index within the batch (0-6)
+    // week_number is the batch number (1, 2, 3...) representing weeks since plan start
+    const items = mealPlanData.days.flatMap((day: any, dayIndexInBatch: number) =>
       day.meals.map((meal: any) => ({
         meal_plan_id: mealPlanIdToUse,
-        day_of_week: Math.round(Number(day.day_index) || 0),
+        day_of_week: dayIndexInBatch, // Use index within batch, not day.day_index from AI
         meal_type: normalizeMealType(meal.meal_type), // Ensure normalized
         recipe_name: meal.recipe_name,
         recipe_calories: Math.round(Number(meal.recipe_calories) || 0),
@@ -616,7 +618,7 @@ serve(async (req) => {
         recipe_prep_time: Math.round(Number(meal.recipe_prep_time) || 30),
         recipe_ingredients: meal.recipe_ingredients || [],
         recipe_instructions: meal.recipe_instructions || [],
-        week_number: weekNumber || 1
+        week_number: weekNumber || 1 // Batch number as week number
       }))
     );
 

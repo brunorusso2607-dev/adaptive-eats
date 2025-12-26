@@ -31,21 +31,102 @@ serve(async (req) => {
       throw new Error('LOVABLE_API_KEY not configured');
     }
 
-    const systemPrompt = `Você é um especialista em nutrição brasileiro. Sua tarefa é sugerir alimentos baseado no texto do usuário.
+    const systemPrompt = `You are a GLOBAL nutrition expert with encyclopedic knowledge of foods from ALL countries and cultures.
 
-REGRAS IMPORTANTES:
-- Identifique o alimento que o usuário está tentando buscar
-- Se parecer um produto de fast-food ou marca específica, sugira o nome correto completo
-- Retorne de 1 a 5 sugestões relevantes
-- Para cada sugestão, estime os valores nutricionais por 100g ou por unidade (especifique)
-- Considere pratos brasileiros e internacionais populares
+CORE MISSION:
+- Identify the food the user is searching for, even with typos or partial names
+- Recognize foods in ANY LANGUAGE (English, Portuguese, Spanish, Japanese, Korean, Chinese, Arabic, French, German, Italian, Thai, etc.)
+- Return 1-5 relevant suggestions with accurate nutritional values
 
-FORMATO DE RESPOSTA (JSON):
+=== GLOBAL FAST-FOOD CHAINS ===
+
+**McDonald's (worldwide):**
+- Big Mac, Quarter Pounder, McChicken, McNuggets, Big Tasty, McFlurry, McMuffin
+- Regional: McArabia (Middle East), Teriyaki McBurger (Japan), McAloo Tikki (India)
+
+**Burger King:**
+- Whopper, Whopper Jr, Chicken Royale, BK Stacker, Onion Rings
+
+**Subway:**
+- Italian BMT, Meatball Marinara, Chicken Teriyaki, Veggie Delite
+
+**KFC:**
+- Original Recipe, Crispy Strips, Popcorn Chicken, Zinger
+
+**Starbucks:**
+- Frappuccino, Caramel Macchiato, Pumpkin Spice Latte, Croissant, Muffins
+
+**Pizza Hut / Domino's:**
+- Pepperoni Pizza, Margherita, Hawaiian, Meat Lovers
+
+**Taco Bell:**
+- Crunchy Taco, Burrito Supreme, Quesadilla, Nachos Bell Grande
+
+**Chick-fil-A:**
+- Chicken Sandwich, Nuggets, Waffle Fries
+
+**Wendy's:**
+- Baconator, Dave's Single, Frosty
+
+**Five Guys:**
+- Cheeseburger, Cajun Fries
+
+**Chipotle:**
+- Burrito Bowl, Carnitas, Barbacoa, Sofritas
+
+=== GLOBAL CUISINES ===
+
+**Japanese (日本料理):**
+- Sushi, Sashimi, Ramen, Udon, Tempura, Tonkatsu, Okonomiyaki, Takoyaki, Onigiri, Miso Soup, Gyudon, Katsu Curry
+
+**Korean (한국 요리):**
+- Bibimbap, Bulgogi, Kimchi, Korean BBQ, Japchae, Tteokbokki, Samgyeopsal, Gimbap
+
+**Chinese (中国菜):**
+- Kung Pao Chicken, Sweet and Sour Pork, Dim Sum, Fried Rice, Chow Mein, Peking Duck, Mapo Tofu, Hot Pot
+
+**Thai (อาหารไทย):**
+- Pad Thai, Green Curry, Tom Yum, Som Tam, Massaman Curry, Pad See Ew
+
+**Indian (भारतीय भोजन):**
+- Butter Chicken, Tikka Masala, Biryani, Naan, Samosa, Dal, Paneer, Vindaloo
+
+**Mexican:**
+- Tacos, Burritos, Quesadillas, Enchiladas, Guacamole, Nachos, Tamales, Churros
+
+**Italian:**
+- Pizza, Pasta, Lasagna, Risotto, Tiramisu, Gelato, Bruschetta, Carbonara, Bolognese
+
+**American:**
+- Hamburger, Hot Dog, Mac and Cheese, Buffalo Wings, Pancakes, Cheesecake, Apple Pie
+
+**Brazilian:**
+- Feijoada, Pão de Queijo, Coxinha, Açaí, Picanha, Brigadeiro, Tapioca, Moqueca
+
+**Middle Eastern:**
+- Falafel, Hummus, Shawarma, Kebab, Tabbouleh, Baklava, Fattoush
+
+**French:**
+- Croissant, Baguette, Quiche, Crêpe, Ratatouille, Coq au Vin, Macarons
+
+**Spanish:**
+- Paella, Tapas, Gazpacho, Tortilla Española, Churros con Chocolate
+
+**Greek:**
+- Gyros, Souvlaki, Moussaka, Greek Salad, Tzatziki, Spanakopita
+
+**Vietnamese:**
+- Pho, Banh Mi, Spring Rolls, Bun Cha, Com Tam
+
+=== RESPONSE FORMAT (JSON) ===
+
 {
   "suggestions": [
     {
-      "name": "Nome do Alimento Completo",
-      "portion_description": "1 unidade (250g)" ou "100g",
+      "name": "Complete Food Name (in user's apparent language or original)",
+      "name_english": "Name in English for reference",
+      "cuisine": "Origin cuisine (Japanese, Brazilian, American, etc.)",
+      "portion_description": "1 unit (250g)" or "100g" or "1 slice (150g)",
       "portion_grams": 250,
       "calories": 540,
       "protein": 28,
@@ -56,11 +137,20 @@ FORMATO DE RESPOSTA (JSON):
   ]
 }
 
-EXEMPLOS:
+=== RECOGNITION EXAMPLES ===
+
 - "big t" → Big Tasty McDonald's
-- "mcchick" → McChicken McDonald's
-- "açaí" → Açaí na Tigela
-- "pao de q" → Pão de Queijo`;
+- "whopp" → Whopper Burger King
+- "ラーメン" or "ramen" → Ramen (Japanese Noodle Soup)
+- "비빔밥" or "bibim" → Bibimbap (Korean Rice Bowl)
+- "pho" or "phở" → Pho (Vietnamese Noodle Soup)
+- "tikka" → Chicken Tikka Masala
+- "açaí" or "acai" → Açaí Bowl
+- "pao de q" → Pão de Queijo
+- "タコス" or "taco" → Tacos
+- "فلافل" or "falafel" → Falafel
+- "crois" → Croissant
+- "gyro" or "γύρος" → Gyros`;
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',

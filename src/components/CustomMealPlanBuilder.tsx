@@ -25,6 +25,7 @@ import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
 import { useUserIntolerances } from "@/hooks/useUserIntolerances";
+import { useUserProfileContext } from "@/hooks/useUserProfileContext";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type MealSlot = {
@@ -105,6 +106,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
   const { checkMealConflict, hasIntolerances } = useUserIntolerances();
+  const { recipeStyle, isLoading: isLoadingProfile } = useUserProfileContext();
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -329,7 +331,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     }
   };
 
-  if (isLoading || isLoadingFavorites) {
+  if (isLoading || isLoadingFavorites || isLoadingProfile) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -369,8 +371,18 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="space-y-2 pr-4">
                 {(() => {
-                  // Ordenar favoritos: compatíveis primeiro, incompatíveis por último
+                  // Ordenar favoritos: por objetivo do usuário primeiro, depois por compatibilidade
                   const sortedFavorites = [...favorites].sort((a, b) => {
+                    // 1. Ordenar por estilo de receita (objetivo do usuário)
+                    if (recipeStyle === 'fitness') {
+                      // Para fitness: menor caloria primeiro
+                      if (a.calories !== b.calories) return a.calories - b.calories;
+                    } else if (recipeStyle === 'high_calorie') {
+                      // Para ganho de peso: maior caloria primeiro
+                      if (a.calories !== b.calories) return b.calories - a.calories;
+                    }
+                    
+                    // 2. Ordenar por conflito de intolerâncias
                     const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
                     const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
                     
@@ -443,8 +455,18 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     ? simpleMeals.filter(meal => meal.meal_type === SLOT_TO_MEAL_TYPE[activeSlot])
                     : simpleMeals;
                   
-                  // Ordenar: compatíveis primeiro, incompatíveis por último
+                  // Ordenar: por objetivo do usuário primeiro, depois por compatibilidade
                   const sortedMeals = [...filteredMeals].sort((a, b) => {
+                    // 1. Ordenar por estilo de receita (objetivo do usuário)
+                    if (recipeStyle === 'fitness') {
+                      // Para fitness: menor caloria primeiro
+                      if (a.calories !== b.calories) return a.calories - b.calories;
+                    } else if (recipeStyle === 'high_calorie') {
+                      // Para ganho de peso: maior caloria primeiro
+                      if (a.calories !== b.calories) return b.calories - a.calories;
+                    }
+                    
+                    // 2. Ordenar por conflito de intolerâncias
                     const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
                     const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
                     

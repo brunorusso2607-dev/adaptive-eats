@@ -383,18 +383,18 @@ export default function AdminBulkRecipes() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Total de Receitas */}
-            <div className="space-y-2">
+            <div className="space-y-3">
               <Label className="text-base font-semibold">Total de Receitas a Gerar</Label>
-              <div className="flex items-center gap-4">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
                 <Input 
                   type="number" 
                   value={totalRecipes} 
                   onChange={e => setTotalRecipes(Math.max(1, Number(e.target.value)))}
                   min={1}
                   max={1000}
-                  className="w-32 text-xl font-bold text-center"
+                  className="w-full sm:w-32 text-xl font-bold text-center"
                 />
-                <div className="flex gap-2">
+                <div className="flex flex-wrap gap-2">
                   {[50, 100, 200, 500].map(preset => (
                     <Button 
                       key={preset}
@@ -422,11 +422,11 @@ export default function AdminBulkRecipes() {
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2">
                 {MEAL_TYPES.map(type => (
                   <label
                     key={type.key}
-                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all min-w-0 ${
                       selectedMealTypes.includes(type.key)
                         ? 'border-primary bg-primary/10'
                         : 'border-border bg-muted/30 hover:bg-muted/50'
@@ -435,9 +435,10 @@ export default function AdminBulkRecipes() {
                     <Checkbox
                       checked={selectedMealTypes.includes(type.key)}
                       onCheckedChange={() => toggleMealType(type.key)}
+                      className="shrink-0"
                     />
-                    <span className="text-lg">{type.emoji}</span>
-                    <span className="text-sm font-medium">{type.label}</span>
+                    <span className="text-lg shrink-0">{type.emoji}</span>
+                    <span className="text-sm font-medium truncate">{type.label}</span>
                   </label>
                 ))}
               </div>
@@ -459,11 +460,11 @@ export default function AdminBulkRecipes() {
                   </Button>
                 </div>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                 {CATEGORIES.map(cat => (
                   <label
                     key={cat.key}
-                    className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all min-w-0 ${
                       selectedCategories.includes(cat.key)
                         ? 'border-primary bg-primary/10'
                         : 'border-border bg-muted/30 hover:bg-muted/50'
@@ -472,9 +473,10 @@ export default function AdminBulkRecipes() {
                     <Checkbox
                       checked={selectedCategories.includes(cat.key)}
                       onCheckedChange={() => toggleCategory(cat.key)}
+                      className="shrink-0"
                     />
-                    <span>{cat.emoji}</span>
-                    <span className="text-xs font-medium">{cat.label}</span>
+                    <span className="shrink-0">{cat.emoji}</span>
+                    <span className="text-xs font-medium truncate">{cat.label}</span>
                   </label>
                 ))}
               </div>
@@ -487,13 +489,13 @@ export default function AdminBulkRecipes() {
             {distribution.length > 0 && (
               <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
                 <CollapsibleTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between">
-                    <span className="flex items-center gap-2">
-                      <Settings2 className="h-4 w-4" />
-                      Ver Distribuição ({distribution.length} combinações)
+                  <Button variant="outline" className="w-full justify-between gap-2 h-auto py-2 px-3">
+                    <span className="flex items-center gap-2 min-w-0">
+                      <Settings2 className="h-4 w-4 shrink-0" />
+                      <span className="truncate text-left">Ver Distribuição ({distribution.length} combinações)</span>
                     </span>
-                    <Badge variant="secondary">
-                      {Math.floor(totalRecipes / distribution.length)} por combinação
+                    <Badge variant="secondary" className="shrink-0 whitespace-nowrap">
+                      {Math.floor(totalRecipes / distribution.length)}/comb
                     </Badge>
                   </Button>
                 </CollapsibleTrigger>

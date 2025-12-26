@@ -5,6 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
+import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
+import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import {
   Select,
   SelectContent,
@@ -112,6 +114,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   });
   const [ingredientTags, setIngredientTags] = useState<string[]>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Dietary compatibility hook
+  const { getCompatibility, hasProfile } = useDietaryCompatibility(userProfile?.dietary_preference);
 
   // Use the current month for dynamic weeks calculation
   const currentDate = new Date();
@@ -483,6 +488,18 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                           {meal.recipe_protein}g
                         </span>
                         <span>{meal.recipe_prep_time} min</span>
+                        
+                        {/* Dietary Compatibility Badge */}
+                        {hasProfile && !isPastMeal && (() => {
+                          const compat = getCompatibility(meal.recipe_name);
+                          return (
+                            <DietaryCompatibilityBadge 
+                              compatibility={compat.compatibility}
+                              notes={compat.notes}
+                              showLabel={true}
+                            />
+                          );
+                        })()}
                       </div>
                     </div>
                   ) : (

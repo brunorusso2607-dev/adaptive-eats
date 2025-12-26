@@ -21,6 +21,436 @@ export interface UserProfile {
   context?: string | null;
   intolerances?: string[] | null;
   excluded_ingredients?: string[] | null;
+  country?: string | null; // ISO 3166-1 alpha-2 (BR, US, MX, etc.)
+}
+
+// ============================================
+// CONFIGURAÇÃO DE CULINÁRIA POR PAÍS
+// ============================================
+
+export interface CountryCuisineConfig {
+  name: string;
+  language: string;
+  ingredientPriority: string;
+  mealTypeLabels: Record<string, string>;
+  mealExamples: Record<string, string[]>;
+}
+
+export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
+  BR: {
+    name: "Brasil",
+    language: "pt-BR",
+    ingredientPriority: "Priorize ingredientes de fácil acesso no Brasil",
+    mealTypeLabels: {
+      cafe_manha: "Café da Manhã",
+      almoco: "Almoço",
+      lanche: "Lanche da Tarde",
+      jantar: "Jantar",
+      ceia: "Ceia"
+    },
+    mealExamples: {
+      cafe_manha: ["tapioca recheada", "pão francês com manteiga", "mingau de aveia", "vitamina de banana", "cuscuz nordestino"],
+      almoco: ["arroz com feijão e bife", "frango grelhado com legumes", "feijoada light", "strogonoff de frango", "moqueca de peixe"],
+      lanche: ["pão de queijo", "açaí na tigela", "sanduíche natural", "bolo de cenoura", "tapioca"],
+      jantar: ["sopa de legumes", "omelete de legumes", "salada completa", "wrap leve", "creme de abóbora"],
+      ceia: ["chá com biscoito integral", "iogurte natural", "frutas", "queijo cottage"]
+    }
+  },
+  US: {
+    name: "Estados Unidos",
+    language: "en-US",
+    ingredientPriority: "Prioritize ingredients commonly available in the United States",
+    mealTypeLabels: {
+      cafe_manha: "Breakfast",
+      almoco: "Lunch",
+      lanche: "Snack",
+      jantar: "Dinner",
+      ceia: "Late Night Snack"
+    },
+    mealExamples: {
+      cafe_manha: ["scrambled eggs with bacon", "pancakes with maple syrup", "oatmeal with berries", "bagel with cream cheese", "avocado toast", "smoothie bowl"],
+      almoco: ["grilled chicken salad", "turkey club sandwich", "burrito bowl", "mac and cheese", "chicken wrap"],
+      lanche: ["protein bar", "trail mix", "apple with peanut butter", "greek yogurt", "cheese and crackers"],
+      jantar: ["grilled salmon with vegetables", "BBQ chicken", "steak with mashed potatoes", "pasta primavera", "beef stir-fry"],
+      ceia: ["cottage cheese", "warm milk", "handful of almonds", "banana"]
+    }
+  },
+  MX: {
+    name: "México",
+    language: "es-MX",
+    ingredientPriority: "Prioriza ingredientes típicos de la cocina mexicana",
+    mealTypeLabels: {
+      cafe_manha: "Desayuno",
+      almoco: "Comida",
+      lanche: "Merienda",
+      jantar: "Cena",
+      ceia: "Cena Ligera"
+    },
+    mealExamples: {
+      cafe_manha: ["huevos rancheros", "chilaquiles verdes", "molletes", "quesadillas de queso", "licuado de frutas"],
+      almoco: ["tacos de carne asada", "enchiladas rojas", "pozole rojo", "mole con pollo", "chiles rellenos"],
+      lanche: ["elote con mayonesa", "fruta con chile", "tostadas de aguacate", "guacamole con totopos"],
+      jantar: ["sopa de tortilla", "quesadillas", "flautas de pollo", "tostadas de tinga", "tamales"],
+      ceia: ["té de manzanilla", "yogur natural", "fruta picada"]
+    }
+  },
+  PT: {
+    name: "Portugal",
+    language: "pt-PT",
+    ingredientPriority: "Prioriza ingredientes típicos da culinária portuguesa",
+    mealTypeLabels: {
+      cafe_manha: "Pequeno-almoço",
+      almoco: "Almoço",
+      lanche: "Lanche",
+      jantar: "Jantar",
+      ceia: "Ceia"
+    },
+    mealExamples: {
+      cafe_manha: ["torrada com manteiga", "pastel de nata", "iogurte com cereais", "pão com queijo", "café com leite"],
+      almoco: ["bacalhau à brás", "francesinha", "caldo verde", "arroz de pato", "sardinha assada"],
+      lanche: ["pastel de nata", "bolo de arroz", "sandes de presunto", "fruta"],
+      jantar: ["sopa de legumes", "peixe grelhado", "omelete", "bifanas", "polvo à lagareiro"],
+      ceia: ["chá de camomila", "iogurte", "fruta", "queijo fresco"]
+    }
+  },
+  ES: {
+    name: "España",
+    language: "es-ES",
+    ingredientPriority: "Prioriza ingredientes típicos de la cocina española",
+    mealTypeLabels: {
+      cafe_manha: "Desayuno",
+      almoco: "Almuerzo",
+      lanche: "Merienda",
+      jantar: "Cena",
+      ceia: "Cena Ligera"
+    },
+    mealExamples: {
+      cafe_manha: ["tostada con tomate", "churros con chocolate", "tortilla española", "zumo de naranja"],
+      almoco: ["paella valenciana", "gazpacho andaluz", "cocido madrileño", "fabada asturiana", "pulpo a la gallega"],
+      lanche: ["bocadillo de jamón", "magdalenas", "fruta de temporada"],
+      jantar: ["tortilla española", "ensalada mixta", "croquetas", "gambas al ajillo", "pimientos de padrón"],
+      ceia: ["yogur natural", "frutos secos", "queso manchego"]
+    }
+  },
+  AR: {
+    name: "Argentina",
+    language: "es-AR",
+    ingredientPriority: "Prioriza ingredientes típicos de la cocina argentina",
+    mealTypeLabels: {
+      cafe_manha: "Desayuno",
+      almoco: "Almuerzo",
+      lanche: "Merienda",
+      jantar: "Cena",
+      ceia: "Cena Ligera"
+    },
+    mealExamples: {
+      cafe_manha: ["medialunas con café", "tostadas con dulce de leche", "mate con facturas"],
+      almoco: ["asado con ensalada", "milanesa napolitana", "empanadas", "locro", "bife de chorizo"],
+      lanche: ["alfajores", "mate con facturas", "tostado de jamón y queso"],
+      jantar: ["pizza argentina", "pasta con salsa", "provoleta", "choripán"],
+      ceia: ["yogur", "fruta", "queso con membrillo"]
+    }
+  },
+  CO: {
+    name: "Colombia",
+    language: "es-CO",
+    ingredientPriority: "Prioriza ingredientes típicos de la cocina colombiana",
+    mealTypeLabels: {
+      cafe_manha: "Desayuno",
+      almoco: "Almuerzo",
+      lanche: "Onces",
+      jantar: "Cena",
+      ceia: "Cena Ligera"
+    },
+    mealExamples: {
+      cafe_manha: ["arepa con queso", "huevos pericos", "calentado", "changua", "pandebono"],
+      almoco: ["bandeja paisa", "ajiaco bogotano", "sancocho", "arroz con pollo", "lechona"],
+      lanche: ["empanadas", "buñuelos", "almojábanas", "fruta con sal"],
+      jantar: ["sopa de mondongo", "tamales", "patacones con hogao"],
+      ceia: ["aromática", "galletas", "queso con bocadillo"]
+    }
+  },
+  CL: {
+    name: "Chile",
+    language: "es-CL",
+    ingredientPriority: "Prioriza ingredientes típicos de la cocina chilena",
+    mealTypeLabels: {
+      cafe_manha: "Desayuno",
+      almoco: "Almuerzo",
+      lanche: "Once",
+      jantar: "Cena",
+      ceia: "Cena Ligera"
+    },
+    mealExamples: {
+      cafe_manha: ["pan con palta", "huevos revueltos", "tostadas con mermelada", "leche con cereales"],
+      almoco: ["pastel de choclo", "cazuela de pollo", "empanadas de pino", "curanto", "porotos con riendas"],
+      lanche: ["pan con queso", "kuchen", "té con sopaipillas"],
+      jantar: ["caldillo de congrio", "plateada", "ensalada chilena"],
+      ceia: ["té con galletas", "fruta", "yogur"]
+    }
+  },
+  PE: {
+    name: "Perú",
+    language: "es-PE",
+    ingredientPriority: "Prioriza ingredientes típicos de la cocina peruana",
+    mealTypeLabels: {
+      cafe_manha: "Desayuno",
+      almoco: "Almuerzo",
+      lanche: "Lonche",
+      jantar: "Cena",
+      ceia: "Cena Ligera"
+    },
+    mealExamples: {
+      cafe_manha: ["pan con chicharrón", "quinua con leche", "tamales", "jugo de papaya"],
+      almoco: ["ceviche", "lomo saltado", "ají de gallina", "arroz con pollo", "causa limeña"],
+      lanche: ["picarones", "anticuchos", "papa rellena"],
+      jantar: ["sopa criolla", "tacu tacu", "arroz chaufa"],
+      ceia: ["emoliente", "mazamorra morada", "fruta"]
+    }
+  },
+  FR: {
+    name: "France",
+    language: "fr-FR",
+    ingredientPriority: "Privilégiez les ingrédients typiques de la cuisine française",
+    mealTypeLabels: {
+      cafe_manha: "Petit-déjeuner",
+      almoco: "Déjeuner",
+      lanche: "Goûter",
+      jantar: "Dîner",
+      ceia: "Collation"
+    },
+    mealExamples: {
+      cafe_manha: ["croissant au beurre", "pain au chocolat", "tartine avec confiture", "café au lait", "œufs brouillés"],
+      almoco: ["coq au vin", "ratatouille", "quiche lorraine", "boeuf bourguignon", "salade niçoise"],
+      lanche: ["madeleine", "pain au chocolat", "fruit frais"],
+      jantar: ["soupe à l'oignon", "croque-monsieur", "omelette aux fines herbes", "poisson grillé"],
+      ceia: ["tisane", "yaourt nature", "fromage blanc"]
+    }
+  },
+  IT: {
+    name: "Italia",
+    language: "it-IT",
+    ingredientPriority: "Privilegia ingredienti tipici della cucina italiana",
+    mealTypeLabels: {
+      cafe_manha: "Colazione",
+      almoco: "Pranzo",
+      lanche: "Merenda",
+      jantar: "Cena",
+      ceia: "Spuntino Serale"
+    },
+    mealExamples: {
+      cafe_manha: ["cornetto con cappuccino", "pane con marmellata", "fette biscottate", "yogurt con granola"],
+      almoco: ["pasta al pomodoro", "risotto ai funghi", "lasagna alla bolognese", "insalata caprese", "gnocchi al pesto"],
+      lanche: ["bruschetta", "frutta fresca", "biscotti", "gelato"],
+      jantar: ["minestrone", "pesce alla griglia", "pollo arrosto", "pizza margherita", "frittata"],
+      ceia: ["tisana", "frutta", "parmigiano con miele"]
+    }
+  },
+  DE: {
+    name: "Deutschland",
+    language: "de-DE",
+    ingredientPriority: "Bevorzugen Sie typisch deutsche Zutaten",
+    mealTypeLabels: {
+      cafe_manha: "Frühstück",
+      almoco: "Mittagessen",
+      lanche: "Kaffee und Kuchen",
+      jantar: "Abendessen",
+      ceia: "Spätmahlzeit"
+    },
+    mealExamples: {
+      cafe_manha: ["brötchen mit käse", "müsli mit joghurt", "rührei mit speck", "vollkornbrot"],
+      almoco: ["schnitzel mit kartoffelsalat", "bratwurst mit sauerkraut", "rinderroulade", "spätzle"],
+      lanche: ["apfelstrudel", "käsekuchen", "brezel"],
+      jantar: ["brotzeit", "currywurst", "eintopf", "gulaschsuppe"],
+      ceia: ["kräutertee", "joghurt", "obst"]
+    }
+  },
+  GB: {
+    name: "United Kingdom",
+    language: "en-GB",
+    ingredientPriority: "Prioritise ingredients common in British cuisine",
+    mealTypeLabels: {
+      cafe_manha: "Breakfast",
+      almoco: "Lunch",
+      lanche: "Afternoon Tea",
+      jantar: "Dinner",
+      ceia: "Supper"
+    },
+    mealExamples: {
+      cafe_manha: ["full english breakfast", "porridge with berries", "toast with marmalade", "eggs benedict"],
+      almoco: ["fish and chips", "shepherd's pie", "cornish pasty", "ploughman's lunch", "jacket potato"],
+      lanche: ["scones with cream", "cucumber sandwiches", "victoria sponge"],
+      jantar: ["roast beef with yorkshire pudding", "chicken tikka masala", "bangers and mash", "cottage pie"],
+      ceia: ["warm milk", "digestive biscuits", "cheese and crackers"]
+    }
+  },
+  JP: {
+    name: "日本",
+    language: "ja-JP",
+    ingredientPriority: "日本で一般的に入手可能な食材を優先してください",
+    mealTypeLabels: {
+      cafe_manha: "朝食 (Breakfast)",
+      almoco: "昼食 (Lunch)",
+      lanche: "おやつ (Snack)",
+      jantar: "夕食 (Dinner)",
+      ceia: "夜食 (Late Snack)"
+    },
+    mealExamples: {
+      cafe_manha: ["onigiri with nori", "miso soup with tofu", "tamagoyaki", "natto with rice", "japanese breakfast set"],
+      almoco: ["ramen", "donburi", "bento box", "udon", "curry rice", "tonkatsu"],
+      lanche: ["onigiri", "edamame", "mochi", "senbei", "matcha latte"],
+      jantar: ["teriyaki salmon", "tonkatsu", "sukiyaki", "sashimi", "yakitori", "tempura"],
+      ceia: ["green tea", "rice ball", "fruit", "taiyaki"]
+    }
+  },
+  CN: {
+    name: "中国",
+    language: "zh-CN",
+    ingredientPriority: "优先使用中国常见的食材",
+    mealTypeLabels: {
+      cafe_manha: "早餐 (Breakfast)",
+      almoco: "午餐 (Lunch)",
+      lanche: "点心 (Snack)",
+      jantar: "晚餐 (Dinner)",
+      ceia: "夜宵 (Late Snack)"
+    },
+    mealExamples: {
+      cafe_manha: ["congee with pickles", "jianbing", "baozi", "soy milk with youtiao", "dim sum"],
+      almoco: ["kung pao chicken", "mapo tofu", "sweet and sour pork", "fried rice", "dumplings"],
+      lanche: ["spring rolls", "egg tarts", "sesame balls", "steamed buns"],
+      jantar: ["hot pot", "peking duck", "twice-cooked pork", "steamed fish", "stir-fried vegetables"],
+      ceia: ["chrysanthemum tea", "fruit", "light congee"]
+    }
+  },
+  KR: {
+    name: "한국",
+    language: "ko-KR",
+    ingredientPriority: "한국에서 쉽게 구할 수 있는 재료를 우선시하세요",
+    mealTypeLabels: {
+      cafe_manha: "아침 (Breakfast)",
+      almoco: "점심 (Lunch)",
+      lanche: "간식 (Snack)",
+      jantar: "저녁 (Dinner)",
+      ceia: "야식 (Late Snack)"
+    },
+    mealExamples: {
+      cafe_manha: ["korean breakfast with rice and soup", "gimbap", "gyeran-jjim", "juk (rice porridge)"],
+      almoco: ["bibimbap", "bulgogi", "kimchi jjigae", "samgyeopsal", "japchae"],
+      lanche: ["tteokbokki", "hotteok", "kimbap", "bungeoppang"],
+      jantar: ["samgyetang", "galbi", "doenjang jjigae", "jeyuk bokkeum"],
+      ceia: ["barley tea", "fruit", "rice cakes"]
+    }
+  },
+  IN: {
+    name: "India",
+    language: "en-IN",
+    ingredientPriority: "Prioritize ingredients commonly available in India",
+    mealTypeLabels: {
+      cafe_manha: "Breakfast",
+      almoco: "Lunch",
+      lanche: "Evening Snacks",
+      jantar: "Dinner",
+      ceia: "Light Dinner"
+    },
+    mealExamples: {
+      cafe_manha: ["idli with sambar", "dosa with chutney", "poha", "paratha with curd", "upma", "aloo puri"],
+      almoco: ["dal tadka with rice", "chicken curry", "paneer butter masala", "biryani", "roti with sabzi"],
+      lanche: ["samosa", "pakora", "chaat", "vada pav", "masala chai with biscuits"],
+      jantar: ["palak paneer", "chicken tikka", "dal makhani", "khichdi", "vegetable korma"],
+      ceia: ["warm milk with turmeric", "fruit", "light khichdi"]
+    }
+  },
+  AU: {
+    name: "Australia",
+    language: "en-AU",
+    ingredientPriority: "Prioritise ingredients commonly available in Australia",
+    mealTypeLabels: {
+      cafe_manha: "Breakfast",
+      almoco: "Lunch",
+      lanche: "Arvo Snack",
+      jantar: "Dinner",
+      ceia: "Supper"
+    },
+    mealExamples: {
+      cafe_manha: ["avocado toast with poached eggs", "vegemite on toast", "acai bowl", "big breakfast", "smashed avo"],
+      almoco: ["meat pie", "fish and chips", "chicken schnitzel", "poke bowl", "barramundi"],
+      lanche: ["tim tams", "lamingtons", "fruit", "flat white"],
+      jantar: ["grilled kangaroo", "lamb chops", "pavlova", "bbq prawns", "chicken parmigiana"],
+      ceia: ["herbal tea", "yogurt", "anzac biscuits"]
+    }
+  },
+  CA: {
+    name: "Canada",
+    language: "en-CA",
+    ingredientPriority: "Prioritize ingredients commonly available in Canada",
+    mealTypeLabels: {
+      cafe_manha: "Breakfast",
+      almoco: "Lunch",
+      lanche: "Snack",
+      jantar: "Dinner",
+      ceia: "Late Snack"
+    },
+    mealExamples: {
+      cafe_manha: ["pancakes with maple syrup", "eggs benedict", "canadian bacon", "montreal bagel", "oatmeal"],
+      almoco: ["poutine", "montreal smoked meat sandwich", "tourtière", "caesar salad"],
+      lanche: ["butter tarts", "nanaimo bars", "maple cookies", "apple slices"],
+      jantar: ["salmon", "roast turkey", "alberta beef steak", "wild rice pilaf"],
+      ceia: ["chamomile tea", "fruit", "cheese"]
+    }
+  },
+  AE: {
+    name: "الإمارات",
+    language: "ar-AE",
+    ingredientPriority: "Prioritize ingredients common in Middle Eastern and Emirati cuisine",
+    mealTypeLabels: {
+      cafe_manha: "فطور (Breakfast)",
+      almoco: "غداء (Lunch)",
+      lanche: "سناك (Snack)",
+      jantar: "عشاء (Dinner)",
+      ceia: "وجبة خفيفة (Light Meal)"
+    },
+    mealExamples: {
+      cafe_manha: ["shakshuka", "foul medames", "labneh with pita", "manakish", "date smoothie"],
+      almoco: ["chicken machboos", "lamb ouzi", "grilled kebab", "biryani", "harees"],
+      lanche: ["hummus with pita", "falafel", "dates", "arabic coffee with sweets"],
+      jantar: ["grilled fish", "shawarma", "stuffed vine leaves", "fattoush salad"],
+      ceia: ["warm milk with honey", "dates", "light soup"]
+    }
+  }
+};
+
+// ============================================
+// FUNÇÕES UTILITÁRIAS DE PAÍS
+// ============================================
+
+/**
+ * Obtém configuração do país (fallback para BR)
+ */
+export function getCountryConfig(country: string | null | undefined): CountryCuisineConfig {
+  return COUNTRY_CUISINE_CONFIG[country || "BR"] || COUNTRY_CUISINE_CONFIG["BR"];
+}
+
+/**
+ * Obtém exemplos de refeição por tipo e país
+ */
+export function getMealExamples(mealType: string, country: string | null | undefined): string[] {
+  const config = getCountryConfig(country);
+  return config.mealExamples[mealType] || config.mealExamples["almoco"] || [];
+}
+
+/**
+ * Obtém instrução de prioridade de ingredientes por país
+ */
+export function getIngredientPriority(country: string | null | undefined): string {
+  return getCountryConfig(country).ingredientPriority;
+}
+
+/**
+ * Obtém labels de tipo de refeição por país
+ */
+export function getMealTypeLabel(mealType: string, country: string | null | undefined): string {
+  const config = getCountryConfig(country);
+  return config.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
 }
 
 export interface MacroTargets {
@@ -699,6 +1129,7 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 /**
  * Constrói prompt para geração de UM DIA do plano alimentar
  * Persona: Mestre Chef ReceitAI - receitas ricas e detalhadas
+ * Agora com suporte a regionalização por país
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -711,21 +1142,29 @@ export function buildSingleDayPrompt(
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const forbiddenList = buildForbiddenIngredientsList(profile);
   const isKidsMode = profile.context === "modo_kids";
-  // Complexidade padrão: equilibrada (não vem mais do perfil do usuário)
   const complexity = "equilibrada";
   const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+
+  // Regionalização por país
+  const countryConfig = getCountryConfig(profile.country);
+  const ingredientPriority = getIngredientPriority(profile.country);
+  
+  // Gerar exemplos regionalizados para cada tipo de refeição
+  const regionalExamples = selectedMealTypes.map(mealType => {
+    const examples = getMealExamples(mealType, profile.country);
+    const label = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType];
+    return `${label}: ${examples.slice(0, 3).join(", ")}`;
+  }).join("\n");
 
   const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes criativos e divertidos, sabores suaves, apresentação atraente." : "";
   const avoidRecipes = previousRecipes.length > 0 
     ? `\n⚠️ NÃO REPETIR: ${previousRecipes.slice(0, 8).join(", ")}` 
     : "";
 
-  // Build excluded ingredients constraint for meal plan
   const excludedConstraint = excludedIngredientsStr 
     ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME:\n${excludedIngredientsStr}`
     : "";
 
-  // Build forbidden list
   const forbiddenBlock = forbiddenList 
     ? `\n\n🚨 LISTA NEGRA - NUNCA USE NENHUM DESTES INGREDIENTES:\n${forbiddenList}`
     : "";
@@ -739,6 +1178,7 @@ export function buildSingleDayPrompt(
   return `🧑‍🍳 MESTRE CHEF RECEITAI - Plano Alimentar Personalizado
 
 📅 Gere as 5 refeições para: ${dayName}
+🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receitas típicas desta culinária!
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! LER ANTES DE TUDO! 🚨          ║
@@ -762,15 +1202,15 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 ⏱️ COMPLEXIDADE: ${COMPLEXITY_LABELS[complexity]}
 ${complexityInstructions[complexity]}${kidsNote}${avoidRecipes}
 
-🍽️ REFEIÇÕES A GERAR:
-${selectedMealTypes.map((m, i) => `${i + 1}. ${MEAL_TYPE_LABELS[m]}`).join("\n")}
+🍽️ REFEIÇÕES A GERAR (com exemplos regionais de ${countryConfig.name}):
+${regionalExamples}
 
 📋 INSTRUÇÕES DO CHEF:
 • Nomes criativos e apetitosos para cada receita
 • Ingredientes com quantidades precisas (g, ml, unidades)
 • Modo de preparo detalhado e claro
 • Macros realistas que somem ~${macros.dailyCalories}kcal no dia
-• Priorize ingredientes de fácil acesso no Brasil
+• ${ingredientPriority}
 • 🚨 VERIFICAR CADA INGREDIENTE CONTRA AS RESTRIÇÕES!
 
 🔧 FORMATO JSON (responda APENAS com JSON válido):
@@ -796,6 +1236,7 @@ export function buildMealPlanPrompt(
 
 /**
  * Constrói prompt para regeneração de refeição individual
+ * Agora com suporte a regionalização por país
  */
 export function buildRegenerateMealPrompt(
   profile: UserProfile,
@@ -806,23 +1247,27 @@ export function buildRegenerateMealPrompt(
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const forbiddenList = buildForbiddenIngredientsList(profile);
-  const mealLabel = MEAL_TYPE_LABELS[mealType] || mealType;
-  const mealExamples = MEAL_TYPE_EXAMPLES[mealType] || [];
+  
+  // Regionalização por país
+  const countryConfig = getCountryConfig(profile.country);
+  const mealLabel = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
+  const mealExamples = getMealExamples(mealType, profile.country);
+  const ingredientPriority = getIngredientPriority(profile.country);
+  
   const isKidsMode = profile.context === "modo_kids";
   const kidsNote = isKidsMode ? " 🧒 Modo Kids: nome divertido, sabores suaves, máx 25 min." : "";
   const ingredientsNote = ingredients ? `\nINGREDIENTES OBRIGATÓRIOS: ${ingredients}` : "";
   
-  // Build excluded ingredients constraint
   const excludedConstraint = excludedIngredientsStr 
     ? `\nALIMENTOS PROIBIDOS (usuário não consome): ${excludedIngredientsStr}`
     : "";
 
-  // Build forbidden list
   const forbiddenBlock = forbiddenList 
     ? `\n\n🚨 LISTA NEGRA - NUNCA USE:\n${forbiddenList}`
     : "";
 
   return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
+🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receita típica desta culinária!
 
 ╔══════════════════════════════════════════════════════════════════════════════╗
 ║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! 🚨                             ║
@@ -843,7 +1288,8 @@ ${kidsNote}${ingredientsNote}
 REGRAS:
 1. 🚨 SEGURANÇA PRIMEIRO: NUNCA ingredientes das restrições
 2. ~${targetCalories} calorias
-3. Exemplos apropriados: ${mealExamples.join(", ")}
+3. ${ingredientPriority}
+4. Exemplos típicos de ${countryConfig.name}: ${mealExamples.slice(0, 5).join(", ")}
 
 JSON:
 {

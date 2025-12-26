@@ -10,17 +10,18 @@ import {
   Loader2, 
   CheckCircle2, 
   Clock, 
-  AlertTriangle,
   ChevronDown,
   ChevronUp,
   Flame
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, endOfMonth, differenceInDays } from "date-fns";
+import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
+import { useMonthWeeks } from "@/hooks/useMonthWeeks";
+import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type SimpleMeal = {
   id: string;
@@ -62,7 +63,6 @@ const MEAL_TYPE_MAP: Record<string, keyof SelectedMeals> = {
   jantar: "dinner"
 };
 
-// Ordem de exibição
 const MEAL_TYPE_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
 
 export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: SimpleMealsPlanGeneratorProps) {
@@ -78,25 +78,40 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
   });
   const [expandedType, setExpandedType] = useState<string | null>("cafe_manha");
   const [userProfile, setUserProfile] = useState<any>(null);
+  
+  // Week/Day selection
+  const today = new Date();
+  const { weeks, currentWeek, monthName, year } = useMonthWeeks(today);
+  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const { getCompatibility, isLoading: isLoadingCompatibility } = useDietaryCompatibility(
     userProfile?.dietary_preference
   );
 
-  const { remainingDays, monthName, defaultPlanName } = useMemo(() => {
-    const today = new Date();
-    const lastDayOfMonth = endOfMonth(today);
-    const daysLeft = differenceInDays(lastDayOfMonth, today) + 1;
-    const month = format(today, "MMMM", { locale: ptBR });
-    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
-    const year = format(today, "yyyy");
-    
-    return {
-      remainingDays: daysLeft,
-      monthName: capitalizedMonth,
-      defaultPlanName: `${capitalizedMonth} ${year}`
-    };
-  }, []);
+  // Calculate available days from selected week onwards
+  const { totalDays, weekDays } = useMemo(() => {
+    return getAvailableDaysInPlan(weeks, selectedWeek);
+  }, [weeks, selectedWeek]);
+
+  // Default plan name based on month
+  const defaultPlanName = useMemo(() => {
+    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    return `${capitalizedMonth} ${year}`;
+  }, [monthName, year]);
+
+  // Initialize selected day to first available day in selected week
+  useEffect(() => {
+    const currentWeekData = weeks.find(w => w.weekNumber === selectedWeek);
+    if (currentWeekData) {
+      const firstAvailableDay = currentWeekData.days.findIndex(
+        d => d.isInMonth && (!d.isPast || d.isToday)
+      );
+      if (firstAvailableDay !== -1) {
+        setSelectedDay(firstAvailableDay);
+      }
+    }
+  }, [selectedWeek, weeks]);
 
   useEffect(() => {
     const fetchData = async () => {
@@ -105,7 +120,6 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
 
-        // Fetch user profile
         const { data: profile } = await supabase
           .from("profiles")
           .select("dietary_preference, intolerances, excluded_ingredients")
@@ -114,7 +128,6 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
         
         setUserProfile(profile);
 
-        // Fetch simple meals
         const { data: meals, error } = await supabase
           .from("simple_meals")
           .select("*")
@@ -145,7 +158,6 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     return grouped;
   }, [simpleMeals]);
 
-  // Ordenar por MEAL_TYPE_ORDER
   const sortedMealTypes = useMemo(() => {
     return MEAL_TYPE_ORDER.filter(type => mealsByType[type]?.length > 0);
   }, [mealsByType]);
@@ -187,8 +199,21 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
       if (!session) throw new Error("Não autenticado");
 
       const finalPlanName = planName.trim() || defaultPlanName;
-      const today = new Date();
-      const endDate = endOfMonth(today);
+      
+      // Calculate start and end dates based on selected week
+      const startWeekData = weeks.find(w => w.weekNumber === selectedWeek);
+      const lastWeekData = weeks[weeks.length - 1];
+      
+      if (!startWeekData || !lastWeekData) throw new Error("Semana inválida");
+
+      // Find first available day in start week
+      const firstAvailableDay = startWeekData.days.find(d => d.isInMonth && (!d.isPast || d.isToday));
+      const lastDayOfMonth = lastWeekData.days.filter(d => d.isInMonth).pop();
+
+      if (!firstAvailableDay || !lastDayOfMonth) throw new Error("Datas inválidas");
+
+      const startDate = firstAvailableDay.date;
+      const endDate = lastDayOfMonth.date;
 
       // Create meal plan
       const { data: mealPlan, error: planError } = await supabase
@@ -196,7 +221,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
         .insert({
           user_id: session.user.id,
           name: finalPlanName,
-          start_date: format(today, "yyyy-MM-dd"),
+          start_date: format(startDate, "yyyy-MM-dd"),
           end_date: format(endDate, "yyyy-MM-dd"),
           is_active: true,
           status: "active"
@@ -206,33 +231,30 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
 
       if (planError) throw planError;
 
-      // Create meal plan items for each day
+      // Create meal plan items for each available day
       const items: any[] = [];
-      for (let day = 0; day < remainingDays; day++) {
-        const dayOfWeek = (today.getDay() + day) % 7;
-        
-        Object.entries(selectedMeals).forEach(([type, meal]) => {
-          if (meal) {
-            const mealTypeDb = type === "breakfast" ? "breakfast" : 
-                              type === "lunch" ? "lunch" : 
-                              type === "snack" ? "snack" : "dinner";
-            items.push({
-              meal_plan_id: mealPlan.id,
-              day_of_week: dayOfWeek,
-              week_number: Math.floor(day / 7) + 1,
-              meal_type: mealTypeDb,
-              recipe_name: meal.name,
-              recipe_calories: meal.calories,
-              recipe_protein: meal.protein,
-              recipe_carbs: meal.carbs,
-              recipe_fat: meal.fat,
-              recipe_prep_time: meal.prep_time,
-              recipe_ingredients: meal.ingredients || [],
-              recipe_instructions: []
-            });
-          }
+      weekDays.forEach(({ weekNumber, days }) => {
+        days.forEach((day) => {
+          Object.entries(selectedMeals).forEach(([type, meal]) => {
+            if (meal) {
+              items.push({
+                meal_plan_id: mealPlan.id,
+                day_of_week: day.dayOfWeek,
+                week_number: weekNumber,
+                meal_type: type,
+                recipe_name: meal.name,
+                recipe_calories: meal.calories,
+                recipe_protein: meal.protein,
+                recipe_carbs: meal.carbs,
+                recipe_fat: meal.fat,
+                recipe_prep_time: meal.prep_time,
+                recipe_ingredients: meal.ingredients || [],
+                recipe_instructions: []
+              });
+            }
+          });
         });
-      }
+      });
 
       const { error: itemsError } = await supabase
         .from("meal_plan_items")
@@ -300,6 +322,16 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
         </CardContent>
       </Card>
 
+      {/* Week/Day Selector */}
+      <WeekDaySelector
+        referenceDate={today}
+        selectedWeek={selectedWeek}
+        selectedDay={selectedDay}
+        onWeekChange={setSelectedWeek}
+        onDayChange={setSelectedDay}
+        showDaySelector={false}
+      />
+
       {/* Macros Preview */}
       <Card className="glass-card border-primary/20">
         <CardContent className="p-4">
@@ -329,7 +361,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
       </Card>
 
       {/* Meal Selection */}
-      <ScrollArea className="h-[calc(100vh-420px)]">
+      <ScrollArea className="h-[calc(100vh-520px)]">
         <div className="space-y-3 pr-4">
           {sortedMealTypes.map((mealType) => {
             const meals = mealsByType[mealType];
@@ -420,7 +452,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
         ) : (
           <>
             <CheckCircle2 className="w-5 h-5 mr-2" />
-            Criar Plano ({remainingDays} dias)
+            Criar Plano ({totalDays} dias)
           </>
         )}
       </Button>

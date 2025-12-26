@@ -1,8 +1,22 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { 
+  getIntoleranceMappings, 
+  checkFoodAgainstUserIntolerances,
+  generateIngredientsPromptContext,
+  getMappingsStats,
+  INTOLERANCE_LABELS,
+  normalizeText
+} from "../_shared/getIntoleranceMappings.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+};
+
+const logStep = (step: string, details?: any) => {
+  const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
+  console.log(`[ANALYZE-FOOD-INTOLERANCES] ${step}${detailsStr}`);
 };
 
 serve(async (req) => {
@@ -25,39 +39,94 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
 
-    console.log(`Analisando alimento: ${foodName}`);
-    console.log(`Intolerâncias do usuário: ${userIntolerances?.join(', ') || 'nenhuma'}`);
+    logStep("Starting analysis", { foodName, intolerances: userIntolerances });
 
-    // Mapeamento de intolerâncias para ingredientes problemáticos
-    const intoleranceIngredients: Record<string, string[]> = {
-      lactose: ['leite', 'queijo', 'manteiga', 'creme de leite', 'iogurte', 'requeijão', 'nata', 'chantilly', 'cream cheese', 'catupiry', 'mussarela', 'parmesão', 'cheddar', 'provolone', 'gorgonzola', 'ricota', 'cottage', 'coalho', 'leite condensado', 'doce de leite', 'sorvete', 'chocolate ao leite'],
-      gluten: ['trigo', 'farinha', 'pão', 'massa', 'macarrão', 'biscoito', 'bolacha', 'cerveja', 'cevada', 'centeio', 'aveia', 'semolina', 'bulgur', 'cuscuz', 'seitan', 'empanado', 'breading'],
-      ovo: ['ovo', 'gema', 'clara', 'maionese', 'meringue'],
-      frutos_do_mar: ['peixe', 'camarão', 'lagosta', 'lula', 'polvo', 'marisco', 'ostra', 'mexilhão', 'caranguejo', 'siri', 'vieira', 'salmão', 'atum', 'bacalhau', 'sardinha'],
-      amendoim: ['amendoim', 'pasta de amendoim', 'óleo de amendoim'],
-      soja: ['soja', 'tofu', 'shoyu', 'molho de soja', 'edamame', 'missô', 'tempeh', 'lecitina de soja'],
-      castanhas: ['castanha', 'noz', 'amêndoa', 'avelã', 'pistache', 'macadâmia', 'pecã', 'pinhão'],
-      acucar: ['açúcar', 'mel', 'melado', 'xarope', 'caramelo', 'glucose'],
-    };
+    // Buscar mapeamentos dinâmicos do banco de dados
+    const intoleranceData = await getIntoleranceMappings();
+    logStep("Loaded intolerance mappings from database", { stats: getMappingsStats(intoleranceData) });
 
-    const systemPrompt = `Você é um nutricionista especialista em análise de alimentos e intolerâncias alimentares.
-Sua tarefa é analisar um alimento e identificar TODOS os ingredientes típicos que ele contém.
+    // Gerar contexto de ingredientes para o prompt
+    const ingredientsContext = generateIngredientsPromptContext(
+      userIntolerances || [],
+      intoleranceData
+    );
 
-IMPORTANTE:
-- Liste TODOS os ingredientes comuns desse alimento
-- Seja específico (ex: "farinha de trigo" em vez de apenas "farinha")
-- Considere ingredientes ocultos (ex: maionese contém ovo)
-- Para pratos compostos, liste os ingredientes de cada componente
+    // Prompt SUPERINTELIGENTE com conhecimento enciclopédico
+    const systemPrompt = `Você é o MAIOR ESPECIALISTA MUNDIAL em segurança alimentar e intolerâncias.
 
-Responda SEMPRE em formato JSON válido.`;
+## SUA MISSÃO
+Analisar alimentos com PRECISÃO MÁXIMA para proteger pessoas com intolerâncias e alergias alimentares.
 
-    const userPrompt = `Analise o alimento: "${foodName}"
+## SEU CONHECIMENTO ENCICLOPÉDICO INCLUI:
 
-Liste todos os ingredientes típicos deste alimento em formato JSON:
+### 1. CULINÁRIA GLOBAL
+- Pratos brasileiros (feijoada, moqueca, acarajé, vatapá, etc.)
+- Culinária internacional (italiana, japonesa, tailandesa, indiana, etc.)
+- Ingredientes ocultos em cada tipo de preparo
+- Variações regionais e seus ingredientes típicos
+
+### 2. INDÚSTRIA ALIMENTÍCIA
+- Aditivos alimentares e seus códigos (E-numbers)
+- Ingredientes técnicos (caseinato, maltodextrina, lecitina, etc.)
+- Contaminação cruzada em processos industriais
+- Ingredientes derivados e suas origens
+
+### 3. BIOQUÍMICA ALIMENTAR
+- Proteínas alergênicas e suas estruturas
+- Carboidratos fermentáveis (FODMAPs)
+- Histamina e aminas biogênicas
+- Reações cruzadas entre alérgenos
+
+### 4. REGULAMENTAÇÃO
+- ANVISA (Brasil), FDA (EUA), EFSA (Europa)
+- Legislação de rotulagem de alérgenos
+- Limites de traços e contaminação
+
+${ingredientsContext}
+
+## REGRAS DE ANÁLISE
+
+### DETECÇÃO DE INGREDIENTES:
+1. Liste TODOS os ingredientes típicos do alimento
+2. Considere ingredientes "ocultos" em molhos e temperos
+3. Inclua possíveis contaminações cruzadas
+4. Seja específico (ex: "farinha de trigo" não apenas "farinha")
+
+### NÍVEL DE RISCO:
+- **ALTO**: Ingrediente principal ou presente em quantidade significativa
+- **MÉDIO**: Ingrediente secundário ou em molhos/temperos
+- **BAIXO**: Possível traço ou contaminação cruzada
+
+### FAIL-SAFE (REGRA DE OURO):
+- Em caso de QUALQUER dúvida, assuma que CONTÉM o alérgeno
+- Pratos gratinados, empanados e com molhos são SEMPRE suspeitos
+- Alimentos processados geralmente contêm múltiplos alérgenos
+
+## FORMATO DE RESPOSTA (JSON obrigatório):
 {
-  "ingredientes": ["ingrediente1", "ingrediente2", ...],
-  "descricao": "breve descrição do alimento"
+  "ingredientes": ["lista completa de ingredientes identificados"],
+  "descricao": "descrição detalhada do alimento e método de preparo",
+  "analise_detalhada": {
+    "ingredientes_principais": ["..."],
+    "ingredientes_secundarios": ["..."],
+    "possiveis_contaminacoes": ["..."]
+  },
+  "notas_especialista": "observações importantes sobre o alimento"
 }`;
+
+    const userPrompt = `Analise o seguinte alimento com MÁXIMA PRECISÃO: "${foodName}"
+
+Considere:
+1. Todos os ingredientes típicos deste prato/alimento
+2. Variações comuns de preparo
+3. Ingredientes que podem estar "escondidos"
+4. Possíveis fontes de contaminação cruzada
+
+INTOLERÂNCIAS DO USUÁRIO PARA VERIFICAR: ${userIntolerances?.length > 0 ? userIntolerances.join(", ") : "nenhuma registrada"}
+
+Forneça uma análise completa em formato JSON.`;
+
+    logStep("Calling AI gateway with enhanced prompt");
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -71,7 +140,7 @@ Liste todos os ingredientes típicos deste alimento em formato JSON:
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.3,
+        temperature: 0.2, // Baixa temperatura para respostas mais precisas
       }),
     });
 
@@ -100,72 +169,109 @@ Liste todos os ingredientes típicos deste alimento em formato JSON:
       throw new Error("Resposta da IA vazia");
     }
 
-    console.log("Resposta da IA:", content);
+    logStep("AI response received", { contentLength: content.length });
 
     // Parse JSON da resposta
-    let analysisResult: { ingredientes: string[]; descricao: string };
+    let analysisResult: { 
+      ingredientes: string[]; 
+      descricao: string;
+      analise_detalhada?: {
+        ingredientes_principais?: string[];
+        ingredientes_secundarios?: string[];
+        possiveis_contaminacoes?: string[];
+      };
+      notas_especialista?: string;
+    };
+    
     try {
-      // Remove possíveis backticks de markdown
       const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
       analysisResult = JSON.parse(cleanContent);
     } catch (parseError) {
-      console.error("Erro ao parsear resposta:", parseError);
-      // Fallback: tentar extrair ingredientes do texto
+      console.error("Error parsing AI response:", parseError);
       analysisResult = {
         ingredientes: [],
         descricao: content
       };
     }
 
-    // Detectar conflitos com intolerâncias do usuário
+    // Detectar conflitos usando os mapeamentos do banco de dados
     const conflicts: Array<{
       intolerance: string;
       intoleranceLabel: string;
       foundIngredients: string[];
+      riskLevel: string;
+      details: string;
     }> = [];
 
     if (userIntolerances && userIntolerances.length > 0) {
-      const intoleranceLabels: Record<string, string> = {
-        lactose: "Lactose",
-        gluten: "Glúten",
-        ovo: "Ovo",
-        frutos_do_mar: "Frutos do Mar",
-        amendoim: "Amendoim",
-        soja: "Soja",
-        castanhas: "Castanhas",
-        acucar: "Açúcar",
-      };
+      // Juntar todos os ingredientes identificados para análise
+      const allIngredients = [
+        ...(analysisResult.ingredientes || []),
+        ...(analysisResult.analise_detalhada?.ingredientes_principais || []),
+        ...(analysisResult.analise_detalhada?.ingredientes_secundarios || []),
+        ...(analysisResult.analise_detalhada?.possiveis_contaminacoes || [])
+      ];
 
       for (const intolerance of userIntolerances) {
-        if (intolerance === "nenhuma") continue;
+        if (intolerance === "nenhuma" || !intolerance) continue;
         
-        const problematicIngredients = intoleranceIngredients[intolerance] || [];
+        const problematicIngredients = intoleranceData.mappings.get(intolerance) || [];
+        const safeWords = intoleranceData.safeKeywords.get(intolerance) || [];
         const foundProblematic: string[] = [];
+        let isSafe = false;
+        let safeReason = "";
 
-        for (const ingredient of analysisResult.ingredientes) {
-          const normalizedIngredient = ingredient.toLowerCase()
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "");
-          
-          for (const problematic of problematicIngredients) {
-            const normalizedProblematic = problematic.toLowerCase()
-              .normalize("NFD")
-              .replace(/[\u0300-\u036f]/g, "");
+        // Verificar se o alimento tem indicadores de segurança
+        const normalizedFood = normalizeText(foodName);
+        for (const safeWord of safeWords) {
+          if (normalizedFood.includes(normalizeText(safeWord))) {
+            isSafe = true;
+            safeReason = safeWord;
+            break;
+          }
+        }
+
+        if (!isSafe) {
+          // Verificar cada ingrediente identificado
+          for (const ingredient of allIngredients) {
+            const normalizedIngredient = normalizeText(ingredient);
             
-            if (normalizedIngredient.includes(normalizedProblematic) || 
-                normalizedProblematic.includes(normalizedIngredient)) {
-              if (!foundProblematic.includes(ingredient)) {
-                foundProblematic.push(ingredient);
+            for (const problematic of problematicIngredients) {
+              const normalizedProblematic = normalizeText(problematic);
+              
+              // Match mais inteligente: substring bidirecional
+              if (normalizedIngredient.includes(normalizedProblematic) || 
+                  normalizedProblematic.includes(normalizedIngredient)) {
+                if (!foundProblematic.includes(ingredient)) {
+                  foundProblematic.push(ingredient);
+                }
               }
             }
           }
         }
 
         if (foundProblematic.length > 0) {
+          // Determinar nível de risco
+          let riskLevel = "medio";
+          const mainIngredients = analysisResult.analise_detalhada?.ingredientes_principais || [];
+          const contaminations = analysisResult.analise_detalhada?.possiveis_contaminacoes || [];
+          
+          if (foundProblematic.some(fp => 
+            mainIngredients.some(mi => normalizeText(mi).includes(normalizeText(fp)))
+          )) {
+            riskLevel = "alto";
+          } else if (foundProblematic.every(fp => 
+            contaminations.some(c => normalizeText(c).includes(normalizeText(fp)))
+          )) {
+            riskLevel = "baixo";
+          }
+
           conflicts.push({
             intolerance,
-            intoleranceLabel: intoleranceLabels[intolerance] || intolerance,
+            intoleranceLabel: INTOLERANCE_LABELS[intolerance] || intolerance,
             foundIngredients: foundProblematic,
+            riskLevel,
+            details: `Encontrado(s) ${foundProblematic.length} ingrediente(s) problemático(s) para ${INTOLERANCE_LABELS[intolerance] || intolerance}`
           });
         }
       }
@@ -175,11 +281,26 @@ Liste todos os ingredientes típicos deste alimento em formato JSON:
       foodName,
       ingredients: analysisResult.ingredientes,
       description: analysisResult.descricao,
+      detailedAnalysis: analysisResult.analise_detalhada,
+      expertNotes: analysisResult.notas_especialista,
       conflicts,
       hasConflicts: conflicts.length > 0,
+      conflictSummary: conflicts.length > 0 
+        ? `⚠️ ${conflicts.length} conflito(s) detectado(s): ${conflicts.map(c => c.intoleranceLabel).join(", ")}`
+        : "✅ Nenhum conflito detectado com suas intolerâncias",
+      analysisSource: "database_mappings_v2",
+      mappingsUsed: {
+        totalIntolerances: intoleranceData.allIntoleranceKeys.length,
+        totalIngredients: Array.from(intoleranceData.mappings.values()).reduce((sum, arr) => sum + arr.length, 0),
+        totalSafeKeywords: Array.from(intoleranceData.safeKeywords.values()).reduce((sum, arr) => sum + arr.length, 0)
+      }
     };
 
-    console.log("Resultado da análise:", JSON.stringify(result, null, 2));
+    logStep("Analysis complete", { 
+      hasConflicts: result.hasConflicts, 
+      conflictCount: conflicts.length,
+      ingredientsFound: analysisResult.ingredientes?.length || 0
+    });
 
     return new Response(
       JSON.stringify(result),
@@ -187,7 +308,7 @@ Liste todos os ingredientes típicos deste alimento em formato JSON:
     );
 
   } catch (error) {
-    console.error('Erro na análise de intolerâncias:', error);
+    console.error('Error in analyze-food-intolerances:', error);
     return new Response(
       JSON.stringify({ error: error instanceof Error ? error.message : 'Erro desconhecido' }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

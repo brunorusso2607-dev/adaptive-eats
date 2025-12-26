@@ -219,20 +219,19 @@ export default function IngredientSubstitutionSheet({
           />
         </div>
 
-        {/* Results */}
-        <ScrollArea className="flex-1 px-6">
-          <div className="space-y-3 pb-6">
+        {/* Results - with proper scroll */}
+        <ScrollArea className="flex-1 min-h-0 px-6">
+          <div className="space-y-2 pb-6">
             {isLoading && (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="w-6 h-6 animate-spin text-primary" />
-                <span className="ml-2 text-muted-foreground">Buscando...</span>
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="w-5 h-5 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Buscando...</span>
               </div>
             )}
 
             {!isLoading && searchQuery.length >= 2 && results.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <p>Nenhum ingrediente encontrado</p>
-                <p className="text-sm">Tente outro termo de busca</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <p className="text-sm">Nenhum ingrediente encontrado</p>
               </div>
             )}
 
@@ -254,83 +253,87 @@ export default function IngredientSubstitutionSheet({
                   )}
                   onClick={() => handleSelect(ingredient)}
                 >
-                  <CardContent className="p-4">
-                    {/* Conflict Alert - Design sutil */}
+                  <CardContent className="p-3">
+                    {/* Conflict Alert - Compacto */}
                     {conflict && (
-                      <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md mb-3">
+                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded mb-2">
                         Contém {conflict.restrictionLabel?.toLowerCase()}
                       </p>
                     )}
 
-                    <div className="flex items-start justify-between mb-3">
-                      <div>
-                        <h4 className="font-medium flex items-center gap-2">
-                          {ingredient.name}
-                          {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
-                        </h4>
-                        {ingredient.category && (
-                          <Badge variant="outline" className="text-xs mt-1">
-                            {ingredient.category}
-                          </Badge>
-                        )}
-                      </div>
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="font-medium text-sm flex items-center gap-1.5">
+                        {ingredient.name}
+                        {isSelected && <CheckCircle className="w-3.5 h-3.5 text-primary" />}
+                      </h4>
                       <Badge 
                         variant={isSelected ? "default" : "secondary"} 
-                        className="shrink-0"
+                        className="shrink-0 text-xs h-6"
                       >
-                        {isSelected ? "Selecionado" : "Selecionar"}
+                        {isSelected ? "✓" : "Selecionar"}
                       </Badge>
                     </div>
 
-                    {/* Macros comparison */}
-                    <div className="grid grid-cols-4 gap-2 text-center border-t pt-3">
-                      <div>
-                        <div className="flex items-center justify-center gap-1 text-orange-500">
+                    {/* Macros - Layout compacto */}
+                    <div className="grid grid-cols-4 gap-1 text-center">
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-0.5 text-orange-500">
                           <Flame className="w-3 h-3" />
-                          <span className="font-semibold text-sm">{ingredient.calories_per_100g}</span>
+                          <span className="font-semibold text-xs">{ingredient.calories_per_100g}</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">kcal</p>
-                        <MacroDiffBadge value={diff.calories} unit="" label="kcal" />
+                        <span className="text-[10px] text-muted-foreground">kcal</span>
+                        {diff.calories !== 0 && (
+                          <span className={cn("text-[10px] font-medium", diff.calories > 0 ? "text-red-500" : "text-green-500")}>
+                            {diff.calories > 0 ? "+" : ""}{diff.calories}
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1 text-red-500">
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-0.5 text-red-500">
                           <Beef className="w-3 h-3" />
-                          <span className="font-semibold text-sm">{ingredient.protein_per_100g}g</span>
+                          <span className="font-semibold text-xs">{ingredient.protein_per_100g}g</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">prot</p>
-                        <MacroDiffBadge value={diff.protein} unit="g" label="" />
+                        <span className="text-[10px] text-muted-foreground">prot</span>
+                        {diff.protein !== 0 && (
+                          <span className={cn("text-[10px] font-medium", diff.protein > 0 ? "text-red-500" : "text-green-500")}>
+                            {diff.protein > 0 ? "+" : ""}{diff.protein}g
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1 text-amber-500">
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-0.5 text-amber-500">
                           <Wheat className="w-3 h-3" />
-                          <span className="font-semibold text-sm">{ingredient.carbs_per_100g}g</span>
+                          <span className="font-semibold text-xs">{ingredient.carbs_per_100g}g</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">carb</p>
-                        <MacroDiffBadge value={diff.carbs} unit="g" label="" />
+                        <span className="text-[10px] text-muted-foreground">carb</span>
+                        {diff.carbs !== 0 && (
+                          <span className={cn("text-[10px] font-medium", diff.carbs > 0 ? "text-red-500" : "text-green-500")}>
+                            {diff.carbs > 0 ? "+" : ""}{diff.carbs}g
+                          </span>
+                        )}
                       </div>
-                      <div>
-                        <div className="flex items-center justify-center gap-1 text-yellow-500">
-                          <span className="text-xs">🧈</span>
-                          <span className="font-semibold text-sm">{ingredient.fat_per_100g}g</span>
+                      <div className="flex flex-col items-center">
+                        <div className="flex items-center gap-0.5 text-yellow-500">
+                          <span className="text-[10px]">🧈</span>
+                          <span className="font-semibold text-xs">{ingredient.fat_per_100g}g</span>
                         </div>
-                        <p className="text-xs text-muted-foreground">gord</p>
-                        <MacroDiffBadge value={diff.fat} unit="g" label="" />
+                        <span className="text-[10px] text-muted-foreground">gord</span>
+                        {diff.fat !== 0 && (
+                          <span className={cn("text-[10px] font-medium", diff.fat > 0 ? "text-red-500" : "text-green-500")}>
+                            {diff.fat > 0 ? "+" : ""}{diff.fat}g
+                          </span>
+                        )}
                       </div>
                     </div>
-
-                    <p className="text-xs text-muted-foreground text-center mt-2">
-                      Valores por 100g
-                    </p>
                   </CardContent>
                 </Card>
               );
             })}
 
             {!isLoading && searchQuery.length < 2 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>Digite pelo menos 2 caracteres</p>
-                <p className="text-sm">para buscar ingredientes</p>
+              <div className="text-center py-6 text-muted-foreground">
+                <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Digite pelo menos 2 caracteres</p>
               </div>
             )}
           </div>

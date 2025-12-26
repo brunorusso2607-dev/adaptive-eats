@@ -119,7 +119,7 @@ export default function AdminDashboard() {
   const location = useLocation();
   const { isAdmin, isLoading } = useAdmin();
   const isMobile = useIsMobile();
-  const [openMenus, setOpenMenus] = useState<string[]>(["Relatórios", "Configurações"]);
+  const [openMenus, setOpenMenus] = useState<string[]>(["Conteúdo", "Relatórios", "Configurações"]);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 

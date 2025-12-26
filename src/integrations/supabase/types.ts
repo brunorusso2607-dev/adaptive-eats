@@ -346,6 +346,42 @@ export type Database = {
           },
         ]
       }
+      dietary_profiles: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          key: string
+          name: string
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          name: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          name?: string
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       feature_flags: {
         Row: {
           created_at: string
@@ -1126,6 +1162,99 @@ export type Database = {
           protein?: number
           servings?: number
           user_id?: string
+        }
+        Relationships: []
+      }
+      simple_meal_profiles: {
+        Row: {
+          compatibility: string
+          created_at: string
+          dietary_profile_id: string
+          id: string
+          notes: string | null
+          simple_meal_id: string
+        }
+        Insert: {
+          compatibility?: string
+          created_at?: string
+          dietary_profile_id: string
+          id?: string
+          notes?: string | null
+          simple_meal_id: string
+        }
+        Update: {
+          compatibility?: string
+          created_at?: string
+          dietary_profile_id?: string
+          id?: string
+          notes?: string | null
+          simple_meal_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "simple_meal_profiles_dietary_profile_id_fkey"
+            columns: ["dietary_profile_id"]
+            isOneToOne: false
+            referencedRelation: "dietary_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "simple_meal_profiles_simple_meal_id_fkey"
+            columns: ["simple_meal_id"]
+            isOneToOne: false
+            referencedRelation: "simple_meals"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      simple_meals: {
+        Row: {
+          calories: number
+          carbs: number
+          created_at: string
+          description: string | null
+          fat: number
+          id: string
+          ingredients: Json
+          is_active: boolean
+          meal_type: string
+          name: string
+          prep_time: number
+          protein: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          calories?: number
+          carbs?: number
+          created_at?: string
+          description?: string | null
+          fat?: number
+          id?: string
+          ingredients?: Json
+          is_active?: boolean
+          meal_type: string
+          name: string
+          prep_time?: number
+          protein?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          calories?: number
+          carbs?: number
+          created_at?: string
+          description?: string | null
+          fat?: number
+          id?: string
+          ingredients?: Json
+          is_active?: boolean
+          meal_type?: string
+          name?: string
+          prep_time?: number
+          protein?: number
+          sort_order?: number
+          updated_at?: string
         }
         Relationships: []
       }

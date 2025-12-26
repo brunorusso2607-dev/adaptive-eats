@@ -15,15 +15,15 @@ import {
   Sparkles,
   UtensilsCrossed,
   Plus,
-  X,
-  Flame
+  X
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format, endOfMonth, differenceInDays } from "date-fns";
-import { ptBR } from "date-fns/locale";
+import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
+import { useMonthWeeks } from "@/hooks/useMonthWeeks";
+import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type MealSlot = {
   id: string;
@@ -83,22 +83,37 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   const [activeSlot, setActiveSlot] = useState<keyof DayPlan | null>(null);
   const [activeTab, setActiveTab] = useState("favorites");
 
+  // Week/Day selection
+  const today = new Date();
+  const { weeks, currentWeek, monthName, year } = useMonthWeeks(today);
+  const [selectedWeek, setSelectedWeek] = useState(currentWeek);
+  const [selectedDay, setSelectedDay] = useState<number | null>(null);
+
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
 
-  const { remainingDays, monthName, defaultPlanName } = useMemo(() => {
-    const today = new Date();
-    const lastDayOfMonth = endOfMonth(today);
-    const daysLeft = differenceInDays(lastDayOfMonth, today) + 1;
-    const month = format(today, "MMMM", { locale: ptBR });
-    const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
-    const year = format(today, "yyyy");
-    
-    return {
-      remainingDays: daysLeft,
-      monthName: capitalizedMonth,
-      defaultPlanName: `${capitalizedMonth} ${year}`
-    };
-  }, []);
+  // Calculate available days from selected week onwards
+  const { totalDays, weekDays } = useMemo(() => {
+    return getAvailableDaysInPlan(weeks, selectedWeek);
+  }, [weeks, selectedWeek]);
+
+  // Default plan name based on month
+  const defaultPlanName = useMemo(() => {
+    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+    return `${capitalizedMonth} ${year}`;
+  }, [monthName, year]);
+
+  // Initialize selected day to first available day in selected week
+  useEffect(() => {
+    const currentWeekData = weeks.find(w => w.weekNumber === selectedWeek);
+    if (currentWeekData) {
+      const firstAvailableDay = currentWeekData.days.findIndex(
+        d => d.isInMonth && (!d.isPast || d.isToday)
+      );
+      if (firstAvailableDay !== -1) {
+        setSelectedDay(firstAvailableDay);
+      }
+    }
+  }, [selectedWeek, weeks]);
 
   useEffect(() => {
     const fetchSimpleMeals = async () => {
@@ -170,12 +185,11 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
     setIsGenerating(true);
     try {
-      // Call AI to generate meals for empty slots
       const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
         body: {
           planName: planName.trim() || defaultPlanName,
           startDate: format(new Date(), "yyyy-MM-dd"),
-          daysCount: 1, // Just generate for one day to fill slots
+          daysCount: 1,
           fillSlots: Object.entries(dayPlan)
             .filter(([_, meal]) => !meal)
             .map(([slot]) => slot)
@@ -184,7 +198,6 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
       if (error) throw error;
 
-      // Update empty slots with AI-generated meals
       if (data?.meals) {
         setDayPlan(prev => {
           const updated = { ...prev };
@@ -228,8 +241,20 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
       if (!session) throw new Error("Não autenticado");
 
       const finalPlanName = planName.trim() || defaultPlanName;
-      const today = new Date();
-      const endDate = endOfMonth(today);
+      
+      // Calculate start and end dates based on selected week
+      const startWeekData = weeks.find(w => w.weekNumber === selectedWeek);
+      const lastWeekData = weeks[weeks.length - 1];
+      
+      if (!startWeekData || !lastWeekData) throw new Error("Semana inválida");
+
+      const firstAvailableDay = startWeekData.days.find(d => d.isInMonth && (!d.isPast || d.isToday));
+      const lastDayOfMonth = lastWeekData.days.filter(d => d.isInMonth).pop();
+
+      if (!firstAvailableDay || !lastDayOfMonth) throw new Error("Datas inválidas");
+
+      const startDate = firstAvailableDay.date;
+      const endDate = lastDayOfMonth.date;
 
       // Create meal plan
       const { data: mealPlan, error: planError } = await supabase
@@ -237,7 +262,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         .insert({
           user_id: session.user.id,
           name: finalPlanName,
-          start_date: format(today, "yyyy-MM-dd"),
+          start_date: format(startDate, "yyyy-MM-dd"),
           end_date: format(endDate, "yyyy-MM-dd"),
           is_active: true,
           status: "active"
@@ -247,31 +272,31 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
       if (planError) throw planError;
 
-      // Create meal plan items for each day
+      // Create meal plan items for each available day
       const items: any[] = [];
-      for (let day = 0; day < remainingDays; day++) {
-        const dayOfWeek = (today.getDay() + day) % 7;
-        
-        MEAL_SLOTS.forEach(({ key }) => {
-          const meal = dayPlan[key];
-          if (meal) {
-            items.push({
-              meal_plan_id: mealPlan.id,
-              day_of_week: dayOfWeek,
-              week_number: Math.floor(day / 7) + 1,
-              meal_type: key,
-              recipe_name: meal.name,
-              recipe_calories: meal.calories,
-              recipe_protein: meal.protein,
-              recipe_carbs: meal.carbs,
-              recipe_fat: meal.fat,
-              recipe_prep_time: meal.prep_time,
-              recipe_ingredients: meal.ingredients,
-              recipe_instructions: meal.instructions
-            });
-          }
+      weekDays.forEach(({ weekNumber, days }) => {
+        days.forEach((day) => {
+          MEAL_SLOTS.forEach(({ key }) => {
+            const meal = dayPlan[key];
+            if (meal) {
+              items.push({
+                meal_plan_id: mealPlan.id,
+                day_of_week: day.dayOfWeek,
+                week_number: weekNumber,
+                meal_type: key,
+                recipe_name: meal.name,
+                recipe_calories: meal.calories,
+                recipe_protein: meal.protein,
+                recipe_carbs: meal.carbs,
+                recipe_fat: meal.fat,
+                recipe_prep_time: meal.prep_time,
+                recipe_ingredients: meal.ingredients,
+                recipe_instructions: meal.instructions
+              });
+            }
+          });
         });
-      }
+      });
 
       const { error: itemsError } = await supabase
         .from("meal_plan_items")
@@ -422,6 +447,16 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         </CardContent>
       </Card>
 
+      {/* Week/Day Selector */}
+      <WeekDaySelector
+        referenceDate={today}
+        selectedWeek={selectedWeek}
+        selectedDay={selectedDay}
+        onWeekChange={setSelectedWeek}
+        onDayChange={setSelectedDay}
+        showDaySelector={false}
+      />
+
       {/* Macros Preview */}
       <Card className="glass-card border-primary/20">
         <CardContent className="p-4">
@@ -535,7 +570,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         ) : (
           <>
             <CheckCircle2 className="w-5 h-5 mr-2" />
-            Criar Plano ({remainingDays} dias)
+            Criar Plano ({totalDays} dias)
           </>
         )}
       </Button>

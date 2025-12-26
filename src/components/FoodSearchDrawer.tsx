@@ -3,7 +3,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Minus, X, Flame, Check, Loader2, Sparkles, PenLine } from "lucide-react";
+import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
@@ -30,6 +30,13 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
   ceia: "Ceia",
 };
 
+const UNIT_LABELS: Record<string, string> = {
+  g: "g",
+  ml: "ml",
+  un: "un",
+  fatia: "fatia(s)",
+};
+
 interface FoodSearchDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -39,7 +46,8 @@ interface FoodSearchDrawerProps {
 }
 
 interface SelectedFood extends Food {
-  quantity: number;
+  quantity: number; // Em gramas/ml para cálculo
+  displayQuantity: number; // Quantidade exibida (unidades, fatias, etc.)
 }
 
 interface AISuggestion {
@@ -177,14 +185,22 @@ export default function FoodSearchDrawer({
   }, [checkConflict]);
 
   const addFoodToList = (food: Food) => {
+    const defaultServing = food.default_serving_size || 100;
+    const displayQty = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : 1;
+    const actualGrams = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : defaultServing;
+
     setSelectedFoods((prev) => {
       const existing = prev.find((f) => f.id === food.id);
       if (existing) {
+        const newDisplayQty = existing.displayQuantity + displayQty;
+        const newQuantity = food.serving_unit === 'g' || food.serving_unit === 'ml' 
+          ? newDisplayQty 
+          : newDisplayQty * (food.default_serving_size || 100);
         return prev.map((f) =>
-          f.id === food.id ? { ...f, quantity: f.quantity + 100 } : f
+          f.id === food.id ? { ...f, displayQuantity: newDisplayQty, quantity: newQuantity } : f
         );
       }
-      return [...prev, { ...food, quantity: 100 }];
+      return [...prev, { ...food, displayQuantity: displayQty, quantity: actualGrams }];
     });
     setSearchQuery("");
     clearFoods();
@@ -203,14 +219,18 @@ export default function FoodSearchDrawer({
       // Check if already exists
       const { data: existing } = await supabase
         .from("foods")
-        .select("id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, sodium_per_100g, category, name_normalized")
+        .select("*")
         .eq("name_normalized", normalizedName)
         .maybeSingle();
 
       let food: Food;
 
       if (existing) {
-        food = existing as Food;
+        food = {
+          ...existing,
+          serving_unit: existing.serving_unit || 'g',
+          default_serving_size: existing.default_serving_size || 100,
+        } as Food;
       } else {
         // Calculate per 100g if portion is different
         const multiplier = 100 / suggestion.portion_grams;
@@ -227,12 +247,18 @@ export default function FoodSearchDrawer({
             source: "ai_suggestion",
             verified: false,
             confidence: suggestion.confidence === "alta" ? 0.9 : suggestion.confidence === "média" ? 0.7 : 0.5,
+            serving_unit: 'un',
+            default_serving_size: suggestion.portion_grams,
           })
           .select()
           .single();
 
         if (error) throw error;
-        food = newFood as Food;
+        food = {
+          ...newFood,
+          serving_unit: newFood.serving_unit || 'un',
+          default_serving_size: newFood.default_serving_size || suggestion.portion_grams,
+        } as Food;
         toast.success(`${suggestion.name} adicionado ao banco de dados!`);
       }
 
@@ -241,10 +267,18 @@ export default function FoodSearchDrawer({
         const existing = prev.find((f) => f.id === food.id);
         if (existing) {
           return prev.map((f) =>
-            f.id === food.id ? { ...f, quantity: f.quantity + suggestion.portion_grams } : f
+            f.id === food.id ? { 
+              ...f, 
+              displayQuantity: f.displayQuantity + 1, 
+              quantity: f.quantity + (food.default_serving_size || 100) 
+            } : f
           );
         }
-        return [...prev, { ...food, quantity: suggestion.portion_grams }];
+        return [...prev, { 
+          ...food, 
+          displayQuantity: 1, 
+          quantity: food.default_serving_size || 100 
+        }];
       });
       
       setSearchQuery("");
@@ -264,6 +298,8 @@ export default function FoodSearchDrawer({
       fiber_per_100g: null,
       sodium_per_100g: null,
       category: null,
+      serving_unit: 'g',
+      default_serving_size: 100,
     };
     addFoodToList(fullFood);
   };
@@ -275,15 +311,18 @@ export default function FoodSearchDrawer({
     setConflictDialog({ open: false, food: null, conflict: null });
   };
 
-  const updateQuantity = (foodId: string, delta: number) => {
+  const updateDisplayQuantity = (foodId: string, newValue: string) => {
+    const numValue = parseFloat(newValue) || 0;
     setSelectedFoods((prev) =>
-      prev
-        .map((f) =>
-          f.id === foodId
-            ? { ...f, quantity: Math.max(10, f.quantity + delta) }
-            : f
-        )
-        .filter((f) => f.quantity > 0)
+      prev.map((f) => {
+        if (f.id === foodId) {
+          const actualGrams = f.serving_unit === 'g' || f.serving_unit === 'ml' 
+            ? numValue 
+            : numValue * (f.default_serving_size || 100);
+          return { ...f, displayQuantity: numValue, quantity: actualGrams };
+        }
+        return f;
+      }).filter((f) => f.displayQuantity > 0)
     );
   };
 
@@ -363,6 +402,16 @@ export default function FoodSearchDrawer({
       baixa: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
     };
     return colors[confidence as keyof typeof colors] || colors.baixa;
+  };
+
+  const getUnitLabel = (unit: string, quantity: number) => {
+    if (unit === 'fatia') {
+      return quantity === 1 ? 'fatia' : 'fatias';
+    }
+    if (unit === 'un') {
+      return quantity === 1 ? 'un' : 'un';
+    }
+    return unit;
   };
 
   return (
@@ -517,6 +566,7 @@ export default function FoodSearchDrawer({
                   <div className="space-y-2">
                     {selectedFoods.map((food) => {
                       const macros = calculateMacros(food);
+                      const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
                       return (
                         <div
                           key={food.id}
@@ -532,28 +582,25 @@ export default function FoodSearchDrawer({
                             </button>
                           </div>
 
-                          {/* Quantity controls */}
+                          {/* Quantity input - editable field */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8"
-                                onClick={() => updateQuantity(food.id, -10)}
-                              >
-                                <Minus className="w-3 h-3" />
-                              </Button>
-                              <span className="text-sm font-medium w-16 text-center">
-                                {food.quantity}g
+                              <Input
+                                type="number"
+                                value={food.displayQuantity}
+                                onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
+                                className="w-20 h-8 text-center text-sm"
+                                min="0"
+                                step={food.serving_unit === 'g' || food.serving_unit === 'ml' ? "10" : "1"}
+                              />
+                              <span className="text-sm text-muted-foreground">
+                                {unitLabel}
                               </span>
-                              <Button
-                                size="icon"
-                                variant="outline"
-                                className="h-8 w-8"
-                                onClick={() => updateQuantity(food.id, 10)}
-                              >
-                                <Plus className="w-3 h-3" />
-                              </Button>
+                              {(food.serving_unit === 'un' || food.serving_unit === 'fatia') && (
+                                <span className="text-xs text-muted-foreground">
+                                  ({Math.round(food.quantity)}g)
+                                </span>
+                              )}
                             </div>
 
                             {/* Macros display */}

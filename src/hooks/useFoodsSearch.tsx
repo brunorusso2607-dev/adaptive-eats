@@ -12,6 +12,8 @@ export interface Food {
   fiber_per_100g: number | null;
   sodium_per_100g: number | null;
   category: string | null;
+  serving_unit: 'g' | 'ml' | 'un' | 'fatia';
+  default_serving_size: number;
 }
 
 export function useFoodsSearch() {

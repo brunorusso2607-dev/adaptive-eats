@@ -60,8 +60,8 @@ serve(async (req) => {
       intolerances: profile.intolerances,
       dietary: profile.dietary_preference,
       goal: profile.goal,
-      complexity: profile.recipe_complexity,
-      context: profile.context
+      context: profile.context,
+      country: profile.country || "BR"
     });
 
     // Build prompts using centralized config

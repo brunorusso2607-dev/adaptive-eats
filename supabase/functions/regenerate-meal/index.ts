@@ -122,8 +122,8 @@ serve(async (req) => {
       intolerances: profile.intolerances,
       dietary: profile.dietary_preference,
       goal: profile.goal,
-      complexity: profile.recipe_complexity,
-      context: profile.context
+      context: profile.context,
+      country: profile.country || "BR"
     });
 
     // Calculate target calories for this meal type using centralized function

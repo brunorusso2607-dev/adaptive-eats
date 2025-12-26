@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,10 +9,25 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Plus } from "lucide-react";
+import { Loader2, Plus, Sparkles } from "lucide-react";
 import { z } from "zod";
+import { suggestServingByName, type ServingSuggestion } from "@/lib/servingSuggestion";
+
+const UNIT_LABELS: Record<string, string> = {
+  g: "gramas (g)",
+  ml: "mililitros (ml)",
+  un: "unidade",
+  fatia: "fatia",
+};
 
 const foodSchema = z.object({
   name: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(100, "Nome muito longo"),
@@ -20,6 +35,8 @@ const foodSchema = z.object({
   protein: z.number().min(0, "Proteína não pode ser negativo").max(200, "Valor muito alto"),
   carbs: z.number().min(0, "Carboidratos não pode ser negativo").max(200, "Valor muito alto"),
   fat: z.number().min(0, "Gordura não pode ser negativo").max(200, "Valor muito alto"),
+  defaultServingSize: z.number().min(1, "Porção deve ser maior que 0").max(5000, "Valor muito alto"),
+  servingUnit: z.enum(["g", "ml", "un", "fatia"]),
 });
 
 interface ManualFoodModalProps {
@@ -33,6 +50,8 @@ interface ManualFoodModalProps {
     protein_per_100g: number;
     carbs_per_100g: number;
     fat_per_100g: number;
+    default_serving_size?: number;
+    serving_unit?: string;
   }) => void;
 }
 
@@ -47,8 +66,29 @@ export default function ManualFoodModal({
   const [protein, setProtein] = useState("");
   const [carbs, setCarbs] = useState("");
   const [fat, setFat] = useState("");
+  const [defaultServingSize, setDefaultServingSize] = useState("100");
+  const [servingUnit, setServingUnit] = useState<"g" | "ml" | "un" | "fatia">("g");
+  const [suggestion, setSuggestion] = useState<ServingSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Auto-sugestão de porção baseada no nome
+  useEffect(() => {
+    if (name.length >= 3) {
+      const suggested = suggestServingByName(name);
+      setSuggestion(suggested);
+    } else {
+      setSuggestion(null);
+    }
+  }, [name]);
+
+  const applySuggestion = () => {
+    if (suggestion) {
+      setDefaultServingSize(suggestion.defaultServingSize.toString());
+      setServingUnit(suggestion.servingUnit);
+      toast.success("Sugestão aplicada!");
+    }
+  };
 
   const resetForm = () => {
     setName("");
@@ -56,6 +96,9 @@ export default function ManualFoodModal({
     setProtein("");
     setCarbs("");
     setFat("");
+    setDefaultServingSize("100");
+    setServingUnit("g");
+    setSuggestion(null);
     setErrors({});
   };
 
@@ -68,6 +111,8 @@ export default function ManualFoodModal({
       protein: parseFloat(protein) || 0,
       carbs: parseFloat(carbs) || 0,
       fat: parseFloat(fat) || 0,
+      defaultServingSize: parseFloat(defaultServingSize) || 100,
+      servingUnit,
     });
 
     if (!validation.success) {
@@ -98,6 +143,8 @@ export default function ManualFoodModal({
           protein_per_100g: validation.data.protein,
           carbs_per_100g: validation.data.carbs,
           fat_per_100g: validation.data.fat,
+          default_serving_size: validation.data.defaultServingSize,
+          serving_unit: validation.data.servingUnit,
           source: "user_manual",
           verified: false,
           confidence: 0.5,
@@ -122,6 +169,8 @@ export default function ManualFoodModal({
         protein_per_100g: data.protein_per_100g,
         carbs_per_100g: data.carbs_per_100g,
         fat_per_100g: data.fat_per_100g,
+        default_serving_size: data.default_serving_size ?? undefined,
+        serving_unit: data.serving_unit ?? undefined,
       });
       resetForm();
       onOpenChange(false);
@@ -153,6 +202,65 @@ export default function ManualFoodModal({
             {errors.name && (
               <p className="text-xs text-destructive">{errors.name}</p>
             )}
+          </div>
+
+          {/* Sugestão automática de porção */}
+          {suggestion && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-primary" />
+                <div className="text-sm">
+                  <span className="text-muted-foreground">Sugestão: </span>
+                  <span className="font-medium">
+                    {suggestion.defaultServingSize}{suggestion.servingUnit === 'ml' ? 'ml' : 'g'} ({suggestion.description})
+                  </span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={applySuggestion}
+                className="text-primary hover:text-primary"
+              >
+                Aplicar
+              </Button>
+            </div>
+          )}
+
+          {/* Campos de porção padrão */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-2">
+              <Label htmlFor="serving-size">Porção Padrão</Label>
+              <Input
+                id="serving-size"
+                type="number"
+                value={defaultServingSize}
+                onChange={(e) => setDefaultServingSize(e.target.value)}
+                placeholder="100"
+                min="1"
+                className={errors.defaultServingSize ? "border-destructive" : ""}
+              />
+              {errors.defaultServingSize && (
+                <p className="text-xs text-destructive">{errors.defaultServingSize}</p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="serving-unit">Unidade</Label>
+              <Select value={servingUnit} onValueChange={(v) => setServingUnit(v as typeof servingUnit)}>
+                <SelectTrigger className={errors.servingUnit ? "border-destructive" : ""}>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(UNIT_LABELS).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
 
           <p className="text-xs text-muted-foreground">

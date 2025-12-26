@@ -356,6 +356,708 @@ function buildCategoryInstructions(category: any): string {
   return categoryInstructions[categoryKey] || "";
 }
 
+// ============================================
+// INSTRUÇÕES CULTURAIS DETALHADAS POR PAÍS
+// ============================================
+function buildCountryCulturalInstructions(countryCode: string): string {
+  const culturalGuides: Record<string, string> = {
+    // ═══════════════════════════════════════════════════════════
+    // AMÉRICAS
+    // ═══════════════════════════════════════════════════════════
+    BR: `
+🇧🇷 CULTURA GASTRONÔMICA: BRASIL
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+O Brasil possui uma das gastronomias mais diversas do mundo, resultado da 
+fusão entre povos indígenas, portugueses, africanos, italianos, japoneses e árabes.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Café da manhã (6h-9h): Pão francês, manteiga, café com leite, frutas tropicais
+• Almoço (12h-14h): Refeição principal - arroz, feijão, proteína, salada
+• Lanche (15h-17h): Salgados, frutas, sucos naturais
+• Jantar (19h-21h): Mais leve que o almoço, sopas ou refeição completa
+• Ceia (após 21h): Opcional, geralmente frutas ou lácteos
+
+🥘 PRATOS EMBLEMÁTICOS POR REGIÃO:
+• Norte: Tacacá, pato no tucupi, açaí salgado
+• Nordeste: Acarajé, baião de dois, carne de sol
+• Centro-Oeste: Pequi, pamonha, arroz com galinhada
+• Sudeste: Feijoada, tutu de feijão, virado à paulista
+• Sul: Churrasco, chimarrão, polenta
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Base: Arroz, feijão (preto, carioca), mandioca, milho
+• Proteínas: Frango, carne bovina, peixe, ovos
+• Temperos: Alho, cebola, cheiro-verde, pimenta-do-reino
+• Frutas: Manga, mamão, goiaba, maracujá, acerola
+• Laticínios: Queijo minas, requeijão, manteiga
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Refogar em alho e cebola ("refogar" é base de quase tudo)
+• Cozinhar arroz com proporção exata de água
+• Fazer feijão na panela de pressão
+• Assar carnes em fogo baixo
+• Preparar farofa para acompanhar
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Arroz e feijão são sagrados - aparecem no almoço quase sempre
+• Café é essencial pela manhã, muitas vezes à tarde também
+• Frutas tropicais são consumidas in natura ou em sucos
+• Churrasco é tradição de domingo em família
+• Salgadinhos de festa (coxinha, kibe, esfiha) são populares`,
+
+    US: `
+🇺🇸 CULTURA GASTRONÔMICA: ESTADOS UNIDOS
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+A culinária americana é um "melting pot" de influências de todo o mundo,
+com forte foco em conveniência, porções generosas e sabores ousados.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Breakfast (6h-9h): Ovos, bacon, panquecas, cereais, café
+• Lunch (12h-13h): Sanduíches, saladas, fast food, refeição rápida
+• Snack (15h-16h): Chips, granola bars, frutas
+• Dinner (18h-20h): Refeição principal da família - proteína + sides
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Comfort food: Mac & cheese, meatloaf, pot roast
+• BBQ: Ribs, pulled pork, brisket (Texas, Kansas City, Carolina styles)
+• Fast casual: Burgers, hot dogs, tacos
+• Brunch: Eggs benedict, avocado toast, pancakes
+• Desserts: Apple pie, brownies, cheesecake
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Proteínas: Ground beef, chicken breast, turkey, bacon
+• Laticínios: Cheddar cheese, cream cheese, butter, milk
+• Vegetais: Potatoes, corn, tomatoes, lettuce
+• Grãos: White bread, pasta, rice
+• Condimentos: Ketchup, mustard, BBQ sauce, ranch
+
+🔥 TÉCNICAS CULINÁRIAS COMUNS:
+• Grilling (churrasco americano)
+• Baking (assados, especialmente desserts)
+• Deep frying (frituras)
+• Slow cooking (cozimento lento em crockpot)
+• Sheet pan dinners (tudo em uma assadeira)
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Porções são maiores que em outros países
+• Praticidade é valorizada - meal prep é popular
+• Brunch de domingo é tradição social
+• BBQ varia muito por região (cada estado tem seu estilo)
+• Holidays têm comidas específicas (Turkey no Thanksgiving)`,
+
+    MX: `
+🇲🇽 CULTURA GASTRONÔMICA: MÉXICO
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+A gastronomia mexicana é Patrimônio Cultural Imaterial da UNESCO,
+com raízes pré-hispânicas fundidas com influências espanholas.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Desayuno (7h-10h): Huevos rancheros, chilaquiles, tamales
+• Almuerzo/Comida (14h-16h): Refeição principal, elaborada
+• Merienda (18h-19h): Antojitos, café com pan dulce
+• Cena (20h-22h): Mais leve - tacos, quesadillas
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Tortilla-based: Tacos, enchiladas, quesadillas, tostadas
+• Caldos: Pozole, birria, consomé
+• Moles: Mole poblano, mole negro, pipián
+• Antojitos: Tamales, gorditas, sopes
+• Mariscos: Ceviche, aguachile, coctel de camarón
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Base: Tortillas de maíz, frijoles negros/refritos, arroz
+• Chiles: Jalapeño, serrano, habanero, chipotle, guajillo
+• Hierbas: Cilantro, epazote, orégano mexicano
+• Proteínas: Pollo, res, cerdo, carnitas
+• Otros: Limón, aguacate, queso fresco, crema
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Nixtamalización (preparação do milho)
+• Asado a las brasas
+• Molcajete (moer especiarias em pedra)
+• Preparação de moles complexos
+• Marinar carnes em adobos
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Tortillas são servidas em TODAS as refeições
+• O chile define o nível de picância (sempre perguntar)
+• Limão e cilantro são praticamente obrigatórios
+• Domingo é dia de birria ou barbacoa em família
+• Antojitos são comida de rua, essenciais da cultura`,
+
+    AR: `
+🇦🇷 CULTURA GASTRONÔMICA: ARGENTINA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Argentina é sinônimo de carne bovina de qualidade mundial,
+com forte influência italiana e espanhola na culinária cotidiana.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Desayuno (7h-9h): Medialunas, café con leche, tostadas
+• Almuerzo (12h-14h): Refeição completa com proteína
+• Merienda (17h-18h): Mate com facturas (doces)
+• Cena (21h-23h): Refeição principal, tardíssima!
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Carnes: Asado, bife de chorizo, vacío, entraña
+• Empanadas: De carne, jamón y queso, humita
+• Pasta: Ñoquis del 29, ravioles, tallarines
+• Outros: Milanesa napolitana, choripán, locro
+• Doces: Dulce de leche em tudo, alfajores
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Proteínas: Carne bovina (todos cortes), pollo, cerdo
+• Lácteos: Queso cremoso, provoleta, dulce de leche
+• Vegetais: Papa, tomate, cebolla, zapallo
+• Especiais: Chimichurri, provenzal, orégano
+• Panificação: Pan francés, facturas, empanadas
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Asado a la parrilla (churrasco argentino)
+• Preparar empanadas caseras
+• Hacer chimichurri fresco
+• Cozinhar pasta al dente (herança italiana)
+• Provoleta a la plancha
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Asado de domingo é sagrado e social
+• Mate é bebida nacional, compartilhado
+• Cena é SEMPRE muito tarde (após 21h)
+• Ñoquis no dia 29 é tradição (sorte e prosperidade)
+• Dulce de leche aparece em quase toda sobremesa`,
+
+    CO: `
+🇨🇴 CULTURA GASTRONÔMICA: COLÔMBIA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Colômbia possui gastronomia diversa por regiões, desde a costa
+caribenha até os Andes, com influências indígenas e espanholas.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Desayuno (6h-8h): Arepa con huevo, caldo de costilla, changua
+• Almuerzo (12h-14h): Bandeja paisa, sancocho, corrientazo
+• Onces (15h-16h): Café con pan, empanadas
+• Cena (19h-21h): Mais leve, sopas ou arrepas
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Bandeja paisa: Frijoles, arroz, carne, chicharrón, huevo, arepa
+• Sancocho: Sopa densa com carnes e vegetais
+• Ajiaco: Sopa bogotana com frango e batatas
+• Lechona: Porco recheado para festas
+• Empanadas: Recheadas de carne ou papa
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Base: Arroz, frijoles, papa criolla, plátano, yuca
+• Proteínas: Carne de res, pollo, chicharrón, mojarra
+• Vegetais: Tomate, cebolla, cilantro, ají
+• Frutas: Lulo, maracuyá, guanábana, mora
+• Especial: Hogao (refrito colombiano)
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Preparar arepa (asada ou frita)
+• Hacer hogao (base de tomate e cebola)
+• Cozinhar sancocho em panela grande
+• Fritar empanadas crocantes
+• Asar plátano maduro
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Arepa aparece em todas as refeições
+• Café colombiano é servido durante todo o dia
+• Almuerzo "corrientazo" inclui sopa + seco + suco + sobremesa
+• Sancocho é prato de domingo em família
+• Ají (molho picante) sempre disponível na mesa`,
+
+    CL: `
+🇨🇱 CULTURA GASTRONÔMICA: CHILE
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Chile tem culinária marcada pelo oceano Pacífico (peixes e frutos do mar),
+influências mapuches e uma forte tradição de empanadas e caldos.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Desayuno (7h-9h): Pan con palta, café, huevos
+• Almuerzo (13h-15h): Refeição principal, cazuelas
+• Once (17h-19h): Tradição chilena - chá com salgados
+• Cena (20h-22h): Leve ou junta com "once-cena"
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Empanadas de pino (carne con cebolla y huevo)
+• Pastel de choclo (milho com carne)
+• Cazuela de ave (caldo com frango e legumes)
+• Curanto (cozido tradicional do sul)
+• Completo (hot dog chileno)
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Mar: Salmón, reineta, locos, erizos, almejas
+• Vegetais: Papa, choclo, zapallo, porotos verdes
+• Proteínas: Pollo, carne de res, chancho
+• Especiais: Pebre (molho de tomate e cilantro), merkén
+• Pães: Marraqueta, hallulla
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Hacer empanadas al horno
+• Preparar pebre fresco
+• Cozinhar cazuelas de longa cocção
+• Preparar pastel de choclo em greda
+• Caldos e sopas reconfortantes
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• "Once" é tradição sagrada (equivalente ao chá inglês)
+• Empanadas são para fiestas patrias (setembro)
+• Pebre sempre acompanha o pão
+• Mariscos frescos são muito valorizados
+• Domingo é dia de cazuela em família`,
+
+    PE: `
+🇵🇪 CULTURA GASTRONÔMICA: PERU
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Peru é considerado um dos melhores destinos gastronômicos do mundo,
+fusão de tradições incas com influências espanholas, africanas, 
+chinesas (chifa) e japonesas (nikkei).
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Desayuno (7h-9h): Pan con palta, quinua, jugo
+• Almuerzo (12h-14h): Refeição principal, muito elaborada
+• Lonche (16h-17h): Pan con chicharrón, emoliente
+• Cena (19h-21h): Mais leve, anticuchos, sopas
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Ceviche: Pescado marinado em limão
+• Lomo saltado: Stir fry peruano-chinês
+• Ají de gallina: Frango cremoso com ají amarillo
+• Causa limeña: Puré de papa com recheios
+• Anticuchos: Espetos de coração bovino
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Pimentas: Ají amarillo, ají panca, rocoto
+• Tubérculos: Papa (milhares de variedades), camote
+• Proteínas: Pescado, pollo, res, cuy
+• Especiais: Limón, cilantro, cebolla morada
+• Grãos: Quinua, kiwicha, cañihua
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Marinar ceviche no ponto certo
+• Preparar leche de tigre
+• Saltear no wok (influência chifa)
+• Usar ají amarillo como base
+• Cozinhar em piedra
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Ceviche só no almoço (tradição de pescado fresco)
+• Ají amarillo é ESSENCIAL na cozinha
+• Limón peruano é diferente - muito ácido
+• Chifa (fusão chinesa) é comida do cotidiano
+• Papa é sagrada - centenas de variedades nativas`,
+
+    // ═══════════════════════════════════════════════════════════
+    // EUROPA
+    // ═══════════════════════════════════════════════════════════
+    PT: `
+🇵🇹 CULTURA GASTRONÔMICA: PORTUGAL
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Portugal tem culinária atlântica com forte tradição em bacalhau
+(1001 receitas), frutos do mar, azeite e vinhos regionais.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Pequeno-almoço (7h-9h): Café, torradas, pastel de nata
+• Almoço (12h-14h): Refeição principal, completa
+• Lanche (16h-17h): Café com doce, sandes
+• Jantar (19h-21h): Refeição substancial
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Bacalhau à brás, à gomes de sá, com natas
+• Cozido à portuguesa (carnes e enchidos)
+• Arroz de marisco, caldeirada
+• Francesinha (Porto)
+• Sardinhas assadas
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Mar: Bacalhau, sardinha, polvo, amêijoas
+• Enchidos: Chouriço, morcela, salpicão
+• Vegetais: Batata, couve portuguesa, grelos
+• Especiais: Azeite, alho, louro, pimentão
+• Pães: Broa, pão alentejano
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Dessalgar e preparar bacalhau
+• Assar sardinhas na brasa
+• Fazer refogados em azeite
+• Cozidos longos e lentos
+• Preparar caldos de peixe
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Bacalhau aparece em festas e Natal
+• Azeite português de qualidade é essencial
+• Café (bica) após refeições
+• Sardinhas são tradição de Santo António (junho)
+• Petiscos são cultura de bar (tapas portuguesas)`,
+
+    ES: `
+🇪🇸 CULTURA GASTRONÔMICA: ESPANHA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Espanha tem gastronomia regional riquíssima - cada comunidade 
+autônoma tem pratos únicos, das tapas andaluzas à cocina vasca.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Desayuno (7h-9h): Café con tostada, churros
+• Almuerzo (14h-16h): Refeição principal, MUITO tarde
+• Merienda (17h-18h): Bocadillo, café
+• Cena (21h-23h): Tapas, raciones, tardíssima
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Paella valenciana (arroz com frutos do mar/carnes)
+• Tortilla española (omelete de batata)
+• Gazpacho/salmorejo (sopas frias)
+• Jamón ibérico, chorizo
+• Tapas variadas
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Mar: Gambas, mejillones, pulpo, bacalao
+• Embutidos: Jamón serrano/ibérico, chorizo, lomo
+• Vegetais: Tomate, pimientos, patatas
+• Especiais: Azafrán, pimentón, aceite de oliva
+• Queijos: Manchego, cabrales
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Hacer paella en paellera
+• Preparar tortilla jugosa
+• Asar pimientos
+• Curar jamón e embutidos
+• Tapear (comer tapas)
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Horários de refeição são MUITO tardios
+• Tapas são cultura social (ir de cañas)
+• Sobremesa é conversa longa após comer
+• Siesta ainda existe em algumas regiões
+• Jamón ibérico é tesouro nacional`,
+
+    FR: `
+🇫🇷 CULTURA GASTRONÔMICA: FRANÇA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+A culinária francesa é Patrimônio Cultural da UNESCO, base da
+haute cuisine mundial, com técnicas clássicas e ingredientes premium.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Petit-déjeuner (7h-9h): Croissant, café, pain au chocolat
+• Déjeuner (12h-14h): Refeição estruturada (entrée, plat, fromage, dessert)
+• Goûter (16h): Para crianças, pain au chocolat
+• Dîner (19h-21h): Refeição familiar completa
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Coq au vin, boeuf bourguignon
+• Ratatouille, quiche Lorraine
+• Soupe à l'oignon, bouillabaisse
+• Crêpes, tarte tatin
+• Croissants, baguette
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Laticínios: Beurre, crème fraîche, fromages (centenas)
+• Proteínas: Poulet, canard, boeuf, lapin
+• Vegetais: Échalotes, champignons, haricots verts
+• Especiais: Herbes de Provence, moutarde, vin
+• Pães: Baguette, croissant, brioche
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Fazer roux para molhos
+• Flamber com conhaque/vinho
+• Braise e cozimento lento
+• Preparar mise en place
+• Técnicas clássicas de confeitaria
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Queijo após o prato principal, antes da sobremesa
+• Vinho acompanha quase todas as refeições
+• Baguette fresca diariamente
+• Manteiga de qualidade é essencial
+• Apresentação do prato é muito importante`,
+
+    IT: `
+🇮🇹 CULTURA GASTRONÔMICA: ITÁLIA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Itália é berço de uma das culinárias mais influentes do mundo,
+com forte regionalismo e respeito à qualidade dos ingredientes.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Colazione (7h-9h): Cappuccino com cornetto
+• Pranzo (12h-14h): Refeição principal tradicional
+• Merenda (16h-17h): Caffè, pequeno snack
+• Cena (19h-21h): Refeição familiar
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Pasta: Carbonara, amatriciana, bolognese, pesto
+• Pizza: Margherita, marinara
+• Risotto: Alla milanese, ai funghi
+• Carnes: Ossobuco, saltimbocca, bistecca fiorentina
+• Antipasti: Bruschetta, carpaccio, caprese
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Massa: Pasta seca, fresca, gnocchi
+• Queijos: Parmigiano-Reggiano, mozzarella, pecorino
+• Embutidos: Prosciutto, pancetta, guanciale
+• Tomates: San Marzano, pomodorini
+• Especiais: Olio d'oliva, basilico, aglio
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Fazer massa fresca
+• Preparar al dente
+• Saltear massa na panela do molho
+• Fazer risotto mantecato
+• Usar água da massa
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Cappuccino APENAS de manhã
+• Pasta é primo piatto (primeiro prato)
+• Queijo NÃO vai com frutos do mar (regra sagrada)
+• Ingredientes de qualidade > técnicas complexas
+• Cada região tem suas especialidades`,
+
+    DE: `
+🇩🇪 CULTURA GASTRONÔMICA: ALEMANHA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+Alemanha tem culinária robusta e satisfatória, com foco em
+carnes, batatas, pães e a maior tradição cervejeira do mundo.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Frühstück (6h-9h): Brötchen, Wurst, queijo, ovos
+• Mittagessen (12h-13h): Refeição quente principal
+• Kaffee und Kuchen (15h-16h): Café com bolo (tradição)
+• Abendessen (18h-19h): Frio - pães, frios, queijo
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Schnitzel (empanados de carne)
+• Bratwurst, Currywurst, Weisswurst
+• Sauerbraten (carne marinada em vinagre)
+• Kartoffelsalat (salada de batata)
+• Bretzel, Schwarzbrot
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Carnes: Schweinefleisch, Rindfleisch, Wurst
+• Vegetais: Kartoffeln, Sauerkraut, Rotkohl
+• Pães: Vollkornbrot, Brötchen, Bretzel
+• Laticínios: Quark, Käse variedades
+• Especiais: Mostarda, raiz-forte, chucrute
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Fazer schnitzels empanados
+• Preparar Braten (assados longos)
+• Fermentar chucrute
+• Fazer pães integrais
+• Assar em forno
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Abendbrot é refeição fria (pão, frios)
+• Bier acompanha muitas refeições
+• Domingo é dia de Sonntagsbraten (assado)
+• Kaffee und Kuchen às 15h é tradição
+• Pães alemães são os melhores do mundo`,
+
+    GB: `
+🇬🇧 CULTURA GASTRONÔMICA: REINO UNIDO
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+A culinária britânica é marcada por comfort food, assados de domingo,
+afternoon tea e forte influência de ex-colônias (especialmente indiana).
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Breakfast (7h-9h): Full English - eggs, bacon, beans, toast
+• Lunch (12h-14h): Sanduíches, soup, jacket potato
+• Afternoon tea (15h-17h): Chá com scones, finger sandwiches
+• Dinner/Supper (18h-20h): Refeição principal
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Sunday Roast (beef, lamb, chicken com trimmings)
+• Fish and Chips
+• Shepherd's Pie, Cottage Pie
+• Bangers and Mash
+• Full English Breakfast
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Carnes: Beef, lamb, pork, chicken
+• Vegetais: Potatoes, peas, carrots, parsnips
+• Laticínios: Cheddar, clotted cream, butter
+• Especiais: Worcestershire sauce, HP sauce, gravy
+• Pães: White bread, crumpets, scones
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Roasting (assados de domingo)
+• Making proper gravy
+• Baking pies and pastries
+• Deep frying fish and chips
+• Brewing proper tea
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Sunday Roast é tradição familiar sagrada
+• Tea time com scones e clotted cream
+• Fish and Chips na sexta-feira
+• Curry é praticamente prato nacional
+• Pub food é instituição cultural`,
+
+    // ═══════════════════════════════════════════════════════════
+    // ÁSIA
+    // ═══════════════════════════════════════════════════════════
+    JP: `
+🇯🇵 CULTURA GASTRONÔMICA: JAPÃO
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+A culinária japonesa (washoku) é Patrimônio Cultural da UNESCO,
+focada em sazonalidade, apresentação, equilíbrio e ingredientes frescos.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Asagohan (7h-8h): Arroz, missoshiru, peixe grelhado, tsukemono
+• Hirugohan (12h-13h): Bento, ramen, donburi
+• Oyatsu (15h): Snacks leves
+• Bangohan (18h-20h): Refeição familiar tradicional
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Sushi e sashimi
+• Ramen (shoyu, miso, tonkotsu)
+• Tempura, tonkatsu
+• Okonomiyaki, takoyaki
+• Onigiri, bento
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Base: Gohan (arroz japonês), dashi, shoyu
+• Proteínas: Peixes variados, tofu, ovos
+• Vegetais: Daikon, negi, edamame, shiitake
+• Especiais: Miso, wasabi, nori, mirin
+• Fermentados: Tsukemono, natto
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Fazer arroz japonês perfeito
+• Preparar dashi (caldo base)
+• Cortar sashimi com precisão
+• Tempura crocante e leve
+• Grelhar com precisão (yakimono)
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Sazonalidade é muito valorizada (shun)
+• Apresentação visual é essencial
+• Washoku segue regra do 5 (5 cores, 5 sabores, 5 métodos)
+• Itadakimasu antes de comer
+• Não espetar pauzinhos no arroz`,
+
+    CN: `
+🇨🇳 CULTURA GASTRONÔMICA: CHINA
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+China tem 8 grandes culinárias regionais (Sichuan, Cantonesa, etc.),
+com técnicas milenares e uma filosofia de equilíbrio yin-yang.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Zǎocān (7h-9h): Congee, jianbing, baozi, doujiang
+• Wǔcān (11h-13h): Refeição principal quente
+• Wǎncān (17h-19h): Refeição familiar, múltiplos pratos
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Dim sum (cantonês)
+• Mapo doufu, kung pao chicken (Sichuan)
+• Pato laqueado de Pequim
+• Chow mein, fried rice
+• Hot pot, dumplings
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Base: Arroz, noodles, tofu
+• Aromáticos: Ginger, garlic, scallions
+• Molhos: Soy sauce, oyster sauce, hoisin
+• Proteínas: Pork, chicken, duck, seafood
+• Especiais: Sichuan peppercorn, five spice
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Wok hei (calor alto do wok)
+• Stir frying em alta temperatura
+• Steaming (dim sum, bao)
+• Red braising (hongshao)
+• Preparar dumplings
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Pratos são compartilhados no centro da mesa
+• Chá acompanha refeições
+• Número de pratos importa (par/ímpar)
+• Equilíbrio de sabores e texturas
+• Hot pot é social e festivo`,
+
+    KR: `
+🇰🇷 CULTURA GASTRONÔMICA: COREIA DO SUL
+═══════════════════════════════════════════════════════════════
+
+📍 IDENTIDADE CULINÁRIA:
+A culinária coreana é dominada por fermentados, vegetais,
+churrasco na mesa e uma impressionante variedade de banchan.
+
+🍽️ REFEIÇÕES E HORÁRIOS TÍPICOS:
+• Achim (7h-8h): Rice, soup, banchan
+• Jeomsim (12h-13h): Refeição completa
+• Jeonyeok (18h-20h): BBQ, jjigae, refeição social
+
+🥘 PRATOS EMBLEMÁTICOS:
+• Kimchi (fermentado essencial)
+• Korean BBQ (samgyeopsal, bulgogi, galbi)
+• Bibimbap (arroz misturado)
+• Jjigae (ensopados: kimchi, sundubu)
+• Tteokbokki (bolinhos de arroz picantes)
+
+🛒 INGREDIENTES ESSENCIAIS:
+• Fermentados: Kimchi, doenjang, gochujang
+• Proteínas: Pork belly, beef, tofu
+• Vegetais: Napa cabbage, radish, bean sprouts
+• Especiais: Sesame oil, gochugaru, garlic
+• Grãos: Short-grain rice, glass noodles
+
+🔥 TÉCNICAS CULINÁRIAS TRADICIONAIS:
+• Fermentar kimchi
+• Grelhar na mesa (Korean BBQ)
+• Preparar banchan variados
+• Fazer caldos para jjigae
+• Ssam (enrolar em folhas)
+
+⚠️ REGRAS CULTURAIS IMPORTANTES:
+• Banchan (acompanhamentos) sempre presentes
+• Kimchi em TODA refeição
+• BBQ é experiência social, cozinha na mesa
+• Soju acompanha refeições noturnas
+• Compartilhar pratos é norma`,
+  };
+
+  // Fallback para países sem guia específico
+  const fallbackGuide = `
+🌍 CULTURA GASTRONÔMICA: ${countryCode.toUpperCase()}
+═══════════════════════════════════════════════════════════════
+
+Por favor, gere receitas autênticas considerando:
+• Ingredientes locais típicos e acessíveis
+• Técnicas culinárias tradicionais da região
+• Padrões de refeição e horários locais
+• Preferências de sabor culturais
+• Apresentação apropriada ao contexto cultural`;
+
+  return culturalGuides[countryCode] || fallbackGuide;
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -409,6 +1111,7 @@ serve(async (req) => {
     const dietaryInstructions = buildDietaryInstructions(selectedCategory);
     const goalInstructions = buildGoalInstructions(goal);
     const categoryStyleInstructions = buildCategoryInstructions(selectedCategory);
+    const countryCulturalInstructions = buildCountryCulturalInstructions(countryCode);
 
     // ============================================
     // PROMPT DE NÍVEL HARVARD/GOOGLE
@@ -460,6 +1163,8 @@ pelo melhor conhecimento culinário mundial, combinando:
   ${categoryDescription}
 
 ${categoryStyleInstructions}
+
+${countryCulturalInstructions}
 
 ${goalInstructions}
 

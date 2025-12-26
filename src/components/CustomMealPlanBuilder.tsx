@@ -28,6 +28,7 @@ import { useUserIntolerances } from "@/hooks/useUserIntolerances";
 import { useUserProfileContext } from "@/hooks/useUserProfileContext";
 import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
+import RecipeRatingStars from "./RecipeRatingStars";
 
 type MealSlot = {
   id: string;
@@ -60,6 +61,9 @@ type SimpleMeal = {
   fat: number;
   prep_time: number;
   ingredients: any;
+  rating: number | null;
+  rating_count: number | null;
+  source_name: string | null;
 };
 
 type CustomMealPlanBuilderProps = {
@@ -544,6 +548,13 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                                 <span>•</span>
                                 <span>{meal.prep_time} min</span>
                               </div>
+                              {meal.rating && meal.rating > 0 && (
+                                <RecipeRatingStars 
+                                  rating={meal.rating} 
+                                  ratingCount={meal.rating_count}
+                                  className="mt-1"
+                                />
+                              )}
                               {conflict.hasConflict && (
                                 <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                                   <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />

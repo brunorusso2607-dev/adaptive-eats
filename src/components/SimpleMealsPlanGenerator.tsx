@@ -30,6 +30,7 @@ import {
 } from "@/hooks/useUserProfileContext";
 import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
+import RecipeRatingStars from "./RecipeRatingStars";
 
 type SimpleMeal = {
   id: string;
@@ -42,6 +43,9 @@ type SimpleMeal = {
   prep_time: number;
   ingredients: any;
   description: string | null;
+  rating: number | null;
+  rating_count: number | null;
+  source_name: string | null;
 };
 
 type SelectedMeals = {
@@ -465,11 +469,21 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
                                 <span className="flex items-center gap-1">
+                                  {meal.calories} kcal
+                                </span>
+                                <span>•</span>
+                                <span className="flex items-center gap-1">
                                   <Clock className="w-3 h-3" />
                                   {meal.prep_time} min
                                 </span>
-                                <span>{meal.calories} kcal</span>
                               </div>
+                              {meal.rating && meal.rating > 0 && (
+                                <RecipeRatingStars 
+                                  rating={meal.rating} 
+                                  ratingCount={meal.rating_count}
+                                  className="mt-1"
+                                />
+                              )}
                               {conflict.hasConflict && (
                                 <div className="flex items-center gap-1 mt-1.5 flex-wrap">
                                   <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />

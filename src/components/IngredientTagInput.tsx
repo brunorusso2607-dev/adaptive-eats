@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect, KeyboardEvent, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Plus, Search, AlertTriangle, Check } from "lucide-react";
+import { X, Plus, Search, AlertTriangle, Check, Loader2, Lightbulb, ChefHat } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
 import IngredientConflictDialog from "@/components/IngredientConflictDialog";
+import { useIngredientCombinationValidation, ValidationResult } from "@/hooks/useIngredientCombinationValidation";
 
 // Lista de ingredientes comuns para autocomplete - extensa e detalhada
 const COMMON_INGREDIENTS = [
@@ -553,6 +554,7 @@ interface IngredientTagInputProps {
   disabled?: boolean;
   onSubmit?: () => void;
   userProfile?: UserProfile | null;
+  enableCombinationValidation?: boolean;
 }
 
 export default function IngredientTagInput({
@@ -562,6 +564,7 @@ export default function IngredientTagInput({
   disabled = false,
   onSubmit,
   userProfile = null,
+  enableCombinationValidation = true,
 }: IngredientTagInputProps) {
   const [inputValue, setInputValue] = useState("");
   const [showSuggestions, setShowSuggestions] = useState(false);
@@ -575,8 +578,16 @@ export default function IngredientTagInput({
   const [currentConflict, setCurrentConflict] = useState<ConflictType | null>(null);
   const [pendingIngredient, setPendingIngredient] = useState<string | null>(null);
   
-  // Hook de verificação de conflitos
+  // Hook de verificação de conflitos (intolerâncias)
   const { checkConflict } = useIngredientConflictCheck(userProfile);
+  
+  // Hook de validação de combinações culinárias
+  const {
+    isValidating: isCombinationValidating,
+    result: combinationResult,
+    validateWithDebounce,
+    clearValidation,
+  } = useIngredientCombinationValidation();
 
   // Normaliza string removendo acentos para comparação
   const normalizeString = (str: string) => 
@@ -624,7 +635,13 @@ export default function IngredientTagInput({
   const doAddIngredient = (ingredient: string) => {
     const trimmed = ingredient.trim().toLowerCase();
     if (trimmed && !value.includes(trimmed)) {
-      onChange([...value, trimmed]);
+      const newIngredients = [...value, trimmed];
+      onChange(newIngredients);
+      
+      // Validar combinação de ingredientes com debounce
+      if (enableCombinationValidation && newIngredients.length >= 2) {
+        validateWithDebounce(value, trimmed, 800);
+      }
     }
     setInputValue("");
     setShowSuggestions(false);
@@ -672,7 +689,16 @@ export default function IngredientTagInput({
 
   // Remove ingrediente
   const removeIngredient = (ingredientToRemove: string) => {
-    onChange(value.filter((i) => i !== ingredientToRemove));
+    const newIngredients = value.filter((i) => i !== ingredientToRemove);
+    onChange(newIngredients);
+    
+    // Re-validar combinação após remover ingrediente
+    if (enableCombinationValidation && newIngredients.length >= 2) {
+      validateWithDebounce(newIngredients, undefined, 500);
+    } else if (newIngredients.length < 2) {
+      clearValidation();
+    }
+    
     inputRef.current?.focus();
   };
 
@@ -958,6 +984,87 @@ export default function IngredientTagInput({
         <p className="mt-2 text-xs text-[hsl(215,16%,47%)] tracking-wide">
           Digite e selecione ingredientes da lista
         </p>
+      )}
+
+      {/* Validação de combinação de ingredientes - Feedback da IA */}
+      {enableCombinationValidation && value.length >= 2 && (
+        <div className="mt-3 animate-in fade-in duration-300">
+          {isCombinationValidating ? (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Analisando combinação...</span>
+            </div>
+          ) : combinationResult && !combinationResult.isValid ? (
+            <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50 rounded-xl p-3 space-y-2">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                    Combinação incomum detectada
+                  </p>
+                  {combinationResult.message && (
+                    <p className="text-sm text-amber-600 dark:text-amber-500 mt-0.5">
+                      {combinationResult.message}
+                    </p>
+                  )}
+                  {combinationResult.problematicPair && (
+                    <p className="text-xs text-amber-500 dark:text-amber-600 mt-1">
+                      Conflito: <span className="font-medium">{combinationResult.problematicPair[0]}</span> + <span className="font-medium">{combinationResult.problematicPair[1]}</span>
+                    </p>
+                  )}
+                </div>
+              </div>
+              
+              {/* Sugestões de substituição */}
+              {combinationResult.suggestions && combinationResult.suggestions.length > 0 && (
+                <div className="border-t border-amber-200 dark:border-amber-800/50 pt-2 mt-2">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Lightbulb className="w-3.5 h-3.5 text-amber-500" />
+                    <span className="text-xs font-medium text-amber-600 dark:text-amber-400">
+                      Ingredientes que combinariam melhor:
+                    </span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {combinationResult.suggestions.map((suggestion, idx) => (
+                      <button
+                        key={idx}
+                        type="button"
+                        onClick={() => {
+                          // Adicionar sugestão substituindo o último ingrediente problemático
+                          if (combinationResult.problematicPair) {
+                            const problematicIngredient = combinationResult.problematicPair[1];
+                            const newIngredients = value.filter(i => i !== problematicIngredient);
+                            onChange(newIngredients);
+                            // Adicionar o novo ingrediente após um pequeno delay
+                            setTimeout(() => {
+                              doAddIngredient(suggestion);
+                            }, 100);
+                          } else {
+                            doAddIngredient(suggestion);
+                          }
+                        }}
+                        className={cn(
+                          "flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-medium",
+                          "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300",
+                          "hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors",
+                          "border border-amber-200 dark:border-amber-700/50"
+                        )}
+                      >
+                        <Plus className="w-3 h-3" />
+                        {suggestion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : combinationResult && combinationResult.isValid ? (
+            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+              <ChefHat className="w-4 h-4" />
+              <span>Ótima combinação! Esses ingredientes funcionam bem juntos.</span>
+            </div>
+          ) : null}
+        </div>
       )}
       
       {/* Diálogo de conflito */}

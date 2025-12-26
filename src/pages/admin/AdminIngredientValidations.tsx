@@ -28,6 +28,9 @@ interface ValidationStats {
   uniqueUsers: number;
   todayCount: number;
   weekCount: number;
+  helpfulFeedback: number;
+  notHelpfulFeedback: number;
+  feedbackRate: number;
 }
 
 interface TopProblematicPair {
@@ -47,6 +50,7 @@ interface RecentValidation {
   confidence: string | null;
   message: string | null;
   problematic_pair: string[] | null;
+  user_feedback: string | null;
   created_at: string;
 }
 
@@ -62,18 +66,23 @@ export default function AdminIngredientValidations() {
       weekAgo.setDate(weekAgo.getDate() - 7);
       weekAgo.setHours(0, 0, 0, 0);
 
-      const [totalResult, validResult, invalidResult, uniqueUsersResult, todayResult, weekResult] = await Promise.all([
+      const [totalResult, validResult, invalidResult, uniqueUsersResult, todayResult, weekResult, helpfulResult, notHelpfulResult] = await Promise.all([
         supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }),
         supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }).eq('is_valid', true),
         supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }).eq('is_valid', false),
         supabase.from('ingredient_validation_history').select('user_id', { count: 'exact', head: true }),
         supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }).gte('created_at', today.toISOString()),
         supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }).gte('created_at', weekAgo.toISOString()),
+        supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }).eq('user_feedback', 'helpful'),
+        supabase.from('ingredient_validation_history').select('id', { count: 'exact', head: true }).eq('user_feedback', 'not_helpful'),
       ]);
 
       const total = totalResult.count || 0;
       const valid = validResult.count || 0;
       const invalid = invalidResult.count || 0;
+      const helpful = helpfulResult.count || 0;
+      const notHelpful = notHelpfulResult.count || 0;
+      const totalFeedback = helpful + notHelpful;
 
       return {
         total,
@@ -83,6 +92,9 @@ export default function AdminIngredientValidations() {
         uniqueUsers: uniqueUsersResult.count || 0,
         todayCount: todayResult.count || 0,
         weekCount: weekResult.count || 0,
+        helpfulFeedback: helpful,
+        notHelpfulFeedback: notHelpful,
+        feedbackRate: totalFeedback > 0 ? Math.round((helpful / totalFeedback) * 100) : 0,
       };
     },
   });
@@ -154,11 +166,11 @@ export default function AdminIngredientValidations() {
     queryFn: async () => {
       const { data } = await supabase
         .from('ingredient_validation_history')
-        .select('id, ingredients, is_valid, confidence, message, problematic_pair, created_at')
+        .select('id, ingredients, is_valid, confidence, message, problematic_pair, user_feedback, created_at')
         .order('created_at', { ascending: false })
         .limit(20);
 
-      return data || [];
+      return (data || []) as RecentValidation[];
     },
   });
 
@@ -236,6 +248,27 @@ export default function AdminIngredientValidations() {
           </div>
         </Card>
       </div>
+
+      {/* Feedback Stats */}
+      {(stats?.helpfulFeedback || 0) + (stats?.notHelpfulFeedback || 0) > 0 && (
+        <Card className="p-5 bg-card border border-border/60 shadow-none">
+          <h3 className="text-sm font-medium text-foreground mb-4">Feedback dos Usuários</h3>
+          <div className="grid grid-cols-3 gap-4">
+            <div className="text-center">
+              <p className="text-2xl font-medium text-green-600">{stats?.helpfulFeedback || 0}</p>
+              <p className="text-xs text-muted-foreground">Útil 👍</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-medium text-red-600">{stats?.notHelpfulFeedback || 0}</p>
+              <p className="text-xs text-muted-foreground">Não útil 👎</p>
+            </div>
+            <div className="text-center">
+              <p className="text-2xl font-medium text-foreground">{stats?.feedbackRate || 0}%</p>
+              <p className="text-xs text-muted-foreground">Satisfação</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-6">
@@ -335,9 +368,10 @@ export default function AdminIngredientValidations() {
               <TableRow>
                 <TableHead className="w-[200px]">Ingredientes</TableHead>
                 <TableHead className="w-[100px]">Status</TableHead>
+                <TableHead className="w-[80px]">Feedback</TableHead>
                 <TableHead className="w-[100px]">Confiança</TableHead>
                 <TableHead>Problema</TableHead>
-                <TableHead className="w-[140px]">Data</TableHead>
+                <TableHead className="w-[120px]">Data</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -368,6 +402,15 @@ export default function AdminIngredientValidations() {
                         <XCircle className="w-3 h-3 mr-1" />
                         Inválida
                       </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {validation.user_feedback === 'helpful' ? (
+                      <span className="text-green-600 text-xs">👍</span>
+                    ) : validation.user_feedback === 'not_helpful' ? (
+                      <span className="text-red-600 text-xs">👎</span>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">-</span>
                     )}
                   </TableCell>
                   <TableCell>

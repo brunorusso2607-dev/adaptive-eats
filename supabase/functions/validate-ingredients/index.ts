@@ -88,6 +88,7 @@ serve(async (req) => {
           message: existingValidation.message,
           problematicPair: existingValidation.problematic_pair,
           suggestions: existingValidation.suggestions || [],
+          validationId: existingValidation.id,
           fromHistory: true,
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -220,9 +221,11 @@ Responda APENAS com o JSON, sem texto adicional.`;
       suggestions: result.suggestions || [],
     };
 
-    // Salvar no histórico (em background, não bloqueia resposta)
+    // Salvar no histórico e retornar o ID
+    let validationId: string | null = null;
+    
     if (userId) {
-      supabase
+      const { data: insertedData, error: insertError } = await supabase
         .from('ingredient_validation_history')
         .insert({
           user_id: userId,
@@ -233,17 +236,22 @@ Responda APENAS com o JSON, sem texto adicional.`;
           problematic_pair: finalResult.problematicPair,
           suggestions: finalResult.suggestions,
         })
-        .then(({ error }) => {
-          if (error) {
-            logStep('Error saving to history', { error: error.message });
-          } else {
-            logStep('Saved to history');
-          }
-        });
+        .select('id')
+        .single();
+
+      if (insertError) {
+        logStep('Error saving to history', { error: insertError.message });
+      } else {
+        validationId = insertedData?.id || null;
+        logStep('Saved to history', { id: validationId });
+      }
     }
 
     return new Response(
-      JSON.stringify(finalResult),
+      JSON.stringify({
+        ...finalResult,
+        validationId,
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

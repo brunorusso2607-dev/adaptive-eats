@@ -74,7 +74,7 @@ type CustomMealPlanBuilderProps = {
 const MEAL_SLOTS = [
   { key: "breakfast" as const, label: "Café da Manhã", icon: "☕", mealType: "cafe_manha" },
   { key: "lunch" as const, label: "Almoço", icon: "🍽️", mealType: "almoco" },
-  { key: "snack" as const, label: "Lanche da Tarde", icon: "🍎", mealType: "lanche_tarde" },
+  { key: "snack" as const, label: "Lanche", icon: "🍎", mealType: "lanche" },
   { key: "dinner" as const, label: "Jantar", icon: "🌙", mealType: "jantar" },
   { key: "supper" as const, label: "Ceia", icon: "🍵", mealType: "ceia" }
 ];
@@ -83,7 +83,7 @@ const MEAL_SLOTS = [
 const SLOT_TO_MEAL_TYPE: Record<keyof DayPlan, string> = {
   breakfast: "cafe_manha",
   lunch: "almoco",
-  snack: "lanche_tarde",
+  snack: "lanche",
   dinner: "jantar",
   supper: "ceia"
 };

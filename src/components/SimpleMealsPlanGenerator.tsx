@@ -63,7 +63,7 @@ type SimpleMealsPlanGeneratorProps = {
 const MEAL_TYPE_LABELS: Record<string, string> = {
   cafe_manha: "Café da Manhã",
   almoco: "Almoço",
-  lanche_tarde: "Lanche da Tarde",
+  lanche: "Lanche",
   jantar: "Jantar",
   ceia: "Ceia"
 };
@@ -71,11 +71,11 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
 const MEAL_TYPE_MAP: Record<string, keyof SelectedMeals> = {
   cafe_manha: "breakfast",
   almoco: "lunch",
-  lanche_tarde: "snack",
+  lanche: "snack",
   jantar: "dinner"
 };
 
-const MEAL_TYPE_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+const MEAL_TYPE_ORDER = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
 export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: SimpleMealsPlanGeneratorProps) {
   const [planName, setPlanName] = useState("");

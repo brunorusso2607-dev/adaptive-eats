@@ -37,12 +37,7 @@ export function getMealTimeRanges() {
   return getMealTimeRangesSync();
 }
 
-// Mapear tipos antigos para o novo padrão
-function normalizeMealType(mealType: string): string {
-  // "lanche" antigo -> "lanche_tarde" novo
-  if (mealType === "lanche") return "lanche_tarde";
-  return mealType;
-}
+// No normalization needed - "lanche" is now the standard
 
 function getCurrentMealType(): string {
   const hour = new Date().getHours();
@@ -65,12 +60,11 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-// Índices fixos para ordenação - inclui aliases para compatibilidade
+// Standard meal order for sorting
 const MEAL_SORT_PRIORITY: Record<string, number> = {
   "cafe_manha": 0,
   "almoco": 1,
-  "lanche": 2, // Alias para lanche_tarde
-  "lanche_tarde": 2,
+  "lanche": 2,
   "jantar": 3,
   "ceia": 4,
 };
@@ -91,12 +85,10 @@ function getMealStatus(mealType: string, completedAt: string | null): MealStatus
   const currentTimeInMinutes = hour * 60 + minutes;
   
   const timeRanges = getMealTimeRangesSync();
-  // Normalizar lanche -> lanche_tarde para buscar o range correto
-  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
-  const range = timeRanges[normalizedType] || timeRanges[mealType];
+  const range = timeRanges[mealType];
   
   if (!range) {
-    console.warn("[getMealStatus] Range não encontrado para:", mealType, "normalizado:", normalizedType);
+    console.warn("[getMealStatus] Range não encontrado para:", mealType);
     return "on_time";
   }
   
@@ -127,8 +119,7 @@ function getMinutesOverdue(mealType: string): number {
   const currentTimeInMinutes = hour * 60 + minutes;
   
   const timeRanges = getMealTimeRangesSync();
-  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
-  const range = timeRanges[normalizedType] || timeRanges[mealType];
+  const range = timeRanges[mealType];
   if (!range) return 0;
   
   const endTimeInMinutes = range.end * 60;
@@ -147,8 +138,7 @@ export function getMinutesUntilStart(mealType: string): number {
   const currentTimeInMinutes = hour * 60 + minutes;
   
   const timeRanges = getMealTimeRangesSync();
-  const normalizedType = mealType === "lanche" ? "lanche_tarde" : mealType;
-  const range = timeRanges[normalizedType] || timeRanges[mealType];
+  const range = timeRanges[mealType];
   if (!range) return 0;
   
   const startTimeInMinutes = range.start * 60;

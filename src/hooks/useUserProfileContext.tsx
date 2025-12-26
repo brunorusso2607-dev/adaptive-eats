@@ -18,7 +18,7 @@ export interface CalorieRange {
 export interface MealCalorieRanges {
   cafe_manha: CalorieRange;
   almoco: CalorieRange;
-  lanche_tarde: CalorieRange;
+  lanche: CalorieRange;
   jantar: CalorieRange;
   ceia: CalorieRange;
 }
@@ -80,7 +80,7 @@ const ACTIVITY_FACTORS: Record<string, number> = {
 const CALORIE_DISTRIBUTION = {
   cafe_manha: 0.25,
   almoco: 0.35,
-  lanche_tarde: 0.10,
+  lanche: 0.10,
   jantar: 0.25,
   ceia: 0.05,
 };
@@ -277,7 +277,7 @@ export function calculateMealCalorieRanges(
   return {
     cafe_manha: calculateRange("cafe_manha"),
     almoco: calculateRange("almoco"),
-    lanche_tarde: calculateRange("lanche_tarde"),
+    lanche: calculateRange("lanche"),
     jantar: calculateRange("jantar"),
     ceia: calculateRange("ceia"),
   };

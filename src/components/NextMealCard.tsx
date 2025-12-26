@@ -257,12 +257,10 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
   const styleKey = statusToStyleKey[mealStatus];
   const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.on_time;
   
-  // Normalizar lanche -> lanche_tarde para buscar dados corretos
-  const normalizedMealType = nextMeal.meal_type === "lanche" ? "lanche_tarde" : nextMeal.meal_type;
   const labels = getMealLabels();
   const timeRanges = getMealTimeRanges();
-  const mealLabel = labels[normalizedMealType] || labels[nextMeal.meal_type] || nextMeal.meal_type;
-  const timeRange = timeRanges[normalizedMealType] || timeRanges[nextMeal.meal_type];
+  const mealLabel = labels[nextMeal.meal_type] || nextMeal.meal_type;
+  const timeRange = timeRanges[nextMeal.meal_type];
 
   // Verificar se é uma refeição futura (status "upcoming")
   const isFutureMeal = mealStatus === "upcoming";

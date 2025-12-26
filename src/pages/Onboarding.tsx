@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -17,14 +17,39 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
 const STEPS = [
-  { id: 1, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
-  { id: 2, title: "Preferência", description: "Qual sua preferência alimentar?" },
-  { id: 3, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
-  { id: 4, title: "Objetivo", description: "Qual seu objetivo?" },
-  { id: 5, title: "Notificações", description: "Receba lembretes importantes" },
+  { id: 1, title: "Sua região", description: "De qual país você é?" },
+  { id: 2, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
+  { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?" },
+  { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
+  { id: 5, title: "Objetivo", description: "Qual seu objetivo?" },
+  { id: 6, title: "Notificações", description: "Receba lembretes importantes" },
+];
+
+const COUNTRIES = [
+  { code: "BR", name: "Brasil", flag: "🇧🇷" },
+  { code: "US", name: "Estados Unidos", flag: "🇺🇸" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "MX", name: "México", flag: "🇲🇽" },
+  { code: "AR", name: "Argentina", flag: "🇦🇷" },
+  { code: "JP", name: "Japão", flag: "🇯🇵" },
+  { code: "IT", name: "Itália", flag: "🇮🇹" },
+  { code: "FR", name: "França", flag: "🇫🇷" },
+  { code: "DE", name: "Alemanha", flag: "🇩🇪" },
+  { code: "ES", name: "Espanha", flag: "🇪🇸" },
+  { code: "GB", name: "Reino Unido", flag: "🇬🇧" },
+  { code: "CO", name: "Colômbia", flag: "🇨🇴" },
+  { code: "CL", name: "Chile", flag: "🇨🇱" },
+  { code: "PE", name: "Peru", flag: "🇵🇪" },
+  { code: "IN", name: "Índia", flag: "🇮🇳" },
+  { code: "CN", name: "China", flag: "🇨🇳" },
+  { code: "KR", name: "Coreia do Sul", flag: "🇰🇷" },
+  { code: "TH", name: "Tailândia", flag: "🇹🇭" },
+  { code: "VN", name: "Vietnã", flag: "🇻🇳" },
+  { code: "AU", name: "Austrália", flag: "🇦🇺" },
 ];
 
 type ProfileData = {
+  country: string;
   intolerances: string[];
   dietary_preference: string;
   excluded_ingredients: string[];
@@ -36,6 +61,7 @@ export default function Onboarding() {
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [profile, setProfile] = useState<ProfileData>({
+    country: "BR",
     intolerances: [],
     dietary_preference: "comum",
     excluded_ingredients: [],
@@ -90,7 +116,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 5) {
+    if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -116,6 +142,7 @@ export default function Onboarding() {
       const { error } = await supabase
         .from("profiles")
         .update({
+          country: profile.country,
           intolerances: profile.intolerances,
           dietary_preference: profile.dietary_preference as any,
           excluded_ingredients: profile.excluded_ingredients,
@@ -155,6 +182,35 @@ export default function Onboarding() {
     switch (currentStep) {
       case 1:
         return (
+          <div className="space-y-4">
+            <div className="text-center py-2">
+              <Globe className="w-12 h-12 mx-auto mb-3 text-primary" />
+              <p className="text-sm text-muted-foreground">
+                Isso nos ajuda a sugerir alimentos e receitas populares na sua região.
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-2 max-h-[320px] overflow-y-auto">
+              {COUNTRIES.map((country) => (
+                <button
+                  key={country.code}
+                  onClick={() => setProfile({ ...profile, country: country.code })}
+                  className={cn(
+                    "p-3 rounded-xl border text-left transition-all flex items-center gap-3",
+                    profile.country === country.code
+                      ? "border-primary bg-primary/5"
+                      : "border-border/80 hover:border-primary/50 bg-card"
+                  )}
+                >
+                  <span className="text-2xl">{country.flag}</span>
+                  <span className="font-medium text-sm">{country.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        );
+
+      case 2:
+        return (
           <div className="grid grid-cols-2 gap-3">
             {options.intolerances.map((item) => {
               const IconComponent = getOnboardingIcon(item);
@@ -183,7 +239,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 2:
+      case 3:
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.dietary_preferences.map((item) => {
@@ -216,7 +272,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 3:
+      case 4:
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -348,7 +404,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 4:
+      case 5:
         return (
           <div className="space-y-3">
             {options.goals.map((item) => {
@@ -383,7 +439,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 5:
+      case 6:
         return (
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -526,11 +582,11 @@ export default function Onboarding() {
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === 5 ? (
+          ) : currentStep === 6 ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === 5 ? "Concluir" : "Próximo"}
-          {currentStep < 5 && <ArrowRight className="w-4 h-4 ml-2" />}
+          {currentStep === 6 ? "Concluir" : "Próximo"}
+          {currentStep < 6 && <ArrowRight className="w-4 h-4 ml-2" />}
         </Button>
       </footer>
     </div>

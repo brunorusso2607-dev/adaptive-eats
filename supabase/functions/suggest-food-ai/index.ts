@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -9,13 +10,64 @@ const logStep = (step: string, details?: any) => {
   console.log(`[SUGGEST-FOOD-AI] ${step}:`, details ? JSON.stringify(details) : '');
 };
 
+// Country-specific popular foods for prioritization
+const COUNTRY_FOODS: Record<string, string[]> = {
+  BR: ["Pão de Queijo", "Açaí", "Coxinha", "Feijoada", "Picanha", "Brigadeiro", "Tapioca", "Moqueca", "Pastel", "Acarajé"],
+  US: ["Hamburger", "Hot Dog", "Mac and Cheese", "Buffalo Wings", "Pancakes", "Apple Pie", "Cheesecake", "BBQ Ribs", "Fried Chicken", "Pizza"],
+  MX: ["Tacos", "Burritos", "Quesadilla", "Enchiladas", "Guacamole", "Tamales", "Churros", "Pozole", "Chilaquiles", "Elote"],
+  JP: ["Ramen", "Sushi", "Onigiri", "Tempura", "Gyudon", "Okonomiyaki", "Takoyaki", "Miso Soup", "Udon", "Tonkatsu"],
+  IT: ["Pizza", "Pasta", "Lasagna", "Risotto", "Tiramisu", "Gelato", "Carbonara", "Bruschetta", "Gnocchi", "Ossobuco"],
+  FR: ["Croissant", "Baguette", "Quiche", "Crêpe", "Macarons", "Coq au Vin", "Ratatouille", "Bouillabaisse", "Crème Brûlée", "Escargot"],
+  DE: ["Bratwurst", "Pretzel", "Schnitzel", "Sauerkraut", "Currywurst", "Spätzle", "Black Forest Cake", "Strudel", "Kartoffelsalat", "Döner"],
+  ES: ["Paella", "Tapas", "Gazpacho", "Tortilla Española", "Churros", "Jamón Ibérico", "Patatas Bravas", "Croquetas", "Sangria", "Fabada"],
+  PT: ["Bacalhau", "Pastel de Nata", "Francesinha", "Caldo Verde", "Sardinhas", "Arroz de Pato", "Bifana", "Açorda", "Alheira", "Pastéis de Belém"],
+  AR: ["Asado", "Empanadas", "Milanesa", "Choripán", "Dulce de Leche", "Alfajores", "Locro", "Provoleta", "Chimichurri", "Matambre"],
+  KR: ["Bibimbap", "Bulgogi", "Kimchi", "Korean BBQ", "Tteokbokki", "Samgyeopsal", "Gimbap", "Japchae", "Sundubu", "Fried Chicken"],
+  CN: ["Fried Rice", "Kung Pao Chicken", "Dim Sum", "Peking Duck", "Chow Mein", "Mapo Tofu", "Hot Pot", "Sweet and Sour Pork", "Dumplings", "Spring Rolls"],
+  TH: ["Pad Thai", "Green Curry", "Tom Yum", "Som Tam", "Massaman Curry", "Pad See Ew", "Mango Sticky Rice", "Satay", "Tom Kha", "Larb"],
+  IN: ["Butter Chicken", "Biryani", "Tikka Masala", "Naan", "Samosa", "Dal", "Paneer", "Vindaloo", "Dosa", "Chai"],
+  VN: ["Pho", "Banh Mi", "Spring Rolls", "Bun Cha", "Com Tam", "Cao Lau", "Banh Xeo", "Che", "Goi Cuon", "Bun Bo Hue"],
+  GB: ["Fish and Chips", "Full English Breakfast", "Shepherd's Pie", "Bangers and Mash", "Roast Beef", "Yorkshire Pudding", "Cornish Pasty", "Toad in the Hole", "Scotch Egg", "Trifle"],
+  AU: ["Meat Pie", "Vegemite Toast", "Pavlova", "Lamington", "Barramundi", "Tim Tam", "Fairy Bread", "Sausage Sizzle", "Damper", "ANZAC Biscuits"],
+  CO: ["Bandeja Paisa", "Arepas", "Empanadas", "Sancocho", "Ajiaco", "Buñuelos", "Pandebono", "Lechona", "Tamales", "Arroz con Pollo"],
+  CL: ["Empanadas", "Pastel de Choclo", "Cazuela", "Curanto", "Completo", "Sopaipillas", "Caldillo de Congrio", "Asado", "Mote con Huesillo", "Alfajores"],
+  PE: ["Ceviche", "Lomo Saltado", "Ají de Gallina", "Causa", "Anticuchos", "Pollo a la Brasa", "Papa a la Huancaína", "Arroz con Pollo", "Rocoto Relleno", "Picarones"],
+};
+
+const getCountryContext = (country: string): string => {
+  const foods = COUNTRY_FOODS[country];
+  if (!foods) return "";
+  
+  const countryNames: Record<string, string> = {
+    BR: "Brasil", US: "Estados Unidos", MX: "México", JP: "Japão", IT: "Itália",
+    FR: "França", DE: "Alemanha", ES: "Espanha", PT: "Portugal", AR: "Argentina",
+    KR: "Coreia do Sul", CN: "China", TH: "Tailândia", IN: "Índia", VN: "Vietnã",
+    GB: "Reino Unido", AU: "Austrália", CO: "Colômbia", CL: "Chile", PE: "Peru"
+  };
+  
+  return `
+=== USER'S COUNTRY: ${countryNames[country] || country} ===
+
+PRIORITIZE foods from this region when the query is ambiguous:
+Popular local foods: ${foods.join(", ")}
+
+When the user types a generic term, prefer local options:
+- "pão" in Brazil → suggest Pão de Queijo first
+- "burger" in USA → suggest American-style burger first
+- "noodles" in Japan → suggest Ramen, Udon first
+- "curry" in India → suggest Indian curries first
+
+BUT if the user clearly specifies a different cuisine (e.g., "ramen" in Brazil), respect that.
+`;
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { query } = await req.json();
+    const { query, country: requestCountry } = await req.json();
     
     if (!query || query.length < 2) {
       return new Response(
@@ -24,12 +76,43 @@ serve(async (req) => {
       );
     }
 
-    logStep('Processing query', { query });
+    // Try to get user's country from profile if not provided
+    let userCountry = requestCountry || "BR";
+    
+    const authHeader = req.headers.get('Authorization');
+    if (authHeader && !requestCountry) {
+      try {
+        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+        const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+          global: { headers: { Authorization: authHeader } }
+        });
+        
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('country')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (profile?.country) {
+            userCountry = profile.country;
+          }
+        }
+      } catch (e) {
+        logStep('Error fetching user country', { error: e });
+      }
+    }
+
+    logStep('Processing query', { query, country: userCountry });
 
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY not configured');
     }
+
+    const countryContext = getCountryContext(userCountry);
 
     const systemPrompt = `You are a GLOBAL nutrition expert with encyclopedic knowledge of foods from ALL countries and cultures.
 
@@ -37,6 +120,7 @@ CORE MISSION:
 - Identify the food the user is searching for, even with typos or partial names
 - Recognize foods in ANY LANGUAGE (English, Portuguese, Spanish, Japanese, Korean, Chinese, Arabic, French, German, Italian, Thai, etc.)
 - Return 1-5 relevant suggestions with accurate nutritional values
+${countryContext}
 
 === GLOBAL FAST-FOOD CHAINS ===
 

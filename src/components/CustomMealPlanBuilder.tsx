@@ -454,7 +454,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         selectedDay={selectedDay}
         onWeekChange={setSelectedWeek}
         onDayChange={setSelectedDay}
-        showDaySelector={false}
+        showDaySelector={true}
       />
 
       {/* Macros Preview */}

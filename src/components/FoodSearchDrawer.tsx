@@ -3,7 +3,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Minus, X, Flame, Check, AlertTriangle, Loader2 } from "lucide-react";
+import { Search, Plus, Minus, X, Flame, Check, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
@@ -421,29 +421,33 @@ export default function FoodSearchDrawer({
         </DrawerContent>
       </Drawer>
 
-      {/* Conflict Dialog */}
+      {/* Conflict Dialog - Design sutil */}
       <AlertDialog
         open={conflictDialog.open}
         onOpenChange={(open) =>
           !open && setConflictDialog({ open: false, food: null, conflict: null })
         }
       >
-        <AlertDialogContent>
+        <AlertDialogContent className="max-w-sm">
           <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-yellow-500" />
-              Alimento conflitante detectado
+            <AlertDialogTitle className="text-base font-medium">
+              {conflictDialog.food?.name}
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Você tem restrição a <strong>{conflictDialog.conflict?.restrictionLabel}</strong>.
-              O alimento <strong>"{conflictDialog.food?.name}"</strong> pode não ser adequado
-              para o seu perfil alimentar.
+            <AlertDialogDescription asChild>
+              <div className="space-y-3 pt-2">
+                <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
+                  Contém {conflictDialog.conflict?.restrictionLabel?.toLowerCase()}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Você indicou ter restrição a este tipo de alimento. Deseja adicionar mesmo assim?
+                </p>
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
+          <AlertDialogFooter className="mt-4">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmConflict}>
-              Sim, adicionar mesmo assim
+              Adicionar
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

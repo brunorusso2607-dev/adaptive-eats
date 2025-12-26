@@ -84,7 +84,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     supper: null
   });
   const [activeSlot, setActiveSlot] = useState<keyof DayPlan | null>(null);
-  const [activeTab, setActiveTab] = useState("favorites");
+  const [activeTab, setActiveTab] = useState("simple");
 
   // Week/Day selection
   const today = new Date();

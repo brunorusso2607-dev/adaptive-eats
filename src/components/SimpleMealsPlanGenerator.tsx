@@ -14,7 +14,8 @@ import {
   ChevronUp,
   Flame,
   AlertTriangle,
-  Sparkles
+  Sparkles,
+  TrendingUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -72,6 +73,43 @@ const MEAL_TYPE_MAP: Record<string, keyof SelectedMeals> = {
 };
 
 const MEAL_TYPE_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+
+// Helper para obter configuração do badge de estilo
+const getRecipeStyleBadge = (calories: number, recipeStyle: RecipeStyle) => {
+  // Classificar a refeição com base nas calorias
+  let mealStyle: RecipeStyle;
+  if (calories <= 350) {
+    mealStyle = "fitness";
+  } else if (calories >= 500) {
+    mealStyle = "high_calorie";
+  } else {
+    mealStyle = "regular";
+  }
+
+  // Retornar configuração do badge
+  const configs: Record<RecipeStyle, { label: string; icon: typeof Flame; className: string } | null> = {
+    fitness: { 
+      label: "Fitness", 
+      icon: Flame, 
+      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" 
+    },
+    regular: null, // Não mostrar badge para regular
+    high_calorie: { 
+      label: "Alta Caloria", 
+      icon: TrendingUp, 
+      className: "bg-amber-500/10 text-amber-600 border-amber-500/30" 
+    }
+  };
+
+  // Mostrar badge apenas se a refeição combina com o objetivo do usuário
+  const isRecommended = mealStyle === recipeStyle;
+  
+  return {
+    config: configs[mealStyle],
+    isRecommended,
+    mealStyle
+  };
+};
 
 export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: SimpleMealsPlanGeneratorProps) {
   const [planName, setPlanName] = useState("");
@@ -427,6 +465,9 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                     {meals.map((meal) => {
                       const isSelected = selectedMeal?.id === meal.id;
                       const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
+                      const styleBadge = getRecipeStyleBadge(meal.calories, recipeStyle);
+                      const StyleIcon = styleBadge.config?.icon;
+                      
                       return (
                         <div
                           key={meal.id}
@@ -444,6 +485,20 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                             <div className="flex-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className="font-medium text-sm">{meal.name}</span>
+                                {styleBadge.config && StyleIcon && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0 gap-1",
+                                      styleBadge.config.className,
+                                      styleBadge.isRecommended && "ring-1 ring-primary/50"
+                                    )}
+                                  >
+                                    <StyleIcon className="w-2.5 h-2.5" />
+                                    {styleBadge.config.label}
+                                    {styleBadge.isRecommended && <Sparkles className="w-2 h-2" />}
+                                  </Badge>
+                                )}
                                 {getCompatibilityBadge(meal.name)}
                               </div>
                               <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">

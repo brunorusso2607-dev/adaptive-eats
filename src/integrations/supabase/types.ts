@@ -549,6 +549,42 @@ export type Database = {
           },
         ]
       }
+      ingredient_validation_history: {
+        Row: {
+          confidence: string | null
+          created_at: string
+          id: string
+          ingredients: string[]
+          is_valid: boolean
+          message: string | null
+          problematic_pair: string[] | null
+          suggestions: string[] | null
+          user_id: string
+        }
+        Insert: {
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          ingredients: string[]
+          is_valid: boolean
+          message?: string | null
+          problematic_pair?: string[] | null
+          suggestions?: string[] | null
+          user_id: string
+        }
+        Update: {
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          ingredients?: string[]
+          is_valid?: boolean
+          message?: string | null
+          problematic_pair?: string[] | null
+          suggestions?: string[] | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       intolerance_mappings: {
         Row: {
           created_at: string

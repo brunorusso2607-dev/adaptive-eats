@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -7,6 +8,16 @@ const corsHeaders = {
 
 const logStep = (step: string, data?: any) => {
   console.log(`[VALIDATE-INGREDIENTS] ${step}`, data ? JSON.stringify(data) : '');
+};
+
+// Normaliza ingredientes para comparação
+const normalizeIngredients = (ingredients: string[]): string[] => {
+  return [...ingredients].map(i => i.toLowerCase().trim()).sort();
+};
+
+// Gera chave de cache para busca no histórico
+const getIngredientsKey = (ingredients: string[]): string => {
+  return normalizeIngredients(ingredients).join('|');
 };
 
 serve(async (req) => {
@@ -43,6 +54,61 @@ serve(async (req) => {
       );
     }
 
+    // Inicializar Supabase client
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Extrair user_id do token se disponível
+    let userId: string | null = null;
+    const authHeader = req.headers.get('authorization');
+    if (authHeader) {
+      const token = authHeader.replace('Bearer ', '');
+      const { data: { user } } = await supabase.auth.getUser(token);
+      userId = user?.id || null;
+    }
+
+    // Buscar no histórico de validações
+    const normalizedIngredients = normalizeIngredients(allIngredients);
+    
+    const { data: existingValidation } = await supabase
+      .from('ingredient_validation_history')
+      .select('*')
+      .contains('ingredients', normalizedIngredients)
+      .eq('ingredients', normalizedIngredients)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingValidation) {
+      logStep('Found in history', { id: existingValidation.id });
+      return new Response(
+        JSON.stringify({
+          isValid: existingValidation.is_valid,
+          confidence: existingValidation.confidence || 'media',
+          message: existingValidation.message,
+          problematicPair: existingValidation.problematic_pair,
+          suggestions: existingValidation.suggestions || [],
+          fromHistory: true,
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Buscar sugestões populares do histórico para enriquecer o prompt
+    const { data: popularSuggestions } = await supabase
+      .from('ingredient_validation_history')
+      .select('suggestions')
+      .eq('is_valid', false)
+      .not('suggestions', 'is', null)
+      .limit(20);
+
+    const historicalSuggestions = popularSuggestions
+      ?.flatMap(v => v.suggestions || [])
+      .filter((s, i, arr) => arr.indexOf(s) === i)
+      .slice(0, 10) || [];
+
+    logStep('Historical suggestions', { count: historicalSuggestions.length });
+
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY não configurada');
@@ -58,6 +124,11 @@ REGRAS DE AVALIAÇÃO:
 3. Ingredientes de culinárias diferentes podem combinar se fizerem sentido (ex: frango teriyaki = válido)
 4. Considere temperos e condimentos como neutros (combinam com maioria)
 5. Frutas em pratos salgados são válidas quando tradicionais (ex: abacaxi com carne de porco)
+
+${historicalSuggestions.length > 0 ? `
+SUGESTÕES POPULARES ANTERIORES (considere usar se relevantes):
+${historicalSuggestions.join(', ')}
+` : ''}
 
 FORMATO DE RESPOSTA (JSON):
 {
@@ -141,14 +212,38 @@ Responda APENAS com o JSON, sem texto adicional.`;
 
     logStep('Validation complete', result);
 
+    const finalResult = {
+      isValid: result.isValid ?? true,
+      confidence: result.confidence ?? 'media',
+      message: result.message || null,
+      problematicPair: result.problematicPair || null,
+      suggestions: result.suggestions || [],
+    };
+
+    // Salvar no histórico (em background, não bloqueia resposta)
+    if (userId) {
+      supabase
+        .from('ingredient_validation_history')
+        .insert({
+          user_id: userId,
+          ingredients: normalizedIngredients,
+          is_valid: finalResult.isValid,
+          confidence: finalResult.confidence,
+          message: finalResult.message,
+          problematic_pair: finalResult.problematicPair,
+          suggestions: finalResult.suggestions,
+        })
+        .then(({ error }) => {
+          if (error) {
+            logStep('Error saving to history', { error: error.message });
+          } else {
+            logStep('Saved to history');
+          }
+        });
+    }
+
     return new Response(
-      JSON.stringify({
-        isValid: result.isValid ?? true,
-        confidence: result.confidence ?? 'media',
-        message: result.message || null,
-        problematicPair: result.problematicPair || null,
-        suggestions: result.suggestions || [],
-      }),
+      JSON.stringify(finalResult),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
 

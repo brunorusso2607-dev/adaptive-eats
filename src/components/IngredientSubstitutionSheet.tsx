@@ -5,12 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, AlertTriangle } from "lucide-react";
+import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, AlertTriangle, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
-import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
+import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
+import { useSafeIngredientSuggestions } from "@/hooks/useSafeIngredientSuggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+
 interface IngredientSubstitutionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -86,7 +88,11 @@ export default function IngredientSubstitutionSheet({
   });
 
   const { checkConflict } = useIngredientConflictCheck(profile);
+  const { getSuggestions, getUserRestrictionLabels } = useSafeIngredientSuggestions(profile);
 
+  // Safe suggestions based on user restrictions
+  const [safeSuggestions, setSafeSuggestions] = useState<string[]>([]);
+  
   // Original ingredient data for comparison
   const [originalData, setOriginalData] = useState<IngredientResult | null>(null);
 
@@ -97,6 +103,7 @@ export default function IngredientSubstitutionSheet({
       setSearchQuery("");
       setSelectedIngredient(null);
       setOriginalData(null);
+      setSafeSuggestions([]);
       clearResults();
       
       // Then fetch original data if ingredient exists
@@ -106,15 +113,20 @@ export default function IngredientSubstitutionSheet({
             setOriginalData(results[0]);
           }
         });
+        
+        // Get safe suggestions based on user restrictions
+        const suggestions = getSuggestions(originalIngredient.item);
+        setSafeSuggestions(suggestions);
       }
     } else {
       // Clean up when closing
       setSearchQuery("");
       setSelectedIngredient(null);
       setOriginalData(null);
+      setSafeSuggestions([]);
       clearResults();
     }
-  }, [open, originalIngredient?.item]);
+  }, [open, originalIngredient?.item, getSuggestions]);
 
   useEffect(() => {
     if (debouncedQuery.length >= 2) {
@@ -154,6 +166,35 @@ export default function IngredientSubstitutionSheet({
             </span>
           </DialogDescription>
         </DialogHeader>
+
+        {/* Safe Suggestions */}
+        {safeSuggestions.length > 0 && searchQuery.length < 2 && (
+          <div className="px-6 pb-4 shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <ShieldCheck className="w-4 h-4 text-green-500" />
+              <span className="text-sm font-medium text-green-700 dark:text-green-400">
+                Sugestões seguras para você
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground mb-3">
+              Baseado nas suas restrições: {getUserRestrictionLabels().join(", ")}
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {safeSuggestions.map((suggestion) => (
+                <Button
+                  key={suggestion}
+                  variant="outline"
+                  size="sm"
+                  className="h-8 border-green-200 bg-green-50 hover:bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-950 dark:hover:bg-green-900 dark:text-green-300"
+                  onClick={() => setSearchQuery(suggestion)}
+                >
+                  <Sparkles className="w-3 h-3 mr-1" />
+                  {suggestion}
+                </Button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Search Input */}
         <div className="relative px-6 pb-4 shrink-0">

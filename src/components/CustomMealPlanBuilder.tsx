@@ -43,6 +43,7 @@ type DayPlan = {
   lunch: MealSlot | null;
   snack: MealSlot | null;
   dinner: MealSlot | null;
+  supper: MealSlot | null;
 };
 
 type SimpleMeal = {
@@ -65,8 +66,9 @@ type CustomMealPlanBuilderProps = {
 const MEAL_SLOTS = [
   { key: "breakfast" as const, label: "Café da Manhã", icon: "☕" },
   { key: "lunch" as const, label: "Almoço", icon: "🍽️" },
-  { key: "snack" as const, label: "Lanche", icon: "🍎" },
-  { key: "dinner" as const, label: "Jantar", icon: "🌙" }
+  { key: "snack" as const, label: "Lanche da Tarde", icon: "🍎" },
+  { key: "dinner" as const, label: "Jantar", icon: "🌙" },
+  { key: "supper" as const, label: "Ceia", icon: "🍵" }
 ];
 
 export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: CustomMealPlanBuilderProps) {
@@ -78,7 +80,8 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     breakfast: null,
     lunch: null,
     snack: null,
-    dinner: null
+    dinner: null,
+    supper: null
   });
   const [activeSlot, setActiveSlot] = useState<keyof DayPlan | null>(null);
   const [activeTab, setActiveTab] = useState("favorites");
@@ -151,7 +154,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   }, [dayPlan]);
 
   const filledSlots = Object.values(dayPlan).filter(Boolean).length;
-  const emptySlots = 4 - filledSlots;
+  const emptySlots = 5 - filledSlots;
 
   const handleSelectMeal = (meal: any, source: "favorite" | "simple") => {
     if (!activeSlot) return;
@@ -462,7 +465,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Macros Diários</span>
-            <Badge variant="secondary">{filledSlots}/4 refeições</Badge>
+            <Badge variant="secondary">{filledSlots}/5 refeições</Badge>
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
             <div>

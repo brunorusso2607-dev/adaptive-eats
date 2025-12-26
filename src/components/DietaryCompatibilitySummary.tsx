@@ -1,7 +1,9 @@
 import { useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
-import { CheckCircle2, AlertCircle, XCircle, ShieldCheck } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { CheckCircle2, AlertCircle, XCircle, ShieldCheck, RefreshCw, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Progress } from "@/components/ui/progress";
 
 type Compatibility = 'good' | 'moderate' | 'incompatible' | 'unknown';
 
@@ -17,12 +19,18 @@ type DietaryCompatibilitySummaryProps = {
   counts: CompatibilityCounts;
   isLoading?: boolean;
   hasProfile?: boolean;
+  onReplaceIncompatible?: () => void;
+  isReplacing?: boolean;
+  replaceProgress?: { current: number; total: number };
 };
 
 export function DietaryCompatibilitySummary({ 
   counts, 
   isLoading = false,
-  hasProfile = false 
+  hasProfile = false,
+  onReplaceIncompatible,
+  isReplacing = false,
+  replaceProgress = { current: 0, total: 0 }
 }: DietaryCompatibilitySummaryProps) {
   // Don't show if no dietary profile configured
   if (!hasProfile || counts.total === 0) {
@@ -35,6 +43,7 @@ export function DietaryCompatibilitySummary({
   }, [counts]);
 
   const hasIssues = counts.moderate > 0 || counts.incompatible > 0;
+  const hasIncompatible = counts.incompatible > 0;
 
   return (
     <Card className={cn(
@@ -115,14 +124,44 @@ export function DietaryCompatibilitySummary({
           </div>
         </div>
 
-        {/* Warning message if there are issues */}
+        {/* Warning message and Replace button */}
         {hasIssues && (
-          <p className="mt-2 text-[10px] sm:text-xs text-muted-foreground">
-            {counts.incompatible > 0 
-              ? `⚠️ ${counts.incompatible} refeição(ões) não são recomendadas para seu perfil.`
-              : `ℹ️ ${counts.moderate} refeição(ões) requerem atenção moderada.`
-            }
-          </p>
+          <div className="mt-3 space-y-2">
+            <p className="text-[10px] sm:text-xs text-muted-foreground">
+              {counts.incompatible > 0 
+                ? `⚠️ ${counts.incompatible} refeição(ões) não são recomendadas para seu perfil.`
+                : `ℹ️ ${counts.moderate} refeição(ões) requerem atenção moderada.`
+              }
+            </p>
+
+            {/* Replace button - only for incompatible meals */}
+            {hasIncompatible && onReplaceIncompatible && (
+              <>
+                {isReplacing ? (
+                  <div className="space-y-2">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      <span>Substituindo {replaceProgress.current}/{replaceProgress.total}...</span>
+                    </div>
+                    <Progress 
+                      value={replaceProgress.total > 0 ? (replaceProgress.current / replaceProgress.total) * 100 : 0} 
+                      className="h-1.5"
+                    />
+                  </div>
+                ) : (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={onReplaceIncompatible}
+                    className="w-full border-destructive/30 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  >
+                    <RefreshCw className="w-4 h-4 mr-2" />
+                    Substituir {counts.incompatible} refeição(ões) incompatível(eis)
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
         )}
       </CardContent>
     </Card>

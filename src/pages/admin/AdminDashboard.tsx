@@ -30,7 +30,8 @@ import {
   PanelLeft,
   X,
   Clock,
-  ToggleLeft
+  ToggleLeft,
+  ChefHat
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -59,6 +60,13 @@ type SubMenuItem = {
 };
 
 const mainMenuItems: SubMenuItem[] = [
+  {
+    label: "Conteúdo",
+    icon: ChefHat,
+    subItems: [
+      { path: "/admin/bulk-recipes", label: "Gerador de Receitas", icon: ChefHat },
+    ],
+  },
   {
     label: "Relatórios",
     icon: BarChart3,

@@ -30,7 +30,8 @@ import {
   PanelLeft,
   X,
   Clock,
-  ToggleLeft
+  ToggleLeft,
+  Utensils
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -94,6 +95,7 @@ const mainMenuItems: SubMenuItem[] = [
         icon: Plug,
         subItems: [
           { path: "/admin/gemini", label: "Gemini", icon: Sparkles },
+          { path: "/admin/spoonacular", label: "Spoonacular", icon: Utensils },
           { path: "/admin/plans", label: "Planos Stripe", icon: CreditCard },
           { path: "/admin/webhooks", label: "Webhooks", icon: Webhook },
         ],

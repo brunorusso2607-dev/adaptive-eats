@@ -6,7 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-const SPOONACULAR_API_KEY = Deno.env.get('SPOONACULAR_API_KEY');
 const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -15,15 +14,10 @@ const logStep = (step: string, data?: any) => {
   console.log(`[SPOONACULAR] ${step}`, data ? JSON.stringify(data) : '');
 };
 
-// Cuisines supported by Spoonacular
-const CUISINES = [
-  'italian', 'mexican', 'chinese', 'indian', 'japanese', 'thai',
-  'greek', 'mediterranean', 'korean', 'vietnamese', 'french',
-  'german', 'british', 'american', 'spanish', 'middle eastern'
-];
-
 // Map cuisine to country code
 const CUISINE_TO_COUNTRY: Record<string, string> = {
+  'brazilian': 'BR',
+  'latin american': 'BR',
   'italian': 'IT',
   'mexican': 'MX',
   'chinese': 'CN',
@@ -39,7 +33,8 @@ const CUISINE_TO_COUNTRY: Record<string, string> = {
   'british': 'GB',
   'american': 'US',
   'spanish': 'ES',
-  'middle eastern': 'SA'
+  'middle eastern': 'SA',
+  'caribbean': 'CU'
 };
 
 // Map meal type
@@ -74,8 +69,8 @@ interface SpoonacularRecipe {
   spoonacularScore?: number;
 }
 
-async function fetchSpoonacularRecipes(cuisine: string, count: number = 5): Promise<SpoonacularRecipe[]> {
-  const url = `https://api.spoonacular.com/recipes/complexSearch?cuisine=${cuisine}&number=${count}&addRecipeNutrition=true&addRecipeInformation=true&apiKey=${SPOONACULAR_API_KEY}`;
+async function fetchSpoonacularRecipes(apiKey: string, cuisine: string, count: number = 5): Promise<SpoonacularRecipe[]> {
+  const url = `https://api.spoonacular.com/recipes/complexSearch?cuisine=${cuisine}&number=${count}&addRecipeNutrition=true&addRecipeInformation=true&apiKey=${apiKey}`;
   
   logStep('Fetching from Spoonacular', { cuisine, count });
   
@@ -209,19 +204,26 @@ serve(async (req) => {
   }
 
   try {
-    if (!SPOONACULAR_API_KEY) {
-      throw new Error('SPOONACULAR_API_KEY not configured');
+    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+    
+    // Get config from database
+    const { data: config, error: configError } = await supabase
+      .from('spoonacular_config')
+      .select('*')
+      .single();
+
+    if (configError || !config?.api_key_encrypted) {
+      throw new Error('API key do Spoonacular não configurada');
     }
 
-    const { cuisine, count = 5, translateToPortuguese = true } = await req.json().catch(() => ({}));
+    const apiKey = config.api_key_encrypted;
     
-    // Select cuisine - random if not specified
-    const selectedCuisine = cuisine || CUISINES[Math.floor(Math.random() * CUISINES.length)];
+    const { cuisine, count = config.daily_limit || 15, translateToPortuguese = true } = await req.json().catch(() => ({}));
     
-    logStep('Starting fetch', { cuisine: selectedCuisine, count, translate: translateToPortuguese });
+    logStep('Starting fetch', { cuisine, count, translate: translateToPortuguese });
 
     // Fetch recipes from Spoonacular
-    const recipes = await fetchSpoonacularRecipes(selectedCuisine, count);
+    const recipes = await fetchSpoonacularRecipes(apiKey, cuisine, count);
     
     if (!recipes.length) {
       return new Response(JSON.stringify({ 
@@ -232,10 +234,9 @@ serve(async (req) => {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
-
-    const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     
     const importedMeals = [];
+    let failedCount = 0;
     
     for (const recipe of recipes) {
       try {
@@ -264,10 +265,11 @@ serve(async (req) => {
             }));
 
         const nutrients = recipe.nutrition?.nutrients || [];
+        const recipeCuisine = recipe.cuisines?.[0]?.toLowerCase() || cuisine;
         
         const mealData = {
           name: translatedName,
-          description: `Receita ${selectedCuisine} do Spoonacular`,
+          description: `Receita ${recipeCuisine} do Spoonacular`,
           meal_type: getMealType(recipe.dishTypes || []),
           compatible_meal_times: getCompatibleMealTimes(recipe.dishTypes || []),
           calories: getNutrient(nutrients, 'Calories'),
@@ -279,7 +281,7 @@ serve(async (req) => {
           image_url: recipe.image,
           source_url: recipe.sourceUrl,
           source_name: recipe.sourceName || 'Spoonacular',
-          country_code: CUISINE_TO_COUNTRY[selectedCuisine] || 'US',
+          country_code: CUISINE_TO_COUNTRY[recipeCuisine] || CUISINE_TO_COUNTRY[cuisine] || 'US',
           language_code: translateToPortuguese ? 'pt-BR' : 'en',
           rating: recipe.spoonacularScore ? (recipe.spoonacularScore / 20) : null, // Convert 0-100 to 0-5
           rating_count: 1,
@@ -295,6 +297,7 @@ serve(async (req) => {
 
         if (error) {
           logStep('Insert error', { error: error.message, recipe: recipe.title });
+          failedCount++;
         } else {
           importedMeals.push(inserted);
           logStep('Imported recipe', { name: translatedName });
@@ -304,13 +307,15 @@ serve(async (req) => {
           title: recipe.title, 
           error: recipeError?.message 
         });
+        failedCount++;
       }
     }
 
     return new Response(JSON.stringify({
       success: true,
-      cuisine: selectedCuisine,
+      cuisine,
       imported: importedMeals.length,
+      failed: failedCount,
       recipes: importedMeals.map(m => ({ id: m.id, name: m.name }))
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' }

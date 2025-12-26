@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -8,6 +8,7 @@ import { FavoriteButton } from "./FavoriteButton";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
 import { DietaryCompatibilitySummary } from "./DietaryCompatibilitySummary";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
+import { useReplaceIncompatibleMeals } from "@/hooks/useReplaceIncompatibleMeals";
 import {
   Select,
   SelectContent,
@@ -119,23 +120,36 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   // Dietary compatibility hook
   const { getCompatibility, hasProfile, isLoading: isLoadingCompatibility } = useDietaryCompatibility(userProfile?.dietary_preference);
 
-  // Calculate compatibility counts for all meals in the plan
-  const compatibilityCounts = useMemo(() => {
+  // Replace incompatible meals hook
+  const { replaceIncompatibleMeals, isReplacing, progress: replaceProgress } = useReplaceIncompatibleMeals();
+
+  // Calculate compatibility counts and incompatible meals list
+  const { compatibilityCounts, incompatibleMeals } = useMemo(() => {
     const counts = { good: 0, moderate: 0, incompatible: 0, unknown: 0, total: 0 };
+    const incompatible: MealPlanItem[] = [];
     
-    if (!hasProfile || !mealPlan.items) return counts;
+    if (!hasProfile || !mealPlan.items) return { compatibilityCounts: counts, incompatibleMeals: incompatible };
     
     mealPlan.items.forEach(meal => {
       const { compatibility } = getCompatibility(meal.recipe_name);
       counts.total++;
       if (compatibility === 'good') counts.good++;
       else if (compatibility === 'moderate') counts.moderate++;
-      else if (compatibility === 'incompatible') counts.incompatible++;
+      else if (compatibility === 'incompatible') {
+        counts.incompatible++;
+        incompatible.push(meal);
+      }
       else counts.unknown++;
     });
     
-    return counts;
+    return { compatibilityCounts: counts, incompatibleMeals: incompatible };
   }, [mealPlan.items, getCompatibility, hasProfile]);
+
+  // Handle replace incompatible meals
+  const handleReplaceIncompatible = useCallback(() => {
+    if (incompatibleMeals.length === 0) return;
+    replaceIncompatibleMeals(incompatibleMeals, onMealUpdated);
+  }, [incompatibleMeals, replaceIncompatibleMeals, onMealUpdated]);
 
   // Use the current month for dynamic weeks calculation
   const currentDate = new Date();
@@ -308,6 +322,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         counts={compatibilityCounts}
         isLoading={isLoadingCompatibility}
         hasProfile={hasProfile}
+        onReplaceIncompatible={handleReplaceIncompatible}
+        isReplacing={isReplacing}
+        replaceProgress={replaceProgress}
       />
 
       <div className="space-y-1.5">

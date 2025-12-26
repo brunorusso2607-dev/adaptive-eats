@@ -1538,6 +1538,25 @@ export function validateIngredient(
 ): { isValid: boolean; matchedForbidden: string | null } {
   const normalizedIngredient = normalizeText(ingredientName);
   
+  // Exceções para ingredientes que são substitutos seguros
+  const safeExceptions = [
+    "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+    "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+    "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
+    "creme de leite de coco", "iogurte de coco", "manteiga de coco"
+  ];
+  
+  // PRIMEIRO: Verifica se o ingrediente é uma exceção segura
+  const isSafeException = safeExceptions.some(safe => 
+    normalizedIngredient.includes(normalizeText(safe))
+  );
+  
+  // Se é uma exceção segura, é válido independentemente das palavras proibidas
+  if (isSafeException) {
+    return { isValid: true, matchedForbidden: null };
+  }
+  
+  // DEPOIS: Verifica se contém palavras proibidas
   for (const forbidden of forbiddenIngredients) {
     const normalizedForbidden = normalizeText(forbidden);
     
@@ -1546,19 +1565,10 @@ export function validateIngredient(
       return { isValid: false, matchedForbidden: forbidden };
     }
     
-    // Verifica se a palavra proibida contém o ingrediente (para casos como "leite" em "leite de coco")
+    // Verifica se a palavra proibida contém o ingrediente (match parcial reverso)
     // Mas só se o ingrediente tiver pelo menos 4 caracteres para evitar falsos positivos
     if (normalizedForbidden.includes(normalizedIngredient) && normalizedIngredient.length >= 4) {
-      // Exceção para ingredientes que são substitutos seguros
-      const safeExceptions = [
-        "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
-        "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
-        "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano"
-      ];
-      
-      if (!safeExceptions.some(safe => normalizedIngredient.includes(normalizeText(safe)))) {
-        return { isValid: false, matchedForbidden: forbidden };
-      }
+      return { isValid: false, matchedForbidden: forbidden };
     }
   }
   

@@ -16,7 +16,10 @@ import {
   UtensilsCrossed,
   Plus,
   X,
-  AlertTriangle
+  AlertTriangle,
+  Flame,
+  Leaf,
+  TrendingUp
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -25,7 +28,44 @@ import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
 import { useUserIntolerances } from "@/hooks/useUserIntolerances";
-import { useUserProfileContext } from "@/hooks/useUserProfileContext";
+import { useUserProfileContext, type RecipeStyle } from "@/hooks/useUserProfileContext";
+
+// Helper para obter configuração do badge de estilo
+const getRecipeStyleBadge = (calories: number, recipeStyle: RecipeStyle) => {
+  // Classificar a refeição com base nas calorias
+  let mealStyle: RecipeStyle;
+  if (calories <= 350) {
+    mealStyle = "fitness";
+  } else if (calories >= 500) {
+    mealStyle = "high_calorie";
+  } else {
+    mealStyle = "regular";
+  }
+
+  // Retornar configuração do badge
+  const configs: Record<RecipeStyle, { label: string; icon: typeof Flame; className: string } | null> = {
+    fitness: { 
+      label: "Fitness", 
+      icon: Flame, 
+      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" 
+    },
+    regular: null, // Não mostrar badge para regular
+    high_calorie: { 
+      label: "Alta Caloria", 
+      icon: TrendingUp, 
+      className: "bg-amber-500/10 text-amber-600 border-amber-500/30" 
+    }
+  };
+
+  // Mostrar badge apenas se a refeição combina com o objetivo do usuário
+  const isRecommended = mealStyle === recipeStyle;
+  
+  return {
+    config: configs[mealStyle],
+    isRecommended,
+    mealStyle
+  };
+};
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type MealSlot = {
@@ -403,6 +443,9 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                   
                   return sortedFavorites.map((fav) => {
                     const conflict = checkMealConflict(fav.name, Array.isArray(fav.ingredients) ? fav.ingredients : undefined);
+                    const styleBadge = getRecipeStyleBadge(fav.calories, recipeStyle);
+                    const StyleIcon = styleBadge.config?.icon;
+                    
                     return (
                       <Card
                         key={fav.id}
@@ -415,7 +458,23 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{fav.name}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-sm">{fav.name}</p>
+                                {styleBadge.config && StyleIcon && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0 gap-1",
+                                      styleBadge.config.className,
+                                      styleBadge.isRecommended && "ring-1 ring-primary/50"
+                                    )}
+                                  >
+                                    <StyleIcon className="w-2.5 h-2.5" />
+                                    {styleBadge.config.label}
+                                    {styleBadge.isRecommended && <Sparkles className="w-2 h-2" />}
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                 <span>{fav.calories} kcal</span>
                                 <span>•</span>
@@ -487,6 +546,9 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                   
                   return sortedMeals.map((meal) => {
                     const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
+                    const styleBadge = getRecipeStyleBadge(meal.calories, recipeStyle);
+                    const StyleIcon = styleBadge.config?.icon;
+                    
                     return (
                       <Card
                         key={meal.id}
@@ -499,7 +561,23 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                         <CardContent className="p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm">{meal.name}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium text-sm">{meal.name}</p>
+                                {styleBadge.config && StyleIcon && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={cn(
+                                      "text-[10px] px-1.5 py-0 gap-1",
+                                      styleBadge.config.className,
+                                      styleBadge.isRecommended && "ring-1 ring-primary/50"
+                                    )}
+                                  >
+                                    <StyleIcon className="w-2.5 h-2.5" />
+                                    {styleBadge.config.label}
+                                    {styleBadge.isRecommended && <Sparkles className="w-2 h-2" />}
+                                  </Badge>
+                                )}
+                              </div>
                               <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
                                 <span>{meal.calories} kcal</span>
                                 <span>•</span>

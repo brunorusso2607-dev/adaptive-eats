@@ -6,7 +6,9 @@ import {
   getIngredientPriority,
   buildGoalContextInstructions,
   FORBIDDEN_INGREDIENTS,
-  MEAL_TYPE_LABELS,
+  DIETARY_FORBIDDEN_INGREDIENTS,
+  DIETARY_LABELS,
+  INTOLERANCE_LABELS,
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
 
@@ -15,84 +17,343 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// ============================================
+// CONFIGURAÇÃO DE TIPOS DE REFEIÇÃO
+// ============================================
 const MEAL_TYPES = [
-  { key: 'cafe_manha', label: 'Café da manhã', calorieRange: [200, 450] },
-  { key: 'almoco', label: 'Almoço', calorieRange: [400, 700] },
-  { key: 'lanche', label: 'Lanche da tarde', calorieRange: [150, 350] },
-  { key: 'jantar', label: 'Jantar', calorieRange: [300, 550] },
-  { key: 'ceia', label: 'Ceia', calorieRange: [80, 200] },
+  { 
+    key: 'cafe_manha', 
+    label: 'Café da manhã', 
+    calorieRange: [200, 450],
+    proteinRange: [8, 25],
+    characteristics: 'Energia para começar o dia. Combina carboidratos, proteínas e frutas.'
+  },
+  { 
+    key: 'almoco', 
+    label: 'Almoço', 
+    calorieRange: [400, 700],
+    proteinRange: [25, 45],
+    characteristics: 'Refeição principal. Equilibrada com proteína, carboidrato e vegetais.'
+  },
+  { 
+    key: 'lanche', 
+    label: 'Lanche da tarde', 
+    calorieRange: [150, 350],
+    proteinRange: [5, 15],
+    characteristics: 'Leve e nutritivo. Mantém energia até o jantar.'
+  },
+  { 
+    key: 'jantar', 
+    label: 'Jantar', 
+    calorieRange: [300, 550],
+    proteinRange: [20, 35],
+    characteristics: 'Mais leve que o almoço. Favorece digestão noturna.'
+  },
+  { 
+    key: 'ceia', 
+    label: 'Ceia', 
+    calorieRange: [80, 200],
+    proteinRange: [5, 15],
+    characteristics: 'Muito leve. Favorece sono reparador.'
+  },
 ];
 
+// ============================================
+// CATEGORIAS ALINHADAS COM ONBOARDING
+// ============================================
 const RECIPE_CATEGORIES = [
-  'Tradicional regional',
-  'Fitness/Light',
-  'Reconfortante',
-  'Rápido e prático',
-  'Vegetariano',
-  'Rico em proteínas',
-  'Low carb',
-  'Comfort food',
+  // Preferências dietéticas
+  { key: 'comum', label: 'Tradicional/Comum', description: 'Receitas balanceadas sem restrições' },
+  { key: 'vegetariana', label: 'Vegetariana', description: 'Sem carnes, com ovos e laticínios' },
+  { key: 'vegana', label: 'Vegana', description: '100% vegetal, sem produtos de origem animal' },
+  { key: 'low_carb', label: 'Low Carb', description: 'Baixo carboidrato, prioriza proteínas' },
+  { key: 'pescetariana', label: 'Pescetariana', description: 'Peixes e frutos do mar, sem carnes' },
+  { key: 'cetogenica', label: 'Cetogênica/Keto', description: 'Ultra low carb, alta gordura' },
+  { key: 'flexitariana', label: 'Flexitariana', description: 'Majoritariamente vegetal' },
+  // Estilos de receitas
+  { key: 'fitness', label: 'Fitness/Light', description: 'Baixas calorias, alto valor nutricional' },
+  { key: 'proteica', label: 'Rica em Proteínas', description: 'Alto teor proteico para ganho muscular' },
+  { key: 'comfort', label: 'Comfort Food', description: 'Receitas reconfortantes e saborosas' },
+  { key: 'rapida', label: 'Rápida e Prática', description: 'Preparo em até 20 minutos' },
+  { key: 'regional', label: 'Regional Tradicional', description: 'Receitas típicas regionais' },
+  { key: 'kids', label: 'Modo Kids', description: 'Receitas para crianças' },
 ];
 
-// Build intolerance-aware instructions
+// ============================================
+// FUNÇÕES DE CONSTRUÇÃO DE RESTRIÇÕES
+// ============================================
+
 function buildIntoleranceInstructions(intolerances: string[] | null): string {
-  if (!intolerances || intolerances.length === 0) {
-    return "";
-  }
+  if (!intolerances || intolerances.length === 0) return "";
 
   const forbiddenList: string[] = [];
+  const labels: string[] = [];
+  
   for (const intolerance of intolerances) {
-    const forbidden = FORBIDDEN_INGREDIENTS[intolerance.toLowerCase()];
+    const key = intolerance.toLowerCase();
+    const forbidden = FORBIDDEN_INGREDIENTS[key];
     if (forbidden) {
       forbiddenList.push(...forbidden);
+    }
+    const label = INTOLERANCE_LABELS[key];
+    if (label) {
+      labels.push(label);
     }
   }
 
   if (forbiddenList.length === 0) return "";
 
   const uniqueForbidden = [...new Set(forbiddenList)];
+  
   return `
 
-⚠️ INGREDIENTES ABSOLUTAMENTE PROIBIDOS (intolerâncias do usuário):
-${uniqueForbidden.slice(0, 50).join(', ')}
+═══════════════════════════════════════════════════════════════
+⛔ RESTRIÇÕES ALIMENTARES CRÍTICAS - INTOLERÂNCIAS DO USUÁRIO
+═══════════════════════════════════════════════════════════════
 
-NUNCA inclua NENHUM destes ingredientes ou derivados nas receitas!
-Sempre use alternativas seguras.`;
+${labels.join('\n')}
+
+🚫 LISTA COMPLETA DE INGREDIENTES ABSOLUTAMENTE PROIBIDOS:
+${uniqueForbidden.slice(0, 80).join(', ')}
+
+⚠️ REGRA INVIOLÁVEL: NENHUM destes ingredientes ou seus derivados pode aparecer 
+em QUALQUER receita. Isso inclui:
+- Ingredientes diretos
+- Ingredientes como parte de molhos ou preparações
+- Traços ou contaminação cruzada
+- Nomes alternativos ou regionais dos mesmos ingredientes
+
+USE SEMPRE alternativas seguras e compatíveis.`;
 }
 
-// Build dietary preference instructions
-function buildDietaryInstructions(dietaryPreference: string | null): string {
-  if (!dietaryPreference) return "";
+function buildDietaryInstructions(category: any): string {
+  const categoryKey = typeof category === 'object' ? category.key : category;
+  
+  const dietaryKey = ['vegetariana', 'vegana', 'low_carb', 'pescetariana', 'cetogenica', 'flexitariana'].includes(categoryKey) 
+    ? categoryKey 
+    : null;
 
-  const instructions: Record<string, string> = {
+  if (!dietaryKey) return "";
+
+  const label = DIETARY_LABELS[dietaryKey];
+  const forbidden = DIETARY_FORBIDDEN_INGREDIENTS[dietaryKey] || [];
+
+  return `
+
+═══════════════════════════════════════════════════════════════
+🥗 PREFERÊNCIA ALIMENTAR: ${label?.toUpperCase()}
+═══════════════════════════════════════════════════════════════
+
+${getDietaryGuidelines(dietaryKey)}
+
+${forbidden.length > 0 ? `
+🚫 INGREDIENTES PROIBIDOS NESTA DIETA:
+${forbidden.slice(0, 50).join(', ')}
+` : ''}`;
+}
+
+function getDietaryGuidelines(dietaryKey: string): string {
+  const guidelines: Record<string, string> = {
     vegetariana: `
-🥗 PREFERÊNCIA: VEGETARIANA
-- SEM carne, frango, peixe ou frutos do mar
-- Pode incluir ovos e laticínios
-- Priorize proteínas vegetais: leguminosas, tofu, cogumelos`,
+✓ PERMITIDO:
+  - Ovos e todos os derivados (omelete, fritada, merengue)
+  - Laticínios completos (leite, queijo, iogurte, manteiga)
+  - Todas as leguminosas (feijão, lentilha, grão-de-bico)
+  - Proteínas vegetais (tofu, seitan, cogumelos)
+
+✗ PROIBIDO:
+  - Qualquer tipo de carne (bovina, suína, aves)
+  - Peixes e frutos do mar
+  - Gelatina (derivado animal)
+  - Caldos de carne ou frango`,
+
     vegana: `
-🌱 PREFERÊNCIA: VEGANA
-- SEM produtos de origem animal (carne, ovos, laticínios, mel)
-- Use proteínas vegetais: grão-de-bico, lentilha, tofu, seitan
-- Substitua laticínios por leites vegetais`,
+✓ PERMITIDO:
+  - Leguminosas (feijão, lentilha, grão-de-bico, ervilha)
+  - Proteínas vegetais (tofu, tempeh, seitan)
+  - Leites vegetais (aveia, coco, amêndoa, castanha)
+  - Nuts e sementes (castanhas, linhaça, chia)
+
+✗ ABSOLUTAMENTE PROIBIDO:
+  - Qualquer carne, peixe ou fruto do mar
+  - Ovos e derivados
+  - Leite e TODOS os laticínios
+  - Mel e derivados de abelha
+  - Gelatina, corantes de origem animal`,
+
     low_carb: `
-🥩 PREFERÊNCIA: LOW CARB
-- Minimize carboidratos (máx 30g por refeição)
-- Priorize proteínas e gorduras saudáveis
-- Evite arroz, pão, massa, batata, açúcar`,
+✓ PRIORIZAR (alto consumo):
+  - Proteínas: carnes, peixes, ovos, queijos
+  - Vegetais low carb: folhas, brócolis, abobrinha
+  - Gorduras boas: abacate, azeite, castanhas
+
+✓ CARBOIDRATOS POR REFEIÇÃO: máximo 30g
+
+✗ EVITAR/ELIMINAR:
+  - Açúcar e doces
+  - Pães, massas, arroz branco
+  - Batata e tubérculos amiláceos
+  - Frutas muito doces`,
+
     cetogenica: `
-🧈 PREFERÊNCIA: CETOGÊNICA
-- Ultra low carb (máx 20g por refeição)
-- Alta gordura, proteína moderada
-- Evite todos os carboidratos, incluindo frutas`,
+✓ PRIORIZAR (proporções keto):
+  - 70-80% gorduras: abacate, azeite, manteiga, bacon
+  - 20-25% proteínas: carnes, peixes, ovos
+  - 5-10% carboidratos: apenas vegetais fibrosos
+
+✓ CARBOIDRATOS POR REFEIÇÃO: máximo 10-15g
+
+✗ ABSOLUTAMENTE PROIBIDO:
+  - Qualquer açúcar ou adoçante calórico
+  - Grãos, arroz, pão, massa
+  - Leguminosas (feijão, lentilha)
+  - Frutas (exceto pequenas porções de berries)
+  - Tubérculos (batata, mandioca)`,
+
     pescetariana: `
-🐟 PREFERÊNCIA: PESCETARIANA
-- SEM carne vermelha ou frango
-- Pode incluir peixe e frutos do mar
-- Ovos e laticínios permitidos`,
+✓ PERMITIDO:
+  - Todos os peixes (salmão, tilápia, atum, etc.)
+  - Frutos do mar (camarão, lula, mexilhão)
+  - Ovos e laticínios
+  - Todas as proteínas vegetais
+
+✗ PROIBIDO:
+  - Carne bovina e suína
+  - Aves (frango, peru, pato)
+  - Embutidos de carne`,
+
+    flexitariana: `
+✓ PRIORIZAR:
+  - Base vegetal: leguminosas, vegetais, grãos
+  - Proteínas vegetais como fonte principal
+  - Carnes apenas ocasionalmente (1-2x semana)
+
+📝 DIRETRIZES:
+  - 70% das receitas devem ser vegetarianas
+  - Quando incluir carne, preferir cortes magros
+  - Valorizar ingredientes locais e sazonais`,
   };
 
-  return instructions[dietaryPreference] || "";
+  return guidelines[dietaryKey] || "";
+}
+
+function buildGoalInstructions(goal: string | null): string {
+  if (!goal) return "";
+
+  const instructions: Record<string, string> = {
+    emagrecer: `
+═══════════════════════════════════════════════════════════════
+🏃 OBJETIVO NUTRICIONAL: EMAGRECIMENTO
+═══════════════════════════════════════════════════════════════
+
+📊 ESTRATÉGIA NUTRICIONAL:
+  • Déficit calórico de 300-500 kcal
+  • Proteína elevada: 1.8-2.2g por kg de peso
+  • Fibras abundantes para saciedade
+  • Índice glicêmico baixo a moderado
+
+🎯 PRIORIZAR NAS RECEITAS:
+  • Vegetais volumosos (folhas, brócolis, abobrinha)
+  • Proteínas magras (frango, peixe, ovos, leguminosas)
+  • Preparações: grelhados, assados, cozidos, vapor
+  • Temperos naturais (ervas, especiarias, limão)
+
+⚠️ MINIMIZAR/EVITAR:
+  • Frituras e empanados
+  • Carboidratos refinados (pão branco, arroz branco)
+  • Açúcares adicionados
+  • Molhos cremosos e gordurosos`,
+
+    manter: `
+═══════════════════════════════════════════════════════════════
+⚖️ OBJETIVO NUTRICIONAL: MANUTENÇÃO DE PESO
+═══════════════════════════════════════════════════════════════
+
+📊 ESTRATÉGIA NUTRICIONAL:
+  • Calorias equilibradas conforme gasto energético
+  • Macros balanceados: 50% carb, 25% prot, 25% gord
+  • Variedade de grupos alimentares
+
+🎯 PRIORIZAR NAS RECEITAS:
+  • Equilíbrio entre todos os macronutrientes
+  • Carboidratos complexos (arroz, batata, grãos)
+  • Proteínas de qualidade
+  • Gorduras saudáveis com moderação`,
+
+    ganhar_peso: `
+═══════════════════════════════════════════════════════════════
+💪 OBJETIVO NUTRICIONAL: GANHO DE MASSA
+═══════════════════════════════════════════════════════════════
+
+📊 ESTRATÉGIA NUTRICIONAL:
+  • Superávit calórico de 300-500 kcal
+  • Proteína alta: 2.0-2.4g por kg de peso
+  • Carboidratos complexos abundantes
+  • Gorduras saudáveis
+
+🎯 PRIORIZAR NAS RECEITAS:
+  • Porções generosas e calóricas
+  • Proteínas de alto valor biológico
+  • Carboidratos densos (arroz, batata, massas)
+  • Adições calóricas: azeite, castanhas, abacate
+
+💡 DICAS PARA RECEITAS HIPERCALÓRICAS:
+  • Adicionar azeite ou manteiga nas finalizações
+  • Incluir nuts e sementes como toppings
+  • Usar molhos nutritivos e calóricos`,
+  };
+
+  return instructions[goal] || "";
+}
+
+function buildCategoryInstructions(category: any): string {
+  const categoryKey = typeof category === 'object' ? category.key : category;
+  
+  const categoryInstructions: Record<string, string> = {
+    fitness: `
+🏋️ ESTILO: FITNESS/LIGHT
+• Calorias reduzidas (parte inferior da faixa)
+• Alto teor proteico
+• Baixa gordura
+• Preparações limpas: grelhado, vapor, cru`,
+
+    proteica: `
+💪 ESTILO: RICA EM PROTEÍNAS
+• Proteína como protagonista (30%+ das calorias)
+• Fontes variadas: carnes magras, ovos, leguminosas
+• Ideal para pós-treino e ganho muscular`,
+
+    comfort: `
+🍲 ESTILO: COMFORT FOOD
+• Receitas aconchegantes e reconfortantes
+• Sabores robustos e nostálgicos
+• Texturas cremosas e satisfatórias
+• Pratos que remetem à comida caseira`,
+
+    rapida: `
+⚡ ESTILO: RÁPIDA E PRÁTICA
+• Tempo de preparo: máximo 20 minutos
+• Poucos ingredientes (até 6)
+• Técnicas simples
+• Ideal para dia a dia corrido`,
+
+    regional: `
+🗺️ ESTILO: REGIONAL TRADICIONAL
+• Autenticidade culinária local
+• Ingredientes típicos da região
+• Técnicas tradicionais de preparo
+• Sabores genuínos e autênticos`,
+
+    kids: `
+👶 ESTILO: MODO KIDS
+• Receitas atrativas para crianças
+• Sabores suaves e texturas agradáveis
+• Apresentação divertida
+• Nutrientes essenciais para crescimento
+• Evitar temperos fortes e picantes`,
+  };
+
+  return categoryInstructions[categoryKey] || "";
 }
 
 serve(async (req) => {
@@ -121,14 +382,19 @@ serve(async (req) => {
       goal = null,
     } = await req.json();
 
-    // Get country-specific configuration
+    // Get configurations
     const countryConfig = getCountryConfig(countryCode);
     const selectedMealType = MEAL_TYPES.find(m => m.key === mealType) || MEAL_TYPES[Math.floor(Math.random() * MEAL_TYPES.length)];
-    const selectedCategory = category || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)];
+    const selectedCategory = typeof category === 'string' 
+      ? RECIPE_CATEGORIES.find(c => c.key === category || c.label === category) || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)]
+      : category || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)];
     const mealExamples = getMealExamples(selectedMealType.key, countryCode);
     const ingredientPriority = getIngredientPriority(countryCode);
 
-    console.log(`[generate-simple-meals] Gerando ${quantity} receitas: ${selectedMealType.label} - ${selectedCategory} para ${countryConfig.name}`);
+    const categoryLabel = typeof selectedCategory === 'object' ? selectedCategory.label : selectedCategory;
+    const categoryDescription = typeof selectedCategory === 'object' ? selectedCategory.description : '';
+
+    console.log(`[generate-simple-meals] Gerando ${quantity} receitas: ${selectedMealType.label} - ${categoryLabel} para ${countryConfig.name}`);
 
     // Fetch existing recipes to avoid duplicates
     const { data: existingMeals } = await supabase
@@ -138,81 +404,159 @@ serve(async (req) => {
 
     const existingNames = existingMeals?.map(m => m.name.toLowerCase()) || [];
 
-    // Build profile for goal context
-    const mockProfile: UserProfile = {
-      id: 'system',
-      goal,
-      dietary_preference: dietaryPreference,
-      intolerances,
-      country: countryCode,
-    };
-
-    const goalInstructions = buildGoalContextInstructions(mockProfile);
+    // Build all instruction sections
     const intoleranceInstructions = buildIntoleranceInstructions(intolerances);
-    const dietaryInstructions = buildDietaryInstructions(dietaryPreference);
+    const dietaryInstructions = buildDietaryInstructions(selectedCategory);
+    const goalInstructions = buildGoalInstructions(goal);
+    const categoryStyleInstructions = buildCategoryInstructions(selectedCategory);
 
-    const systemPrompt = `Você é o MAIOR ESPECIALISTA MUNDIAL em culinária de ${countryConfig.name}.
+    // ============================================
+    // PROMPT DE NÍVEL HARVARD/GOOGLE
+    // ============================================
+    const systemPrompt = `
+╔══════════════════════════════════════════════════════════════════════════════╗
+║                    RECEIT.AI - CHEF MASTER INTELLIGENCE                      ║
+║            Sistema Avançado de Geração de Receitas Nutricionais              ║
+╚══════════════════════════════════════════════════════════════════════════════╝
 
-## SUA MISSÃO
-Criar receitas AUTÊNTICAS, SABOROSAS e NUTRITIVAS para ${countryConfig.name}.
+Você é o CHEF MASTER AI - um sistema de inteligência artificial de ponta, treinado 
+pelo melhor conhecimento culinário mundial, combinando:
 
-## CONHECIMENTO ENCICLOPÉDICO
-- Culinária típica de ${countryConfig.name}
-- Ingredientes locais e sazonais
-- Técnicas tradicionais de preparo
-- Valores nutricionais precisos
+🎓 FORMAÇÃO ACADÊMICA:
+  • Graduação em Gastronomia pela Le Cordon Bleu Paris
+  • Mestrado em Ciências da Nutrição por Harvard
+  • Doutorado em Food Science pelo MIT
+  • Certificação em Culinária Brasileira pelo SENAC
 
-## EXEMPLOS DE ${selectedMealType.label.toUpperCase()} EM ${countryConfig.name.toUpperCase()}:
-${mealExamples.join(', ')}
+👨‍🍳 EXPERIÊNCIA PROFISSIONAL:
+  • 20 anos como Chef Executivo em restaurantes estrelados Michelin
+  • Consultor culinário para Google, Apple e Meta
+  • Autor de 15 livros de receitas best-sellers
+  • Especialista em adaptação de receitas para restrições alimentares
 
-## INGREDIENTES
-${ingredientPriority}
+═══════════════════════════════════════════════════════════════════════════════
+📍 CONTEXTO GEOGRÁFICO: ${countryConfig.name.toUpperCase()}
+═══════════════════════════════════════════════════════════════════════════════
+
+🌍 ESPECIALIZAÇÃO REGIONAL:
+  • Idioma nativo: ${countryConfig.language}
+  • ${ingredientPriority}
+  • Conhecimento profundo da cultura gastronômica local
+  • Domínio de técnicas culinárias tradicionais e contemporâneas
+
+🍽️ EXEMPLOS AUTÊNTICOS DE ${selectedMealType.label.toUpperCase()}:
+  ${mealExamples.join(', ')}
+
+═══════════════════════════════════════════════════════════════════════════════
+🎯 MISSÃO: GERAR RECEITAS PARA "${selectedMealType.label.toUpperCase()}"
+═══════════════════════════════════════════════════════════════════════════════
+
+📋 CARACTERÍSTICAS DESTA REFEIÇÃO:
+  • ${selectedMealType.characteristics}
+  • Faixa calórica ideal: ${selectedMealType.calorieRange[0]}-${selectedMealType.calorieRange[1]} kcal
+  • Proteína recomendada: ${selectedMealType.proteinRange[0]}-${selectedMealType.proteinRange[1]}g
+
+📂 CATEGORIA SELECIONADA: ${categoryLabel}
+  ${categoryDescription}
+
+${categoryStyleInstructions}
 
 ${goalInstructions}
+
 ${dietaryInstructions}
+
 ${intoleranceInstructions}
 
-IMPORTANTE: 
-- Responda em ${countryConfig.language === 'pt-BR' ? 'Português Brasileiro' : countryConfig.language}
-- Responda APENAS com JSON válido, sem markdown
-- Valores nutricionais REALISTAS baseados em porções padrão`;
+═══════════════════════════════════════════════════════════════════════════════
+📊 PADRÕES DE QUALIDADE NUTRICIONAL
+═══════════════════════════════════════════════════════════════════════════════
 
-    const userPrompt = `Gere exatamente ${quantity} receitas DIFERENTES e AUTÊNTICAS de ${countryConfig.name} para ${selectedMealType.label}.
+✓ VALORES NUTRICIONAIS DEVEM SER:
+  • Baseados em porções reais e mensuráveis
+  • Calculados com precisão científica
+  • Coerentes com os ingredientes listados
+  • Dentro das faixas calóricas especificadas
 
-Categoria: ${selectedCategory}
-Faixa de calorias: ${selectedMealType.calorieRange[0]}-${selectedMealType.calorieRange[1]} kcal por porção
+✓ INGREDIENTES DEVEM SER:
+  • Acessíveis em supermercados de ${countryConfig.name}
+  • Listados com quantidades precisas (gramas, ml, unidades)
+  • Organizados na ordem de uso
+  • Entre 3 e 8 ingredientes por receita
 
-${existingNames.length > 0 ? `EVITE estas receitas já existentes: ${existingNames.slice(0, 30).join(', ')}` : ''}
+✓ CADA RECEITA DEVE TER:
+  • Nome criativo, apetitoso e autêntico
+  • Descrição que desperte o apetite (1 frase)
+  • Tempo de preparo realista
+  • Valores nutricionais precisos
 
-Retorne um JSON com esta estrutura EXATA:
+═══════════════════════════════════════════════════════════════════════════════
+⚙️ FORMATO DE SAÍDA
+═══════════════════════════════════════════════════════════════════════════════
+
+RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO.
+NÃO inclua markdown, comentários ou texto adicional.
+NÃO use \`\`\`json ou qualquer formatação.
+APENAS o JSON puro e válido.
+
+Idioma do conteúdo: ${countryConfig.language === 'pt-BR' ? 'Português Brasileiro' : countryConfig.language}
+`;
+
+    const userPrompt = `
+═══════════════════════════════════════════════════════════════════════════════
+📝 TAREFA: GERAR ${quantity} RECEITAS ÚNICAS
+═══════════════════════════════════════════════════════════════════════════════
+
+PARÂMETROS:
+  • Tipo de refeição: ${selectedMealType.label}
+  • Categoria: ${categoryLabel}
+  • Calorias por porção: ${selectedMealType.calorieRange[0]}-${selectedMealType.calorieRange[1]} kcal
+  • País: ${countryConfig.name}
+
+${existingNames.length > 0 ? `
+⚠️ RECEITAS JÁ EXISTENTES (NÃO REPETIR):
+${existingNames.slice(0, 40).join(', ')}
+` : ''}
+
+═══════════════════════════════════════════════════════════════════════════════
+📋 ESTRUTURA JSON OBRIGATÓRIA
+═══════════════════════════════════════════════════════════════════════════════
+
 {
   "recipes": [
     {
-      "name": "Nome da Receita (nome típico local)",
-      "description": "Descrição curta e apetitosa (1 frase)",
+      "name": "Nome Criativo da Receita",
+      "description": "Descrição curta e apetitosa que desperta o desejo de comer",
       "calories": 350,
       "protein": 25,
       "carbs": 30,
       "fat": 12,
       "prep_time": 20,
       "ingredients": [
-        {"name": "ingrediente 1", "quantity": "200g"},
-        {"name": "ingrediente 2", "quantity": "1 unidade"}
+        {"name": "ingrediente principal", "quantity": "200g"},
+        {"name": "segundo ingrediente", "quantity": "100g"},
+        {"name": "tempero", "quantity": "a gosto"}
       ],
       "compatible_meal_times": ["${selectedMealType.key}"]
     }
   ]
 }
 
-REGRAS:
-1. Receitas VARIADAS e ÚNICAS - não repita conceitos
-2. Nomes em ${countryConfig.language === 'pt-BR' ? 'português' : 'idioma local'}
-3. Ingredientes típicos e acessíveis em ${countryConfig.name}
-4. Valores nutricionais REALISTAS
-5. Tempo de preparo realista
-6. 3-8 ingredientes por receita`;
+═══════════════════════════════════════════════════════════════════════════════
+✅ CHECKLIST DE QUALIDADE (VERIFICAR ANTES DE RESPONDER)
+═══════════════════════════════════════════════════════════════════════════════
 
-    console.log(`[generate-simple-meals] Chamando API com country: ${countryCode}`);
+□ Todas as ${quantity} receitas são ÚNICAS e DIFERENTES entre si?
+□ Nenhuma receita repete conceito ou ingrediente principal de outra?
+□ Os valores nutricionais estão dentro da faixa especificada?
+□ Os ingredientes são acessíveis em ${countryConfig.name}?
+□ O tempo de preparo é realista para a complexidade?
+□ As descrições são apetitosas e envolventes?
+□ NENHUM ingrediente proibido foi incluído?
+□ O JSON está formatado corretamente sem erros de sintaxe?
+
+GERE AS ${quantity} RECEITAS AGORA:`;
+
+    console.log(`[generate-simple-meals] Chamando API com country: ${countryCode}, category: ${categoryLabel}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -226,7 +570,7 @@ REGRAS:
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt }
         ],
-        temperature: 0.9,
+        temperature: 0.85,
       }),
     });
 
@@ -272,6 +616,7 @@ REGRAS:
     }
 
     // Prepare data for insertion
+    const categoryKey = typeof selectedCategory === 'object' ? selectedCategory.key : selectedCategory;
     const mealsToInsert = recipes
       .filter(r => r.name && !existingNames.includes(r.name.toLowerCase()))
       .map((recipe, index) => ({
@@ -289,7 +634,7 @@ REGRAS:
         language_code: languageCode,
         is_active: true,
         ai_generated: true,
-        component_type: 'main',
+        component_type: categoryKey,
         sort_order: index,
       }));
 
@@ -314,13 +659,13 @@ REGRAS:
       throw new Error(`Erro ao salvar receitas: ${insertError.message}`);
     }
 
-    console.log(`[generate-simple-meals] Inseridas ${insertedData?.length || 0} receitas com sucesso`);
+    console.log(`[generate-simple-meals] ✅ Inseridas ${insertedData?.length || 0} receitas com sucesso`);
 
     return new Response(JSON.stringify({
       success: true,
       inserted: insertedData?.length || 0,
       mealType: selectedMealType.label,
-      category: selectedCategory,
+      category: categoryLabel,
       country: countryConfig.name,
       recipes: insertedData?.map(r => r.name) || [],
     }), {

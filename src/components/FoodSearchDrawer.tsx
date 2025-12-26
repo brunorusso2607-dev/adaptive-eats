@@ -3,13 +3,14 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Minus, X, Flame, Check, Loader2 } from "lucide-react";
+import { Search, Plus, Minus, X, Flame, Check, Loader2, Sparkles, PenLine } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
 import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import ManualFoodModal from "./ManualFoodModal";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -41,6 +42,17 @@ interface SelectedFood extends Food {
   quantity: number;
 }
 
+interface AISuggestion {
+  name: string;
+  portion_description: string;
+  portion_grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  confidence: "alta" | "média" | "baixa";
+}
+
 export default function FoodSearchDrawer({
   open,
   onOpenChange,
@@ -57,6 +69,14 @@ export default function FoodSearchDrawer({
     conflict: null,
   });
   const [isSaving, setIsSaving] = useState(false);
+  
+  // AI suggestions state
+  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
+  const [isLoadingAI, setIsLoadingAI] = useState(false);
+  const [showAISuggestions, setShowAISuggestions] = useState(false);
+  
+  // Manual food modal state
+  const [showManualModal, setShowManualModal] = useState(false);
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
   const { saveConsumption } = useMealConsumption();
@@ -99,8 +119,50 @@ export default function FoodSearchDrawer({
       setSearchQuery("");
       setSelectedFoods([]);
       clearFoods();
+      setAiSuggestions([]);
+      setShowAISuggestions(false);
     }
   }, [open, clearFoods]);
+
+  // Fetch AI suggestions when no results found
+  const fetchAISuggestions = useCallback(async (query: string) => {
+    if (!query || query.length < 2) return;
+    
+    setIsLoadingAI(true);
+    setShowAISuggestions(true);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke('suggest-food-ai', {
+        body: { query }
+      });
+
+      if (error) throw error;
+
+      if (data?.suggestions && data.suggestions.length > 0) {
+        setAiSuggestions(data.suggestions);
+      } else {
+        setAiSuggestions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching AI suggestions:", error);
+      setAiSuggestions([]);
+    } finally {
+      setIsLoadingAI(false);
+    }
+  }, []);
+
+  // Show AI suggestions when database has no results
+  useEffect(() => {
+    if (!isLoading && foods.length === 0 && searchQuery.length >= 2) {
+      const timer = setTimeout(() => {
+        fetchAISuggestions(searchQuery);
+      }, 500);
+      return () => clearTimeout(timer);
+    } else if (foods.length > 0 || searchQuery.length < 2) {
+      setShowAISuggestions(false);
+      setAiSuggestions([]);
+    }
+  }, [foods, isLoading, searchQuery, fetchAISuggestions]);
 
   const handleAddFood = useCallback((food: Food) => {
     // Check for conflicts
@@ -126,6 +188,84 @@ export default function FoodSearchDrawer({
     });
     setSearchQuery("");
     clearFoods();
+    setAiSuggestions([]);
+    setShowAISuggestions(false);
+  };
+
+  // Add AI suggestion as food (first save to database, then add to list)
+  const handleAddAISuggestion = async (suggestion: AISuggestion) => {
+    try {
+      const normalizedName = suggestion.name
+        .toLowerCase()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "");
+
+      // Check if already exists
+      const { data: existing } = await supabase
+        .from("foods")
+        .select("id, name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, sodium_per_100g, category, name_normalized")
+        .eq("name_normalized", normalizedName)
+        .maybeSingle();
+
+      let food: Food;
+
+      if (existing) {
+        food = existing as Food;
+      } else {
+        // Calculate per 100g if portion is different
+        const multiplier = 100 / suggestion.portion_grams;
+        
+        const { data: newFood, error } = await supabase
+          .from("foods")
+          .insert({
+            name: suggestion.name,
+            name_normalized: normalizedName,
+            calories_per_100g: Math.round(suggestion.calories * multiplier),
+            protein_per_100g: Math.round(suggestion.protein * multiplier * 10) / 10,
+            carbs_per_100g: Math.round(suggestion.carbs * multiplier * 10) / 10,
+            fat_per_100g: Math.round(suggestion.fat * multiplier * 10) / 10,
+            source: "ai_suggestion",
+            verified: false,
+            confidence: suggestion.confidence === "alta" ? 0.9 : suggestion.confidence === "média" ? 0.7 : 0.5,
+          })
+          .select()
+          .single();
+
+        if (error) throw error;
+        food = newFood as Food;
+        toast.success(`${suggestion.name} adicionado ao banco de dados!`);
+      }
+
+      // Add to selected list with portion size
+      setSelectedFoods((prev) => {
+        const existing = prev.find((f) => f.id === food.id);
+        if (existing) {
+          return prev.map((f) =>
+            f.id === food.id ? { ...f, quantity: f.quantity + suggestion.portion_grams } : f
+          );
+        }
+        return [...prev, { ...food, quantity: suggestion.portion_grams }];
+      });
+      
+      setSearchQuery("");
+      clearFoods();
+      setAiSuggestions([]);
+      setShowAISuggestions(false);
+    } catch (error) {
+      console.error("Error adding AI suggestion:", error);
+      toast.error("Erro ao adicionar alimento");
+    }
+  };
+
+  const handleManualFoodCreated = (food: { id: string; name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number }) => {
+    const fullFood: Food = {
+      ...food,
+      name_normalized: food.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
+      fiber_per_100g: null,
+      sodium_per_100g: null,
+      category: null,
+    };
+    addFoodToList(fullFood);
   };
 
   const handleConfirmConflict = () => {
@@ -216,6 +356,15 @@ export default function FoodSearchDrawer({
     }
   };
 
+  const getConfidenceBadge = (confidence: string) => {
+    const colors = {
+      alta: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
+      média: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
+      baixa: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+    };
+    return colors[confidence as keyof typeof colors] || colors.baixa;
+  };
+
   return (
     <>
       <Drawer open={open} onOpenChange={onOpenChange}>
@@ -239,9 +388,9 @@ export default function FoodSearchDrawer({
             </div>
             
             {/* Search results dropdown - positioned absolutely */}
-            {(isLoading || foods.length > 0) && (
+            {(isLoading || foods.length > 0 || showAISuggestions) && (
               <div 
-                className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-64 overflow-y-auto"
+                className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-80 overflow-y-auto"
                 style={{
                   WebkitOverflowScrolling: 'touch',
                   overscrollBehavior: 'contain',
@@ -270,7 +419,7 @@ export default function FoodSearchDrawer({
                     <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
                     Buscando...
                   </div>
-                ) : (
+                ) : foods.length > 0 ? (
                   <div className="p-2 space-y-1">
                     {foods.map((food) => (
                       <button
@@ -285,6 +434,70 @@ export default function FoodSearchDrawer({
                         <span className="text-xs text-muted-foreground">adicionar</span>
                       </button>
                     ))}
+                  </div>
+                ) : showAISuggestions && (
+                  <div className="p-2 space-y-2">
+                    {/* AI Header */}
+                    <div className="flex items-center gap-2 px-2 py-1 border-b">
+                      <Sparkles className="w-4 h-4 text-primary" />
+                      <span className="text-xs font-medium text-muted-foreground">
+                        Sugestões da IA
+                      </span>
+                    </div>
+
+                    {isLoadingAI ? (
+                      <div className="p-4 text-center text-muted-foreground text-sm">
+                        <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
+                        Identificando alimento...
+                      </div>
+                    ) : aiSuggestions.length > 0 ? (
+                      <>
+                        {aiSuggestions.map((suggestion, idx) => (
+                          <button
+                            key={idx}
+                            onClick={() => handleAddAISuggestion(suggestion)}
+                            className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Plus className="w-4 h-4 text-primary" />
+                                <span className="text-sm font-medium">{suggestion.name}</span>
+                              </div>
+                              <span className={cn("text-xs px-2 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
+                                {suggestion.confidence}
+                              </span>
+                            </div>
+                            <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6">
+                              <span>{suggestion.portion_description}</span>
+                              <span className="flex items-center gap-1">
+                                <Flame className="w-3 h-3 text-orange-500" />
+                                {suggestion.calories}kcal
+                              </span>
+                              <span>P: {suggestion.protein}g</span>
+                              <span>C: {suggestion.carbs}g</span>
+                              <span>G: {suggestion.fat}g</span>
+                            </div>
+                          </button>
+                        ))}
+                      </>
+                    ) : (
+                      <div className="p-3 text-center text-muted-foreground text-sm">
+                        Nenhuma sugestão encontrada
+                      </div>
+                    )}
+
+                    {/* Manual entry option */}
+                    <div className="border-t pt-2">
+                      <button
+                        onClick={() => setShowManualModal(true)}
+                        className="w-full flex items-center gap-2 p-3 hover:bg-muted rounded-md transition-colors text-left"
+                      >
+                        <PenLine className="w-4 h-4 text-muted-foreground" />
+                        <span className="text-sm text-muted-foreground">
+                          Cadastrar "{searchQuery}" manualmente
+                        </span>
+                      </button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -452,6 +665,14 @@ export default function FoodSearchDrawer({
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Manual Food Modal */}
+      <ManualFoodModal
+        open={showManualModal}
+        onOpenChange={setShowManualModal}
+        initialName={searchQuery}
+        onFoodCreated={handleManualFoodCreated}
+      />
     </>
   );
 }

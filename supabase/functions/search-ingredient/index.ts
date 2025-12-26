@@ -224,10 +224,11 @@ serve(async (req) => {
 
     const normalizedQuery = normalizeText(query);
     
-    // 1. Search in database - exact match
+    // 1. Search in database - exact match (exclude recipes)
     let { data: exactMatches } = await supabase
       .from('foods')
       .select('*')
+      .eq('is_recipe', false)
       .or(`name_normalized.ilike.%${normalizedQuery}%,aliases.cs.{${query}}`)
       .limit(limit);
 

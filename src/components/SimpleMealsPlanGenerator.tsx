@@ -50,16 +50,20 @@ type SimpleMealsPlanGeneratorProps = {
 const MEAL_TYPE_LABELS: Record<string, string> = {
   cafe_manha: "Café da Manhã",
   almoco: "Almoço",
-  lanche: "Lanche",
-  jantar: "Jantar"
+  lanche_tarde: "Lanche da Tarde",
+  jantar: "Jantar",
+  ceia: "Ceia"
 };
 
 const MEAL_TYPE_MAP: Record<string, keyof SelectedMeals> = {
   cafe_manha: "breakfast",
   almoco: "lunch",
-  lanche: "snack",
+  lanche_tarde: "snack",
   jantar: "dinner"
 };
+
+// Ordem de exibição
+const MEAL_TYPE_ORDER = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
 
 export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: SimpleMealsPlanGeneratorProps) {
   const [planName, setPlanName] = useState("");
@@ -140,6 +144,11 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     });
     return grouped;
   }, [simpleMeals]);
+
+  // Ordenar por MEAL_TYPE_ORDER
+  const sortedMealTypes = useMemo(() => {
+    return MEAL_TYPE_ORDER.filter(type => mealsByType[type]?.length > 0);
+  }, [mealsByType]);
 
   const totalMacros = useMemo(() => {
     let calories = 0, protein = 0, carbs = 0, fat = 0;
@@ -322,7 +331,8 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
       {/* Meal Selection */}
       <ScrollArea className="h-[calc(100vh-420px)]">
         <div className="space-y-3 pr-4">
-          {Object.entries(mealsByType).map(([mealType, meals]) => {
+          {sortedMealTypes.map((mealType) => {
+            const meals = mealsByType[mealType];
             const selectedKey = MEAL_TYPE_MAP[mealType];
             const selectedMeal = selectedKey ? selectedMeals[selectedKey] : null;
             const isExpanded = expandedType === mealType;

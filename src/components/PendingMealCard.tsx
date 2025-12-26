@@ -126,6 +126,7 @@ export default function PendingMealCard({
           isPastMeal={isPastMeal}
           onRefetch={onRefetch}
           onStreakRefresh={onStreakRefresh}
+          userDietaryPreference={userProfile?.dietary_preference}
         />
       </div>
     );
@@ -223,6 +224,7 @@ export default function PendingMealCard({
         isPastMeal={isPastMeal}
         onRefetch={onRefetch}
         onStreakRefresh={onStreakRefresh}
+        userDietaryPreference={userProfile?.dietary_preference}
       />
     </>
   );

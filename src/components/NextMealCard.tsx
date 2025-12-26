@@ -18,12 +18,14 @@ import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
 import { useNextMeal, getMealLabels, getMealTimeRanges, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
+import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
 import FoodSearchDrawer from "./FoodSearchDrawer";
 import MealDetailSheet from "./MealDetailSheet";
 import MealSubstanceBadges from "./MealSubstanceBadges";
+import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
 
 interface NextMealCardProps {
   userProfile?: {
@@ -60,6 +62,9 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
     skipMeal,
     refetch,
   } = useNextMeal();
+
+  // Dietary compatibility
+  const { getCompatibility, hasProfile } = useDietaryCompatibility(userProfile?.dietary_preference);
 
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
@@ -328,6 +333,22 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
                 ingredients={nextMeal.recipe_ingredients} 
                 userProfile={userProfile}
               />
+              {/* Dietary Compatibility Badge */}
+              {hasProfile && (() => {
+                const compat = getCompatibility(nextMeal.recipe_name);
+                if (compat.compatibility !== 'unknown') {
+                  return (
+                    <div className="mt-1">
+                      <DietaryCompatibilityBadge 
+                        compatibility={compat.compatibility}
+                        notes={compat.notes}
+                        showLabel={true}
+                      />
+                    </div>
+                  );
+                }
+                return null;
+              })()}
               {mealStatus === "upcoming" && minutesUntilStart > 0 && (
                 <span className="text-[10px] bg-blue-500/20 text-blue-600 dark:text-blue-400 px-1.5 py-0.5 rounded-full inline-flex items-center gap-1 mt-1">
                   <Timer className="w-3 h-3" />
@@ -472,6 +493,7 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
         meal={nextMeal}
         isFutureMeal={isFutureMeal}
         onRefetch={refetch}
+        userDietaryPreference={userProfile?.dietary_preference}
       />
     </Card>
   );

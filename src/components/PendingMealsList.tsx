@@ -292,6 +292,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
         onOpenChange={setIsRecipeSheetOpen}
         meal={nextMeal}
         isFutureMeal={!showButtons}
+        userDietaryPreference={userProfile?.dietary_preference}
       />
     </div>
   );

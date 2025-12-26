@@ -6,6 +6,44 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Whitelist de categorias que são INGREDIENTES PUROS (não pratos prontos)
+const ALLOWED_INGREDIENT_CATEGORIES = [
+  'carnes',
+  'legumes',
+  'verduras',
+  'frutas',
+  'temperos',
+  'laticinios',
+  'graos',
+  'farinhas',
+  'oleos',
+  'ovos',
+  'cogumelos',
+  'frutos do mar',
+  'castanhas',
+  'frutas secas',
+  'bebidas vegetais',
+  'adocantes',
+  'conservas',
+  'cereais',
+  'peixes',
+  'aves',
+  'suplementos',
+  'ervas',
+  'especiarias',
+  'sementes',
+  'leguminosas',
+  'tuberculos',
+  'raizes',
+  'folhas',
+  'brotos',
+  'queijos',
+  'manteigas',
+  'cremes',
+  'leites',
+  'iogurtes',
+];
+
 const logStep = (step: string, details?: any) => {
   console.log(`[SEARCH-INGREDIENT] ${step}`, details ? JSON.stringify(details) : '');
 };
@@ -250,13 +288,30 @@ serve(async (req) => {
 
     const normalizedQuery = normalizeText(query);
     
-    // 1. Search in database - exact match (exclude recipes)
+    // 1. Search in database - exact match (exclude recipes AND filter by allowed categories)
     let { data: exactMatches } = await supabase
       .from('foods')
       .select('*')
       .eq('is_recipe', false)
+      .in('category', ALLOWED_INGREDIENT_CATEGORIES)
       .or(`name_normalized.ilike.%${normalizedQuery}%,aliases.cs.{${query}}`)
       .limit(limit);
+    
+    // If no results with category filter, try without category (for items without category set)
+    if (!exactMatches || exactMatches.length === 0) {
+      const { data: noCategory } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('is_recipe', false)
+        .is('category', null)
+        .or(`name_normalized.ilike.%${normalizedQuery}%,aliases.cs.{${query}}`)
+        .limit(limit);
+      
+      if (noCategory && noCategory.length > 0) {
+        exactMatches = noCategory;
+        logStep('Found items without category', { count: noCategory.length });
+      }
+    }
 
     if (exactMatches && exactMatches.length > 0) {
       logStep('Found in database', { count: exactMatches.length, source: 'database' });
@@ -294,17 +349,22 @@ serve(async (req) => {
       );
     }
 
-    // 2. Search in aliases table
+    // 2. Search in aliases table (filter by allowed categories)
     const { data: aliasMatches } = await supabase
       .from('ingredient_aliases')
       .select('food_id, alias, foods(*)')
       .ilike('alias', `%${normalizedQuery}%`)
-      .limit(limit);
+      .limit(limit * 2); // Get more to filter
 
     if (aliasMatches && aliasMatches.length > 0) {
+      // Filter foods by allowed categories
       const foods = aliasMatches
-        .filter(a => a.foods)
-        .map(a => a.foods);
+        .filter(a => a.foods && (
+          ALLOWED_INGREDIENT_CATEGORIES.includes((a.foods as any).category) || 
+          (a.foods as any).category === null
+        ))
+        .map(a => a.foods)
+        .slice(0, limit);
 
       if (foods.length > 0) {
         logStep('Found via aliases', { count: foods.length, source: 'aliases' });

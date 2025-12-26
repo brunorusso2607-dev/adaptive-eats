@@ -5,7 +5,9 @@ import {
   buildRegenerateMealPrompt,
   calculateMacroTargets,
   MEAL_TYPE_LABELS,
+  validateMealPlan,
   type UserProfile,
+  type RecipeValidationSummary,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 
@@ -463,6 +465,74 @@ serve(async (req) => {
 
     logStep("Meal plan validated and completed");
 
+    // ========================================
+    // VALIDAÇÃO PÓS-GERAÇÃO - VERIFICAR INGREDIENTES
+    // ========================================
+    const validationSummary: RecipeValidationSummary = validateMealPlan(mealPlanData, profile as UserProfile);
+    
+    logStep("Post-generation validation complete", {
+      totalMeals: validationSummary.totalMeals,
+      validMeals: validationSummary.validMeals,
+      invalidMeals: validationSummary.invalidMeals,
+      issues: validationSummary.issues.length > 0 
+        ? validationSummary.issues.map(i => `${i.recipeName}: ${i.invalidIngredients.join(", ")}`)
+        : "none"
+    });
+
+    // Se houver receitas inválidas, tenta regenerá-las
+    if (validationSummary.issues.length > 0) {
+      logStep("Attempting to regenerate invalid meals", { count: validationSummary.issues.length });
+      
+      for (const issue of validationSummary.issues) {
+        // Encontra o dia e a refeição correspondente
+        const day = mealPlanData.days[issue.dayIndex];
+        if (!day) continue;
+        
+        const mealIndex = day.meals.findIndex((m: any) => 
+          m.meal_type === issue.mealType && m.recipe_name === issue.recipeName
+        );
+        
+        if (mealIndex === -1) continue;
+        
+        // Regenera a refeição
+        const caloriesPerMeal: Record<string, number> = {
+          cafe_manha: Math.round(macros.dailyCalories * 0.25),
+          almoco: Math.round(macros.dailyCalories * 0.30),
+          lanche: Math.round(macros.dailyCalories * 0.15),
+          jantar: Math.round(macros.dailyCalories * 0.25),
+          ceia: Math.round(macros.dailyCalories * 0.05),
+        };
+        
+        const newMeal = await generateSingleMeal(
+          profile as UserProfile,
+          issue.mealType,
+          caloriesPerMeal[issue.mealType] || 400,
+          GOOGLE_AI_API_KEY
+        );
+        
+        if (newMeal) {
+          day.meals[mealIndex] = newMeal;
+          logStep("Regenerated invalid meal", { 
+            dayIndex: issue.dayIndex, 
+            mealType: issue.mealType,
+            oldRecipe: issue.recipeName,
+            newRecipe: newMeal.recipe_name 
+          });
+        }
+        
+        // Delay entre regenerações
+        await wait(1500);
+      }
+      
+      // Revalidar após regeneração
+      const finalValidation = validateMealPlan(mealPlanData, profile as UserProfile);
+      logStep("Final validation after regeneration", {
+        validMeals: finalValidation.validMeals,
+        invalidMeals: finalValidation.invalidMeals,
+        remainingIssues: finalValidation.issues.length
+      });
+    }
+
     // Calculate dates
     const start = startDate ? new Date(startDate) : new Date();
     const endDate = new Date(start);
@@ -554,12 +624,21 @@ serve(async (req) => {
     if (itemsError) throw new Error(`Error creating meal plan items: ${itemsError.message}`);
     logStep("Meal plan items created", { count: items.length });
 
+    // Validação final para incluir na resposta
+    const finalValidationResult = validateMealPlan(mealPlanData, profile as UserProfile);
+
     return new Response(JSON.stringify({
       success: true,
       mealPlan: {
         id: mealPlanIdToUse,
         ...mealPlan,
         items: items
+      },
+      validation: {
+        totalMeals: finalValidationResult.totalMeals,
+        validMeals: finalValidationResult.validMeals,
+        invalidMeals: finalValidationResult.invalidMeals,
+        issues: finalValidationResult.issues
       }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },

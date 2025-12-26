@@ -64,12 +64,21 @@ type CustomMealPlanBuilderProps = {
 };
 
 const MEAL_SLOTS = [
-  { key: "breakfast" as const, label: "Café da Manhã", icon: "☕" },
-  { key: "lunch" as const, label: "Almoço", icon: "🍽️" },
-  { key: "snack" as const, label: "Lanche da Tarde", icon: "🍎" },
-  { key: "dinner" as const, label: "Jantar", icon: "🌙" },
-  { key: "supper" as const, label: "Ceia", icon: "🍵" }
+  { key: "breakfast" as const, label: "Café da Manhã", icon: "☕", mealType: "cafe_manha" },
+  { key: "lunch" as const, label: "Almoço", icon: "🍽️", mealType: "almoco" },
+  { key: "snack" as const, label: "Lanche da Tarde", icon: "🍎", mealType: "lanche_tarde" },
+  { key: "dinner" as const, label: "Jantar", icon: "🌙", mealType: "jantar" },
+  { key: "supper" as const, label: "Ceia", icon: "🍵", mealType: "ceia" }
 ];
+
+// Mapeamento de slot para meal_type do banco
+const SLOT_TO_MEAL_TYPE: Record<keyof DayPlan, string> = {
+  breakfast: "cafe_manha",
+  lunch: "almoco",
+  snack: "lanche_tarde",
+  dinner: "jantar",
+  supper: "ceia"
+};
 
 export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: CustomMealPlanBuilderProps) {
   const [planName, setPlanName] = useState("");
@@ -392,27 +401,43 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
           <TabsContent value="simple" className="mt-4">
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="space-y-2 pr-4">
-                {simpleMeals.map((meal) => (
-                  <Card
-                    key={meal.id}
-                    className="glass-card cursor-pointer hover:bg-muted/50 transition-colors"
-                    onClick={() => handleSelectMeal(meal, "simple")}
-                  >
-                    <CardContent className="p-3">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <p className="font-medium text-sm">{meal.name}</p>
-                          <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                            <span>{meal.calories} kcal</span>
-                            <span>•</span>
-                            <span>{meal.prep_time} min</span>
-                          </div>
-                        </div>
-                        <Plus className="w-5 h-5 text-primary" />
+                {(() => {
+                  const filteredMeals = activeSlot 
+                    ? simpleMeals.filter(meal => meal.meal_type === SLOT_TO_MEAL_TYPE[activeSlot])
+                    : simpleMeals;
+                  
+                  if (filteredMeals.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <UtensilsCrossed className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p>Nenhuma refeição disponível</p>
+                        <p className="text-xs">Não há opções cadastradas para este horário</p>
                       </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                    );
+                  }
+                  
+                  return filteredMeals.map((meal) => (
+                    <Card
+                      key={meal.id}
+                      className="glass-card cursor-pointer hover:bg-muted/50 transition-colors"
+                      onClick={() => handleSelectMeal(meal, "simple")}
+                    >
+                      <CardContent className="p-3">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-medium text-sm">{meal.name}</p>
+                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                              <span>{meal.calories} kcal</span>
+                              <span>•</span>
+                              <span>{meal.prep_time} min</span>
+                            </div>
+                          </div>
+                          <Plus className="w-5 h-5 text-primary" />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ));
+                })()}
               </div>
             </ScrollArea>
           </TabsContent>

@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, ChefHat, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, Globe } from "lucide-react";
+import { ArrowLeft, ChefHat, Play, Loader2, CheckCircle, AlertCircle, RefreshCw, Globe, Settings2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -8,32 +8,34 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 const MEAL_TYPES = [
-  { key: 'cafe_manha', label: 'Café da manhã' },
-  { key: 'almoco', label: 'Almoço' },
-  { key: 'lanche', label: 'Lanche' },
-  { key: 'jantar', label: 'Jantar' },
-  { key: 'ceia', label: 'Ceia' },
+  { key: 'cafe_manha', label: 'Café da manhã', emoji: '🌅' },
+  { key: 'almoco', label: 'Almoço', emoji: '🍽️' },
+  { key: 'lanche', label: 'Lanche', emoji: '🥪' },
+  { key: 'jantar', label: 'Jantar', emoji: '🌙' },
+  { key: 'ceia', label: 'Ceia', emoji: '🌜' },
 ];
 
 // Categorias alinhadas com onboarding
 const CATEGORIES = [
-  { key: 'comum', label: 'Tradicional/Comum' },
-  { key: 'vegetariana', label: 'Vegetariana' },
-  { key: 'vegana', label: 'Vegana' },
-  { key: 'low_carb', label: 'Low Carb' },
-  { key: 'pescetariana', label: 'Pescetariana' },
-  { key: 'cetogenica', label: 'Cetogênica/Keto' },
-  { key: 'flexitariana', label: 'Flexitariana' },
-  { key: 'fitness', label: 'Fitness/Light' },
-  { key: 'proteica', label: 'Rica em Proteínas' },
-  { key: 'comfort', label: 'Comfort Food' },
-  { key: 'rapida', label: 'Rápida e Prática' },
-  { key: 'regional', label: 'Regional Tradicional' },
-  { key: 'kids', label: 'Modo Kids' },
+  { key: 'comum', label: 'Tradicional/Comum', emoji: '🍳' },
+  { key: 'vegetariana', label: 'Vegetariana', emoji: '🥗' },
+  { key: 'vegana', label: 'Vegana', emoji: '🌱' },
+  { key: 'low_carb', label: 'Low Carb', emoji: '🥩' },
+  { key: 'pescetariana', label: 'Pescetariana', emoji: '🐟' },
+  { key: 'cetogenica', label: 'Cetogênica/Keto', emoji: '🥑' },
+  { key: 'flexitariana', label: 'Flexitariana', emoji: '🥦' },
+  { key: 'fitness', label: 'Fitness/Light', emoji: '💪' },
+  { key: 'proteica', label: 'Rica em Proteínas', emoji: '🍗' },
+  { key: 'comfort', label: 'Comfort Food', emoji: '🍲' },
+  { key: 'rapida', label: 'Rápida e Prática', emoji: '⚡' },
+  { key: 'regional', label: 'Regional Tradicional', emoji: '🏠' },
+  { key: 'kids', label: 'Modo Kids', emoji: '👶' },
 ];
 
 // Países configurados no sistema
@@ -67,6 +69,12 @@ interface GenerationLog {
   error?: string;
 }
 
+interface DistributionPreview {
+  mealType: string;
+  category: string;
+  quantity: number;
+}
+
 export default function AdminBulkRecipes() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
@@ -75,7 +83,13 @@ export default function AdminBulkRecipes() {
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedCountry, setSelectedCountry] = useState<string>('BR');
   const [batchSize, setBatchSize] = useState(10);
-  const [targetTotal, setTargetTotal] = useState(500);
+  
+  // Novo estado para abordagem híbrida
+  const [totalRecipes, setTotalRecipes] = useState(100);
+  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>(MEAL_TYPES.map(t => t.key));
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(['comum', 'vegetariana', 'fitness']);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  
   const [logs, setLogs] = useState<GenerationLog[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
@@ -115,7 +129,57 @@ export default function AdminBulkRecipes() {
     }
   };
 
-  const generateBatch = async (mealType: string, category: string) => {
+  // Calcular distribuição automática
+  const calculateDistribution = (): DistributionPreview[] => {
+    if (selectedMealTypes.length === 0 || selectedCategories.length === 0) return [];
+    
+    const totalCombinations = selectedMealTypes.length * selectedCategories.length;
+    const recipesPerCombination = Math.floor(totalRecipes / totalCombinations);
+    const remainder = totalRecipes % totalCombinations;
+    
+    const distribution: DistributionPreview[] = [];
+    let distributed = 0;
+    
+    selectedMealTypes.forEach((mealType, typeIndex) => {
+      selectedCategories.forEach((category, catIndex) => {
+        const index = typeIndex * selectedCategories.length + catIndex;
+        const extra = index < remainder ? 1 : 0;
+        const quantity = recipesPerCombination + extra;
+        
+        if (quantity > 0) {
+          distribution.push({ mealType, category, quantity });
+          distributed += quantity;
+        }
+      });
+    });
+    
+    return distribution;
+  };
+
+  const distribution = calculateDistribution();
+
+  const toggleMealType = (key: string) => {
+    setSelectedMealTypes(prev => 
+      prev.includes(key) 
+        ? prev.filter(t => t !== key)
+        : [...prev, key]
+    );
+  };
+
+  const toggleCategory = (key: string) => {
+    setSelectedCategories(prev => 
+      prev.includes(key) 
+        ? prev.filter(c => c !== key)
+        : [...prev, key]
+    );
+  };
+
+  const selectAllMealTypes = () => setSelectedMealTypes(MEAL_TYPES.map(t => t.key));
+  const deselectAllMealTypes = () => setSelectedMealTypes([]);
+  const selectAllCategories = () => setSelectedCategories(CATEGORIES.map(c => c.key));
+  const deselectAllCategories = () => setSelectedCategories([]);
+
+  const generateBatch = async (mealType: string, category: string, quantity: number) => {
     const logId = `${mealType}-${category}-${selectedCountry}-${Date.now()}`;
     
     setLogs(prev => [...prev, {
@@ -132,7 +196,7 @@ export default function AdminBulkRecipes() {
         body: {
           mealType,
           category,
-          quantity: batchSize,
+          quantity,
           countryCode: selectedCountry,
           languageCode: selectedCountryData.language,
         },
@@ -165,7 +229,7 @@ export default function AdminBulkRecipes() {
     }
 
     setIsGenerating(true);
-    const inserted = await generateBatch(selectedMealType, selectedCategory);
+    const inserted = await generateBatch(selectedMealType, selectedCategory, batchSize);
     setIsGenerating(false);
 
     if (inserted > 0) {
@@ -176,38 +240,43 @@ export default function AdminBulkRecipes() {
     }
   };
 
-  const handleBulkGenerate = async () => {
+  const handleHybridGenerate = async () => {
+    if (distribution.length === 0) {
+      toast.error('Selecione pelo menos um tipo de refeição e uma categoria');
+      return;
+    }
+
     setIsGenerating(true);
     setLogs([]);
     
     let totalInserted = 0;
-    const jobs: { mealType: string; category: string }[] = [];
-
-    // Criar jobs para todas as combinações
-    for (const mealType of MEAL_TYPES) {
-      for (const category of CATEGORIES) {
-        jobs.push({ mealType: mealType.key, category: category.key });
-      }
-    }
 
     // Embaralhar para variedade
-    const shuffledJobs = jobs.sort(() => Math.random() - 0.5);
+    const shuffledDistribution = [...distribution].sort(() => Math.random() - 0.5);
     
-    // Calcular quantos batches precisamos
-    const remaining = Math.max(0, targetTotal - stats.total);
-    const batchesNeeded = Math.ceil(remaining / batchSize);
-    const jobsToRun = shuffledJobs.slice(0, batchesNeeded);
+    setProgress({ current: 0, total: shuffledDistribution.length });
 
-    setProgress({ current: 0, total: jobsToRun.length });
+    for (let i = 0; i < shuffledDistribution.length; i++) {
+      const job = shuffledDistribution[i];
+      
+      // Dividir em lotes menores se necessário
+      let remaining = job.quantity;
+      while (remaining > 0) {
+        const batchQuantity = Math.min(remaining, batchSize);
+        const inserted = await generateBatch(job.mealType, job.category, batchQuantity);
+        totalInserted += inserted;
+        remaining -= batchQuantity;
+        
+        // Pequena pausa para evitar rate limit
+        if (remaining > 0) {
+          await new Promise(resolve => setTimeout(resolve, 1500));
+        }
+      }
+      
+      setProgress({ current: i + 1, total: shuffledDistribution.length });
 
-    for (let i = 0; i < jobsToRun.length; i++) {
-      const job = jobsToRun[i];
-      const inserted = await generateBatch(job.mealType, job.category);
-      totalInserted += inserted;
-      setProgress({ current: i + 1, total: jobsToRun.length });
-
-      // Pequena pausa para evitar rate limit
-      if (i < jobsToRun.length - 1) {
+      // Pausa entre combinações
+      if (i < shuffledDistribution.length - 1) {
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
     }
@@ -217,8 +286,8 @@ export default function AdminBulkRecipes() {
     fetchStats();
   };
 
-  const remaining = Math.max(0, targetTotal - stats.total);
-  const progressPercent = stats.total > 0 ? Math.min(100, (stats.total / targetTotal) * 100) : 0;
+  const getMealTypeLabel = (key: string) => MEAL_TYPES.find(t => t.key === key)?.label || key;
+  const getCategoryLabel = (key: string) => CATEGORIES.find(c => c.key === key)?.label || key;
 
   return (
     <div className="min-h-screen bg-background">
@@ -249,7 +318,6 @@ export default function AdminBulkRecipes() {
                     </SelectValue>
                   </SelectTrigger>
                   <SelectContent>
-                    {/* Agrupar por região */}
                     {['América do Sul', 'América do Norte', 'Europa', 'Ásia'].map(region => (
                       <div key={region}>
                         <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
@@ -287,10 +355,9 @@ export default function AdminBulkRecipes() {
             <div className="flex items-center justify-between">
               <span className="text-muted-foreground">Total de receitas:</span>
               <Badge variant="secondary" className="text-lg px-3 py-1">
-                {stats.total} / {targetTotal}
+                {stats.total}
               </Badge>
             </div>
-            <Progress value={progressPercent} className="h-3" />
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
               {MEAL_TYPES.map(type => (
@@ -303,137 +370,271 @@ export default function AdminBulkRecipes() {
           </CardContent>
         </Card>
 
-        {/* Single Generation */}
-        <Card>
+        {/* Hybrid Generation - Nova Abordagem */}
+        <Card className="border-2 border-primary/50">
           <CardHeader>
-            <CardTitle>Geração Única</CardTitle>
-            <CardDescription>Gere um lote de receitas para tipo e categoria específicos</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="space-y-2">
-                <Label>Tipo de Refeição</Label>
-                <Select value={selectedMealType} onValueChange={setSelectedMealType}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEAL_TYPES.map(type => (
-                      <SelectItem key={type.key} value={type.key}>{type.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div className="space-y-2">
-                <Label>Categoria</Label>
-                <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {CATEGORIES.map(cat => (
-                      <SelectItem key={cat.key} value={cat.key}>{cat.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label>Quantidade por lote</Label>
-                <Input 
-                  type="number" 
-                  value={batchSize} 
-                  onChange={e => setBatchSize(Number(e.target.value))}
-                  min={1}
-                  max={20}
-                />
-              </div>
-            </div>
-
-            <Button 
-              onClick={handleGenerateSingle} 
-              disabled={isGenerating || !selectedMealType || !selectedCategory}
-              className="w-full"
-            >
-              {isGenerating ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Gerando...
-                </>
-              ) : (
-                <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Gerar {batchSize} Receitas
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-
-        {/* Bulk Generation */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Geração em Massa</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <ChefHat className="h-5 w-5 text-primary" />
+              Geração Inteligente
+            </CardTitle>
             <CardDescription>
-              Gere receitas automaticamente até atingir a meta de {targetTotal} receitas
+              Defina o total de receitas e selecione os tipos e categorias - a distribuição é automática
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Meta total de receitas</Label>
+          <CardContent className="space-y-6">
+            {/* Total de Receitas */}
+            <div className="space-y-2">
+              <Label className="text-base font-semibold">Total de Receitas a Gerar</Label>
+              <div className="flex items-center gap-4">
                 <Input 
                   type="number" 
-                  value={targetTotal} 
-                  onChange={e => setTargetTotal(Number(e.target.value))}
-                  min={50}
+                  value={totalRecipes} 
+                  onChange={e => setTotalRecipes(Math.max(1, Number(e.target.value)))}
+                  min={1}
                   max={1000}
+                  className="w-32 text-xl font-bold text-center"
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Receitas faltando</Label>
-                <div className="h-10 flex items-center px-3 bg-muted rounded-md">
-                  <span className="font-medium">{remaining}</span>
+                <div className="flex gap-2">
+                  {[50, 100, 200, 500].map(preset => (
+                    <Button 
+                      key={preset}
+                      variant={totalRecipes === preset ? "default" : "outline"} 
+                      size="sm"
+                      onClick={() => setTotalRecipes(preset)}
+                    >
+                      {preset}
+                    </Button>
+                  ))}
                 </div>
               </div>
             </div>
 
+            {/* Tipos de Refeição */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Tipos de Refeição</Label>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={selectAllMealTypes}>
+                    Todos
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={deselectAllMealTypes}>
+                    Nenhum
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-2">
+                {MEAL_TYPES.map(type => (
+                  <label
+                    key={type.key}
+                    className={`flex items-center gap-2 p-3 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedMealTypes.includes(type.key)
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-muted/30 hover:bg-muted/50'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={selectedMealTypes.includes(type.key)}
+                      onCheckedChange={() => toggleMealType(type.key)}
+                    />
+                    <span className="text-lg">{type.emoji}</span>
+                    <span className="text-sm font-medium">{type.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedMealTypes.length} tipo(s) selecionado(s)
+              </p>
+            </div>
+
+            {/* Categorias */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <Label className="text-base font-semibold">Categorias</Label>
+                <div className="flex gap-2">
+                  <Button variant="ghost" size="sm" onClick={selectAllCategories}>
+                    Todas
+                  </Button>
+                  <Button variant="ghost" size="sm" onClick={deselectAllCategories}>
+                    Nenhuma
+                  </Button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                {CATEGORIES.map(cat => (
+                  <label
+                    key={cat.key}
+                    className={`flex items-center gap-2 p-2.5 rounded-lg border-2 cursor-pointer transition-all ${
+                      selectedCategories.includes(cat.key)
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border bg-muted/30 hover:bg-muted/50'
+                    }`}
+                  >
+                    <Checkbox
+                      checked={selectedCategories.includes(cat.key)}
+                      onCheckedChange={() => toggleCategory(cat.key)}
+                    />
+                    <span>{cat.emoji}</span>
+                    <span className="text-xs font-medium">{cat.label}</span>
+                  </label>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                {selectedCategories.length} categoria(s) selecionada(s)
+              </p>
+            </div>
+
+            {/* Preview da Distribuição */}
+            {distribution.length > 0 && (
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <CollapsibleTrigger asChild>
+                  <Button variant="outline" className="w-full justify-between">
+                    <span className="flex items-center gap-2">
+                      <Settings2 className="h-4 w-4" />
+                      Ver Distribuição ({distribution.length} combinações)
+                    </span>
+                    <Badge variant="secondary">
+                      {Math.floor(totalRecipes / distribution.length)} por combinação
+                    </Badge>
+                  </Button>
+                </CollapsibleTrigger>
+                <CollapsibleContent className="mt-3">
+                  <div className="bg-muted/50 rounded-lg p-4 space-y-3 max-h-48 overflow-y-auto">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                      {distribution.map((item, index) => (
+                        <div 
+                          key={index}
+                          className="flex items-center justify-between text-sm bg-background p-2 rounded"
+                        >
+                          <span className="text-muted-foreground">
+                            {getMealTypeLabel(item.mealType)} + {getCategoryLabel(item.category)}
+                          </span>
+                          <Badge variant="outline">{item.quantity}</Badge>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CollapsibleContent>
+              </Collapsible>
+            )}
+
+            {/* Barra de Progresso */}
             {isGenerating && progress.total > 0 && (
               <div className="space-y-2">
                 <div className="flex justify-between text-sm">
                   <span>Progresso</span>
-                  <span>{progress.current} / {progress.total} lotes</span>
+                  <span>{progress.current} / {progress.total} combinações</span>
                 </div>
                 <Progress value={(progress.current / progress.total) * 100} />
               </div>
             )}
 
+            {/* Botão de Geração */}
             <Button 
-              onClick={handleBulkGenerate} 
-              disabled={isGenerating || remaining === 0}
-              variant="default"
-              className="w-full"
+              onClick={handleHybridGenerate} 
+              disabled={isGenerating || distribution.length === 0}
+              size="lg"
+              className="w-full h-14 text-lg"
             >
               {isGenerating ? (
                 <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  <Loader2 className="h-5 w-5 mr-2 animate-spin" />
                   Gerando... ({progress.current}/{progress.total})
                 </>
-              ) : remaining === 0 ? (
+              ) : distribution.length === 0 ? (
                 <>
-                  <CheckCircle className="h-4 w-4 mr-2" />
-                  Meta Atingida!
+                  <AlertCircle className="h-5 w-5 mr-2" />
+                  Selecione tipos e categorias
                 </>
               ) : (
                 <>
-                  <Play className="h-4 w-4 mr-2" />
-                  Gerar {remaining} Receitas Automaticamente
+                  <Play className="h-5 w-5 mr-2" />
+                  Gerar {totalRecipes} Receitas
                 </>
               )}
             </Button>
           </CardContent>
         </Card>
+
+        {/* Single Generation (Collapsed) */}
+        <Collapsible>
+          <CollapsibleTrigger asChild>
+            <Button variant="outline" className="w-full">
+              Geração Manual (Avançado)
+            </Button>
+          </CollapsibleTrigger>
+          <CollapsibleContent>
+            <Card className="mt-3">
+              <CardHeader>
+                <CardTitle>Geração Única</CardTitle>
+                <CardDescription>Gere um lote de receitas para tipo e categoria específicos</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-2">
+                    <Label>Tipo de Refeição</Label>
+                    <Select value={selectedMealType} onValueChange={setSelectedMealType}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {MEAL_TYPES.map(type => (
+                          <SelectItem key={type.key} value={type.key}>
+                            {type.emoji} {type.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(cat => (
+                          <SelectItem key={cat.key} value={cat.key}>
+                            {cat.emoji} {cat.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label>Quantidade por lote</Label>
+                    <Input 
+                      type="number" 
+                      value={batchSize} 
+                      onChange={e => setBatchSize(Number(e.target.value))}
+                      min={1}
+                      max={20}
+                    />
+                  </div>
+                </div>
+
+                <Button 
+                  onClick={handleGenerateSingle} 
+                  disabled={isGenerating || !selectedMealType || !selectedCategory}
+                  className="w-full"
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Gerando...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="h-4 w-4 mr-2" />
+                      Gerar {batchSize} Receitas
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          </CollapsibleContent>
+        </Collapsible>
 
         {/* Logs */}
         {logs.length > 0 && (
@@ -458,16 +659,20 @@ export default function AdminBulkRecipes() {
                       {log.status === 'success' && <CheckCircle className="h-4 w-4 text-green-500" />}
                       {log.status === 'error' && <AlertCircle className="h-4 w-4 text-red-500" />}
                       <span>{log.country}</span>
-                      <span>{log.mealType}</span>
-                      <span className="text-muted-foreground">•</span>
-                      <span className="text-muted-foreground">{log.category}</span>
+                      <span className="text-muted-foreground">
+                        {getMealTypeLabel(log.mealType)} • {getCategoryLabel(log.category)}
+                      </span>
                     </div>
-                    <div>
+                    <div className="flex items-center gap-2">
                       {log.status === 'success' && (
-                        <Badge variant="outline" className="text-green-600">+{log.inserted}</Badge>
+                        <Badge variant="outline" className="bg-green-500/10">
+                          +{log.inserted}
+                        </Badge>
                       )}
                       {log.status === 'error' && (
-                        <span className="text-xs text-red-500">{log.error}</span>
+                        <span className="text-xs text-red-500 truncate max-w-32" title={log.error}>
+                          {log.error}
+                        </span>
                       )}
                     </div>
                   </div>

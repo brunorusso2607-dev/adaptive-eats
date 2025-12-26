@@ -140,22 +140,23 @@ async function generateSingleMeal(
   }
 }
 
-// Normalize meal type to expected format (Portuguese)
+// Normalize meal type to standard internal keys
+// Standard keys: cafe_manha, almoco, lanche, jantar, ceia
 function normalizeMealType(mealType: string): string {
   if (!mealType) return "cafe_manha";
   
   const normalized = mealType.toLowerCase().trim();
   
   const normalizations: Record<string, string> = {
-    // English to Portuguese
+    // English to standard keys
     "breakfast": "cafe_manha",
     "lunch": "almoco",
     "dinner": "jantar",
-    "snack": "lanche_tarde",
+    "snack": "lanche",
     "supper": "ceia",
-    // Portuguese variations
-    "lanche": "lanche_tarde",
-    "lanche_da_tarde": "lanche_tarde",
+    // Portuguese variations to standard
+    "lanche_tarde": "lanche",
+    "lanche_da_tarde": "lanche",
     "café_manha": "cafe_manha",
     "cafe_da_manha": "cafe_manha",
     "café_da_manhã": "cafe_manha",
@@ -173,14 +174,14 @@ async function validateAndCompleteMeals(
   daysCount: number,
   apiKey: string
 ): Promise<any> {
-  // Always expect 5 meals with correct Portuguese names
-  const expectedMealTypes = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+  // Standard meal types
+  const expectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
   // Target calories per meal
   const caloriesPerMeal: Record<string, number> = {
     cafe_manha: Math.round(macros.dailyCalories * 0.25),
     almoco: Math.round(macros.dailyCalories * 0.30),
-    lanche_tarde: Math.round(macros.dailyCalories * 0.15),
+    lanche: Math.round(macros.dailyCalories * 0.15),
     jantar: Math.round(macros.dailyCalories * 0.25),
     ceia: Math.round(macros.dailyCalories * 0.05),
   };

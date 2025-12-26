@@ -158,8 +158,24 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
       }
       grouped[meal.meal_type].push(meal);
     });
+    
+    // Ordenar cada grupo: compatíveis primeiro, incompatíveis por último
+    Object.keys(grouped).forEach(mealType => {
+      grouped[mealType].sort((a, b) => {
+        const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
+        const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
+        
+        // Compatíveis (sem conflito) vêm primeiro
+        if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
+        if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
+        
+        // Se ambos têm mesmo status, mantém ordem original (sort_order)
+        return 0;
+      });
+    });
+    
     return grouped;
-  }, [simpleMeals]);
+  }, [simpleMeals, checkMealConflict]);
 
   const sortedMealTypes = useMemo(() => {
     return MEAL_TYPE_ORDER.filter(type => mealsByType[type]?.length > 0);

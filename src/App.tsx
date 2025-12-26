@@ -34,6 +34,7 @@ import AdminMealTimes from "./pages/admin/AdminMealTimes";
 import AdminFeatureFlags from "./pages/admin/AdminFeatureFlags";
 import AdminIntoleranceMappings from "./pages/admin/AdminIntoleranceMappings";
 import AdminFoodCorrections from "./pages/admin/AdminFoodCorrections";
+import AdminIngredientValidations from "./pages/admin/AdminIngredientValidations";
 
 const queryClient = new QueryClient();
 
@@ -80,6 +81,7 @@ function AppContent() {
           <Route path="feature-flags" element={<AdminFeatureFlags />} />
           <Route path="intolerance-mappings" element={<AdminIntoleranceMappings />} />
           <Route path="food-corrections" element={<AdminFoodCorrections />} />
+          <Route path="ingredient-validations" element={<AdminIngredientValidations />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

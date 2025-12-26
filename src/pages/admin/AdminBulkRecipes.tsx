@@ -19,17 +19,21 @@ const MEAL_TYPES = [
   { key: 'ceia', label: 'Ceia' },
 ];
 
+// Categorias alinhadas com onboarding
 const CATEGORIES = [
-  'Tradicional brasileiro',
-  'Fitness/Light',
-  'Reconfortante',
-  'Rápido e prático',
-  'Vegetariano',
-  'Rico em proteínas',
-  'Low carb',
-  'Regional nordestino',
-  'Regional mineiro',
-  'Regional sulista',
+  { key: 'comum', label: 'Tradicional/Comum' },
+  { key: 'vegetariana', label: 'Vegetariana' },
+  { key: 'vegana', label: 'Vegana' },
+  { key: 'low_carb', label: 'Low Carb' },
+  { key: 'pescetariana', label: 'Pescetariana' },
+  { key: 'cetogenica', label: 'Cetogênica/Keto' },
+  { key: 'flexitariana', label: 'Flexitariana' },
+  { key: 'fitness', label: 'Fitness/Light' },
+  { key: 'proteica', label: 'Rica em Proteínas' },
+  { key: 'comfort', label: 'Comfort Food' },
+  { key: 'rapida', label: 'Rápida e Prática' },
+  { key: 'regional', label: 'Regional Tradicional' },
+  { key: 'kids', label: 'Modo Kids' },
 ];
 
 interface GenerationLog {
@@ -156,7 +160,7 @@ export default function AdminBulkRecipes() {
     // Criar jobs para todas as combinações
     for (const mealType of MEAL_TYPES) {
       for (const category of CATEGORIES) {
-        jobs.push({ mealType: mealType.key, category });
+        jobs.push({ mealType: mealType.key, category: category.key });
       }
     }
 
@@ -263,7 +267,7 @@ export default function AdminBulkRecipes() {
                   </SelectTrigger>
                   <SelectContent>
                     {CATEGORIES.map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                      <SelectItem key={cat.key} value={cat.key}>{cat.label}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>

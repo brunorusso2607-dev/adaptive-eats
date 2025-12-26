@@ -75,6 +75,7 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   cafe_manha: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
   almoco: { icon: UtensilsCrossed, label: "Almoço", color: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
   lanche: { icon: Cookie, label: "Lanche", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
+  lanche_tarde: { icon: Cookie, label: "Lanche da Tarde", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
   jantar: { icon: Moon, label: "Jantar", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };

@@ -103,6 +103,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     mealCalorieRanges,
     goal,
     goalIntensity,
+    country,
     isLoading: isLoadingProfile
   } = useUserProfileContext();
 
@@ -137,13 +138,21 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
 
   useEffect(() => {
     const fetchData = async () => {
+      if (isLoadingProfile) return;
+      
       setIsLoading(true);
       try {
-        const { data: meals, error } = await supabase
+        let query = supabase
           .from("simple_meals")
           .select("*")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true });
+          .eq("is_active", true);
+        
+        // Filtrar por país do usuário
+        if (country) {
+          query = query.eq("country_code", country);
+        }
+        
+        const { data: meals, error } = await query.order("sort_order", { ascending: true });
 
         if (error) throw error;
         setSimpleMeals(meals || []);
@@ -156,7 +165,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     };
 
     fetchData();
-  }, []);
+  }, [country, isLoadingProfile]);
 
   const mealsByType = useMemo(() => {
     const grouped: Record<string, SimpleMeal[]> = {};

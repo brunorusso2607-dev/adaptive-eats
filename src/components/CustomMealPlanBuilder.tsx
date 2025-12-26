@@ -111,7 +111,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
   const { checkMealConflict, hasIntolerances } = useUserIntolerances();
-  const { recipeStyle, isLoading: isLoadingProfile } = useUserProfileContext();
+  const { recipeStyle, country, isLoading: isLoadingProfile } = useUserProfileContext();
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -139,13 +139,21 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
   useEffect(() => {
     const fetchSimpleMeals = async () => {
+      if (isLoadingProfile) return;
+      
       setIsLoading(true);
       try {
-        const { data, error } = await supabase
+        let query = supabase
           .from("simple_meals")
           .select("*")
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true });
+          .eq("is_active", true);
+        
+        // Filtrar por país do usuário
+        if (country) {
+          query = query.eq("country_code", country);
+        }
+        
+        const { data, error } = await query.order("sort_order", { ascending: true });
 
         if (error) throw error;
         setSimpleMeals(data || []);
@@ -157,7 +165,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     };
 
     fetchSimpleMeals();
-  }, []);
+  }, [country, isLoadingProfile]);
 
   const totalMacros = useMemo(() => {
     let calories = 0, protein = 0, carbs = 0, fat = 0;

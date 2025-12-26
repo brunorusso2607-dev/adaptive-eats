@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Bell, Droplets, UtensilsCrossed, Clock, Loader2, Send } from "lucide-react";
+import { ArrowLeft, Bell, Droplets, UtensilsCrossed, Clock, Loader2, Send, Globe } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
@@ -8,10 +8,34 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { toast } from "sonner";
+
+const COUNTRIES = [
+  { code: "BR", name: "Brasil", flag: "🇧🇷" },
+  { code: "US", name: "Estados Unidos", flag: "🇺🇸" },
+  { code: "PT", name: "Portugal", flag: "🇵🇹" },
+  { code: "MX", name: "México", flag: "🇲🇽" },
+  { code: "AR", name: "Argentina", flag: "🇦🇷" },
+  { code: "JP", name: "Japão", flag: "🇯🇵" },
+  { code: "IT", name: "Itália", flag: "🇮🇹" },
+  { code: "FR", name: "França", flag: "🇫🇷" },
+  { code: "DE", name: "Alemanha", flag: "🇩🇪" },
+  { code: "ES", name: "Espanha", flag: "🇪🇸" },
+  { code: "GB", name: "Reino Unido", flag: "🇬🇧" },
+  { code: "CO", name: "Colômbia", flag: "🇨🇴" },
+  { code: "CL", name: "Chile", flag: "🇨🇱" },
+  { code: "PE", name: "Peru", flag: "🇵🇪" },
+  { code: "IN", name: "Índia", flag: "🇮🇳" },
+  { code: "CN", name: "China", flag: "🇨🇳" },
+  { code: "KR", name: "Coreia do Sul", flag: "🇰🇷" },
+  { code: "TH", name: "Tailândia", flag: "🇹🇭" },
+  { code: "VN", name: "Vietnã", flag: "🇻🇳" },
+  { code: "AU", name: "Austrália", flag: "🇦🇺" },
+];
 
 export default function Settings() {
   const navigate = useNavigate();
@@ -46,10 +70,52 @@ export default function Settings() {
   const [isSavingMeal, setIsSavingMeal] = useState(false);
   const [isSendingMealTest, setIsSendingMealTest] = useState(false);
 
+  // Country settings
+  const [userCountry, setUserCountry] = useState("BR");
+  const [isLoadingCountry, setIsLoadingCountry] = useState(true);
+  const [isSavingCountry, setIsSavingCountry] = useState(false);
+
   useEffect(() => {
     fetchWaterSettings();
     fetchMealSettings();
+    fetchCountry();
   }, [mealTimeSettings]);
+
+  const fetchCountry = async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { data } = await supabase
+      .from("profiles")
+      .select("country")
+      .eq("id", session.user.id)
+      .maybeSingle();
+
+    if (data?.country) {
+      setUserCountry(data.country);
+    }
+    setIsLoadingCountry(false);
+  };
+
+  const saveCountry = async (newCountry: string) => {
+    setIsSavingCountry(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ country: newCountry })
+      .eq("id", session.user.id);
+
+    if (error) {
+      toast.error("Erro ao salvar país");
+    } else {
+      setUserCountry(newCountry);
+      const countryName = COUNTRIES.find(c => c.code === newCountry)?.name || newCountry;
+      toast.success(`País alterado para ${countryName}`);
+    }
+    setIsSavingCountry(false);
+  };
 
   const fetchWaterSettings = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -219,6 +285,59 @@ export default function Settings() {
       </header>
 
       <main className="container max-w-2xl px-4 py-6 space-y-6 pb-24">
+        {/* Region/Country Settings */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              <CardTitle className="text-base">Sua Região</CardTitle>
+            </div>
+            <CardDescription>
+              Define quais alimentos e receitas serão sugeridos para você
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {isLoadingCountry ? (
+              <div className="flex justify-center py-4">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <Label>País de origem</Label>
+                <Select
+                  value={userCountry}
+                  onValueChange={saveCountry}
+                  disabled={isSavingCountry}
+                >
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione seu país" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COUNTRIES.map((country) => (
+                      <SelectItem key={country.code} value={country.code}>
+                        <span className="flex items-center gap-2">
+                          <span>{country.flag}</span>
+                          <span>{country.name}</span>
+                        </span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Isso ajuda a sugerir alimentos populares na sua região, como {
+                    userCountry === "BR" ? "pão de queijo, açaí" :
+                    userCountry === "US" ? "hamburgers, mac & cheese" :
+                    userCountry === "JP" ? "ramen, sushi" :
+                    userCountry === "MX" ? "tacos, burritos" :
+                    userCountry === "IT" ? "pizza, pasta" :
+                    "pratos típicos locais"
+                  }.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
         {/* Push Notifications */}
         <Card>
           <CardHeader>

@@ -974,6 +974,7 @@ export type Database = {
         Row: {
           activity_level: string | null
           age: number | null
+          country: string | null
           created_at: string | null
           dietary_preference:
             | Database["public"]["Enums"]["dietary_preference"]
@@ -996,6 +997,7 @@ export type Database = {
         Insert: {
           activity_level?: string | null
           age?: number | null
+          country?: string | null
           created_at?: string | null
           dietary_preference?:
             | Database["public"]["Enums"]["dietary_preference"]
@@ -1018,6 +1020,7 @@ export type Database = {
         Update: {
           activity_level?: string | null
           age?: number | null
+          country?: string | null
           created_at?: string | null
           dietary_preference?:
             | Database["public"]["Enums"]["dietary_preference"]

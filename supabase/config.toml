@@ -62,3 +62,6 @@ verify_jwt = false
 
 [functions.validate-ingredients]
 verify_jwt = false
+
+[functions.analyze-food-intolerances]
+verify_jwt = false

@@ -85,6 +85,20 @@ export default function FoodSearchDrawer({
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   
+  // AI intolerance analysis state
+  const [isAnalyzingIntolerance, setIsAnalyzingIntolerance] = useState(false);
+  const [aiIntoleranceDialog, setAiIntoleranceDialog] = useState<{
+    open: boolean;
+    food: Food | null;
+    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
+    ingredients: string[];
+  }>({
+    open: false,
+    food: null,
+    conflicts: [],
+    ingredients: [],
+  });
+  
   // Manual food modal state
   const [showManualModal, setShowManualModal] = useState(false);
 
@@ -174,7 +188,42 @@ export default function FoodSearchDrawer({
     }
   }, [foods, isLoading, searchQuery, fetchAISuggestions]);
 
-  // Check for intolerance conflicts using both methods
+  // AI-powered intolerance analysis
+  const analyzeWithAI = useCallback(async (foodName: string): Promise<{
+    hasConflicts: boolean;
+    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
+    ingredients: string[];
+  } | null> => {
+    if (!userProfile?.intolerances || userProfile.intolerances.length === 0 || 
+        userProfile.intolerances.every(i => i === "nenhuma")) {
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-food-intolerances', {
+        body: { 
+          foodName, 
+          userIntolerances: userProfile.intolerances.filter(i => i !== "nenhuma") 
+        }
+      });
+
+      if (error) {
+        console.error("Erro na análise de IA:", error);
+        return null;
+      }
+
+      return {
+        hasConflicts: data.hasConflicts,
+        conflicts: data.conflicts || [],
+        ingredients: data.ingredients || [],
+      };
+    } catch (err) {
+      console.error("Erro ao chamar análise de IA:", err);
+      return null;
+    }
+  }, [userProfile]);
+
+  // Check for intolerance conflicts - first local, then AI if needed
   const checkFoodConflicts = useCallback((foodName: string) => {
     // First check with hook (ingredient-based)
     const ingredientConflict = checkConflict(foodName);
@@ -200,17 +249,38 @@ export default function FoodSearchDrawer({
     return null;
   }, [checkConflict, userProfile]);
 
-  const handleAddFood = useCallback((food: Food) => {
-    // Check for conflicts
-    const conflict = checkFoodConflicts(food.name);
+  // Handle adding food with AI analysis for unknown foods
+  const handleAddFood = useCallback(async (food: Food) => {
+    // First, quick local check
+    const localConflict = checkFoodConflicts(food.name);
     
-    if (conflict) {
-      setConflictDialog({ open: true, food, conflict });
+    if (localConflict) {
+      setConflictDialog({ open: true, food, conflict: localConflict });
       return;
     }
 
+    // For foods not in local mapping, use AI analysis
+    if (userProfile?.intolerances && 
+        userProfile.intolerances.some(i => i !== "nenhuma")) {
+      setIsAnalyzingIntolerance(true);
+      
+      const aiResult = await analyzeWithAI(food.name);
+      
+      setIsAnalyzingIntolerance(false);
+      
+      if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
+        setAiIntoleranceDialog({
+          open: true,
+          food,
+          conflicts: aiResult.conflicts,
+          ingredients: aiResult.ingredients,
+        });
+        return;
+      }
+    }
+
     addFoodToList(food);
-  }, [checkFoodConflicts]);
+  }, [checkFoodConflicts, userProfile, analyzeWithAI]);
 
   const addFoodToList = (food: Food) => {
     const defaultServing = food.default_serving_size || 100;
@@ -373,6 +443,13 @@ export default function FoodSearchDrawer({
       handleAddAISuggestion(aiConflictDialog.suggestion, true);
     }
     setAiConflictDialog({ open: false, suggestion: null, conflict: null });
+  };
+
+  const handleConfirmAIIntoleranceConflict = () => {
+    if (aiIntoleranceDialog.food) {
+      addFoodToList(aiIntoleranceDialog.food);
+    }
+    setAiIntoleranceDialog({ open: false, food: null, conflicts: [], ingredients: [] });
   };
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
@@ -538,13 +615,20 @@ export default function FoodSearchDrawer({
                       <button
                         key={food.id}
                         onClick={() => handleAddFood(food)}
-                        className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                        disabled={isAnalyzingIntolerance}
+                        className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
                       >
                         <div className="flex items-center gap-2">
-                          <Plus className="w-4 h-4 text-primary" />
+                          {isAnalyzingIntolerance ? (
+                            <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                          ) : (
+                            <Plus className="w-4 h-4 text-primary" />
+                          )}
                           <span className="text-sm font-medium">{food.name}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground">adicionar</span>
+                        <span className="text-xs text-muted-foreground">
+                          {isAnalyzingIntolerance ? "analisando..." : "adicionar"}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -804,6 +888,66 @@ export default function FoodSearchDrawer({
           <AlertDialogFooter className="mt-4">
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleConfirmAIConflict}>
+              Adicionar mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* AI Intolerance Analysis Dialog - Detailed */}
+      <AlertDialog
+        open={aiIntoleranceDialog.open}
+        onOpenChange={(open) =>
+          !open && setAiIntoleranceDialog({ open: false, food: null, conflicts: [], ingredients: [] })
+        }
+      >
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-medium flex items-center gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500" />
+              Análise de Intolerâncias
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-4 pt-2">
+                <p className="text-sm font-medium">
+                  {aiIntoleranceDialog.food?.name}
+                </p>
+                
+                {aiIntoleranceDialog.ingredients.length > 0 && (
+                  <div className="text-xs text-muted-foreground">
+                    <span className="font-medium">Ingredientes detectados:</span>
+                    <p className="mt-1">{aiIntoleranceDialog.ingredients.slice(0, 8).join(", ")}{aiIntoleranceDialog.ingredients.length > 8 ? "..." : ""}</p>
+                  </div>
+                )}
+
+                <div className="space-y-2">
+                  {aiIntoleranceDialog.conflicts.map((conflict, idx) => (
+                    <div 
+                      key={idx}
+                      className="text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 rounded-md"
+                    >
+                      <p className="font-medium text-red-700 dark:text-red-400">
+                        ⚠️ Contém {conflict.intoleranceLabel}
+                      </p>
+                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">
+                        Encontrado: {conflict.foundIngredients.join(", ")}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-xs text-muted-foreground">
+                  De acordo com seu perfil, você tem restrição a estes ingredientes. Deseja adicionar mesmo assim?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmAIIntoleranceConflict}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
               Adicionar mesmo assim
             </AlertDialogAction>
           </AlertDialogFooter>

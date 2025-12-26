@@ -160,7 +160,7 @@ export default function Settings() {
       const defaultMeals = mealTimeSettings.map(m => m.meal_type);
       setMealSettings(prev => ({
         ...prev,
-        enabled_meals: defaultMeals.length > 0 ? defaultMeals : ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"]
+        enabled_meals: defaultMeals.length > 0 ? defaultMeals : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"]
       }));
     }
     setIsLoadingMeal(false);

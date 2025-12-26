@@ -17,12 +17,15 @@ let cachedMealOrder: string[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+// Standard meal types - single source of truth
+export const STANDARD_MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] as const;
+export type StandardMealType = typeof STANDARD_MEAL_TYPES[number];
+
 // Valores padrão (fallback se o banco falhar)
 const DEFAULT_TIME_RANGES: MealTimeRanges = {
   cafe_manha: { start: 6, end: 10 },
   almoco: { start: 10, end: 14 },
   lanche: { start: 14, end: 17 },
-  lanche_tarde: { start: 14, end: 17 },
   jantar: { start: 17, end: 21 },
   ceia: { start: 21, end: 24 },
 };
@@ -30,13 +33,12 @@ const DEFAULT_TIME_RANGES: MealTimeRanges = {
 const DEFAULT_LABELS: MealLabels = {
   cafe_manha: "Café da Manhã",
   almoco: "Almoço",
-  lanche: "Lanche da Tarde", // Alias para lanche_tarde
-  lanche_tarde: "Lanche da Tarde",
+  lanche: "Lanche",
   jantar: "Jantar",
   ceia: "Ceia",
 };
 
-const DEFAULT_MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "lanche_tarde", "jantar", "ceia"];
+const DEFAULT_MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
 // Load from localStorage on module init
 function loadFromStorage(): boolean {
@@ -104,12 +106,6 @@ async function fetchMealTimeSettings(forceRefresh = false): Promise<void> {
         };
         labels[item.meal_type] = item.label;
         order.push(item.meal_type);
-        
-        // Adicionar alias "lanche" -> "lanche_tarde" para compatibilidade
-        if (item.meal_type === "lanche_tarde") {
-          ranges["lanche"] = ranges[item.meal_type];
-          labels["lanche"] = item.label;
-        }
       });
 
       cachedTimeRanges = ranges;

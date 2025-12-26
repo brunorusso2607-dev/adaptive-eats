@@ -38,9 +38,10 @@ const SEVERITY_OPTIONS = [
 
 const mealTypeLabels: Record<string, string> = {
   cafe_da_manha: "Café da Manhã",
+  cafe_manha: "Café da Manhã",
   lanche_manha: "Lanche da Manhã",
   almoco: "Almoço",
-  lanche_tarde: "Lanche da Tarde",
+  lanche: "Lanche",
   jantar: "Jantar",
   ceia: "Ceia",
 };

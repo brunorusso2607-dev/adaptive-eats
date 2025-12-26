@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, AlertTriangle, Sparkles, ShieldCheck } from "lucide-react";
+import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
@@ -238,23 +238,17 @@ export default function IngredientSubstitutionSheet({
                     isSelected 
                       ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
                       : conflict
-                        ? "border-destructive/50 bg-destructive/5"
+                        ? "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10"
                         : "hover:border-primary/50"
                   )}
                   onClick={() => handleSelect(ingredient)}
                 >
                   <CardContent className="p-4">
-                    {/* Conflict Alert */}
+                    {/* Conflict Alert - Design sutil */}
                     {conflict && (
-                      <div className="flex items-start gap-2 mb-3 p-2 rounded-md bg-destructive/10 border border-destructive/20">
-                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
-                        <div className="text-xs">
-                          <p className="font-medium text-destructive">Conflito detectado</p>
-                          <p className="text-destructive/80">
-                            Este ingrediente pode não ser adequado para você ({conflict.restrictionLabel})
-                          </p>
-                        </div>
-                      </div>
+                      <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md mb-3">
+                        Contém {conflict.restrictionLabel?.toLowerCase()}
+                      </p>
                     )}
 
                     <div className="flex items-start justify-between mb-3">
@@ -262,7 +256,6 @@ export default function IngredientSubstitutionSheet({
                         <h4 className="font-medium flex items-center gap-2">
                           {ingredient.name}
                           {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
-                          {conflict && !isSelected && <AlertTriangle className="w-4 h-4 text-destructive" />}
                         </h4>
                         {ingredient.category && (
                           <Badge variant="outline" className="text-xs mt-1">
@@ -271,10 +264,10 @@ export default function IngredientSubstitutionSheet({
                         )}
                       </div>
                       <Badge 
-                        variant={isSelected ? "default" : conflict ? "destructive" : "secondary"} 
+                        variant={isSelected ? "default" : "secondary"} 
                         className="shrink-0"
                       >
-                        {isSelected ? "Selecionado" : conflict ? "⚠️ Conflito" : "Selecionar"}
+                        {isSelected ? "Selecionado" : "Selecionar"}
                       </Badge>
                     </div>
 
@@ -335,42 +328,30 @@ export default function IngredientSubstitutionSheet({
         {/* Confirm Button - Fixed at bottom */}
         {selectedIngredient && (
           <div className="p-6 pt-4 border-t shrink-0 bg-background">
-            {/* Warning if selected ingredient has conflict */}
+            {/* Warning if selected ingredient has conflict - Design sutil */}
             {checkConflict(selectedIngredient.name) && (
-              <div className="flex items-start gap-2 mb-3 p-3 rounded-md bg-destructive/10 border border-destructive/20">
-                <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-destructive">Atenção!</p>
-                  <p className="text-destructive/80">
-                    Este ingrediente pode conflitar com sua restrição ({checkConflict(selectedIngredient.name)?.restrictionLabel}). Tem certeza que deseja continuar?
-                  </p>
-                </div>
-              </div>
+              <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md mb-3">
+                Contém {checkConflict(selectedIngredient.name)?.restrictionLabel?.toLowerCase()} - tem certeza que deseja continuar?
+              </p>
             )}
             
             <div className="flex items-center gap-3 mb-3 text-sm">
               <span className="text-muted-foreground">Substituindo:</span>
               <Badge variant="outline">{originalIngredient.item}</Badge>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <Badge variant={checkConflict(selectedIngredient.name) ? "destructive" : "default"}>
+              <Badge variant="default">
                 {selectedIngredient.name}
               </Badge>
             </div>
             <Button 
               onClick={handleConfirmSubstitution} 
               className="w-full"
-              variant={checkConflict(selectedIngredient.name) ? "destructive" : "default"}
               disabled={isSaving}
             >
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Salvando...
-                </>
-              ) : checkConflict(selectedIngredient.name) ? (
-                <>
-                  <AlertTriangle className="w-4 h-4 mr-2" />
-                  Confirmar Mesmo Assim
                 </>
               ) : (
                 <>

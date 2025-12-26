@@ -329,7 +329,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
         selectedDay={selectedDay}
         onWeekChange={setSelectedWeek}
         onDayChange={setSelectedDay}
-        showDaySelector={false}
+        showDaySelector={true}
       />
 
       {/* Macros Preview */}

@@ -40,6 +40,168 @@ export interface UserProfile {
   intolerances?: string[] | null;
   excluded_ingredients?: string[] | null;
   country?: string | null; // ISO 3166-1 alpha-2 (BR, US, MX, etc.)
+  kids_mode?: boolean | null;
+}
+
+// ============================================
+// TIPOS DO SISTEMA CENTRALIZADO DE PERFIL
+// ============================================
+
+export type GoalIntensity = "light" | "moderate" | "aggressive";
+export type RecipeStyle = "fitness" | "regular" | "high_calorie";
+export type UserGoal = "emagrecer" | "manter" | "ganhar_peso";
+
+export interface GoalContext {
+  goalIntensity: GoalIntensity;
+  recipeStyle: RecipeStyle;
+  weightDifference: number;
+  calorieAdjustment: number;
+  proteinMultiplier: number;
+}
+
+// ============================================
+// FUNÇÕES DE CRUZAMENTO DE PERFIL (CENTRALIZADAS)
+// ============================================
+
+/**
+ * Calcula a intensidade do objetivo baseado na diferença de peso
+ * Usado em: generate-meal-plan, regenerate-meal, generate-recipe
+ */
+export function calculateGoalIntensity(
+  goal: string | null | undefined,
+  weightCurrent: number | null | undefined,
+  weightGoal: number | null | undefined
+): GoalIntensity {
+  if (!goal || !weightCurrent || !weightGoal) {
+    return "moderate";
+  }
+
+  const difference = Math.abs(weightCurrent - weightGoal);
+
+  if (goal === "emagrecer") {
+    if (difference <= 5) return "light";
+    if (difference <= 15) return "moderate";
+    return "aggressive";
+  }
+
+  if (goal === "ganhar_peso") {
+    if (difference <= 5) return "light";
+    if (difference <= 10) return "moderate";
+    return "aggressive";
+  }
+
+  return "moderate"; // manter
+}
+
+/**
+ * Determina o estilo de receita baseado no objetivo
+ */
+export function calculateRecipeStyle(goal: string | null | undefined): RecipeStyle {
+  if (!goal || goal === "manter") {
+    return "regular";
+  }
+  if (goal === "emagrecer") {
+    return "fitness";
+  }
+  if (goal === "ganhar_peso") {
+    return "high_calorie";
+  }
+  return "regular";
+}
+
+/**
+ * Obtém contexto completo do objetivo do usuário
+ * Esta é a FUNÇÃO PRINCIPAL para cruzamento de dados
+ */
+export function getGoalContext(profile: UserProfile): GoalContext {
+  const intensity = calculateGoalIntensity(
+    profile.goal,
+    profile.weight_current,
+    profile.weight_goal
+  );
+  
+  const recipeStyle = calculateRecipeStyle(profile.goal);
+  
+  const weightDifference = profile.weight_current && profile.weight_goal
+    ? Math.abs(profile.weight_current - profile.weight_goal)
+    : 0;
+
+  // Ajuste de calorias baseado na intensidade
+  let calorieAdjustment = 0;
+  if (profile.goal === "emagrecer") {
+    calorieAdjustment = intensity === "light" ? -300 : intensity === "moderate" ? -500 : -700;
+  } else if (profile.goal === "ganhar_peso") {
+    calorieAdjustment = intensity === "light" ? 250 : intensity === "moderate" ? 400 : 600;
+  }
+
+  // Multiplicador de proteína baseado no objetivo e intensidade
+  let proteinMultiplier = 1.6; // default para manter
+  if (profile.goal === "emagrecer") {
+    proteinMultiplier = intensity === "aggressive" ? 2.2 : intensity === "moderate" ? 2.0 : 1.8;
+  } else if (profile.goal === "ganhar_peso") {
+    proteinMultiplier = intensity === "aggressive" ? 2.4 : intensity === "moderate" ? 2.2 : 2.0;
+  }
+
+  return {
+    goalIntensity: intensity,
+    recipeStyle,
+    weightDifference,
+    calorieAdjustment,
+    proteinMultiplier,
+  };
+}
+
+/**
+ * Gera instruções para o prompt de IA baseado no contexto do objetivo
+ */
+export function buildGoalContextInstructions(profile: UserProfile): string {
+  const context = getGoalContext(profile);
+  
+  if (profile.goal === "manter") {
+    return `
+🎯 OBJETIVO: MANUTENÇÃO DE PESO
+- Receitas balanceadas e nutritivas
+- Calorias equilibradas para manter peso atual
+- Proporção padrão de macronutrientes`;
+  }
+
+  if (profile.goal === "emagrecer") {
+    const intensityLabel = {
+      light: "LEVE (até 5kg)",
+      moderate: "MODERADO (5-15kg)", 
+      aggressive: "INTENSIVO (mais de 15kg)"
+    }[context.goalIntensity];
+
+    return `
+🏃 OBJETIVO: EMAGRECIMENTO - ${intensityLabel}
+- Meta de perda: ${context.weightDifference}kg
+- Déficit calórico: ${Math.abs(context.calorieAdjustment)} kcal/dia
+- Proteína: ${context.proteinMultiplier}g por kg de peso
+- PRIORIZAR: Vegetais volumosos, proteínas magras, fibras
+- EVITAR: Carboidratos refinados, açúcares, frituras
+- PREFERIR: Grelhados, assados, cozidos no vapor
+- ESTILO: RECEITAS FITNESS - baixa caloria, alto valor nutricional`;
+  }
+
+  if (profile.goal === "ganhar_peso") {
+    const intensityLabel = {
+      light: "LEVE (até 5kg)",
+      moderate: "MODERADO (5-10kg)",
+      aggressive: "INTENSIVO (mais de 10kg)"
+    }[context.goalIntensity];
+
+    return `
+💪 OBJETIVO: GANHO DE MASSA - ${intensityLabel}
+- Meta de ganho: ${context.weightDifference}kg
+- Superávit calórico: +${context.calorieAdjustment} kcal/dia
+- Proteína: ${context.proteinMultiplier}g por kg de peso
+- PRIORIZAR: Proteínas de qualidade, carboidratos complexos, gorduras saudáveis
+- INCLUIR: Porções generosas, alimentos densos em nutrientes
+- PREFERIR: Combinações calóricas nutritivas
+- ESTILO: RECEITAS ALTA CALORIA - densidade nutricional, calorias adequadas`;
+  }
+
+  return "";
 }
 
 // ============================================
@@ -1004,6 +1166,7 @@ export function buildForbiddenIngredientsList(profile: UserProfile): string {
 /**
  * Calcula TMB (Taxa Metabólica Basal) e GET (Gasto Energético Total)
  * Usando a fórmula de Mifflin-St Jeor
+ * ATUALIZADO: Agora usa goalIntensity para ajustar calorias e proteínas
  */
 export function calculateMacroTargets(profile: UserProfile): MacroTargets {
   const ACTIVITY_FACTORS: Record<string, number> = {
@@ -1030,18 +1193,23 @@ export function calculateMacroTargets(profile: UserProfile): MacroTargets {
     }
 
     const factor = ACTIVITY_FACTORS[profile.activity_level || "moderate"] || 1.55;
-    const get = Math.round(tmb * factor);
+    const tdee = Math.round(tmb * factor);
+
+    // Obter contexto do objetivo para ajustes personalizados
+    const goalContext = getGoalContext(profile);
 
     if (profile.goal === "emagrecer") {
-      dailyCalories = Math.max(get - 500, profile.sex === "male" ? 1500 : 1200);
-      dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * 2);
+      // Usar ajuste de calorias baseado na intensidade
+      const minCalories = profile.sex === "male" ? 1500 : 1200;
+      dailyCalories = Math.max(tdee + goalContext.calorieAdjustment, minCalories);
+      dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * goalContext.proteinMultiplier);
       mode = "lose";
     } else if (profile.goal === "ganhar_peso") {
-      dailyCalories = get + 400;
-      dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * 2.2);
+      dailyCalories = tdee + goalContext.calorieAdjustment;
+      dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * goalContext.proteinMultiplier);
       mode = "gain";
     } else {
-      dailyCalories = get;
+      dailyCalories = tdee;
       dailyProtein = Math.round(profile.weight_current * 1.6);
       mode = "maintain";
     }
@@ -1197,7 +1365,7 @@ export interface RecipePromptOptions {
 export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
   const { profile, categoryContext } = options;
 
-  const isKidsMode = profile.context === "modo_kids";
+  const isKidsMode = profile.context === "modo_kids" || profile.kids_mode === true;
   const isWeightLossMode = profile.goal === "emagrecer";
   const isWeightGainMode = profile.goal === "ganhar_peso";
   const hasWeightGoal = isWeightLossMode || isWeightGainMode;
@@ -1207,17 +1375,19 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
     macros = calculateMacroTargets(profile);
   }
 
+  // NOVO: Obter contexto completo do objetivo
+  const goalContext = getGoalContext(profile);
+  const goalContextInstructions = buildGoalContextInstructions(profile);
+
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const forbiddenList = buildForbiddenIngredientsList(profile);
   const categoryConstraint = buildCategoryConstraint(categoryContext || null);
   const kidsInstructions = buildKidsInstructions(isKidsMode);
-  const weightLossInstructions = buildWeightLossInstructions(isWeightLossMode, macros);
-  const weightGainInstructions = buildWeightGainInstructions(isWeightGainMode, macros);
   const safetyStatus = buildSafetyStatus(profile);
 
-  // Build special modes section (only if applicable)
-  const specialModes = [kidsInstructions, weightLossInstructions, weightGainInstructions]
+  // Build special modes section com instruções de objetivo
+  const specialModes = [kidsInstructions, goalContextInstructions]
     .filter(Boolean)
     .join("\n");
 

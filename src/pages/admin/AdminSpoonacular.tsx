@@ -52,7 +52,9 @@ import {
   AlertCircle,
   Pencil,
   Trash2,
-  MoreHorizontal
+  MoreHorizontal,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import {
   AlertDialog,
@@ -144,6 +146,11 @@ export default function AdminSpoonacular() {
   const [recipeFilter, setRecipeFilter] = useState<string>("all");
   const [totalRecipes, setTotalRecipes] = useState(0);
   
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const [filteredTotal, setFilteredTotal] = useState(0);
+  const ITEMS_PER_PAGE = 20;
+  
   // Edit/Delete states
   const [editingRecipe, setEditingRecipe] = useState<ImportedRecipe | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -157,8 +164,13 @@ export default function AdminSpoonacular() {
   }, []);
 
   useEffect(() => {
+    setCurrentPage(1);
     fetchRecipes();
   }, [recipeFilter]);
+
+  useEffect(() => {
+    fetchRecipes();
+  }, [currentPage]);
 
   const fetchData = async () => {
     setIsLoading(true);
@@ -191,12 +203,29 @@ export default function AdminSpoonacular() {
 
   const fetchRecipes = async () => {
     try {
+      const from = (currentPage - 1) * ITEMS_PER_PAGE;
+      const to = from + ITEMS_PER_PAGE - 1;
+
+      // Build count query
+      let countQuery = supabase
+        .from("simple_meals")
+        .select("id", { count: "exact", head: true })
+        .not("source_name", "is", null);
+
+      if (recipeFilter !== "all") {
+        countQuery = countQuery.eq("meal_type", recipeFilter);
+      }
+
+      const { count } = await countQuery;
+      setFilteredTotal(count || 0);
+
+      // Build data query with pagination
       let query = supabase
         .from("simple_meals")
         .select("id, name, meal_type, calories, country_code, source_name, created_at")
         .not("source_name", "is", null)
         .order("created_at", { ascending: false })
-        .limit(50);
+        .range(from, to);
 
       if (recipeFilter !== "all") {
         query = query.eq("meal_type", recipeFilter);
@@ -207,6 +236,14 @@ export default function AdminSpoonacular() {
       setRecipes(data || []);
     } catch (error) {
       console.error("Erro ao buscar receitas:", error);
+    }
+  };
+
+  const totalPages = Math.ceil(filteredTotal / ITEMS_PER_PAGE);
+
+  const handlePageChange = (page: number) => {
+    if (page >= 1 && page <= totalPages) {
+      setCurrentPage(page);
     }
   };
 
@@ -813,6 +850,58 @@ export default function AdminSpoonacular() {
                 </TableBody>
               </Table>
             </ScrollArea>
+          )}
+
+          {/* Pagination */}
+          {filteredTotal > ITEMS_PER_PAGE && (
+            <div className="flex items-center justify-between pt-4 border-t mt-4">
+              <p className="text-sm text-muted-foreground">
+                Mostrando {((currentPage - 1) * ITEMS_PER_PAGE) + 1} - {Math.min(currentPage * ITEMS_PER_PAGE, filteredTotal)} de {filteredTotal} receitas
+              </p>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    let pageNum: number;
+                    if (totalPages <= 5) {
+                      pageNum = i + 1;
+                    } else if (currentPage <= 3) {
+                      pageNum = i + 1;
+                    } else if (currentPage >= totalPages - 2) {
+                      pageNum = totalPages - 4 + i;
+                    } else {
+                      pageNum = currentPage - 2 + i;
+                    }
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? "default" : "outline"}
+                        size="sm"
+                        className="w-8 h-8 p-0"
+                        onClick={() => handlePageChange(pageNum)}
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
           )}
         </CardContent>
       </Card>

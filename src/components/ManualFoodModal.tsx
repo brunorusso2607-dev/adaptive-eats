@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import {
   Dialog,
   DialogContent,
@@ -6,6 +6,16 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,9 +28,10 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Plus, Sparkles } from "lucide-react";
+import { Loader2, Plus, Sparkles, AlertTriangle, ShieldAlert } from "lucide-react";
 import { z } from "zod";
 import { suggestServingByName, type ServingSuggestion } from "@/lib/servingSuggestion";
+import { checkUserIntoleranceConflict, getIntoleranceLabel } from "@/lib/intoleranceDetection";
 
 const UNIT_LABELS: Record<string, string> = {
   g: "gramas (g)",
@@ -70,7 +81,54 @@ export default function ManualFoodModal({
   const [servingUnit, setServingUnit] = useState<"g" | "ml" | "un" | "fatia">("g");
   const [suggestion, setSuggestion] = useState<ServingSuggestion | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [userProfile, setUserProfile] = useState<{ intolerances: string[] | null } | null>(null);
+  
+  // AI intolerance conflict dialog
+  const [intoleranceDialog, setIntoleranceDialog] = useState<{
+    open: boolean;
+    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
+    ingredients: string[];
+    pendingData: typeof pendingFoodData;
+  }>({
+    open: false,
+    conflicts: [],
+    ingredients: [],
+    pendingData: null,
+  });
+  const [pendingFoodData, setPendingFoodData] = useState<{
+    name: string;
+    normalizedName: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    defaultServingSize: number;
+    servingUnit: string;
+  } | null>(null);
+
+  // Fetch user profile for intolerance checking
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data } = await supabase
+        .from("profiles")
+        .select("intolerances")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (data) {
+        setUserProfile(data);
+      }
+    };
+
+    if (open) {
+      fetchProfile();
+    }
+  }, [open]);
 
   // Auto-sugestão de porção baseada no nome
   useEffect(() => {
@@ -90,6 +148,41 @@ export default function ManualFoodModal({
     }
   };
 
+  // AI-powered intolerance analysis
+  const analyzeWithAI = useCallback(async (foodName: string): Promise<{
+    hasConflicts: boolean;
+    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
+    ingredients: string[];
+  } | null> => {
+    if (!userProfile?.intolerances || userProfile.intolerances.length === 0 || 
+        userProfile.intolerances.every(i => i === "nenhuma")) {
+      return null;
+    }
+
+    try {
+      const { data, error } = await supabase.functions.invoke('analyze-food-intolerances', {
+        body: { 
+          foodName, 
+          userIntolerances: userProfile.intolerances.filter(i => i !== "nenhuma") 
+        }
+      });
+
+      if (error) {
+        console.error("Erro na análise de IA:", error);
+        return null;
+      }
+
+      return {
+        hasConflicts: data.hasConflicts,
+        conflicts: data.conflicts || [],
+        ingredients: data.ingredients || [],
+      };
+    } catch (err) {
+      console.error("Erro ao chamar análise de IA:", err);
+      return null;
+    }
+  }, [userProfile]);
+
   const resetForm = () => {
     setName("");
     setCalories("");
@@ -100,6 +193,77 @@ export default function ManualFoodModal({
     setServingUnit("g");
     setSuggestion(null);
     setErrors({});
+    setPendingFoodData(null);
+  };
+
+  // Save food to database
+  const saveFood = async (foodData: {
+    name: string;
+    normalizedName: string;
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+    defaultServingSize: number;
+    servingUnit: string;
+  }) => {
+    setIsLoading(true);
+
+    try {
+      const { data, error } = await supabase
+        .from("foods")
+        .insert({
+          name: foodData.name.trim(),
+          name_normalized: foodData.normalizedName,
+          calories_per_100g: foodData.calories,
+          protein_per_100g: foodData.protein,
+          carbs_per_100g: foodData.carbs,
+          fat_per_100g: foodData.fat,
+          default_serving_size: foodData.defaultServingSize,
+          serving_unit: foodData.servingUnit,
+          source: "user_manual",
+          verified: false,
+          confidence: 0.5,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        if (error.code === "23505") {
+          toast.error("Este alimento já existe no banco de dados");
+        } else {
+          throw error;
+        }
+        return;
+      }
+
+      toast.success(`${foodData.name} adicionado com sucesso!`);
+      onFoodCreated({
+        id: data.id,
+        name: data.name,
+        calories_per_100g: data.calories_per_100g,
+        protein_per_100g: data.protein_per_100g,
+        carbs_per_100g: data.carbs_per_100g,
+        fat_per_100g: data.fat_per_100g,
+        default_serving_size: data.default_serving_size ?? undefined,
+        serving_unit: data.serving_unit ?? undefined,
+      });
+      resetForm();
+      onOpenChange(false);
+    } catch (error) {
+      console.error("Error creating food:", error);
+      toast.error("Erro ao cadastrar alimento");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Handle confirming despite intolerance conflict
+  const handleConfirmDespiteConflict = async () => {
+    if (intoleranceDialog.pendingData) {
+      await saveFood(intoleranceDialog.pendingData);
+    }
+    setIntoleranceDialog({ open: false, conflicts: [], ingredients: [], pendingData: null });
   };
 
   const handleSubmit = async () => {
@@ -126,60 +290,63 @@ export default function ManualFoodModal({
       return;
     }
 
-    setIsLoading(true);
+    const normalizedName = name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
-    try {
-      const normalizedName = name
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
+    const foodData = {
+      name: name.trim(),
+      normalizedName,
+      calories: validation.data.calories,
+      protein: validation.data.protein,
+      carbs: validation.data.carbs,
+      fat: validation.data.fat,
+      defaultServingSize: validation.data.defaultServingSize,
+      servingUnit: validation.data.servingUnit,
+    };
 
-      const { data, error } = await supabase
-        .from("foods")
-        .insert({
-          name: name.trim(),
-          name_normalized: normalizedName,
-          calories_per_100g: validation.data.calories,
-          protein_per_100g: validation.data.protein,
-          carbs_per_100g: validation.data.carbs,
-          fat_per_100g: validation.data.fat,
-          default_serving_size: validation.data.defaultServingSize,
-          serving_unit: validation.data.servingUnit,
-          source: "user_manual",
-          verified: false,
-          confidence: 0.5,
-        })
-        .select()
-        .single();
+    // First, check local intolerance detection
+    if (userProfile?.intolerances && userProfile.intolerances.some(i => i !== "nenhuma")) {
+      const { hasConflict, conflicts } = checkUserIntoleranceConflict(
+        name,
+        userProfile.intolerances
+      );
 
-      if (error) {
-        if (error.code === "23505") {
-          toast.error("Este alimento já existe no banco de dados");
-        } else {
-          throw error;
-        }
+      if (hasConflict && conflicts.length > 0) {
+        setPendingFoodData(foodData);
+        setIntoleranceDialog({
+          open: true,
+          conflicts: conflicts.map(c => ({
+            intolerance: c,
+            intoleranceLabel: getIntoleranceLabel(c),
+            foundIngredients: [name],
+          })),
+          ingredients: [name],
+          pendingData: foodData,
+        });
         return;
       }
 
-      toast.success(`${name} adicionado com sucesso!`);
-      onFoodCreated({
-        id: data.id,
-        name: data.name,
-        calories_per_100g: data.calories_per_100g,
-        protein_per_100g: data.protein_per_100g,
-        carbs_per_100g: data.carbs_per_100g,
-        fat_per_100g: data.fat_per_100g,
-        default_serving_size: data.default_serving_size ?? undefined,
-        serving_unit: data.serving_unit ?? undefined,
-      });
-      resetForm();
-      onOpenChange(false);
-    } catch (error) {
-      console.error("Error creating food:", error);
-      toast.error("Erro ao cadastrar alimento");
-    } finally {
-      setIsLoading(false);
+      // If no local conflict, use AI analysis
+      setIsAnalyzing(true);
+      const aiResult = await analyzeWithAI(name);
+      setIsAnalyzing(false);
+
+      if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
+        setPendingFoodData(foodData);
+        setIntoleranceDialog({
+          open: true,
+          conflicts: aiResult.conflicts,
+          ingredients: aiResult.ingredients,
+          pendingData: foodData,
+        });
+        return;
+      }
     }
+
+    // No conflicts, save directly
+    await saveFood(foodData);
   };
 
   return (
@@ -341,16 +508,83 @@ export default function ManualFoodModal({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar
           </Button>
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? (
+          <Button onClick={handleSubmit} disabled={isLoading || isAnalyzing}>
+            {isAnalyzing ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                Analisando...
+              </>
+            ) : isLoading ? (
               <Loader2 className="w-4 h-4 animate-spin mr-2" />
             ) : (
               <Plus className="w-4 h-4 mr-2" />
             )}
-            Cadastrar
+            {!isAnalyzing && "Cadastrar"}
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      {/* Intolerance Conflict Dialog */}
+      <AlertDialog 
+        open={intoleranceDialog.open} 
+        onOpenChange={(open) => {
+          if (!open) {
+            setIntoleranceDialog({ open: false, conflicts: [], ingredients: [], pendingData: null });
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
+              <ShieldAlert className="w-5 h-5" />
+              Alerta de Intolerância
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>
+                  A IA identificou que <span className="font-semibold">{name}</span> pode conter ingredientes incompatíveis com suas restrições:
+                </p>
+                
+                {intoleranceDialog.ingredients.length > 0 && (
+                  <div className="bg-muted/50 rounded-md p-3">
+                    <p className="text-xs text-muted-foreground mb-1">Ingredientes identificados:</p>
+                    <p className="text-sm">{intoleranceDialog.ingredients.join(", ")}</p>
+                  </div>
+                )}
+                
+                <div className="space-y-2">
+                  {intoleranceDialog.conflicts.map((conflict, idx) => (
+                    <div key={idx} className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
+                      <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                      <div>
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          {conflict.intoleranceLabel}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Encontrados: {conflict.foundIngredients.join(", ")}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                
+                <p className="text-sm text-muted-foreground">
+                  Deseja cadastrar mesmo assim?
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleConfirmDespiteConflict}
+              className="bg-amber-600 hover:bg-amber-700"
+            >
+              Cadastrar Mesmo Assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Dialog>
   );
 }

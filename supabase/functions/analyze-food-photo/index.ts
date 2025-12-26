@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import { 
+  getIntoleranceMappings, 
+  generateIngredientsPromptContext,
+  getMappingsStats,
+  INTOLERANCE_LABELS 
+} from "../_shared/getIntoleranceMappings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -381,30 +387,54 @@ serve(async (req) => {
       ? imageBase64.split(',')[1] 
       : imageBase64;
 
-    // Build intolerance context for the prompt with expanded synonyms
+    // ========== FETCH DYNAMIC INTOLERANCE MAPPINGS FROM DATABASE ==========
+    let intoleranceData;
+    let dynamicIngredientsContext = "";
+    try {
+      intoleranceData = await getIntoleranceMappings();
+      logStep("Loaded dynamic intolerance mappings", { stats: getMappingsStats(intoleranceData) });
+      
+      // Generate context from database mappings (much more comprehensive than hardcoded)
+      dynamicIngredientsContext = generateIngredientsPromptContext(userIntolerances, intoleranceData);
+    } catch (mappingsError) {
+      logStep("Failed to load dynamic mappings, using fallback", { error: mappingsError });
+    }
+
+    // Build intolerance context for the prompt - now using database mappings
     let intoleranceContext = "";
     const hasRestrictions = userIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "comum";
     
     if (hasRestrictions) {
+      // Use dynamic mappings from database if available, otherwise fallback to hardcoded
       let synonymsList: string[] = [];
-      for (const intolerance of userIntolerances) {
-        const key = INTOLERANCE_MAP[intolerance.toLowerCase()] || intolerance.toLowerCase();
-        const synonyms = SINONIMOS_INTOLERANCIA[key] || [];
-        synonymsList = [...synonymsList, ...synonyms];
+      
+      if (intoleranceData) {
+        // Use database mappings
+        for (const intolerance of userIntolerances) {
+          const ingredients = intoleranceData.mappings.get(intolerance.toLowerCase()) || [];
+          synonymsList = [...synonymsList, ...ingredients];
+        }
+      } else {
+        // Fallback to hardcoded mappings
+        for (const intolerance of userIntolerances) {
+          const key = INTOLERANCE_MAP[intolerance.toLowerCase()] || intolerance.toLowerCase();
+          const synonyms = SINONIMOS_INTOLERANCIA[key] || [];
+          synonymsList = [...synonymsList, ...synonyms];
+        }
       }
       
       // Adicionar ingredientes excluídos manualmente à lista de verificação
-      const allExcluded = [...synonymsList, ...excludedIngredients.map((i: string) => i.toLowerCase())];
+      const allExcluded = [...new Set([...synonymsList, ...excludedIngredients.map((i: string) => i.toLowerCase())])];
       
       intoleranceContext = `
 IMPORTANTE - RESTRIÇÕES ALIMENTARES DO USUÁRIO:
-${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${userIntolerances.join(", ")}` : ""}
+${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${userIntolerances.map((i: string) => INTOLERANCE_LABELS[i] || i).join(", ")}` : ""}
 ${excludedIngredients.length > 0 ? `- Ingredientes Excluídos Manualmente: ${excludedIngredients.join(", ")}` : ""}
 ${dietaryPreference === "vegetariana" ? "- Dieta: VEGETARIANA (não consome carne, peixe, frutos do mar)" : ""}
 ${dietaryPreference === "vegana" ? "- Dieta: VEGANA (não consome nenhum produto de origem animal)" : ""}
 
-INGREDIENTES/PRATOS A VERIFICAR (podem conter alérgenos ou ingredientes excluídos):
-${allExcluded.slice(0, 60).join(', ')}
+${dynamicIngredientsContext || `INGREDIENTES/PRATOS A VERIFICAR (podem conter alérgenos ou ingredientes excluídos):
+${allExcluded.slice(0, 80).join(', ')}`}
 
 Você DEVE analisar cada alimento identificado e verificar se contém ou pode conter ingredientes problemáticos para essas restrições.
 Considere também ingredientes "escondidos" em molhos, temperos e preparações.
@@ -415,6 +445,7 @@ VERIFICAÇÃO NEGATIVA (FAIL-SAFE):
 - Se detectar algum alimento problemático, adicione ao array "alertas_intolerancia"
 `;
     }
+
 
     const systemPrompt = `You are an expert nutritionist AI specialized in GLOBAL CUISINE visual analysis and FOOD SAFETY for people with intolerances and allergies.
 

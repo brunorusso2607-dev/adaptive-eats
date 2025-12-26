@@ -2,6 +2,12 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { getAIPrompt } from "../_shared/getAIPrompt.ts";
+import { 
+  getIntoleranceMappings, 
+  generateIngredientsPromptContext,
+  getMappingsStats,
+  INTOLERANCE_LABELS 
+} from "../_shared/getIntoleranceMappings.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -159,18 +165,41 @@ serve(async (req) => {
       ? imageBase64.split(',')[1] 
       : imageBase64;
 
+    // ========== FETCH DYNAMIC INTOLERANCE MAPPINGS FROM DATABASE ==========
+    let intoleranceData;
+    let dynamicIngredientsContext = "";
+    try {
+      intoleranceData = await getIntoleranceMappings();
+      logStep("Loaded dynamic intolerance mappings", { stats: getMappingsStats(intoleranceData) });
+      
+      // Generate context from database mappings (much more comprehensive than hardcoded)
+      dynamicIngredientsContext = generateIngredientsPromptContext(userIntolerances, intoleranceData);
+    } catch (mappingsError) {
+      logStep("Failed to load dynamic mappings, using fallback", { error: mappingsError });
+    }
+
     // Build the COMPLETE list of ingredients to watch for based on user profile
     let ingredientsToWatch: string[] = [];
-    let intoleranceLabels: string[] = [];
+    let intoleranceLabelsToUse: string[] = [];
     
-    for (const intolerance of userIntolerances) {
-      const aliases = ingredientAliases[intolerance.toLowerCase()];
-      if (aliases) {
-        ingredientsToWatch.push(...aliases);
-        intoleranceLabels.push(intolerance);
-      } else {
-        ingredientsToWatch.push(intolerance);
-        intoleranceLabels.push(intolerance);
+    // Use dynamic mappings from database if available
+    if (intoleranceData) {
+      for (const intolerance of userIntolerances) {
+        const dbIngredients = intoleranceData.mappings.get(intolerance.toLowerCase()) || [];
+        ingredientsToWatch.push(...dbIngredients);
+        intoleranceLabelsToUse.push(INTOLERANCE_LABELS[intolerance] || intolerance);
+      }
+    } else {
+      // Fallback to hardcoded aliases
+      for (const intolerance of userIntolerances) {
+        const aliases = ingredientAliases[intolerance.toLowerCase()];
+        if (aliases) {
+          ingredientsToWatch.push(...aliases);
+          intoleranceLabelsToUse.push(intolerance);
+        } else {
+          ingredientsToWatch.push(intolerance);
+          intoleranceLabelsToUse.push(intolerance);
+        }
       }
     }
 
@@ -186,11 +215,11 @@ serve(async (req) => {
     if (dietaryPreference === "vegetariana") {
       dietaryRestrictions = "O usuário é VEGETARIANO.";
       dietaryIngredientsToWatch = meatIngredients;
-      intoleranceLabels.push("vegetarianismo");
+      intoleranceLabelsToUse.push("vegetarianismo");
     } else if (dietaryPreference === "vegana") {
       dietaryRestrictions = "O usuário é VEGANO.";
       dietaryIngredientsToWatch = animalIngredients;
-      intoleranceLabels.push("veganismo");
+      intoleranceLabelsToUse.push("veganismo");
     }
 
     ingredientsToWatch = [...new Set([...ingredientsToWatch, ...dietaryIngredientsToWatch])];
@@ -314,7 +343,7 @@ POSSIBLE CATEGORIES:
 ## IF IT'S A FOOD PRODUCT, CONTINUE:
 
 ### USER PROFILE (CRITICAL - PROTECT THIS USER!):
-- Intolerances: ${intoleranceLabels.length > 0 ? intoleranceLabels.join(", ").toUpperCase() : "None registered"}
+- Intolerances: ${intoleranceLabelsToUse.length > 0 ? intoleranceLabelsToUse.join(", ").toUpperCase() : "None registered"}
 - Dietary preference: ${dietaryPreference.toUpperCase()}
 ${excludedContext}
 ${dietaryRestrictions}

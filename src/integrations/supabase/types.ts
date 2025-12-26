@@ -460,6 +460,7 @@ export type Database = {
           confidence: number | null
           created_at: string
           cuisine_origin: string | null
+          default_serving_size: number | null
           fat_per_100g: number
           fiber_per_100g: number | null
           id: string
@@ -468,6 +469,7 @@ export type Database = {
           name_normalized: string
           protein_per_100g: number
           search_count: number | null
+          serving_unit: string | null
           sodium_per_100g: number | null
           source: string | null
           verified: boolean | null
@@ -480,6 +482,7 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           cuisine_origin?: string | null
+          default_serving_size?: number | null
           fat_per_100g?: number
           fiber_per_100g?: number | null
           id?: string
@@ -488,6 +491,7 @@ export type Database = {
           name_normalized: string
           protein_per_100g?: number
           search_count?: number | null
+          serving_unit?: string | null
           sodium_per_100g?: number | null
           source?: string | null
           verified?: boolean | null
@@ -500,6 +504,7 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           cuisine_origin?: string | null
+          default_serving_size?: number | null
           fat_per_100g?: number
           fiber_per_100g?: number | null
           id?: string
@@ -508,6 +513,7 @@ export type Database = {
           name_normalized?: string
           protein_per_100g?: number
           search_count?: number | null
+          serving_unit?: string | null
           sodium_per_100g?: number | null
           source?: string | null
           verified?: boolean | null

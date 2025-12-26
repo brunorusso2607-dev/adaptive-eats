@@ -1,5 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import {
+  getCountryConfig,
+  getMealExamples,
+  getIngredientPriority,
+  buildGoalContextInstructions,
+  FORBIDDEN_INGREDIENTS,
+  MEAL_TYPE_LABELS,
+  type UserProfile,
+} from "../_shared/recipeConfig.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -15,7 +24,7 @@ const MEAL_TYPES = [
 ];
 
 const RECIPE_CATEGORIES = [
-  'Tradicional brasileiro',
+  'Tradicional regional',
   'Fitness/Light',
   'Reconfortante',
   'Rápido e prático',
@@ -23,11 +32,68 @@ const RECIPE_CATEGORIES = [
   'Rico em proteínas',
   'Low carb',
   'Comfort food',
-  'Regional nordestino',
-  'Regional mineiro',
-  'Regional sulista',
-  'Regional paulista',
 ];
+
+// Build intolerance-aware instructions
+function buildIntoleranceInstructions(intolerances: string[] | null): string {
+  if (!intolerances || intolerances.length === 0) {
+    return "";
+  }
+
+  const forbiddenList: string[] = [];
+  for (const intolerance of intolerances) {
+    const forbidden = FORBIDDEN_INGREDIENTS[intolerance.toLowerCase()];
+    if (forbidden) {
+      forbiddenList.push(...forbidden);
+    }
+  }
+
+  if (forbiddenList.length === 0) return "";
+
+  const uniqueForbidden = [...new Set(forbiddenList)];
+  return `
+
+⚠️ INGREDIENTES ABSOLUTAMENTE PROIBIDOS (intolerâncias do usuário):
+${uniqueForbidden.slice(0, 50).join(', ')}
+
+NUNCA inclua NENHUM destes ingredientes ou derivados nas receitas!
+Sempre use alternativas seguras.`;
+}
+
+// Build dietary preference instructions
+function buildDietaryInstructions(dietaryPreference: string | null): string {
+  if (!dietaryPreference) return "";
+
+  const instructions: Record<string, string> = {
+    vegetariana: `
+🥗 PREFERÊNCIA: VEGETARIANA
+- SEM carne, frango, peixe ou frutos do mar
+- Pode incluir ovos e laticínios
+- Priorize proteínas vegetais: leguminosas, tofu, cogumelos`,
+    vegana: `
+🌱 PREFERÊNCIA: VEGANA
+- SEM produtos de origem animal (carne, ovos, laticínios, mel)
+- Use proteínas vegetais: grão-de-bico, lentilha, tofu, seitan
+- Substitua laticínios por leites vegetais`,
+    low_carb: `
+🥩 PREFERÊNCIA: LOW CARB
+- Minimize carboidratos (máx 30g por refeição)
+- Priorize proteínas e gorduras saudáveis
+- Evite arroz, pão, massa, batata, açúcar`,
+    cetogenica: `
+🧈 PREFERÊNCIA: CETOGÊNICA
+- Ultra low carb (máx 20g por refeição)
+- Alta gordura, proteína moderada
+- Evite todos os carboidratos, incluindo frutas`,
+    pescetariana: `
+🐟 PREFERÊNCIA: PESCETARIANA
+- SEM carne vermelha ou frango
+- Pode incluir peixe e frutos do mar
+- Ovos e laticínios permitidos`,
+  };
+
+  return instructions[dietaryPreference] || "";
+}
 
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
@@ -49,15 +115,22 @@ serve(async (req) => {
       category, 
       quantity = 10, 
       countryCode = 'BR',
-      languageCode = 'pt-BR' 
+      languageCode = 'pt-BR',
+      intolerances = [],
+      dietaryPreference = null,
+      goal = null,
     } = await req.json();
 
+    // Get country-specific configuration
+    const countryConfig = getCountryConfig(countryCode);
     const selectedMealType = MEAL_TYPES.find(m => m.key === mealType) || MEAL_TYPES[Math.floor(Math.random() * MEAL_TYPES.length)];
     const selectedCategory = category || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)];
+    const mealExamples = getMealExamples(selectedMealType.key, countryCode);
+    const ingredientPriority = getIngredientPriority(countryCode);
 
-    console.log(`Gerando ${quantity} receitas: ${selectedMealType.label} - ${selectedCategory}`);
+    console.log(`[generate-simple-meals] Gerando ${quantity} receitas: ${selectedMealType.label} - ${selectedCategory} para ${countryConfig.name}`);
 
-    // Buscar receitas existentes para evitar duplicatas
+    // Fetch existing recipes to avoid duplicates
     const { data: existingMeals } = await supabase
       .from('simple_meals')
       .select('name')
@@ -65,27 +138,58 @@ serve(async (req) => {
 
     const existingNames = existingMeals?.map(m => m.name.toLowerCase()) || [];
 
-    const systemPrompt = `Você é um nutricionista brasileiro especialista em criar receitas saudáveis e saborosas.
-Suas receitas são:
-- Autênticas e populares no Brasil
-- Com ingredientes fáceis de encontrar em supermercados brasileiros
-- Balanceadas nutricionalmente
-- Com instruções claras e objetivas
+    // Build profile for goal context
+    const mockProfile: UserProfile = {
+      id: 'system',
+      goal,
+      dietary_preference: dietaryPreference,
+      intolerances,
+      country: countryCode,
+    };
 
-IMPORTANTE: Responda APENAS com o JSON válido, sem markdown, sem explicações.`;
+    const goalInstructions = buildGoalContextInstructions(mockProfile);
+    const intoleranceInstructions = buildIntoleranceInstructions(intolerances);
+    const dietaryInstructions = buildDietaryInstructions(dietaryPreference);
 
-    const userPrompt = `Gere exatamente ${quantity} receitas brasileiras DIFERENTES para ${selectedMealType.label}.
+    const systemPrompt = `Você é o MAIOR ESPECIALISTA MUNDIAL em culinária de ${countryConfig.name}.
+
+## SUA MISSÃO
+Criar receitas AUTÊNTICAS, SABOROSAS e NUTRITIVAS para ${countryConfig.name}.
+
+## CONHECIMENTO ENCICLOPÉDICO
+- Culinária típica de ${countryConfig.name}
+- Ingredientes locais e sazonais
+- Técnicas tradicionais de preparo
+- Valores nutricionais precisos
+
+## EXEMPLOS DE ${selectedMealType.label.toUpperCase()} EM ${countryConfig.name.toUpperCase()}:
+${mealExamples.join(', ')}
+
+## INGREDIENTES
+${ingredientPriority}
+
+${goalInstructions}
+${dietaryInstructions}
+${intoleranceInstructions}
+
+IMPORTANTE: 
+- Responda em ${countryConfig.language === 'pt-BR' ? 'Português Brasileiro' : countryConfig.language}
+- Responda APENAS com JSON válido, sem markdown
+- Valores nutricionais REALISTAS baseados em porções padrão`;
+
+    const userPrompt = `Gere exatamente ${quantity} receitas DIFERENTES e AUTÊNTICAS de ${countryConfig.name} para ${selectedMealType.label}.
+
 Categoria: ${selectedCategory}
-Faixa de calorias: ${selectedMealType.calorieRange[0]}-${selectedMealType.calorieRange[1]} kcal
+Faixa de calorias: ${selectedMealType.calorieRange[0]}-${selectedMealType.calorieRange[1]} kcal por porção
 
-${existingNames.length > 0 ? `EVITE estas receitas já existentes: ${existingNames.slice(0, 50).join(', ')}` : ''}
+${existingNames.length > 0 ? `EVITE estas receitas já existentes: ${existingNames.slice(0, 30).join(', ')}` : ''}
 
 Retorne um JSON com esta estrutura EXATA:
 {
   "recipes": [
     {
-      "name": "Nome da Receita",
-      "description": "Descrição curta e apetitosa",
+      "name": "Nome da Receita (nome típico local)",
+      "description": "Descrição curta e apetitosa (1 frase)",
       "calories": 350,
       "protein": 25,
       "carbs": 30,
@@ -100,7 +204,15 @@ Retorne um JSON com esta estrutura EXATA:
   ]
 }
 
-Gere receitas VARIADAS e ÚNICAS. Não repita nomes ou conceitos similares.`;
+REGRAS:
+1. Receitas VARIADAS e ÚNICAS - não repita conceitos
+2. Nomes em ${countryConfig.language === 'pt-BR' ? 'português' : 'idioma local'}
+3. Ingredientes típicos e acessíveis em ${countryConfig.name}
+4. Valores nutricionais REALISTAS
+5. Tempo de preparo realista
+6. 3-8 ingredientes por receita`;
+
+    console.log(`[generate-simple-meals] Chamando API com country: ${countryCode}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -120,7 +232,7 @@ Gere receitas VARIADAS e ÚNICAS. Não repita nomes ou conceitos similares.`;
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("Erro na API:", response.status, errorText);
+      console.error("[generate-simple-meals] Erro na API:", response.status, errorText);
       
       if (response.status === 429) {
         return new Response(JSON.stringify({ error: "Rate limit excedido. Tente novamente em alguns minutos." }), {
@@ -140,18 +252,18 @@ Gere receitas VARIADAS e ÚNICAS. Não repita nomes ou conceitos similares.`;
     const aiResponse = await response.json();
     let content = aiResponse.choices?.[0]?.message?.content || "";
     
-    // Limpar markdown se houver
+    // Clean markdown if present
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
-    console.log("Resposta da IA (primeiros 500 chars):", content.substring(0, 500));
+    console.log("[generate-simple-meals] Resposta recebida, parseando JSON...");
 
     let recipes;
     try {
       const parsed = JSON.parse(content);
       recipes = parsed.recipes || parsed;
     } catch (parseError) {
-      console.error("Erro ao parsear JSON:", parseError);
-      console.error("Conteúdo recebido:", content);
+      console.error("[generate-simple-meals] Erro ao parsear JSON:", parseError);
+      console.error("[generate-simple-meals] Conteúdo:", content.substring(0, 500));
       throw new Error("Formato de resposta inválido da IA");
     }
 
@@ -159,7 +271,7 @@ Gere receitas VARIADAS e ÚNICAS. Não repita nomes ou conceitos similares.`;
       throw new Error("Nenhuma receita gerada");
     }
 
-    // Preparar dados para inserção
+    // Prepare data for insertion
     const mealsToInsert = recipes
       .filter(r => r.name && !existingNames.includes(r.name.toLowerCase()))
       .map((recipe, index) => ({
@@ -191,31 +303,32 @@ Gere receitas VARIADAS e ÚNICAS. Não repita nomes ou conceitos similares.`;
       });
     }
 
-    // Inserir no banco
+    // Insert into database
     const { data: insertedData, error: insertError } = await supabase
       .from('simple_meals')
       .insert(mealsToInsert)
       .select('id, name');
 
     if (insertError) {
-      console.error("Erro ao inserir:", insertError);
+      console.error("[generate-simple-meals] Erro ao inserir:", insertError);
       throw new Error(`Erro ao salvar receitas: ${insertError.message}`);
     }
 
-    console.log(`Inseridas ${insertedData?.length || 0} receitas com sucesso`);
+    console.log(`[generate-simple-meals] Inseridas ${insertedData?.length || 0} receitas com sucesso`);
 
     return new Response(JSON.stringify({
       success: true,
       inserted: insertedData?.length || 0,
       mealType: selectedMealType.label,
       category: selectedCategory,
+      country: countryConfig.name,
       recipes: insertedData?.map(r => r.name) || [],
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
 
   } catch (error) {
-    console.error("Erro geral:", error);
+    console.error("[generate-simple-meals] Erro geral:", error);
     return new Response(JSON.stringify({ 
       error: error instanceof Error ? error.message : "Erro desconhecido" 
     }), {

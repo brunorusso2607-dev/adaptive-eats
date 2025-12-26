@@ -113,11 +113,11 @@ export default function IngredientSubstitutionSheet({
             setOriginalData(results[0]);
           }
         });
-        
-        // Get safe suggestions based on user restrictions
-        const suggestions = getSuggestions(originalIngredient.item);
-        setSafeSuggestions(suggestions);
       }
+      
+      // Get safe suggestions based on user restrictions (independent of ingredient)
+      const suggestions = getSuggestions();
+      setSafeSuggestions(suggestions);
     } else {
       // Clean up when closing
       setSearchQuery("");

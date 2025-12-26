@@ -1,112 +1,95 @@
 import { useMemo } from "react";
 
-// Mapeamento de ingredientes originais -> substitutos seguros
-// Estruturado por categoria de restrição
+// Alimentos seguros por tipo de restrição
+// Estes são alimentos que o usuário pode usar com segurança
 
-interface SafeSubstitute {
-  original: string[];
-  substitutes: string[];
-  safeFor: string[]; // restrições para as quais este substituto é seguro
-}
-
-const SAFE_SUBSTITUTES: SafeSubstitute[] = [
-  // Substitutos para lactose
-  {
-    original: ["leite", "leite integral", "leite desnatado"],
-    substitutes: ["leite de coco", "leite de amêndoas", "leite de aveia", "leite de arroz", "leite de soja"],
-    safeFor: ["lactose", "vegana"],
-  },
-  {
-    original: ["creme de leite", "nata"],
-    substitutes: ["creme de leite vegetal", "leite de coco", "creme de castanha"],
-    safeFor: ["lactose", "vegana"],
-  },
-  {
-    original: ["manteiga"],
-    substitutes: ["azeite de oliva", "óleo de coco", "manteiga vegana", "margarina sem leite"],
-    safeFor: ["lactose", "vegana"],
-  },
-  {
-    original: ["queijo", "queijo mussarela", "mussarela", "queijo parmesão"],
-    substitutes: ["queijo vegano", "tofu firme", "levedura nutricional"],
-    safeFor: ["lactose", "vegana"],
-  },
-  {
-    original: ["iogurte", "iogurte natural", "iogurte grego"],
-    substitutes: ["iogurte de coco", "iogurte de soja", "iogurte vegano"],
-    safeFor: ["lactose", "vegana"],
-  },
-  {
-    original: ["requeijão", "cream cheese"],
-    substitutes: ["pasta de tofu", "homus", "cream cheese vegano"],
-    safeFor: ["lactose", "vegana"],
-  },
+const SAFE_FOODS_BY_RESTRICTION: Record<string, string[]> = {
+  // Alimentos seguros para intolerantes à lactose
+  lactose: [
+    "leite de coco",
+    "leite de amêndoas", 
+    "leite de aveia",
+    "leite de arroz",
+    "leite de soja",
+    "creme de coco",
+    "iogurte de coco",
+    "queijo vegano",
+    "manteiga vegana",
+  ],
   
-  // Substitutos para glúten
-  {
-    original: ["farinha de trigo", "farinha"],
-    substitutes: ["farinha de arroz", "farinha de amêndoas", "farinha de coco", "polvilho", "fécula de batata"],
-    safeFor: ["gluten"],
-  },
-  {
-    original: ["pão", "pão francês", "pão de forma"],
-    substitutes: ["pão sem glúten", "tapioca", "wrap de arroz"],
-    safeFor: ["gluten"],
-  },
-  {
-    original: ["macarrão", "espaguete", "massa"],
-    substitutes: ["macarrão de arroz", "macarrão de milho", "espaguete de abobrinha", "macarrão sem glúten"],
-    safeFor: ["gluten"],
-  },
-  {
-    original: ["aveia"],
-    substitutes: ["aveia certificada sem glúten", "quinoa em flocos", "amaranto"],
-    safeFor: ["gluten"],
-  },
+  // Alimentos seguros para intolerantes ao glúten
+  gluten: [
+    "farinha de arroz",
+    "farinha de amêndoas",
+    "farinha de coco",
+    "polvilho",
+    "fécula de batata",
+    "tapioca",
+    "quinoa",
+    "amaranto",
+  ],
   
-  // Substitutos para ovo
-  {
-    original: ["ovo", "ovos"],
-    substitutes: ["linhaça hidratada", "chia hidratada", "banana amassada", "tofu macio"],
-    safeFor: ["ovo", "vegana"],
-  },
+  // Alimentos seguros para alérgicos a amendoim
+  amendoim: [
+    "castanha de caju",
+    "amêndoas",
+    "tahine",
+    "pasta de castanhas",
+    "sementes de girassol",
+  ],
   
-  // Substitutos para açúcar
-  {
-    original: ["açúcar", "açúcar refinado"],
-    substitutes: ["xilitol", "eritritol", "stevia", "monk fruit"],
-    safeFor: ["acucar"],
-  },
-  {
-    original: ["mel"],
-    substitutes: ["xarope de agave", "melado de cana", "açúcar de coco"],
-    safeFor: ["vegana"],
-  },
+  // Alimentos seguros para restrição de açúcar
+  acucar: [
+    "xilitol",
+    "eritritol",
+    "stevia",
+    "monk fruit",
+    "açúcar de coco",
+  ],
   
-  // Substitutos para amendoim
-  {
-    original: ["amendoim", "pasta de amendoim"],
-    substitutes: ["pasta de castanha de caju", "pasta de amêndoas", "tahine"],
-    safeFor: ["amendoim"],
-  },
+  // Alimentos seguros para alérgicos a ovo
+  ovo: [
+    "linhaça hidratada",
+    "chia hidratada",
+    "banana amassada",
+    "aquafaba",
+    "tofu macio",
+  ],
   
-  // Substitutos vegetarianos/veganos para carnes
-  {
-    original: ["carne", "carne moída", "carne bovina"],
-    substitutes: ["proteína de soja", "grão de bico", "lentilha", "tofu firme", "cogumelos"],
-    safeFor: ["vegetariana", "vegana"],
-  },
-  {
-    original: ["frango", "peito de frango"],
-    substitutes: ["tofu", "seitan", "jaca verde", "proteína de ervilha"],
-    safeFor: ["vegetariana", "vegana"],
-  },
-  {
-    original: ["bacon", "linguiça"],
-    substitutes: ["tofu defumado", "cogumelos shiitake", "chips de coco"],
-    safeFor: ["vegetariana", "vegana"],
-  },
-];
+  // Alimentos seguros para alérgicos a frutos do mar
+  frutos_mar: [
+    "frango",
+    "carne bovina",
+    "tofu",
+    "cogumelos",
+    "proteína de soja",
+  ],
+  
+  // Alimentos seguros para vegetarianos
+  vegetariana: [
+    "tofu",
+    "grão de bico",
+    "lentilha",
+    "feijão",
+    "proteína de soja",
+    "cogumelos",
+    "quinoa",
+    "ovo",
+  ],
+  
+  // Alimentos seguros para veganos
+  vegana: [
+    "tofu",
+    "grão de bico",
+    "lentilha",
+    "proteína de soja",
+    "cogumelos",
+    "leite de coco",
+    "leite de amêndoas",
+    "queijo vegano",
+    "seitan",
+  ],
+};
 
 type UserProfile = {
   intolerances?: string[] | null;
@@ -114,11 +97,11 @@ type UserProfile = {
 };
 
 export function useSafeIngredientSuggestions(profile: UserProfile | null) {
+  // Retorna sugestões baseadas nas restrições do usuário (independente do ingrediente original)
   const getSuggestions = useMemo(() => {
-    return (originalIngredient: string): string[] => {
+    return (_originalIngredient?: string): string[] => {
       if (!profile) return [];
       
-      const normalizedOriginal = originalIngredient.toLowerCase().trim();
       const userRestrictions: string[] = [];
       
       // Coletar restrições do usuário
@@ -134,29 +117,19 @@ export function useSafeIngredientSuggestions(profile: UserProfile | null) {
       
       if (userRestrictions.length === 0) return [];
       
-      // Encontrar substitutos seguros
-      const suggestions: string[] = [];
+      // Coletar todos os alimentos seguros para as restrições do usuário
+      const allSafeFoods: string[] = [];
       
-      for (const substitute of SAFE_SUBSTITUTES) {
-        // Verificar se o ingrediente original está na lista
-        const matchesOriginal = substitute.original.some(orig => 
-          normalizedOriginal.includes(orig) || orig.includes(normalizedOriginal)
-        );
-        
-        if (matchesOriginal) {
-          // Verificar se o substituto é seguro para pelo menos uma das restrições do usuário
-          const isSafeForUser = substitute.safeFor.some(safe => 
-            userRestrictions.includes(safe)
-          );
-          
-          if (isSafeForUser) {
-            suggestions.push(...substitute.substitutes);
-          }
+      for (const restriction of userRestrictions) {
+        const safeFoods = SAFE_FOODS_BY_RESTRICTION[restriction];
+        if (safeFoods) {
+          allSafeFoods.push(...safeFoods);
         }
       }
       
-      // Remover duplicatas
-      return [...new Set(suggestions)];
+      // Remover duplicatas e limitar a 6 sugestões
+      const uniqueFoods = [...new Set(allSafeFoods)];
+      return uniqueFoods.slice(0, 6);
     };
   }, [profile]);
   
@@ -174,6 +147,10 @@ export function useSafeIngredientSuggestions(profile: UserProfile | null) {
         ovo: "Ovo",
         vegana: "Vegano",
         vegetariana: "Vegetariano",
+        low_carb: "Low Carb",
+        pescetariana: "Pescetariano",
+        cetogenica: "Cetogênica",
+        flexitariana: "Flexitariano",
       };
       
       if (profile.intolerances) {
@@ -194,5 +171,15 @@ export function useSafeIngredientSuggestions(profile: UserProfile | null) {
     };
   }, [profile]);
   
-  return { getSuggestions, getUserRestrictionLabels };
+  // Nova função: verifica se o usuário tem restrições configuradas
+  const hasRestrictions = useMemo(() => {
+    if (!profile) return false;
+    
+    const hasIntolerances = profile.intolerances?.some(i => i !== "nenhuma") || false;
+    const hasDietaryPref = profile.dietary_preference && profile.dietary_preference !== "comum";
+    
+    return hasIntolerances || hasDietaryPref;
+  }, [profile]);
+  
+  return { getSuggestions, getUserRestrictionLabels, hasRestrictions };
 }

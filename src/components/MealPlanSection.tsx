@@ -6,7 +6,10 @@ import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart, CheckCir
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import MealPlanModeSelector, { MealPlanMode } from "./MealPlanModeSelector";
 import MealPlanGenerator from "./MealPlanGenerator";
+import SimpleMealsPlanGenerator from "./SimpleMealsPlanGenerator";
+import CustomMealPlanBuilder from "./CustomMealPlanBuilder";
 import MealPlanCalendar from "./MealPlanCalendar";
 import MealRecipeDetail from "./MealRecipeDetail";
 import ShoppingList from "./ShoppingList";
@@ -109,7 +112,7 @@ type UserProfile = {
 };
 
 export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
-  const [view, setView] = useState<"list" | "create" | "calendar" | "recipe" | "shopping">("list");
+  const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-simple" | "create-custom" | "calendar" | "recipe" | "shopping">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
@@ -318,9 +321,48 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     return isPastMonth(plan.end_date);
   };
 
-  if (view === "create") {
+  const handleModeSelect = (mode: MealPlanMode) => {
+    if (mode === "ai") setView("create-ai");
+    else if (mode === "simple") setView("create-simple");
+    else if (mode === "custom") setView("create-custom");
+  };
+
+  if (view === "select-mode") {
+    return (
+      <MealPlanModeSelector
+        onSelectMode={handleModeSelect}
+        onClose={() => setView("list")}
+      />
+    );
+  }
+
+  if (view === "create-ai") {
     return (
       <MealPlanGenerator
+        onClose={() => setView("list")}
+        onPlanGenerated={() => {
+          fetchMealPlans();
+          setView("list");
+        }}
+      />
+    );
+  }
+
+  if (view === "create-simple") {
+    return (
+      <SimpleMealsPlanGenerator
+        onClose={() => setView("list")}
+        onPlanGenerated={() => {
+          fetchMealPlans();
+          setView("list");
+        }}
+      />
+    );
+  }
+
+  if (view === "create-custom") {
+    return (
+      <CustomMealPlanBuilder
         onClose={() => setView("list")}
         onPlanGenerated={() => {
           fetchMealPlans();
@@ -444,7 +486,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
           <Button 
             className="gradient-primary border-0 text-xs sm:text-sm" 
             size="sm" 
-            onClick={() => setView("create")}
+            onClick={() => setView("select-mode")}
             disabled={!canCreateNewPlan}
             title={getNewPlanDisabledReason || undefined}
           >
@@ -482,7 +524,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
             <p className="text-sm text-muted-foreground mb-4">
               Crie seu primeiro plano alimentar e deixe a IA montar sua rotina semanal
             </p>
-            <Button className="gradient-primary border-0" onClick={() => setView("create")}>
+            <Button className="gradient-primary border-0" onClick={() => setView("select-mode")}>
               <Plus className="w-4 h-4 mr-2" />
               Criar Primeiro Plano
             </Button>

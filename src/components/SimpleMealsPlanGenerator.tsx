@@ -12,7 +12,8 @@ import {
   Clock, 
   ChevronDown,
   ChevronUp,
-  Flame
+  Flame,
+  AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +21,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
+import { useUserIntolerances } from "@/hooks/useUserIntolerances";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
@@ -88,6 +90,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
   const { getCompatibility, isLoading: isLoadingCompatibility } = useDietaryCompatibility(
     userProfile?.dietary_preference
   );
+  const { checkMealConflict } = useUserIntolerances();
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -398,6 +401,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                   <div className="border-t border-border p-2 space-y-2 bg-muted/30">
                     {meals.map((meal) => {
                       const isSelected = selectedMeal?.id === meal.id;
+                      const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
                       return (
                         <div
                           key={meal.id}
@@ -405,7 +409,9 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                             "p-3 rounded-lg cursor-pointer transition-all",
                             isSelected 
                               ? "bg-primary/10 border border-primary/50" 
-                              : "bg-background hover:bg-muted border border-transparent"
+                              : conflict.hasConflict
+                                ? "bg-destructive/5 border border-destructive/30 hover:bg-destructive/10"
+                                : "bg-background hover:bg-muted border border-transparent"
                           )}
                           onClick={() => handleSelectMeal(mealType, meal)}
                         >
@@ -422,6 +428,20 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                                 </span>
                                 <span>{meal.calories} kcal</span>
                               </div>
+                              {conflict.hasConflict && (
+                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                  <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
+                                  {conflict.labels.map((label) => (
+                                    <Badge 
+                                      key={label} 
+                                      variant="outline" 
+                                      className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30"
+                                    >
+                                      Contém {label}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                             {isSelected && (
                               <CheckCircle2 className="w-5 h-5 text-primary shrink-0" />

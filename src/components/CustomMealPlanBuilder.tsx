@@ -15,7 +15,8 @@ import {
   Sparkles,
   UtensilsCrossed,
   Plus,
-  X
+  X,
+  AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +24,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
+import { useUserIntolerances } from "@/hooks/useUserIntolerances";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type MealSlot = {
@@ -102,6 +104,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
+  const { checkMealConflict, hasIntolerances } = useUserIntolerances();
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -372,27 +375,47 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     <p className="text-xs">Favorite receitas para usá-las aqui</p>
                   </div>
                 ) : (
-                  favorites.map((fav) => (
-                    <Card
-                      key={fav.id}
-                      className="glass-card cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => handleSelectMeal(fav, "favorite")}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">{fav.name}</p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span>{fav.calories} kcal</span>
-                              <span>•</span>
-                              <span>{fav.prep_time} min</span>
+                  favorites.map((fav) => {
+                    const conflict = checkMealConflict(fav.name, Array.isArray(fav.ingredients) ? fav.ingredients : undefined);
+                    return (
+                      <Card
+                        key={fav.id}
+                        className={cn(
+                          "glass-card cursor-pointer hover:bg-muted/50 transition-colors",
+                          conflict.hasConflict && "border-destructive/50 bg-destructive/5"
+                        )}
+                        onClick={() => handleSelectMeal(fav, "favorite")}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{fav.name}</p>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span>{fav.calories} kcal</span>
+                                <span>•</span>
+                                <span>{fav.prep_time} min</span>
+                              </div>
+                              {conflict.hasConflict && (
+                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                  <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
+                                  {conflict.labels.map((label) => (
+                                    <Badge 
+                                      key={label} 
+                                      variant="outline" 
+                                      className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30"
+                                    >
+                                      Contém {label}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                             </div>
+                            <Plus className="w-5 h-5 text-primary shrink-0" />
                           </div>
-                          <Plus className="w-5 h-5 text-primary" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 )}
               </div>
             </ScrollArea>
@@ -416,27 +439,47 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     );
                   }
                   
-                  return filteredMeals.map((meal) => (
-                    <Card
-                      key={meal.id}
-                      className="glass-card cursor-pointer hover:bg-muted/50 transition-colors"
-                      onClick={() => handleSelectMeal(meal, "simple")}
-                    >
-                      <CardContent className="p-3">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="font-medium text-sm">{meal.name}</p>
-                            <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                              <span>{meal.calories} kcal</span>
-                              <span>•</span>
-                              <span>{meal.prep_time} min</span>
+                  return filteredMeals.map((meal) => {
+                    const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
+                    return (
+                      <Card
+                        key={meal.id}
+                        className={cn(
+                          "glass-card cursor-pointer hover:bg-muted/50 transition-colors",
+                          conflict.hasConflict && "border-destructive/50 bg-destructive/5"
+                        )}
+                        onClick={() => handleSelectMeal(meal, "simple")}
+                      >
+                        <CardContent className="p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm">{meal.name}</p>
+                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
+                                <span>{meal.calories} kcal</span>
+                                <span>•</span>
+                                <span>{meal.prep_time} min</span>
+                              </div>
+                              {conflict.hasConflict && (
+                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                                  <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
+                                  {conflict.labels.map((label) => (
+                                    <Badge 
+                                      key={label} 
+                                      variant="outline" 
+                                      className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30"
+                                    >
+                                      Contém {label}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              )}
                             </div>
+                            <Plus className="w-5 h-5 text-primary shrink-0" />
                           </div>
-                          <Plus className="w-5 h-5 text-primary" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ));
+                        </CardContent>
+                      </Card>
+                    );
+                  });
                 })()}
               </div>
             </ScrollArea>

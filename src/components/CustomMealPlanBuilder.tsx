@@ -368,14 +368,28 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
           <TabsContent value="favorites" className="mt-4">
             <ScrollArea className="h-[calc(100vh-280px)]">
               <div className="space-y-2 pr-4">
-                {favorites.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Heart className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                    <p>Nenhum favorito encontrado</p>
-                    <p className="text-xs">Favorite receitas para usá-las aqui</p>
-                  </div>
-                ) : (
-                  favorites.map((fav) => {
+                {(() => {
+                  // Ordenar favoritos: compatíveis primeiro, incompatíveis por último
+                  const sortedFavorites = [...favorites].sort((a, b) => {
+                    const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
+                    const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
+                    
+                    if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
+                    if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
+                    return 0;
+                  });
+                  
+                  if (sortedFavorites.length === 0) {
+                    return (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Heart className="w-10 h-10 mx-auto mb-2 opacity-50" />
+                        <p>Nenhum favorito encontrado</p>
+                        <p className="text-xs">Favorite receitas para usá-las aqui</p>
+                      </div>
+                    );
+                  }
+                  
+                  return sortedFavorites.map((fav) => {
                     const conflict = checkMealConflict(fav.name, Array.isArray(fav.ingredients) ? fav.ingredients : undefined);
                     return (
                       <Card
@@ -415,8 +429,8 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                         </CardContent>
                       </Card>
                     );
-                  })
-                )}
+                  });
+                })()}
               </div>
             </ScrollArea>
           </TabsContent>
@@ -429,7 +443,17 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     ? simpleMeals.filter(meal => meal.meal_type === SLOT_TO_MEAL_TYPE[activeSlot])
                     : simpleMeals;
                   
-                  if (filteredMeals.length === 0) {
+                  // Ordenar: compatíveis primeiro, incompatíveis por último
+                  const sortedMeals = [...filteredMeals].sort((a, b) => {
+                    const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
+                    const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
+                    
+                    if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
+                    if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
+                    return 0;
+                  });
+                  
+                  if (sortedMeals.length === 0) {
                     return (
                       <div className="text-center py-8 text-muted-foreground">
                         <UtensilsCrossed className="w-10 h-10 mx-auto mb-2 opacity-50" />
@@ -439,7 +463,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     );
                   }
                   
-                  return filteredMeals.map((meal) => {
+                  return sortedMeals.map((meal) => {
                     const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
                     return (
                       <Card

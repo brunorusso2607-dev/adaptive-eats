@@ -49,8 +49,27 @@ import {
   Zap,
   UtensilsCrossed,
   Filter,
-  AlertCircle
+  AlertCircle,
+  Pencil,
+  Trash2,
+  MoreHorizontal
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -124,6 +143,14 @@ export default function AdminSpoonacular() {
   const [isImporting, setIsImporting] = useState(false);
   const [recipeFilter, setRecipeFilter] = useState<string>("all");
   const [totalRecipes, setTotalRecipes] = useState(0);
+  
+  // Edit/Delete states
+  const [editingRecipe, setEditingRecipe] = useState<ImportedRecipe | null>(null);
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [editForm, setEditForm] = useState({ name: "", meal_type: "", calories: 0, country_code: "" });
+  const [isEditSaving, setIsEditSaving] = useState(false);
+  const [deleteRecipeId, setDeleteRecipeId] = useState<string | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -180,6 +207,72 @@ export default function AdminSpoonacular() {
       setRecipes(data || []);
     } catch (error) {
       console.error("Erro ao buscar receitas:", error);
+    }
+  };
+
+  // Edit recipe handlers
+  const handleEditRecipe = (recipe: ImportedRecipe) => {
+    setEditingRecipe(recipe);
+    setEditForm({
+      name: recipe.name,
+      meal_type: recipe.meal_type,
+      calories: recipe.calories,
+      country_code: recipe.country_code || "",
+    });
+    setIsEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingRecipe) return;
+    
+    setIsEditSaving(true);
+    try {
+      const { error } = await supabase
+        .from("simple_meals")
+        .update({
+          name: editForm.name,
+          meal_type: editForm.meal_type,
+          calories: editForm.calories,
+          country_code: editForm.country_code || null,
+        })
+        .eq("id", editingRecipe.id);
+
+      if (error) throw error;
+      
+      toast.success("Receita atualizada com sucesso");
+      setIsEditDialogOpen(false);
+      setEditingRecipe(null);
+      fetchRecipes();
+    } catch (error) {
+      console.error("Erro ao atualizar receita:", error);
+      toast.error("Erro ao atualizar receita");
+    } finally {
+      setIsEditSaving(false);
+    }
+  };
+
+  // Delete recipe handlers
+  const handleDeleteRecipe = async () => {
+    if (!deleteRecipeId) return;
+    
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("simple_meals")
+        .delete()
+        .eq("id", deleteRecipeId);
+
+      if (error) throw error;
+      
+      toast.success("Receita excluída com sucesso");
+      setDeleteRecipeId(null);
+      setTotalRecipes(prev => prev - 1);
+      fetchRecipes();
+    } catch (error) {
+      console.error("Erro ao excluir receita:", error);
+      toast.error("Erro ao excluir receita");
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -667,6 +760,7 @@ export default function AdminSpoonacular() {
                     <TableHead>Origem</TableHead>
                     <TableHead>Fonte</TableHead>
                     <TableHead>Data</TableHead>
+                    <TableHead className="w-[50px]"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -691,6 +785,28 @@ export default function AdminSpoonacular() {
                       </TableCell>
                       <TableCell className="text-muted-foreground text-sm">
                         {formatDistanceToNow(new Date(recipe.created_at), { addSuffix: true, locale: ptBR })}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditRecipe(recipe)}>
+                              <Pencil className="w-4 h-4 mr-2" />
+                              Editar
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => setDeleteRecipeId(recipe.id)}
+                              className="text-destructive focus:text-destructive"
+                            >
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -849,6 +965,110 @@ export default function AdminSpoonacular() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Recipe Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Receita</DialogTitle>
+            <DialogDescription>
+              Atualize as informações da receita importada.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Nome da Receita</Label>
+              <Input
+                value={editForm.name}
+                onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Nome da receita..."
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de Refeição</Label>
+              <Select 
+                value={editForm.meal_type} 
+                onValueChange={(value) => setEditForm(prev => ({ ...prev, meal_type: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cafe_manha">Café da manhã</SelectItem>
+                  <SelectItem value="almoco">Almoço</SelectItem>
+                  <SelectItem value="lanche_tarde">Lanche</SelectItem>
+                  <SelectItem value="jantar">Jantar</SelectItem>
+                  <SelectItem value="ceia">Ceia</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Calorias</Label>
+                <Input
+                  type="number"
+                  value={editForm.calories}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, calories: parseInt(e.target.value) || 0 }))}
+                  placeholder="Calorias..."
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>País de Origem</Label>
+                <Input
+                  value={editForm.country_code}
+                  onChange={(e) => setEditForm(prev => ({ ...prev, country_code: e.target.value.toUpperCase() }))}
+                  placeholder="BR, US, IT..."
+                  maxLength={2}
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => setIsEditDialogOpen(false)}
+              >
+                Cancelar
+              </Button>
+              <Button
+                className="flex-1"
+                onClick={handleSaveEdit}
+                disabled={isEditSaving || !editForm.name.trim()}
+              >
+                {isEditSaving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Save className="w-4 h-4 mr-2" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={!!deleteRecipeId} onOpenChange={(open) => !open && setDeleteRecipeId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir receita?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. A receita será removida permanentemente do banco de dados.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDeleteRecipe}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Trash2 className="w-4 h-4 mr-2" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

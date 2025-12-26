@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect, KeyboardEvent, useMemo, useCallback } from "react";
 import { createPortal } from "react-dom";
-import { X, Plus, Search, AlertTriangle, Check, Loader2, Lightbulb, ChefHat } from "lucide-react";
+import { X, Plus, Search, AlertTriangle, Check, Loader2, Lightbulb, ChefHat, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
@@ -585,7 +585,9 @@ export default function IngredientTagInput({
   const {
     isValidating: isCombinationValidating,
     result: combinationResult,
+    feedbackSent: combinationFeedbackSent,
     validateWithDebounce,
+    sendFeedback: sendCombinationFeedback,
     clearValidation,
   } = useIngredientCombinationValidation();
 
@@ -1057,11 +1059,69 @@ export default function IngredientTagInput({
                   </div>
                 </div>
               )}
+              
+              {/* Feedback buttons for invalid combinations */}
+              <div className="border-t border-amber-200 dark:border-amber-800/50 pt-2 mt-2 flex items-center justify-between">
+                {!combinationFeedbackSent && combinationResult.validationId ? (
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-amber-600 dark:text-amber-400">Este aviso foi útil?</span>
+                    <button
+                      type="button"
+                      onClick={() => sendCombinationFeedback('helpful')}
+                      className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                      title="Sim, foi útil"
+                    >
+                      <ThumbsUp className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => sendCombinationFeedback('not_helpful')}
+                      className="p-1.5 rounded-lg bg-amber-100 dark:bg-amber-900/40 hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors"
+                      title="Não foi útil"
+                    >
+                      <ThumbsDown className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    </button>
+                  </div>
+                ) : combinationFeedbackSent ? (
+                  <span className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                    <Check className="w-3 h-3" /> Obrigado pelo feedback!
+                  </span>
+                ) : null}
+              </div>
             </div>
           ) : combinationResult && combinationResult.isValid ? (
-            <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
-              <ChefHat className="w-4 h-4" />
-              <span>Ótima combinação! Esses ingredientes funcionam bem juntos.</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2 text-sm text-green-600 dark:text-green-400">
+                <ChefHat className="w-4 h-4" />
+                <span>Ótima combinação! Esses ingredientes funcionam bem juntos.</span>
+              </div>
+              {/* Feedback buttons for valid combinations */}
+              {!combinationFeedbackSent && combinationResult.validationId && (
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground mr-1">Útil?</span>
+                  <button
+                    type="button"
+                    onClick={() => sendCombinationFeedback('helpful')}
+                    className="p-1.5 rounded-lg hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors"
+                    title="Sim, foi útil"
+                  >
+                    <ThumbsUp className="w-3.5 h-3.5 text-green-600 dark:text-green-400" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => sendCombinationFeedback('not_helpful')}
+                    className="p-1.5 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors"
+                    title="Não foi útil"
+                  >
+                    <ThumbsDown className="w-3.5 h-3.5 text-muted-foreground hover:text-red-500" />
+                  </button>
+                </div>
+              )}
+              {combinationFeedbackSent && (
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Check className="w-3 h-3" /> Obrigado!
+                </span>
+              )}
             </div>
           ) : null}
         </div>

@@ -553,34 +553,40 @@ export type Database = {
         Row: {
           confidence: string | null
           created_at: string
+          feedback_at: string | null
           id: string
           ingredients: string[]
           is_valid: boolean
           message: string | null
           problematic_pair: string[] | null
           suggestions: string[] | null
+          user_feedback: string | null
           user_id: string
         }
         Insert: {
           confidence?: string | null
           created_at?: string
+          feedback_at?: string | null
           id?: string
           ingredients: string[]
           is_valid: boolean
           message?: string | null
           problematic_pair?: string[] | null
           suggestions?: string[] | null
+          user_feedback?: string | null
           user_id: string
         }
         Update: {
           confidence?: string | null
           created_at?: string
+          feedback_at?: string | null
           id?: string
           ingredients?: string[]
           is_valid?: boolean
           message?: string | null
           problematic_pair?: string[] | null
           suggestions?: string[] | null
+          user_feedback?: string | null
           user_id?: string
         }
         Relationships: []

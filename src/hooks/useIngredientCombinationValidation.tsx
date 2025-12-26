@@ -7,12 +7,16 @@ export type ValidationResult = {
   message: string | null;
   problematicPair: [string, string] | null;
   suggestions: string[];
+  validationId?: string; // ID da validação no banco para feedback
 };
+
+export type FeedbackType = 'helpful' | 'not_helpful';
 
 export type ValidationState = {
   isValidating: boolean;
   result: ValidationResult | null;
   error: string | null;
+  feedbackSent: boolean;
 };
 
 export function useIngredientCombinationValidation() {
@@ -20,6 +24,7 @@ export function useIngredientCombinationValidation() {
     isValidating: false,
     result: null,
     error: null,
+    feedbackSent: false,
   });
   
   // Debounce timer ref
@@ -27,6 +32,9 @@ export function useIngredientCombinationValidation() {
   
   // Cache de validações para evitar chamadas repetidas
   const validationCacheRef = useRef<Map<string, ValidationResult>>(new Map());
+  
+  // ID da última validação para feedback
+  const lastValidationIdRef = useRef<string | null>(null);
 
   const getCacheKey = (ingredients: string[]) => {
     return [...ingredients].sort().join('|');
@@ -42,7 +50,7 @@ export function useIngredientCombinationValidation() {
       : ingredients;
     
     if (allIngredients.length < 2) {
-      setState({ isValidating: false, result: null, error: null });
+      setState({ isValidating: false, result: null, error: null, feedbackSent: false });
       return null;
     }
 
@@ -50,11 +58,12 @@ export function useIngredientCombinationValidation() {
     const cacheKey = getCacheKey(allIngredients);
     const cached = validationCacheRef.current.get(cacheKey);
     if (cached) {
-      setState({ isValidating: false, result: cached, error: null });
+      lastValidationIdRef.current = cached.validationId || null;
+      setState({ isValidating: false, result: cached, error: null, feedbackSent: false });
       return cached;
     }
 
-    setState(prev => ({ ...prev, isValidating: true, error: null }));
+    setState(prev => ({ ...prev, isValidating: true, error: null, feedbackSent: false }));
 
     try {
       const { data, error } = await supabase.functions.invoke('validate-ingredients', {
@@ -71,16 +80,18 @@ export function useIngredientCombinationValidation() {
         message: data.message || null,
         problematicPair: data.problematicPair || null,
         suggestions: data.suggestions || [],
+        validationId: data.validationId || null,
       };
 
       // Salvar no cache
       validationCacheRef.current.set(cacheKey, result);
+      lastValidationIdRef.current = result.validationId || null;
 
-      setState({ isValidating: false, result, error: null });
+      setState({ isValidating: false, result, error: null, feedbackSent: false });
       return result;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao validar';
-      setState({ isValidating: false, result: null, error: errorMessage });
+      setState({ isValidating: false, result: null, error: errorMessage, feedbackSent: false });
       return null;
     }
   }, []);
@@ -101,11 +112,43 @@ export function useIngredientCombinationValidation() {
     }, delayMs);
   }, [validateIngredients]);
 
+  // Função para enviar feedback
+  const sendFeedback = useCallback(async (feedback: FeedbackType): Promise<boolean> => {
+    const validationId = lastValidationIdRef.current || state.result?.validationId;
+    
+    if (!validationId) {
+      console.warn('No validation ID available for feedback');
+      return false;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('ingredient_validation_history')
+        .update({
+          user_feedback: feedback,
+          feedback_at: new Date().toISOString(),
+        })
+        .eq('id', validationId);
+
+      if (error) {
+        console.error('Error sending feedback:', error);
+        return false;
+      }
+
+      setState(prev => ({ ...prev, feedbackSent: true }));
+      return true;
+    } catch (err) {
+      console.error('Error sending feedback:', err);
+      return false;
+    }
+  }, [state.result?.validationId]);
+
   const clearValidation = useCallback(() => {
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
-    setState({ isValidating: false, result: null, error: null });
+    lastValidationIdRef.current = null;
+    setState({ isValidating: false, result: null, error: null, feedbackSent: false });
   }, []);
 
   const clearCache = useCallback(() => {
@@ -116,6 +159,7 @@ export function useIngredientCombinationValidation() {
     ...state,
     validateIngredients,
     validateWithDebounce,
+    sendFeedback,
     clearValidation,
     clearCache,
   };

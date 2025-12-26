@@ -16,10 +16,7 @@ import {
   UtensilsCrossed,
   Plus,
   X,
-  AlertTriangle,
-  Flame,
-  Leaf,
-  TrendingUp
+  AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -28,44 +25,8 @@ import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
 import { useUserIntolerances } from "@/hooks/useUserIntolerances";
-import { useUserProfileContext, type RecipeStyle } from "@/hooks/useUserProfileContext";
-
-// Helper para obter configuração do badge de estilo
-const getRecipeStyleBadge = (calories: number, recipeStyle: RecipeStyle) => {
-  // Classificar a refeição com base nas calorias
-  let mealStyle: RecipeStyle;
-  if (calories <= 350) {
-    mealStyle = "fitness";
-  } else if (calories >= 500) {
-    mealStyle = "high_calorie";
-  } else {
-    mealStyle = "regular";
-  }
-
-  // Retornar configuração do badge
-  const configs: Record<RecipeStyle, { label: string; icon: typeof Flame; className: string } | null> = {
-    fitness: { 
-      label: "Fitness", 
-      icon: Flame, 
-      className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/30" 
-    },
-    regular: null, // Não mostrar badge para regular
-    high_calorie: { 
-      label: "Alta Caloria", 
-      icon: TrendingUp, 
-      className: "bg-amber-500/10 text-amber-600 border-amber-500/30" 
-    }
-  };
-
-  // Mostrar badge apenas se a refeição combina com o objetivo do usuário
-  const isRecommended = mealStyle === recipeStyle;
-  
-  return {
-    config: configs[mealStyle],
-    isRecommended,
-    mealStyle
-  };
-};
+import { useUserProfileContext } from "@/hooks/useUserProfileContext";
+import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type MealSlot = {

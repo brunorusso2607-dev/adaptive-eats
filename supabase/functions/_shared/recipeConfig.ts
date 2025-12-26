@@ -8,6 +8,24 @@
 // TIPOS
 // ============================================
 
+export interface MealValidationResult {
+  isValid: boolean;
+  invalidIngredients: string[];
+  reason: string;
+}
+
+export interface RecipeValidationSummary {
+  totalMeals: number;
+  validMeals: number;
+  invalidMeals: number;
+  issues: Array<{
+    dayIndex: number;
+    mealType: string;
+    recipeName: string;
+    invalidIngredients: string[];
+  }>;
+}
+
 export interface UserProfile {
   id: string;
   sex?: string | null;
@@ -1494,4 +1512,161 @@ JSON:
 }
 
 Responda APENAS com JSON.`;
+}
+
+// ============================================
+// VALIDAÇÃO PÓS-GERAÇÃO
+// ============================================
+
+/**
+ * Normaliza texto para comparação (remove acentos, lowercase)
+ */
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+/**
+ * Verifica se um ingrediente viola as restrições do usuário
+ */
+export function validateIngredient(
+  ingredientName: string,
+  forbiddenIngredients: string[]
+): { isValid: boolean; matchedForbidden: string | null } {
+  const normalizedIngredient = normalizeText(ingredientName);
+  
+  for (const forbidden of forbiddenIngredients) {
+    const normalizedForbidden = normalizeText(forbidden);
+    
+    // Verifica se o ingrediente contém a palavra proibida
+    if (normalizedIngredient.includes(normalizedForbidden)) {
+      return { isValid: false, matchedForbidden: forbidden };
+    }
+    
+    // Verifica se a palavra proibida contém o ingrediente (para casos como "leite" em "leite de coco")
+    // Mas só se o ingrediente tiver pelo menos 4 caracteres para evitar falsos positivos
+    if (normalizedForbidden.includes(normalizedIngredient) && normalizedIngredient.length >= 4) {
+      // Exceção para ingredientes que são substitutos seguros
+      const safeExceptions = [
+        "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+        "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+        "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano"
+      ];
+      
+      if (!safeExceptions.some(safe => normalizedIngredient.includes(normalizeText(safe)))) {
+        return { isValid: false, matchedForbidden: forbidden };
+      }
+    }
+  }
+  
+  return { isValid: true, matchedForbidden: null };
+}
+
+/**
+ * Valida uma receita individual contra as restrições do usuário
+ */
+export function validateRecipe(
+  recipe: {
+    recipe_name: string;
+    recipe_ingredients: Array<{ item: string; quantity?: string; unit?: string }>;
+  },
+  profile: UserProfile
+): MealValidationResult {
+  const forbiddenIngredients = getAllForbiddenIngredientsWithDiet(profile);
+  const invalidIngredients: string[] = [];
+  
+  // Se não há restrições, tudo é válido
+  if (forbiddenIngredients.length === 0) {
+    return { isValid: true, invalidIngredients: [], reason: "" };
+  }
+  
+  // Verifica cada ingrediente da receita
+  for (const ingredient of recipe.recipe_ingredients) {
+    const { isValid, matchedForbidden } = validateIngredient(ingredient.item, forbiddenIngredients);
+    
+    if (!isValid && matchedForbidden) {
+      invalidIngredients.push(`${ingredient.item} (contém: ${matchedForbidden})`);
+    }
+  }
+  
+  if (invalidIngredients.length > 0) {
+    return {
+      isValid: false,
+      invalidIngredients,
+      reason: `Ingredientes proibidos encontrados: ${invalidIngredients.join(", ")}`
+    };
+  }
+  
+  return { isValid: true, invalidIngredients: [], reason: "" };
+}
+
+/**
+ * Valida todo o plano alimentar e retorna um resumo
+ */
+export function validateMealPlan(
+  mealPlanData: {
+    days: Array<{
+      day_index: number;
+      day_name: string;
+      meals: Array<{
+        meal_type: string;
+        recipe_name: string;
+        recipe_ingredients: Array<{ item: string; quantity?: string; unit?: string }>;
+      }>;
+    }>;
+  },
+  profile: UserProfile
+): RecipeValidationSummary {
+  const summary: RecipeValidationSummary = {
+    totalMeals: 0,
+    validMeals: 0,
+    invalidMeals: 0,
+    issues: []
+  };
+  
+  for (const day of mealPlanData.days) {
+    for (const meal of day.meals) {
+      summary.totalMeals++;
+      
+      const validation = validateRecipe(
+        {
+          recipe_name: meal.recipe_name,
+          recipe_ingredients: meal.recipe_ingredients || []
+        },
+        profile
+      );
+      
+      if (validation.isValid) {
+        summary.validMeals++;
+      } else {
+        summary.invalidMeals++;
+        summary.issues.push({
+          dayIndex: day.day_index,
+          mealType: meal.meal_type,
+          recipeName: meal.recipe_name,
+          invalidIngredients: validation.invalidIngredients
+        });
+      }
+    }
+  }
+  
+  return summary;
+}
+
+/**
+ * Filtra ingredientes proibidos de uma lista (útil para sugestões)
+ */
+export function filterForbiddenFromList(
+  ingredients: string[],
+  profile: UserProfile
+): string[] {
+  const forbiddenIngredients = getAllForbiddenIngredientsWithDiet(profile);
+  
+  return ingredients.filter(ingredient => {
+    const { isValid } = validateIngredient(ingredient, forbiddenIngredients);
+    return isValid;
+  });
 }

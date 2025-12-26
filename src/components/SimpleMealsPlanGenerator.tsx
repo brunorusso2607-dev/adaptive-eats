@@ -13,7 +13,8 @@ import {
   ChevronDown,
   ChevronUp,
   Flame,
-  AlertTriangle
+  AlertTriangle,
+  Sparkles
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -23,6 +24,11 @@ import { cn } from "@/lib/utils";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { useUserIntolerances } from "@/hooks/useUserIntolerances";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
+import { 
+  useUserProfileContext, 
+  sortMealsByGoal,
+  type RecipeStyle 
+} from "@/hooks/useUserProfileContext";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 
 type SimpleMeal = {
@@ -79,7 +85,6 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     dinner: null
   });
   const [expandedType, setExpandedType] = useState<string | null>("cafe_manha");
-  const [userProfile, setUserProfile] = useState<any>(null);
   
   // Week/Day selection
   const today = new Date();
@@ -87,8 +92,18 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
+  // NOVO: Hook centralizado de perfil
+  const { 
+    dietary_preference,
+    recipeStyle,
+    mealCalorieRanges,
+    goal,
+    goalIntensity,
+    isLoading: isLoadingProfile
+  } = useUserProfileContext();
+
   const { getCompatibility, isLoading: isLoadingCompatibility } = useDietaryCompatibility(
-    userProfile?.dietary_preference
+    dietary_preference
   );
   const { checkMealConflict } = useUserIntolerances();
 
@@ -120,17 +135,6 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     const fetchData = async () => {
       setIsLoading(true);
       try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session) return;
-
-        const { data: profile } = await supabase
-          .from("profiles")
-          .select("dietary_preference, intolerances, excluded_ingredients")
-          .eq("id", session.user.id)
-          .single();
-        
-        setUserProfile(profile);
-
         const { data: meals, error } = await supabase
           .from("simple_meals")
           .select("*")
@@ -159,23 +163,28 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
       grouped[meal.meal_type].push(meal);
     });
     
-    // Ordenar cada grupo: compatíveis primeiro, incompatíveis por último
+    // Ordenar cada grupo baseado no objetivo do usuário e compatibilidade
     Object.keys(grouped).forEach(mealType => {
-      grouped[mealType].sort((a, b) => {
+      const targetCalories = mealCalorieRanges[mealType as keyof typeof mealCalorieRanges]?.max || 400;
+      
+      // Primeiro ordena por objetivo (fitness = menor caloria, high_calorie = maior)
+      let sortedMeals = sortMealsByGoal(grouped[mealType], recipeStyle, targetCalories);
+      
+      // Depois ordena por compatibilidade (sem conflito primeiro)
+      sortedMeals.sort((a, b) => {
         const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
         const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
         
-        // Compatíveis (sem conflito) vêm primeiro
         if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
         if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
-        
-        // Se ambos têm mesmo status, mantém ordem original (sort_order)
         return 0;
       });
+      
+      grouped[mealType] = sortedMeals;
     });
     
     return grouped;
-  }, [simpleMeals, checkMealConflict]);
+  }, [simpleMeals, checkMealConflict, recipeStyle, mealCalorieRanges]);
 
   const sortedMealTypes = useMemo(() => {
     return MEAL_TYPE_ORDER.filter(type => mealsByType[type]?.length > 0);

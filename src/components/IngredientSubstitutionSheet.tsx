@@ -5,9 +5,12 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle } from "lucide-react";
+import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
+import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery } from "@tanstack/react-query";
 interface IngredientSubstitutionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -64,6 +67,25 @@ export default function IngredientSubstitutionSheet({
   const debouncedQuery = useDebounceValue(searchQuery, 300);
   
   const { results, isLoading, searchIngredient, calculateMacrosDiff, clearResults } = useIngredientSubstitution();
+
+  // Fetch user profile for conflict checking
+  const { data: profile } = useQuery({
+    queryKey: ["profile-for-conflicts"],
+    queryFn: async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+      
+      const { data } = await supabase
+        .from("profiles")
+        .select("intolerances, dietary_preference")
+        .eq("id", user.id)
+        .single();
+      
+      return data;
+    },
+  });
+
+  const { checkConflict } = useIngredientConflictCheck(profile);
 
   // Original ingredient data for comparison
   const [originalData, setOriginalData] = useState<IngredientResult | null>(null);
@@ -165,6 +187,7 @@ export default function IngredientSubstitutionSheet({
             {!isLoading && results.map((ingredient) => {
               const diff = calculateMacrosDiff(originalData, ingredient);
               const isSelected = selectedIngredient?.id === ingredient.id;
+              const conflict = checkConflict(ingredient.name);
               
               return (
                 <Card 
@@ -173,16 +196,32 @@ export default function IngredientSubstitutionSheet({
                     "cursor-pointer transition-all",
                     isSelected 
                       ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
-                      : "hover:border-primary/50"
+                      : conflict
+                        ? "border-destructive/50 bg-destructive/5"
+                        : "hover:border-primary/50"
                   )}
                   onClick={() => handleSelect(ingredient)}
                 >
                   <CardContent className="p-4">
+                    {/* Conflict Alert */}
+                    {conflict && (
+                      <div className="flex items-start gap-2 mb-3 p-2 rounded-md bg-destructive/10 border border-destructive/20">
+                        <AlertTriangle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                        <div className="text-xs">
+                          <p className="font-medium text-destructive">Conflito detectado</p>
+                          <p className="text-destructive/80">
+                            Este ingrediente pode não ser adequado para você ({conflict.restrictionLabel})
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-start justify-between mb-3">
                       <div>
                         <h4 className="font-medium flex items-center gap-2">
                           {ingredient.name}
                           {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
+                          {conflict && !isSelected && <AlertTriangle className="w-4 h-4 text-destructive" />}
                         </h4>
                         {ingredient.category && (
                           <Badge variant="outline" className="text-xs mt-1">
@@ -191,10 +230,10 @@ export default function IngredientSubstitutionSheet({
                         )}
                       </div>
                       <Badge 
-                        variant={isSelected ? "default" : "secondary"} 
+                        variant={isSelected ? "default" : conflict ? "destructive" : "secondary"} 
                         className="shrink-0"
                       >
-                        {isSelected ? "Selecionado" : "Selecionar"}
+                        {isSelected ? "Selecionado" : conflict ? "⚠️ Conflito" : "Selecionar"}
                       </Badge>
                     </div>
 
@@ -255,21 +294,42 @@ export default function IngredientSubstitutionSheet({
         {/* Confirm Button - Fixed at bottom */}
         {selectedIngredient && (
           <div className="p-6 pt-4 border-t shrink-0 bg-background">
+            {/* Warning if selected ingredient has conflict */}
+            {checkConflict(selectedIngredient.name) && (
+              <div className="flex items-start gap-2 mb-3 p-3 rounded-md bg-destructive/10 border border-destructive/20">
+                <AlertTriangle className="w-5 h-5 text-destructive shrink-0" />
+                <div className="text-sm">
+                  <p className="font-medium text-destructive">Atenção!</p>
+                  <p className="text-destructive/80">
+                    Este ingrediente pode conflitar com sua restrição ({checkConflict(selectedIngredient.name)?.restrictionLabel}). Tem certeza que deseja continuar?
+                  </p>
+                </div>
+              </div>
+            )}
+            
             <div className="flex items-center gap-3 mb-3 text-sm">
               <span className="text-muted-foreground">Substituindo:</span>
               <Badge variant="outline">{originalIngredient.item}</Badge>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <Badge variant="default">{selectedIngredient.name}</Badge>
+              <Badge variant={checkConflict(selectedIngredient.name) ? "destructive" : "default"}>
+                {selectedIngredient.name}
+              </Badge>
             </div>
             <Button 
               onClick={handleConfirmSubstitution} 
               className="w-full"
+              variant={checkConflict(selectedIngredient.name) ? "destructive" : "default"}
               disabled={isSaving}
             >
               {isSaving ? (
                 <>
                   <Loader2 className="w-4 h-4 mr-2 animate-spin" />
                   Salvando...
+                </>
+              ) : checkConflict(selectedIngredient.name) ? (
+                <>
+                  <AlertTriangle className="w-4 h-4 mr-2" />
+                  Confirmar Mesmo Assim
                 </>
               ) : (
                 <>

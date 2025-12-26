@@ -225,7 +225,7 @@ export default function IngredientSubstitutionSheet({
               </div>
             )}
 
-            {!isLoading && results.map((ingredient) => {
+            {!isLoading && searchQuery.length >= 2 && results.map((ingredient) => {
               const diff = calculateMacrosDiff(originalData, ingredient);
               const isSelected = selectedIngredient?.id === ingredient.id;
               const conflict = checkConflict(ingredient.name);

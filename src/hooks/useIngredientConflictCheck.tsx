@@ -4,7 +4,7 @@ import { useMemo } from "react";
 // Dinâmico: qualquer nova restrição adicionada ao perfil será validada
 
 const LACTOSE_INGREDIENTS = [
-  "leite", "leite integral", "leite desnatado", "leite semidesnatado", "leite em pó",
+  "leite integral", "leite desnatado", "leite semidesnatado", "leite em pó",
   "leite condensado", "leite evaporado", "leite de cabra", "leite fermentado",
   "creme de leite", "creme de leite fresco", "chantilly", "nata", "coalhada",
   "iogurte", "iogurte natural", "iogurte grego", "iogurte desnatado", "iogurte integral",
@@ -18,6 +18,13 @@ const LACTOSE_INGREDIENTS = [
   "queijo de cabra", "queijo colonial", "requeijão", "requeijão cremoso", "cream cheese",
   "catupiry", "queijo cremoso", "queijo ralado", "burrata", "mascarpone", "queijo azul",
   "chocolate ao leite", "achocolatado", "sorvete", "pudim", "doce de leite",
+];
+
+// Palavras que indicam que o ingrediente é seguro para lactose (leites vegetais, etc)
+const LACTOSE_SAFE_KEYWORDS = [
+  "vegetal", "amêndoa", "amêndoas", "coco", "aveia", "arroz", "soja", 
+  "castanha", "avelã", "quinoa", "macadâmia", "sem lactose", "zero lactose",
+  "plant-based", "vegan", "vegano", "vegana"
 ];
 
 const GLUTEN_INGREDIENTS = [
@@ -157,6 +164,23 @@ const checkIngredientConflict = (
   restriction: string
 ): boolean => {
   const normalizedIngredient = ingredient.toLowerCase().trim();
+  
+  // Para lactose, verificar se contém palavras que indicam segurança (leites vegetais)
+  if (restriction === "lactose") {
+    const hasSafeKeyword = LACTOSE_SAFE_KEYWORDS.some(safe => 
+      normalizedIngredient.includes(safe)
+    );
+    if (hasSafeKeyword) {
+      return false; // É seguro, não há conflito
+    }
+    
+    // Verificação especial para "leite" - só conflita se for leite animal
+    if (normalizedIngredient.includes("leite")) {
+      // Se contém "leite" mas não tem palavra segura, é leite animal
+      return true;
+    }
+  }
+  
   const restrictedIngredients = getRestrictionIngredients(restriction);
   
   return restrictedIngredients.some(restricted => 

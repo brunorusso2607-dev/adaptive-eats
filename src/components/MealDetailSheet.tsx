@@ -12,6 +12,8 @@ import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionShee
 import RecipeRenameDialog from "@/components/RecipeRenameDialog";
 import MealConfirmDialog from "@/components/MealConfirmDialog";
 import FoodSearchDrawer from "@/components/FoodSearchDrawer";
+import { DietaryCompatibilityBadge } from "@/components/DietaryCompatibilityBadge";
+import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
@@ -29,6 +31,7 @@ interface MealDetailSheetProps {
   isPastMeal?: boolean; // Se é uma refeição passada (desabilita substituição de ingredientes)
   onRefetch?: () => void;
   onStreakRefresh?: () => void;
+  userDietaryPreference?: string | null;
 }
 
 interface Ingredient {
@@ -61,8 +64,11 @@ export default function MealDetailSheet({
   isFutureMeal = false,
   isPastMeal = false,
   onRefetch,
-  onStreakRefresh 
+  onStreakRefresh,
+  userDietaryPreference
 }: MealDetailSheetProps) {
+  // Dietary compatibility
+  const { getCompatibility, hasProfile } = useDietaryCompatibility(userDietaryPreference);
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
   const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
@@ -293,7 +299,7 @@ export default function MealDetailSheet({
             <div className="p-6 pb-24 space-y-6">
               {/* Header */}
               <div>
-                <div className="flex items-center gap-2 mb-2">
+                <div className="flex items-center gap-2 mb-2 flex-wrap">
                   <Badge className="bg-primary text-primary-foreground">
                     {MEAL_LABELS[meal.meal_type] || meal.meal_type}
                   </Badge>
@@ -303,6 +309,20 @@ export default function MealDetailSheet({
                       Atrasada
                     </Badge>
                   )}
+                  {/* Dietary Compatibility Badge */}
+                  {hasProfile && (() => {
+                    const compat = getCompatibility(meal.recipe_name);
+                    if (compat.compatibility !== 'unknown') {
+                      return (
+                        <DietaryCompatibilityBadge 
+                          compatibility={compat.compatibility}
+                          notes={compat.notes}
+                          showLabel={true}
+                        />
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
                 <h2 className="font-display text-2xl font-bold text-foreground">
                   {localRecipeName || meal.recipe_name}

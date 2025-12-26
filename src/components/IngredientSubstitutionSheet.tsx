@@ -88,15 +88,21 @@ export default function IngredientSubstitutionSheet({
   });
 
   const { checkConflict } = useIngredientConflictCheck(profile);
-  const { getSuggestions, getUserRestrictionLabels } = useSafeIngredientSuggestions(profile);
+  const { 
+    getSuggestions, 
+    getUserRestrictionLabels, 
+    fetchAISuggestions, 
+    isLoadingAISuggestions 
+  } = useSafeIngredientSuggestions(profile);
 
-  // Safe suggestions based on user restrictions
+  // Safe suggestions based on original ingredient + user restrictions
   const [safeSuggestions, setSafeSuggestions] = useState<string[]>([]);
+  const [isAIFallback, setIsAIFallback] = useState(false);
   
   // Original ingredient data for comparison
   const [originalData, setOriginalData] = useState<IngredientResult | null>(null);
 
-  // Reset state immediately when dialog opens/closes
+  // Reset state and fetch suggestions when dialog opens
   useEffect(() => {
     if (open) {
       // Reset all state first
@@ -104,6 +110,7 @@ export default function IngredientSubstitutionSheet({
       setSelectedIngredient(null);
       setOriginalData(null);
       setSafeSuggestions([]);
+      setIsAIFallback(false);
       clearResults();
       
       // Then fetch original data if ingredient exists
@@ -113,20 +120,32 @@ export default function IngredientSubstitutionSheet({
             setOriginalData(results[0]);
           }
         });
+        
+        // Get suggestions based on original ingredient + user restrictions
+        const staticSuggestions = getSuggestions(originalIngredient.item);
+        
+        if (staticSuggestions.length > 0) {
+          // Found static suggestions
+          setSafeSuggestions(staticSuggestions);
+          setIsAIFallback(false);
+        } else {
+          // No static suggestions, use AI fallback
+          setIsAIFallback(true);
+          fetchAISuggestions(originalIngredient.item).then((aiSuggestions) => {
+            setSafeSuggestions(aiSuggestions);
+          });
+        }
       }
-      
-      // Get safe suggestions based on user restrictions (independent of ingredient)
-      const suggestions = getSuggestions();
-      setSafeSuggestions(suggestions);
     } else {
       // Clean up when closing
       setSearchQuery("");
       setSelectedIngredient(null);
       setOriginalData(null);
       setSafeSuggestions([]);
+      setIsAIFallback(false);
       clearResults();
     }
-  }, [open, originalIngredient?.item, getSuggestions]);
+  }, [open, originalIngredient?.item, getSuggestions, fetchAISuggestions]);
 
   // Clear selection when search query changes
   useEffect(() => {
@@ -178,32 +197,47 @@ export default function IngredientSubstitutionSheet({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Safe Suggestions */}
-        {safeSuggestions.length > 0 && searchQuery.length < 2 && (
+        {/* Safe Suggestions based on original ingredient */}
+        {(safeSuggestions.length > 0 || isLoadingAISuggestions) && searchQuery.length < 2 && (
           <div className="px-6 pb-4 shrink-0">
             <div className="flex items-center gap-2 mb-2">
               <ShieldCheck className="w-4 h-4 text-green-500" />
               <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                Sugestões seguras para você
+                Substitutos para {originalIngredient?.item}
               </span>
-            </div>
-            <p className="text-xs text-muted-foreground mb-3">
-              Baseado nas suas restrições: {getUserRestrictionLabels().join(", ")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {safeSuggestions.map((suggestion) => (
-                <Button
-                  key={suggestion}
-                  variant="outline"
-                  size="sm"
-                  className="h-8 border-green-200 bg-green-50 hover:bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-950 dark:hover:bg-green-900 dark:text-green-300"
-                  onClick={() => setSearchQuery(suggestion)}
-                >
+              {isAIFallback && !isLoadingAISuggestions && (
+                <Badge variant="outline" className="text-xs h-5">
                   <Sparkles className="w-3 h-3 mr-1" />
-                  {suggestion}
-                </Button>
-              ))}
+                  IA
+                </Badge>
+              )}
             </div>
+            {getUserRestrictionLabels().length > 0 && (
+              <p className="text-xs text-muted-foreground mb-3">
+                Filtrado para suas restrições: {getUserRestrictionLabels().join(", ")}
+              </p>
+            )}
+            {isLoadingAISuggestions ? (
+              <div className="flex items-center gap-2 py-2">
+                <Loader2 className="w-4 h-4 animate-spin text-primary" />
+                <span className="text-sm text-muted-foreground">Buscando sugestões inteligentes...</span>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2">
+                {safeSuggestions.map((suggestion) => (
+                  <Button
+                    key={suggestion}
+                    variant="outline"
+                    size="sm"
+                    className="h-8 border-green-200 bg-green-50 hover:bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-950 dark:hover:bg-green-900 dark:text-green-300"
+                    onClick={() => setSearchQuery(suggestion)}
+                  >
+                    <Sparkles className="w-3 h-3 mr-1" />
+                    {suggestion}
+                  </Button>
+                ))}
+              </div>
+            )}
           </div>
         )}
 

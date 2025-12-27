@@ -979,14 +979,28 @@ serve(async (req) => {
       }
 
       const newEndDate = endDate.toISOString().split('T')[0];
+      
+      // Always update custom_meal_times and end_date if needed
+      const updateData: any = { 
+        updated_at: new Date().toISOString(),
+        custom_meal_times: customMealTimes || existingPlan.custom_meal_times || null
+      };
+      
       if (newEndDate > existingPlan.end_date) {
-        await supabaseClient
-          .from("meal_plans")
-          .update({ end_date: newEndDate, updated_at: new Date().toISOString() })
-          .eq("id", existingPlanId);
+        updateData.end_date = newEndDate;
       }
+      
+      await supabaseClient
+        .from("meal_plans")
+        .update(updateData)
+        .eq("id", existingPlanId);
+      
+      logStep("Updated existing meal plan with custom_meal_times", { 
+        planId: existingPlanId, 
+        hasCustomTimes: !!customMealTimes 
+      });
 
-      mealPlan = existingPlan;
+      mealPlan = { ...existingPlan, custom_meal_times: customMealTimes || existingPlan.custom_meal_times };
       mealPlanIdToUse = existingPlan.id;
       logStep("Using existing meal plan", { planId: mealPlanIdToUse });
     } else {

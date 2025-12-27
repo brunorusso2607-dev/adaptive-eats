@@ -103,19 +103,28 @@ export function CustomMealTimesEditor({
     // Em modo compact sempre ativar para capturar dados para geração
     const hasExistingData = customTimes != null && Object.keys(customTimes).length > 0;
     if (compact) {
+      // Sempre ativo em modo compact (geração de plano)
       setUseCustomTimes(true);
-      // Emitir dados iniciais imediatamente para o parent
-      if (onChange) {
-        const dataToEmit: CustomMealTimesWithExtras = { ...initialTimes };
-        if (Array.isArray(extras) && extras.length > 0) {
-          dataToEmit.extras = extras;
-        }
-        onChange(dataToEmit);
-      }
     } else {
       setUseCustomTimes(hasExistingData);
     }
   }, [globalSettings, customTimes, compact]);
+
+  // Emitir dados para o parent quando em modo compact e houver dados prontos
+  useEffect(() => {
+    if (!compact || !onChange || globalSettings.length === 0) return;
+    
+    // Só emitir se localTimes tem dados
+    if (Object.keys(localTimes).length === 0) return;
+    
+    const dataToEmit: CustomMealTimesWithExtras = { ...localTimes };
+    if (extraMeals.length > 0) {
+      dataToEmit.extras = extraMeals;
+    }
+    
+    console.log("[CustomMealTimesEditor] Emitting initial data:", dataToEmit);
+    onChange(dataToEmit);
+  }, [compact, localTimes, extraMeals, globalSettings.length]); // Removed onChange to prevent infinite loop
 
   // Combina refeições padrão + extras
   // Extras novos (não salvos) ficam no final, extras salvos são ordenados por horário

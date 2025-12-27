@@ -12,6 +12,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { RecipeListSheet } from "@/components/admin/RecipeListSheet";
 
 const MEAL_TYPES = [
   { key: 'cafe_manha', label: 'Café da manhã', emoji: '🌅' },
@@ -78,7 +79,7 @@ interface DistributionPreview {
 export default function AdminBulkRecipes() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
-  const [stats, setStats] = useState({ total: 0, byType: {} as Record<string, number> });
+  const [stats, setStats] = useState({ total: 0, byType: {} as Record<string, number>, todayByType: {} as Record<string, number> });
   const [selectedMealType, setSelectedMealType] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [selectedCountry, setSelectedCountry] = useState<string>('BR');
@@ -94,6 +95,10 @@ export default function AdminBulkRecipes() {
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState({ current: 0, total: 0 });
 
+  // Estado para Sheet de receitas
+  const [recipeSheetOpen, setRecipeSheetOpen] = useState(false);
+  const [selectedMealTypeForSheet, setSelectedMealTypeForSheet] = useState<string | null>(null);
+
   useEffect(() => {
     fetchStats();
   }, [selectedCountry]);
@@ -103,30 +108,55 @@ export default function AdminBulkRecipes() {
   const fetchStats = async () => {
     setIsLoading(true);
     try {
+      // Buscar todas as receitas
       const { data, error } = await supabase
         .from('simple_meals')
-        .select('meal_type, country_code')
+        .select('meal_type, country_code, created_at')
         .eq('is_active', true)
         .eq('country_code', selectedCountry);
 
       if (error) throw error;
 
       const byType: Record<string, number> = {};
-      MEAL_TYPES.forEach(t => byType[t.key] = 0);
+      const todayByType: Record<string, number> = {};
+      MEAL_TYPES.forEach(t => {
+        byType[t.key] = 0;
+        todayByType[t.key] = 0;
+      });
+      
+      // Data de início de hoje
+      const todayStart = new Date();
+      todayStart.setHours(0, 0, 0, 0);
       
       data?.forEach(meal => {
         if (byType[meal.meal_type] !== undefined) {
           byType[meal.meal_type]++;
+          
+          // Verificar se foi criado hoje
+          const createdAt = new Date(meal.created_at);
+          if (createdAt >= todayStart) {
+            todayByType[meal.meal_type]++;
+          }
         }
       });
 
-      setStats({ total: data?.length || 0, byType });
+      setStats({ total: data?.length || 0, byType, todayByType });
     } catch (error) {
       console.error('Erro ao buscar stats:', error);
       toast.error('Erro ao carregar estatísticas');
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleOpenRecipeSheet = (mealTypeKey: string) => {
+    setSelectedMealTypeForSheet(mealTypeKey);
+    setRecipeSheetOpen(true);
+  };
+
+  const getSelectedMealTypeData = () => {
+    if (!selectedMealTypeForSheet) return null;
+    return MEAL_TYPES.find(t => t.key === selectedMealTypeForSheet);
   };
 
   // Calcular distribuição automática
@@ -360,12 +390,27 @@ export default function AdminBulkRecipes() {
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mt-4">
-              {MEAL_TYPES.map(type => (
-                <div key={type.key} className="text-center p-3 bg-muted/50 rounded-lg">
-                  <div className="text-xl font-bold">{stats.byType[type.key] || 0}</div>
-                  <div className="text-xs text-muted-foreground">{type.label}</div>
-                </div>
-              ))}
+              {MEAL_TYPES.map(type => {
+                const count = stats.byType[type.key] || 0;
+                const todayCount = stats.todayByType?.[type.key] || 0;
+                return (
+                  <button
+                    key={type.key}
+                    onClick={() => handleOpenRecipeSheet(type.key)}
+                    className="text-center p-3 bg-muted/50 rounded-lg hover:bg-muted transition-colors cursor-pointer group"
+                  >
+                    <div className="text-xl font-bold group-hover:text-primary transition-colors">
+                      {count}
+                    </div>
+                    <div className="text-xs text-muted-foreground">{type.label}</div>
+                    {todayCount > 0 && (
+                      <div className="text-xs text-green-600 font-medium mt-1">
+                        +{todayCount} hoje
+                      </div>
+                    )}
+                  </button>
+                );
+              })}
             </div>
           </CardContent>
         </Card>
@@ -684,6 +729,19 @@ export default function AdminBulkRecipes() {
           </Card>
         )}
       </div>
+
+      {/* Recipe List Sheet */}
+      {selectedMealTypeForSheet && (
+        <RecipeListSheet
+          open={recipeSheetOpen}
+          onOpenChange={setRecipeSheetOpen}
+          mealType={selectedMealTypeForSheet}
+          mealTypeLabel={getSelectedMealTypeData()?.label || ''}
+          mealTypeEmoji={getSelectedMealTypeData()?.emoji || ''}
+          countryCode={selectedCountry}
+          onRecipesChanged={fetchStats}
+        />
+      )}
     </div>
   );
 }

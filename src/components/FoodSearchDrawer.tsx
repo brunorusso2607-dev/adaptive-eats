@@ -145,14 +145,15 @@ export default function FoodSearchDrawer({
     }
   }, []);
 
-  // Show AI suggestions when database has no results
+  // Show AI suggestions alongside database results for better discoverability
   useEffect(() => {
-    if (!isLoading && foods.length === 0 && searchQuery.length >= 2) {
+    if (!isLoading && searchQuery.length >= 2) {
+      // Always fetch AI suggestions when user has a query, regardless of DB results
       const timer = setTimeout(() => {
         fetchAISuggestions(searchQuery);
-      }, 500);
+      }, 600); // Slightly longer delay to let DB results show first
       return () => clearTimeout(timer);
-    } else if (foods.length > 0 || searchQuery.length < 2) {
+    } else if (searchQuery.length < 2) {
       setShowAISuggestions(false);
       setAiSuggestions([]);
     }
@@ -549,7 +550,7 @@ export default function FoodSearchDrawer({
             </div>
             
             {/* Search results dropdown - positioned absolutely */}
-            {(isLoading || foods.length > 0 || showAISuggestions) && (
+            {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
               <div 
                 className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-80 overflow-y-auto"
                 style={{
@@ -575,123 +576,133 @@ export default function FoodSearchDrawer({
                   e.stopPropagation();
                 }}
               >
-                {isLoading ? (
+                {isLoading && foods.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
                     <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
                     Buscando...
                   </div>
-                ) : foods.length > 0 ? (
+                ) : (
                   <div className="p-2 space-y-1">
-                    {foods.map((food) => {
-                      const conflict = checkFoodConflicts(food.name);
-                      return (
-                        <button
-                          key={food.id}
-                          onClick={() => handleAddFood(food)}
-                          disabled={isAnalyzingIntolerance}
-                          className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
-                        >
-                          <div className="flex items-center gap-2">
-                            {isAnalyzingIntolerance ? (
-                              <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                            ) : (
-                              <Plus className="w-4 h-4 text-primary" />
-                            )}
-                            <span className="text-sm font-medium">{food.name}</span>
-                            {conflict && (
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {conflict && (
-                              <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                                {conflict.restrictionLabel.replace('intolerante a ', '')}
-                              </span>
-                            )}
-                            <span className="text-xs text-muted-foreground">
-                              {food.calories_per_100g} kcal/100g
-                            </span>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
-                ) : showAISuggestions && (
-                  <div className="p-2 space-y-2">
-                    {/* AI Header */}
-                    <div className="flex items-center gap-2 px-2 py-1 border-b">
-                      <Sparkles className="w-4 h-4 text-primary" />
-                      <span className="text-xs font-medium text-muted-foreground">
-                        Sugestões da IA
-                      </span>
-                    </div>
-
-                    {isLoadingAI ? (
-                      <div className="p-4 text-center text-muted-foreground text-sm">
-                        <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                        Identificando alimento...
-                      </div>
-                    ) : aiSuggestions.length > 0 ? (
+                    {/* Database results */}
+                    {foods.length > 0 && (
                       <>
-                        {aiSuggestions.map((suggestion, idx) => {
-                          const conflict = checkFoodConflicts(suggestion.name);
+                        <div className="flex items-center gap-2 px-2 py-1.5 border-b">
+                          <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Resultados do banco
+                          </span>
+                        </div>
+                        {foods.map((food) => {
+                          const conflict = checkFoodConflicts(food.name);
                           return (
                             <button
-                              key={idx}
-                              onClick={() => handleAddAISuggestion(suggestion)}
-                              className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left space-y-1"
+                              key={food.id}
+                              onClick={() => handleAddFood(food)}
+                              disabled={isAnalyzingIntolerance}
+                              className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
                             >
-                              <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-2">
+                                {isAnalyzingIntolerance ? (
+                                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                                ) : (
                                   <Plus className="w-4 h-4 text-primary" />
-                                  <span className="text-sm font-medium">{suggestion.name}</span>
-                                  {conflict && (
-                                    <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                                  )}
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  {conflict && (
-                                    <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                                      {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                    </span>
-                                  )}
-                                  <span className={cn("text-xs px-2 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
-                                    {suggestion.confidence}
-                                  </span>
-                                </div>
+                                )}
+                                <span className="text-sm font-medium">{food.name}</span>
+                                {conflict && (
+                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                                )}
                               </div>
-                              <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6">
-                                <span>{suggestion.portion_description}</span>
-                                <span className="flex items-center gap-1">
-                                  <Flame className="w-3 h-3 text-orange-500" />
-                                  {suggestion.calories}kcal
+                              <div className="flex items-center gap-2">
+                                {conflict && (
+                                  <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                    {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                  </span>
+                                )}
+                                <span className="text-xs text-muted-foreground">
+                                  {food.calories_per_100g} kcal/100g
                                 </span>
-                                <span>P: {suggestion.protein}g</span>
-                                <span>C: {suggestion.carbs}g</span>
-                                <span>G: {suggestion.fat}g</span>
                               </div>
                             </button>
                           );
                         })}
                       </>
-                    ) : (
-                      <div className="p-3 text-center text-muted-foreground text-sm">
-                        Nenhuma sugestão encontrada
-                      </div>
                     )}
 
-                    {/* Manual entry option */}
-                    <div className="border-t pt-2">
-                      <button
-                        onClick={() => setShowManualModal(true)}
-                        className="w-full flex items-center gap-2 p-3 hover:bg-muted rounded-md transition-colors text-left"
-                      >
-                        <PenLine className="w-4 h-4 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">
+                    {/* AI suggestions - always show alongside DB results */}
+                    {showAISuggestions && (
+                      <>
+                        <div className={cn("flex items-center gap-2 px-2 py-1.5 border-b", foods.length > 0 && "mt-2")}>
+                          <Sparkles className="w-3.5 h-3.5 text-primary" />
+                          <span className="text-xs font-medium text-muted-foreground">
+                            Sugestões da IA
+                          </span>
+                        </div>
+
+                        {isLoadingAI ? (
+                          <div className="p-3 text-center text-muted-foreground text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
+                            Identificando variações...
+                          </div>
+                        ) : aiSuggestions.length > 0 ? (
+                          aiSuggestions.map((suggestion, idx) => {
+                            const conflict = checkFoodConflicts(suggestion.name);
+                            return (
+                              <button
+                                key={`ai-${idx}`}
+                                onClick={() => handleAddAISuggestion(suggestion)}
+                                className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left space-y-1"
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <Plus className="w-4 h-4 text-primary" />
+                                    <span className="text-sm font-medium">{suggestion.name}</span>
+                                    {conflict && (
+                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    {conflict && (
+                                      <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                        {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                      </span>
+                                    )}
+                                    <span className={cn("text-xs px-2 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
+                                      {suggestion.confidence}
+                                    </span>
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6">
+                                  <span>{suggestion.portion_description}</span>
+                                  <span className="flex items-center gap-1">
+                                    <Flame className="w-3 h-3 text-orange-500" />
+                                    {suggestion.calories}kcal
+                                  </span>
+                                  <span>P: {suggestion.protein}g</span>
+                                  <span>C: {suggestion.carbs}g</span>
+                                  <span>G: {suggestion.fat}g</span>
+                                </div>
+                              </button>
+                            );
+                          })
+                        ) : null}
+                      </>
+                    )}
+
+                    {/* Manual entry option - show when no results at all */}
+                    {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
+                      <div className="p-3 text-center">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Nenhuma sugestão encontrada
+                        </p>
+                        <button
+                          onClick={() => setShowManualModal(true)}
+                          className="flex items-center gap-2 mx-auto text-sm text-primary hover:underline"
+                        >
+                          <PenLine className="w-4 h-4" />
                           Cadastrar "{searchQuery}" manualmente
-                        </span>
-                      </button>
-                    </div>
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
               </div>

@@ -9,6 +9,7 @@ import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
 import { DietaryCompatibilitySummary } from "./DietaryCompatibilitySummary";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { useReplaceIncompatibleMeals } from "@/hooks/useReplaceIncompatibleMeals";
+import { usePlanMealTimes } from "@/hooks/usePlanMealTimes";
 import {
   Select,
   SelectContent,
@@ -82,33 +83,13 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
 
-// Mapeamento de horários para cada refeição (horário de término)
-const MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
+// Fallback horários padrão (usado apenas se hook não carregar)
+const DEFAULT_MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
   cafe_manha: { start: 6, end: 10 },
   almoco: { start: 10, end: 14 },
   lanche: { start: 14, end: 17 },
   jantar: { start: 17, end: 21 },
   ceia: { start: 21, end: 24 },
-};
-
-// Verifica se uma refeição já passou do horário no dia atual
-const isMealPastTime = (mealType: string, selectedDay: DayInfo | undefined): boolean => {
-  if (!selectedDay) return false;
-  
-  // Se o dia inteiro já passou, todas as refeições passaram
-  if (selectedDay.isPast) return true;
-  
-  // Se não é hoje, não passou ainda
-  if (!selectedDay.isToday) return false;
-  
-  const now = new Date();
-  const currentHour = now.getHours();
-  const range = MEAL_TIME_RANGES[mealType];
-  
-  if (!range) return false;
-  
-  // A refeição passou se a hora atual é maior que o fim do horário
-  return currentHour >= range.end;
 };
 
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, userProfile }: MealPlanCalendarProps) {
@@ -119,6 +100,36 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   });
   const [ingredientTags, setIngredientTags] = useState<string[]>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Busca horários personalizados do plano
+  const { getTimeRanges, getMealTime, hasCustomTimes, isLoading: isLoadingMealTimes } = usePlanMealTimes({ planId: mealPlan.id });
+  
+  // Monta os ranges de horário usando dados do hook ou fallback
+  const MEAL_TIME_RANGES = useMemo(() => {
+    const ranges = getTimeRanges();
+    if (Object.keys(ranges).length === 0) return DEFAULT_MEAL_TIME_RANGES;
+    return ranges;
+  }, [getTimeRanges]);
+
+  // Verifica se uma refeição já passou do horário no dia atual
+  const isMealPastTime = useCallback((mealType: string, selectedDay: DayInfo | undefined): boolean => {
+    if (!selectedDay) return false;
+    
+    // Se o dia inteiro já passou, todas as refeições passaram
+    if (selectedDay.isPast) return true;
+    
+    // Se não é hoje, não passou ainda
+    if (!selectedDay.isToday) return false;
+    
+    const now = new Date();
+    const currentHour = now.getHours();
+    const range = MEAL_TIME_RANGES[mealType];
+    
+    if (!range) return false;
+    
+    // A refeição passou se a hora atual é maior que o fim do horário
+    return currentHour >= range.end;
+  }, [MEAL_TIME_RANGES]);
 
   // Dietary compatibility hook
   const { getCompatibility, hasProfile, isLoading: isLoadingCompatibility } = useDietaryCompatibility(userProfile?.dietary_preference);

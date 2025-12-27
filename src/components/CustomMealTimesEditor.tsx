@@ -3,7 +3,6 @@ import { Clock, RotateCcw, Check, ChevronDown, ChevronUp, Plus, Trash2 } from "l
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
-import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -31,7 +30,7 @@ export interface ExtraMeal {
   id: string;
   name: string;
   time: string;
-  isNew?: boolean; // Flag para identificar extras recém-adicionados (não salvos)
+  isNew?: boolean;
 }
 
 // Tipo expandido para custom_meal_times com suporte a extras
@@ -69,19 +68,15 @@ export function CustomMealTimesEditor({
 }: CustomMealTimesEditorProps) {
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
   const [isOpen, setIsOpen] = useState(!compact);
-  // Em modo compact (geração de plano), sempre inicia ativo para capturar dados
-  const [useCustomTimes, setUseCustomTimes] = useState(compact || (customTimes != null && Object.keys(customTimes).length > 0));
   const [localTimes, setLocalTimes] = useState<Record<string, string>>({});
   const [extraMeals, setExtraMeals] = useState<ExtraMeal[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
 
-  // Inicializar horários locais e extras com valores existentes ou globais
+  // Inicializar horários locais e extras
   useEffect(() => {
     if (globalSettings.length === 0) return;
-
-    console.log("[CustomMealTimesEditor] Initializing with customTimes:", customTimes);
 
     const initialTimes: Record<string, string> = {};
     globalSettings.forEach(setting => {
@@ -97,33 +92,15 @@ export function CustomMealTimesEditor({
     // Carregar extras se existirem
     const extras = customTimes?.extras;
     if (Array.isArray(extras) && extras.length > 0) {
-      console.log("[CustomMealTimesEditor] Loading extras:", extras);
       setExtraMeals(extras);
     } else {
       setExtraMeals([]);
     }
-    
-    // Verifica se há dados personalizados (refeições extras ou horários customizados)
-    const hasExtras = Array.isArray(customTimes?.extras) && customTimes.extras.length > 0;
-    const hasCustomTimeValues = customTimes != null && Object.keys(customTimes).some(key => key !== 'extras');
-    const hasExistingData = hasExtras || hasCustomTimeValues;
-    
-    console.log("[CustomMealTimesEditor] hasExistingData:", hasExistingData, "hasExtras:", hasExtras, "hasCustomTimeValues:", hasCustomTimeValues);
-    
-    if (compact) {
-      // Sempre ativo em modo compact (geração de plano)
-      setUseCustomTimes(true);
-    } else {
-      // No modo edição, ativar toggle se houver dados salvos
-      setUseCustomTimes(hasExistingData);
-    }
-  }, [globalSettings, customTimes, compact]);
+  }, [globalSettings, customTimes]);
 
-  // Emitir dados para o parent quando em modo compact e houver dados prontos
+  // Emitir dados sempre que houver mudanças (sem depender de toggle)
   useEffect(() => {
-    if (!compact || !onChange || globalSettings.length === 0) return;
-    
-    // Só emitir se localTimes tem dados
+    if (!onChange || globalSettings.length === 0) return;
     if (Object.keys(localTimes).length === 0) return;
     
     const dataToEmit: CustomMealTimesWithExtras = { ...localTimes };
@@ -131,12 +108,10 @@ export function CustomMealTimesEditor({
       dataToEmit.extras = extraMeals;
     }
     
-    console.log("[CustomMealTimesEditor] Emitting initial data:", dataToEmit);
     onChange(dataToEmit);
-  }, [compact, localTimes, extraMeals, globalSettings.length]); // Removed onChange to prevent infinite loop
+  }, [localTimes, extraMeals, globalSettings.length, onChange]);
 
-  // Combina refeições padrão + extras
-  // Extras novos (não salvos) ficam no final, extras salvos são ordenados por horário
+  // Combina refeições padrão + extras, ordenadas por horário
   const allMealsSorted = useMemo(() => {
     const standardMeals = globalSettings.map(setting => ({
       id: setting.meal_type,
@@ -146,7 +121,6 @@ export function CustomMealTimesEditor({
       isNew: false,
     }));
 
-    // Separa extras novos dos já salvos
     const savedExtras = extraMeals.filter(extra => !extra.isNew).map(extra => ({
       id: extra.id,
       name: extra.name,
@@ -163,7 +137,6 @@ export function CustomMealTimesEditor({
       isNew: true,
     }));
 
-    // Ordena padrão + extras salvos por horário, depois adiciona extras novos no final
     const sortedMeals = [...standardMeals, ...savedExtras].sort((a, b) => 
       timeToMinutes(a.time) - timeToMinutes(b.time)
     );
@@ -172,9 +145,7 @@ export function CustomMealTimesEditor({
   }, [globalSettings, localTimes, extraMeals]);
 
   // Gera dados para salvar
-  const getDataToSave = (): CustomMealTimesWithExtras | null => {
-    if (!useCustomTimes) return null;
-    
+  const getDataToSave = (): CustomMealTimesWithExtras => {
     const data: CustomMealTimesWithExtras = { ...localTimes };
     if (extraMeals.length > 0) {
       data.extras = extraMeals;
@@ -190,25 +161,9 @@ export function CustomMealTimesEditor({
         extra.id === mealId ? { ...extra, time: value } : extra
       );
       setExtraMeals(newExtras);
-      
-      // SEMPRE emitir em modo compact
-      if (onChange && (useCustomTimes || compact)) {
-        const data: CustomMealTimesWithExtras = { ...localTimes };
-        data.extras = newExtras;
-        onChange(data);
-      }
     } else {
       const newTimes = { ...localTimes, [mealId]: value };
       setLocalTimes(newTimes);
-      
-      // SEMPRE emitir em modo compact
-      if (onChange && (useCustomTimes || compact)) {
-        const data: CustomMealTimesWithExtras = { ...newTimes };
-        if (extraMeals.length > 0) {
-          data.extras = extraMeals;
-        }
-        onChange(data);
-      }
     }
   };
 
@@ -218,13 +173,6 @@ export function CustomMealTimesEditor({
       extra.id === mealId ? { ...extra, name } : extra
     );
     setExtraMeals(newExtras);
-    
-    // SEMPRE emitir em modo compact
-    if (onChange && (useCustomTimes || compact)) {
-      const data: CustomMealTimesWithExtras = { ...localTimes };
-      data.extras = newExtras;
-      onChange(data);
-    }
   };
 
   const handleAddExtra = () => {
@@ -233,63 +181,28 @@ export function CustomMealTimesEditor({
       id: newExtraId,
       name: "Refeição Extra",
       time: "15:00",
-      isNew: true, // Marca como novo para ficar no final da lista
+      isNew: true,
     };
     const newExtras = [...extraMeals, newExtra];
     setExtraMeals(newExtras);
     setHasChanges(true);
-    setOpenAccordion(newExtraId); // Abre o accordion do novo extra automaticamente
-    
-    // SEMPRE emitir em modo compact (geração de plano), independente do toggle
-    if (onChange && (useCustomTimes || compact)) {
-      const data: CustomMealTimesWithExtras = { ...localTimes };
-      data.extras = newExtras;
-      console.log("[CustomMealTimesEditor] Added extra, emitting:", data);
-      onChange(data);
-    }
+    setOpenAccordion(newExtraId);
   };
 
   const handleRemoveExtra = (mealId: string) => {
     const newExtras = extraMeals.filter(extra => extra.id !== mealId);
     setExtraMeals(newExtras);
     setHasChanges(true);
-    
-    // SEMPRE emitir em modo compact
-    if (onChange && (useCustomTimes || compact)) {
-      const data: CustomMealTimesWithExtras = { ...localTimes };
-      if (newExtras.length > 0) {
-        data.extras = newExtras;
-      }
-      onChange(data);
-    }
   };
 
-  // Confirma/salva um extra individual (remove a flag isNew)
   const handleConfirmExtra = (mealId: string) => {
     const newExtras = extraMeals.map(extra =>
       extra.id === mealId ? { ...extra, isNew: false } : extra
     );
     setExtraMeals(newExtras);
     setHasChanges(true);
-    setOpenAccordion(undefined); // Fecha o accordion após salvar
-    
-    // SEMPRE emitir em modo compact
-    if (onChange && (useCustomTimes || compact)) {
-      const data: CustomMealTimesWithExtras = { ...localTimes };
-      data.extras = newExtras;
-      console.log("[CustomMealTimesEditor] Confirmed extra, emitting:", data);
-      onChange(data);
-    }
-    
+    setOpenAccordion(undefined);
     toast.success("Refeição extra adicionada");
-  };
-
-  const handleToggleCustomTimes = (enabled: boolean) => {
-    setUseCustomTimes(enabled);
-    setHasChanges(true);
-    if (onChange) {
-      onChange(enabled ? getDataToSave() : null);
-    }
   };
 
   const handleResetToGlobal = () => {
@@ -300,10 +213,6 @@ export function CustomMealTimesEditor({
     setLocalTimes(resetTimes);
     setExtraMeals([]);
     setHasChanges(true);
-    
-    if (onChange && useCustomTimes) {
-      onChange(resetTimes);
-    }
   };
 
   const handleSave = async () => {
@@ -315,14 +224,12 @@ export function CustomMealTimesEditor({
       const success = await onSave(dataToSave);
       
       if (success) {
-        // Remove a flag isNew de todos os extras após salvar
         const savedExtras = extraMeals.map(extra => ({
           ...extra,
           isNew: false,
         }));
         setExtraMeals(savedExtras);
-        
-        toast.success(useCustomTimes ? "Horários personalizados salvos" : "Usando horários padrão");
+        toast.success("Horários salvos com sucesso");
         setHasChanges(false);
       } else {
         toast.error("Erro ao salvar horários");
@@ -354,144 +261,117 @@ export function CustomMealTimesEditor({
 
   const content = (
     <div className="space-y-4">
-      {/* Toggle para habilitar horários personalizados */}
-      <div className="flex items-center justify-between py-2">
-        <div className="space-y-0.5">
-          <Label htmlFor="custom-times-toggle" className="text-sm font-medium">
-            Horários personalizados
-          </Label>
-          <p className="text-xs text-muted-foreground">
-            {useCustomTimes ? "Usando horários deste plano" : "Usando horários padrão do sistema"}
-          </p>
-        </div>
-        <Switch
-          id="custom-times-toggle"
-          checked={useCustomTimes}
-          onCheckedChange={handleToggleCustomTimes}
-          disabled={isLoading || isSaving || disabled}
-        />
-      </div>
-
       {/* Lista de horários em Accordion - ordenada por horário */}
-      <div className={cn(
-        "transition-opacity duration-200",
-        !useCustomTimes && "opacity-50 pointer-events-none"
-      )}>
-        <Accordion type="single" collapsible className="space-y-2" value={openAccordion} onValueChange={setOpenAccordion}>
-          {allMealsSorted.map(meal => (
-            <AccordionItem 
-              key={meal.id} 
-              value={meal.id}
-              className={cn(
-                "border border-border/50 rounded-lg px-4 data-[state=open]:bg-muted/50",
-                meal.isExtra ? "bg-primary/5 border-primary/20" : "bg-muted/30"
-              )}
-            >
-              <AccordionTrigger className="py-3 hover:no-underline">
-                <div className="flex items-center justify-between w-full pr-2">
-                  <div className="flex items-center gap-3">
-                    <Clock className={cn("h-4 w-4", meal.isExtra ? "text-primary" : "text-muted-foreground")} />
-                    <span className="text-sm font-medium">{meal.name}</span>
-                    {meal.isExtra && (
-                      <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                        Extra
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground font-mono">
-                      {meal.time || "--:--"}
-                    </span>
-                    {/* Ícone de lixeira para extras salvos (não novos) */}
-                    {meal.isExtra && !meal.isNew && (
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemoveExtra(meal.id);
-                        }}
-                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                        className="p-1 text-destructive hover:bg-destructive/10 rounded disabled:opacity-50"
-                        title="Remover refeição extra"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </AccordionTrigger>
-              <AccordionContent className="pb-4">
-                <div className="space-y-3 pt-2">
-                  {/* Nome editável para extras */}
+      <Accordion type="single" collapsible className="space-y-2" value={openAccordion} onValueChange={setOpenAccordion}>
+        {allMealsSorted.map(meal => (
+          <AccordionItem 
+            key={meal.id} 
+            value={meal.id}
+            className={cn(
+              "border border-border/50 rounded-lg px-4 data-[state=open]:bg-muted/50",
+              meal.isExtra ? "bg-primary/5 border-primary/20" : "bg-muted/30"
+            )}
+          >
+            <AccordionTrigger className="py-3 hover:no-underline">
+              <div className="flex items-center justify-between w-full pr-2">
+                <div className="flex items-center gap-3">
+                  <Clock className={cn("h-4 w-4", meal.isExtra ? "text-primary" : "text-muted-foreground")} />
+                  <span className="text-sm font-medium">{meal.name}</span>
                   {meal.isExtra && (
-                    <div className="flex items-center justify-between">
-                      <Label className="text-xs text-muted-foreground">
-                        Nome da refeição
-                      </Label>
-                      <Input
-                        value={meal.name}
-                        onChange={(e) => handleExtraNameChange(meal.id, e.target.value)}
-                        className="w-40 h-8 text-sm"
-                        placeholder="Nome da refeição"
-                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                      />
-                    </div>
+                    <span className="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">
+                      Extra
+                    </span>
                   )}
-                  
-                  {/* Seletor de horário */}
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {meal.time || "--:--"}
+                  </span>
+                  {meal.isExtra && !meal.isNew && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleRemoveExtra(meal.id);
+                      }}
+                      disabled={isLoading || isSaving || disabled}
+                      className="p-1 text-destructive hover:bg-destructive/10 rounded disabled:opacity-50"
+                      title="Remover refeição extra"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  )}
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="pb-4">
+              <div className="space-y-3 pt-2">
+                {meal.isExtra && (
                   <div className="flex items-center justify-between">
                     <Label className="text-xs text-muted-foreground">
-                      Horário da refeição
+                      Nome da refeição
                     </Label>
-                    <Select
-                      value={meal.time || ""}
-                      onValueChange={(value) => handleTimeChange(meal.id, value, meal.isExtra)}
-                      disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue placeholder="Selecionar" />
-                      </SelectTrigger>
-                      <SelectContent className="max-h-[240px]">
-                        {TIME_OPTIONS.map(option => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Input
+                      value={meal.name}
+                      onChange={(e) => handleExtraNameChange(meal.id, e.target.value)}
+                      className="w-40 h-8 text-sm"
+                      placeholder="Nome da refeição"
+                      disabled={isLoading || isSaving || disabled}
+                    />
                   </div>
-                  
-                  {/* Botão salvar apenas para extras novos */}
-                  {meal.isExtra && meal.isNew && (
-                    <Button
-                      variant="default"
-                      size="sm"
-                      onClick={() => handleConfirmExtra(meal.id)}
-                      disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                      className="w-full"
-                    >
-                      <Check className="h-3.5 w-3.5 mr-1.5" />
-                      Salvar refeição
-                    </Button>
-                  )}
+                )}
+                
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs text-muted-foreground">
+                    Horário da refeição
+                  </Label>
+                  <Select
+                    value={meal.time || ""}
+                    onValueChange={(value) => handleTimeChange(meal.id, value, meal.isExtra)}
+                    disabled={isLoading || isSaving || disabled}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Selecionar" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[240px]">
+                      {TIME_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </AccordionContent>
-            </AccordionItem>
-          ))}
-        </Accordion>
+                
+                {meal.isExtra && meal.isNew && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => handleConfirmExtra(meal.id)}
+                    disabled={isLoading || isSaving || disabled}
+                    className="w-full"
+                  >
+                    <Check className="h-3.5 w-3.5 mr-1.5" />
+                    Salvar refeição
+                  </Button>
+                )}
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+        ))}
+      </Accordion>
 
-        {/* Botão adicionar refeição extra */}
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={handleAddExtra}
-          disabled={!useCustomTimes || isLoading || isSaving || disabled}
-          className="w-full mt-3 border-dashed"
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Adicionar Refeição Extra
-        </Button>
-      </div>
+      {/* Botão adicionar refeição extra */}
+      <Button
+        variant="outline"
+        size="sm"
+        onClick={handleAddExtra}
+        disabled={isLoading || isSaving || disabled}
+        className="w-full mt-3 border-dashed"
+      >
+        <Plus className="h-4 w-4 mr-2" />
+        Adicionar Refeição Extra
+      </Button>
 
       {/* Ações */}
       <div className="flex items-center justify-between pt-2 border-t border-border/50">
@@ -499,7 +379,7 @@ export function CustomMealTimesEditor({
           variant="ghost"
           size="sm"
           onClick={handleResetToGlobal}
-          disabled={!useCustomTimes || isLoading || isSaving || disabled}
+          disabled={isLoading || isSaving || disabled}
           className="text-xs"
         >
           <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
@@ -536,13 +416,8 @@ export function CustomMealTimesEditor({
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
                   <CardTitle className="text-sm font-medium">Horários das Refeições</CardTitle>
-                  {useCustomTimes && (
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
-                      Personalizado
-                    </span>
-                  )}
                   {extraMeals.length > 0 && (
-                    <span className="text-xs bg-secondary/50 text-secondary-foreground px-2 py-0.5 rounded-full">
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-0.5 rounded-full">
                       +{extraMeals.length} extra{extraMeals.length > 1 ? 's' : ''}
                     </span>
                   )}
@@ -573,7 +448,7 @@ export function CustomMealTimesEditor({
           <CardTitle className="text-base">Horários das Refeições</CardTitle>
         </div>
         <CardDescription>
-          Configure horários específicos para este plano ou use os padrões do sistema.
+          Configure os horários das suas refeições.
         </CardDescription>
       </CardHeader>
       <CardContent>

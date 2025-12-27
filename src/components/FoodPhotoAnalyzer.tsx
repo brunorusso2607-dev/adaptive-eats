@@ -1436,38 +1436,41 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 />
               </div>
 
-              {/* Calories summary - simple text above footer */}
-              <div className="flex items-center justify-center gap-2 py-3 text-muted-foreground">
-                <Flame className="w-4 h-4 text-orange-500" />
-                <span className="text-sm">
-                  Total: <span className="font-semibold text-foreground">{foodAnalysis.total_geral.calorias_totais} kcal</span>
-                </span>
-              </div>
-
               {/* Spacer for fixed footer + bottom nav */}
-              <div className="h-28 md:h-20" />
+              <div className="h-32 md:h-24" />
 
-              {/* Fixed Footer with Actions - positioned above mobile nav */}
+              {/* Fixed Footer with Calories Info + Actions - positioned above mobile nav */}
               <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 z-40">
-                <div className="max-w-lg mx-auto flex items-center gap-3">
-                  {/* Primary action */}
-                  <Button
-                    onClick={() => setRegisterMealOpen(true)}
-                    className="flex-1 gradient-primary"
-                  >
-                    <Check className="w-4 h-4 mr-2" />
-                    Vou comer agora
-                  </Button>
+                <div className="max-w-lg mx-auto space-y-2">
+                  {/* Calories info text */}
+                  <div className="flex items-center justify-center gap-2 text-muted-foreground">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <span className="text-sm">
+                      Total: <span className="font-semibold text-foreground">{foodAnalysis.total_geral.calorias_totais} kcal</span>
+                    </span>
+                  </div>
+                  
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-3">
+                    {/* Primary action */}
+                    <Button
+                      onClick={() => setRegisterMealOpen(true)}
+                      className="flex-1 gradient-primary"
+                    >
+                      <Check className="w-4 h-4 mr-2" />
+                      Vou comer agora
+                    </Button>
 
-                  {/* Secondary action */}
-                  <Button
-                    variant="outline"
-                    onClick={resetAnalysis}
-                    className="flex-shrink-0"
-                  >
-                    <Camera className="w-4 h-4 mr-2" />
-                    Nova foto
-                  </Button>
+                    {/* Secondary action */}
+                    <Button
+                      variant="outline"
+                      onClick={resetAnalysis}
+                      className="flex-shrink-0"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Nova foto
+                    </Button>
+                  </div>
                 </div>
               </div>
 

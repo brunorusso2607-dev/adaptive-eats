@@ -1,8 +1,9 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Pencil, Check, X, Flame, Beef, Wheat, Droplets, AlertCircle, HelpCircle } from "lucide-react";
 
 type FoodItem = {
@@ -43,6 +44,23 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
   const [isEditing, setIsEditing] = useState(false);
   const [editedFood, setEditedFood] = useState<FoodItem>(food);
   const [originalPortion, setOriginalPortion] = useState<number | null>(null);
+  const [portionQuantity, setPortionQuantity] = useState<string>("1");
+  const [portionUnit, setPortionUnit] = useState<string>("g");
+
+  // Unit options for dropdown
+  const unitOptions = useMemo(() => [
+    { value: "g", label: "Gramas (g)", grams: 1 },
+    { value: "kg", label: "Quilos (kg)", grams: 1000 },
+    { value: "ml", label: "Mililitros (ml)", grams: 1 },
+    { value: "copo", label: "Copo (200ml)", grams: 200 },
+    { value: "xicara", label: "Xícara (240ml)", grams: 240 },
+    { value: "colher_sopa", label: "Colher de sopa (15g)", grams: 15 },
+    { value: "colher_cha", label: "Colher de chá (5g)", grams: 5 },
+    { value: "colher_sobremesa", label: "Colher de sobremesa (10g)", grams: 10 },
+    { value: "fatia", label: "Fatia (~30g)", grams: 30 },
+    { value: "pedaco", label: "Pedaço (~50g)", grams: 50 },
+    { value: "unidade", label: "Unidade (~80g)", grams: 80 },
+  ], []);
 
   // Approximate gram equivalents for common units
   const unitToGrams: Record<string, number> = {
@@ -152,6 +170,59 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
     }
   };
 
+  // Handle dropdown-based portion change
+  const handleDropdownPortionChange = (quantity: string, unitValue: string) => {
+    const unit = unitOptions.find(u => u.value === unitValue);
+    if (!unit) return;
+
+    const numQuantity = parseFloat(quantity.replace(',', '.')) || 0;
+    const newPortionInGrams = numQuantity * unit.grams;
+    
+    // Build display text
+    const unitLabels: Record<string, string> = {
+      g: 'g',
+      kg: 'kg',
+      ml: 'ml',
+      copo: 'copo(s)',
+      xicara: 'xícara(s)',
+      colher_sopa: 'colher(es) de sopa',
+      colher_cha: 'colher(es) de chá',
+      colher_sobremesa: 'colher(es) de sobremesa',
+      fatia: 'fatia(s)',
+      pedaco: 'pedaço(s)',
+      unidade: 'unidade(s)',
+    };
+    const displayText = `${quantity} ${unitLabels[unitValue] || unitValue}`;
+    
+    // Recalculate proportionally
+    if (originalPortion && newPortionInGrams > 0 && originalPortion > 0) {
+      const ratio = newPortionInGrams / originalPortion;
+      
+      setEditedFood({
+        ...editedFood,
+        porcao_estimada: displayText,
+        calorias: Math.round(food.calorias * ratio),
+        macros: {
+          proteinas: Math.round(food.macros.proteinas * ratio * 10) / 10,
+          carboidratos: Math.round(food.macros.carboidratos * ratio * 10) / 10,
+          gorduras: Math.round(food.macros.gorduras * ratio * 10) / 10,
+        },
+      });
+    } else {
+      setEditedFood({ ...editedFood, porcao_estimada: displayText });
+    }
+  };
+
+  const handleQuantityChange = (newQuantity: string) => {
+    setPortionQuantity(newQuantity);
+    handleDropdownPortionChange(newQuantity, portionUnit);
+  };
+
+  const handleUnitChange = (newUnit: string) => {
+    setPortionUnit(newUnit);
+    handleDropdownPortionChange(portionQuantity, newUnit);
+  };
+
   const handleSave = () => {
     onSave(index, {
       ...editedFood,
@@ -167,9 +238,50 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
     setOriginalPortion(null);
   };
 
+  // Parse initial portion to set quantity and unit
+  const parseInitialPortion = (portion: string): { quantity: string; unit: string } => {
+    const lowerPortion = portion.toLowerCase().trim();
+    
+    // Check for known units
+    const unitMappings: Array<{ patterns: string[]; unit: string }> = [
+      { patterns: ['colher de sopa', 'colheres de sopa', 'cs'], unit: 'colher_sopa' },
+      { patterns: ['colher de chá', 'colheres de chá', 'cc'], unit: 'colher_cha' },
+      { patterns: ['colher de sobremesa', 'colheres de sobremesa'], unit: 'colher_sobremesa' },
+      { patterns: ['xícara', 'xícaras', 'xicara', 'xicaras'], unit: 'xicara' },
+      { patterns: ['copo', 'copos'], unit: 'copo' },
+      { patterns: ['fatia', 'fatias'], unit: 'fatia' },
+      { patterns: ['pedaço', 'pedaços', 'pedaco', 'pedacos'], unit: 'pedaco' },
+      { patterns: ['unidade', 'unidades', 'un'], unit: 'unidade' },
+      { patterns: ['kg', 'quilo', 'quilos'], unit: 'kg' },
+      { patterns: ['ml', 'mililitro', 'mililitros'], unit: 'ml' },
+      { patterns: ['g', 'gr', 'grama', 'gramas'], unit: 'g' },
+    ];
+
+    for (const mapping of unitMappings) {
+      for (const pattern of mapping.patterns) {
+        const regex = new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*${pattern}\\b`, 'i');
+        const match = lowerPortion.match(regex);
+        if (match) {
+          return { quantity: match[1].replace(',', '.'), unit: mapping.unit };
+        }
+      }
+    }
+
+    // Fallback: try to find a number
+    const numMatch = lowerPortion.match(/(\d+(?:[.,]\d+)?)/);
+    if (numMatch) {
+      return { quantity: numMatch[1].replace(',', '.'), unit: 'g' };
+    }
+
+    return { quantity: '1', unit: 'g' };
+  };
+
   const startEditing = () => {
     setEditedFood(food);
     setOriginalPortion(extractPortionInGrams(food.porcao_estimada));
+    const parsed = parseInitialPortion(food.porcao_estimada);
+    setPortionQuantity(parsed.quantity);
+    setPortionUnit(parsed.unit);
     setIsEditing(true);
   };
 
@@ -206,17 +318,34 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
             </div>
 
             <div>
-              <Label htmlFor={`porcao-${index}`} className="text-xs">Porção estimada</Label>
-              <Input
-                id={`porcao-${index}`}
-                value={editedFood.porcao_estimada}
-                onChange={(e) => handlePortionChange(e.target.value)}
-                className="mt-1"
-                placeholder="Ex: 150g, 1 xícara, 2 fatias"
-              />
+              <Label className="text-xs">Porção estimada</Label>
+              <div className="flex gap-2 mt-1">
+                <Input
+                  id={`porcao-qty-${index}`}
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={portionQuantity}
+                  onChange={(e) => handleQuantityChange(e.target.value)}
+                  className="w-20"
+                  placeholder="Qtd"
+                />
+                <Select value={portionUnit} onValueChange={handleUnitChange}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue placeholder="Unidade" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {unitOptions.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               {originalPortion && (
                 <p className="text-xs text-muted-foreground mt-1">
-                  💡 Altere o peso para recalcular automaticamente
+                  💡 Altere quantidade ou unidade para recalcular automaticamente
                 </p>
               )}
             </div>

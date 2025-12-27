@@ -151,14 +151,15 @@ export default function FreeFormMealLogger({
     }
   }, []);
 
-  // Show AI suggestions when database has no results
+  // Show AI suggestions alongside database results for better discoverability
   useEffect(() => {
-    if (!isLoading && foods.length === 0 && searchQuery.length >= 2) {
+    if (!isLoading && searchQuery.length >= 2) {
+      // Always fetch AI suggestions when user has a query, regardless of DB results
       const timer = setTimeout(() => {
         fetchAISuggestions(searchQuery);
-      }, 500);
+      }, 600); // Slightly longer delay to let DB results show first
       return () => clearTimeout(timer);
-    } else if (foods.length > 0 || searchQuery.length < 2) {
+    } else if (searchQuery.length < 2) {
       setShowAISuggestions(false);
       setAiSuggestions([]);
     }
@@ -551,67 +552,84 @@ export default function FreeFormMealLogger({
                 </div>
                 
                 {/* Search results dropdown */}
-                {(isLoading || foods.length > 0 || showAISuggestions) && (
-                  <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-60 overflow-y-auto">
-                    {isLoading ? (
+                {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
+                  <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-72 overflow-y-auto">
+                    {isLoading && foods.length === 0 ? (
                       <div className="p-4 text-center text-muted-foreground text-sm">
                         <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
                         Buscando...
                       </div>
-                    ) : foods.length > 0 ? (
+                    ) : (
                       <div className="p-2 space-y-1">
-                        {foods.map((food) => (
-                          <button
-                            key={food.id}
-                            onClick={() => handleAddFood(food)}
-                            className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Plus className="w-4 h-4 text-primary" />
-                              <span className="text-sm font-medium">{food.name}</span>
+                        {/* Database results */}
+                        {foods.length > 0 && (
+                          <>
+                            <div className="flex items-center gap-2 px-2 py-1.5 border-b">
+                              <Search className="w-3.5 h-3.5 text-muted-foreground" />
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Resultados do banco
+                              </span>
                             </div>
-                            <span className="text-xs text-muted-foreground">
-                              {food.calories_per_100g} kcal/100g
-                            </span>
-                          </button>
-                        ))}
-                      </div>
-                    ) : showAISuggestions && (
-                      <div className="p-2 space-y-2">
-                        <div className="flex items-center gap-2 px-2 py-1 border-b">
-                          <Sparkles className="w-4 h-4 text-primary" />
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Sugestões da IA
-                          </span>
-                        </div>
-
-                        {isLoadingAI ? (
-                          <div className="p-4 text-center text-muted-foreground text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                            Identificando alimento...
-                          </div>
-                        ) : aiSuggestions.length > 0 ? (
-                          aiSuggestions.map((suggestion, idx) => (
-                            <button
-                              key={idx}
-                              onClick={() => handleAddAISuggestion(suggestion)}
-                              className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
-                            >
-                              <div className="flex-1">
+                            {foods.map((food) => (
+                              <button
+                                key={food.id}
+                                onClick={() => handleAddFood(food)}
+                                className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                              >
                                 <div className="flex items-center gap-2">
                                   <Plus className="w-4 h-4 text-primary" />
-                                  <span className="text-sm font-medium">{suggestion.name}</span>
-                                  <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
-                                    {suggestion.confidence}
-                                  </span>
+                                  <span className="text-sm font-medium">{food.name}</span>
                                 </div>
-                                <p className="text-xs text-muted-foreground ml-6">
-                                  {suggestion.portion_description} • {suggestion.calories} kcal
-                                </p>
+                                <span className="text-xs text-muted-foreground">
+                                  {food.calories_per_100g} kcal/100g
+                                </span>
+                              </button>
+                            ))}
+                          </>
+                        )}
+
+                        {/* AI suggestions - always show alongside DB results */}
+                        {showAISuggestions && (
+                          <>
+                            <div className={cn("flex items-center gap-2 px-2 py-1.5 border-b", foods.length > 0 && "mt-2")}>
+                              <Sparkles className="w-3.5 h-3.5 text-primary" />
+                              <span className="text-xs font-medium text-muted-foreground">
+                                Sugestões da IA
+                              </span>
+                            </div>
+
+                            {isLoadingAI ? (
+                              <div className="p-3 text-center text-muted-foreground text-sm">
+                                <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
+                                Identificando variações...
                               </div>
-                            </button>
-                          ))
-                        ) : (
+                            ) : aiSuggestions.length > 0 ? (
+                              aiSuggestions.map((suggestion, idx) => (
+                                <button
+                                  key={`ai-${idx}`}
+                                  onClick={() => handleAddAISuggestion(suggestion)}
+                                  className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                                >
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <Plus className="w-4 h-4 text-primary" />
+                                      <span className="text-sm font-medium">{suggestion.name}</span>
+                                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
+                                        {suggestion.confidence}
+                                      </span>
+                                    </div>
+                                    <p className="text-xs text-muted-foreground ml-6">
+                                      {suggestion.portion_description} • {suggestion.calories} kcal
+                                    </p>
+                                  </div>
+                                </button>
+                              ))
+                            ) : null}
+                          </>
+                        )}
+
+                        {/* Manual add option - show when no results at all */}
+                        {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
                           <div className="p-3 text-center">
                             <p className="text-sm text-muted-foreground mb-2">
                               Não encontrado? Adicione manualmente

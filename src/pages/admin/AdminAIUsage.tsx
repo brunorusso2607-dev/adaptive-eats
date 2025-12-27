@@ -5,6 +5,12 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from "@/components/ui/sheet";
 import { 
   BarChart, 
   Bar, 
@@ -36,7 +42,8 @@ import {
   Search,
   FileText,
   Smile,
-  Users
+  Users,
+  X
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -70,8 +77,18 @@ interface UserUsageData {
   cost: number;
 }
 
+interface UserModuleUsage {
+  module: string;
+  label: string;
+  requests: number;
+  tokens: number;
+  cost: number;
+  color: string;
+}
+
 export default function AdminAIUsage() {
   const [period, setPeriod] = useState<PeriodFilter>("30d");
+  const [selectedUser, setSelectedUser] = useState<UserUsageData | null>(null);
 
   // Calculate date range based on period
   const dateRange = useMemo(() => {
@@ -157,6 +174,37 @@ export default function AdminAIUsage() {
       }))
       .sort((a, b) => b.cost - a.cost);
   }, [usageLogs, userProfileMap]);
+
+  // Calculate module usage for selected user
+  const selectedUserModules = useMemo((): UserModuleUsage[] => {
+    if (!usageLogs || !selectedUser) return [];
+
+    const byModule: Record<string, { requests: number; tokens: number; cost: number }> = {};
+    
+    usageLogs
+      .filter((log) => {
+        const logUserId = log.user_id || "anonymous";
+        return logUserId === selectedUser.userId;
+      })
+      .forEach((log) => {
+        const module = log.function_name;
+        if (!byModule[module]) {
+          byModule[module] = { requests: 0, tokens: 0, cost: 0 };
+        }
+        byModule[module].requests += 1;
+        byModule[module].tokens += log.total_tokens || 0;
+        byModule[module].cost += log.estimated_cost_usd || 0;
+      });
+
+    return Object.entries(byModule)
+      .map(([module, data]) => ({
+        module,
+        label: MODULE_CONFIG[module]?.label || module,
+        color: MODULE_CONFIG[module]?.color || "#6b7280",
+        ...data,
+      }))
+      .sort((a, b) => b.requests - a.requests);
+  }, [usageLogs, selectedUser]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -588,7 +636,8 @@ export default function AdminAIUsage() {
                 return (
                   <tr 
                     key={user.userId} 
-                    className="border-b border-border/20 hover:bg-muted/30"
+                    className="border-b border-border/20 hover:bg-muted/30 cursor-pointer transition-colors"
+                    onClick={() => setSelectedUser(user)}
                   >
                     <td className="py-3 px-2">
                       <div className="flex items-center gap-2">
@@ -689,6 +738,127 @@ export default function AdminAIUsage() {
           ))}
         </div>
       </Card>
+
+      {/* User Detail Sheet */}
+      <Sheet open={!!selectedUser} onOpenChange={() => setSelectedUser(null)}>
+        <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+          <SheetHeader className="mb-6">
+            <SheetTitle className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold">
+                {selectedUser?.userId === "anonymous" 
+                  ? "?" 
+                  : (selectedUser?.firstName?.[0] || selectedUser?.email?.[0] || "U").toUpperCase()
+                }
+              </div>
+              <div>
+                <p className="text-lg font-semibold">
+                  {selectedUser?.firstName || (selectedUser?.userId === "anonymous" ? "Sistema/Anônimo" : "Sem nome")}
+                </p>
+                <p className="text-sm text-muted-foreground font-normal">
+                  {selectedUser?.email}
+                </p>
+              </div>
+            </SheetTitle>
+          </SheetHeader>
+
+          {/* User Summary */}
+          <div className="grid grid-cols-3 gap-3 mb-6">
+            <div className="p-3 rounded-lg bg-muted/30 text-center">
+              <p className="text-lg font-bold text-primary">{selectedUser?.requests.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Requisições</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 text-center">
+              <p className="text-lg font-bold text-blue-600">{selectedUser?.tokens.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Tokens</p>
+            </div>
+            <div className="p-3 rounded-lg bg-muted/30 text-center">
+              <p className="text-lg font-bold text-green-600">${selectedUser?.cost.toFixed(4)}</p>
+              <p className="text-xs text-muted-foreground">Custo</p>
+            </div>
+          </div>
+
+          {/* Module Breakdown */}
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium text-foreground">Uso por Módulo</h3>
+            
+            {/* Mini Bar Chart */}
+            {selectedUserModules.length > 0 && (
+              <div className="h-48 mb-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={selectedUserModules.slice(0, 8)} layout="vertical">
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis type="number" tick={{ fontSize: 10 }} stroke="hsl(var(--muted-foreground))" />
+                    <YAxis 
+                      dataKey="label" 
+                      type="category" 
+                      width={100} 
+                      tick={{ fontSize: 9 }}
+                      stroke="hsl(var(--muted-foreground))"
+                    />
+                    <Tooltip 
+                      contentStyle={{ 
+                        backgroundColor: "hsl(var(--card))",
+                        border: "1px solid hsl(var(--border))",
+                        borderRadius: "8px",
+                        fontSize: "11px"
+                      }}
+                      formatter={(value: number) => [value, "Requisições"]}
+                    />
+                    <Bar dataKey="requests" radius={[0, 4, 4, 0]}>
+                      {selectedUserModules.slice(0, 8).map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            )}
+
+            {/* Module List */}
+            <div className="space-y-2">
+              {selectedUserModules.map((module) => {
+                const config = MODULE_CONFIG[module.module] || { icon: Sparkles, color: "#6b7280" };
+                const Icon = config.icon;
+                const percentOfUser = selectedUser?.requests 
+                  ? ((module.requests / selectedUser.requests) * 100).toFixed(1)
+                  : "0";
+
+                return (
+                  <div 
+                    key={module.module}
+                    className="flex items-center justify-between p-3 rounded-lg border border-border/40 bg-muted/10"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div 
+                        className="p-2 rounded-md"
+                        style={{ backgroundColor: `${module.color}15` }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: module.color }} />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-foreground">{module.label}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {module.tokens.toLocaleString()} tokens
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold text-foreground">{module.requests}</p>
+                      <p className="text-xs text-muted-foreground">{percentOfUser}%</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {selectedUserModules.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Nenhum dado de uso encontrado para este usuário.
+              </p>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }

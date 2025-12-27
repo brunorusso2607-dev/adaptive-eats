@@ -94,7 +94,7 @@ export async function searchRecipePool(
     // Normaliza o meal_type para busca
     const normalizedMealType = normalizeMealType(mealType);
     
-    // Query base
+    // Query base - EXCLUI receitas de fontes externas (source_url não nulo)
     let query = supabase
       .from("simple_meals")
       .select(`
@@ -111,9 +111,11 @@ export async function searchRecipePool(
         source_module,
         usage_count,
         country_code,
-        compatible_meal_times
+        compatible_meal_times,
+        source_url
       `)
       .eq("is_active", true)
+      .is("source_url", null) // Exclui receitas importadas de fontes externas
       .order("usage_count", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit * 3); // Busca mais para filtrar depois

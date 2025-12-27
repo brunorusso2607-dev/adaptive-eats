@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2 } from "lucide-react";
+import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
@@ -66,6 +66,7 @@ type MealPlanCalendarProps = {
   onSelectMeal: (meal: MealPlanItem) => void;
   onToggleFavorite: (mealId: string) => void;
   onMealUpdated?: (updatedMeal: MealPlanItem) => void;
+  onEditPlan?: () => void;
   userProfile?: UserProfile | null;
 };
 
@@ -92,7 +93,7 @@ const DEFAULT_MEAL_TIME_RANGES: Record<string, { start: number; end: number }> =
   ceia: { start: 21, end: 24 },
 };
 
-export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, userProfile }: MealPlanCalendarProps) {
+export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, onEditPlan, userProfile }: MealPlanCalendarProps) {
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; meal: MealPlanItem | null; mealType: string }>({
     open: false,
     meal: null,
@@ -326,9 +327,22 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             {weekRangeText}
           </p>
         </div>
-        <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
-          <X className="w-5 h-5" />
-        </Button>
+        <div className="flex items-center gap-1">
+          {onEditPlan && (
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              onClick={onEditPlan}
+              className="shrink-0"
+              title="Editar plano"
+            >
+              <Settings2 className="w-5 h-5" />
+            </Button>
+          )}
+          <Button variant="ghost" size="icon" onClick={onClose} className="shrink-0">
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
       </div>
 
       {/* Dietary Compatibility Summary */}

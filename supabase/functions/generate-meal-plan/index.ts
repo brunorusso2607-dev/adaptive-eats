@@ -17,6 +17,7 @@ import {
   type RecipePoolSearchParams,
   type SourceModule,
 } from "../_shared/recipePool.ts";
+import { extractUsageFromGeminiResponse, logAIUsage } from "../_shared/logAIUsage.ts";
 
 const DAY_NAMES = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
 
@@ -119,6 +120,16 @@ async function generateSingleMeal(
     }
 
     const aiData = await response.json();
+    
+    // Log AI usage for single meal generation
+    const usage = extractUsageFromGeminiResponse(aiData);
+    await logAIUsage({
+      functionName: "generate-meal-plan",
+      model: "gemini-2.5-flash-lite",
+      ...usage,
+      metadata: { type: "single_meal", mealType }
+    });
+    
     const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
     
     if (!textContent) return null;
@@ -414,6 +425,16 @@ async function generateSingleDay(
     }
 
     const aiData = await response.json();
+    
+    // Log AI usage for full day generation
+    const dayUsage = extractUsageFromGeminiResponse(aiData);
+    await logAIUsage({
+      functionName: "generate-meal-plan",
+      model: "gemini-2.5-flash-lite",
+      ...dayUsage,
+      metadata: { type: "full_day", dayIndex }
+    });
+    
     const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!textContent) {
       if (poolMeals.size > 0) {

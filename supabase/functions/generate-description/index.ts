@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import { extractUsageFromGeminiResponse, logAIUsage } from "../_shared/logAIUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -61,6 +62,16 @@ Responda APENAS com a descrição, nada mais.`,
     if (response.ok) {
       const data = await response.json();
       const text = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || "";
+      
+      // Log AI usage
+      const usage = extractUsageFromGeminiResponse(data);
+      await logAIUsage({
+        functionName: "generate-description",
+        model: "gemini-2.5-flash-lite",
+        ...usage,
+        metadata: { label, category }
+      });
+      
       // Clean up any quotes or extra formatting
       return text.replace(/^["']|["']$/g, "").trim();
     }

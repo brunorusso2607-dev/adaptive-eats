@@ -1,10 +1,11 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Clock, RotateCcw, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { toast } from "sonner";
@@ -158,38 +159,55 @@ export function CustomMealTimesEditor({
         />
       </div>
 
-      {/* Lista de horários */}
+      {/* Lista de horários em Accordion */}
       <div className={cn(
-        "space-y-3 transition-opacity duration-200",
+        "transition-opacity duration-200",
         !useCustomTimes && "opacity-50 pointer-events-none"
       )}>
-        {globalSettings.map(setting => (
-          <div 
-            key={setting.meal_type} 
-            className="flex items-center justify-between gap-4 p-3 rounded-lg bg-muted/50 border border-border/50"
-          >
-            <div className="flex items-center gap-3 flex-1 min-w-0">
-              <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-sm font-medium truncate">{setting.label}</span>
-            </div>
-            <Select
-              value={localTimes[setting.meal_type] || ""}
-              onValueChange={(value) => handleTimeChange(setting.meal_type, value)}
-              disabled={!useCustomTimes || isLoading || isSaving || disabled}
+        <Accordion type="single" collapsible className="space-y-2">
+          {globalSettings.map(setting => (
+            <AccordionItem 
+              key={setting.meal_type} 
+              value={setting.meal_type}
+              className="border border-border/50 rounded-lg bg-muted/30 px-4 data-[state=open]:bg-muted/50"
             >
-              <SelectTrigger className="w-28">
-                <SelectValue placeholder="--:--" />
-              </SelectTrigger>
-              <SelectContent className="max-h-[240px]">
-                {TIME_OPTIONS.map(option => (
-                  <SelectItem key={option.value} value={option.value}>
-                    {option.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-        ))}
+              <AccordionTrigger className="py-3 hover:no-underline">
+                <div className="flex items-center justify-between w-full pr-2">
+                  <div className="flex items-center gap-3">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{setting.label}</span>
+                  </div>
+                  <span className="text-sm text-muted-foreground font-mono">
+                    {localTimes[setting.meal_type] || "--:--"}
+                  </span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-4">
+                <div className="flex items-center justify-between pt-2">
+                  <Label className="text-xs text-muted-foreground">
+                    Horário da refeição
+                  </Label>
+                  <Select
+                    value={localTimes[setting.meal_type] || ""}
+                    onValueChange={(value) => handleTimeChange(setting.meal_type, value)}
+                    disabled={!useCustomTimes || isLoading || isSaving || disabled}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue placeholder="Selecionar" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[240px]">
+                      {TIME_OPTIONS.map(option => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+          ))}
+        </Accordion>
       </div>
 
       {/* Ações */}

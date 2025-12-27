@@ -372,7 +372,8 @@ export default function FoodSearchDrawer({
 
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
-    const numValue = parseFloat(newValue) || 0;
+    // Allow empty string during typing - don't remove items until save
+    const numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
     setSelectedFoods((prev) =>
       prev.map((f) => {
         if (f.id === foodId) {
@@ -382,7 +383,8 @@ export default function FoodSearchDrawer({
           return { ...f, displayQuantity: numValue, quantity: actualGrams };
         }
         return f;
-      }).filter((f) => f.displayQuantity > 0)
+      })
+      // Don't filter during editing - validation happens on save
     );
   };
 

@@ -24,7 +24,7 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
-import { useUserIntolerances } from "@/hooks/useUserIntolerances";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { useUserProfileContext } from "@/hooks/useUserProfileContext";
 import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
@@ -110,7 +110,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   const [selectedDay, setSelectedDay] = useState<number | null>(null);
 
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
-  const { checkMealConflict, hasIntolerances } = useUserIntolerances();
+  const { checkMeal, hasIntolerances } = useIntoleranceWarning();
   const { recipeStyle, country, isLoading: isLoadingProfile } = useUserProfileContext();
 
   // Calculate available days from selected week onwards
@@ -396,8 +396,8 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     }
                     
                     // 2. Ordenar por conflito de intolerâncias
-                    const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
-                    const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
+                    const conflictA = checkMeal(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
+                    const conflictB = checkMeal(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
                     
                     if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
                     if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
@@ -415,7 +415,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                   }
                   
                   return sortedFavorites.map((fav) => {
-                    const conflict = checkMealConflict(fav.name, Array.isArray(fav.ingredients) ? fav.ingredients : undefined);
+                    const conflict = checkMeal(fav.name, Array.isArray(fav.ingredients) ? fav.ingredients : undefined);
                     const styleBadge = getRecipeStyleBadge(fav.calories, recipeStyle);
                     const StyleIcon = styleBadge.config?.icon;
                     
@@ -499,8 +499,8 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                     }
                     
                     // 2. Ordenar por conflito de intolerâncias
-                    const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
-                    const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
+                    const conflictA = checkMeal(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
+                    const conflictB = checkMeal(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
                     
                     if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
                     if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
@@ -518,7 +518,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                   }
                   
                   return sortedMeals.map((meal) => {
-                    const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
+                    const conflict = checkMeal(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
                     const styleBadge = getRecipeStyleBadge(meal.calories, recipeStyle);
                     const StyleIcon = styleBadge.config?.icon;
                     

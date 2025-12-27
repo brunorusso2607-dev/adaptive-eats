@@ -129,7 +129,7 @@ export function useIntoleranceWarning() {
   }, [hasIntolerances, intolerances, mappings]);
 
   // Check a meal with ingredients for conflicts
-  const checkMeal = useCallback((mealName: string, ingredients?: Array<{ name?: string; ingredient?: string } | string>): IntoleranceWarning => {
+  const checkMeal = useCallback((mealName: string, ingredients?: any[]): IntoleranceWarning => {
     if (!hasIntolerances) {
       return { hasConflict: false, conflicts: [], labels: [], badgeLabel: null, fullLabel: null };
     }

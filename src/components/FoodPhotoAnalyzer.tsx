@@ -1128,54 +1128,48 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                     ? "border-yellow-500/50 bg-yellow-500/5"
                     : "border-green-500/50 bg-green-500/5"
                 }`}>
-                  <CardContent className="p-3">
-                    <div className="flex items-center gap-3">
+                  <CardContent className="px-3 py-2">
+                    <div className="flex items-start gap-2">
                       {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
                         <>
-                          <div className="w-10 h-10 rounded-full bg-destructive/15 flex items-center justify-center flex-shrink-0">
-                            <ShieldX className="w-5 h-5 text-destructive" />
-                          </div>
+                          <ShieldX className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
                             {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-semibold text-foreground text-sm">
+                              <p className="font-medium text-foreground text-sm">
                                 {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
                               </p>
                             )}
-                            <p className="font-semibold text-destructive text-sm">Não recomendado</p>
+                            <p className="text-xs text-destructive font-medium">Não recomendado</p>
                             <p className="text-xs text-muted-foreground">
-                              Contém: <span className="font-medium">{perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}</span>
+                              Contém: {perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}
                             </p>
                           </div>
                         </>
                       ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
                         <>
-                          <div className="w-10 h-10 rounded-full bg-yellow-500/15 flex items-center justify-center flex-shrink-0">
-                            <ShieldAlert className="w-5 h-5 text-yellow-600" />
-                          </div>
+                          <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
                             {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-semibold text-foreground text-sm">
+                              <p className="font-medium text-foreground text-sm">
                                 {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
                               </p>
                             )}
-                            <p className="font-semibold text-yellow-600 text-sm">Verificar antes</p>
+                            <p className="text-xs text-yellow-600 font-medium">Verificar antes</p>
                             <p className="text-xs text-muted-foreground">
-                              Possível: <span className="font-medium">{perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}</span>
+                              Possível: {perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}
                             </p>
                           </div>
                         </>
                       ) : (
                         <>
-                          <div className="w-10 h-10 rounded-full bg-green-500/15 flex items-center justify-center flex-shrink-0">
-                            <ShieldCheck className="w-5 h-5 text-green-600" />
-                          </div>
+                          <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
                           <div className="flex-1">
                             {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-semibold text-foreground text-sm">
+                              <p className="font-medium text-foreground text-sm">
                                 {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
                               </p>
                             )}
-                            <p className="font-semibold text-green-600 text-sm">Seguro para você</p>
+                            <p className="text-xs text-green-600 font-medium">Seguro para você</p>
                             <p className="text-xs text-muted-foreground">
                               Compatível com suas restrições
                             </p>

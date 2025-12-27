@@ -1,9 +1,13 @@
 import { Card } from "@/components/ui/card";
-import { Users, TrendingUp, Utensils, AlertCircle, ChevronRight, Info } from "lucide-react";
+import { Users, TrendingUp, Utensils, AlertCircle, ChevronRight, Info, Brain, DollarSign, Zap } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { startOfMonth, subDays, format } from "date-fns";
+import { useNavigate } from "react-router-dom";
 
 export default function AdminHome() {
+  const navigate = useNavigate();
+
   // Fetch basic stats
   const { data: stats } = useQuery({
     queryKey: ['admin-home-stats'],
@@ -21,11 +25,64 @@ export default function AdminHome() {
     },
   });
 
+  // Fetch AI usage stats
+  const { data: aiStats } = useQuery({
+    queryKey: ['admin-home-ai-stats'],
+    queryFn: async () => {
+      const today = new Date();
+      const startOfToday = format(today, 'yyyy-MM-dd');
+      const startOfCurrentMonth = format(startOfMonth(today), 'yyyy-MM-dd');
+      const last7Days = format(subDays(today, 7), 'yyyy-MM-dd');
+
+      const [todayResult, monthResult, weekResult] = await Promise.all([
+        supabase
+          .from('ai_usage_logs')
+          .select('estimated_cost_usd, total_tokens')
+          .gte('created_at', startOfToday),
+        supabase
+          .from('ai_usage_logs')
+          .select('estimated_cost_usd, total_tokens')
+          .gte('created_at', startOfCurrentMonth),
+        supabase
+          .from('ai_usage_logs')
+          .select('estimated_cost_usd, total_tokens')
+          .gte('created_at', last7Days),
+      ]);
+
+      const calculateTotals = (data: any[]) => ({
+        cost: data?.reduce((sum, log) => sum + (log.estimated_cost_usd || 0), 0) || 0,
+        tokens: data?.reduce((sum, log) => sum + (log.total_tokens || 0), 0) || 0,
+        requests: data?.length || 0,
+      });
+
+      return {
+        today: calculateTotals(todayResult.data || []),
+        month: calculateTotals(monthResult.data || []),
+        week: calculateTotals(weekResult.data || []),
+      };
+    },
+  });
+
   const quickStats = [
     { label: "Usuários", value: stats?.users || 0, icon: Users, color: "text-blue-600" },
     { label: "Receitas", value: stats?.recipes || 0, icon: Utensils, color: "text-green-600" },
     { label: "Planos ativos", value: stats?.activePlans || 0, icon: TrendingUp, color: "text-purple-600" },
   ];
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 4,
+      maximumFractionDigits: 4,
+    }).format(value);
+  };
+
+  const formatNumber = (value: number) => {
+    if (value >= 1000000) return `${(value / 1000000).toFixed(1)}M`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return value.toString();
+  };
 
   return (
     <div className="space-y-8 animate-fade-up max-w-5xl">
@@ -76,6 +133,49 @@ export default function AdminHome() {
               <p className="text-xl font-medium text-foreground">{metric.value}</p>
             </div>
           ))}
+        </div>
+      </Card>
+
+      {/* AI Usage Summary Card */}
+      <Card 
+        className="p-0 bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-transparent border border-violet-500/20 shadow-none overflow-hidden cursor-pointer hover:border-violet-500/40 transition-colors"
+        onClick={() => navigate('/admin/ai-usage')}
+      >
+        <div className="flex items-center justify-between px-5 py-3 border-b border-violet-500/20">
+          <div className="flex items-center gap-2">
+            <Brain className="w-4 h-4 text-violet-600" />
+            <span className="text-sm font-medium text-foreground">Uso de IA</span>
+          </div>
+          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+        </div>
+        <div className="grid grid-cols-3 divide-x divide-violet-500/20">
+          <div className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className="w-3 h-3 text-violet-600" />
+              <span className="text-xs text-muted-foreground font-normal">Custo Hoje</span>
+            </div>
+            <p className="text-lg font-semibold text-violet-600">{formatCurrency(aiStats?.today.cost || 0)}</p>
+          </div>
+          <div className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <DollarSign className="w-3 h-3 text-purple-600" />
+              <span className="text-xs text-muted-foreground font-normal">Custo Mês</span>
+            </div>
+            <p className="text-lg font-semibold text-purple-600">{formatCurrency(aiStats?.month.cost || 0)}</p>
+          </div>
+          <div className="p-4">
+            <div className="flex items-center gap-1.5 mb-1">
+              <Zap className="w-3 h-3 text-amber-600" />
+              <span className="text-xs text-muted-foreground font-normal">Tokens Mês</span>
+            </div>
+            <p className="text-lg font-semibold text-amber-600">{formatNumber(aiStats?.month.tokens || 0)}</p>
+          </div>
+        </div>
+        <div className="px-5 py-2.5 bg-violet-500/5 border-t border-violet-500/20">
+          <p className="text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">{aiStats?.month.requests || 0}</span> requisições este mês • 
+            <span className="font-medium text-foreground ml-1">{aiStats?.week.requests || 0}</span> nos últimos 7 dias
+          </p>
         </div>
       </Card>
 

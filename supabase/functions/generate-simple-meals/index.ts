@@ -1241,10 +1241,52 @@ ${existingNames.slice(0, 40).join(', ')}
         {"name": "segundo ingrediente", "quantity": "100g"},
         {"name": "tempero", "quantity": "a gosto"}
       ],
+      "instructions": [
+        {
+          "step": 1,
+          "title": "Título curto do passo",
+          "description": "Descrição detalhada do que fazer, incluindo técnicas, temperaturas, tempos e dicas"
+        },
+        {
+          "step": 2,
+          "title": "Próximo passo",
+          "description": "Continuação detalhada com instruções claras"
+        }
+      ],
       "compatible_meal_times": ["${selectedMealType.key}"]
     }
   ]
 }
+
+═══════════════════════════════════════════════════════════════════════════════
+📝 INSTRUÇÕES DE PREPARO - DIRETRIZES DETALHADAS
+═══════════════════════════════════════════════════════════════════════════════
+
+CADA RECEITA DEVE TER INSTRUÇÕES COMPLETAS COM:
+
+✓ ESTRUTURA POR PASSO:
+  • step: número sequencial (1, 2, 3...)
+  • title: ação principal em 3-5 palavras (ex: "Refogar a cebola")
+  • description: instrução detalhada de 2-4 frases
+
+✓ NÍVEL DE DETALHE ESPERADO:
+  • Temperaturas específicas ("fogo médio-alto", "180°C", "fervura branda")
+  • Tempos exatos ("por 5 minutos", "até dourar", "cerca de 15 minutos")
+  • Técnicas explicadas ("mexendo constantemente", "sem tampar", "em fio")
+  • Indicadores visuais ("até ficar translúcido", "quando borbulhar", "cor dourada")
+  • Pontos de atenção ("cuidado para não queimar", "reserve o líquido")
+
+✓ QUANTIDADE DE PASSOS:
+  • Mínimo: 3 passos para receitas simples
+  • Ideal: 4-6 passos para receitas médias
+  • Máximo: 8 passos para receitas elaboradas
+
+✓ EXEMPLO DE INSTRUÇÃO BEM ESCRITA:
+  {
+    "step": 1,
+    "title": "Preparar os vegetais",
+    "description": "Lave bem o brócolis e separe em floretes pequenos. Corte a cenoura em rodelas finas de aproximadamente 3mm. Reserve os vegetais em tigelas separadas pois terão tempos de cozimento diferentes."
+  }
 
 ═══════════════════════════════════════════════════════════════════════════════
 ✅ CHECKLIST DE QUALIDADE (VERIFICAR ANTES DE RESPONDER)
@@ -1257,13 +1299,15 @@ ${existingNames.slice(0, 40).join(', ')}
 □ O tempo de preparo é realista para a complexidade?
 □ As descrições são apetitosas e envolventes?
 □ NENHUM ingrediente proibido foi incluído?
+□ As INSTRUÇÕES são detalhadas com tempos, temperaturas e técnicas?
+□ Cada passo tem title E description completos?
 □ O JSON está formatado corretamente sem erros de sintaxe?
 
 GERE AS ${quantity} RECEITAS AGORA:`;
 
-    console.log(`[generate-simple-meals] Chamando API com country: ${countryCode}, category: ${categoryLabel}`);
+    console.log(`[generate-simple-meals] Chamando API Gemini 2.5 Flash com country: ${countryCode}, category: ${categoryLabel}`);
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1277,8 +1321,8 @@ GERE AS ${quantity} RECEITAS AGORA:`;
           }
         ],
         generationConfig: {
-          temperature: 0.85,
-          maxOutputTokens: 8192,
+          temperature: 0.75,
+          maxOutputTokens: 16384,
         }
       }),
     });
@@ -1337,6 +1381,7 @@ GERE AS ${quantity} RECEITAS AGORA:`;
         fat: Math.round(recipe.fat) || 10,
         prep_time: recipe.prep_time || 15,
         ingredients: recipe.ingredients || [],
+        instructions: recipe.instructions || [], // Instruções detalhadas passo-a-passo
         meal_type: selectedMealType.key,
         compatible_meal_times: recipe.compatible_meal_times || [selectedMealType.key],
         country_code: countryCode,

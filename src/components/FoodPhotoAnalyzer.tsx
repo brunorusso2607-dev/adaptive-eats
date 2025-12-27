@@ -301,8 +301,79 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       setLabelAnalysis(null);
       setNeedsBackPhoto(false);
       setBackPhotoReason(null);
+      
+      // Auto-analyze for food mode - skip the extra confirmation step
+      if (mode === "food") {
+        // Small delay to let the image preview render first
+        setTimeout(() => {
+          analyzeImageWithBase64(base64);
+        }, 100);
+      }
     };
     reader.readAsDataURL(file);
+  };
+
+  // Separate function to analyze with a specific base64 image
+  const analyzeImageWithBase64 = async (base64Image: string) => {
+    setIsAnalyzing(true);
+    setNotFoodError(null);
+    setCategoryError(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-food-photo", {
+        body: { imageBase64: base64Image },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      // Handle structured category error with detailed feedback
+      if (data.categoryError || data.notFood) {
+        if (data.categoryError && data.categoria_detectada) {
+          setCategoryError({
+            categoria: data.categoria_detectada,
+            descricao: data.objeto_identificado || "",
+            mensagem: data.message || "Não consegui identificar comida nesta imagem."
+          });
+        } else {
+          setNotFoodError(data.message || "Não foi possível identificar alimentos na imagem.");
+        }
+        return;
+      }
+
+      setFoodAnalysis(data.analysis);
+      setMetaDiaria(data.meta_diaria || null);
+      setPerfilAplicado(data.perfil_usuario_aplicado || null);
+      setCorrecoesAplicadas(data.correcoes_aplicadas || null);
+      
+      // Show toast about corrections applied
+      const corrections = data.correcoes_aplicadas;
+      const totalCorrections = corrections?.total || corrections?.quantidade || 0;
+      
+      if (totalCorrections > 0) {
+        const fuzzyCount = corrections?.fuzzy || 0;
+        const exactCount = corrections?.exatas || 0;
+        
+        let description = "Baseado em feedbacks anteriores";
+        if (fuzzyCount > 0 && exactCount > 0) {
+          description = `${exactCount} exata(s), ${fuzzyCount} similar(es)`;
+        } else if (fuzzyCount > 0) {
+          description = `${fuzzyCount} correspondência(s) por similaridade`;
+        }
+        
+        toast.success(`${totalCorrections} correção(ões) aplicada(s) automaticamente!`, {
+          description,
+          duration: 4000,
+        });
+      } else {
+        toast.success("Análise concluída!");
+      }
+    } catch (error) {
+      console.error("Error analyzing image:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao analisar imagem");
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const analyzeImage = async () => {
@@ -916,36 +987,42 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
             {!foodAnalysis && !labelAnalysis && !notFoodError && !categoryError && (
               <CardContent className="p-4">
-                <Button
-                  onClick={analyzeImage}
-                  disabled={isAnalyzing}
-                  className="w-full gradient-primary"
-                  size="lg"
-                >
-                  {isAnalyzing ? (
-                    <>
-                      <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                      {mode === "food" 
-                        ? "Analisando..." 
-                        : "Verificando ingredientes..."
-                      }
-                    </>
-                  ) : (
-                    <>
-                      {mode === "food" ? (
-                        <>
-                          <Flame className="w-5 h-5 mr-2" />
-                          Analisar Prato
-                        </>
-                      ) : (
-                        <>
-                          <ScanBarcode className="w-5 h-5 mr-2" />
-                          Verificar Ingredientes
-                        </>
-                      )}
-                    </>
-                  )}
-                </Button>
+                {/* For food mode: show loading state (analysis starts automatically) */}
+                {mode === "food" && isAnalyzing && (
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Analisando seu prato...</p>
+                  </div>
+                )}
+                
+                {/* For food mode: show nothing if not analyzing (shouldn't happen, but fallback) */}
+                {mode === "food" && !isAnalyzing && (
+                  <div className="flex flex-col items-center gap-3 py-2">
+                    <p className="text-sm text-muted-foreground">Preparando análise...</p>
+                  </div>
+                )}
+                
+                {/* For label mode: keep the button for manual trigger */}
+                {mode === "label" && (
+                  <Button
+                    onClick={analyzeImage}
+                    disabled={isAnalyzing}
+                    className="w-full gradient-primary"
+                    size="lg"
+                  >
+                    {isAnalyzing ? (
+                      <>
+                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
+                        Verificando ingredientes...
+                      </>
+                    ) : (
+                      <>
+                        <ScanBarcode className="w-5 h-5 mr-2" />
+                        Verificar Ingredientes
+                      </>
+                    )}
+                  </Button>
+                )}
               </CardContent>
             )}
           </Card>

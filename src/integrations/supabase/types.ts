@@ -1080,6 +1080,7 @@ export type Database = {
           last_name: string | null
           onboarding_completed: boolean | null
           sex: string | null
+          timezone: string | null
           updated_at: string | null
           weight_current: number | null
           weight_goal: number | null
@@ -1103,6 +1104,7 @@ export type Database = {
           last_name?: string | null
           onboarding_completed?: boolean | null
           sex?: string | null
+          timezone?: string | null
           updated_at?: string | null
           weight_current?: number | null
           weight_goal?: number | null
@@ -1126,6 +1128,7 @@ export type Database = {
           last_name?: string | null
           onboarding_completed?: boolean | null
           sex?: string | null
+          timezone?: string | null
           updated_at?: string | null
           weight_current?: number | null
           weight_goal?: number | null

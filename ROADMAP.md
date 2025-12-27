@@ -281,29 +281,28 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ---
 
-### 4.1 Adicionar Timezone ao Perfil do Usuário
+### 4.1 Adicionar Timezone ao Perfil do Usuário ✅
 **Objetivo:** Preparar sistema para suporte global
 
 #### Sub-tarefas:
-- [ ] Adicionar coluna `timezone` na tabela `profiles`
+- [x] Adicionar coluna `timezone` na tabela `profiles`
   ```sql
   ALTER TABLE profiles ADD COLUMN timezone TEXT DEFAULT 'America/Sao_Paulo';
   ```
-- [ ] Detectar timezone automaticamente no onboarding
+- [x] Detectar timezone automaticamente no onboarding
   ```typescript
   const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
   ```
-- [ ] Permitir alteração manual em Configurações
-- [ ] Atualizar Edge Functions para usar timezone do usuário
+- [x] Permitir alteração manual em Configurações
+- [ ] Atualizar Edge Functions para usar timezone do usuário (item 4.5)
 
 **Impacto:**
 - `send-meal-reminder` → converter horário UTC para local do usuário
 - `send-water-reminder` → idem
 - `send-feedback-reminder` → idem
 
-**Status:** ⏳ Pendente  
-**Estimativa:** 45 minutos  
-**Prioridade:** Alta (base para suporte global)
+**Status:** ✅ Concluída (parcial - falta edge functions)  
+**Data conclusão:** 27/12/2024
 
 ---
 

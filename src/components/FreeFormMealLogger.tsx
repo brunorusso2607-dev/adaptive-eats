@@ -562,21 +562,32 @@ export default function FreeFormMealLogger({
                     ) : (
                       <div className="p-2 space-y-1">
                         {/* Database results */}
-                        {foods.map((food) => (
-                          <button
-                            key={food.id}
-                            onClick={() => handleAddFood(food)}
-                            className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
-                          >
-                            <div className="flex items-center gap-2">
-                              <Plus className="w-4 h-4 text-primary" />
-                              <span className="text-sm font-medium">{food.name}</span>
-                            </div>
-                            <span className="text-xs text-muted-foreground">
-                              {food.calories_per_100g} kcal/100g
-                            </span>
-                          </button>
-                        ))}
+                        {foods.map((food) => {
+                          const conflict = checkFoodConflicts(food.name);
+                          return (
+                            <button
+                              key={food.id}
+                              onClick={() => handleAddFood(food)}
+                              className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <span className="text-sm font-medium truncate">{food.name}</span>
+                                </div>
+                                {conflict && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                  </span>
+                                )}
+                              </div>
+                              <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                                {food.calories_per_100g} kcal/100g
+                              </span>
+                            </button>
+                          );
+                        })}
 
                         {/* AI suggestions */}
                         {showAISuggestions && (
@@ -587,26 +598,30 @@ export default function FreeFormMealLogger({
                                 Buscando mais opções...
                               </div>
                             ) : aiSuggestions.length > 0 ? (
-                              aiSuggestions.map((suggestion, idx) => (
-                                <button
-                                  key={`ai-${idx}`}
-                                  onClick={() => handleAddAISuggestion(suggestion)}
-                                  className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
-                                >
-                                  <div className="flex-1">
+                              aiSuggestions.map((suggestion, idx) => {
+                                const conflict = checkFoodConflicts(suggestion.name);
+                                return (
+                                  <button
+                                    key={`ai-${idx}`}
+                                    onClick={() => handleAddAISuggestion(suggestion)}
+                                    className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left"
+                                  >
                                     <div className="flex items-center gap-2">
-                                      <Plus className="w-4 h-4 text-primary" />
+                                      <Plus className="w-4 h-4 text-primary flex-shrink-0" />
                                       <span className="text-sm font-medium">{suggestion.name}</span>
-                                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
-                                        {suggestion.confidence}
-                                      </span>
                                     </div>
-                                    <p className="text-xs text-muted-foreground ml-6">
+                                    {conflict && (
+                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                                        <AlertTriangle className="w-3 h-3" />
+                                        Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                      </span>
+                                    )}
+                                    <p className="text-xs text-muted-foreground ml-6 mt-1">
                                       {suggestion.portion_description} • {suggestion.calories} kcal
                                     </p>
-                                  </div>
-                                </button>
-                              ))
+                                  </button>
+                                );
+                              })
                             ) : null}
                           </>
                         )}

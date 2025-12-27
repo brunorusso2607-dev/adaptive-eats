@@ -9,7 +9,7 @@
 | Fase | Status | Progresso |
 |------|--------|-----------|
 | FASE 1: Preparação Banco | ✅ Concluída | 100% |
-| FASE 2: Features Principais | 🔄 Em andamento | 40% |
+| FASE 2: Features Principais | 🔄 Em andamento | 60% |
 | FASE 3: Reorganização UI | ⏳ Pendente | 0% |
 
 **Última atualização:** 27/12/2024
@@ -124,6 +124,51 @@ Sim → Qual refeição? → Horário → Salvo ✓
 
 ---
 
+### 2.6 Unificação do Fluxo de Registro ✅ (NOVO)
+**Objetivo:** Padronizar comportamento entre módulo de foto e módulo manual
+
+#### Problema identificado:
+- Módulo de foto e módulo manual tinham comportamentos inconsistentes nos passos finais
+- Código duplicado para seleção de tipo de refeição e horário
+- UX inconsistente para o usuário
+
+#### Solução implementada:
+- [x] Criar componente reutilizável `MealRegistrationFlow.tsx`
+- [x] Centralizar lógica de "Qual refeição?" + "Que horas foi?" + detecção de duplicatas
+- [x] Refatorar `RegisterMealFromPhotoSheet.tsx` para usar o componente
+- [x] Refatorar `FreeFormMealLogger.tsx` para usar o componente
+
+**Componente criado:** `src/components/MealRegistrationFlow.tsx`
+
+**Arquitetura:**
+```
+MealRegistrationFlow (reutilizável)
+├── Props: mealData, items, sourceType, onSuccess, onBack
+├── Passo 1: "Qual refeição?" (5 tipos + refeição personalizada)
+├── Passo 2: "Que horas foi?" (input de horário)
+├── Detecção de duplicatas (alertDialog)
+└── Salvamento unificado em meal_consumption
+
+Módulo Foto (RegisterMealFromPhotoSheet)
+└── Converte FoodAnalysis → MealData + Items
+    └── Passa para MealRegistrationFlow
+
+Módulo Manual (FreeFormMealLogger)
+└── Passo 1: Busca e seleção de alimentos
+    └── Passa para MealRegistrationFlow
+```
+
+**Benefícios:**
+- ✅ Código DRY (Don't Repeat Yourself)
+- ✅ UX 100% consistente entre módulos
+- ✅ Manutenção simplificada
+- ✅ Fácil adicionar novos módulos no futuro
+
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
+
+---
+
 ### 2.3 Trocar Refeição Completa (Home)
 **Objetivo:** Substituir "trocar ingrediente" por "trocar refeição" no card da Home
 
@@ -220,10 +265,18 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ## 📝 Changelog
 
-### [Não lançado]
-- Roadmap criado e estruturado
+### [27/12/2024] - Unificação de Fluxos
+- ✅ Criado `MealRegistrationFlow.tsx` - componente reutilizável
+- ✅ Refatorado `RegisterMealFromPhotoSheet.tsx` para usar componente unificado
+- ✅ Refatorado `FreeFormMealLogger.tsx` para usar componente unificado
+- ✅ UX padronizada entre módulo de foto e módulo manual
 
-### [v1.x - Atual]
+### [27/12/2024] - Features Principais
+- ✅ Implementado módulo de registro manual de refeições
+- ✅ Implementado registro de refeição via foto
+- ✅ Detecção de refeições duplicadas
+
+### [v1.x - Anterior]
 - Sistema de planos alimentares
 - Análise de foto por IA
 - Rastreamento de sintomas
@@ -236,17 +289,19 @@ Perfil → Horários de Refeição → Editar → Salvar
 ## 🚀 Próximos Passos
 
 ### Imediato (próxima sessão)
-1. [ ] Executar migração FASE 1 (preparar banco)
-2. [ ] Iniciar FASE 2.1 (Registro Livre)
+1. [ ] **2.3** - Trocar Refeição Completa (Home)
+2. [ ] **2.5** - Adicionar Refeição Extra ao Plano
 
 ### Curto prazo (1-2 semanas)
-- Completar todas as features da FASE 2
-- Testes de usabilidade internos
+- [ ] **2.4** - Horários Personalizados por Usuário
+- [ ] Completar todas as features da FASE 2
+- [ ] Testes de usabilidade internos
 
 ### Médio prazo (1 mês)
-- Beta fechado com 10-20 usuários
-- Coletar feedback
-- Iterar baseado em dados reais
+- [ ] FASE 3 - Reorganização da UI
+- [ ] Beta fechado com 10-20 usuários
+- [ ] Coletar feedback
+- [ ] Iterar baseado em dados reais
 
 ---
 
@@ -265,6 +320,7 @@ Se custom_meal_name != NULL → Nome personalizado pelo usuário
 ```
 
 ### Componentes Reutilizáveis
+- `MealRegistrationFlow` - fluxo unificado de registro (tipo + horário)
 - `FoodSearchDrawer` - busca de alimentos
 - `MealDetailSheet` - detalhes da refeição
 - `useMealConsumption` - hook de salvamento

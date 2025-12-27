@@ -353,9 +353,26 @@ export function CustomMealTimesEditor({
                       </span>
                     )}
                   </div>
-                  <span className="text-sm text-muted-foreground font-mono">
-                    {meal.time || "--:--"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm text-muted-foreground font-mono">
+                      {meal.time || "--:--"}
+                    </span>
+                    {/* Ícone de lixeira para extras salvos (não novos) */}
+                    {meal.isExtra && !meal.isNew && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleRemoveExtra(meal.id);
+                        }}
+                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
+                        className="p-1 text-destructive hover:bg-destructive/10 rounded disabled:opacity-50"
+                        title="Remover refeição extra"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               </AccordionTrigger>
               <AccordionContent className="pb-4">
@@ -399,31 +416,18 @@ export function CustomMealTimesEditor({
                     </Select>
                   </div>
                   
-                  {/* Botão salvar para extras novos, remover para extras salvos */}
-                  {meal.isExtra && (
-                    meal.isNew ? (
-                      <Button
-                        variant="default"
-                        size="sm"
-                        onClick={() => handleConfirmExtra(meal.id)}
-                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                        className="w-full"
-                      >
-                        <Check className="h-3.5 w-3.5 mr-1.5" />
-                        Salvar refeição
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => handleRemoveExtra(meal.id)}
-                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                      >
-                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                        Remover refeição
-                      </Button>
-                    )
+                  {/* Botão salvar apenas para extras novos */}
+                  {meal.isExtra && meal.isNew && (
+                    <Button
+                      variant="default"
+                      size="sm"
+                      onClick={() => handleConfirmExtra(meal.id)}
+                      disabled={!useCustomTimes || isLoading || isSaving || disabled}
+                      className="w-full"
+                    >
+                      <Check className="h-3.5 w-3.5 mr-1.5" />
+                      Salvar refeição
+                    </Button>
                   )}
                 </div>
               </AccordionContent>

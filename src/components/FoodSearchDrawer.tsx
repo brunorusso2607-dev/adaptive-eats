@@ -386,10 +386,15 @@ export default function FoodSearchDrawer({
 
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
+    console.log('[DEBUG] updateDisplayQuantity called:', { foodId, newValue });
+    console.log('[DEBUG] Current selectedFoods:', selectedFoods.map(f => ({ id: f.id, name: f.name, qty: f.displayQuantity })));
+    console.log('[DEBUG] Current removingFoodIds:', [...removingFoodIds]);
+    
     // Allow empty string during typing - don't remove items until save
     const numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
-    setSelectedFoods((prev) =>
-      prev.map((f) => {
+    setSelectedFoods((prev) => {
+      console.log('[DEBUG] setSelectedFoods prev:', prev.map(f => ({ id: f.id, name: f.name, qty: f.displayQuantity })));
+      const result = prev.map((f) => {
         if (f.id === foodId) {
           const actualGrams = f.serving_unit === 'g' || f.serving_unit === 'ml' 
             ? numValue 
@@ -397,9 +402,10 @@ export default function FoodSearchDrawer({
           return { ...f, displayQuantity: numValue, quantity: actualGrams };
         }
         return f;
-      })
-      // Don't filter during editing - validation happens on save
-    );
+      });
+      console.log('[DEBUG] setSelectedFoods result:', result.map(f => ({ id: f.id, name: f.name, qty: f.displayQuantity })));
+      return result;
+    });
   };
 
   const removeFood = (foodId: string, foodName: string) => {

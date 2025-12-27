@@ -526,9 +526,6 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
             </p>
             <div className="flex items-center gap-2 flex-wrap">
               <p className="text-xs text-muted-foreground">{food.porcao_estimada}</p>
-              {food.culinaria_origem && (
-                <span className="text-xs text-primary/70">• {food.culinaria_origem}</span>
-              )}
               {food.item_original_ai && food.item_original_ai !== food.item && (
                 <span className="text-xs text-muted-foreground italic">
                   (IA: {food.item_original_ai})

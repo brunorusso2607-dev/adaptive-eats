@@ -70,10 +70,12 @@ export default function Settings() {
   const [isSavingMeal, setIsSavingMeal] = useState(false);
   const [isSendingMealTest, setIsSendingMealTest] = useState(false);
 
-  // Country settings
+  // Country and timezone settings
   const [userCountry, setUserCountry] = useState("BR");
+  const [userTimezone, setUserTimezone] = useState("America/Sao_Paulo");
   const [isLoadingCountry, setIsLoadingCountry] = useState(true);
   const [isSavingCountry, setIsSavingCountry] = useState(false);
+  const [isSavingTimezone, setIsSavingTimezone] = useState(false);
 
   useEffect(() => {
     fetchWaterSettings();
@@ -87,14 +89,45 @@ export default function Settings() {
 
     const { data } = await supabase
       .from("profiles")
-      .select("country")
+      .select("country, timezone")
       .eq("id", session.user.id)
       .maybeSingle();
 
     if (data?.country) {
       setUserCountry(data.country);
     }
+    if (data?.timezone) {
+      setUserTimezone(data.timezone);
+    }
     setIsLoadingCountry(false);
+  };
+
+  const saveTimezone = async (newTimezone: string) => {
+    setIsSavingTimezone(true);
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) return;
+
+    const { error } = await supabase
+      .from("profiles")
+      .update({ timezone: newTimezone })
+      .eq("id", session.user.id);
+
+    if (error) {
+      toast.error("Erro ao salvar fuso horário");
+    } else {
+      setUserTimezone(newTimezone);
+      toast.success("Fuso horário atualizado");
+    }
+    setIsSavingTimezone(false);
+  };
+
+  const detectTimezone = async () => {
+    const detected = Intl.DateTimeFormat().resolvedOptions().timeZone;
+    if (detected && detected !== userTimezone) {
+      await saveTimezone(detected);
+    } else {
+      toast.info("Fuso horário já está correto");
+    }
   };
 
   const saveCountry = async (newCountry: string) => {
@@ -302,37 +335,78 @@ export default function Settings() {
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>
             ) : (
-              <div className="space-y-3">
-                <Label>País de origem</Label>
-                <Select
-                  value={userCountry}
-                  onValueChange={saveCountry}
-                  disabled={isSavingCountry}
-                >
-                  <SelectTrigger className="w-full">
-                    <SelectValue placeholder="Selecione seu país" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COUNTRIES.map((country) => (
-                      <SelectItem key={country.code} value={country.code}>
-                        <span className="flex items-center gap-2">
-                          <span>{country.flag}</span>
-                          <span>{country.name}</span>
-                        </span>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <p className="text-xs text-muted-foreground">
-                  Isso ajuda a sugerir alimentos populares na sua região, como {
-                    userCountry === "BR" ? "pão de queijo, açaí" :
-                    userCountry === "US" ? "hamburgers, mac & cheese" :
-                    userCountry === "JP" ? "ramen, sushi" :
-                    userCountry === "MX" ? "tacos, burritos" :
-                    userCountry === "IT" ? "pizza, pasta" :
-                    "pratos típicos locais"
-                  }.
-                </p>
+              <div className="space-y-5">
+                {/* País */}
+                <div className="space-y-3">
+                  <Label>País de origem</Label>
+                  <Select
+                    value={userCountry}
+                    onValueChange={saveCountry}
+                    disabled={isSavingCountry}
+                  >
+                    <SelectTrigger className="w-full">
+                      <SelectValue placeholder="Selecione seu país" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {COUNTRIES.map((country) => (
+                        <SelectItem key={country.code} value={country.code}>
+                          <span className="flex items-center gap-2">
+                            <span>{country.flag}</span>
+                            <span>{country.name}</span>
+                          </span>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Isso ajuda a sugerir alimentos populares na sua região, como {
+                      userCountry === "BR" ? "pão de queijo, açaí" :
+                      userCountry === "US" ? "hamburgers, mac & cheese" :
+                      userCountry === "JP" ? "ramen, sushi" :
+                      userCountry === "MX" ? "tacos, burritos" :
+                      userCountry === "IT" ? "pizza, pasta" :
+                      "pratos típicos locais"
+                    }.
+                  </p>
+                </div>
+
+                <Separator />
+
+                {/* Fuso horário */}
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <Clock className="h-4 w-4" />
+                    Fuso horário
+                  </Label>
+                  <div className="flex gap-2">
+                    <div className="flex-1 p-3 rounded-lg border bg-muted/50">
+                      <p className="text-sm font-medium">{userTimezone}</p>
+                      <p className="text-xs text-muted-foreground">
+                        Hora atual: {new Date().toLocaleTimeString("pt-BR", { 
+                          timeZone: userTimezone,
+                          hour: "2-digit",
+                          minute: "2-digit"
+                        })}
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={detectTimezone}
+                      disabled={isSavingTimezone}
+                      className="shrink-0"
+                    >
+                      {isSavingTimezone ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        "Detectar"
+                      )}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Usado para lembretes e horários de refeição. Clique em "Detectar" para atualizar automaticamente.
+                  </p>
+                </div>
               </div>
             )}
           </CardContent>

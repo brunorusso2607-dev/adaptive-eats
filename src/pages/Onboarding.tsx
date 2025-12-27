@@ -139,6 +139,10 @@ export default function Onboarding() {
         return;
       }
 
+      // Detectar timezone automaticamente do navegador
+      const detectedTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Sao_Paulo';
+      console.log("[Onboarding] Timezone detectado:", detectedTimezone);
+
       const { error } = await supabase
         .from("profiles")
         .update({
@@ -147,6 +151,7 @@ export default function Onboarding() {
           dietary_preference: profile.dietary_preference as any,
           excluded_ingredients: profile.excluded_ingredients,
           goal: profile.goal as any,
+          timezone: detectedTimezone,
           onboarding_completed: true,
         })
         .eq("id", session.user.id);

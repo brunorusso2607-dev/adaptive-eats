@@ -764,50 +764,52 @@ export default function FreeFormMealLogger({
 
           {/* Step 2: Select Meal Type */}
           {step === 'meal-type' && (
-            <div className="flex-1 flex flex-col">
-              <div className="p-4 flex-1">
-                <p className="text-sm text-muted-foreground mb-4">
-                  Selecione o tipo de refeição:
-                </p>
-                <div className="grid grid-cols-2 gap-3">
-                  {mealOrder.map((mealType) => (
-                    <Button
-                      key={mealType}
-                      variant="outline"
-                      className="h-auto py-4 flex flex-col gap-1"
-                      onClick={() => handleSelectMealType(mealType)}
-                    >
-                      <span className="font-medium">{mealLabels[mealType] || mealType}</span>
-                    </Button>
-                  ))}
-                </div>
-                
-                {/* Custom meal name option */}
-                <div className="mt-6">
-                  <p className="text-sm text-muted-foreground mb-2">
-                    Ou dê um nome personalizado:
+            <div className="flex-1 flex flex-col min-h-0">
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    Selecione o tipo de refeição:
                   </p>
-                  <div className="flex gap-2">
-                    <Input
-                      placeholder="Ex: Lanche da tarde, Pós-treino..."
-                      value={customMealName}
-                      onChange={(e) => setCustomMealName(e.target.value)}
-                    />
-                    <Button
-                      variant="outline"
-                      disabled={!customMealName.trim()}
-                      onClick={() => {
-                        setSelectedMealType('extra');
-                        setStep('time');
-                      }}
-                    >
-                      OK
-                    </Button>
+                  <div className="grid grid-cols-2 gap-3">
+                    {mealOrder.map((mealType) => (
+                      <Button
+                        key={mealType}
+                        variant="outline"
+                        className="h-auto py-4 flex flex-col gap-1"
+                        onClick={() => handleSelectMealType(mealType)}
+                      >
+                        <span className="font-medium">{mealLabels[mealType] || mealType}</span>
+                      </Button>
+                    ))}
+                  </div>
+                  
+                  {/* Custom meal name option */}
+                  <div className="mt-6">
+                    <p className="text-sm text-muted-foreground mb-2">
+                      Ou dê um nome personalizado:
+                    </p>
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Ex: Lanche da tarde, Pós-treino..."
+                        value={customMealName}
+                        onChange={(e) => setCustomMealName(e.target.value)}
+                      />
+                      <Button
+                        variant="outline"
+                        disabled={!customMealName.trim()}
+                        onClick={() => {
+                          setSelectedMealType('extra');
+                          setStep('time');
+                        }}
+                      >
+                        OK
+                      </Button>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollArea>
               
-              <div className="p-4 border-t">
+              <div className="p-4 border-t flex-shrink-0">
                 <Button 
                   variant="ghost" 
                   className="w-full"
@@ -821,35 +823,37 @@ export default function FreeFormMealLogger({
 
           {/* Step 3: Select Time */}
           {step === 'time' && (
-            <div className="flex-1 flex flex-col">
-              <div className="p-4 flex-1">
-                <p className="text-sm text-muted-foreground mb-4">
-                  A que horas você fez essa refeição?
-                </p>
-                
-                <div className="flex items-center justify-center gap-4 py-8">
-                  <Clock className="w-6 h-6 text-muted-foreground" />
-                  <Input
-                    type="time"
-                    value={selectedTime}
-                    onChange={(e) => setSelectedTime(e.target.value)}
-                    className="w-32 text-center text-lg"
-                  />
-                </div>
+            <div className="flex-1 flex flex-col min-h-0">
+              <ScrollArea className="flex-1">
+                <div className="p-4">
+                  <p className="text-sm text-muted-foreground mb-4">
+                    A que horas você fez essa refeição?
+                  </p>
+                  
+                  <div className="flex items-center justify-center gap-4 py-6">
+                    <Clock className="w-6 h-6 text-muted-foreground" />
+                    <Input
+                      type="time"
+                      value={selectedTime}
+                      onChange={(e) => setSelectedTime(e.target.value)}
+                      className="w-32 text-center text-lg"
+                    />
+                  </div>
 
-                {/* Summary */}
-                <div className="mt-6 p-4 rounded-lg bg-muted/50 space-y-2">
-                  <p className="text-sm font-medium">Resumo:</p>
-                  <p className="text-sm text-muted-foreground">
-                    {customMealName || mealLabels[selectedMealType || ''] || selectedMealType} às {selectedTime}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {selectedFoods.length} {selectedFoods.length === 1 ? 'alimento' : 'alimentos'} • {totals.calories} kcal
-                  </p>
+                  {/* Summary */}
+                  <div className="mt-4 p-4 rounded-lg bg-muted/50 space-y-2">
+                    <p className="text-sm font-medium">Resumo:</p>
+                    <p className="text-sm text-muted-foreground">
+                      {customMealName || mealLabels[selectedMealType || ''] || selectedMealType} às {selectedTime}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {selectedFoods.length} {selectedFoods.length === 1 ? 'alimento' : 'alimentos'} • {totals.calories} kcal
+                    </p>
+                  </div>
                 </div>
-              </div>
+              </ScrollArea>
               
-              <div className="p-4 border-t space-y-2">
+              <div className="p-4 border-t flex-shrink-0 space-y-2">
                 <Button 
                   className="w-full gradient-primary" 
                   onClick={handleSave}

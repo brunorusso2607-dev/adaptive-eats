@@ -182,7 +182,8 @@ export function CustomMealTimesEditor({
       );
       setExtraMeals(newExtras);
       
-      if (onChange && useCustomTimes) {
+      // SEMPRE emitir em modo compact
+      if (onChange && (useCustomTimes || compact)) {
         const data: CustomMealTimesWithExtras = { ...localTimes };
         data.extras = newExtras;
         onChange(data);
@@ -191,7 +192,8 @@ export function CustomMealTimesEditor({
       const newTimes = { ...localTimes, [mealId]: value };
       setLocalTimes(newTimes);
       
-      if (onChange && useCustomTimes) {
+      // SEMPRE emitir em modo compact
+      if (onChange && (useCustomTimes || compact)) {
         const data: CustomMealTimesWithExtras = { ...newTimes };
         if (extraMeals.length > 0) {
           data.extras = extraMeals;
@@ -208,7 +210,8 @@ export function CustomMealTimesEditor({
     );
     setExtraMeals(newExtras);
     
-    if (onChange && useCustomTimes) {
+    // SEMPRE emitir em modo compact
+    if (onChange && (useCustomTimes || compact)) {
       const data: CustomMealTimesWithExtras = { ...localTimes };
       data.extras = newExtras;
       onChange(data);
@@ -228,9 +231,11 @@ export function CustomMealTimesEditor({
     setHasChanges(true);
     setOpenAccordion(newExtraId); // Abre o accordion do novo extra automaticamente
     
-    if (onChange && useCustomTimes) {
+    // SEMPRE emitir em modo compact (geração de plano), independente do toggle
+    if (onChange && (useCustomTimes || compact)) {
       const data: CustomMealTimesWithExtras = { ...localTimes };
       data.extras = newExtras;
+      console.log("[CustomMealTimesEditor] Added extra, emitting:", data);
       onChange(data);
     }
   };
@@ -240,7 +245,8 @@ export function CustomMealTimesEditor({
     setExtraMeals(newExtras);
     setHasChanges(true);
     
-    if (onChange && useCustomTimes) {
+    // SEMPRE emitir em modo compact
+    if (onChange && (useCustomTimes || compact)) {
       const data: CustomMealTimesWithExtras = { ...localTimes };
       if (newExtras.length > 0) {
         data.extras = newExtras;
@@ -258,9 +264,11 @@ export function CustomMealTimesEditor({
     setHasChanges(true);
     setOpenAccordion(undefined); // Fecha o accordion após salvar
     
-    if (onChange && useCustomTimes) {
+    // SEMPRE emitir em modo compact
+    if (onChange && (useCustomTimes || compact)) {
       const data: CustomMealTimesWithExtras = { ...localTimes };
       data.extras = newExtras;
+      console.log("[CustomMealTimesEditor] Confirmed extra, emitting:", data);
       onChange(data);
     }
     

@@ -36,7 +36,8 @@ export function useFoodsSearch() {
       const { data, error } = await supabase
         .from("foods")
         .select("*")
-        .or(`name.ilike.%${query}%,name_normalized.ilike.%${normalizedQuery}%`)
+        .eq("is_recipe", false)
+        .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
         .order("name")
         .limit(20);
 

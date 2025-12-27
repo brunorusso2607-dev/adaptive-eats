@@ -408,6 +408,10 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
         onSelectMeal={handleSelectMeal}
         onToggleFavorite={handleToggleFavorite}
         onMealUpdated={handleMealUpdated}
+        onEditPlan={() => {
+          setEditingPlanId(selectedPlan.id);
+          setView("edit");
+        }}
         userProfile={userProfile}
       />
     );

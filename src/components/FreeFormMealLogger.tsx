@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, Clock, UtensilsCrossed, AlertTriangle } from "lucide-react";
+import { Search, Plus, X, Flame, Loader2, PenLine, UtensilsCrossed, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { supabase } from "@/integrations/supabase/client";
@@ -11,7 +11,7 @@ import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
-import { getMealLabelsSync, getMealOrderSync } from "@/lib/mealTimeConfig";
+import MealRegistrationFlow, { MealData, ConsumptionItem } from "./MealRegistrationFlow";
 
 interface FreeFormMealLoggerProps {
   open: boolean;
@@ -43,22 +43,12 @@ export default function FreeFormMealLogger({
   // Ref for search input focus
   const searchInputRef = useRef<HTMLInputElement>(null);
   
-  // Step management: 'foods' -> 'meal-type' -> 'time'
-  const [step, setStep] = useState<'foods' | 'meal-type' | 'time'>('foods');
-  
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
-  const [selectedMealType, setSelectedMealType] = useState<string | null>(null);
-  const [selectedTime, setSelectedTime] = useState(() => {
-    const now = new Date();
-    return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-  });
-  const [customMealName, setCustomMealName] = useState("");
   
   const [userProfile, setUserProfile] = useState<{ intolerances: string[] | null; dietary_preference: string | null } | null>(null);
   // Track foods with conflicts for informative display
   const [foodsWithConflicts, setFoodsWithConflicts] = useState<string[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
   
   // AI suggestions state
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
@@ -67,13 +57,12 @@ export default function FreeFormMealLogger({
   
   // Manual food modal state
   const [showManualModal, setShowManualModal] = useState(false);
+  
+  // Registration flow state
+  const [showRegistrationFlow, setShowRegistrationFlow] = useState(false);
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
   const { checkFood, checkConflict } = useIntoleranceWarning();
-  
-  // Get meal labels and order
-  const mealLabels = getMealLabelsSync();
-  const mealOrder = getMealOrderSync();
 
   // Fetch user profile for conflict checking
   useEffect(() => {
@@ -112,15 +101,10 @@ export default function FreeFormMealLogger({
       setSearchQuery("");
       setSelectedFoods([]);
       setFoodsWithConflicts([]);
-      setSelectedMealType(null);
-      setStep('foods');
-      setCustomMealName("");
       clearFoods();
       setAiSuggestions([]);
       setShowAISuggestions(false);
-      // Reset time to now
-      const now = new Date();
-      setSelectedTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
+      setShowRegistrationFlow(false);
     }
   }, [open, clearFoods]);
 
@@ -154,10 +138,9 @@ export default function FreeFormMealLogger({
   // Show AI suggestions alongside database results for better discoverability
   useEffect(() => {
     if (!isLoading && searchQuery.length >= 2) {
-      // Always fetch AI suggestions when user has a query, regardless of DB results
       const timer = setTimeout(() => {
         fetchAISuggestions(searchQuery);
-      }, 600); // Slightly longer delay to let DB results show first
+      }, 600);
       return () => clearTimeout(timer);
     } else if (searchQuery.length < 2) {
       setShowAISuggestions(false);
@@ -189,7 +172,6 @@ export default function FreeFormMealLogger({
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
-      // Add food and show informative toast
       addFoodToList(food);
       setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
       toast.warning(
@@ -203,13 +185,11 @@ export default function FreeFormMealLogger({
   }, [checkFoodConflicts]);
 
   const addFoodToList = (food: Food) => {
-    // Start with empty quantity (0) for new foods to allow user input
     const isGramUnit = food.serving_unit === 'g' || food.serving_unit === 'ml';
 
     setSelectedFoods((prev) => {
       const existing = prev.find((f) => f.id === food.id);
       if (existing) {
-        // If already exists, increment by 100g or 1 unit
         const increment = isGramUnit ? 100 : 1;
         const newDisplayQty = existing.displayQuantity + increment;
         const newQuantity = isGramUnit 
@@ -219,7 +199,6 @@ export default function FreeFormMealLogger({
           f.id === food.id ? { ...f, displayQuantity: newDisplayQty, quantity: newQuantity } : f
         );
       }
-      // New food starts with 0 quantity - user must set it
       return [...prev, { ...food, displayQuantity: 0, quantity: 0 }];
     });
     setSearchQuery("");
@@ -228,7 +207,7 @@ export default function FreeFormMealLogger({
     setShowAISuggestions(false);
   };
 
-  // Add AI suggestion as food - always add, show warning if conflict
+  // Add AI suggestion as food
   const handleAddAISuggestion = async (suggestion: AISuggestion) => {
     const conflict = checkFoodConflicts(suggestion.name);
     const hasLocalConflict = !!conflict;
@@ -307,7 +286,6 @@ export default function FreeFormMealLogger({
       setAiSuggestions([]);
       setShowAISuggestions(false);
 
-      // Show warning toast if there was a conflict
       if (hasLocalConflict && conflict) {
         setFoodsWithConflicts(prev => [...new Set([...prev, suggestion.name])]);
         toast.warning(
@@ -334,9 +312,7 @@ export default function FreeFormMealLogger({
     addFoodToList(fullFood);
   };
 
-
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
-    // Allow empty/zero during typing - validation happens on Continue
     const numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
     setSelectedFoods((prev) =>
       prev.map((f) => {
@@ -412,114 +388,50 @@ export default function FreeFormMealLogger({
       return;
     }
     
-    // Check if any food has zero quantity - don't proceed if so
     if (hasZeroQuantityFoods) {
-      return; // The inline alert is already showing
-    }
-    
-    setStep('meal-type');
-  };
-
-  const handleSelectMealType = (mealType: string) => {
-    setSelectedMealType(mealType);
-    setStep('time');
-  };
-
-  const handleSave = async () => {
-    if (!selectedMealType) {
-      toast.error("Selecione o tipo de refeição");
       return;
     }
-
-    setIsSaving(true);
-
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
-
-      // Parse time
-      const [hours, minutes] = selectedTime.split(':').map(Number);
-      const consumedAt = new Date();
-      consumedAt.setHours(hours, minutes, 0, 0);
-
-      // Create consumption items
-      const items = selectedFoods.map((food) => {
-        const macros = calculateMacros(food);
-        return {
-          food_id: food.id,
-          food_name: food.name,
-          quantity_grams: food.quantity,
-          calories: macros.calories,
-          protein: macros.protein,
-          carbs: macros.carbs,
-          fat: macros.fat,
-        };
-      });
-
-      // Create meal consumption record with new fields
-      const { data: consumption, error: consumptionError } = await supabase
-        .from("meal_consumption")
-        .insert({
-          user_id: user.id,
-          meal_plan_item_id: null, // Free-form, not linked to plan
-          followed_plan: false,
-          total_calories: Math.round(totals.calories),
-          total_protein: Math.round(totals.protein * 10) / 10,
-          total_carbs: Math.round(totals.carbs * 10) / 10,
-          total_fat: Math.round(totals.fat * 10) / 10,
-          consumed_at: consumedAt.toISOString(),
-          source_type: 'manual', // New field!
-          custom_meal_name: customMealName || mealLabels[selectedMealType] || selectedMealType,
-          meal_time: selectedTime + ':00', // New field! Format: HH:MM:SS
-        })
-        .select()
-        .single();
-
-      if (consumptionError) throw consumptionError;
-
-      // Insert consumption items
-      if (items.length > 0) {
-        const itemsToInsert = items.map((item) => ({
-          meal_consumption_id: consumption.id,
-          food_id: item.food_id,
-          food_name: item.food_name,
-          quantity_grams: item.quantity_grams,
-          calories: item.calories,
-          protein: item.protein,
-          carbs: item.carbs,
-          fat: item.fat,
-        }));
-
-        const { error: itemsError } = await supabase
-          .from("consumption_items")
-          .insert(itemsToInsert);
-
-        if (itemsError) throw itemsError;
-      }
-
-      toast.success("Refeição registrada com sucesso! 🎉");
-      onOpenChange(false);
-      onSuccess?.();
-    } catch (error) {
-      console.error("Error saving consumption:", error);
-      toast.error("Erro ao registrar refeição");
-    } finally {
-      setIsSaving(false);
-    }
+    
+    // Open the registration flow
+    setShowRegistrationFlow(true);
   };
 
-  const getConfidenceBadge = (confidence: string) => {
-    const colors = {
-      alta: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      média: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-      baixa: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
+  const handleRegistrationSuccess = () => {
+    onOpenChange(false);
+    onSuccess?.();
+  };
+
+  const handleRegistrationBack = () => {
+    setShowRegistrationFlow(false);
+  };
+
+  // Prepare data for MealRegistrationFlow
+  const mealData: MealData = {
+    name: selectedFoods.length === 1 
+      ? selectedFoods[0].name 
+      : `${selectedFoods.length} alimentos`,
+    calories: totals.calories,
+    protein: totals.protein,
+    carbs: totals.carbs,
+    fat: totals.fat,
+  };
+
+  const consumptionItems: ConsumptionItem[] = selectedFoods.map((food) => {
+    const macros = calculateMacros(food);
+    return {
+      food_id: food.id,
+      food_name: food.name,
+      quantity_grams: food.quantity,
+      calories: macros.calories,
+      protein: macros.protein,
+      carbs: macros.carbs,
+      fat: macros.fat,
     };
-    return colors[confidence as keyof typeof colors] || colors.baixa;
-  };
+  });
 
   return (
     <>
-      <Sheet open={open} onOpenChange={onOpenChange}>
+      <Sheet open={open && !showRegistrationFlow} onOpenChange={onOpenChange}>
         <SheetContent side="bottom" className="h-[85vh] max-h-[85vh] flex flex-col p-0">
           {/* Drag handle */}
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
@@ -529,51 +441,81 @@ export default function FreeFormMealLogger({
           <SheetHeader className="px-4 pb-3 flex-shrink-0 border-b">
             <SheetTitle className="text-base flex items-center gap-2">
               <UtensilsCrossed className="w-5 h-5 text-primary" />
-              {step === 'foods' && "O que você comeu?"}
-              {step === 'meal-type' && "Qual refeição?"}
-              {step === 'time' && "Que horas foi?"}
+              O que você comeu?
             </SheetTitle>
           </SheetHeader>
 
-          {/* Step 1: Select Foods */}
-          {step === 'foods' && (
-            <>
-              {/* Search input */}
-              <div className="px-4 py-3 flex-shrink-0 relative z-20">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
-                    ref={searchInputRef}
-                    placeholder="Buscar alimento..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-9"
-                  />
-                </div>
-                
-                {/* Search results dropdown */}
-                {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
-                  <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-72 overflow-y-auto">
-                    {isLoading && foods.length === 0 ? (
-                      <div className="p-4 text-center text-muted-foreground text-sm">
-                        <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                        Buscando...
-                      </div>
-                    ) : (
-                      <div className="p-2 space-y-1">
-                        {/* Database results */}
-                        {foods.map((food) => {
-                          const conflict = checkFoodConflicts(food.name);
-                          return (
-                            <button
-                              key={food.id}
-                              onClick={() => handleAddFood(food)}
-                              className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
-                            >
-                              <div className="flex-1 min-w-0">
+          {/* Search input */}
+          <div className="px-4 py-3 flex-shrink-0 relative z-20">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                ref={searchInputRef}
+                placeholder="Buscar alimento..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            {/* Search results dropdown */}
+            {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
+              <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-72 overflow-y-auto">
+                {isLoading && foods.length === 0 ? (
+                  <div className="p-4 text-center text-muted-foreground text-sm">
+                    <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
+                    Buscando...
+                  </div>
+                ) : (
+                  <div className="p-2 space-y-1">
+                    {/* Database results */}
+                    {foods.map((food) => {
+                      const conflict = checkFoodConflicts(food.name);
+                      return (
+                        <button
+                          key={food.id}
+                          onClick={() => handleAddFood(food)}
+                          className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                        >
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+                              <span className="text-sm font-medium truncate">{food.name}</span>
+                            </div>
+                            {conflict && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                                <AlertTriangle className="w-3 h-3" />
+                                Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                              </span>
+                            )}
+                          </div>
+                          <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                            {food.calories_per_100g} kcal/100g
+                          </span>
+                        </button>
+                      );
+                    })}
+
+                    {/* AI suggestions */}
+                    {showAISuggestions && (
+                      <>
+                        {isLoadingAI ? (
+                          <div className="p-3 text-center text-muted-foreground text-sm">
+                            <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
+                            Buscando mais opções...
+                          </div>
+                        ) : aiSuggestions.length > 0 ? (
+                          aiSuggestions.map((suggestion, idx) => {
+                            const conflict = checkFoodConflicts(suggestion.name);
+                            return (
+                              <button
+                                key={`ai-${idx}`}
+                                onClick={() => handleAddAISuggestion(suggestion)}
+                                className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left"
+                              >
                                 <div className="flex items-center gap-2">
                                   <Plus className="w-4 h-4 text-primary flex-shrink-0" />
-                                  <span className="text-sm font-medium truncate">{food.name}</span>
+                                  <span className="text-sm font-medium">{suggestion.name}</span>
                                 </div>
                                 {conflict && (
                                   <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
@@ -581,330 +523,183 @@ export default function FreeFormMealLogger({
                                     Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
                                   </span>
                                 )}
-                              </div>
-                              <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                                {food.calories_per_100g} kcal/100g
-                              </span>
-                            </button>
-                          );
-                        })}
+                                <p className="text-xs text-muted-foreground ml-6 mt-1">
+                                  {suggestion.portion_description} • {suggestion.calories} kcal
+                                </p>
+                              </button>
+                            );
+                          })
+                        ) : null}
+                      </>
+                    )}
 
-                        {/* AI suggestions */}
-                        {showAISuggestions && (
-                          <>
-                            {isLoadingAI ? (
-                              <div className="p-3 text-center text-muted-foreground text-sm">
-                                <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
-                                Buscando mais opções...
-                              </div>
-                            ) : aiSuggestions.length > 0 ? (
-                              aiSuggestions.map((suggestion, idx) => {
-                                const conflict = checkFoodConflicts(suggestion.name);
-                                return (
-                                  <button
-                                    key={`ai-${idx}`}
-                                    onClick={() => handleAddAISuggestion(suggestion)}
-                                    className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left"
-                                  >
-                                    <div className="flex items-center gap-2">
-                                      <Plus className="w-4 h-4 text-primary flex-shrink-0" />
-                                      <span className="text-sm font-medium">{suggestion.name}</span>
-                                    </div>
-                                    {conflict && (
-                                      <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
-                                        <AlertTriangle className="w-3 h-3" />
-                                        Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                      </span>
-                                    )}
-                                    <p className="text-xs text-muted-foreground ml-6 mt-1">
-                                      {suggestion.portion_description} • {suggestion.calories} kcal
-                                    </p>
-                                  </button>
-                                );
-                              })
-                            ) : null}
-                          </>
-                        )}
-
-                        {/* Manual add option - show when no results at all */}
-                        {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
-                          <div className="p-3 text-center">
-                            <p className="text-sm text-muted-foreground mb-2">
-                              Não encontrado? Adicione manualmente
-                            </p>
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => setShowManualModal(true)}
-                              className="gap-2"
-                            >
-                              <PenLine className="w-4 h-4" />
-                              Criar alimento
-                            </Button>
-                          </div>
-                        )}
+                    {/* Manual add option */}
+                    {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
+                      <div className="p-3 text-center">
+                        <p className="text-sm text-muted-foreground mb-2">
+                          Não encontrado? Adicione manualmente
+                        </p>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setShowManualModal(true)}
+                          className="gap-2"
+                        >
+                          <PenLine className="w-4 h-4" />
+                          Criar alimento
+                        </Button>
                       </div>
                     )}
                   </div>
                 )}
               </div>
+            )}
+          </div>
 
-              {/* Selected foods list */}
-              <ScrollArea className="flex-1 px-4">
-                {selectedFoods.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center py-12 text-center">
-                    <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
-                      <Search className="w-8 h-8 text-muted-foreground" />
-                    </div>
-                    <p className="text-muted-foreground">
-                      Busque e adicione os alimentos que você consumiu
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3 pb-4">
-                    {selectedFoods.map((food) => {
-                      const macros = calculateMacros(food);
-                      const isGramUnit = food.serving_unit === 'g' || food.serving_unit === 'ml';
-                      const incrementButtons = isGramUnit 
-                        ? [50, 100, 150, 200] 
-                        : [1, 2, 3, 4];
-                      
-                      return (
-                        <div
-                          key={food.id}
-                          className="p-3 rounded-lg border bg-card space-y-3"
-                        >
-                          {/* Header with name and remove button */}
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-sm truncate">{food.name}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {macros.calories} kcal • P: {macros.protein}g • C: {macros.carbs}g • G: {macros.fat}g
-                              </p>
-                            </div>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7 -mr-1 -mt-1"
-                              onClick={() => removeFood(food.id)}
-                            >
-                              <X className="w-4 h-4" />
-                            </Button>
-                          </div>
-                          
-                          {/* Quantity input with increment buttons */}
-                          <div className="flex items-center gap-2">
-                            <div className="relative flex-shrink-0">
-                              <Input
-                                type="number"
-                                value={food.displayQuantity || ''}
-                                onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
-                                placeholder="0"
-                                className="w-20 h-9 text-center text-sm pr-7"
-                                min="0"
-                                step={isGramUnit ? 10 : 1}
-                              />
-                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
-                                {getUnitLabel(food.serving_unit || 'g', food.displayQuantity)}
-                              </span>
-                            </div>
-                            
-                            {/* Increment buttons */}
-                            <div className="flex items-center gap-1 flex-1 overflow-x-auto">
-                              {incrementButtons.map((amount) => (
-                                <Button
-                                  key={amount}
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-9 px-3 text-xs whitespace-nowrap flex-shrink-0"
-                                  onClick={() => incrementQuantity(food.id, isGramUnit ? amount : amount * (food.default_serving_size || 100))}
-                                >
-                                  +{amount}{isGramUnit ? 'g' : ''}
-                                </Button>
-                              ))}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })}
-                    
-                    {/* Add more button */}
-                    <button
-                      onClick={() => searchInputRef.current?.focus()}
-                      className="w-full py-3 border-2 border-dashed border-muted-foreground/30 rounded-lg text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      Adicionar alimento
-                    </button>
-                  </div>
-                )}
-              </ScrollArea>
-
-              {/* Footer with totals and continue button */}
-              {selectedFoods.length > 0 && (
-                <div className="p-4 border-t bg-card flex-shrink-0 space-y-3">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">Total</span>
-                    <div className="flex items-center gap-4 text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Flame className="w-4 h-4 text-orange-500" />
-                        {totals.calories} kcal
-                      </span>
-                      <span>P: {totals.protein}g</span>
-                      <span>C: {totals.carbs}g</span>
-                      <span>G: {totals.fat}g</span>
-                    </div>
-                  </div>
+          {/* Selected foods list */}
+          <ScrollArea className="flex-1 px-4">
+            {selectedFoods.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+                  <Search className="w-8 h-8 text-muted-foreground" />
+                </div>
+                <p className="text-muted-foreground">
+                  Busque e adicione os alimentos que você consumiu
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3 pb-4">
+                {selectedFoods.map((food) => {
+                  const macros = calculateMacros(food);
+                  const isGramUnit = food.serving_unit === 'g' || food.serving_unit === 'ml';
+                  const incrementButtons = isGramUnit 
+                    ? [50, 100, 150, 200] 
+                    : [1, 2, 3, 4];
                   
-                  {/* Inline alert for foods with zero quantity */}
-                  {hasZeroQuantityFoods && (
-                    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                      <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          Defina a quantidade de:
-                        </p>
-                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                          {foodsWithZeroQuantity.map(f => f.name).join(', ')}
-                        </p>
+                  return (
+                    <div
+                      key={food.id}
+                      className="p-3 rounded-lg border bg-card space-y-3"
+                    >
+                      {/* Header with name and remove button */}
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm truncate">{food.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {macros.calories} kcal • P: {macros.protein}g • C: {macros.carbs}g • G: {macros.fat}g
+                          </p>
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 -mr-1 -mt-1"
+                          onClick={() => removeFood(food.id)}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                      
+                      {/* Quantity input with increment buttons */}
+                      <div className="flex items-center gap-2">
+                        <div className="relative flex-shrink-0">
+                          <Input
+                            type="number"
+                            value={food.displayQuantity || ''}
+                            onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
+                            placeholder="0"
+                            className="w-20 h-9 text-center text-sm pr-7"
+                            min="0"
+                            step={isGramUnit ? 10 : 1}
+                          />
+                          <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                            {getUnitLabel(food.serving_unit || 'g', food.displayQuantity)}
+                          </span>
+                        </div>
+                        
+                        {/* Increment buttons */}
+                        <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+                          {incrementButtons.map((amount) => (
+                            <Button
+                              key={amount}
+                              variant="outline"
+                              size="sm"
+                              className="h-9 px-3 text-xs whitespace-nowrap flex-shrink-0"
+                              onClick={() => incrementQuantity(food.id, isGramUnit ? amount : amount * (food.default_serving_size || 100))}
+                            >
+                              +{amount}{isGramUnit ? 'g' : ''}
+                            </Button>
+                          ))}
+                        </div>
                       </div>
                     </div>
-                  )}
-                  
-                  <Button 
-                    className="w-full gradient-primary" 
-                    onClick={handleContinue}
-                    disabled={hasZeroQuantityFoods}
-                  >
-                    Continuar
-                  </Button>
+                  );
+                })}
+                
+                {/* Add more button */}
+                <button
+                  onClick={() => searchInputRef.current?.focus()}
+                  className="w-full py-3 border-2 border-dashed border-muted-foreground/30 rounded-lg text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-center gap-2"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar alimento
+                </button>
+              </div>
+            )}
+          </ScrollArea>
+
+          {/* Footer with totals and continue button */}
+          {selectedFoods.length > 0 && (
+            <div className="p-4 border-t bg-card flex-shrink-0 space-y-3">
+              <div className="flex items-center justify-between text-sm">
+                <span className="font-medium">Total</span>
+                <div className="flex items-center gap-4 text-muted-foreground">
+                  <span className="flex items-center gap-1">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    {totals.calories} kcal
+                  </span>
+                  <span>P: {totals.protein}g</span>
+                  <span>C: {totals.carbs}g</span>
+                  <span>G: {totals.fat}g</span>
+                </div>
+              </div>
+              
+              {/* Inline alert for foods with zero quantity */}
+              {hasZeroQuantityFoods && (
+                <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                  <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                      Defina a quantidade de:
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                      {foodsWithZeroQuantity.map(f => f.name).join(', ')}
+                    </p>
+                  </div>
                 </div>
               )}
-            </>
-          )}
-
-          {/* Step 2: Select Meal Type */}
-          {step === 'meal-type' && (
-            <div className="flex-1 flex flex-col min-h-0">
-              <ScrollArea className="flex-1">
-                <div className="p-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    Selecione o tipo de refeição:
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {mealOrder.map((mealType) => (
-                      <Button
-                        key={mealType}
-                        variant="outline"
-                        className="h-auto py-4 flex flex-col gap-1"
-                        onClick={() => handleSelectMealType(mealType)}
-                      >
-                        <span className="font-medium">{mealLabels[mealType] || mealType}</span>
-                      </Button>
-                    ))}
-                  </div>
-                  
-                  {/* Custom meal name option */}
-                  <div className="mt-6">
-                    <p className="text-sm text-muted-foreground mb-2">
-                      Ou dê um nome personalizado:
-                    </p>
-                    <div className="flex gap-2">
-                      <Input
-                        placeholder="Ex: Lanche da tarde, Pós-treino..."
-                        value={customMealName}
-                        onChange={(e) => setCustomMealName(e.target.value)}
-                      />
-                      <Button
-                        variant="outline"
-                        disabled={!customMealName.trim()}
-                        onClick={() => {
-                          setSelectedMealType('extra');
-                          setStep('time');
-                        }}
-                      >
-                        OK
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              </ScrollArea>
               
-              <div className="p-4 border-t flex-shrink-0">
-                <Button 
-                  variant="ghost" 
-                  className="w-full"
-                  onClick={() => setStep('foods')}
-                >
-                  Voltar
-                </Button>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Select Time */}
-          {step === 'time' && (
-            <div className="flex-1 flex flex-col min-h-0">
-              <ScrollArea className="flex-1">
-                <div className="p-4">
-                  <p className="text-sm text-muted-foreground mb-4">
-                    A que horas você fez essa refeição?
-                  </p>
-                  
-                  <div className="flex items-center justify-center gap-4 py-6">
-                    <Clock className="w-6 h-6 text-muted-foreground" />
-                    <Input
-                      type="time"
-                      value={selectedTime}
-                      onChange={(e) => setSelectedTime(e.target.value)}
-                      className="w-32 text-center text-lg"
-                    />
-                  </div>
-
-                  {/* Summary */}
-                  <div className="mt-4 p-4 rounded-lg bg-muted/50 space-y-2">
-                    <p className="text-sm font-medium">Resumo:</p>
-                    <p className="text-sm text-muted-foreground">
-                      {customMealName || mealLabels[selectedMealType || ''] || selectedMealType} às {selectedTime}
-                    </p>
-                    <p className="text-sm text-muted-foreground">
-                      {selectedFoods.length} {selectedFoods.length === 1 ? 'alimento' : 'alimentos'} • {totals.calories} kcal
-                    </p>
-                  </div>
-                </div>
-              </ScrollArea>
-              
-              <div className="p-4 border-t flex-shrink-0 space-y-2">
-                <Button 
-                  className="w-full gradient-primary" 
-                  onClick={handleSave}
-                  disabled={isSaving}
-                >
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="w-4 h-4 mr-2" />
-                      Salvar Refeição
-                    </>
-                  )}
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  className="w-full"
-                  onClick={() => setStep('meal-type')}
-                >
-                  Voltar
-                </Button>
-              </div>
+              <Button 
+                className="w-full gradient-primary" 
+                onClick={handleContinue}
+                disabled={hasZeroQuantityFoods}
+              >
+                Continuar
+              </Button>
             </div>
           )}
         </SheetContent>
       </Sheet>
 
+      {/* Registration Flow - shared component */}
+      <MealRegistrationFlow
+        open={showRegistrationFlow}
+        onOpenChange={setShowRegistrationFlow}
+        mealData={mealData}
+        items={consumptionItems}
+        sourceType="manual"
+        onSuccess={handleRegistrationSuccess}
+        onBack={handleRegistrationBack}
+      />
 
       {/* Manual Food Modal */}
       <ManualFoodModal

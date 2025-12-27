@@ -75,7 +75,7 @@ const DAY_NAMES_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAY_NAMES_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
 // Standard meal types - internal keys used across the system
-const MEAL_TYPES_ORDERED = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] as const;
+const STANDARD_MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] as const;
 
 const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: string }> = {
   cafe_manha: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
@@ -84,6 +84,9 @@ const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: s
   jantar: { icon: Moon, label: "Jantar", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
   ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
+
+// Default config for extra meals
+const EXTRA_MEAL_CONFIG = { icon: Zap, label: "Refeição Extra", color: "bg-primary/20 text-primary" };
 
 // Fallback horários padrão (usado apenas se hook não carregar)
 const DEFAULT_MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
@@ -118,7 +121,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   }, [mealPlan.unlocks_at]);
 
   // Busca horários personalizados do plano
-  const { getTimeRanges, getMealTime, hasCustomTimes, isLoading: isLoadingMealTimes } = usePlanMealTimes({ planId: mealPlan.id });
+  const { getTimeRanges, getMealTime, hasCustomTimes, getMealOrder, getLabels, settings: mealTimeSettings, isLoading: isLoadingMealTimes } = usePlanMealTimes({ planId: mealPlan.id });
   
   // Monta os ranges de horário usando dados do hook ou fallback
   const MEAL_TIME_RANGES = useMemo(() => {
@@ -126,6 +129,29 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     if (Object.keys(ranges).length === 0) return DEFAULT_MEAL_TIME_RANGES;
     return ranges;
   }, [getTimeRanges]);
+
+  // Lista de tipos de refeição ordenados (inclui extras)
+  const orderedMealTypes = useMemo(() => {
+    const order = getMealOrder();
+    if (order.length === 0) return [...STANDARD_MEAL_TYPES];
+    return order;
+  }, [getMealOrder]);
+
+  // Labels dinâmicas para refeições (inclui extras)
+  const mealLabels = useMemo(() => {
+    const labels = getLabels();
+    return labels;
+  }, [getLabels]);
+
+  // Config dinâmica para refeições (combina MEAL_CONFIG com extras)
+  const getDynamicMealConfig = useCallback((mealType: string) => {
+    if (MEAL_CONFIG[mealType]) {
+      return MEAL_CONFIG[mealType];
+    }
+    // É uma refeição extra
+    const label = mealLabels[mealType] || "Refeição Extra";
+    return { ...EXTRA_MEAL_CONFIG, label };
+  }, [mealLabels]);
 
   // Verifica se uma refeição já passou do horário no dia atual
   const isMealPastTime = useCallback((mealType: string, selectedDay: DayInfo | undefined): boolean => {
@@ -523,11 +549,12 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
       {/* Meals List */}
       <div className="space-y-3 sm:space-y-4">
-        {MEAL_TYPES_ORDERED.map((mealType) => {
+        {orderedMealTypes.map((mealType) => {
           const meal = currentDayMeals.find(m => m.meal_type === mealType);
-          const config = MEAL_CONFIG[mealType];
+          const config = getDynamicMealConfig(mealType);
           const Icon = config.icon;
           const isPastMeal = isMealPastTime(mealType, selectedDay);
+          const isExtraMeal = mealType.startsWith('extra_');
 
           return (
             <Card 
@@ -537,7 +564,8 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                 isPastMeal 
                   ? "opacity-50 cursor-not-allowed border-muted bg-muted/20" 
                   : "hover:border-primary/30 cursor-pointer group",
-                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30"
+                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30",
+                isExtraMeal && "border-primary/20"
               )}
               onClick={() => !isPastMeal && meal && onSelectMeal(meal)}
             >

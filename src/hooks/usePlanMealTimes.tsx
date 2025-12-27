@@ -9,6 +9,21 @@ export type MealTimeConfig = {
   end_hour: number;
   sort_order: number;
   isCustom: boolean; // Indica se é horário personalizado do plano
+  isExtra?: boolean; // Indica se é uma refeição extra
+};
+
+// Tipo para refeições extras
+export type ExtraMeal = {
+  id: string;
+  name: string;
+  time: string;
+  isNew?: boolean;
+};
+
+// Tipo expandido para custom_meal_times com suporte a extras
+export type CustomMealTimesWithExtras = {
+  [key: string]: string | ExtraMeal[] | undefined;
+  extras?: ExtraMeal[];
 };
 
 export type CustomMealTimes = Record<string, string>; // { "cafe_manha": "07:00", "almoco": "12:30" }
@@ -29,7 +44,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   const { planId, userId } = options;
   
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
-  const [customTimes, setCustomTimes] = useState<CustomMealTimes | null>(null);
+  const [customTimes, setCustomTimes] = useState<CustomMealTimesWithExtras | null>(null);
   const [activePlanId, setActivePlanId] = useState<string | null>(planId || null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
@@ -67,7 +82,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
 
           if (data) {
             setActivePlanId(data.id);
-            setCustomTimes(data.custom_meal_times as CustomMealTimes | null);
+            setCustomTimes(data.custom_meal_times as CustomMealTimesWithExtras | null);
           }
         } finally {
           setIsLoadingPlan(false);
@@ -95,7 +110,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
 
           if (data) {
             setActivePlanId(data.id);
-            setCustomTimes(data.custom_meal_times as CustomMealTimes | null);
+            setCustomTimes(data.custom_meal_times as CustomMealTimesWithExtras | null);
           }
         } finally {
           setIsLoadingPlan(false);
@@ -123,7 +138,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
           return;
         }
 
-        setCustomTimes(data?.custom_meal_times as CustomMealTimes | null);
+        setCustomTimes(data?.custom_meal_times as CustomMealTimesWithExtras | null);
       } catch (err) {
         console.error("Error in fetchPlanCustomTimes:", err);
       }
@@ -138,14 +153,21 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
     return hours;
   }, []);
 
-  // Mesclar horários globais com personalizados
+  // Extrair extras do customTimes
+  const extraMeals = useMemo((): ExtraMeal[] => {
+    if (!customTimes?.extras || !Array.isArray(customTimes.extras)) return [];
+    return customTimes.extras;
+  }, [customTimes]);
+
+  // Mesclar horários globais com personalizados + extras
   const mergedSettings = useMemo((): MealTimeConfig[] => {
     if (!globalSettings.length) return [];
 
-    return globalSettings.map(setting => {
+    // Primeiro, processar refeições padrão
+    const standardMeals = globalSettings.map(setting => {
       const customTime = customTimes?.[setting.meal_type];
       
-      if (customTime) {
+      if (typeof customTime === 'string') {
         const customHour = parseTimeToHour(customTime);
         return {
           meal_type: setting.meal_type,
@@ -154,6 +176,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
           end_hour: customHour + (setting.end_hour - setting.start_hour), // Manter mesma duração
           sort_order: setting.sort_order,
           isCustom: true,
+          isExtra: false,
         };
       }
 
@@ -164,15 +187,38 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
         end_hour: setting.end_hour,
         sort_order: setting.sort_order,
         isCustom: false,
+        isExtra: false,
       };
     });
-  }, [globalSettings, customTimes, parseTimeToHour]);
+
+    // Depois, adicionar refeições extras
+    const extraMealConfigs: MealTimeConfig[] = extraMeals
+      .filter(extra => !extra.isNew) // Só incluir extras confirmadas
+      .map((extra, index) => {
+        const hour = parseTimeToHour(extra.time);
+        return {
+          meal_type: extra.id,
+          label: extra.name,
+          start_hour: hour,
+          end_hour: hour + 2, // Duração padrão de 2 horas para extras
+          sort_order: 100 + index, // Colocar no final por padrão
+          isCustom: true,
+          isExtra: true,
+        };
+      });
+
+    // Combinar e ordenar por horário
+    const allMeals = [...standardMeals, ...extraMealConfigs];
+    allMeals.sort((a, b) => a.start_hour - b.start_hour);
+
+    return allMeals;
+  }, [globalSettings, customTimes, parseTimeToHour, extraMeals]);
 
   // Converter para formato Record
-  const getTimeRanges = useCallback((): Record<string, { start: number; end: number; isCustom: boolean }> => {
-    const ranges: Record<string, { start: number; end: number; isCustom: boolean }> = {};
+  const getTimeRanges = useCallback((): Record<string, { start: number; end: number; isCustom: boolean; isExtra?: boolean }> => {
+    const ranges: Record<string, { start: number; end: number; isCustom: boolean; isExtra?: boolean }> = {};
     mergedSettings.forEach(s => {
-      ranges[s.meal_type] = { start: s.start_hour, end: s.end_hour, isCustom: s.isCustom };
+      ranges[s.meal_type] = { start: s.start_hour, end: s.end_hour, isCustom: s.isCustom, isExtra: s.isExtra };
     });
     return ranges;
   }, [mergedSettings]);
@@ -186,7 +232,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
     return labels;
   }, [mergedSettings]);
 
-  // Obter ordem das refeições
+  // Obter ordem das refeições (tipos de refeição ordenados por horário)
   const getMealOrder = useCallback((): string[] => {
     return mergedSettings.map(s => s.meal_type);
   }, [mergedSettings]);
@@ -199,15 +245,27 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   // Obter hora formatada para um tipo de refeição
   const getMealTime = useCallback((mealType: string): string => {
     const setting = mergedSettings.find(s => s.meal_type === mealType);
-    if (!setting) return "";
+    if (!setting) {
+      // Verificar se é um extra
+      const extra = extraMeals.find(e => e.id === mealType);
+      if (extra) return extra.time;
+      return "";
+    }
     
     // Se tiver horário customizado, usar ele diretamente
-    if (customTimes?.[mealType]) {
-      return customTimes[mealType];
+    const customTime = customTimes?.[mealType];
+    if (typeof customTime === 'string') {
+      return customTime;
+    }
+    
+    // Verificar se é um extra
+    if (setting.isExtra) {
+      const extra = extraMeals.find(e => e.id === mealType);
+      if (extra) return extra.time;
     }
     
     return formatHour(setting.start_hour);
-  }, [mergedSettings, customTimes, formatHour]);
+  }, [mergedSettings, customTimes, formatHour, extraMeals]);
 
   // Verificar se o plano tem horários personalizados
   const hasCustomTimes = useMemo(() => {

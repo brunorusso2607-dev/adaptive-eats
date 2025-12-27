@@ -140,15 +140,21 @@ export default function RegisterMealFromPhotoSheet({
       // Insert consumption items
       if (foodAnalysis.alimentos && foodAnalysis.alimentos.length > 0) {
         const itemsToInsert = foodAnalysis.alimentos.map((item) => {
-          // Parse quantity safely
-          const quantityStr = item.porcao_estimada || "100g";
-          const quantity = parseFloat(quantityStr.replace(/[^\d.]/g, '')) || 100;
+          // Parse quantity safely - handle both string and number
+          let quantity = 100;
+          if (item.porcao_estimada != null) {
+            if (typeof item.porcao_estimada === 'number') {
+              quantity = item.porcao_estimada;
+            } else if (typeof item.porcao_estimada === 'string') {
+              quantity = parseFloat(item.porcao_estimada.replace(/[^\d.]/g, '')) || 100;
+            }
+          }
           
           return {
             meal_consumption_id: consumption.id,
             food_id: null,
-            food_name: (item.item || "Item").slice(0, 255),
-            quantity_grams: Math.max(1, Math.min(quantity, 10000)), // Between 1g and 10kg
+            food_name: String(item.item || "Item").slice(0, 255),
+            quantity_grams: Math.max(1, Math.min(quantity, 10000)),
             calories: Math.round(item.calorias || 0),
             protein: Math.round((item.macros?.proteinas || 0) * 10) / 10,
             carbs: Math.round((item.macros?.carboidratos || 0) * 10) / 10,

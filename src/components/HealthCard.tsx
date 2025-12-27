@@ -7,6 +7,7 @@ import { useSymptomAnalysis } from "@/hooks/useSymptomAnalysis";
 import { useHealthStats, HealthPeriod } from "@/hooks/useHealthStats";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
 import { MealHistorySheet } from "./MealHistorySheet";
+import { MealStatus } from "@/hooks/useMealHistory";
 import { HealthScoreChart } from "./HealthScoreChart";
 import { SymptomIcon } from "./SymptomIcon";
 import { cn } from "@/lib/utils";
@@ -278,10 +279,11 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
           <ChevronRight className="h-4 w-4" />
         </button>
 
-        {/* History Sheet */}
+        {/* History Sheet - Only evaluated meals */}
         <MealHistorySheet
           open={historyOpen}
           onOpenChange={setHistoryOpen}
+          defaultStatus="evaluated"
         />
       </CardContent>
     </Card>

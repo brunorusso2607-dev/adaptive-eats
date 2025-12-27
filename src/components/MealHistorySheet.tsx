@@ -40,6 +40,7 @@ import { toast } from "sonner";
 interface MealHistorySheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  defaultStatus?: MealStatus;
 }
 
 const statusConfig = {
@@ -78,10 +79,11 @@ const severityConfig = {
 export function MealHistorySheet({
   open,
   onOpenChange,
+  defaultStatus = "all",
 }: MealHistorySheetProps) {
   const [filters, setFilters] = useState<MealHistoryFilters>({
     days: 30,
-    status: "all",
+    status: defaultStatus,
   });
 
   const { meals, isLoading } = useMealHistory(filters);
@@ -105,6 +107,7 @@ export function MealHistorySheet({
       case "ok": return "OK ✓";
       case "symptoms": return "Sintomas";
       case "pending": return "Pendentes";
+      case "evaluated": return "Avaliadas";
       default: return "Todas";
     }
   };
@@ -166,6 +169,7 @@ export function MealHistorySheet({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todas</SelectItem>
+              <SelectItem value="evaluated">Avaliadas</SelectItem>
               <SelectItem value="ok">OK ✓</SelectItem>
               <SelectItem value="symptoms">Com sintomas</SelectItem>
               <SelectItem value="pending">Pendentes</SelectItem>

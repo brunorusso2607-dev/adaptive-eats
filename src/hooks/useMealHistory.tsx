@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type MealStatus = "all" | "ok" | "symptoms" | "pending" | "skipped";
+export type MealStatus = "all" | "evaluated" | "ok" | "symptoms" | "pending" | "skipped";
 
 export interface MealHistoryItem {
   id: string;
@@ -77,7 +77,10 @@ export function useMealHistory(filters: MealHistoryFilters) {
         .order("consumed_at", { ascending: false });
 
       // Apply status filter
-      if (filters.status === "ok") {
+      if (filters.status === "evaluated") {
+        // Only meals with feedback (excludes pending)
+        query = query.in("feedback_status", ["well", "auto_well", "symptoms"]);
+      } else if (filters.status === "ok") {
         query = query.in("feedback_status", ["well", "auto_well"]);
       } else if (filters.status === "symptoms") {
         query = query.eq("feedback_status", "symptoms");

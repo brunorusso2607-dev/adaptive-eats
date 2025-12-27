@@ -1436,11 +1436,11 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 />
               </div>
 
-              {/* Spacer for fixed footer */}
-              <div className="h-24" />
+              {/* Spacer for fixed footer + bottom nav */}
+              <div className="h-36 md:h-24" />
 
-              {/* Fixed Footer with Calories + Actions */}
-              <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-50">
+              {/* Fixed Footer with Calories + Actions - positioned above mobile nav */}
+              <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 z-40">
                 <div className="max-w-lg mx-auto flex items-center gap-3">
                   {/* Calories summary */}
                   <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">

@@ -463,10 +463,10 @@ export default function FreeFormMealLogger({
           user_id: user.id,
           meal_plan_item_id: null, // Free-form, not linked to plan
           followed_plan: false,
-          total_calories: totals.calories,
-          total_protein: totals.protein,
-          total_carbs: totals.carbs,
-          total_fat: totals.fat,
+          total_calories: Math.round(totals.calories),
+          total_protein: Math.round(totals.protein * 10) / 10,
+          total_carbs: Math.round(totals.carbs * 10) / 10,
+          total_fat: Math.round(totals.fat * 10) / 10,
           consumed_at: consumedAt.toISOString(),
           source_type: 'manual', // New field!
           custom_meal_name: customMealName || mealLabels[selectedMealType] || selectedMealType,

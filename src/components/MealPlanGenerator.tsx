@@ -9,6 +9,9 @@ import { toast } from "sonner";
 import { format, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { CustomMealTimesEditor } from "@/components/CustomMealTimesEditor";
+
+type CustomMealTimes = Record<string, string>;
 
 type MealPlanGeneratorProps = {
   onClose: () => void;
@@ -20,6 +23,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
+  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
 
   // Fetch user profile to get excluded ingredients
   useEffect(() => {
@@ -89,7 +93,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             startDate: batchStartDate.toISOString().split('T')[0],
             daysCount: daysInThisBatch,
             existingPlanId: mealPlanId,
-            weekNumber: batch + 1
+            weekNumber: batch + 1,
+            customMealTimes: customMealTimes
           }
         });
 
@@ -151,6 +156,13 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
               disabled={isGenerating}
             />
           </div>
+
+          {/* Custom Meal Times Editor */}
+          <CustomMealTimesEditor
+            onChange={setCustomMealTimes}
+            disabled={isGenerating}
+            compact
+          />
 
           {/* Dynamic Info Message */}
           <div className="text-center space-y-1">

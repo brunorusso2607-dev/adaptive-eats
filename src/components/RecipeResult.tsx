@@ -44,11 +44,13 @@ type RecipeResultProps = {
   isGenerating: boolean;
 };
 
-const COMPLEXITY_LABELS = {
+const COMPLEXITY_LABELS: Record<string, { label: string; color: string }> = {
   rapida: { label: "Rápida", color: "text-green-500" },
   equilibrada: { label: "Equilibrada", color: "text-yellow-500" },
   elaborada: { label: "Elaborada", color: "text-orange-500" },
 };
+
+const DEFAULT_COMPLEXITY = { label: "Equilibrada", color: "text-yellow-500" };
 
 export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGenerating }: RecipeResultProps) {
   const { logUserAction } = useActivityLog();
@@ -192,9 +194,9 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
               <Users className={cn("w-4 h-4 stroke-[1.5]", isKidsMode ? "text-yellow-500" : "text-muted-foreground")} />
               <span>{recipe.servings} porções</span>
             </div>
-            <div className={cn("flex items-center gap-1.5", isKidsMode ? "text-green-500" : COMPLEXITY_LABELS[recipe.complexity].color)}>
+            <div className={cn("flex items-center gap-1.5", isKidsMode ? "text-green-500" : (COMPLEXITY_LABELS[recipe.complexity] || DEFAULT_COMPLEXITY).color)}>
               <ChefHat className="w-4 h-4" />
-              <span>{isKidsMode ? "Super Fácil! 🌟" : COMPLEXITY_LABELS[recipe.complexity].label}</span>
+              <span>{isKidsMode ? "Super Fácil! 🌟" : (COMPLEXITY_LABELS[recipe.complexity] || DEFAULT_COMPLEXITY).label}</span>
             </div>
           </div>
 
@@ -286,22 +288,30 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
               {isKidsMode ? "🛒 O que vamos precisar:" : "🥗 Ingredientes"}
             </h3>
             <ul className="space-y-2">
-              {recipe.ingredients.map((ing, idx) => (
-                <li key={idx} className={cn(
-                  "flex items-center gap-2 text-sm",
-                  isKidsMode && "text-base"
-                )}>
-                  <span className={cn(
-                    "w-2 h-2 rounded-full shrink-0",
-                    isKidsMode 
-                      ? ["bg-pink-400", "bg-yellow-400", "bg-green-400", "bg-blue-400", "bg-purple-400"][idx % 5]
-                      : "bg-primary"
-                  )} />
-                  <span>
-                    <span className="font-medium">{ing.quantity} {ing.unit}</span> de {ing.item}
-                  </span>
-                </li>
-              ))}
+              {(recipe.ingredients || []).length > 0 ? (
+                recipe.ingredients.map((ing, idx) => (
+                  <li key={idx} className={cn(
+                    "flex items-center gap-2 text-sm",
+                    isKidsMode && "text-base"
+                  )}>
+                    <span className={cn(
+                      "w-2 h-2 rounded-full shrink-0",
+                      isKidsMode 
+                        ? ["bg-pink-400", "bg-yellow-400", "bg-green-400", "bg-blue-400", "bg-purple-400"][idx % 5]
+                        : "bg-primary"
+                    )} />
+                    <span>
+                      {ing.quantity || ing.unit ? (
+                        <><span className="font-medium">{ing.quantity} {ing.unit}</span> de {ing.item}</>
+                      ) : (
+                        <span>{ing.item || String(ing)}</span>
+                      )}
+                    </span>
+                  </li>
+                ))
+              ) : (
+                <li className="text-muted-foreground text-sm italic">Ingredientes não disponíveis</li>
+              )}
             </ul>
           </div>
 

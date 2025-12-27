@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, Clock, UtensilsCrossed } from "lucide-react";
+import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, Clock, UtensilsCrossed, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { supabase } from "@/integrations/supabase/client";
@@ -400,17 +400,19 @@ export default function FreeFormMealLogger({
     return unit;
   };
 
+  // Get foods with zero quantity for inline alert
+  const foodsWithZeroQuantity = selectedFoods.filter(f => f.displayQuantity <= 0);
+  const hasZeroQuantityFoods = foodsWithZeroQuantity.length > 0;
+
   const handleContinue = () => {
     if (selectedFoods.length === 0) {
       toast.error("Adicione pelo menos um alimento");
       return;
     }
     
-    // Check if any food has zero quantity
-    const invalidFoods = selectedFoods.filter(f => f.displayQuantity <= 0);
-    if (invalidFoods.length > 0) {
-      toast.error(`Informe a quantidade de: ${invalidFoods.map(f => f.name).join(', ')}`);
-      return;
+    // Check if any food has zero quantity - don't proceed if so
+    if (hasZeroQuantityFoods) {
+      return; // The inline alert is already showing
     }
     
     setStep('meal-type');
@@ -732,9 +734,25 @@ export default function FreeFormMealLogger({
                     </div>
                   </div>
                   
+                  {/* Inline alert for foods with zero quantity */}
+                  {hasZeroQuantityFoods && (
+                    <div className="flex items-start gap-3 p-4 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                      <AlertTriangle className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                          Defina a quantidade de:
+                        </p>
+                        <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
+                          {foodsWithZeroQuantity.map(f => f.name).join(', ')}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
                   <Button 
                     className="w-full gradient-primary" 
                     onClick={handleContinue}
+                    disabled={hasZeroQuantityFoods}
                   >
                     Continuar
                   </Button>

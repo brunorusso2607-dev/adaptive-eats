@@ -31,7 +31,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, Sparkles, AlertTriangle, ShieldAlert, Check, X, Wand2 } from "lucide-react";
 import { z } from "zod";
 import { suggestServingByName, type ServingSuggestion } from "@/lib/servingSuggestion";
-import { checkUserIntoleranceConflict, getIntoleranceLabel } from "@/lib/intoleranceDetection";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 
 const UNIT_LABELS: Record<string, string> = {
   g: "gramas (g)",
@@ -103,6 +103,7 @@ export default function ManualFoodModal({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [userProfile, setUserProfile] = useState<{ intolerances: string[] | null } | null>(null);
+  const { checkFood, hasIntolerances } = useIntoleranceWarning();
   
   // AI auto-fill states
   const [isValidatingAI, setIsValidatingAI] = useState(false);
@@ -398,20 +399,17 @@ export default function ManualFoodModal({
       servingUnit: validation.data.servingUnit,
     };
 
-    // First, check local intolerance detection
-    if (userProfile?.intolerances && userProfile.intolerances.some(i => i !== "nenhuma")) {
-      const { hasConflict, conflicts } = checkUserIntoleranceConflict(
-        name,
-        userProfile.intolerances
-      );
+    // First, check local intolerance detection using the hook
+    if (hasIntolerances) {
+      const intoleranceResult = checkFood(name);
 
-      if (hasConflict && conflicts.length > 0) {
+      if (intoleranceResult.hasConflict && intoleranceResult.conflicts.length > 0) {
         setPendingFoodData(foodData);
         setIntoleranceDialog({
           open: true,
-          conflicts: conflicts.map(c => ({
+          conflicts: intoleranceResult.conflicts.map((c, idx) => ({
             intolerance: c,
-            intoleranceLabel: getIntoleranceLabel(c),
+            intoleranceLabel: intoleranceResult.labels[idx],
             foundIngredients: [name],
           })),
           ingredients: [name],

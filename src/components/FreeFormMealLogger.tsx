@@ -10,7 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
-import { checkUserIntoleranceConflict, getIntoleranceLabel } from "@/lib/intoleranceDetection";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
 import { getMealLabelsSync, getMealOrderSync } from "@/lib/mealTimeConfig";
 import {
@@ -84,6 +84,7 @@ export default function FreeFormMealLogger({
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
   const { checkConflict } = useIngredientConflictCheck(userProfile);
+  const { checkFood } = useIntoleranceWarning();
   
   // Get meal labels and order
   const mealLabels = getMealLabelsSync();
@@ -184,22 +185,17 @@ export default function FreeFormMealLogger({
       return ingredientConflict;
     }
     
-    if (userProfile?.intolerances) {
-      const { hasConflict, conflicts } = checkUserIntoleranceConflict(
-        foodName,
-        userProfile.intolerances
-      );
-      if (hasConflict && conflicts.length > 0) {
-        return {
-          ingredient: foodName,
-          restriction: conflicts[0],
-          restrictionLabel: `intolerante a ${getIntoleranceLabel(conflicts[0])}`,
-        };
-      }
+    const intoleranceResult = checkFood(foodName);
+    if (intoleranceResult.hasConflict && intoleranceResult.conflicts.length > 0) {
+      return {
+        ingredient: foodName,
+        restriction: intoleranceResult.conflicts[0],
+        restrictionLabel: `intolerante a ${intoleranceResult.labels[0]}`,
+      };
     }
     
     return null;
-  }, [checkConflict, userProfile]);
+  }, [checkConflict, checkFood]);
 
   const handleAddFood = useCallback(async (food: Food) => {
     const localConflict = checkFoodConflicts(food.name);

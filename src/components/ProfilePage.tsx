@@ -7,7 +7,7 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart, Clock
 } from "lucide-react";
 import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Link } from "react-router-dom";
@@ -18,6 +18,8 @@ import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeList from "./RecipeList";
 import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptions";
+import { CustomMealTimesEditor, type CustomMealTimesWithExtras } from "@/components/CustomMealTimesEditor";
+import { Json } from "@/integrations/supabase/types";
 
 type UserProfile = {
   dietary_preference: string | null;
@@ -30,6 +32,7 @@ type UserProfile = {
   activity_level: string | null;
   intolerances: string[] | null;
   excluded_ingredients: string[] | null;
+  default_meal_times: CustomMealTimesWithExtras | null;
 };
 
 type SubscriptionInfo = {
@@ -176,13 +179,17 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients")
+        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times")
         .eq("id", user.id)
         .maybeSingle();
 
       if (!error && data) {
-        setProfile(data);
-        setEditedProfile(data);
+        const profileData: UserProfile = {
+          ...data,
+          default_meal_times: data.default_meal_times as CustomMealTimesWithExtras | null,
+        };
+        setProfile(profileData);
+        setEditedProfile(profileData);
       }
     } catch (err) {
       console.error("Error fetching profile:", err);
@@ -241,6 +248,26 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
   const getProfileLabel = (category: "dietary_preferences" | "goals", value: string | null) => {
     if (!value) return "Não definido";
     return getOptionLabel(onboardingOptions, category, value);
+  };
+
+  const handleSaveDefaultMealTimes = async (times: CustomMealTimesWithExtras | null): Promise<boolean> => {
+    if (!user) return false;
+    try {
+      const { error } = await supabase
+        .from("profiles")
+        .update({ default_meal_times: times as Json })
+        .eq("id", user.id);
+
+      if (error) throw error;
+
+      setProfile(prev => prev ? { ...prev, default_meal_times: times } : prev);
+      toast.success("Horários padrão salvos!");
+      return true;
+    } catch (err) {
+      console.error("Error saving default meal times:", err);
+      toast.error("Erro ao salvar horários");
+      return false;
+    }
   };
 
   const planName = subscription?.plan === "premium" ? "Premium" : subscription?.plan === "essencial" ? "Essencial" : null;
@@ -553,6 +580,22 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
             </div>
           </div>
         )}
+
+        {/* Horários Personalizados - Template para novos planos */}
+        <div className="space-y-2">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Clock className="w-4 h-4 text-primary" />
+            Horários Padrão para Novos Planos
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            Defina seus horários preferidos. Eles serão usados como padrão ao criar novos planos alimentares.
+          </p>
+          <CustomMealTimesEditor
+            customTimes={profile.default_meal_times}
+            onSave={handleSaveDefaultMealTimes}
+            compact
+          />
+        </div>
 
         {/* Termos e Avisos Legais */}
         <div className="space-y-3 pt-4 border-t border-border/50">

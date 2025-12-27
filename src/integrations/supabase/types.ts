@@ -1083,6 +1083,7 @@ export type Database = {
           age: number | null
           country: string | null
           created_at: string | null
+          default_meal_times: Json | null
           dietary_preference:
             | Database["public"]["Enums"]["dietary_preference"]
             | null
@@ -1107,6 +1108,7 @@ export type Database = {
           age?: number | null
           country?: string | null
           created_at?: string | null
+          default_meal_times?: Json | null
           dietary_preference?:
             | Database["public"]["Enums"]["dietary_preference"]
             | null
@@ -1131,6 +1133,7 @@ export type Database = {
           age?: number | null
           country?: string | null
           created_at?: string | null
+          default_meal_times?: Json | null
           dietary_preference?:
             | Database["public"]["Enums"]["dietary_preference"]
             | null

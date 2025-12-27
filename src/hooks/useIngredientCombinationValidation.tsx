@@ -1,5 +1,6 @@
 import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 export type ValidationResult = {
   isValid: boolean;
@@ -71,7 +72,33 @@ export function useIngredientCombinationValidation() {
       });
 
       if (error) {
+        // Handle specific HTTP errors from edge function
+        const errorBody = error.message || '';
+        if (errorBody.includes('402') || errorBody.includes('Créditos insuficientes')) {
+          toast.error('Créditos de IA insuficientes. Tente novamente mais tarde.');
+          setState({ isValidating: false, result: null, error: null, feedbackSent: false });
+          return null;
+        }
+        if (errorBody.includes('429') || errorBody.includes('Muitas requisições')) {
+          toast.error('Muitas requisições. Aguarde um momento.');
+          setState({ isValidating: false, result: null, error: null, feedbackSent: false });
+          return null;
+        }
         throw error;
+      }
+
+      // Check for error in data response (when status codes aren't thrown as errors)
+      if (data?.error) {
+        if (data.error.includes('Créditos insuficientes') || data.error.includes('402')) {
+          toast.error('Créditos de IA insuficientes. Tente novamente mais tarde.');
+          setState({ isValidating: false, result: null, error: null, feedbackSent: false });
+          return null;
+        }
+        if (data.error.includes('Muitas requisições') || data.error.includes('429')) {
+          toast.error('Muitas requisições. Aguarde um momento.');
+          setState({ isValidating: false, result: null, error: null, feedbackSent: false });
+          return null;
+        }
       }
 
       const result: ValidationResult = {
@@ -91,7 +118,9 @@ export function useIngredientCombinationValidation() {
       return result;
     } catch (err: unknown) {
       const errorMessage = err instanceof Error ? err.message : 'Erro ao validar';
-      setState({ isValidating: false, result: null, error: errorMessage, feedbackSent: false });
+      console.error('[useIngredientCombinationValidation] Error:', errorMessage);
+      // Don't show toast for validation errors, just silently fail
+      setState({ isValidating: false, result: null, error: null, feedbackSent: false });
       return null;
     }
   }, []);

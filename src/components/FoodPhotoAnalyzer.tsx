@@ -1132,6 +1132,12 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                             <ShieldX className="w-8 h-8 text-destructive" />
                           </div>
                           <div className="flex-1">
+                            {/* Show food name prominently */}
+                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                              <p className="font-bold text-foreground text-lg mb-1">
+                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                              </p>
+                            )}
                             <p className="font-bold text-destructive text-xl">⛔ NÃO RECOMENDADO</p>
                             <p className="text-sm text-muted-foreground mt-1">
                               Contém: <span className="font-semibold">{perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}</span>
@@ -1144,6 +1150,12 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                             <ShieldAlert className="w-8 h-8 text-yellow-500" />
                           </div>
                           <div className="flex-1">
+                            {/* Show food name prominently */}
+                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                              <p className="font-bold text-foreground text-lg mb-1">
+                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                              </p>
+                            )}
                             <p className="font-bold text-yellow-600 text-xl">⚠️ VERIFICAR</p>
                             <p className="text-sm text-muted-foreground mt-1">
                               Possível risco: <span className="font-semibold">{perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}</span>
@@ -1156,6 +1168,12 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                             <ShieldCheck className="w-8 h-8 text-green-500" />
                           </div>
                           <div className="flex-1">
+                            {/* Show food name prominently */}
+                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                              <p className="font-bold text-foreground text-lg mb-1">
+                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                              </p>
+                            )}
                             <p className="font-bold text-green-600 text-xl flex items-center gap-2">
                               ✅ SEGURO PARA VOCÊ
                             </p>

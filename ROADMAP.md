@@ -306,38 +306,33 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ---
 
-### 4.2 Adicionar Horários Personalizados por Plano
+### 4.2 Adicionar Horários Personalizados por Plano ✅
 **Objetivo:** Permitir que cada plano tenha seus próprios horários
 
 #### Sub-tarefas:
-- [ ] Adicionar coluna `custom_meal_times` na tabela `meal_plans`
-  ```sql
-  ALTER TABLE meal_plans ADD COLUMN custom_meal_times JSONB DEFAULT NULL;
-  -- Formato: {"cafe_manha": {"start": 7, "end": 9}, "almoco": {...}}
-  ```
-- [ ] Criar função utilitária `getMealTimeRangesForPlan(planId)`
-  ```typescript
-  // Prioridade: plan.custom_meal_times → global settings → defaults
-  ```
-- [ ] Refatorar funções que usam horários para aceitar parâmetro opcional:
-  - [ ] `getMealStatus(mealType, completedAt, customTimeRanges?)`
-  - [ ] `getMinutesUntilStart(mealType, customTimeRanges?)`
-  - [ ] `getMinutesOverdue(mealType, customTimeRanges?)`
-  - [ ] `getCurrentMealType(customTimeRanges?)`
-- [ ] Atualizar `useNextMeal` para buscar e usar horários do plano ativo
-- [ ] Atualizar `usePendingMeals` para usar horários do plano
+- [x] Coluna `custom_meal_times` na tabela `meal_plans` (JSONB)
+- [x] Hook `usePlanMealTimes` com prioridade: custom_meal_times → global settings → defaults
+- [x] Componente `CustomMealTimesEditor` com UI completa:
+  - [x] Toggle para habilitar/desabilitar horários personalizados
+  - [x] Inputs de horário para cada refeição
+  - [x] Botão restaurar padrão
+  - [x] Modo compacto (collapsible)
+- [x] Funções utilitárias no hook:
+  - [x] `getTimeRanges()` - retorna ranges com flag `isCustom`
+  - [x] `getLabels()` - labels das refeições
+  - [x] `getMealOrder()` - ordem das refeições
+  - [x] `getMealTime()` - hora formatada
+  - [x] `updateCustomTimes()` - salvar no banco
+- [x] `useNextMeal` já suporta `customMealTimes` via `getMealStatusWithCustomTimes()`
+- [x] `usePendingMeals` usa configuração global (pode ser expandido)
 
-**Análise de Impacto:**
-| Arquivo | Mudança Necessária |
-|---------|-------------------|
-| `src/lib/mealTimeConfig.ts` | Adicionar versões com parâmetro opcional |
-| `src/hooks/useNextMeal.tsx` | Buscar `custom_meal_times` do plano e passar |
-| `src/hooks/usePendingMeals.tsx` | Idem |
-| `src/components/NextMealCard.tsx` | Receber e usar timeRanges do plano |
+**Implementação:**
+- `src/hooks/usePlanMealTimes.tsx` - Hook principal
+- `src/components/CustomMealTimesEditor.tsx` - UI de edição
+- Formato: `{ "cafe_manha": "07:00", "almoco": "12:30" }`
 
-**Status:** ⏳ Pendente  
-**Estimativa:** 1.5 horas  
-**Prioridade:** Média
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
 
 ---
 

@@ -49,11 +49,22 @@ function loadFromStorage(): boolean {
     const storedTimestamp = localStorage.getItem(STORAGE_KEY_TIMESTAMP);
 
     if (storedRanges && storedLabels && storedOrder && storedTimestamp) {
-      cachedTimeRanges = JSON.parse(storedRanges);
-      cachedLabels = JSON.parse(storedLabels);
-      cachedMealOrder = JSON.parse(storedOrder);
-      cacheTimestamp = parseInt(storedTimestamp, 10);
-      return true;
+      const parsedRanges = JSON.parse(storedRanges);
+      const parsedLabels = JSON.parse(storedLabels);
+      const parsedOrder = JSON.parse(storedOrder);
+      
+      // Validate that parsed values are valid objects/arrays
+      if (
+        parsedRanges && typeof parsedRanges === 'object' && Object.keys(parsedRanges).length > 0 &&
+        parsedLabels && typeof parsedLabels === 'object' && Object.keys(parsedLabels).length > 0 &&
+        Array.isArray(parsedOrder) && parsedOrder.length > 0
+      ) {
+        cachedTimeRanges = parsedRanges;
+        cachedLabels = parsedLabels;
+        cachedMealOrder = parsedOrder;
+        cacheTimestamp = parseInt(storedTimestamp, 10);
+        return true;
+      }
     }
   } catch (error) {
     console.warn("Error loading meal times from localStorage:", error);
@@ -142,15 +153,27 @@ export async function getMealOrder(): Promise<string[]> {
 
 // Versões síncronas que usam cache ou fallback (para funções que não podem ser async)
 export function getMealTimeRangesSync(): MealTimeRanges {
-  return cachedTimeRanges || DEFAULT_TIME_RANGES;
+  // Garantir que nunca retorna null/undefined
+  if (!cachedTimeRanges || Object.keys(cachedTimeRanges).length === 0) {
+    return DEFAULT_TIME_RANGES;
+  }
+  return cachedTimeRanges;
 }
 
 export function getMealLabelsSync(): MealLabels {
-  return cachedLabels || DEFAULT_LABELS;
+  // Garantir que nunca retorna null/undefined
+  if (!cachedLabels || Object.keys(cachedLabels).length === 0) {
+    return DEFAULT_LABELS;
+  }
+  return cachedLabels;
 }
 
 export function getMealOrderSync(): string[] {
-  return cachedMealOrder || DEFAULT_MEAL_ORDER;
+  // Garantir que nunca retorna null/undefined
+  if (!cachedMealOrder || cachedMealOrder.length === 0) {
+    return DEFAULT_MEAL_ORDER;
+  }
+  return cachedMealOrder;
 }
 
 // Invalidar cache (chamar quando admin atualizar os horários)

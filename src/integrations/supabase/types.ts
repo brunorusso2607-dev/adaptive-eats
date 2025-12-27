@@ -168,6 +168,7 @@ export type Database = {
           model_used: string
           prompt_tokens: number
           total_tokens: number
+          user_id: string | null
         }
         Insert: {
           completion_tokens?: number
@@ -181,6 +182,7 @@ export type Database = {
           model_used: string
           prompt_tokens?: number
           total_tokens?: number
+          user_id?: string | null
         }
         Update: {
           completion_tokens?: number
@@ -194,6 +196,7 @@ export type Database = {
           model_used?: string
           prompt_tokens?: number
           total_tokens?: number
+          user_id?: string | null
         }
         Relationships: []
       }

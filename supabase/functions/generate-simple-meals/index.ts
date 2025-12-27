@@ -1442,6 +1442,7 @@ GERE AS ${quantity} RECEITAS AGORA:`;
         total_tokens: totalTokens,
         estimated_cost_usd: estimatedCostUsd,
         items_generated: insertedData?.length || 0,
+        user_id: null, // System/admin function, no user context
         metadata: {
           meal_type: selectedMealType.key,
           category: categoryKey,

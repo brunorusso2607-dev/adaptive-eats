@@ -20,6 +20,7 @@ export interface AIUsageData {
   promptTokens: number;
   completionTokens: number;
   totalTokens: number;
+  userId?: string | null;
   itemsGenerated?: number;
   metadata?: Record<string, any>;
 }
@@ -98,6 +99,7 @@ export async function logAIUsage(data: AIUsageData): Promise<void> {
       estimated_cost_usd: estimatedCost,
       items_generated: data.itemsGenerated || 1,
       metadata: data.metadata || {},
+      user_id: data.userId || null,
     });
 
     if (error) {

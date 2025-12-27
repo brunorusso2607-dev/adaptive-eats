@@ -91,7 +91,8 @@ async function generateSingleMeal(
   profile: UserProfile,
   mealType: string,
   targetCalories: number,
-  apiKey: string
+  apiKey: string,
+  userId?: string
 ): Promise<any | null> {
   try {
     const prompt = buildRegenerateMealPrompt(profile, mealType, targetCalories);
@@ -127,6 +128,7 @@ async function generateSingleMeal(
       functionName: "generate-meal-plan",
       model: "gemini-2.5-flash-lite",
       ...usage,
+      userId,
       metadata: { type: "single_meal", mealType }
     });
     
@@ -190,7 +192,8 @@ async function validateAndCompleteMeals(
   profile: UserProfile,
   macros: { dailyCalories: number },
   daysCount: number,
-  apiKey: string
+  apiKey: string,
+  userId?: string
 ): Promise<any> {
   // Standard meal types
   const expectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
@@ -255,7 +258,7 @@ async function validateAndCompleteMeals(
 
       // Generate missing meals sequentially (one at a time to respect rate limits)
       for (const mealType of missingMealTypes) {
-        const meal = await generateSingleMeal(profile, mealType, caloriesPerMeal[mealType] || 400, apiKey);
+        const meal = await generateSingleMeal(profile, mealType, caloriesPerMeal[mealType] || 400, apiKey, userId);
         
         if (meal) {
           day.meals.push(meal);
@@ -364,7 +367,8 @@ async function generateSingleDay(
   macros: { dailyCalories: number; dailyProtein: number },
   previousRecipes: string[],
   apiKey: string,
-  supabase?: any
+  supabase?: any,
+  userId?: string
 ): Promise<any | null> {
   const dayName = DAY_NAMES[dayIndex % 7];
   const mealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
@@ -432,6 +436,7 @@ async function generateSingleDay(
       functionName: "generate-meal-plan",
       model: "gemini-2.5-flash-lite",
       ...dayUsage,
+      userId,
       metadata: { type: "full_day", dayIndex }
     });
     
@@ -626,7 +631,8 @@ serve(async (req) => {
         macros,
         usedRecipes,
         GOOGLE_AI_API_KEY,
-        supabaseClient // Passa o cliente para buscar do pool
+        supabaseClient, // Passa o cliente para buscar do pool
+        user.id // Passa o userId para logging
       );
       
       if (dayData && dayData.meals) {
@@ -661,7 +667,8 @@ serve(async (req) => {
       profile as UserProfile,
       macros,
       daysCount,
-      GOOGLE_AI_API_KEY
+      GOOGLE_AI_API_KEY,
+      user.id
     );
 
     logStep("Meal plan validated and completed");

@@ -50,8 +50,15 @@ type FridgeSlot = {
   required: boolean;
 };
 
-type AnalysisStep = "capture" | "analyzing" | "ingredients" | "recipes";
+type AnalysisStep = "capture" | "validating" | "analyzing" | "ingredients" | "recipes";
 type CapturePhase = "initial" | "freezer" | "porta";
+type InvalidImageError = {
+  categoria: string;
+  descricao: string;
+  mensagem: string;
+  dica?: string;
+  slotId: "geladeira" | "freezer" | "porta";
+};
 
 export default function FridgeScanner() {
   const [slots, setSlots] = useState<FridgeSlot[]>([
@@ -62,6 +69,7 @@ export default function FridgeScanner() {
   const [capturePhase, setCapturePhase] = useState<CapturePhase>("initial");
   const [currentStep, setCurrentStep] = useState<AnalysisStep>("capture");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isValidating, setIsValidating] = useState(false);
   const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
   const [analysis, setAnalysis] = useState<FridgeAnalysis | null>(null);
   const [categoryError, setCategoryError] = useState<{
@@ -70,6 +78,7 @@ export default function FridgeScanner() {
     mensagem: string;
     dica?: string;
   } | null>(null);
+  const [invalidImageError, setInvalidImageError] = useState<InvalidImageError | null>(null);
   const [savingRecipeIndex, setSavingRecipeIndex] = useState<number | null>(null);
   const [pendingSlot, setPendingSlot] = useState<FridgeSlot["id"] | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
@@ -92,12 +101,55 @@ export default function FridgeScanner() {
     }, 200);
   }, []);
 
-  // Auto-advance to next phase after capturing initial photo
+  // Auto-advance to next phase after capturing AND validating initial photo
   useEffect(() => {
-    if (capturePhase === "initial" && hasGeladeiraPhoto && pendingSlot === null) {
-      transitionToPhase("freezer");
+    if (capturePhase === "initial" && hasGeladeiraPhoto && pendingSlot === null && !isValidating && !invalidImageError) {
+      // Don't auto-advance - the validation flow handles this
     }
-  }, [hasGeladeiraPhoto, capturePhase, pendingSlot, transitionToPhase]);
+  }, [hasGeladeiraPhoto, capturePhase, pendingSlot, isValidating, invalidImageError, transitionToPhase]);
+
+  // Quick validation of a single image
+  const validateSingleImage = async (imageBase64: string, slotId: FridgeSlot["id"]): Promise<boolean> => {
+    setIsValidating(true);
+    setInvalidImageError(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-fridge-photo", {
+        body: { 
+          imageBase64,
+          additionalImages: [],
+          areas: [slotId === "geladeira" ? "Geladeira" : slotId === "freezer" ? "Freezer" : "Porta"]
+        },
+      });
+
+      if (error) throw error;
+
+      // Check if image is invalid (not a fridge/freezer/pantry)
+      if (data.categoryError || data.notFridge) {
+        setInvalidImageError({
+          categoria: data.categoria_detectada || "unknown",
+          descricao: data.objeto_identificado || "",
+          mensagem: data.message || "Esta imagem não parece ser de uma geladeira.",
+          dica: data.dica,
+          slotId
+        });
+        return false;
+      }
+
+      // Image is valid - store the analysis for later if this is the main photo
+      if (slotId === "geladeira" && data.analysis) {
+        // We'll re-analyze with all photos later, but this confirms it's a valid fridge photo
+      }
+      
+      return true;
+    } catch (error) {
+      console.error("Error validating image:", error);
+      toast.error("Erro ao validar imagem. Tente novamente.");
+      return false;
+    } finally {
+      setIsValidating(false);
+    }
+  };
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -118,19 +170,45 @@ export default function FridgeScanner() {
     const reader = new FileReader();
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
-      setSlots(prev => prev.map(slot => 
-        slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
-      ));
-      setPendingSlot(null);
       
-      // Auto-advance capture phase with transition
+      // For the initial fridge photo, validate it first before accepting
       if (currentPendingSlot === "geladeira") {
-        transitionToPhase("freezer");
-      } else if (currentPendingSlot === "freezer") {
-        transitionToPhase("porta");
-      } else if (currentPendingSlot === "porta") {
-        // All photos taken, start analysis
-        setTimeout(() => startAnalysis(), 300);
+        // Set to validating state with the image preview
+        setSlots(prev => prev.map(slot => 
+          slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
+        ));
+        setCurrentStep("validating");
+        
+        const isValid = await validateSingleImage(base64, currentPendingSlot);
+        
+        if (isValid) {
+          // Image is valid, proceed to next phase
+          setCurrentStep("capture");
+          setPendingSlot(null);
+          transitionToPhase("freezer");
+          toast.success("Geladeira identificada!");
+        } else {
+          // Image is invalid - remove it and stay in capture mode
+          setSlots(prev => prev.map(slot => 
+            slot.id === currentPendingSlot ? { ...slot, image: null } : slot
+          ));
+          setCurrentStep("capture");
+          setPendingSlot(null);
+          // invalidImageError will be set by validateSingleImage
+        }
+      } else {
+        // For freezer/porta photos, just accept without validation
+        setSlots(prev => prev.map(slot => 
+          slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
+        ));
+        setPendingSlot(null);
+        
+        if (currentPendingSlot === "freezer") {
+          transitionToPhase("porta");
+        } else if (currentPendingSlot === "porta") {
+          // All photos taken, start analysis
+          setTimeout(() => startAnalysis(), 300);
+        }
       }
     };
     reader.readAsDataURL(file);
@@ -311,7 +389,14 @@ export default function FridgeScanner() {
     setAnalysis(null);
     setCurrentStep("capture");
     setCategoryError(null);
+    setInvalidImageError(null);
     setPendingSlot(null);
+    setIsValidating(false);
+  };
+
+  const retryCapture = () => {
+    setInvalidImageError(null);
+    setCapturePhase("initial");
   };
 
   const getCategoryFeedback = (categoria: string) => {
@@ -543,8 +628,53 @@ export default function FridgeScanner() {
           </Card>
         )}
 
+        {/* Invalid image error display (validation error) */}
+        {invalidImageError && (
+          <Card className={`glass-card border-2 ${getCategoryFeedback(invalidImageError.categoria).borderColor} animate-scale-in`}>
+            <CardContent className="p-5">
+              <div className={`flex flex-col items-center gap-4 text-center p-4 rounded-xl ${getCategoryFeedback(invalidImageError.categoria).bgColor}`}>
+                <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-md">
+                  {getCategoryFeedback(invalidImageError.categoria).icon}
+                </div>
+                <div className="space-y-2">
+                  <h3 className="text-lg font-bold text-foreground">
+                    {getCategoryFeedback(invalidImageError.categoria).title}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {getCategoryFeedback(invalidImageError.categoria).subtitle}
+                  </p>
+                  {invalidImageError.descricao && (
+                    <div className="mt-2 px-3 py-1.5 bg-background/50 rounded-lg inline-block">
+                      <p className="text-xs text-muted-foreground">
+                        <span className="font-medium">Identificado:</span> {invalidImageError.descricao}
+                      </p>
+                    </div>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                  {invalidImageError.mensagem}
+                </p>
+                {invalidImageError.dica && (
+                  <p className="text-xs text-muted-foreground italic">
+                    💡 {invalidImageError.dica}
+                  </p>
+                )}
+                <Button
+                  variant="default"
+                  onClick={retryCapture}
+                  className="mt-2 gradient-primary"
+                  size="lg"
+                >
+                  <Camera className="w-5 h-5 mr-2" />
+                  Tirar Nova Foto
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Phase: Initial - Take main fridge photo */}
-        {capturePhase === "initial" && !categoryError && (
+        {capturePhase === "initial" && !categoryError && !invalidImageError && (
           <Card className={cn(
             "glass-card transition-all duration-300",
             isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100 animate-fade-in"
@@ -684,6 +814,51 @@ export default function FridgeScanner() {
         <p className="text-xs text-muted-foreground text-center">
           📸 Quanto mais áreas fotografar, melhores as sugestões de receitas
         </p>
+      </div>
+    );
+  }
+
+  // Step: Validating (checking if photo is a fridge)
+  if (currentStep === "validating") {
+    return (
+      <div className="space-y-4">
+        {renderHiddenInputs()}
+        
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-xl font-bold text-foreground">Verificando foto...</h2>
+          <p className="text-sm text-muted-foreground">
+            Confirmando que é uma foto de geladeira
+          </p>
+        </div>
+
+        <Card className="glass-card">
+          <CardContent className="p-8 flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-24 h-24 rounded-xl bg-muted/50 overflow-hidden border-2 border-primary/30">
+                {geladeiraSlot?.image && (
+                  <img 
+                    src={geladeiraSlot.image} 
+                    alt="Verificando" 
+                    className="w-full h-full object-cover"
+                  />
+                )}
+              </div>
+              <div className="absolute -bottom-2 -right-2 w-10 h-10 rounded-full bg-background border-2 border-primary flex items-center justify-center shadow-lg">
+                <Loader2 className="w-5 h-5 text-primary animate-spin" />
+              </div>
+            </div>
+            
+            <div className="text-center space-y-1.5 mt-2">
+              <p className="font-medium text-foreground flex items-center gap-2 justify-center">
+                <Refrigerator className="w-4 h-4 text-primary" />
+                Validando imagem
+              </p>
+              <p className="text-sm text-muted-foreground">
+                Verificando se a foto mostra o interior da geladeira...
+              </p>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }

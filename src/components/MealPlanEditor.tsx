@@ -270,11 +270,24 @@ export default function MealPlanEditor({
       </Card>
 
       {/* Custom Meal Times Editor */}
-      <CustomMealTimesEditor
-        customTimes={customMealTimes}
-        onChange={handleCustomTimesChange}
-        isLoading={isLoading}
-      />
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary" />
+            Horários e Refeições Extras
+          </CardTitle>
+          <CardDescription>
+            Personalize os horários das refeições e adicione refeições extras ao seu plano.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <CustomMealTimesEditor
+            customTimes={customMealTimes}
+            onChange={handleCustomTimesChange}
+            isLoading={isLoading}
+          />
+        </CardContent>
+      </Card>
 
       <Separator />
 

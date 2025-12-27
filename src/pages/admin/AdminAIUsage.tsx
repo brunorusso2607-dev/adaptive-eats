@@ -35,7 +35,8 @@ import {
   Heart,
   Search,
   FileText,
-  Smile
+  Smile,
+  Users
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -59,6 +60,15 @@ const MODULE_CONFIG: Record<string, { label: string; icon: React.ElementType; co
 };
 
 type PeriodFilter = "7d" | "30d" | "90d" | "all";
+
+interface UserUsageData {
+  userId: string;
+  email: string;
+  firstName: string | null;
+  requests: number;
+  tokens: number;
+  cost: number;
+}
 
 export default function AdminAIUsage() {
   const [period, setPeriod] = useState<PeriodFilter>("30d");
@@ -96,6 +106,57 @@ export default function AdminAIUsage() {
       return data || [];
     },
   });
+
+  // Fetch user profiles for mapping user_id to names
+  const { data: profiles } = useQuery({
+    queryKey: ["admin-user-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("id, email, first_name");
+      
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Create a map of user_id to profile info
+  const userProfileMap = useMemo(() => {
+    const map: Record<string, { email: string; firstName: string | null }> = {};
+    profiles?.forEach((profile) => {
+      map[profile.id] = {
+        email: profile.email || "Sem email",
+        firstName: profile.first_name,
+      };
+    });
+    return map;
+  }, [profiles]);
+
+  // Calculate usage by user
+  const userUsageData = useMemo((): UserUsageData[] => {
+    if (!usageLogs) return [];
+
+    const byUser: Record<string, { requests: number; tokens: number; cost: number }> = {};
+    
+    usageLogs.forEach((log) => {
+      const userId = log.user_id || "anonymous";
+      if (!byUser[userId]) {
+        byUser[userId] = { requests: 0, tokens: 0, cost: 0 };
+      }
+      byUser[userId].requests += 1;
+      byUser[userId].tokens += log.total_tokens || 0;
+      byUser[userId].cost += log.estimated_cost_usd || 0;
+    });
+
+    return Object.entries(byUser)
+      .map(([userId, data]) => ({
+        userId,
+        email: userId === "anonymous" ? "Sistema/Anônimo" : (userProfileMap[userId]?.email || "Usuário desconhecido"),
+        firstName: userId === "anonymous" ? null : (userProfileMap[userId]?.firstName || null),
+        ...data,
+      }))
+      .sort((a, b) => b.cost - a.cost);
+  }, [usageLogs, userProfileMap]);
 
   // Calculate stats
   const stats = useMemo(() => {
@@ -494,6 +555,108 @@ export default function AdminAIUsage() {
               })}
             </tbody>
           </table>
+        </div>
+      </Card>
+
+      {/* Usage by User */}
+      <Card className="p-6 bg-card border border-border/60 shadow-none">
+        <div className="flex items-center gap-2 mb-4">
+          <Users className="w-5 h-5 text-primary" />
+          <h2 className="text-base font-medium text-foreground">Uso por Usuário</h2>
+          <Badge variant="outline" className="ml-2">
+            {userUsageData.filter(u => u.userId !== "anonymous").length} usuários
+          </Badge>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-border/40">
+                <th className="text-left py-3 px-2 font-medium text-muted-foreground">Usuário</th>
+                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Requisições</th>
+                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Tokens</th>
+                <th className="text-right py-3 px-2 font-medium text-muted-foreground">Custo</th>
+                <th className="text-right py-3 px-2 font-medium text-muted-foreground">% do Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {userUsageData.slice(0, 20).map((user, index) => {
+                const percentOfTotal = stats?.totalCost 
+                  ? ((user.cost / stats.totalCost) * 100).toFixed(1) 
+                  : "0";
+                const isAnonymous = user.userId === "anonymous";
+
+                return (
+                  <tr 
+                    key={user.userId} 
+                    className="border-b border-border/20 hover:bg-muted/30"
+                  >
+                    <td className="py-3 px-2">
+                      <div className="flex items-center gap-2">
+                        <div 
+                          className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-medium ${
+                            isAnonymous 
+                              ? "bg-muted text-muted-foreground" 
+                              : "bg-primary/10 text-primary"
+                          }`}
+                        >
+                          {isAnonymous ? "?" : (user.firstName?.[0] || user.email[0]).toUpperCase()}
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-medium text-foreground text-xs">
+                            {user.firstName || (isAnonymous ? "Sistema/Anônimo" : "Sem nome")}
+                          </span>
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">
+                            {user.email}
+                          </span>
+                        </div>
+                        {index < 3 && !isAnonymous && (
+                          <Badge 
+                            variant="outline" 
+                            className={`text-[10px] ml-1 ${
+                              index === 0 ? "border-yellow-500 text-yellow-600" :
+                              index === 1 ? "border-gray-400 text-gray-500" :
+                              "border-orange-400 text-orange-500"
+                            }`}
+                          >
+                            #{index + 1}
+                          </Badge>
+                        )}
+                      </div>
+                    </td>
+                    <td className="text-right py-3 px-2 text-foreground">
+                      {user.requests.toLocaleString()}
+                    </td>
+                    <td className="text-right py-3 px-2 text-muted-foreground">
+                      {user.tokens.toLocaleString()}
+                    </td>
+                    <td className="text-right py-3 px-2">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        ${user.cost.toFixed(4)}
+                      </Badge>
+                    </td>
+                    <td className="text-right py-3 px-2">
+                      <div className="flex items-center justify-end gap-2">
+                        <div className="w-16 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-primary rounded-full"
+                            style={{ width: `${Math.min(parseFloat(percentOfTotal), 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-xs text-muted-foreground w-10 text-right">
+                          {percentOfTotal}%
+                        </span>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+          {userUsageData.length > 20 && (
+            <p className="text-xs text-muted-foreground text-center mt-3">
+              Mostrando os 20 principais usuários de {userUsageData.length} total
+            </p>
+          )}
         </div>
       </Card>
 

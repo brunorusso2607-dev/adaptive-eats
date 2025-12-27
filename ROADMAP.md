@@ -414,41 +414,30 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ---
 
-### 4.5 Atualizar Edge Functions para Timezone
+### 4.5 Atualizar Edge Functions para Timezone ✅
 **Objetivo:** Lembretes respeitam fuso horário do usuário
 
 #### Sub-tarefas:
-- [ ] Instalar/usar `date-fns-tz` nas edge functions
-- [ ] `send-meal-reminder/index.ts`:
-  - [ ] Buscar timezone do perfil do usuário
-  - [ ] Converter hora atual para timezone local
-  - [ ] Verificar se está no horário de lembrete
-- [ ] `send-water-reminder/index.ts`:
-  - [ ] Idem
-- [ ] `send-feedback-reminder/index.ts`:
-  - [ ] Idem
+- [x] Implementar `getCurrentTimeInTimezone()` helper usando `Intl.DateTimeFormat`
+- [x] `send-meal-reminder/index.ts`:
+  - [x] Buscar timezone do perfil do usuário
+  - [x] Converter hora atual para timezone local
+  - [x] Verificar se está no horário de lembrete baseado no horário local
+- [x] `send-water-reminder/index.ts`:
+  - [x] Buscar timezone do perfil
+  - [x] Verificar intervalo de lembretes no horário local
+  - [x] Calcular consumo do dia baseado no início do dia local
+- [x] `send-feedback-reminder/index.ts`:
+  - [x] Buscar timezone do perfil
+  - [x] Só enviar entre 8h-22h no horário local do usuário
 
-**Código exemplo:**
-```typescript
-import { formatInTimeZone } from 'date-fns-tz';
+**Implementação:**
+- Usou `Intl.DateTimeFormat` nativo (não precisa de date-fns-tz)
+- Cada função busca timezone da tabela `profiles`
+- Default: `America/Sao_Paulo` se timezone não definido
 
-// Buscar timezone do usuário
-const userTimezone = profile.timezone || 'America/Sao_Paulo';
-
-// Obter hora local do usuário
-const userLocalHour = parseInt(
-  formatInTimeZone(new Date(), userTimezone, 'H')
-);
-
-// Verificar se está no horário configurado
-if (userLocalHour >= reminder_start && userLocalHour <= reminder_end) {
-  // Enviar notificação
-}
-```
-
-**Status:** ⏳ Pendente  
-**Estimativa:** 1 hora  
-**Prioridade:** Alta (necessário para suporte global)
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
 
 ---
 

@@ -1119,116 +1119,32 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           {/* Food Analysis results */}
           {foodAnalysis && (
             <div className="space-y-4 animate-fade-in">
-              {/* SAFETY STATUS - THE MOST IMPORTANT THING */}
+              {/* SAFETY STATUS - Compact badge version */}
               {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`border-2 shadow-lg animate-reveal animate-reveal-1 ${
-                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
-                    ? "border-destructive bg-destructive/5" 
-                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
-                    ? "border-yellow-500 bg-yellow-500/5"
-                    : "border-green-500 bg-green-500/5"
-                }`}>
-                  <CardContent className="p-5">
-                    <div className="flex items-center gap-4">
-                      {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
-                        <>
-                          <div className="w-16 h-16 rounded-full bg-destructive/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldX className="w-8 h-8 text-destructive" />
-                          </div>
-                          <div className="flex-1">
-                            {/* Show food name prominently */}
-                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-bold text-foreground text-lg mb-1">
-                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
-                              </p>
-                            )}
-                            <p className="font-bold text-destructive text-xl">⛔ NÃO RECOMENDADO</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Contém: <span className="font-semibold">{perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}</span>
-                            </p>
-                          </div>
-                        </>
-                      ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
-                        <>
-                          <div className="w-16 h-16 rounded-full bg-yellow-500/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldAlert className="w-8 h-8 text-yellow-500" />
-                          </div>
-                          <div className="flex-1">
-                            {/* Show food name prominently */}
-                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-bold text-foreground text-lg mb-1">
-                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
-                              </p>
-                            )}
-                            <p className="font-bold text-yellow-600 text-xl">⚠️ VERIFICAR</p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Possível risco: <span className="font-semibold">{perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}</span>
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <div className="w-16 h-16 rounded-full bg-green-500/20 flex items-center justify-center flex-shrink-0">
-                            <ShieldCheck className="w-8 h-8 text-green-500" />
-                          </div>
-                          <div className="flex-1">
-                            {/* Show food name prominently */}
-                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-bold text-foreground text-lg mb-1">
-                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
-                              </p>
-                            )}
-                            <p className="font-bold text-green-600 text-xl flex items-center gap-2">
-                              ✅ SEGURO PARA VOCÊ
-                            </p>
-                            <p className="text-sm text-muted-foreground mt-1">
-                              Compatível com suas restrições alimentares
-                            </p>
-                          </div>
-                        </>
-                      )}
+                <div className="animate-reveal animate-reveal-1">
+                  {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30">
+                      <ShieldX className="w-4 h-4 text-destructive flex-shrink-0" />
+                      <span className="text-sm font-medium text-destructive">
+                        Contém {perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}
+                      </span>
                     </div>
-                  </CardContent>
-                </Card>
-              )}
-
-              {/* Personalized Profile Alerts - RIGHT AFTER STATUS CARD */}
-              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`glass-card border animate-reveal animate-reveal-2 ${
-                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
-                    ? "border-red-500/30" 
-                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
-                    ? "border-yellow-500/30"
-                    : "border-green-500/30"
-                }`}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2">
-                      <ShieldCheck className="w-5 h-5 text-primary" />
-                      Verificação do Seu Perfil
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    <p className="text-sm font-medium text-foreground mb-2">{perfilAplicado.resumo}</p>
-                    {perfilAplicado.alertas_personalizados.map((alerta, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg flex items-start gap-2 ${
-                          alerta.status === "contem" 
-                            ? "bg-red-500/10 border border-red-500/20" 
-                            : alerta.status === "risco_potencial"
-                            ? "bg-yellow-500/10 border border-yellow-500/20"
-                            : "bg-green-500/10 border border-green-500/20"
-                        }`}
-                      >
-                        <span className="text-lg">{alerta.icone}</span>
-                        <div className="flex-1">
-                          <p className="text-sm font-medium">{alerta.restricao}</p>
-                          <p className="text-xs text-muted-foreground">{alerta.mensagem}</p>
-                        </div>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
+                  ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                      <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-yellow-600">
+                        Verificar: {perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}
+                      </span>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30">
+                      <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
+                      <span className="text-sm font-medium text-green-600">
+                        Compatível com seu perfil
+                      </span>
+                    </div>
+                  )}
+                </div>
               )}
 
               {/* Total macros card */}
@@ -1383,63 +1299,28 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
-              {/* Dish identification - show when confidence is not high */}
+              {/* Confidence indicator - neutral gray line */}
               {foodAnalysis.prato_identificado && (
-                <Card className={`glass-card border ${
-                  foodAnalysis.prato_identificado.confianca === "baixa" 
-                    ? "border-yellow-500/30" 
-                    : foodAnalysis.prato_identificado.confianca === "media"
-                    ? "border-blue-500/30"
-                    : "border-green-500/30"
-                }`}>
-                  <CardContent className="p-4">
-                    <div className="flex items-start gap-3">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
-                        foodAnalysis.prato_identificado.confianca === "baixa" 
-                          ? "bg-yellow-500/20" 
-                          : foodAnalysis.prato_identificado.confianca === "media"
-                          ? "bg-blue-500/20"
-                          : "bg-green-500/20"
-                      }`}>
-                        {foodAnalysis.prato_identificado.confianca === "baixa" ? (
-                          <HelpCircle className="w-5 h-5 text-yellow-500" />
-                        ) : foodAnalysis.prato_identificado.confianca === "media" ? (
-                          <AlertCircle className="w-5 h-5 text-blue-500" />
-                        ) : (
-                          <Check className="w-5 h-5 text-green-500" />
-                        )}
-                      </div>
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-foreground">{foodAnalysis.prato_identificado.nome || "Prato não identificado"}</p>
-                          {foodAnalysis.prato_identificado.culinaria && (
-                            <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                              {foodAnalysis.prato_identificado.culinaria}
-                            </span>
-                          )}
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            foodAnalysis.prato_identificado.confianca === "baixa" 
-                              ? "bg-yellow-500/20 text-yellow-600" 
-                              : foodAnalysis.prato_identificado.confianca === "media"
-                              ? "bg-blue-500/20 text-blue-600"
-                              : "bg-green-500/20 text-green-600"
-                          }`}>
-                            Confiança {foodAnalysis.prato_identificado.confianca}
-                          </span>
-                        </div>
-                        {foodAnalysis.prato_identificado.descricao_curta && (
-                          <p className="text-xs text-muted-foreground mt-1">{foodAnalysis.prato_identificado.descricao_curta}</p>
-                        )}
-                        {foodAnalysis.prato_identificado.confianca !== "alta" && (
-                          <p className="text-xs text-yellow-600 mt-2 flex items-center gap-1">
-                            <AlertCircle className="w-3 h-3" />
-                            A identificação pode não estar 100% correta. Verifique os itens abaixo.
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 border border-border/50 animate-reveal animate-reveal-5">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-muted-foreground">🔍 Confiança da análise:</span>
+                    <span className={`text-xs font-medium ${
+                      foodAnalysis.prato_identificado.confianca === "baixa" 
+                        ? "text-yellow-600" 
+                        : foodAnalysis.prato_identificado.confianca === "media"
+                        ? "text-blue-600"
+                        : "text-muted-foreground"
+                    }`}>
+                      {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
+                       foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
+                    </span>
+                  </div>
+                  {foodAnalysis.prato_identificado.culinaria && (
+                    <span className="text-xs text-muted-foreground">
+                      {foodAnalysis.prato_identificado.culinaria}
+                    </span>
+                  )}
+                </div>
               )}
 
               {/* Individual items with confidence levels - Now editable */}

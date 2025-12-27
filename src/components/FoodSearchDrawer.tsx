@@ -741,13 +741,25 @@ export default function FoodSearchDrawer({
                     {selectedFoods.map((food) => {
                       const macros = calculateMacros(food);
                       const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
+                      const conflict = checkFoodConflicts(food.name);
                       return (
                         <div
                           key={food.id}
-                          className="bg-card border rounded-lg p-3 space-y-2"
+                          className={cn(
+                            "bg-card border rounded-lg p-3 space-y-2",
+                            conflict && "border-amber-200 bg-amber-50/30"
+                          )}
                         >
                           <div className="flex items-center justify-between">
-                            <span className="font-medium text-sm">{food.name}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-sm">{food.name}</span>
+                              {conflict && (
+                                <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
+                                  <AlertTriangle className="w-3 h-3" />
+                                  {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                </span>
+                              )}
+                            </div>
                             <button
                               onClick={() => removeFood(food.id)}
                               className="text-muted-foreground hover:text-destructive transition-colors"

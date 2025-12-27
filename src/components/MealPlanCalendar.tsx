@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2, Settings2 } from "lucide-react";
+import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2, Settings2, Lock, CalendarClock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
@@ -52,6 +52,7 @@ type MealPlan = {
   start_date: string;
   end_date: string;
   is_active: boolean;
+  unlocks_at?: string | null;
   items: MealPlanItem[];
 };
 
@@ -101,6 +102,20 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   });
   const [ingredientTags, setIngredientTags] = useState<string[]>([]);
   const [isRegenerating, setIsRegenerating] = useState(false);
+
+  // Check if plan is scheduled (locked until future date)
+  const isScheduledPlan = useMemo(() => {
+    if (!mealPlan.unlocks_at) return false;
+    const unlocksAt = new Date(mealPlan.unlocks_at);
+    return unlocksAt > new Date();
+  }, [mealPlan.unlocks_at]);
+
+  const daysUntilUnlock = useMemo(() => {
+    if (!mealPlan.unlocks_at) return 0;
+    const unlocksAt = new Date(mealPlan.unlocks_at);
+    const now = new Date();
+    return Math.ceil((unlocksAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+  }, [mealPlan.unlocks_at]);
 
   // Busca horários personalizados do plano
   const { getTimeRanges, getMealTime, hasCustomTimes, isLoading: isLoadingMealTimes } = usePlanMealTimes({ planId: mealPlan.id });
@@ -344,6 +359,26 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           </Button>
         </div>
       </div>
+
+      {/* Scheduled Plan Banner */}
+      {isScheduledPlan && (
+        <div className="bg-amber-500/10 border border-amber-500/30 rounded-xl p-3 sm:p-4">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-amber-500/20 rounded-full flex items-center justify-center shrink-0">
+              <CalendarClock className="w-5 h-5 text-amber-500" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground flex items-center gap-2">
+                <Lock className="w-3.5 h-3.5 text-amber-500" />
+                Plano Agendado
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Disponível em {daysUntilUnlock} dia{daysUntilUnlock !== 1 ? 's' : ''}. Edite as receitas antes de liberar.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Dietary Compatibility Summary */}
       <DietaryCompatibilitySummary 

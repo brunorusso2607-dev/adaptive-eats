@@ -3,11 +3,23 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Clock, Flame, Beef, Wheat, Droplets, UtensilsCrossed, Loader2 } from "lucide-react";
+import { Check, Clock, Flame, Beef, Wheat, Droplets, UtensilsCrossed, Loader2, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { getMealLabelsSync, getMealOrderSync } from "@/lib/mealTimeConfig";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { format, parseISO, differenceInMinutes } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface FoodItem {
   item: string;
@@ -33,6 +45,13 @@ interface FoodAnalysis {
   };
 }
 
+interface DuplicateMeal {
+  id: string;
+  custom_meal_name: string;
+  consumed_at: string;
+  total_calories: number;
+}
+
 interface RegisterMealFromPhotoSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -53,6 +72,8 @@ export default function RegisterMealFromPhotoSheet({
     return `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [duplicateMeal, setDuplicateMeal] = useState<DuplicateMeal | null>(null);
 
   const mealLabels = getMealLabelsSync();
   const mealOrder = getMealOrderSync();
@@ -73,7 +94,66 @@ export default function RegisterMealFromPhotoSheet({
     setStep('time');
   };
 
-  const handleSave = async () => {
+  // Check for duplicate meals
+  const checkForDuplicate = async (): Promise<DuplicateMeal | null> => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return null;
+
+      // Get meal name
+      const mealName = foodAnalysis.prato_identificado?.nome || 
+        foodAnalysis.alimentos?.[0]?.item || 
+        mealLabels[selectedMealType!] || 
+        selectedMealType;
+
+      // Parse selected time
+      const [hours, minutes] = selectedTime.split(':').map(Number);
+      const selectedDateTime = new Date();
+      selectedDateTime.setHours(hours, minutes, 0, 0);
+
+      // Check for meals in the last hour with similar calories (within 10%)
+      const oneHourAgo = new Date(selectedDateTime);
+      oneHourAgo.setHours(oneHourAgo.getHours() - 1);
+      
+      const oneHourLater = new Date(selectedDateTime);
+      oneHourLater.setHours(oneHourLater.getHours() + 1);
+
+      const { data: recentMeals } = await supabase
+        .from("meal_consumption")
+        .select("id, custom_meal_name, consumed_at, total_calories")
+        .eq("user_id", user.id)
+        .gte("consumed_at", oneHourAgo.toISOString())
+        .lte("consumed_at", oneHourLater.toISOString())
+        .order("consumed_at", { ascending: false });
+
+      if (!recentMeals || recentMeals.length === 0) return null;
+
+      const currentCalories = Math.round(foodAnalysis.total_geral.calorias_totais || 0);
+      
+      // Find a meal with similar name or similar calories (within 10%)
+      for (const meal of recentMeals) {
+        const caloriesDiff = Math.abs(meal.total_calories - currentCalories);
+        const caloriesMatch = caloriesDiff <= currentCalories * 0.1;
+        const nameMatch = meal.custom_meal_name?.toLowerCase() === mealName.toLowerCase();
+        
+        // Check time proximity (within 10 minutes)
+        const mealTime = new Date(meal.consumed_at);
+        const timeDiff = Math.abs(differenceInMinutes(mealTime, selectedDateTime));
+        const timeMatch = timeDiff <= 10;
+
+        if ((nameMatch || caloriesMatch) && timeMatch) {
+          return meal;
+        }
+      }
+
+      return null;
+    } catch (error) {
+      console.error("[RegisterMealFromPhoto] Error checking duplicates:", error);
+      return null;
+    }
+  };
+
+  const handleSave = async (skipDuplicateCheck = false) => {
     if (!selectedMealType) {
       toast.error("Selecione o tipo de refeição");
       return;
@@ -92,6 +172,17 @@ export default function RegisterMealFromPhotoSheet({
       if (!user) {
         toast.error("Sessão expirada. Faça login novamente.");
         return;
+      }
+
+      // Check for duplicates unless skipped
+      if (!skipDuplicateCheck) {
+        const duplicate = await checkForDuplicate();
+        if (duplicate) {
+          setDuplicateMeal(duplicate);
+          setDuplicateDialogOpen(true);
+          setIsSaving(false);
+          return;
+        }
       }
 
       // Parse time
@@ -187,6 +278,11 @@ export default function RegisterMealFromPhotoSheet({
     }
   };
 
+  const handleConfirmDuplicate = () => {
+    setDuplicateDialogOpen(false);
+    handleSave(true); // Skip duplicate check
+  };
+
   const totals = foodAnalysis.total_geral;
 
   return (
@@ -278,7 +374,7 @@ export default function RegisterMealFromPhotoSheet({
           {step === 'time' && (
             <>
               <Button
-                onClick={handleSave}
+                onClick={() => handleSave()}
                 disabled={isSaving}
                 className="w-full gradient-primary"
                 size="lg"
@@ -306,6 +402,38 @@ export default function RegisterMealFromPhotoSheet({
             </>
           )}
         </div>
+
+        {/* Duplicate confirmation dialog */}
+        <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500" />
+                Refeição similar encontrada
+              </AlertDialogTitle>
+              <AlertDialogDescription className="space-y-2">
+                <p>
+                  Já existe uma refeição similar registrada recentemente:
+                </p>
+                {duplicateMeal && (
+                  <div className="bg-muted p-3 rounded-lg text-sm">
+                    <p className="font-medium">{duplicateMeal.custom_meal_name}</p>
+                    <p className="text-muted-foreground">
+                      {format(parseISO(duplicateMeal.consumed_at), "HH:mm", { locale: ptBR })} • {duplicateMeal.total_calories} kcal
+                    </p>
+                  </div>
+                )}
+                <p>Deseja registrar novamente?</p>
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+              <AlertDialogAction onClick={handleConfirmDuplicate}>
+                Registrar mesmo assim
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </SheetContent>
     </Sheet>
   );

@@ -197,6 +197,34 @@ async function sendPushNotification(
   }
 }
 
+// Helper to get current time in user's timezone
+function getCurrentTimeInTimezone(timezone: string): { hour: number; minute: number; dateStr: string } {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+    const year = parts.find(p => p.type === 'year')?.value || '';
+    const month = parts.find(p => p.type === 'month')?.value || '';
+    const day = parts.find(p => p.type === 'day')?.value || '';
+    
+    return { hour, minute, dateStr: `${year}-${month}-${day}` };
+  } catch (error) {
+    console.error(`Invalid timezone ${timezone}, falling back to America/Sao_Paulo`);
+    return getCurrentTimeInTimezone('America/Sao_Paulo');
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -216,14 +244,6 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     
-    // Get current time info
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const currentTimeInMinutes = currentHour * 60 + currentMinute;
-    
-    console.log(`Current time: ${currentHour}:${currentMinute} (${currentTimeInMinutes} minutes)`);
-    
     // Get meal time settings
     const { data: mealTimeSettings, error: settingsError } = await supabase
       .from("meal_time_settings")
@@ -238,31 +258,81 @@ serve(async (req) => {
       });
     }
     
-    // Get all active meal plans
-    const today = now.toISOString().split('T')[0];
+    // Get all active meal plans with user profiles (for timezone)
     const { data: activePlans, error: plansError } = await supabase
       .from("meal_plans")
-      .select("id, user_id, start_date")
-      .eq("is_active", true)
-      .lte("start_date", today)
-      .gte("end_date", today);
+      .select("id, user_id, start_date");
     
     if (plansError) throw plansError;
     if (!activePlans || activePlans.length === 0) {
+      console.log("No meal plans found");
+      return new Response(JSON.stringify({ success: true, message: "No plans" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    // Get user profiles with timezone
+    const userIds = [...new Set(activePlans.map(p => p.user_id))];
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, timezone")
+      .in("id", userIds);
+    
+    if (profilesError) {
+      console.error("Error fetching profiles:", profilesError);
+    }
+    
+    // Create timezone map (default: America/Sao_Paulo)
+    const timezoneMap = new Map<string, string>();
+    profiles?.forEach(p => {
+      timezoneMap.set(p.id, p.timezone || 'America/Sao_Paulo');
+    });
+    
+    // Filter active plans based on user's local date
+    const activePlansFiltered = activePlans.filter(plan => {
+      const userTimezone = timezoneMap.get(plan.user_id) || 'America/Sao_Paulo';
+      const { dateStr } = getCurrentTimeInTimezone(userTimezone);
+      return plan.start_date <= dateStr;
+    });
+    
+    if (activePlansFiltered.length === 0) {
       console.log("No active meal plans found for today");
       return new Response(JSON.stringify({ success: true, message: "No active plans" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
     
-    console.log(`Found ${activePlans.length} active meal plans`);
+    console.log(`Found ${activePlansFiltered.length} active meal plans`);
+    
+    // Check which plans are actually active (within date range)
+    const { data: fullPlans, error: fullPlansError } = await supabase
+      .from("meal_plans")
+      .select("id, user_id, start_date, end_date, is_active")
+      .in("id", activePlansFiltered.map(p => p.id))
+      .eq("is_active", true);
+    
+    if (fullPlansError) throw fullPlansError;
+    
+    // Filter by end_date based on user timezone
+    const validPlans = fullPlans?.filter(plan => {
+      const userTimezone = timezoneMap.get(plan.user_id) || 'America/Sao_Paulo';
+      const { dateStr } = getCurrentTimeInTimezone(userTimezone);
+      return plan.start_date <= dateStr && plan.end_date >= dateStr;
+    }) || [];
+    
+    if (validPlans.length === 0) {
+      console.log("No valid active meal plans found");
+      return new Response(JSON.stringify({ success: true, message: "No valid plans" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
     
     // Get user reminder settings
-    const userIds = activePlans.map(p => p.user_id);
+    const validUserIds = validPlans.map(p => p.user_id);
     const { data: reminderSettings, error: reminderError } = await supabase
       .from("meal_reminder_settings")
       .select("*")
-      .in("user_id", userIds);
+      .in("user_id", validUserIds);
     
     if (reminderError) {
       console.error("Error fetching reminder settings:", reminderError);
@@ -272,7 +342,7 @@ serve(async (req) => {
     const userSettingsMap = new Map<string, { enabled: boolean; reminder_minutes_before: number; enabled_meals: string[] }>();
     const defaultMeals = mealTimeSettings.map((m: { meal_type: string }) => m.meal_type);
     
-    for (const userId of userIds) {
+    for (const userId of validUserIds) {
       // Default settings if user hasn't configured
       userSettingsMap.set(userId, {
         enabled: true,
@@ -294,7 +364,7 @@ serve(async (req) => {
     let notificationsSent = 0;
     const mealsNotified: string[] = [];
     
-    for (const plan of activePlans) {
+    for (const plan of validPlans) {
       const userSettings = userSettingsMap.get(plan.user_id);
       
       // Skip if user disabled reminders
@@ -303,8 +373,14 @@ serve(async (req) => {
         continue;
       }
       
+      // Get user's local time based on their timezone
+      const userTimezone = timezoneMap.get(plan.user_id) || 'America/Sao_Paulo';
+      const { hour: currentHour, minute: currentMinute, dateStr: today } = getCurrentTimeInTimezone(userTimezone);
+      const currentTimeInMinutes = currentHour * 60 + currentMinute;
+      
+      console.log(`User ${plan.user_id} timezone: ${userTimezone}, local time: ${currentHour}:${currentMinute}`);
+      
       // Calculate the time to check (current time + reminder_minutes_before)
-      // This means if user wants 15 min before, we check if meal starts in 15 min
       const checkTimeInMinutes = currentTimeInMinutes + userSettings.reminder_minutes_before;
       
       // Find meals that should trigger a reminder now
@@ -324,10 +400,11 @@ serve(async (req) => {
       }
       
       for (const mealSetting of mealsToRemind) {
-        // Calculate day of week based on plan start date
+        // Calculate day of week based on plan start date and user's local date
         const [year, month, day] = plan.start_date.split('-').map(Number);
         const planStartDate = new Date(year, month - 1, day);
-        const todayDate = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const [todayYear, todayMonth, todayDay] = today.split('-').map(Number);
+        const todayDate = new Date(todayYear, todayMonth - 1, todayDay);
         
         const diffTime = todayDate.getTime() - planStartDate.getTime();
         const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
@@ -420,7 +497,7 @@ serve(async (req) => {
           }
         };
         
-        console.log(`Sending meal reminder to user ${plan.user_id} for ${mealSetting.label} with notificationId: ${insertedNotif?.id}`);
+        console.log(`Sending meal reminder to user ${plan.user_id} for ${mealSetting.label} (timezone: ${userTimezone})`);
         
         // Send push notification to all subscriptions
         for (const subscription of subscriptions) {
@@ -462,12 +539,11 @@ serve(async (req) => {
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-    
-  } catch (err: unknown) {
-    const error = err as Error;
-    console.error("❌ Error in meal reminder:", error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error("❌ Error in meal reminder function:", err);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: err.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

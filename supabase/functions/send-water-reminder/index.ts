@@ -298,6 +298,37 @@ async function sendPushNotification(
   }
 }
 
+// Helper to get current time in user's timezone
+function getCurrentTimeInTimezone(timezone: string): { hour: number; minute: number; todayStart: Date } {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+    const minute = parseInt(parts.find(p => p.type === 'minute')?.value || '0', 10);
+    const year = parseInt(parts.find(p => p.type === 'year')?.value || '0', 10);
+    const month = parseInt(parts.find(p => p.type === 'month')?.value || '0', 10);
+    const day = parseInt(parts.find(p => p.type === 'day')?.value || '0', 10);
+    
+    // Calculate the start of the day in the user's timezone (as UTC)
+    const todayStart = new Date(Date.UTC(year, month - 1, day, 0, 0, 0, 0));
+    
+    return { hour, minute, todayStart };
+  } catch (error) {
+    console.error(`Invalid timezone ${timezone}, falling back to America/Sao_Paulo`);
+    return getCurrentTimeInTimezone('America/Sao_Paulo');
+  }
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -321,78 +352,88 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    const now = new Date();
-    const currentHour = now.getHours();
-    const currentMinute = now.getMinutes();
-    const todayStart = new Date(now);
-    todayStart.setHours(0, 0, 0, 0);
-
-    console.log(`[WATER-REMINDER] Current time: ${currentHour}:${currentMinute}`);
-
-    // Get users with reminders enabled and within their reminder hours
-    const { data: settings, error: settingsError } = await supabase
+    // Get all users with water reminders enabled
+    const { data: allSettings, error: settingsError } = await supabase
       .from("water_settings")
       .select("user_id, daily_goal_ml, reminder_start_hour, reminder_end_hour, reminder_interval_minutes, updated_at")
-      .eq("reminder_enabled", true)
-      .lte("reminder_start_hour", currentHour)
-      .gt("reminder_end_hour", currentHour);
+      .eq("reminder_enabled", true);
 
     if (settingsError) {
       console.error("[WATER-REMINDER] Error fetching water settings:", settingsError);
       throw settingsError;
     }
 
-    console.log(`[WATER-REMINDER] Found ${settings?.length || 0} users with active water reminders`);
-
-    if (!settings || settings.length === 0) {
+    if (!allSettings || allSettings.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No users to remind", sent: 0 }),
+        JSON.stringify({ message: "No users with reminders enabled", sent: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Filter users based on their reminder interval
-    // Check if enough time has passed since last reminder
-    const usersToCheck = settings.filter(setting => {
-      const interval = setting.reminder_interval_minutes || 60;
-      // Simple check: only remind at minute marks that are multiples of the interval
-      // This ensures consistency when cron runs every minute
-      return currentMinute % interval === 0;
+    // Get user profiles with timezone
+    const userIds = allSettings.map(s => s.user_id);
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, timezone")
+      .in("id", userIds);
+
+    if (profilesError) {
+      console.error("[WATER-REMINDER] Error fetching profiles:", profilesError);
+    }
+
+    // Create timezone map (default: America/Sao_Paulo)
+    const timezoneMap = new Map<string, string>();
+    profiles?.forEach(p => {
+      timezoneMap.set(p.id, p.timezone || 'America/Sao_Paulo');
     });
 
-    console.log(`[WATER-REMINDER] ${usersToCheck.length} users due for reminder based on interval`);
+    // Filter users based on their timezone and reminder hours
+    const usersToCheck: typeof allSettings = [];
+    
+    for (const setting of allSettings) {
+      const userTimezone = timezoneMap.get(setting.user_id) || 'America/Sao_Paulo';
+      const { hour: currentHour, minute: currentMinute } = getCurrentTimeInTimezone(userTimezone);
+      
+      // Check if within reminder hours
+      if (currentHour >= setting.reminder_start_hour && currentHour < setting.reminder_end_hour) {
+        // Check interval
+        const interval = setting.reminder_interval_minutes || 60;
+        if (currentMinute % interval === 0) {
+          usersToCheck.push(setting);
+          console.log(`[WATER-REMINDER] User ${setting.user_id} in timezone ${userTimezone}, local time ${currentHour}:${currentMinute} - due for reminder`);
+        }
+      }
+    }
+
+    console.log(`[WATER-REMINDER] ${usersToCheck.length} users due for reminder based on their local time`);
 
     if (usersToCheck.length === 0) {
       return new Response(
-        JSON.stringify({ message: "No users due for reminder at this interval", sent: 0 }),
+        JSON.stringify({ message: "No users due for reminder at this time", sent: 0 }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const userIds = usersToCheck.map((s) => s.user_id);
-
-    // Get today's water consumption for these users
-    const { data: consumptions, error: consError } = await supabase
-      .from("water_consumption")
-      .select("user_id, amount_ml")
-      .in("user_id", userIds)
-      .gte("consumed_at", todayStart.toISOString());
-
-    if (consError) {
-      console.error("[WATER-REMINDER] Error fetching water consumption:", consError);
-    }
-
-    // Calculate total per user
-    const totalByUser: Record<string, number> = {};
-    consumptions?.forEach((c) => {
-      totalByUser[c.user_id] = (totalByUser[c.user_id] || 0) + c.amount_ml;
-    });
-
-    // Find users who need reminding (below goal)
+    // Get today's water consumption for these users (based on their timezone)
     const usersToRemind: { userId: string; total: number; goal: number; percentage: number }[] = [];
     
     for (const setting of usersToCheck) {
-      const total = totalByUser[setting.user_id] || 0;
+      const userTimezone = timezoneMap.get(setting.user_id) || 'America/Sao_Paulo';
+      const { todayStart } = getCurrentTimeInTimezone(userTimezone);
+      
+      // Get consumption since start of user's day
+      const { data: consumptions, error: consError } = await supabase
+        .from("water_consumption")
+        .select("amount_ml")
+        .eq("user_id", setting.user_id)
+        .gte("consumed_at", todayStart.toISOString());
+
+      if (consError) {
+        console.error(`[WATER-REMINDER] Error fetching consumption for user ${setting.user_id}:`, consError);
+        continue;
+      }
+
+      const total = consumptions?.reduce((sum, c) => sum + c.amount_ml, 0) || 0;
       const goal = setting.daily_goal_ml;
       const percentage = Math.round((total / goal) * 100);
       
@@ -428,6 +469,7 @@ serve(async (req) => {
       const userData = usersToRemind.find((u) => u.userId === sub.user_id);
       if (!userData) continue;
 
+      const userTimezone = timezoneMap.get(sub.user_id) || 'America/Sao_Paulo';
       const remaining = Math.round((userData.goal - userData.total) / 1000 * 10) / 10;
       const totalLiters = (userData.total / 1000).toFixed(1);
       const goalLiters = (userData.goal / 1000).toFixed(1);
@@ -475,7 +517,7 @@ serve(async (req) => {
         ],
       };
 
-      console.log(`[WATER-REMINDER] Sending push to user ${sub.user_id} with notificationId: ${insertedNotif?.id}`);
+      console.log(`[WATER-REMINDER] Sending push to user ${sub.user_id} (timezone: ${userTimezone})`);
 
       const result = await sendPushNotification(
         sub.endpoint,
@@ -498,29 +540,27 @@ serve(async (req) => {
       }
     }
 
-    // Remove expired subscriptions
+    // Clean up expired subscriptions
     if (expiredSubscriptions.length > 0) {
-      await supabase
-        .from("push_subscriptions")
-        .delete()
-        .in("id", expiredSubscriptions);
+      await supabase.from("push_subscriptions").delete().in("id", expiredSubscriptions);
       console.log(`[WATER-REMINDER] Removed ${expiredSubscriptions.length} expired subscriptions`);
     }
 
+    console.log(`[WATER-REMINDER] Function complete. Sent ${sentCount} notifications`);
+
     return new Response(
-      JSON.stringify({
-        message: "Water reminders processed",
+      JSON.stringify({ 
+        message: "Water reminders sent", 
         sent: sentCount,
         usersChecked: usersToCheck.length,
-        usersNeedingReminder: usersToRemind.length,
-        expiredSubscriptionsRemoved: expiredSubscriptions.length,
+        usersReminded: usersToRemind.length
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error: any) {
+  } catch (error) {
     console.error("[WATER-REMINDER] Error:", error);
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

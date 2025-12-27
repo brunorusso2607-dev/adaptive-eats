@@ -72,6 +72,7 @@ const DIETARY_LABELS: Record<string, string> = {
 
 export function useIntoleranceWarning() {
   const [intolerances, setIntolerances] = useState<string[]>([]);
+  const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [dietaryPreference, setDietaryPreference] = useState<string | null>(null);
   const [mappings, setMappings] = useState<IntoleranceMappingItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -90,7 +91,7 @@ export function useIntoleranceWarning() {
         const [profileResult, mappingsResult] = await Promise.all([
           supabase
             .from('profiles')
-            .select('intolerances, dietary_preference')
+            .select('intolerances, dietary_preference, excluded_ingredients')
             .eq('id', session.user.id)
             .single(),
           supabase
@@ -101,6 +102,14 @@ export function useIntoleranceWarning() {
         if (profileResult.data) {
           // Set dietary preference
           setDietaryPreference(profileResult.data.dietary_preference || null);
+
+          // Set excluded ingredients (normalized)
+          if (profileResult.data.excluded_ingredients && Array.isArray(profileResult.data.excluded_ingredients)) {
+            const normalizedExcluded = profileResult.data.excluded_ingredients.map((ing: string) =>
+              ing.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim()
+            );
+            setExcludedIngredients(normalizedExcluded);
+          }
 
           // Normalize intolerances
           if (profileResult.data.intolerances) {
@@ -152,16 +161,34 @@ export function useIntoleranceWarning() {
     fetchData();
   }, []);
 
-  // Check if user has any restrictions (intolerances or dietary)
+  // Check if user has any restrictions (intolerances, dietary, or excluded)
   const hasIntolerances = useMemo(() => intolerances.length > 0, [intolerances]);
+  const hasExcludedIngredients = useMemo(() => excludedIngredients.length > 0, [excludedIngredients]);
   const hasDietaryRestriction = useMemo(() => 
     dietaryPreference && dietaryPreference !== 'comum', 
     [dietaryPreference]
   );
   const hasAnyRestriction = useMemo(() => 
-    hasIntolerances || hasDietaryRestriction, 
-    [hasIntolerances, hasDietaryRestriction]
+    hasIntolerances || hasDietaryRestriction || hasExcludedIngredients, 
+    [hasIntolerances, hasDietaryRestriction, hasExcludedIngredients]
   );
+
+  // Check excluded ingredients for a single ingredient
+  const checkExcludedConflict = useCallback((ingredientName: string): { hasConflict: boolean; excludedItem: string | null } => {
+    if (!hasExcludedIngredients || !ingredientName) {
+      return { hasConflict: false, excludedItem: null };
+    }
+
+    const normalizedIngredient = ingredientName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+
+    for (const excluded of excludedIngredients) {
+      if (normalizedIngredient.includes(excluded) || excluded.includes(normalizedIngredient)) {
+        return { hasConflict: true, excludedItem: excluded };
+      }
+    }
+
+    return { hasConflict: false, excludedItem: null };
+  }, [hasExcludedIngredients, excludedIngredients]);
 
   // Check dietary conflict for a single ingredient
   const checkDietaryConflict = useCallback((ingredientName: string): { hasConflict: boolean; restriction: string | null } => {
@@ -195,9 +222,14 @@ export function useIntoleranceWarning() {
     }
 
     const foundConflicts = new Set<string>();
-    const foundLabels: string[] = [];
 
-    // Check dietary restriction first
+    // Check excluded ingredients first
+    const excludedResult = checkExcludedConflict(foodName);
+    if (excludedResult.hasConflict && excludedResult.excludedItem) {
+      foundConflicts.add(`excluded:${excludedResult.excludedItem}`);
+    }
+
+    // Check dietary restriction
     const dietaryResult = checkDietaryConflict(foodName);
     if (dietaryResult.hasConflict && dietaryResult.restriction) {
       foundConflicts.add(dietaryResult.restriction);
@@ -221,7 +253,12 @@ export function useIntoleranceWarning() {
     }
 
     const conflicts = Array.from(foundConflicts);
-    const labels = conflicts.map(c => DIETARY_LABELS[c] || getIntoleranceLabel(c));
+    const labels = conflicts.map(c => {
+      if (c.startsWith('excluded:')) {
+        return c.replace('excluded:', '');
+      }
+      return DIETARY_LABELS[c] || getIntoleranceLabel(c);
+    });
 
     return {
       hasConflict: conflicts.length > 0,
@@ -230,7 +267,7 @@ export function useIntoleranceWarning() {
       badgeLabel: labels.length > 0 ? labels[0] : null,
       fullLabel: labels.length > 0 ? `Contém ${labels.join(', ')}` : null,
     };
-  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict]);
+  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict, checkExcludedConflict]);
 
   // Check a meal with ingredients for conflicts
   const checkMeal = useCallback((mealName: string, ingredients?: any[]): IntoleranceWarning => {
@@ -294,15 +331,19 @@ export function useIntoleranceWarning() {
   return {
     /** User's configured intolerances */
     intolerances,
+    /** User's excluded ingredients */
+    excludedIngredients,
     /** User's dietary preference (vegana, vegetariana, etc) */
     dietaryPreference,
     /** Whether data is still loading */
     isLoading,
     /** Whether user has any intolerances configured */
     hasIntolerances,
+    /** Whether user has excluded ingredients configured */
+    hasExcludedIngredients,
     /** Whether user has dietary restriction (not 'comum') */
     hasDietaryRestriction,
-    /** Whether user has any restriction (intolerance or dietary) */
+    /** Whether user has any restriction (intolerance, dietary, or excluded) */
     hasAnyRestriction,
     /** Check a single food name for conflicts (returns IntoleranceWarning) */
     checkFood,

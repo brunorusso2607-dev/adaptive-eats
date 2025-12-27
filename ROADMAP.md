@@ -9,7 +9,7 @@
 | Fase | Status | Progresso |
 |------|--------|-----------|
 | FASE 1: Preparação Banco | ✅ Concluída | 100% |
-| FASE 2: Features Principais | 🔄 Em andamento | 60% |
+| FASE 2: Features Principais | 🔄 Em andamento | 80% |
 | FASE 3: Reorganização UI | ⏳ Pendente | 0% |
 
 **Última atualização:** 27/12/2024
@@ -169,23 +169,21 @@ Módulo Manual (FreeFormMealLogger)
 
 ---
 
-### 2.3 Trocar Refeição Completa (Home)
-**Objetivo:** Substituir "trocar ingrediente" por "trocar refeição" no card da Home
+### 2.3 Remover Edição de Ingredientes do NextMealCard ✅
+**Objetivo:** Simplificar o card da Home removendo opção de trocar ingredientes
+
+#### Justificativa:
+- Com o módulo de registro manual implementado (2.1), usuários podem registrar o que realmente comeram
+- Não faz mais sentido permitir edição de ingredientes diretamente no card
+- Refeição do plano na Home = apenas visualização
 
 #### Sub-tarefas:
-- [ ] Remover botão/funcionalidade de substituir ingrediente do `NextMealCard`
-- [ ] Adicionar botão "Trocar Refeição"
-- [ ] Abrir drawer/sheet com opções de refeições alternativas
-- [ ] Usar refeições do mesmo `meal_type` do plano
-- [ ] Atualizar `meal_plan_items` com nova refeição
+- [x] Remover botão "Trocar" do NextMealCard
+- [x] Remover FoodSearchDrawer do componente
+- [x] Ajustar fluxo de "comi diferente" para orientar uso do módulo manual
 
-**Notas:**
-- Lógica similar já existe em `MealPlanCalendar`
-- Reutilizar componentes existentes
-
-**Status:** ⏳ Pendente  
-**Estimativa:** 30 minutos  
-**Data conclusão:** -
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
 
 ---
 
@@ -264,6 +262,11 @@ Perfil → Horários de Refeição → Editar → Salvar
 ---
 
 ## 📝 Changelog
+
+### [27/12/2024] - Simplificação do NextMealCard
+- ✅ Removido botão "Trocar" do card de próxima refeição
+- ✅ Refeições do plano na Home agora são apenas visualização
+- ✅ Usuário deve usar módulo manual para registrar refeições diferentes
 
 ### [27/12/2024] - Unificação de Fluxos
 - ✅ Criado `MealRegistrationFlow.tsx` - componente reutilizável

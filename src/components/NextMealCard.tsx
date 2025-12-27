@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
   Check, 
-  RefreshCw, 
   SkipForward, 
   Clock, 
   Flame, 
@@ -22,7 +21,6 @@ import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
-import FoodSearchDrawer from "./FoodSearchDrawer";
 import MealDetailSheet from "./MealDetailSheet";
 import MealSubstanceBadges from "./MealSubstanceBadges";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
@@ -71,7 +69,6 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
   const [isTogglingFavorite, setIsTogglingFavorite] = useState(false);
   const [isFavorite, setIsFavorite] = useState(nextMeal?.is_favorite || false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [showFoodDrawer, setShowFoodDrawer] = useState(false);
   const [showDetailSheet, setShowDetailSheet] = useState(false);
   const [minutesUntilStart, setMinutesUntilStart] = useState(0);
 
@@ -129,21 +126,10 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
     }
   };
 
-  // User wants to register different foods
+  // User wants to register different foods - close dialog and let them use manual registration
   const handleConfirmDifferent = () => {
     setShowConfirmDialog(false);
-    setShowFoodDrawer(true);
-  };
-
-  // Trocar button opens food drawer directly
-  const handleTrocarClick = () => {
-    setShowFoodDrawer(true);
-  };
-
-  // When food drawer saves successfully
-  const handleFoodDrawerSuccess = () => {
-    // Refetch to show the next meal
-    refetch();
+    toast.info("Use o módulo 'Registrar refeição' para adicionar o que você comeu");
   };
 
   const handleSkip = async () => {
@@ -403,19 +389,6 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
             Receita
           </button>
 
-          <span className="text-black dark:text-white opacity-50">•</span>
-
-          <button
-            onClick={(e) => {
-              e.stopPropagation();
-              handleTrocarClick();
-            }}
-            disabled={isMarking || isSkipping}
-            className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
-          >
-            <RefreshCw className="w-4 h-4 text-primary stroke-[1.5]" />
-            Trocar
-          </button>
 
           {/* Só mostra Feita e Não fiz se NÃO for refeição futura */}
           {!isFutureMeal && (
@@ -477,13 +450,6 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
         onConfirmDifferent={handleConfirmDifferent}
       />
 
-      <FoodSearchDrawer
-        open={showFoodDrawer}
-        onOpenChange={setShowFoodDrawer}
-        mealPlanItemId={nextMeal.id}
-        mealType={nextMeal.meal_type}
-        onSuccess={handleFoodDrawerSuccess}
-      />
 
       <MealDetailSheet
         open={showDetailSheet}

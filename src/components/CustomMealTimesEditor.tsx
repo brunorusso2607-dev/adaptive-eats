@@ -31,6 +31,7 @@ export interface ExtraMeal {
   id: string;
   name: string;
   time: string;
+  isNew?: boolean; // Flag para identificar extras recém-adicionados (não salvos)
 }
 
 // Tipo expandido para custom_meal_times com suporte a extras
@@ -100,25 +101,40 @@ export function CustomMealTimesEditor({
     setUseCustomTimes(customTimes != null && Object.keys(customTimes).length > 0);
   }, [globalSettings, customTimes]);
 
-  // Combina refeições padrão + extras e ordena por horário
+  // Combina refeições padrão + extras
+  // Extras novos (não salvos) ficam no final, extras salvos são ordenados por horário
   const allMealsSorted = useMemo(() => {
     const standardMeals = globalSettings.map(setting => ({
       id: setting.meal_type,
       name: setting.label,
       time: localTimes[setting.meal_type] || `${setting.start_hour.toString().padStart(2, '0')}:00`,
       isExtra: false,
+      isNew: false,
     }));
 
-    const extraMealsMapped = extraMeals.map(extra => ({
+    // Separa extras novos dos já salvos
+    const savedExtras = extraMeals.filter(extra => !extra.isNew).map(extra => ({
       id: extra.id,
       name: extra.name,
       time: extra.time,
       isExtra: true,
+      isNew: false,
     }));
 
-    return [...standardMeals, ...extraMealsMapped].sort((a, b) => 
+    const newExtras = extraMeals.filter(extra => extra.isNew).map(extra => ({
+      id: extra.id,
+      name: extra.name,
+      time: extra.time,
+      isExtra: true,
+      isNew: true,
+    }));
+
+    // Ordena padrão + extras salvos por horário, depois adiciona extras novos no final
+    const sortedMeals = [...standardMeals, ...savedExtras].sort((a, b) => 
       timeToMinutes(a.time) - timeToMinutes(b.time)
     );
+
+    return [...sortedMeals, ...newExtras];
   }, [globalSettings, localTimes, extraMeals]);
 
   // Gera dados para salvar
@@ -179,6 +195,7 @@ export function CustomMealTimesEditor({
       id: `extra_${Date.now()}`,
       name: "Refeição Extra",
       time: "15:00",
+      isNew: true, // Marca como novo para ficar no final da lista
     };
     const newExtras = [...extraMeals, newExtra];
     setExtraMeals(newExtras);
@@ -236,6 +253,13 @@ export function CustomMealTimesEditor({
       const success = await onSave(dataToSave);
       
       if (success) {
+        // Remove a flag isNew de todos os extras após salvar
+        const savedExtras = extraMeals.map(extra => ({
+          ...extra,
+          isNew: false,
+        }));
+        setExtraMeals(savedExtras);
+        
         toast.success(useCustomTimes ? "Horários personalizados salvos" : "Usando horários padrão");
         setHasChanges(false);
       } else {

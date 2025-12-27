@@ -604,15 +604,19 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                   isLocked && "border-amber-500/30"
                 )}
               >
-                {/* Locked overlay */}
+                {/* Locked overlay - click to view/edit */}
                 {isLocked && (
-                  <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                  <div 
+                    className="absolute inset-0 bg-background/40 backdrop-blur-[1px] z-10 flex items-center justify-center cursor-pointer hover:bg-background/30 transition-colors"
+                    onClick={() => handleViewPlan(plan)}
+                  >
                     <div className="text-center p-4">
-                      <Lock className="w-8 h-8 text-amber-500 mx-auto mb-2" />
-                      <p className="text-sm font-medium text-foreground">Plano Agendado</p>
-                      <p className="text-xs text-muted-foreground">
-                        Disponível a partir de {new Date(plan.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      <Lock className="w-6 h-6 text-amber-500 mx-auto mb-1" />
+                      <p className="text-xs font-medium text-foreground">Plano Agendado</p>
+                      <p className="text-[10px] text-muted-foreground">
+                        Disponível em {new Date(plan.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}
                       </p>
+                      <p className="text-[10px] text-primary mt-1">Toque para editar</p>
                     </div>
                   </div>
                 )}
@@ -667,10 +671,9 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                         size="sm"
                         className="text-xs sm:text-sm"
                         onClick={() => handleViewPlan(plan)}
-                        disabled={isLocked}
                       >
                         <Eye className="w-4 h-4 sm:mr-2" />
-                        <span className="hidden sm:inline">Ver</span>
+                        <span className="hidden sm:inline">{isLocked ? 'Editar' : 'Ver'}</span>
                       </Button>
                       
                       <Button
@@ -681,8 +684,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                           setEditingPlanId(plan.id);
                           setView("edit");
                         }}
-                        title="Editar plano"
-                        disabled={isLocked}
+                        title="Configurar plano"
                       >
                         <Settings2 className="w-4 h-4" />
                       </Button>

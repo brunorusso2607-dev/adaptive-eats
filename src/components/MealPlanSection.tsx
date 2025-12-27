@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart, CheckCircle2, Clock, Settings2 } from "lucide-react";
+import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart, CheckCircle2, Clock, Settings2, Copy, Lock } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -14,6 +14,7 @@ import MealPlanCalendar from "./MealPlanCalendar";
 import MealRecipeDetail from "./MealRecipeDetail";
 import ShoppingList from "./ShoppingList";
 import MealPlanEditor from "./MealPlanEditor";
+import DuplicatePlanDialog from "./DuplicatePlanDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +32,7 @@ type Ingredient = { item: string; quantity: string; unit: string };
 type MealPlanItem = {
   id: string;
   day_of_week: number;
+  week_number: number;
   meal_type: string;
   recipe_name: string;
   recipe_calories: number;
@@ -52,6 +54,8 @@ type MealPlan = {
   is_active: boolean;
   status?: string;
   completion_percentage?: number;
+  unlocks_at?: string | null;
+  source_plan_id?: string | null;
   items: MealPlanItem[];
 };
 
@@ -120,6 +124,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   const [selectedMeal, setSelectedMeal] = useState<MealPlanItem | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
+  const [duplicatingPlan, setDuplicatingPlan] = useState<MealPlan | null>(null);
 
   // Swipe to close with visual feedback
   const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
@@ -196,6 +201,8 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
             is_active: plan.is_active,
             status,
             completion_percentage: completionPercentage,
+            unlocks_at: plan.unlocks_at,
+            source_plan_id: plan.source_plan_id,
             items: (items || []).map((item: any) => ({
               ...item,
               recipe_ingredients: item.recipe_ingredients as Ingredient[],
@@ -293,6 +300,20 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
 
   // Get status badge for a plan
   const getPlanStatusBadge = (plan: MealPlan) => {
+    // Check if plan is locked (unlocks_at in the future)
+    if (plan.unlocks_at) {
+      const unlocksAt = new Date(plan.unlocks_at);
+      const now = new Date();
+      if (unlocksAt > now) {
+        const daysUntilUnlock = Math.ceil((unlocksAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return (
+          <span className="text-[10px] sm:text-xs bg-amber-500/20 text-amber-600 dark:text-amber-400 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1">
+            <Lock className="w-3 h-3" />
+            {daysUntilUnlock > 0 ? `Libera em ${daysUntilUnlock}d` : 'Liberando...'}
+          </span>
+        );
+      }
+    }
     if (plan.status === 'completed') {
       return (
         <span className="text-[10px] sm:text-xs bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 px-1.5 sm:px-2 py-0.5 rounded-full whitespace-nowrap flex items-center gap-1">
@@ -318,10 +339,22 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     return null;
   };
 
+  // Check if a plan is locked
+  const isPlanLocked = (plan: MealPlan) => {
+    if (!plan.unlocks_at) return false;
+    const unlocksAt = new Date(plan.unlocks_at);
+    return unlocksAt > new Date();
+  };
+
   // Check if a plan is from a past month (should be grayed out)
   const isPlanPast = (plan: MealPlan) => {
     return isPastMonth(plan.end_date);
   };
+
+  // Check if user can duplicate to next month
+  const canDuplicateToNextMonth = useMemo(() => {
+    return !hasPlanForNextMonth(mealPlans);
+  }, [mealPlans]);
 
   const handleModeSelect = (mode: MealPlanMode) => {
     if (mode === "ai") setView("create-ai");
@@ -560,26 +593,45 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
         <div className="space-y-3 sm:space-y-4">
           {mealPlans.map((plan) => {
             const isPast = isPlanPast(plan);
+            const isLocked = isPlanLocked(plan);
             
             return (
               <Card 
                 key={plan.id} 
                 className={cn(
-                  "glass-card transition-all",
-                  isPast ? "opacity-60 border-muted" : "hover:border-primary/30"
+                  "glass-card transition-all relative overflow-hidden",
+                  isPast ? "opacity-60 border-muted" : "hover:border-primary/30",
+                  isLocked && "border-amber-500/30"
                 )}
               >
+                {/* Locked overlay */}
+                {isLocked && (
+                  <div className="absolute inset-0 bg-background/60 backdrop-blur-[1px] z-10 flex items-center justify-center">
+                    <div className="text-center p-4">
+                      <Lock className="w-8 h-8 text-amber-500 mx-auto mb-2" />
+                      <p className="text-sm font-medium text-foreground">Plano Agendado</p>
+                      <p className="text-xs text-muted-foreground">
+                        Disponível a partir de {new Date(plan.start_date + 'T00:00:00').toLocaleDateString('pt-BR')}
+                      </p>
+                    </div>
+                  </div>
+                )}
+                
                 <CardContent className="p-3 sm:p-4">
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
                     <div className="flex items-center gap-3 flex-1 min-w-0">
                       <div className={cn(
                         "w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center shrink-0",
-                        isPast ? "bg-muted" : "bg-primary/10"
+                        isPast ? "bg-muted" : isLocked ? "bg-amber-500/10" : "bg-primary/10"
                       )}>
-                        <Calendar className={cn(
-                          "w-5 h-5 sm:w-6 sm:h-6",
-                          isPast ? "text-muted-foreground" : "text-primary"
-                        )} />
+                        {isLocked ? (
+                          <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-amber-500" />
+                        ) : (
+                          <Calendar className={cn(
+                            "w-5 h-5 sm:w-6 sm:h-6",
+                            isPast ? "text-muted-foreground" : "text-primary"
+                          )} />
+                        )}
                       </div>
                       <div className="min-w-0 flex-1">
                         <h3 className="font-display font-semibold text-sm sm:text-base text-foreground flex items-center flex-wrap gap-2">
@@ -591,16 +643,31 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                         </p>
                         <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5 sm:mt-1">
                           {plan.items.length} refeições planejadas
+                          {plan.source_plan_id && " • Duplicado"}
                         </p>
                       </div>
                     </div>
                     
                     <div className="flex items-center gap-2 ml-auto">
+                      {/* Duplicate button - only for active plans and if no next month plan exists */}
+                      {!isPast && !isLocked && canDuplicateToNextMonth && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="w-8 h-8 sm:w-10 sm:h-10"
+                          onClick={() => setDuplicatingPlan(plan)}
+                          title="Duplicar para próximo mês"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                      )}
+                      
                       <Button
                         variant="outline"
                         size="sm"
                         className="text-xs sm:text-sm"
                         onClick={() => handleViewPlan(plan)}
+                        disabled={isLocked}
                       >
                         <Eye className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">Ver</span>
@@ -615,6 +682,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                           setView("edit");
                         }}
                         title="Editar plano"
+                        disabled={isLocked}
                       >
                         <Settings2 className="w-4 h-4" />
                       </Button>
@@ -651,6 +719,19 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
             );
           })}
         </div>
+      )}
+
+      {/* Duplicate Plan Dialog */}
+      {duplicatingPlan && (
+        <DuplicatePlanDialog
+          open={!!duplicatingPlan}
+          onOpenChange={(open) => !open && setDuplicatingPlan(null)}
+          plan={duplicatingPlan}
+          onPlanDuplicated={() => {
+            fetchMealPlans();
+            setDuplicatingPlan(null);
+          }}
+        />
       )}
     </div>
   );

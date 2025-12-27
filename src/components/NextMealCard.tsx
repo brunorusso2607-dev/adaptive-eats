@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent } from "@/components/ui/card";
 import { 
@@ -15,9 +15,10 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
-import { useNextMeal, getMealLabels, getMealTimeRanges, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
+import { useNextMeal, getMealLabels, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
+import { usePlanMealTimes } from "@/hooks/usePlanMealTimes";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealConfirmDialog from "./MealConfirmDialog";
@@ -63,6 +64,14 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
 
   // Dietary compatibility
   const { getCompatibility, hasProfile } = useDietaryCompatibility(userProfile?.dietary_preference);
+
+  // Busca horários personalizados do plano ativo
+  const { getTimeRanges, getMealTime, hasCustomTimes } = usePlanMealTimes({ 
+    planId: nextMeal?.meal_plan_id 
+  });
+  
+  // Monta os ranges de horário usando dados do hook
+  const timeRanges = useMemo(() => getTimeRanges(), [getTimeRanges]);
 
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
@@ -244,9 +253,9 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
   const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.on_time;
   
   const labels = getMealLabels();
-  const timeRanges = getMealTimeRanges();
   const mealLabel = labels[nextMeal.meal_type] || nextMeal.meal_type;
   const timeRange = timeRanges[nextMeal.meal_type];
+  const formattedTime = getMealTime(nextMeal.meal_type);
 
   // Verificar se é uma refeição futura (status "upcoming")
   const isFutureMeal = mealStatus === "upcoming";
@@ -301,14 +310,13 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
                 <span className="text-xs text-muted-foreground">
                   {mealLabel}
                 </span>
-                {timeRange && (
-                  <>
-                    <span className="text-xs text-muted-foreground">•</span>
-                    <span className="text-xs text-muted-foreground">
-                      {`${String(timeRange.start).padStart(2, '0')}:00 às ${String(timeRange.end).padStart(2, '0')}:00`}
-                    </span>
-                  </>
-                )}
+                <span className="text-xs text-muted-foreground">•</span>
+                <span className="text-xs text-muted-foreground flex items-center gap-1">
+                  {formattedTime}
+                  {hasCustomTimes && (
+                    <span className="text-[8px] text-primary/60">•</span>
+                  )}
+                </span>
               </div>
               <h3 className="font-display font-semibold text-foreground truncate">
                 {nextMeal.recipe_name}

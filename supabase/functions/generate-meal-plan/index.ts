@@ -702,12 +702,13 @@ serve(async (req) => {
 
     const requestBody = await req.json();
     const daysCount = Math.min(requestBody.daysCount || 7, 7);
-    const { planName, startDate, existingPlanId, weekNumber, customMealTimes } = requestBody;
+    let { planName, startDate, existingPlanId, weekNumber, customMealTimes } = requestBody;
     logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber, hasCustomMealTimes: !!customMealTimes });
 
     // ========================================
-    // VALIDAÇÃO DE DUPLICAÇÃO - IMPEDIR PLANOS DUPLICADOS NO MESMO MÊS
+    // VALIDAÇÃO DE DUPLICAÇÃO - REUTILIZAR PLANO EXISTENTE DO MESMO MÊS
     // ========================================
+    let reusingExistingPlan = false;
     if (!existingPlanId) {
       const start = startDate ? new Date(startDate) : new Date();
       const targetMonth = start.getMonth();
@@ -728,36 +729,39 @@ serve(async (req) => {
       if (checkError) {
         logStep("Error checking existing plans", { error: checkError.message });
       } else if (existingPlans && existingPlans.length > 0) {
+        // Reutilizar o plano existente - deletar items antigos e regenerar
         const existingPlan = existingPlans[0];
-        logStep("Duplicate plan detected", { 
+        logStep("Found existing plan for this month - will reuse and regenerate", { 
           existingPlanId: existingPlan.id, 
           existingPlanName: existingPlan.name,
           targetMonth: `${targetYear}-${targetMonth + 1}`
         });
         
-        // Return error with existing plan info
-        return new Response(
-          JSON.stringify({
-            error: `Já existe um plano para este mês: "${existingPlan.name}". Exclua o plano existente antes de criar um novo.`,
-            existingPlanId: existingPlan.id,
-            existingPlanName: existingPlan.name,
-            isDuplicate: true
-          }),
-          { 
-            status: 409, // Conflict
-            headers: { ...corsHeaders, "Content-Type": "application/json" } 
-          }
-        );
+        // Delete existing meal items to regenerate fresh
+        const { error: deleteError } = await supabaseClient
+          .from("meal_plan_items")
+          .delete()
+          .eq("meal_plan_id", existingPlan.id);
+        
+        if (deleteError) {
+          logStep("Error deleting existing meal items", { error: deleteError.message });
+        } else {
+          logStep("Deleted existing meal items for regeneration");
+        }
+        
+        // Reutilizar o plano existente
+        existingPlanId = existingPlan.id;
+        reusingExistingPlan = true;
+      } else {
+        logStep("No existing plan found, proceeding with new creation");
       }
-      
-      logStep("No duplicate plan found, proceeding with creation");
     }
 
     // Fetch previous week's recipes to avoid repetition
     let previousRecipes: string[] = [];
     const targetWeekNumber = weekNumber || 1;
     
-    if (existingPlanId && targetWeekNumber > 1) {
+    if (existingPlanId && targetWeekNumber > 1 && !reusingExistingPlan) {
       const { data: prevItems } = await supabaseClient
         .from("meal_plan_items")
         .select("recipe_name")

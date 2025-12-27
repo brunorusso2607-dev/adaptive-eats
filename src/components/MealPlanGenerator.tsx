@@ -125,22 +125,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
         onPlanGenerated();
       }, 500);
 
-    } catch (error: any) {
+    } catch (error) {
       console.error("Error generating meal plan:", error);
-      
-      // Check if it's a duplicate plan error
-      if (error?.message?.includes("isDuplicate") || error?.context?.body?.includes("isDuplicate")) {
-        try {
-          const errorBody = JSON.parse(error?.context?.body || "{}");
-          if (errorBody.isDuplicate) {
-            toast.error(errorBody.error || "Já existe um plano para este mês.");
-            return;
-          }
-        } catch {
-          // Parse failed, check message directly
-        }
-      }
-      
       toast.error(error instanceof Error ? error.message : "Erro ao gerar plano alimentar");
     } finally {
       setIsGenerating(false);

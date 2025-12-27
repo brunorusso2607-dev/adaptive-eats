@@ -1,5 +1,5 @@
 import { AlertTriangle, ShieldCheck } from "lucide-react";
-import { useIngredientConflictCheck, type ConflictType } from "@/hooks/useIngredientConflictCheck";
+import { useIntoleranceWarning, type ConflictType } from "@/hooks/useIntoleranceWarning";
 import { useMemo } from "react";
 
 interface Ingredient {
@@ -37,7 +37,7 @@ export default function MealSubstanceBadges({
   userProfile,
   compact = false 
 }: MealSubstanceBadgesProps) {
-  const { checkConflict } = useIngredientConflictCheck(userProfile);
+  const { checkConflict } = useIntoleranceWarning();
   
   // Check if user has any restrictions configured
   const hasUserRestrictions = useMemo(() => {

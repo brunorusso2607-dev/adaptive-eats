@@ -8,7 +8,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { ConflictType } from "@/hooks/useIngredientConflictCheck";
+import { ConflictType } from "@/hooks/useIntoleranceWarning";
 
 interface IngredientConflictDialogProps {
   open: boolean;

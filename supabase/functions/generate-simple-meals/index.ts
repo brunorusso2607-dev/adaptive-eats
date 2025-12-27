@@ -1307,7 +1307,7 @@ GERE AS ${quantity} RECEITAS AGORA:`;
 
     console.log(`[generate-simple-meals] Chamando API Gemini 2.5 Flash com country: ${countryCode}, category: ${categoryLabel}`);
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-05-20:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",

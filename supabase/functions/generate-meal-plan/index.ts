@@ -186,6 +186,143 @@ function normalizeMealType(mealType: string): string {
   return normalizations[normalized] || normalized;
 }
 
+// Extract meal types from customMealTimes (including extras)
+interface ExtraMeal {
+  id: string;
+  name: string;
+  time: string;
+}
+
+interface CustomMealTimesWithExtras {
+  [key: string]: string | ExtraMeal[] | undefined;
+  extras?: ExtraMeal[];
+}
+
+// Get all meal types from customMealTimes or use defaults
+function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimesWithExtras | null): string[] {
+  const defaultMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  
+  if (!customMealTimes || typeof customMealTimes !== 'object') {
+    return defaultMealTypes;
+  }
+  
+  const mealTypes: string[] = [];
+  
+  // Add standard meal types that have times defined
+  for (const [key, value] of Object.entries(customMealTimes)) {
+    if (key === 'extras') continue; // Handle extras separately
+    if (typeof value === 'string' && value) {
+      mealTypes.push(key);
+    }
+  }
+  
+  // If no standard types found, use defaults
+  if (mealTypes.length === 0) {
+    mealTypes.push(...defaultMealTypes);
+  }
+  
+  // Add extras
+  const extras = customMealTimes.extras;
+  if (Array.isArray(extras)) {
+    for (const extra of extras) {
+      if (extra.id && extra.time) {
+        mealTypes.push(extra.id);
+      }
+    }
+  }
+  
+  logStep("Extracted meal types from customMealTimes", { mealTypes, hasExtras: Array.isArray(extras) && extras.length > 0 });
+  
+  return mealTypes;
+}
+
+// Calculate calories per meal dynamically based on meal count
+function calculateCaloriesPerMeal(dailyCalories: number, mealTypes: string[]): Record<string, number> {
+  const count = mealTypes.length;
+  const caloriesPerMeal: Record<string, number> = {};
+  
+  // Base distribution for standard meals
+  const baseDistribution: Record<string, number> = {
+    cafe_manha: 0.25,
+    almoco: 0.30,
+    lanche: 0.15,
+    jantar: 0.25,
+    ceia: 0.05,
+  };
+  
+  // Calculate how much is already allocated to standard meals
+  let allocatedPercentage = 0;
+  const standardMeals: string[] = [];
+  const extraMeals: string[] = [];
+  
+  for (const mealType of mealTypes) {
+    if (baseDistribution[mealType] !== undefined) {
+      standardMeals.push(mealType);
+      allocatedPercentage += baseDistribution[mealType];
+    } else {
+      extraMeals.push(mealType);
+    }
+  }
+  
+  // Distribute remaining percentage to extra meals
+  const remainingPercentage = Math.max(0, 1 - allocatedPercentage);
+  const percentagePerExtra = extraMeals.length > 0 ? remainingPercentage / extraMeals.length : 0;
+  
+  // If we have extras, we need to rebalance - take a bit from each standard meal
+  let rebalanceFactor = 1;
+  if (extraMeals.length > 0 && allocatedPercentage >= 1) {
+    // Reduce standard meals by 10% each to make room for extras
+    const reductionPerMeal = 0.08;
+    const totalReduction = standardMeals.length * reductionPerMeal;
+    rebalanceFactor = 1 - reductionPerMeal;
+    const percentageForExtras = totalReduction / extraMeals.length;
+    
+    // Assign to standard meals (reduced)
+    for (const mealType of standardMeals) {
+      caloriesPerMeal[mealType] = Math.round(dailyCalories * baseDistribution[mealType] * rebalanceFactor);
+    }
+    
+    // Assign to extra meals
+    for (const mealType of extraMeals) {
+      caloriesPerMeal[mealType] = Math.round(dailyCalories * percentageForExtras);
+    }
+  } else {
+    // No rebalancing needed
+    for (const mealType of standardMeals) {
+      caloriesPerMeal[mealType] = Math.round(dailyCalories * baseDistribution[mealType]);
+    }
+    
+    for (const mealType of extraMeals) {
+      caloriesPerMeal[mealType] = Math.round(dailyCalories * percentagePerExtra);
+    }
+  }
+  
+  logStep("Calculated calories per meal", { count, caloriesPerMeal });
+  
+  return caloriesPerMeal;
+}
+
+// Get label for meal type (for prompts)
+function getMealTypeLabel(mealType: string, customMealTimes?: CustomMealTimesWithExtras | null): string {
+  const standardLabels: Record<string, string> = {
+    cafe_manha: "Café da Manhã",
+    almoco: "Almoço",
+    lanche: "Lanche",
+    jantar: "Jantar",
+    ceia: "Ceia",
+  };
+  
+  // Check if it's an extra meal
+  if (customMealTimes?.extras && Array.isArray(customMealTimes.extras)) {
+    const extra = customMealTimes.extras.find((e: ExtraMeal) => e.id === mealType);
+    if (extra) {
+      return extra.name;
+    }
+  }
+  
+  return standardLabels[mealType] || mealType;
+}
+
 // Function to validate and complete missing meals
 async function validateAndCompleteMeals(
   mealPlanData: any,
@@ -193,19 +330,15 @@ async function validateAndCompleteMeals(
   macros: { dailyCalories: number },
   daysCount: number,
   apiKey: string,
-  userId?: string
+  userId?: string,
+  expectedMealTypes?: string[],
+  customMealTimes?: CustomMealTimesWithExtras | null
 ): Promise<any> {
-  // Standard meal types
-  const expectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  // Use provided meal types or defaults
+  const mealTypes = expectedMealTypes || ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
-  // Target calories per meal
-  const caloriesPerMeal: Record<string, number> = {
-    cafe_manha: Math.round(macros.dailyCalories * 0.25),
-    almoco: Math.round(macros.dailyCalories * 0.30),
-    lanche: Math.round(macros.dailyCalories * 0.15),
-    jantar: Math.round(macros.dailyCalories * 0.25),
-    ceia: Math.round(macros.dailyCalories * 0.05),
-  };
+  // Calculate calories dynamically based on meal count
+  const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, mealTypes);
 
   let missingMealsCount = 0;
   let completedMealsCount = 0;
@@ -229,10 +362,16 @@ async function validateAndCompleteMeals(
     if (!day.meals) day.meals = [];
 
     // Normalize meal types first (fix AI inconsistencies like lanche_tarde -> lanche)
-    day.meals = day.meals.map((meal: any) => ({
-      ...meal,
-      meal_type: normalizeMealType(meal.meal_type)
-    }));
+    // Only normalize standard types, leave extras as-is
+    const standardTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+    day.meals = day.meals.map((meal: any) => {
+      const normalized = normalizeMealType(meal.meal_type);
+      // Only apply normalization if it's a standard type
+      if (standardTypes.includes(normalized) || mealTypes.includes(meal.meal_type)) {
+        return { ...meal, meal_type: normalized };
+      }
+      return meal;
+    });
 
     // Remove duplicate meal types (keep first occurrence)
     const seenMealTypes = new Set<string>();
@@ -248,7 +387,7 @@ async function validateAndCompleteMeals(
     const existingMealTypes = day.meals.map((m: any) => m.meal_type);
 
     // Find missing meal types
-    const missingMealTypes = expectedMealTypes.filter(
+    const missingMealTypes = mealTypes.filter(
       (mealType) => !existingMealTypes.includes(mealType)
     );
 
@@ -258,12 +397,17 @@ async function validateAndCompleteMeals(
 
       // Generate missing meals sequentially (one at a time to respect rate limits)
       for (const mealType of missingMealTypes) {
+        const mealLabel = getMealTypeLabel(mealType, customMealTimes);
         const meal = await generateSingleMeal(profile, mealType, caloriesPerMeal[mealType] || 400, apiKey, userId);
         
         if (meal) {
+          // Use proper label for recipe naming if it's an extra
+          if (!standardTypes.includes(mealType) && mealLabel) {
+            meal.recipe_name = meal.recipe_name || `${mealLabel} Leve`;
+          }
           day.meals.push(meal);
           completedMealsCount++;
-          logStep(`Completed missing meal`, { dayIndex, mealType: meal.meal_type });
+          logStep(`Completed missing meal`, { dayIndex, mealType: meal.meal_type, label: mealLabel });
         }
         
         // Delay between each meal generation to avoid rate limits
@@ -271,17 +415,22 @@ async function validateAndCompleteMeals(
       }
     }
 
-    // Sort meals by meal type order
-    const mealOrder = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+    // Sort meals by meal type order (standard first, then extras by time)
     day.meals.sort((a: any, b: any) => {
-      return mealOrder.indexOf(a.meal_type) - mealOrder.indexOf(b.meal_type);
+      const orderA = mealTypes.indexOf(a.meal_type);
+      const orderB = mealTypes.indexOf(b.meal_type);
+      if (orderA === -1 && orderB === -1) return 0;
+      if (orderA === -1) return 1;
+      if (orderB === -1) return -1;
+      return orderA - orderB;
     });
   }
 
   logStep("Validation complete", { 
     totalMissing: missingMealsCount, 
     completed: completedMealsCount,
-    stillMissing: missingMealsCount - completedMealsCount
+    stillMissing: missingMealsCount - completedMealsCount,
+    expectedMealTypes: mealTypes
   });
 
   return mealPlanData;
@@ -368,23 +517,32 @@ async function generateSingleDay(
   previousRecipes: string[],
   apiKey: string,
   supabase?: any,
-  userId?: string
+  userId?: string,
+  mealTypes?: string[],
+  customMealTimes?: CustomMealTimesWithExtras | null
 ): Promise<any | null> {
   const dayName = DAY_NAMES[dayIndex % 7];
-  const mealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  const targetMealTypes = mealTypes || ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
   
-  // Tenta buscar do pool primeiro
+  // Calculate calories dynamically
+  const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, targetMealTypes);
+  
+  // Tenta buscar do pool primeiro (only for standard meal types)
+  const standardTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
+  
   let poolMeals = new Map<string, any>();
-  if (supabase) {
-    poolMeals = await getMealsFromPool(supabase, profile, mealTypes);
+  if (supabase && standardMealsToFetch.length > 0) {
+    poolMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch);
     logStep(`Pool results for day ${dayIndex}`, { 
       foundInPool: poolMeals.size, 
       meals: Array.from(poolMeals.keys()) 
     });
   }
   
-  // Se encontrou todas as refeições no pool, retorna direto
-  if (poolMeals.size === mealTypes.length) {
+  // Se encontrou todas as refeições no pool, retorna direto (only if no extras)
+  const extraMealTypes = targetMealTypes.filter(t => !standardTypes.includes(t));
+  if (poolMeals.size === standardMealsToFetch.length && extraMealTypes.length === 0) {
     logStep(`Day ${dayIndex} fully from pool`);
     return {
       day_index: dayIndex,
@@ -437,7 +595,7 @@ async function generateSingleDay(
       model: "gemini-2.5-flash-lite",
       ...dayUsage,
       userId,
-      metadata: { type: "full_day", dayIndex }
+      metadata: { type: "full_day", dayIndex, mealTypesCount: targetMealTypes.length }
     });
     
     const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
@@ -464,25 +622,26 @@ async function generateSingleDay(
     const aiMeals = dayData.meals || [];
     const finalMeals: any[] = [];
     
-    for (const mealType of mealTypes) {
-      // Prioriza pool
+    for (const mealType of targetMealTypes) {
+      // Prioriza pool (only for standard types)
       if (poolMeals.has(mealType)) {
         finalMeals.push(poolMeals.get(mealType));
       } else {
         // Usa a receita gerada pela IA
         const aiMeal = aiMeals.find((m: any) => 
           m.meal_type === mealType || 
-          m.meal_type === mealType.replace("_", " ")
+          m.meal_type === mealType.replace("_", " ") ||
+          normalizeMealType(m.meal_type) === mealType
         );
         if (aiMeal) {
-          finalMeals.push({ ...aiMeal, from_pool: false });
+          finalMeals.push({ ...aiMeal, meal_type: mealType, from_pool: false });
         }
       }
     }
     
-    // Salva as receitas geradas pela IA no pool
+    // Salva as receitas geradas pela IA no pool (only standard types)
     if (supabase) {
-      const newMeals = finalMeals.filter(m => !m.from_pool);
+      const newMeals = finalMeals.filter(m => !m.from_pool && standardTypes.includes(m.meal_type));
       if (newMeals.length > 0) {
         await saveMealsToPool(supabase, newMeals, profile);
         logStep(`Saved ${newMeals.length} new meals to pool`);
@@ -492,7 +651,8 @@ async function generateSingleDay(
     logStep(`Day ${dayIndex} generated`, { 
       fromPool: poolMeals.size, 
       fromAI: finalMeals.length - poolMeals.size,
-      total: finalMeals.length 
+      total: finalMeals.length,
+      mealTypes: targetMealTypes
     });
     
     return {
@@ -615,6 +775,12 @@ serve(async (req) => {
     logStep("Macros calculated", macros);
 
     // ========================================
+    // EXTRACT MEAL TYPES FROM CUSTOM MEAL TIMES
+    // ========================================
+    const mealTypesToGenerate = getMealTypesFromCustomTimes(customMealTimes as CustomMealTimesWithExtras | null);
+    logStep("Meal types to generate", { mealTypes: mealTypesToGenerate, count: mealTypesToGenerate.length });
+    
+    // ========================================
     // GERAR DIAS UM A UM PARA EVITAR TRUNCAMENTO
     // ========================================
     logStep("Generating days one by one with Flash-Lite");
@@ -632,7 +798,9 @@ serve(async (req) => {
         usedRecipes,
         GOOGLE_AI_API_KEY,
         supabaseClient, // Passa o cliente para buscar do pool
-        user.id // Passa o userId para logging
+        user.id, // Passa o userId para logging
+        mealTypesToGenerate, // Pass dynamic meal types
+        customMealTimes as CustomMealTimesWithExtras | null
       );
       
       if (dayData && dayData.meals) {
@@ -668,7 +836,9 @@ serve(async (req) => {
       macros,
       daysCount,
       GOOGLE_AI_API_KEY,
-      user.id
+      user.id,
+      mealTypesToGenerate, // Pass dynamic meal types
+      customMealTimes as CustomMealTimesWithExtras | null
     );
 
     logStep("Meal plan validated and completed");
@@ -691,6 +861,9 @@ serve(async (req) => {
     if (validationSummary.issues.length > 0) {
       logStep("Attempting to regenerate invalid meals", { count: validationSummary.issues.length });
       
+      // Use dynamic calories calculation
+      const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, mealTypesToGenerate);
+      
       for (const issue of validationSummary.issues) {
         // Encontra o dia e a refeição correspondente
         const day = mealPlanData.days[issue.dayIndex];
@@ -701,15 +874,6 @@ serve(async (req) => {
         );
         
         if (mealIndex === -1) continue;
-        
-        // Regenera a refeição
-        const caloriesPerMeal: Record<string, number> = {
-          cafe_manha: Math.round(macros.dailyCalories * 0.25),
-          almoco: Math.round(macros.dailyCalories * 0.30),
-          lanche: Math.round(macros.dailyCalories * 0.15),
-          jantar: Math.round(macros.dailyCalories * 0.25),
-          ceia: Math.round(macros.dailyCalories * 0.05),
-        };
         
         const newMeal = await generateSingleMeal(
           profile as UserProfile,

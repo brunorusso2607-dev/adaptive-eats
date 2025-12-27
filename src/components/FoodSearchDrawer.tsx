@@ -3,7 +3,7 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangle } from "lucide-react";
+import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
@@ -683,9 +683,10 @@ export default function FoodSearchDrawer({
                             </div>
                             <button
                               onClick={() => removeFood(food.id)}
-                              className="text-muted-foreground hover:text-destructive transition-colors"
+                              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                              title="Remover alimento"
                             >
-                              <X className="w-4 h-4" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           </div>
 

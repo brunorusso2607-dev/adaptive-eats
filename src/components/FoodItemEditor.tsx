@@ -44,24 +44,93 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
   const [editedFood, setEditedFood] = useState<FoodItem>(food);
   const [originalPortion, setOriginalPortion] = useState<number | null>(null);
 
-  // Extract numeric value from portion string (e.g., "200g" -> 200, "1 xícara (150g)" -> 150)
-  const extractPortionNumber = (portion: string): number | null => {
-    // Try to find a number followed by 'g' first (most common)
-    const gramsMatch = portion.match(/(\d+(?:[.,]\d+)?)\s*g/i);
-    if (gramsMatch) {
-      return parseFloat(gramsMatch[1].replace(',', '.'));
+  // Approximate gram equivalents for common units
+  const unitToGrams: Record<string, number> = {
+    // Volume units (approximate for average food density)
+    'ml': 1,
+    'l': 1000,
+    'litro': 1000,
+    'litros': 1000,
+    // Spoons
+    'colher de sopa': 15,
+    'colheres de sopa': 15,
+    'cs': 15,
+    'colher de chá': 5,
+    'colheres de chá': 5,
+    'cc': 5,
+    'colher de sobremesa': 10,
+    'colheres de sobremesa': 10,
+    // Cups
+    'xícara': 240,
+    'xícaras': 240,
+    'xicara': 240,
+    'xicaras': 240,
+    'copo': 200,
+    'copos': 200,
+    // Portions
+    'fatia': 30,
+    'fatias': 30,
+    'pedaço': 50,
+    'pedaços': 50,
+    'porção': 100,
+    'porções': 100,
+    'unidade': 80,
+    'unidades': 80,
+    'un': 80,
+    // Small items
+    'ovo': 50,
+    'ovos': 50,
+    'dente': 3,
+    'dentes': 3,
+    // Grams (base)
+    'g': 1,
+    'gr': 1,
+    'grama': 1,
+    'gramas': 1,
+    'kg': 1000,
+    'quilo': 1000,
+    'quilos': 1000,
+  };
+
+  // Extract numeric value and convert to grams equivalent
+  const extractPortionInGrams = (portion: string): number | null => {
+    const lowerPortion = portion.toLowerCase().trim();
+    
+    // Try to match: number + unit (e.g., "200g", "2 xícaras", "1 colher de sopa")
+    for (const [unit, gramsPerUnit] of Object.entries(unitToGrams)) {
+      // Match patterns like "2 xícaras", "200g", "1/2 copo"
+      const patterns = [
+        new RegExp(`(\\d+(?:[.,]\\d+)?)\\s*${unit}\\b`, 'i'),
+        new RegExp(`(\\d+)\\s*/\\s*(\\d+)\\s*${unit}\\b`, 'i'), // fractions like 1/2
+      ];
+      
+      for (const pattern of patterns) {
+        const match = lowerPortion.match(pattern);
+        if (match) {
+          if (match[2]) {
+            // Fraction (e.g., 1/2)
+            const value = parseFloat(match[1]) / parseFloat(match[2]);
+            return value * gramsPerUnit;
+          } else {
+            const value = parseFloat(match[1].replace(',', '.'));
+            return value * gramsPerUnit;
+          }
+        }
+      }
     }
-    // Otherwise try to find any number
-    const anyNumberMatch = portion.match(/(\d+(?:[.,]\d+)?)/);
-    if (anyNumberMatch) {
-      return parseFloat(anyNumberMatch[1].replace(',', '.'));
+    
+    // Fallback: try to find any number and assume grams
+    const anyNumber = lowerPortion.match(/(\d+(?:[.,]\d+)?)/);
+    if (anyNumber) {
+      return parseFloat(anyNumber[1].replace(',', '.'));
     }
+    
     return null;
   };
 
   // Handle portion change with proportional recalculation
   const handlePortionChange = (newPortionText: string) => {
-    const newPortionValue = extractPortionNumber(newPortionText);
+    const newPortionValue = extractPortionInGrams(newPortionText);
     
     // If we have both old and new numeric values, recalculate proportionally
     if (originalPortion && newPortionValue && originalPortion > 0 && newPortionValue > 0) {
@@ -100,7 +169,7 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
 
   const startEditing = () => {
     setEditedFood(food);
-    setOriginalPortion(extractPortionNumber(food.porcao_estimada));
+    setOriginalPortion(extractPortionInGrams(food.porcao_estimada));
     setIsEditing(true);
   };
 

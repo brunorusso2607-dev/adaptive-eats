@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.bulk-generate-meals]
 verify_jwt = false
+
+[functions.validate-food-ai]
+verify_jwt = false

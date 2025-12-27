@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Plus, Sparkles, AlertTriangle, ShieldAlert } from "lucide-react";
+import { Loader2, Plus, Sparkles, AlertTriangle, ShieldAlert, Check, X, Wand2 } from "lucide-react";
 import { z } from "zod";
 import { suggestServingByName, type ServingSuggestion } from "@/lib/servingSuggestion";
 import { checkUserIntoleranceConflict, getIntoleranceLabel } from "@/lib/intoleranceDetection";
@@ -49,6 +49,25 @@ const foodSchema = z.object({
   defaultServingSize: z.number().min(1, "Porção deve ser maior que 0").max(5000, "Valor muito alto"),
   servingUnit: z.enum(["g", "ml", "un", "fatia"]),
 });
+
+interface AIValidationResult {
+  isValid: boolean;
+  name?: string;
+  confidence?: string;
+  portion?: {
+    size: number;
+    unit: string;
+    description: string;
+  };
+  nutrition?: {
+    calories: number;
+    protein: number;
+    carbs: number;
+    fat: number;
+  };
+  reason?: string;
+  error?: string;
+}
 
 interface ManualFoodModalProps {
   open: boolean;
@@ -84,6 +103,12 @@ export default function ManualFoodModal({
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [userProfile, setUserProfile] = useState<{ intolerances: string[] | null } | null>(null);
+  
+  // AI auto-fill states
+  const [isValidatingAI, setIsValidatingAI] = useState(false);
+  const [aiValidation, setAiValidation] = useState<AIValidationResult | null>(null);
+  const [aiApplied, setAiApplied] = useState(false);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
   
   // AI intolerance conflict dialog
   const [intoleranceDialog, setIntoleranceDialog] = useState<{
@@ -130,6 +155,49 @@ export default function ManualFoodModal({
     }
   }, [open]);
 
+  // AI validation when name changes (debounced)
+  useEffect(() => {
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+
+    // Reset AI validation state when name changes
+    setAiValidation(null);
+    setAiApplied(false);
+
+    if (name.length < 3) {
+      return;
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      setIsValidatingAI(true);
+      
+      try {
+        const { data, error } = await supabase.functions.invoke('validate-food-ai', {
+          body: { foodName: name }
+        });
+
+        if (error) {
+          console.error("Erro na validação de IA:", error);
+          setAiValidation(null);
+        } else {
+          setAiValidation(data);
+        }
+      } catch (err) {
+        console.error("Erro ao chamar validação de IA:", err);
+        setAiValidation(null);
+      } finally {
+        setIsValidatingAI(false);
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, [name]);
+
   // Auto-sugestão de porção baseada no nome
   useEffect(() => {
     if (name.length >= 3) {
@@ -139,6 +207,28 @@ export default function ManualFoodModal({
       setSuggestion(null);
     }
   }, [name]);
+
+  const applyAISuggestion = () => {
+    if (aiValidation?.isValid && aiValidation.nutrition && aiValidation.portion) {
+      setCalories(aiValidation.nutrition.calories.toString());
+      setProtein(aiValidation.nutrition.protein.toString());
+      setCarbs(aiValidation.nutrition.carbs.toString());
+      setFat(aiValidation.nutrition.fat.toString());
+      setDefaultServingSize(aiValidation.portion.size.toString());
+      
+      const unit = aiValidation.portion.unit;
+      if (unit === 'g' || unit === 'ml' || unit === 'un' || unit === 'fatia') {
+        setServingUnit(unit);
+      }
+      
+      if (aiValidation.name) {
+        setName(aiValidation.name);
+      }
+      
+      setAiApplied(true);
+      toast.success("Valores nutricionais preenchidos pela IA!");
+    }
+  };
 
   const applySuggestion = () => {
     if (suggestion) {
@@ -194,6 +284,8 @@ export default function ManualFoodModal({
     setSuggestion(null);
     setErrors({});
     setPendingFoodData(null);
+    setAiValidation(null);
+    setAiApplied(false);
   };
 
   // Save food to database
@@ -359,20 +451,79 @@ export default function ManualFoodModal({
         <div className="space-y-4 py-4">
           <div className="space-y-2">
             <Label htmlFor="food-name">Nome do Alimento</Label>
-            <Input
-              id="food-name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Ex: Big Tasty McDonald's"
-              className={errors.name ? "border-destructive" : ""}
-            />
+            <div className="relative">
+              <Input
+                id="food-name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Ex: Big Tasty McDonald's"
+                className={`${errors.name ? "border-destructive" : ""} pr-10`}
+              />
+              {/* AI validation indicator */}
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                {isValidatingAI && (
+                  <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                )}
+                {!isValidatingAI && aiValidation?.isValid && (
+                  <Check className="w-4 h-4 text-green-500" />
+                )}
+                {!isValidatingAI && aiValidation && !aiValidation.isValid && (
+                  <X className="w-4 h-4 text-destructive" />
+                )}
+              </div>
+            </div>
             {errors.name && (
               <p className="text-xs text-destructive">{errors.name}</p>
             )}
+            
+            {/* AI validation feedback */}
+            {!isValidatingAI && aiValidation && !aiValidation.isValid && (
+              <p className="text-xs text-destructive flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />
+                {aiValidation.reason || "Não parece ser um alimento válido"}
+              </p>
+            )}
           </div>
 
+          {/* AI auto-fill suggestion */}
+          {aiValidation?.isValid && aiValidation.nutrition && !aiApplied && (
+            <div className="flex items-center justify-between p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center gap-2">
+                <Wand2 className="w-4 h-4 text-green-600" />
+                <div className="text-sm">
+                  <span className="text-muted-foreground">IA encontrou: </span>
+                  <span className="font-medium text-green-700 dark:text-green-400">
+                    {aiValidation.name || name}
+                  </span>
+                  <span className="text-xs text-muted-foreground ml-1">
+                    ({aiValidation.nutrition.calories} kcal)
+                  </span>
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={applyAISuggestion}
+                className="text-green-600 hover:text-green-700 hover:bg-green-500/10"
+              >
+                Preencher
+              </Button>
+            </div>
+          )}
+          
+          {/* Applied indicator */}
+          {aiApplied && (
+            <div className="flex items-center gap-2 p-2 rounded-lg bg-green-500/10 border border-green-500/20">
+              <Check className="w-4 h-4 text-green-600" />
+              <span className="text-sm text-green-700 dark:text-green-400">
+                Valores preenchidos pela IA
+              </span>
+            </div>
+          )}
+
           {/* Sugestão automática de porção */}
-          {suggestion && (
+          {suggestion && !aiApplied && (
             <div className="flex items-center justify-between p-3 rounded-lg bg-primary/10 border border-primary/20">
               <div className="flex items-center gap-2">
                 <Sparkles className="w-4 h-4 text-primary" />

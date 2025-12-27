@@ -256,10 +256,10 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             <div>
               <h4 className="font-semibold text-foreground">Como funciona?</h4>
               <ul className="text-sm text-muted-foreground mt-1 space-y-1">
-                <li>• {remainingDays} dias de receitas serão gerados automaticamente</li>
-                <li>• 4 refeições por dia (café, almoço, lanche, jantar)</li>
-                <li>• Receitas variadas adaptadas ao seu perfil</li>
-                <li>• Um novo plano poderá ser criado no próximo mês</li>
+              <li>• {remainingDays} dias de receitas serão gerados automaticamente</li>
+              <li>• Refeições personalizadas conforme seus horários</li>
+              <li>• Receitas variadas adaptadas ao seu perfil</li>
+              <li>• Um novo plano poderá ser criado no próximo mês</li>
               </ul>
             </div>
           </div>

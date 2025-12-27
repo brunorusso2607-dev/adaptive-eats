@@ -79,11 +79,20 @@ export default function RegisterMealFromPhotoSheet({
       return;
     }
 
+    // Validate food analysis data
+    if (!foodAnalysis?.total_geral) {
+      toast.error("Dados da análise incompletos. Tente analisar a foto novamente.");
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Usuário não autenticado");
+      if (!user) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
 
       // Parse time
       const [hours, minutes] = selectedTime.split(':').map(Number);
@@ -92,9 +101,17 @@ export default function RegisterMealFromPhotoSheet({
 
       // Get meal name from analysis or use meal type label
       const mealName = foodAnalysis.prato_identificado?.nome || 
-        foodAnalysis.alimentos[0]?.item || 
+        foodAnalysis.alimentos?.[0]?.item || 
         mealLabels[selectedMealType] || 
         selectedMealType;
+
+      console.log("[RegisterMealFromPhoto] Saving meal:", {
+        mealType: selectedMealType,
+        mealName,
+        calories: foodAnalysis.total_geral.calorias_totais,
+        consumedAt: consumedAt.toISOString(),
+        itemsCount: foodAnalysis.alimentos?.length || 0,
+      });
 
       // Create meal consumption record
       const { data: consumption, error: consumptionError } = await supabase
@@ -103,46 +120,62 @@ export default function RegisterMealFromPhotoSheet({
           user_id: user.id,
           meal_plan_item_id: null, // Not linked to plan
           followed_plan: false,
-          total_calories: foodAnalysis.total_geral.calorias_totais,
-          total_protein: foodAnalysis.total_geral.proteinas_totais,
-          total_carbs: foodAnalysis.total_geral.carboidratos_totais,
-          total_fat: foodAnalysis.total_geral.gorduras_totais,
+          total_calories: Math.round(foodAnalysis.total_geral.calorias_totais || 0),
+          total_protein: Math.round((foodAnalysis.total_geral.proteinas_totais || 0) * 10) / 10,
+          total_carbs: Math.round((foodAnalysis.total_geral.carboidratos_totais || 0) * 10) / 10,
+          total_fat: Math.round((foodAnalysis.total_geral.gorduras_totais || 0) * 10) / 10,
           consumed_at: consumedAt.toISOString(),
-          source_type: 'photo', // From photo analysis!
-          custom_meal_name: mealName,
+          source_type: 'photo',
+          custom_meal_name: mealName.slice(0, 255), // Limit name length
           meal_time: selectedTime + ':00',
         })
         .select()
         .single();
 
-      if (consumptionError) throw consumptionError;
+      if (consumptionError) {
+        console.error("[RegisterMealFromPhoto] Consumption insert error:", consumptionError);
+        throw new Error(`Erro ao salvar refeição: ${consumptionError.message}`);
+      }
 
       // Insert consumption items
-      if (foodAnalysis.alimentos.length > 0) {
-        const itemsToInsert = foodAnalysis.alimentos.map((item) => ({
-          meal_consumption_id: consumption.id,
-          food_id: null, // Photo analysis doesn't have food_id
-          food_name: item.item,
-          quantity_grams: parseFloat(item.porcao_estimada.replace(/[^\d.]/g, '')) || 100,
-          calories: item.calorias,
-          protein: item.macros.proteinas,
-          carbs: item.macros.carboidratos,
-          fat: item.macros.gorduras,
-        }));
+      if (foodAnalysis.alimentos && foodAnalysis.alimentos.length > 0) {
+        const itemsToInsert = foodAnalysis.alimentos.map((item) => {
+          // Parse quantity safely
+          const quantityStr = item.porcao_estimada || "100g";
+          const quantity = parseFloat(quantityStr.replace(/[^\d.]/g, '')) || 100;
+          
+          return {
+            meal_consumption_id: consumption.id,
+            food_id: null,
+            food_name: (item.item || "Item").slice(0, 255),
+            quantity_grams: Math.max(1, Math.min(quantity, 10000)), // Between 1g and 10kg
+            calories: Math.round(item.calorias || 0),
+            protein: Math.round((item.macros?.proteinas || 0) * 10) / 10,
+            carbs: Math.round((item.macros?.carboidratos || 0) * 10) / 10,
+            fat: Math.round((item.macros?.gorduras || 0) * 10) / 10,
+          };
+        });
+
+        console.log("[RegisterMealFromPhoto] Inserting items:", itemsToInsert.length);
 
         const { error: itemsError } = await supabase
           .from("consumption_items")
           .insert(itemsToInsert);
 
-        if (itemsError) throw itemsError;
+        if (itemsError) {
+          console.error("[RegisterMealFromPhoto] Items insert error:", itemsError);
+          // Don't throw - meal was saved, just items failed
+          toast.warning("Refeição registrada, mas alguns detalhes não foram salvos.");
+        }
       }
 
-      toast.success("Refeição registrada com sucesso! 🎉");
+      toast.success("Refeição registrada com sucesso!");
       handleOpenChange(false);
       onSuccess?.();
-    } catch (error) {
-      console.error("Error saving consumption:", error);
-      toast.error("Erro ao registrar refeição");
+    } catch (error: any) {
+      console.error("[RegisterMealFromPhoto] Error:", error);
+      const message = error?.message || "Erro desconhecido ao registrar refeição";
+      toast.error(message);
     } finally {
       setIsSaving(false);
     }

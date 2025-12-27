@@ -593,27 +593,25 @@ export default function FoodSearchDrawer({
                           disabled={isAnalyzingIntolerance}
                           className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
                         >
-                          <div className="flex items-center gap-2">
-                            {isAnalyzingIntolerance ? (
-                              <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                            ) : (
-                              <Plus className="w-4 h-4 text-primary" />
-                            )}
-                            <span className="text-sm font-medium">{food.name}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {isAnalyzingIntolerance ? (
+                                <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+                              ) : (
+                                <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+                              )}
+                              <span className="text-sm font-medium truncate">{food.name}</span>
+                            </div>
                             {conflict && (
-                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                            )}
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {conflict && (
-                              <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                                {conflict.restrictionLabel.replace('intolerante a ', '')}
+                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                                <AlertTriangle className="w-3 h-3" />
+                                Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
                               </span>
                             )}
-                            <span className="text-xs text-muted-foreground">
-                              {food.calories_per_100g} kcal/100g
-                            </span>
                           </div>
+                          <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
+                            {food.calories_per_100g} kcal/100g
+                          </span>
                         </button>
                       );
                     })}
@@ -633,36 +631,24 @@ export default function FoodSearchDrawer({
                               <button
                                 key={`ai-${idx}`}
                                 onClick={() => handleAddAISuggestion(suggestion)}
-                                className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left space-y-1"
+                                className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left"
                               >
-                                <div className="flex items-center justify-between">
-                                  <div className="flex items-center gap-2">
-                                    <Plus className="w-4 h-4 text-primary" />
-                                    <span className="text-sm font-medium">{suggestion.name}</span>
-                                    {conflict && (
-                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                                    )}
-                                  </div>
-                                  <div className="flex items-center gap-2">
-                                    {conflict && (
-                                      <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                                        {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                      </span>
-                                    )}
-                                    <span className={cn("text-xs px-2 py-0.5 rounded-full", getConfidenceBadge(suggestion.confidence))}>
-                                      {suggestion.confidence}
-                                    </span>
-                                  </div>
+                                <div className="flex items-center gap-2">
+                                  <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+                                  <span className="text-sm font-medium">{suggestion.name}</span>
                                 </div>
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6">
+                                {conflict && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                                    <AlertTriangle className="w-3 h-3" />
+                                    Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                  </span>
+                                )}
+                                <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6 mt-1">
                                   <span>{suggestion.portion_description}</span>
                                   <span className="flex items-center gap-1">
                                     <Flame className="w-3 h-3 text-orange-500" />
                                     {suggestion.calories}kcal
                                   </span>
-                                  <span>P: {suggestion.protein}g</span>
-                                  <span>C: {suggestion.carbs}g</span>
-                                  <span>G: {suggestion.fat}g</span>
                                 </div>
                               </button>
                             );

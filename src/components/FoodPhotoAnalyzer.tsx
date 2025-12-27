@@ -309,6 +309,13 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           analyzeImageWithBase64(base64);
         }, 100);
       }
+      
+      // Auto-analyze for label mode - analyze immediately after photo
+      if (mode === "label") {
+        setTimeout(() => {
+          analyzeLabelWithBase64(base64, labelStep);
+        }, 100);
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -371,6 +378,91 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     } catch (error) {
       console.error("Error analyzing image:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao analisar imagem");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  };
+
+  // Separate function to analyze label with a specific base64 image
+  const analyzeLabelWithBase64 = async (base64Image: string, step: LabelStep) => {
+    setIsAnalyzing(true);
+    setNotFoodError(null);
+    setCategoryError(null);
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("analyze-label-photo", {
+        body: { 
+          imageBase64: base64Image,
+          step: step 
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      // Handle rate limit from backend
+      if (data.rateLimited) {
+        toast.warning(data.error || "Limite atingido. Aguarde 30 segundos.", {
+          duration: 5000,
+        });
+        return;
+      }
+
+      // Handle needsBackPhoto from backend (intelligent detection)
+      if (data.needsBackPhoto) {
+        console.log("[FoodPhotoAnalyzer] Backend requested second photo", data);
+        
+        // Store dynamic reason from the AI FIRST
+        const analysisData = data.analysis || {};
+        const reason = {
+          mensagem: analysisData.mensagem_segunda_foto || data.message || "Para sua segurança, tire uma foto da tabela de ingredientes.",
+          motivo: analysisData.motivo_duvida || "Não foi possível confirmar todos os ingredientes",
+          intolerancia: analysisData.intolerancia_em_duvida || "",
+          produto: analysisData.produto_identificado || "produto"
+        };
+        
+        // Set all states for the back photo step
+        // IMPORTANT: Clear perfilAplicado to avoid showing preliminary "VERIFICAR" alerts
+        setPerfilAplicado(null);
+        setBackPhotoReason(reason);
+        setFrontImage(base64Image);
+        setNeedsBackPhoto(true);
+        setLabelStep("back");
+        setImagePreview(null);
+        
+        toast.info(reason.mensagem, {
+          duration: 5000,
+        });
+        return;
+      }
+
+      if (data.qualityIssue) {
+        setNotFoodError(data.message || "A imagem está difícil de ler. Tente uma foto mais nítida.");
+        return;
+      }
+
+      // Handle category validation errors with dynamic feedback
+      if (data.categoryError) {
+        setCategoryError({
+          categoria: data.categoria_detectada || "desconhecido",
+          descricao: data.descricao_objeto || "",
+          mensagem: data.message || "Não foi possível identificar um produto alimentício."
+        });
+        return;
+      }
+
+      if (data.notLabel) {
+        setNotFoodError(data.message || "Não foi possível identificar um rótulo de ingredientes na imagem.");
+        return;
+      }
+
+      setLabelAnalysis(data.analysis);
+      setPerfilAplicado(data.perfil_usuario_aplicado || null);
+      setLabelStep("complete");
+      toast.success("Verificação concluída!");
+    } catch (error) {
+      console.error("Error analyzing label:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao analisar rótulo");
     } finally {
       setIsAnalyzing(false);
     }
@@ -1002,26 +1094,19 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   </div>
                 )}
                 
-                {/* For label mode: keep the button for manual trigger */}
-                {mode === "label" && (
-                  <Button
-                    onClick={analyzeImage}
-                    disabled={isAnalyzing}
-                    className="w-full gradient-primary"
-                    size="lg"
-                  >
-                    {isAnalyzing ? (
-                      <>
-                        <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                        Verificando ingredientes...
-                      </>
-                    ) : (
-                      <>
-                        <ScanBarcode className="w-5 h-5 mr-2" />
-                        Verificar Ingredientes
-                      </>
-                    )}
-                  </Button>
+                {/* For label mode: show loading state (analysis starts automatically) */}
+                {mode === "label" && isAnalyzing && (
+                  <div className="flex flex-col items-center gap-3 py-4">
+                    <Loader2 className="w-10 h-10 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Verificando ingredientes...</p>
+                  </div>
+                )}
+                
+                {/* For label mode: show nothing if not analyzing (shouldn't happen, but fallback) */}
+                {mode === "label" && !isAnalyzing && (
+                  <div className="flex flex-col items-center gap-3 py-2">
+                    <p className="text-sm text-muted-foreground">Preparando verificação...</p>
+                  </div>
                 )}
               </CardContent>
             )}

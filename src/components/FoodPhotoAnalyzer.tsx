@@ -1428,30 +1428,45 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               {/* Legal Disclaimer */}
               <LegalDisclaimer className="mt-2" />
 
-              {/* Register Meal Button - Primary Action */}
-              <Button
-                onClick={() => setRegisterMealOpen(true)}
-                className="w-full gradient-primary"
-                size="lg"
-              >
-                <UtensilsCrossed className="w-5 h-5 mr-2" />
-                Registrar como Refeição
-              </Button>
-
-              {/* Feedback and Reset buttons */}
-              <div className="flex items-center justify-between">
+              {/* Discrete feedback link */}
+              <div className="flex justify-center">
                 <AnalysisFeedbackButton 
                   analysisType="food" 
                   analysisData={{ foodAnalysis, perfilAplicado, metaDiaria }} 
                 />
-                <Button
-                  variant="outline"
-                  onClick={resetAnalysis}
-                  size="sm"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
-                  Nova Análise
-                </Button>
+              </div>
+
+              {/* Spacer for fixed footer */}
+              <div className="h-24" />
+
+              {/* Fixed Footer with Calories + Actions */}
+              <div className="fixed bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] z-50">
+                <div className="max-w-lg mx-auto flex items-center gap-3">
+                  {/* Calories summary */}
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
+                    <Flame className="w-4 h-4 text-orange-500" />
+                    <span className="font-bold text-foreground">{foodAnalysis.total_geral.calorias_totais}</span>
+                    <span className="text-xs text-muted-foreground">kcal</span>
+                  </div>
+
+                  {/* Action buttons */}
+                  <Button
+                    onClick={() => setRegisterMealOpen(true)}
+                    className="flex-1 gradient-primary"
+                  >
+                    <Check className="w-4 h-4 mr-2" />
+                    Registrar
+                  </Button>
+
+                  <Button
+                    variant="outline"
+                    onClick={resetAnalysis}
+                    size="icon"
+                    className="flex-shrink-0"
+                  >
+                    <RotateCcw className="w-4 h-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Register Meal Sheet */}

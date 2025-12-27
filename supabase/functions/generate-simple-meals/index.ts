@@ -1349,6 +1349,19 @@ GERE AS ${quantity} RECEITAS AGORA:`;
     const aiResponse = await response.json();
     let content = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text || "";
     
+    // Extract usage metadata for token tracking
+    const usageMetadata = aiResponse.usageMetadata || {};
+    const promptTokens = usageMetadata.promptTokenCount || 0;
+    const completionTokens = usageMetadata.candidatesTokenCount || 0;
+    const totalTokens = usageMetadata.totalTokenCount || 0;
+    
+    // Gemini Flash Lite pricing: $0.075/1M input, $0.30/1M output
+    const inputCostPer1M = 0.075;
+    const outputCostPer1M = 0.30;
+    const estimatedCostUsd = (promptTokens * inputCostPer1M / 1000000) + (completionTokens * outputCostPer1M / 1000000);
+    
+    console.log(`[generate-simple-meals] Token usage - Prompt: ${promptTokens}, Completion: ${completionTokens}, Total: ${totalTokens}, Cost: $${estimatedCostUsd.toFixed(6)}`);
+    
     // Clean markdown if present
     content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
     
@@ -1416,6 +1429,32 @@ GERE AS ${quantity} RECEITAS AGORA:`;
       throw new Error(`Erro ao salvar receitas: ${insertError.message}`);
     }
 
+    // Log AI usage to tracking table
+    const executionEndTime = Date.now();
+    const executionTimeMs = executionEndTime - Date.now(); // Will be negative, we need start time
+    
+    try {
+      await supabase.from('ai_usage_logs').insert({
+        function_name: 'generate-simple-meals',
+        model_used: 'gemini-2.0-flash-lite',
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        estimated_cost_usd: estimatedCostUsd,
+        items_generated: insertedData?.length || 0,
+        metadata: {
+          meal_type: selectedMealType.key,
+          category: categoryKey,
+          country_code: countryCode,
+          quantity_requested: quantity,
+        },
+      });
+      console.log(`[generate-simple-meals] ✅ Token usage logged to ai_usage_logs`);
+    } catch (logError) {
+      console.error("[generate-simple-meals] Erro ao salvar log de uso:", logError);
+      // Don't fail the request if logging fails
+    }
+
     console.log(`[generate-simple-meals] ✅ Inseridas ${insertedData?.length || 0} receitas com sucesso`);
 
     return new Response(JSON.stringify({
@@ -1425,6 +1464,12 @@ GERE AS ${quantity} RECEITAS AGORA:`;
       category: categoryLabel,
       country: countryConfig.name,
       recipes: insertedData?.map(r => r.name) || [],
+      usage: {
+        prompt_tokens: promptTokens,
+        completion_tokens: completionTokens,
+        total_tokens: totalTokens,
+        estimated_cost_usd: estimatedCostUsd,
+      }
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

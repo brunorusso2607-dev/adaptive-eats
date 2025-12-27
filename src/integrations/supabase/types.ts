@@ -155,6 +155,48 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_logs: {
+        Row: {
+          completion_tokens: number
+          created_at: string
+          estimated_cost_usd: number | null
+          execution_time_ms: number | null
+          function_name: string
+          id: string
+          items_generated: number | null
+          metadata: Json | null
+          model_used: string
+          prompt_tokens: number
+          total_tokens: number
+        }
+        Insert: {
+          completion_tokens?: number
+          created_at?: string
+          estimated_cost_usd?: number | null
+          execution_time_ms?: number | null
+          function_name: string
+          id?: string
+          items_generated?: number | null
+          metadata?: Json | null
+          model_used: string
+          prompt_tokens?: number
+          total_tokens?: number
+        }
+        Update: {
+          completion_tokens?: number
+          created_at?: string
+          estimated_cost_usd?: number | null
+          execution_time_ms?: number | null
+          function_name?: string
+          id?: string
+          items_generated?: number | null
+          metadata?: Json | null
+          model_used?: string
+          prompt_tokens?: number
+          total_tokens?: number
+        }
+        Relationships: []
+      }
       api_integrations: {
         Row: {
           api_key_encrypted: string | null

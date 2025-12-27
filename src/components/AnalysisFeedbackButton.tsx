@@ -143,18 +143,18 @@ export default function AnalysisFeedbackButton({ analysisType, analysisData }: A
             </p>
           </div>
         ) : (
-          <div className="space-y-4 py-4">
-            <div className="space-y-3">
+          <div className="space-y-3 py-2">
+            <div className="space-y-2">
               <Label className="text-sm font-medium">Tipo de problema *</Label>
               <RadioGroup
                 value={feedbackType || ""}
                 onValueChange={(value) => setFeedbackType(value as FeedbackType)}
-                className="space-y-2"
+                className="space-y-1.5"
               >
                 {feedbackOptions.map((option) => (
                   <div
                     key={option.value}
-                    className={`flex items-start space-x-3 p-3 rounded-lg border transition-colors cursor-pointer ${
+                    className={`flex items-start space-x-2.5 p-2.5 rounded-lg border transition-colors cursor-pointer ${
                       feedbackType === option.value
                         ? "border-primary bg-primary/5"
                         : "border-border hover:border-muted-foreground/30"
@@ -163,10 +163,10 @@ export default function AnalysisFeedbackButton({ analysisType, analysisData }: A
                   >
                     <RadioGroupItem value={option.value} id={option.value} className="mt-0.5" />
                     <div className="flex-1">
-                      <Label htmlFor={option.value} className="font-medium cursor-pointer">
+                      <Label htmlFor={option.value} className="text-sm font-medium cursor-pointer">
                         {option.label}
                       </Label>
-                      <p className="text-xs text-muted-foreground mt-0.5">
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-tight">
                         {option.description}
                       </p>
                     </div>

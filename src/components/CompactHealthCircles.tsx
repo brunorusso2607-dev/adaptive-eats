@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Droplets, Scale, TrendingUp, TrendingDown, Pencil, Target } from "lucide-react";
+import { Droplets, Scale, TrendingUp, TrendingDown, Pencil, Target, CheckCircle2, AlertTriangle, Flame } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWaterConsumption } from "@/hooks/useWaterConsumption";
 import { WaterTracker } from "@/components/WaterTracker";
@@ -12,6 +12,113 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+
+// Caloric analysis helper
+function analyzeCalorieStatus(
+  targetCalories: number,
+  consumedCalories: number,
+  mode: "lose" | "gain" | "maintain"
+): {
+  status: "on_track" | "over" | "under" | "danger";
+  message: string;
+  detail: string;
+  icon: "check" | "warning" | "flame";
+  color: string;
+} {
+  const diff = consumedCalories - targetCalories;
+  const percentage = (consumedCalories / targetCalories) * 100;
+  
+  if (mode === "lose") {
+    // Para emagrecer: precisa estar em déficit
+    if (percentage <= 105 && percentage >= 85) {
+      return {
+        status: "on_track",
+        message: "No caminho certo!",
+        detail: `Déficit adequado de ${Math.abs(diff).toFixed(0)} kcal`,
+        icon: "check",
+        color: "text-emerald-600 dark:text-emerald-400"
+      };
+    } else if (percentage > 105) {
+      return {
+        status: "over",
+        message: "Acima da meta",
+        detail: `Excesso de ${diff.toFixed(0)} kcal hoje`,
+        icon: "warning",
+        color: "text-amber-600 dark:text-amber-400"
+      };
+    } else if (percentage < 70) {
+      return {
+        status: "danger",
+        message: "Consumo muito baixo",
+        detail: "Coma mais para não prejudicar o metabolismo",
+        icon: "warning",
+        color: "text-red-600 dark:text-red-400"
+      };
+    } else {
+      return {
+        status: "under",
+        message: "Déficit forte",
+        detail: `${Math.abs(diff).toFixed(0)} kcal abaixo da meta`,
+        icon: "flame",
+        color: "text-green-600 dark:text-green-400"
+      };
+    }
+  } else if (mode === "gain") {
+    // Para ganhar peso: precisa estar em superávit
+    if (percentage >= 95 && percentage <= 115) {
+      return {
+        status: "on_track",
+        message: "No caminho certo!",
+        detail: `Superávit adequado de ${diff.toFixed(0)} kcal`,
+        icon: "check",
+        color: "text-emerald-600 dark:text-emerald-400"
+      };
+    } else if (percentage < 95) {
+      return {
+        status: "under",
+        message: "Abaixo da meta",
+        detail: `Faltam ${Math.abs(diff).toFixed(0)} kcal para superávit`,
+        icon: "warning",
+        color: "text-amber-600 dark:text-amber-400"
+      };
+    } else {
+      return {
+        status: "over",
+        message: "Superávit excessivo",
+        detail: `${diff.toFixed(0)} kcal acima - pode virar gordura`,
+        icon: "warning",
+        color: "text-amber-600 dark:text-amber-400"
+      };
+    }
+  } else {
+    // Manutenção
+    if (percentage >= 95 && percentage <= 105) {
+      return {
+        status: "on_track",
+        message: "Balanço perfeito!",
+        detail: "Consumo adequado para manter peso",
+        icon: "check",
+        color: "text-emerald-600 dark:text-emerald-400"
+      };
+    } else if (percentage > 105) {
+      return {
+        status: "over",
+        message: "Acima da meta",
+        detail: `Excesso de ${diff.toFixed(0)} kcal hoje`,
+        icon: "warning",
+        color: "text-amber-600 dark:text-amber-400"
+      };
+    } else {
+      return {
+        status: "under",
+        message: "Abaixo da meta",
+        detail: `Faltam ${Math.abs(diff).toFixed(0)} kcal`,
+        icon: "warning",
+        color: "text-amber-600 dark:text-amber-400"
+      };
+    }
+  }
+}
 
 interface WeightData {
   weight_current: number | null;
@@ -267,6 +374,55 @@ export function CompactHealthCircles({
                 mode={calcs.mode}
               />
               
+              {/* Caloric Analysis Card */}
+              {(() => {
+                const analysis = analyzeCalorieStatus(
+                  calcs.targetCalories,
+                  Math.round(dailyConsumption.totalCalories),
+                  calcs.mode
+                );
+                const AnalysisIcon = analysis.icon === "check" 
+                  ? CheckCircle2 
+                  : analysis.icon === "flame" 
+                    ? Flame 
+                    : AlertTriangle;
+                
+                return (
+                  <div className={cn(
+                    "p-4 rounded-xl border",
+                    analysis.status === "on_track" 
+                      ? "bg-emerald-500/5 border-emerald-500/20" 
+                      : analysis.status === "danger"
+                        ? "bg-red-500/5 border-red-500/20"
+                        : "bg-amber-500/5 border-amber-500/20"
+                  )}>
+                    <div className="flex items-start gap-3">
+                      <div className={cn(
+                        "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
+                        analysis.status === "on_track" 
+                          ? "bg-emerald-500/20" 
+                          : analysis.status === "danger"
+                            ? "bg-red-500/20"
+                            : "bg-amber-500/20"
+                      )}>
+                        <AnalysisIcon className={cn("w-5 h-5", analysis.color)} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("font-semibold text-sm", analysis.color)}>
+                          {analysis.message}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {analysis.detail}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-2">
+                          Meta: {calcs.targetCalories} kcal • Consumido: {Math.round(dailyConsumption.totalCalories)} kcal
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Weight Progress Bar */}
               <WeightProgressBar
                 currentWeight={weightData?.weight_current || 0}

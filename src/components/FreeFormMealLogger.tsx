@@ -335,7 +335,8 @@ export default function FreeFormMealLogger({
 
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
-    const numValue = parseFloat(newValue) || 0;
+    // Allow empty/zero during typing - validation happens on Continue
+    const numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
     setSelectedFoods((prev) =>
       prev.map((f) => {
         if (f.id === foodId) {
@@ -345,7 +346,7 @@ export default function FreeFormMealLogger({
           return { ...f, displayQuantity: numValue, quantity: actualGrams };
         }
         return f;
-      }).filter((f) => f.displayQuantity > 0)
+      })
     );
   };
 
@@ -359,7 +360,7 @@ export default function FreeFormMealLogger({
           return { ...f, displayQuantity: Math.max(0, newDisplayQty), quantity: Math.max(0, actualGrams) };
         }
         return f;
-      }).filter((f) => f.displayQuantity > 0)
+      })
     );
   };
 

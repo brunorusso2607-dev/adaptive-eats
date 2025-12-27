@@ -851,6 +851,7 @@ export type Database = {
         Row: {
           completion_percentage: number | null
           created_at: string
+          custom_meal_times: Json | null
           end_date: string
           id: string
           is_active: boolean
@@ -863,6 +864,7 @@ export type Database = {
         Insert: {
           completion_percentage?: number | null
           created_at?: string
+          custom_meal_times?: Json | null
           end_date: string
           id?: string
           is_active?: boolean
@@ -875,6 +877,7 @@ export type Database = {
         Update: {
           completion_percentage?: number | null
           created_at?: string
+          custom_meal_times?: Json | null
           end_date?: string
           id?: string
           is_active?: boolean

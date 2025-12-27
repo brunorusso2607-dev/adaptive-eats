@@ -584,64 +584,47 @@ export default function FoodSearchDrawer({
                 ) : (
                   <div className="p-2 space-y-1">
                     {/* Database results */}
-                    {foods.length > 0 && (
-                      <>
-                        <div className="flex items-center gap-2 px-2 py-1.5 border-b">
-                          <Search className="w-3.5 h-3.5 text-muted-foreground" />
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Resultados do banco
-                          </span>
-                        </div>
-                        {foods.map((food) => {
-                          const conflict = checkFoodConflicts(food.name);
-                          return (
-                            <button
-                              key={food.id}
-                              onClick={() => handleAddFood(food)}
-                              disabled={isAnalyzingIntolerance}
-                              className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
-                            >
-                              <div className="flex items-center gap-2">
-                                {isAnalyzingIntolerance ? (
-                                  <Loader2 className="w-4 h-4 text-primary animate-spin" />
-                                ) : (
-                                  <Plus className="w-4 h-4 text-primary" />
-                                )}
-                                <span className="text-sm font-medium">{food.name}</span>
-                                {conflict && (
-                                  <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2">
-                                {conflict && (
-                                  <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
-                                    {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                  </span>
-                                )}
-                                <span className="text-xs text-muted-foreground">
-                                  {food.calories_per_100g} kcal/100g
-                                </span>
-                              </div>
-                            </button>
-                          );
-                        })}
-                      </>
-                    )}
+                    {foods.map((food) => {
+                      const conflict = checkFoodConflicts(food.name);
+                      return (
+                        <button
+                          key={food.id}
+                          onClick={() => handleAddFood(food)}
+                          disabled={isAnalyzingIntolerance}
+                          className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
+                        >
+                          <div className="flex items-center gap-2">
+                            {isAnalyzingIntolerance ? (
+                              <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                            ) : (
+                              <Plus className="w-4 h-4 text-primary" />
+                            )}
+                            <span className="text-sm font-medium">{food.name}</span>
+                            {conflict && (
+                              <AlertTriangle className="w-3.5 h-3.5 text-amber-500" />
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {conflict && (
+                              <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded">
+                                {conflict.restrictionLabel.replace('intolerante a ', '')}
+                              </span>
+                            )}
+                            <span className="text-xs text-muted-foreground">
+                              {food.calories_per_100g} kcal/100g
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
 
-                    {/* AI suggestions - always show alongside DB results */}
+                    {/* AI suggestions */}
                     {showAISuggestions && (
                       <>
-                        <div className={cn("flex items-center gap-2 px-2 py-1.5 border-b", foods.length > 0 && "mt-2")}>
-                          <Sparkles className="w-3.5 h-3.5 text-primary" />
-                          <span className="text-xs font-medium text-muted-foreground">
-                            Sugestões da IA
-                          </span>
-                        </div>
-
                         {isLoadingAI ? (
                           <div className="p-3 text-center text-muted-foreground text-sm">
                             <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
-                            Identificando variações...
+                            Buscando mais opções...
                           </div>
                         ) : aiSuggestions.length > 0 ? (
                           aiSuggestions.map((suggestion, idx) => {

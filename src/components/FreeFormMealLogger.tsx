@@ -562,46 +562,29 @@ export default function FreeFormMealLogger({
                     ) : (
                       <div className="p-2 space-y-1">
                         {/* Database results */}
-                        {foods.length > 0 && (
-                          <>
-                            <div className="flex items-center gap-2 px-2 py-1.5 border-b">
-                              <Search className="w-3.5 h-3.5 text-muted-foreground" />
-                              <span className="text-xs font-medium text-muted-foreground">
-                                Resultados do banco
-                              </span>
+                        {foods.map((food) => (
+                          <button
+                            key={food.id}
+                            onClick={() => handleAddFood(food)}
+                            className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                          >
+                            <div className="flex items-center gap-2">
+                              <Plus className="w-4 h-4 text-primary" />
+                              <span className="text-sm font-medium">{food.name}</span>
                             </div>
-                            {foods.map((food) => (
-                              <button
-                                key={food.id}
-                                onClick={() => handleAddFood(food)}
-                                className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Plus className="w-4 h-4 text-primary" />
-                                  <span className="text-sm font-medium">{food.name}</span>
-                                </div>
-                                <span className="text-xs text-muted-foreground">
-                                  {food.calories_per_100g} kcal/100g
-                                </span>
-                              </button>
-                            ))}
-                          </>
-                        )}
+                            <span className="text-xs text-muted-foreground">
+                              {food.calories_per_100g} kcal/100g
+                            </span>
+                          </button>
+                        ))}
 
-                        {/* AI suggestions - always show alongside DB results */}
+                        {/* AI suggestions */}
                         {showAISuggestions && (
                           <>
-                            <div className={cn("flex items-center gap-2 px-2 py-1.5 border-b", foods.length > 0 && "mt-2")}>
-                              <Sparkles className="w-3.5 h-3.5 text-primary" />
-                              <span className="text-xs font-medium text-muted-foreground">
-                                Sugestões da IA
-                              </span>
-                            </div>
-
                             {isLoadingAI ? (
                               <div className="p-3 text-center text-muted-foreground text-sm">
                                 <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
-                                Identificando variações...
+                                Buscando mais opções...
                               </div>
                             ) : aiSuggestions.length > 0 ? (
                               aiSuggestions.map((suggestion, idx) => (

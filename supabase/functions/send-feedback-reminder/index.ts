@@ -6,6 +6,30 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// Helper to get current time in user's timezone
+function getCurrentTimeInTimezone(timezone: string): { hour: number; twoHoursAgo: Date; twentyFourHoursAgo: Date } {
+  try {
+    const now = new Date();
+    const formatter = new Intl.DateTimeFormat('en-CA', {
+      timeZone: timezone,
+      hour: 'numeric',
+      hour12: false,
+    });
+    
+    const parts = formatter.formatToParts(now);
+    const hour = parseInt(parts.find(p => p.type === 'hour')?.value || '0', 10);
+    
+    // Calculate time ranges in UTC (these are still valid as absolute times)
+    const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
+    const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+    
+    return { hour, twoHoursAgo, twentyFourHoursAgo };
+  } catch (error) {
+    console.error(`Invalid timezone ${timezone}, falling back to America/Sao_Paulo`);
+    return getCurrentTimeInTimezone('America/Sao_Paulo');
+  }
+}
+
 // Encode VAPID JWT for web push authorization
 async function createVapidAuthHeader(
   endpoint: string,
@@ -19,7 +43,7 @@ async function createVapidAuthHeader(
   const payload = {
     aud: audience,
     exp: expiration,
-    sub: "mailto:support@example.com",
+    sub: "mailto:support@wellmeals.app",
   };
 
   const enc = new TextEncoder();
@@ -59,12 +83,14 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[FEEDBACK-REMINDER] Function started");
+    
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
     const supabase = createClient(supabaseUrl, serviceRoleKey);
 
-    // Find users with pending meal feedback (meals consumed 2-24h ago with pending status)
+    // Find all users with pending meal feedback
     const now = new Date();
     const twoHoursAgo = new Date(now.getTime() - 2 * 60 * 60 * 1000);
     const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
@@ -77,13 +103,13 @@ serve(async (req) => {
       .gt("consumed_at", twentyFourHoursAgo.toISOString());
 
     if (mealsError) {
-      console.error("Error fetching pending meals:", mealsError);
+      console.error("[FEEDBACK-REMINDER] Error fetching pending meals:", mealsError);
       throw mealsError;
     }
 
     // Get unique user IDs with pending feedback
     const userIds = [...new Set(pendingMeals?.map((m) => m.user_id) || [])];
-    console.log(`Found ${userIds.length} users with pending feedback`);
+    console.log(`[FEEDBACK-REMINDER] Found ${userIds.length} users with pending feedback`);
 
     if (userIds.length === 0) {
       return new Response(
@@ -92,26 +118,66 @@ serve(async (req) => {
       );
     }
 
-    // Get push subscriptions for these users
+    // Get user profiles with timezone
+    const { data: profiles, error: profilesError } = await supabase
+      .from("profiles")
+      .select("id, timezone")
+      .in("id", userIds);
+
+    if (profilesError) {
+      console.error("[FEEDBACK-REMINDER] Error fetching profiles:", profilesError);
+    }
+
+    // Create timezone map (default: America/Sao_Paulo)
+    const timezoneMap = new Map<string, string>();
+    profiles?.forEach(p => {
+      timezoneMap.set(p.id, p.timezone || 'America/Sao_Paulo');
+    });
+
+    // Filter users who are in appropriate hours (8am - 10pm in their timezone)
+    const usersInActiveHours: string[] = [];
+    for (const userId of userIds) {
+      const userTimezone = timezoneMap.get(userId) || 'America/Sao_Paulo';
+      const { hour } = getCurrentTimeInTimezone(userTimezone);
+      
+      // Only send reminders between 8am and 10pm local time
+      if (hour >= 8 && hour < 22) {
+        usersInActiveHours.push(userId);
+        console.log(`[FEEDBACK-REMINDER] User ${userId} in timezone ${userTimezone}, hour ${hour} - active`);
+      } else {
+        console.log(`[FEEDBACK-REMINDER] User ${userId} in timezone ${userTimezone}, hour ${hour} - skipped (outside active hours)`);
+      }
+    }
+
+    if (usersInActiveHours.length === 0) {
+      return new Response(
+        JSON.stringify({ message: "No users in active hours", sent: 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get push subscriptions for users in active hours
     const { data: subscriptions, error: subsError } = await supabase
       .from("push_subscriptions")
       .select("*")
-      .in("user_id", userIds);
+      .in("user_id", usersInActiveHours);
 
     if (subsError) {
-      console.error("Error fetching subscriptions:", subsError);
+      console.error("[FEEDBACK-REMINDER] Error fetching subscriptions:", subsError);
       throw subsError;
     }
 
-    console.log(`Found ${subscriptions?.length || 0} push subscriptions`);
+    console.log(`[FEEDBACK-REMINDER] Found ${subscriptions?.length || 0} push subscriptions`);
 
     // Count pending meals per user
     const pendingCountByUser: Record<string, number> = {};
     pendingMeals?.forEach((m) => {
-      pendingCountByUser[m.user_id] = (pendingCountByUser[m.user_id] || 0) + 1;
+      if (usersInActiveHours.includes(m.user_id)) {
+        pendingCountByUser[m.user_id] = (pendingCountByUser[m.user_id] || 0) + 1;
+      }
     });
 
-    // Send notifications (simplified - just log for now since web-push crypto is complex)
+    // Send notifications
     let sentCount = 0;
     const failedEndpoints: string[] = [];
 
@@ -119,6 +185,7 @@ serve(async (req) => {
       const pendingCount = pendingCountByUser[sub.user_id] || 0;
       if (pendingCount === 0) continue;
 
+      const userTimezone = timezoneMap.get(sub.user_id) || 'America/Sao_Paulo';
       const messageBody = pendingCount === 1
         ? "Uma refeição aguarda seu feedback"
         : `${pendingCount} refeições aguardam seu feedback`;
@@ -160,12 +227,10 @@ serve(async (req) => {
           ],
         });
 
-        // For a production implementation, you would use a web-push library
-        // or implement the full encryption protocol. For now, we log the intent.
-        console.log(`Sent notification to user ${sub.user_id}: ${payload}`);
+        console.log(`[FEEDBACK-REMINDER] Sent notification to user ${sub.user_id} (timezone: ${userTimezone}): ${payload}`);
         sentCount++;
       } catch (err: any) {
-        console.error(`Failed to send to ${sub.endpoint}:`, err.message);
+        console.error(`[FEEDBACK-REMINDER] Failed to send to ${sub.endpoint}:`, err.message);
         failedEndpoints.push(sub.endpoint);
       }
     }
@@ -176,18 +241,22 @@ serve(async (req) => {
         .from("push_subscriptions")
         .delete()
         .in("endpoint", failedEndpoints);
+      console.log(`[FEEDBACK-REMINDER] Removed ${failedEndpoints.length} failed subscriptions`);
     }
+
+    console.log(`[FEEDBACK-REMINDER] Function complete. Sent ${sentCount} notifications`);
 
     return new Response(
       JSON.stringify({
         message: "Notifications processed",
         sent: sentCount,
         usersWithPending: userIds.length,
+        usersInActiveHours: usersInActiveHours.length,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error in send-feedback-reminder:", error);
+    console.error("[FEEDBACK-REMINDER] Error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }

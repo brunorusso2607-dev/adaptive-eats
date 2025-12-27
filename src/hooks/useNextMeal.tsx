@@ -231,7 +231,7 @@ export function useNextMeal() {
       
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id, start_date, custom_meal_times")
+        .select("id, start_date, custom_meal_times, unlocks_at")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -247,18 +247,31 @@ export function useNextMeal() {
         return;
       }
 
+      // Check if the plan is scheduled (locked until future date)
+      const plan = plans[0];
+      if (plan.unlocks_at) {
+        const unlocksAt = new Date(plan.unlocks_at);
+        if (unlocksAt > now) {
+          console.log("[useNextMeal] Plano agendado, unlocks_at:", plan.unlocks_at);
+          setHasMealPlan(true); // Has a plan but it's scheduled
+          setNextMeal(null);
+          setCustomMealTimes(null);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       setHasMealPlan(true);
-      const activePlan = plans[0];
-      const activePlanId = activePlan.id;
+      const activePlanId = plan.id;
       
       // Extrair custom_meal_times do plano
-      const planCustomTimes = activePlan.custom_meal_times as CustomMealTimes | null;
+      const planCustomTimes = plan.custom_meal_times as CustomMealTimes | null;
       setCustomMealTimes(planCustomTimes);
       
       console.log("[useNextMeal] Custom meal times do plano:", planCustomTimes);
 
       // Calcular day_of_week baseado na data de início do plano
-      const [year, month, day] = activePlan.start_date.split('-').map(Number);
+      const [year, month, day] = plan.start_date.split('-').map(Number);
       const planStartDate = new Date(year, month - 1, day);
       
       const diffTime = today.getTime() - planStartDate.getTime();

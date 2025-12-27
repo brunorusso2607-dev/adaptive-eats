@@ -209,7 +209,7 @@ export function usePendingMeals() {
       // Buscar plano ativo com start_date e created_at
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id, start_date, created_at")
+        .select("id, start_date, created_at, unlocks_at")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -224,8 +224,22 @@ export function usePendingMeals() {
         return;
       }
 
+      // Check if the plan is scheduled (locked until future date)
+      const now = new Date();
+      const plan = plans[0];
+      if (plan.unlocks_at) {
+        const unlocksAt = new Date(plan.unlocks_at);
+        if (unlocksAt > now) {
+          console.log("[usePendingMeals] Plano agendado, unlocks_at:", plan.unlocks_at);
+          setHasMealPlan(true); // Has a plan but it's scheduled
+          setPendingMeals([]);
+          setIsLoading(false);
+          return;
+        }
+      }
+
       setHasMealPlan(true);
-      const activePlan = plans[0];
+      const activePlan = plan;
       const planStartDate = new Date(activePlan.start_date + "T00:00:00");
       const planCreatedAt = new Date(activePlan.created_at);
 

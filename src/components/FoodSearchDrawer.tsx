@@ -12,16 +12,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   cafe_da_manha: "Café da Manhã",
@@ -71,11 +61,8 @@ export default function FoodSearchDrawer({
 }: FoodSearchDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
-  const [conflictDialog, setConflictDialog] = useState<{ open: boolean; food: Food | null; conflict: { ingredient: string; restriction: string; restrictionLabel: string } | null }>({
-    open: false,
-    food: null,
-    conflict: null,
-  });
+  // Track foods with conflicts for display
+  const [foodsWithConflicts, setFoodsWithConflicts] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
   // AI suggestions state
@@ -85,17 +72,6 @@ export default function FoodSearchDrawer({
   
   // AI intolerance analysis state
   const [isAnalyzingIntolerance, setIsAnalyzingIntolerance] = useState(false);
-  const [aiIntoleranceDialog, setAiIntoleranceDialog] = useState<{
-    open: boolean;
-    food: Food | null;
-    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
-    ingredients: string[];
-  }>({
-    open: false,
-    food: null,
-    conflicts: [],
-    ingredients: [],
-  });
   
   // Manual food modal state
   const [showManualModal, setShowManualModal] = useState(false);
@@ -131,6 +107,7 @@ export default function FoodSearchDrawer({
     if (!open) {
       setSearchQuery("");
       setSelectedFoods([]);
+      setFoodsWithConflicts([]);
       clearFoods();
       setAiSuggestions([]);
       setShowAISuggestions(false);
@@ -211,13 +188,19 @@ export default function FoodSearchDrawer({
     }
   }, [hasIntolerances, intolerances]);
 
-  // Handle adding food with AI analysis for unknown foods
+  // Handle adding food - always add, just show warning if conflict
   const handleAddFood = useCallback(async (food: Food) => {
     // First, quick local check
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
-      setConflictDialog({ open: true, food, conflict: localConflict });
+      // Add food and show informative toast
+      addFoodToList(food);
+      setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
+      toast.warning(
+        `${food.name} contém ${localConflict.restrictionLabel.replace('intolerante a ', '')}`,
+        { duration: 4000 }
+      );
       return;
     }
 
@@ -230,12 +213,14 @@ export default function FoodSearchDrawer({
       setIsAnalyzingIntolerance(false);
       
       if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
-        setAiIntoleranceDialog({
-          open: true,
-          food,
-          conflicts: aiResult.conflicts,
-          ingredients: aiResult.ingredients,
-        });
+        // Add food and show informative toast with details
+        addFoodToList(food);
+        setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
+        const conflictLabels = aiResult.conflicts.map(c => c.intoleranceLabel).join(', ');
+        toast.warning(
+          `${food.name} contém ${conflictLabels}`,
+          { duration: 4000 }
+        );
         return;
       }
     }
@@ -267,27 +252,11 @@ export default function FoodSearchDrawer({
     setShowAISuggestions(false);
   };
 
-  // State for AI suggestion conflict
-  const [aiConflictDialog, setAiConflictDialog] = useState<{ 
-    open: boolean; 
-    suggestion: AISuggestion | null; 
-    conflict: { ingredient: string; restriction: string; restrictionLabel: string } | null 
-  }>({
-    open: false,
-    suggestion: null,
-    conflict: null,
-  });
-
   // Add AI suggestion as food (first save to database, then add to list)
-  const handleAddAISuggestion = async (suggestion: AISuggestion, skipConflictCheck = false) => {
-    // Check for intolerance conflicts first (unless skipping)
-    if (!skipConflictCheck) {
-      const conflict = checkFoodConflicts(suggestion.name);
-      if (conflict) {
-        setAiConflictDialog({ open: true, suggestion, conflict });
-        return;
-      }
-    }
+  const handleAddAISuggestion = async (suggestion: AISuggestion) => {
+    // Check for intolerance conflicts - add anyway but show warning
+    const conflict = checkFoodConflicts(suggestion.name);
+    const hasLocalConflict = !!conflict;
 
     try {
       const normalizedName = suggestion.name
@@ -373,6 +342,15 @@ export default function FoodSearchDrawer({
       clearFoods();
       setAiSuggestions([]);
       setShowAISuggestions(false);
+
+      // Show warning toast if there was a conflict
+      if (hasLocalConflict && conflict) {
+        setFoodsWithConflicts(prev => [...new Set([...prev, suggestion.name])]);
+        toast.warning(
+          `${suggestion.name} contém ${conflict.restrictionLabel.replace('intolerante a ', '')}`,
+          { duration: 4000 }
+        );
+      }
     } catch (error) {
       console.error("Error adding AI suggestion:", error);
       toast.error("Erro ao adicionar alimento");
@@ -392,26 +370,6 @@ export default function FoodSearchDrawer({
     addFoodToList(fullFood);
   };
 
-  const handleConfirmConflict = () => {
-    if (conflictDialog.food) {
-      addFoodToList(conflictDialog.food);
-    }
-    setConflictDialog({ open: false, food: null, conflict: null });
-  };
-
-  const handleConfirmAIConflict = () => {
-    if (aiConflictDialog.suggestion) {
-      handleAddAISuggestion(aiConflictDialog.suggestion, true);
-    }
-    setAiConflictDialog({ open: false, suggestion: null, conflict: null });
-  };
-
-  const handleConfirmAIIntoleranceConflict = () => {
-    if (aiIntoleranceDialog.food) {
-      addFoodToList(aiIntoleranceDialog.food);
-    }
-    setAiIntoleranceDialog({ open: false, food: null, conflicts: [], ingredients: [] });
-  };
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
     const numValue = parseFloat(newValue) || 0;
@@ -828,130 +786,6 @@ export default function FoodSearchDrawer({
         </DrawerContent>
       </Drawer>
 
-      {/* Conflict Dialog - Design sutil */}
-      <AlertDialog
-        open={conflictDialog.open}
-        onOpenChange={(open) =>
-          !open && setConflictDialog({ open: false, food: null, conflict: null })
-        }
-      >
-        <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-medium">
-              {conflictDialog.food?.name}
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 pt-2">
-                <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
-                  Contém {conflictDialog.conflict?.restrictionLabel?.toLowerCase()}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  Você indicou ter restrição a este tipo de alimento. Deseja adicionar mesmo assim?
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmConflict}>
-              Adicionar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* AI Suggestion Conflict Dialog */}
-      <AlertDialog
-        open={aiConflictDialog.open}
-        onOpenChange={(open) =>
-          !open && setAiConflictDialog({ open: false, suggestion: null, conflict: null })
-        }
-      >
-        <AlertDialogContent className="max-w-sm">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-medium flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              {aiConflictDialog.suggestion?.name}
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3 pt-2">
-                <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
-                  ⚠️ Este alimento pode conter {aiConflictDialog.conflict?.restrictionLabel?.replace('intolerante a ', '')}
-                </p>
-                <p className="text-sm text-muted-foreground">
-                  De acordo com seu perfil, você é {aiConflictDialog.conflict?.restrictionLabel}. Deseja adicionar mesmo assim?
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmAIConflict}>
-              Adicionar mesmo assim
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      {/* AI Intolerance Analysis Dialog - Detailed */}
-      <AlertDialog
-        open={aiIntoleranceDialog.open}
-        onOpenChange={(open) =>
-          !open && setAiIntoleranceDialog({ open: false, food: null, conflicts: [], ingredients: [] })
-        }
-      >
-        <AlertDialogContent className="max-w-md">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-base font-medium flex items-center gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500" />
-              Análise de Intolerâncias
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-4 pt-2">
-                <p className="text-sm font-medium">
-                  {aiIntoleranceDialog.food?.name}
-                </p>
-                
-                {aiIntoleranceDialog.ingredients.length > 0 && (
-                  <div className="text-xs text-muted-foreground">
-                    <span className="font-medium">Ingredientes detectados:</span>
-                    <p className="mt-1">{aiIntoleranceDialog.ingredients.slice(0, 8).join(", ")}{aiIntoleranceDialog.ingredients.length > 8 ? "..." : ""}</p>
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  {aiIntoleranceDialog.conflicts.map((conflict, idx) => (
-                    <div 
-                      key={idx}
-                      className="text-sm bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-3 py-2 rounded-md"
-                    >
-                      <p className="font-medium text-red-700 dark:text-red-400">
-                        ⚠️ Contém {conflict.intoleranceLabel}
-                      </p>
-                      <p className="text-xs text-red-600 dark:text-red-400 mt-1">
-                        Encontrado: {conflict.foundIngredients.join(", ")}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <p className="text-xs text-muted-foreground">
-                  De acordo com seu perfil, você tem restrição a estes ingredientes. Deseja adicionar mesmo assim?
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmAIIntoleranceConflict}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              Adicionar mesmo assim
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Manual Food Modal */}
       <ManualFoodModal

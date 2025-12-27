@@ -9,9 +9,9 @@
 | Fase | Status | Progresso |
 |------|--------|-----------|
 | FASE 1: Preparação Banco | ✅ Concluída | 100% |
-| FASE 2: Features Principais | 🔄 Em andamento | 80% |
+| FASE 2: Features Principais | 🔄 Em andamento | 85% |
 | FASE 3: Reorganização UI | ⏳ Pendente | 0% |
-| FASE 4: Reestruturação Planos | ⏳ Pendente | 0% |
+| FASE 4: Reestruturação Planos | ✅ Concluída | 100% |
 
 **Última atualização:** 27/12/2024
 
@@ -285,23 +285,12 @@ Perfil → Horários de Refeição → Editar → Salvar
 **Objetivo:** Preparar sistema para suporte global
 
 #### Sub-tarefas:
-- [x] Adicionar coluna `timezone` na tabela `profiles`
-  ```sql
-  ALTER TABLE profiles ADD COLUMN timezone TEXT DEFAULT 'America/Sao_Paulo';
-  ```
-- [x] Detectar timezone automaticamente no onboarding
-  ```typescript
-  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-  ```
+- [x] Coluna `timezone` na tabela `profiles` (default: 'America/Sao_Paulo')
+- [x] Detectar timezone automaticamente no onboarding via `Intl.DateTimeFormat`
 - [x] Permitir alteração manual em Configurações
-- [ ] Atualizar Edge Functions para usar timezone do usuário (item 4.5)
+- [x] Edge Functions atualizadas (ver 4.5)
 
-**Impacto:**
-- `send-meal-reminder` → converter horário UTC para local do usuário
-- `send-water-reminder` → idem
-- `send-feedback-reminder` → idem
-
-**Status:** ✅ Concluída (parcial - falta edge functions)  
+**Status:** ✅ Concluída  
 **Data conclusão:** 27/12/2024
 
 ---
@@ -336,56 +325,27 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ---
 
-### 4.3 UI Inline Colapsável para Criação de Plano
+### 4.3 UI Inline Colapsável para Criação de Plano ✅
 **Objetivo:** Interface unificada com configuração opcional visível
 
-#### Design da UI:
-```
-┌─────────────────────────────────────────────────┐
-│  Criar Novo Plano                               │
-├─────────────────────────────────────────────────┤
-│  Nome do Plano: [Plano de Janeiro      ]        │
-│                                                 │
-│  Período: ( ) Semana 1   (•) Semana 2           │
-│           ( ) Semana 3   ( ) Semana 4           │
-│                                                 │
-│  ▼ Configurações Avançadas ──────────────────── │
-│  ┌───────────────────────────────────────────┐  │
-│  │ Horários das Refeições (opcional)         │  │
-│  │                                           │  │
-│  │ Café da Manhã:  [06:00] até [10:00]       │  │
-│  │ Almoço:         [10:00] até [14:00]       │  │
-│  │ Lanche:         [14:00] até [17:00]       │  │
-│  │ Jantar:         [17:00] até [21:00]       │  │
-│  │ Ceia:           [21:00] até [00:00]       │  │
-│  │                                           │  │
-│  │ [Usar padrões do sistema]                 │  │
-│  └───────────────────────────────────────────┘  │
-│                                                 │
-│  [Cancelar]                    [Gerar Plano ▶]  │
-└─────────────────────────────────────────────────┘
-```
-
 #### Sub-tarefas:
-- [ ] Criar componente `MealPlanConfigSheet.tsx`
-  - [ ] Campo nome do plano
-  - [ ] Seletor de período/semana
-  - [ ] Collapsible "Configurações Avançadas"
-  - [ ] Inputs de horário (começa com valores padrão)
-  - [ ] Botão "Usar padrões do sistema"
-- [ ] Integrar no fluxo existente de criação de plano
-- [ ] Salvar `custom_meal_times` se diferente dos padrões
-- [ ] Preview dos horários antes de gerar
+- [x] Componente `CustomMealTimesEditor` com modo `compact` (collapsible)
+- [x] Integrado no `MealPlanGenerator.tsx`:
+  - [x] Campo nome do plano
+  - [x] Collapsible para horários personalizados
+  - [x] Toggle habilitar/desabilitar horários customizados
+  - [x] Inputs de horário para cada refeição
+  - [x] Botão "Restaurar padrão"
+- [x] Passa `customMealTimes` para edge function `generate-meal-plan`
+- [x] Salva no campo `custom_meal_times` do `meal_plans`
 
-**Comportamento:**
-- Collapsible começa **fechado**
-- Se não expandir → usa horários globais (comportamento atual)
-- Se expandir e editar → salva no plano
-- Botão "Usar padrões" reseta para valores globais
+**Implementação:**
+- `src/components/CustomMealTimesEditor.tsx` - Componente reutilizável com prop `compact`
+- `src/components/MealPlanGenerator.tsx` - Usa `<CustomMealTimesEditor onChange={setCustomMealTimes} compact />`
+- Edge function recebe e salva no banco
 
-**Status:** ⏳ Pendente  
-**Estimativa:** 1.5 horas  
-**Prioridade:** Média
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
 
 ---
 
@@ -436,29 +396,22 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ---
 
-### Ordem de Implementação Recomendada
+### Ordem de Implementação - FASE 4 ✅ CONCLUÍDA
 
 ```
-FASE 4 - Sequência de Implementação
+FASE 4 - Status Final
 ====================================
 
-Sprint 1 (Base):
-├── 4.1 Timezone no Perfil ← PRIMEIRO
-│   └── Migration + Detecção automática
-└── 4.5 Edge Functions Timezone
-    └── Lembretes funcionando globalmente
+Sprint 1 (Base): ✅
+├── 4.1 Timezone no Perfil ✅
+└── 4.5 Edge Functions Timezone ✅
 
-Sprint 2 (Horários por Plano):
-├── 4.2 Custom Meal Times no meal_plans
-│   ├── Migration
-│   ├── Refatorar funções de horário
-│   └── Atualizar hooks
-└── 4.3 UI Inline Colapsável
-    └── Componente de criação
+Sprint 2 (Horários por Plano): ✅
+├── 4.2 Custom Meal Times no meal_plans ✅
+└── 4.3 UI Inline Colapsável ✅
 
-Sprint 3 (Polish):
-└── 4.4 Edição de Plano Existente
-    └── Configurações pós-criação
+Sprint 3 (Polish): ⏳
+└── 4.4 Edição de Plano Existente (opcional - baixa prioridade)
 ```
 
 ---
@@ -494,11 +447,14 @@ COMMENT ON COLUMN meal_plans.custom_meal_times IS
 
 ## 📝 Changelog
 
+### [27/12/2024] - FASE 4 Concluída
+- ✅ **4.1** Timezone no perfil implementado
+- ✅ **4.2** Horários personalizados por plano (`custom_meal_times`)
+- ✅ **4.3** UI inline colapsável no `MealPlanGenerator`
+- ✅ **4.5** Edge Functions com suporte a timezone
+
 ### [27/12/2024] - Roadmap FASE 4 Criado
 - 📋 Definido roadmap completo para reestruturação do módulo de planos
-- 📋 Planejado suporte a timezone global
-- 📋 Planejado horários personalizados por plano
-- 📋 Planejado UI inline colapsável para criação de planos
 
 ### [27/12/2024] - Simplificação do NextMealCard
 - ✅ Removido botão "Trocar" do card de próxima refeição
@@ -529,18 +485,16 @@ COMMENT ON COLUMN meal_plans.custom_meal_times IS
 ## 🚀 Próximos Passos
 
 ### Imediato (próxima sessão)
-1. [ ] **4.1** - Timezone no Perfil (base para suporte global)
-2. [ ] **4.5** - Edge Functions com Timezone
+1. [ ] **2.4** - Horários Personalizados por Usuário (Settings)
+2. [ ] **2.5** - Adicionar Refeição Extra ao Plano
 
 ### Curto prazo (1-2 semanas)
-- [ ] **4.2** - Horários Personalizados por Plano
-- [ ] **4.3** - UI Inline Colapsável
-- [ ] **2.5** - Adicionar Refeição Extra ao Plano
-- [ ] Completar FASE 2
+- [ ] **3.1** - Surpreenda-me → Modo Kids
+- [ ] **3.2** - Reorganizar Dashboard
+- [ ] Completar FASE 2 e FASE 3
 
 ### Médio prazo (1 mês)
-- [ ] **4.4** - Edição de Plano Existente
-- [ ] FASE 3 - Reorganização da UI
+- [ ] **4.4** - Edição de Plano Existente (opcional)
 - [ ] Beta fechado com 10-20 usuários
 - [ ] Coletar feedback
 
@@ -576,9 +530,10 @@ Função: getMealTimeRangesForPlan(planId)
 
 ### Componentes Reutilizáveis
 - `MealRegistrationFlow` - fluxo unificado de registro (tipo + horário)
-- `MealPlanConfigSheet` - configuração inline de plano (FASE 4)
+- `CustomMealTimesEditor` - editor de horários personalizados (compact/full)
 - `FoodSearchDrawer` - busca de alimentos
 - `MealDetailSheet` - detalhes da refeição
+- `usePlanMealTimes` - hook para horários com prioridade plano → global
 - `useMealConsumption` - hook de salvamento
 
 ---

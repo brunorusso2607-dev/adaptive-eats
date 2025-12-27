@@ -7,7 +7,7 @@ import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
 import { DietaryCompatibilitySummary } from "./DietaryCompatibilitySummary";
-import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
+import { useDynamicDietaryCompatibility } from "@/hooks/useDynamicDietaryCompatibility";
 import { useReplaceIncompatibleMeals } from "@/hooks/useReplaceIncompatibleMeals";
 import { usePlanMealTimes } from "@/hooks/usePlanMealTimes";
 import {
@@ -147,21 +147,22 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return currentHour >= range.end;
   }, [MEAL_TIME_RANGES]);
 
-  // Dietary compatibility hook
-  const { getCompatibility, hasProfile, isLoading: isLoadingCompatibility } = useDietaryCompatibility(userProfile?.dietary_preference);
+  // Dietary compatibility hook - ANÁLISE DINÂMICA baseada em ingredientes
+  const { getMealCompatibility, hasRestrictions, isLoading: isLoadingCompatibility, hasProfile } = useDynamicDietaryCompatibility();
 
   // Replace incompatible meals hook
   const { replaceIncompatibleMeals, isReplacing, progress: replaceProgress } = useReplaceIncompatibleMeals();
 
-  // Calculate compatibility counts and incompatible meals list
+  // Calculate compatibility counts and incompatible meals list - USANDO ANÁLISE DINÂMICA DOS INGREDIENTES
   const { compatibilityCounts, incompatibleMeals } = useMemo(() => {
     const counts = { good: 0, moderate: 0, incompatible: 0, unknown: 0, total: 0 };
     const incompatible: MealPlanItem[] = [];
     
-    if (!hasProfile || !mealPlan.items) return { compatibilityCounts: counts, incompatibleMeals: incompatible };
+    if (!hasRestrictions || !mealPlan.items) return { compatibilityCounts: counts, incompatibleMeals: incompatible };
     
     mealPlan.items.forEach(meal => {
-      const { compatibility } = getCompatibility(meal.recipe_name);
+      // ANÁLISE DINÂMICA: verifica os ingredientes da receita contra as restrições do usuário
+      const compatibility = getMealCompatibility(meal.recipe_ingredients);
       counts.total++;
       if (compatibility === 'good') counts.good++;
       else if (compatibility === 'moderate') counts.moderate++;
@@ -173,7 +174,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     });
     
     return { compatibilityCounts: counts, incompatibleMeals: incompatible };
-  }, [mealPlan.items, getCompatibility, hasProfile]);
+  }, [mealPlan.items, getMealCompatibility, hasRestrictions]);
 
   // Handle replace incompatible meals
   const handleReplaceIncompatible = useCallback(() => {
@@ -605,13 +606,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                         </span>
                         <span>{meal.recipe_prep_time} min</span>
                         
-                        {/* Dietary Compatibility Badge */}
+                        {/* Dietary Compatibility Badge - ANÁLISE DINÂMICA */}
                         {hasProfile && !isPastMeal && (() => {
-                          const compat = getCompatibility(meal.recipe_name);
+                          const compatibility = getMealCompatibility(meal.recipe_ingredients);
                           return (
                             <DietaryCompatibilityBadge 
-                              compatibility={compat.compatibility}
-                              notes={compat.notes}
+                              compatibility={compatibility}
+                              notes={null}
                               showLabel={true}
                             />
                           );

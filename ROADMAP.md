@@ -11,6 +11,7 @@
 | FASE 1: Preparação Banco | ✅ Concluída | 100% |
 | FASE 2: Features Principais | 🔄 Em andamento | 80% |
 | FASE 3: Reorganização UI | ⏳ Pendente | 0% |
+| FASE 4: Reestruturação Planos | ⏳ Pendente | 0% |
 
 **Última atualização:** 27/12/2024
 
@@ -261,7 +262,260 @@ Perfil → Horários de Refeição → Editar → Salvar
 
 ---
 
+## 📦 FASE 4: Reestruturação do Módulo de Planos 🆕
+
+> **Objetivo:** Tornar a criação de planos mais flexível, permitindo horários personalizados por plano e suporte global a timezones.
+
+### Visão Geral
+
+**Situação atual:**
+- Usuário cria plano → usa horários globais do admin
+- Não pode personalizar horários para planos específicos
+- Não há suporte explícito a timezone (funciona localmente, mas edge functions usam UTC)
+
+**Situação desejada:**
+- UI inline colapsável para configurar plano
+- Horários personalizados opcionais por plano
+- Timezone salvo no perfil para suporte global
+- Lógica que prioriza: horários do plano → globais → fallback
+
+---
+
+### 4.1 Adicionar Timezone ao Perfil do Usuário
+**Objetivo:** Preparar sistema para suporte global
+
+#### Sub-tarefas:
+- [ ] Adicionar coluna `timezone` na tabela `profiles`
+  ```sql
+  ALTER TABLE profiles ADD COLUMN timezone TEXT DEFAULT 'America/Sao_Paulo';
+  ```
+- [ ] Detectar timezone automaticamente no onboarding
+  ```typescript
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  ```
+- [ ] Permitir alteração manual em Configurações
+- [ ] Atualizar Edge Functions para usar timezone do usuário
+
+**Impacto:**
+- `send-meal-reminder` → converter horário UTC para local do usuário
+- `send-water-reminder` → idem
+- `send-feedback-reminder` → idem
+
+**Status:** ⏳ Pendente  
+**Estimativa:** 45 minutos  
+**Prioridade:** Alta (base para suporte global)
+
+---
+
+### 4.2 Adicionar Horários Personalizados por Plano
+**Objetivo:** Permitir que cada plano tenha seus próprios horários
+
+#### Sub-tarefas:
+- [ ] Adicionar coluna `custom_meal_times` na tabela `meal_plans`
+  ```sql
+  ALTER TABLE meal_plans ADD COLUMN custom_meal_times JSONB DEFAULT NULL;
+  -- Formato: {"cafe_manha": {"start": 7, "end": 9}, "almoco": {...}}
+  ```
+- [ ] Criar função utilitária `getMealTimeRangesForPlan(planId)`
+  ```typescript
+  // Prioridade: plan.custom_meal_times → global settings → defaults
+  ```
+- [ ] Refatorar funções que usam horários para aceitar parâmetro opcional:
+  - [ ] `getMealStatus(mealType, completedAt, customTimeRanges?)`
+  - [ ] `getMinutesUntilStart(mealType, customTimeRanges?)`
+  - [ ] `getMinutesOverdue(mealType, customTimeRanges?)`
+  - [ ] `getCurrentMealType(customTimeRanges?)`
+- [ ] Atualizar `useNextMeal` para buscar e usar horários do plano ativo
+- [ ] Atualizar `usePendingMeals` para usar horários do plano
+
+**Análise de Impacto:**
+| Arquivo | Mudança Necessária |
+|---------|-------------------|
+| `src/lib/mealTimeConfig.ts` | Adicionar versões com parâmetro opcional |
+| `src/hooks/useNextMeal.tsx` | Buscar `custom_meal_times` do plano e passar |
+| `src/hooks/usePendingMeals.tsx` | Idem |
+| `src/components/NextMealCard.tsx` | Receber e usar timeRanges do plano |
+
+**Status:** ⏳ Pendente  
+**Estimativa:** 1.5 horas  
+**Prioridade:** Média
+
+---
+
+### 4.3 UI Inline Colapsável para Criação de Plano
+**Objetivo:** Interface unificada com configuração opcional visível
+
+#### Design da UI:
+```
+┌─────────────────────────────────────────────────┐
+│  Criar Novo Plano                               │
+├─────────────────────────────────────────────────┤
+│  Nome do Plano: [Plano de Janeiro      ]        │
+│                                                 │
+│  Período: ( ) Semana 1   (•) Semana 2           │
+│           ( ) Semana 3   ( ) Semana 4           │
+│                                                 │
+│  ▼ Configurações Avançadas ──────────────────── │
+│  ┌───────────────────────────────────────────┐  │
+│  │ Horários das Refeições (opcional)         │  │
+│  │                                           │  │
+│  │ Café da Manhã:  [06:00] até [10:00]       │  │
+│  │ Almoço:         [10:00] até [14:00]       │  │
+│  │ Lanche:         [14:00] até [17:00]       │  │
+│  │ Jantar:         [17:00] até [21:00]       │  │
+│  │ Ceia:           [21:00] até [00:00]       │  │
+│  │                                           │  │
+│  │ [Usar padrões do sistema]                 │  │
+│  └───────────────────────────────────────────┘  │
+│                                                 │
+│  [Cancelar]                    [Gerar Plano ▶]  │
+└─────────────────────────────────────────────────┘
+```
+
+#### Sub-tarefas:
+- [ ] Criar componente `MealPlanConfigSheet.tsx`
+  - [ ] Campo nome do plano
+  - [ ] Seletor de período/semana
+  - [ ] Collapsible "Configurações Avançadas"
+  - [ ] Inputs de horário (começa com valores padrão)
+  - [ ] Botão "Usar padrões do sistema"
+- [ ] Integrar no fluxo existente de criação de plano
+- [ ] Salvar `custom_meal_times` se diferente dos padrões
+- [ ] Preview dos horários antes de gerar
+
+**Comportamento:**
+- Collapsible começa **fechado**
+- Se não expandir → usa horários globais (comportamento atual)
+- Se expandir e editar → salva no plano
+- Botão "Usar padrões" reseta para valores globais
+
+**Status:** ⏳ Pendente  
+**Estimativa:** 1.5 horas  
+**Prioridade:** Média
+
+---
+
+### 4.4 Edição de Configurações do Plano Existente
+**Objetivo:** Permitir editar horários de um plano já criado
+
+#### Sub-tarefas:
+- [ ] Adicionar botão "Configurações" no `MealPlanCalendar`
+- [ ] Sheet para editar `custom_meal_times` do plano ativo
+- [ ] Validar que mudanças só afetam refeições futuras
+- [ ] Atualizar cache quando horários mudarem
+
+**Regras de Negócio:**
+- Só pode editar planos ativos
+- Mudanças não afetam refeições já completadas
+- Horários novos aplicam-se a partir do momento da edição
+
+**Status:** ⏳ Pendente  
+**Estimativa:** 45 minutos  
+**Prioridade:** Baixa (pode ser fase seguinte)
+
+---
+
+### 4.5 Atualizar Edge Functions para Timezone
+**Objetivo:** Lembretes respeitam fuso horário do usuário
+
+#### Sub-tarefas:
+- [ ] Instalar/usar `date-fns-tz` nas edge functions
+- [ ] `send-meal-reminder/index.ts`:
+  - [ ] Buscar timezone do perfil do usuário
+  - [ ] Converter hora atual para timezone local
+  - [ ] Verificar se está no horário de lembrete
+- [ ] `send-water-reminder/index.ts`:
+  - [ ] Idem
+- [ ] `send-feedback-reminder/index.ts`:
+  - [ ] Idem
+
+**Código exemplo:**
+```typescript
+import { formatInTimeZone } from 'date-fns-tz';
+
+// Buscar timezone do usuário
+const userTimezone = profile.timezone || 'America/Sao_Paulo';
+
+// Obter hora local do usuário
+const userLocalHour = parseInt(
+  formatInTimeZone(new Date(), userTimezone, 'H')
+);
+
+// Verificar se está no horário configurado
+if (userLocalHour >= reminder_start && userLocalHour <= reminder_end) {
+  // Enviar notificação
+}
+```
+
+**Status:** ⏳ Pendente  
+**Estimativa:** 1 hora  
+**Prioridade:** Alta (necessário para suporte global)
+
+---
+
+### Ordem de Implementação Recomendada
+
+```
+FASE 4 - Sequência de Implementação
+====================================
+
+Sprint 1 (Base):
+├── 4.1 Timezone no Perfil ← PRIMEIRO
+│   └── Migration + Detecção automática
+└── 4.5 Edge Functions Timezone
+    └── Lembretes funcionando globalmente
+
+Sprint 2 (Horários por Plano):
+├── 4.2 Custom Meal Times no meal_plans
+│   ├── Migration
+│   ├── Refatorar funções de horário
+│   └── Atualizar hooks
+└── 4.3 UI Inline Colapsável
+    └── Componente de criação
+
+Sprint 3 (Polish):
+└── 4.4 Edição de Plano Existente
+    └── Configurações pós-criação
+```
+
+---
+
+### Análise de Compatibilidade
+
+| Funcionalidade | Impacto | Ação |
+|---------------|---------|------|
+| NextMealCard (1h antes) | Médio | Passar timeRanges do plano |
+| Lembretes Push | Alto | Usar timezone do perfil |
+| Status da refeição | Médio | Funções aceitam parâmetro opcional |
+| Histórico existente | Nenhum | Usa horários globais como fallback |
+| Planos antigos | Nenhum | `custom_meal_times = null` → global |
+
+---
+
+### Migrations Necessárias
+
+```sql
+-- Migration 1: Timezone no perfil
+ALTER TABLE profiles 
+ADD COLUMN timezone TEXT DEFAULT 'America/Sao_Paulo';
+
+-- Migration 2: Horários personalizados por plano
+ALTER TABLE meal_plans 
+ADD COLUMN custom_meal_times JSONB DEFAULT NULL;
+
+COMMENT ON COLUMN meal_plans.custom_meal_times IS 
+'Horários personalizados: {"cafe_manha": {"start": 7, "end": 9}, ...}. NULL = usar globais.';
+```
+
+---
+
 ## 📝 Changelog
+
+### [27/12/2024] - Roadmap FASE 4 Criado
+- 📋 Definido roadmap completo para reestruturação do módulo de planos
+- 📋 Planejado suporte a timezone global
+- 📋 Planejado horários personalizados por plano
+- 📋 Planejado UI inline colapsável para criação de planos
 
 ### [27/12/2024] - Simplificação do NextMealCard
 - ✅ Removido botão "Trocar" do card de próxima refeição
@@ -292,19 +546,20 @@ Perfil → Horários de Refeição → Editar → Salvar
 ## 🚀 Próximos Passos
 
 ### Imediato (próxima sessão)
-1. [ ] **2.3** - Trocar Refeição Completa (Home)
-2. [ ] **2.5** - Adicionar Refeição Extra ao Plano
+1. [ ] **4.1** - Timezone no Perfil (base para suporte global)
+2. [ ] **4.5** - Edge Functions com Timezone
 
 ### Curto prazo (1-2 semanas)
-- [ ] **2.4** - Horários Personalizados por Usuário
-- [ ] Completar todas as features da FASE 2
-- [ ] Testes de usabilidade internos
+- [ ] **4.2** - Horários Personalizados por Plano
+- [ ] **4.3** - UI Inline Colapsável
+- [ ] **2.5** - Adicionar Refeição Extra ao Plano
+- [ ] Completar FASE 2
 
 ### Médio prazo (1 mês)
+- [ ] **4.4** - Edição de Plano Existente
 - [ ] FASE 3 - Reorganização da UI
 - [ ] Beta fechado com 10-20 usuários
 - [ ] Coletar feedback
-- [ ] Iterar baseado em dados reais
 
 ---
 
@@ -322,8 +577,23 @@ Se meal_plan_item_id = NULL → Refeição independente de plano
 Se custom_meal_name != NULL → Nome personalizado pelo usuário
 ```
 
+### Arquitetura de Horários (FASE 4)
+```
+Prioridade de Horários
+======================
+1. custom_meal_times (do plano) ← Se definido pelo usuário
+2. meal_time_settings (global)  ← Configuração do admin
+3. DEFAULT_TIME_RANGES          ← Fallback hardcoded
+
+Função: getMealTimeRangesForPlan(planId)
+├── Busca plano
+├── Se custom_meal_times → retorna esses
+└── Senão → retorna getMealTimeRangesSync()
+```
+
 ### Componentes Reutilizáveis
 - `MealRegistrationFlow` - fluxo unificado de registro (tipo + horário)
+- `MealPlanConfigSheet` - configuração inline de plano (FASE 4)
 - `FoodSearchDrawer` - busca de alimentos
 - `MealDetailSheet` - detalhes da refeição
 - `useMealConsumption` - hook de salvamento

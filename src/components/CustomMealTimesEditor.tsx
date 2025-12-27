@@ -1,14 +1,28 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Clock, RotateCcw, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+// Gera opções de horário com intervalos de 15 minutos
+const generateTimeOptions = () => {
+  const options: { value: string; label: string }[] = [];
+  for (let hour = 0; hour < 24; hour++) {
+    for (let minute = 0; minute < 60; minute += 15) {
+      const value = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
+      options.push({ value, label: value });
+    }
+  }
+  return options;
+};
+
+const TIME_OPTIONS = generateTimeOptions();
 
 export type CustomMealTimes = Record<string, string>;
 
@@ -158,13 +172,22 @@ export function CustomMealTimesEditor({
               <Clock className="h-4 w-4 text-muted-foreground shrink-0" />
               <span className="text-sm font-medium truncate">{setting.label}</span>
             </div>
-            <Input
-              type="time"
+            <Select
               value={localTimes[setting.meal_type] || ""}
-              onChange={(e) => handleTimeChange(setting.meal_type, e.target.value)}
-              className="w-28 text-center"
+              onValueChange={(value) => handleTimeChange(setting.meal_type, value)}
               disabled={!useCustomTimes || isLoading || isSaving || disabled}
-            />
+            >
+              <SelectTrigger className="w-28">
+                <SelectValue placeholder="--:--" />
+              </SelectTrigger>
+              <SelectContent className="max-h-[240px]">
+                {TIME_OPTIONS.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         ))}
       </div>

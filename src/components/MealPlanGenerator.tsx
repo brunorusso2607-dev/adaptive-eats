@@ -72,8 +72,21 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       return;
     }
 
-    // Log para debug - verificar se customMealTimes está sendo capturado
-    console.log("[MealPlanGenerator] Gerando plano com customMealTimes:", customMealTimes);
+    // Processar customMealTimes para garantir que extras não tenham isNew: true
+    // Isso garante que refeições extras não confirmadas individualmente sejam salvas corretamente
+    let processedMealTimes = customMealTimes;
+    if (customMealTimes?.extras && Array.isArray(customMealTimes.extras)) {
+      processedMealTimes = {
+        ...customMealTimes,
+        extras: customMealTimes.extras.map(extra => ({
+          ...extra,
+          isNew: false, // Remove flag isNew para garantir que sejam processadas
+        })),
+      };
+    }
+    
+    // Log para debug
+    console.log("[MealPlanGenerator] Gerando plano com customMealTimes:", processedMealTimes);
 
     setIsGenerating(true);
     setProgress(0);
@@ -100,7 +113,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             daysCount: daysInThisBatch,
             existingPlanId: mealPlanId,
             weekNumber: batch + 1,
-            customMealTimes: customMealTimes
+            customMealTimes: processedMealTimes
           }
         });
 

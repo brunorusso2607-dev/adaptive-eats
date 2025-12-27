@@ -33,7 +33,7 @@ export function CustomMealTimesEditor({
 }: CustomMealTimesEditorProps) {
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
   const [isOpen, setIsOpen] = useState(!compact);
-  const [useCustomTimes, setUseCustomTimes] = useState(customTimes !== null && Object.keys(customTimes).length > 0);
+  const [useCustomTimes, setUseCustomTimes] = useState(customTimes != null && Object.keys(customTimes).length > 0);
   const [localTimes, setLocalTimes] = useState<CustomMealTimes>({});
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
@@ -53,7 +53,7 @@ export function CustomMealTimesEditor({
       }
     });
     setLocalTimes(initialTimes);
-    setUseCustomTimes(customTimes !== null && Object.keys(customTimes).length > 0);
+    setUseCustomTimes(customTimes != null && Object.keys(customTimes).length > 0);
   }, [globalSettings, customTimes]);
 
   const handleTimeChange = (mealType: string, value: string) => {

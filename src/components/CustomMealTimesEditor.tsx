@@ -74,6 +74,7 @@ export function CustomMealTimesEditor({
   const [extraMeals, setExtraMeals] = useState<ExtraMeal[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
+  const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
 
   // Inicializar horários locais e extras com valores existentes ou globais
   useEffect(() => {
@@ -191,8 +192,9 @@ export function CustomMealTimesEditor({
   };
 
   const handleAddExtra = () => {
+    const newExtraId = `extra_${Date.now()}`;
     const newExtra: ExtraMeal = {
-      id: `extra_${Date.now()}`,
+      id: newExtraId,
       name: "Refeição Extra",
       time: "15:00",
       isNew: true, // Marca como novo para ficar no final da lista
@@ -200,6 +202,7 @@ export function CustomMealTimesEditor({
     const newExtras = [...extraMeals, newExtra];
     setExtraMeals(newExtras);
     setHasChanges(true);
+    setOpenAccordion(newExtraId); // Abre o accordion do novo extra automaticamente
     
     if (onChange && useCustomTimes) {
       const data: CustomMealTimesWithExtras = { ...localTimes };
@@ -332,7 +335,7 @@ export function CustomMealTimesEditor({
         "transition-opacity duration-200",
         !useCustomTimes && "opacity-50 pointer-events-none"
       )}>
-        <Accordion type="single" collapsible className="space-y-2">
+        <Accordion type="single" collapsible className="space-y-2" value={openAccordion} onValueChange={setOpenAccordion}>
           {allMealsSorted.map(meal => (
             <AccordionItem 
               key={meal.id} 

@@ -43,7 +43,8 @@ import {
   FileText,
   Smile,
   Users,
-  X
+  X,
+  Download
 } from "lucide-react";
 import { format, subDays, startOfDay, endOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -89,6 +90,38 @@ interface UserModuleUsage {
 export default function AdminAIUsage() {
   const [period, setPeriod] = useState<PeriodFilter>("30d");
   const [selectedUser, setSelectedUser] = useState<UserUsageData | null>(null);
+
+  // Export user usage data to CSV
+  const exportToCSV = () => {
+    if (!userUsageData.length) return;
+
+    const headers = ["Usuário", "Email", "Requisições", "Tokens", "Custo (USD)", "% do Total"];
+    const totalCost = stats?.totalCost || 0;
+
+    const rows = userUsageData.map((user) => [
+      user.firstName || (user.userId === "anonymous" ? "Sistema/Anônimo" : "Sem nome"),
+      user.email,
+      user.requests.toString(),
+      user.tokens.toString(),
+      user.cost.toFixed(6),
+      totalCost > 0 ? ((user.cost / totalCost) * 100).toFixed(2) : "0",
+    ]);
+
+    const csvContent = [
+      headers.join(","),
+      ...rows.map((row) => row.map((cell) => `"${cell}"`).join(",")),
+    ].join("\n");
+
+    const blob = new Blob(["\ufeff" + csvContent], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `uso-ia-por-usuario-${format(new Date(), "yyyy-MM-dd")}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   // Calculate date range based on period
   const dateRange = useMemo(() => {
@@ -608,12 +641,24 @@ export default function AdminAIUsage() {
 
       {/* Usage by User */}
       <Card className="p-6 bg-card border border-border/60 shadow-none">
-        <div className="flex items-center gap-2 mb-4">
-          <Users className="w-5 h-5 text-primary" />
-          <h2 className="text-base font-medium text-foreground">Uso por Usuário</h2>
-          <Badge variant="outline" className="ml-2">
-            {userUsageData.filter(u => u.userId !== "anonymous").length} usuários
-          </Badge>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Users className="w-5 h-5 text-primary" />
+            <h2 className="text-base font-medium text-foreground">Uso por Usuário</h2>
+            <Badge variant="outline" className="ml-2">
+              {userUsageData.filter(u => u.userId !== "anonymous").length} usuários
+            </Badge>
+          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={exportToCSV}
+            disabled={!userUsageData.length}
+            className="gap-2"
+          >
+            <Download className="w-4 h-4" />
+            Exportar CSV
+          </Button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-sm">

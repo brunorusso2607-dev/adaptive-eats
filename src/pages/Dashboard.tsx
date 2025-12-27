@@ -26,6 +26,7 @@ import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
 import PendingMealsList from "@/components/PendingMealsList";
 import FreeFormMealLogger from "@/components/FreeFormMealLogger";
+import MealHistoryPage from "@/components/MealHistoryPage";
 
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
@@ -536,7 +537,7 @@ export default function Dashboard() {
         "meal-plan": "meal-plan",
         "scan": "scan",
         "camera": "scan",
-        "favorites": "favorites",
+        "history": "history",
         "profile": "profile",
       };
       const mappedTab = tabMap[tabParam];
@@ -653,8 +654,8 @@ export default function Dashboard() {
       setShowMealPlan(false);
     }
     
-    if (tab === "favorites") {
-      setShowList("favorites");
+    if (tab === "history") {
+      // Handled by rendering MealHistoryPage
     }
     
     if (tab === "profile") {
@@ -668,7 +669,7 @@ export default function Dashboard() {
   
   // Determine back button type: X for modal-like views, arrow for section views
   const getBackButtonType = (): "x" | "arrow" | null => {
-    if (mobileActiveTab === "profile" || mobileActiveTab === "favorites" || showProfileSheet || showList) {
+    if (mobileActiveTab === "profile" || mobileActiveTab === "history" || showProfileSheet || showList) {
       return "x";
     }
     if (mobileActiveTab === "meal-plan" || showMealPlan || mobileActiveTab === "scan" || showFoodAnalyzer) {
@@ -799,6 +800,8 @@ export default function Dashboard() {
                 onLogout={handleLogout}
                 onBack={() => setShowProfileSheet(false)}
               />
+            ) : mobileActiveTab === "history" ? (
+              <MealHistoryPage onBack={() => handleMobileTabChange("home")} />
             ) : (
             <>
               {/* Home Principal */}

@@ -419,6 +419,35 @@ export function usePendingMeals() {
 
   const skipMeal = useCallback(async (mealId: string) => {
     try {
+      // Get user and meal info
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("User not authenticated");
+
+      const { data: mealItem } = await supabase
+        .from("meal_plan_items")
+        .select("recipe_name")
+        .eq("id", mealId)
+        .single();
+
+      // Create a meal consumption record with followed_plan = false and 0 calories
+      // This marks it as "skipped" in the history
+      const { error: consumptionError } = await supabase
+        .from("meal_consumption")
+        .insert({
+          user_id: user.id,
+          meal_plan_item_id: mealId,
+          followed_plan: false,
+          total_calories: 0,
+          total_protein: 0,
+          total_carbs: 0,
+          total_fat: 0,
+          custom_meal_name: mealItem?.recipe_name ? `${mealItem.recipe_name} (Pulada)` : "Refeição Pulada",
+          feedback_status: "auto_well", // No symptoms for skipped meals
+        });
+
+      if (consumptionError) throw consumptionError;
+
+      // Mark the meal plan item as completed
       const { error } = await supabase
         .from("meal_plan_items")
         .update({ completed_at: new Date().toISOString() })

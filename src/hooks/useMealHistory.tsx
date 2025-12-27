@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-export type MealStatus = "all" | "ok" | "symptoms" | "pending";
+export type MealStatus = "all" | "ok" | "symptoms" | "pending" | "skipped";
 
 export interface MealHistoryItem {
   id: string;
   consumedAt: string;
   recipeName: string | null;
   totalCalories: number;
+  totalProtein: number;
+  totalCarbs: number;
+  totalFat: number;
   feedbackStatus: string;
   symptoms: string[];
   severity: string | null;
@@ -55,8 +58,13 @@ export function useMealHistory(filters: MealHistoryFilters) {
           id,
           consumed_at,
           total_calories,
+          total_protein,
+          total_carbs,
+          total_fat,
           feedback_status,
+          followed_plan,
           meal_plan_item_id,
+          custom_meal_name,
           meal_plan_items:meal_plan_item_id (
             recipe_name
           ),
@@ -75,6 +83,8 @@ export function useMealHistory(filters: MealHistoryFilters) {
         query = query.eq("feedback_status", "symptoms");
       } else if (filters.status === "pending") {
         query = query.eq("feedback_status", "pending");
+      } else if (filters.status === "skipped") {
+        query = query.eq("followed_plan", false);
       }
 
       const { data: mealsData, error: mealsError } = await query;
@@ -127,17 +137,25 @@ export function useMealHistory(filters: MealHistoryFilters) {
         }
 
         const recipeInfo = (meal as any).meal_plan_items;
-        const recipeName = recipeInfo?.recipe_name || 
+        let recipeName = recipeInfo?.recipe_name || 
+          meal.custom_meal_name ||
           (meal.consumption_items && meal.consumption_items.length > 0 
             ? meal.consumption_items.map((i: any) => i.food_name).join(", ")
             : "Refeição");
+
+        // Determine if meal was skipped
+        const isSkipped = meal.followed_plan === false && meal.total_calories === 0;
+        const effectiveStatus = isSkipped ? "skipped" : meal.feedback_status;
 
         return {
           id: meal.id,
           consumedAt: meal.consumed_at,
           recipeName: recipeName.length > 40 ? recipeName.substring(0, 40) + "..." : recipeName,
           totalCalories: meal.total_calories,
-          feedbackStatus: meal.feedback_status,
+          totalProtein: meal.total_protein,
+          totalCarbs: meal.total_carbs,
+          totalFat: meal.total_fat,
+          feedbackStatus: effectiveStatus,
           symptoms: symptomInfo?.symptoms || [],
           severity: symptomInfo?.severity || null,
           symptomNotes: symptomInfo?.notes || null,
@@ -163,6 +181,7 @@ export function useMealHistory(filters: MealHistoryFilters) {
     ok: meals.filter(m => m.feedbackStatus === "well" || m.feedbackStatus === "auto_well").length,
     symptoms: meals.filter(m => m.feedbackStatus === "symptoms").length,
     pending: meals.filter(m => m.feedbackStatus === "pending").length,
+    skipped: meals.filter(m => m.feedbackStatus === "skipped").length,
   };
 
   return {

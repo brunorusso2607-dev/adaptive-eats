@@ -7,6 +7,9 @@ import {
   type CategoryContext,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import {
+  saveRecipeToPool,
+} from "../_shared/recipePool.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

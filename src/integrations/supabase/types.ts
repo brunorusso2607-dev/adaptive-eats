@@ -1223,6 +1223,7 @@ export type Database = {
           ingredients: Json
           is_active: boolean
           language_code: string | null
+          last_used_at: string | null
           meal_type: string
           name: string
           prep_time: number
@@ -1230,9 +1231,11 @@ export type Database = {
           rating: number | null
           rating_count: number | null
           sort_order: number
+          source_module: string | null
           source_name: string | null
           source_url: string | null
           updated_at: string
+          usage_count: number | null
         }
         Insert: {
           ai_generated?: boolean | null
@@ -1249,6 +1252,7 @@ export type Database = {
           ingredients?: Json
           is_active?: boolean
           language_code?: string | null
+          last_used_at?: string | null
           meal_type: string
           name: string
           prep_time?: number
@@ -1256,9 +1260,11 @@ export type Database = {
           rating?: number | null
           rating_count?: number | null
           sort_order?: number
+          source_module?: string | null
           source_name?: string | null
           source_url?: string | null
           updated_at?: string
+          usage_count?: number | null
         }
         Update: {
           ai_generated?: boolean | null
@@ -1275,6 +1281,7 @@ export type Database = {
           ingredients?: Json
           is_active?: boolean
           language_code?: string | null
+          last_used_at?: string | null
           meal_type?: string
           name?: string
           prep_time?: number
@@ -1282,9 +1289,11 @@ export type Database = {
           rating?: number | null
           rating_count?: number | null
           sort_order?: number
+          source_module?: string | null
           source_name?: string | null
           source_url?: string | null
           updated_at?: string
+          usage_count?: number | null
         }
         Relationships: []
       }

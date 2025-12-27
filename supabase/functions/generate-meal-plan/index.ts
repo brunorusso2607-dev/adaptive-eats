@@ -709,6 +709,8 @@ serve(async (req) => {
     // VALIDAÇÃO DE DUPLICAÇÃO - REUTILIZAR PLANO EXISTENTE DO MESMO MÊS
     // ========================================
     let reusingExistingPlan = false;
+    let existingDays: Set<string> = new Set(); // Track existing day+week combinations
+    
     if (!existingPlanId) {
       const start = startDate ? new Date(startDate) : new Date();
       const targetMonth = start.getMonth();
@@ -729,27 +731,33 @@ serve(async (req) => {
       if (checkError) {
         logStep("Error checking existing plans", { error: checkError.message });
       } else if (existingPlans && existingPlans.length > 0) {
-        // Reutilizar o plano existente - deletar items antigos e regenerar
         const existingPlan = existingPlans[0];
-        logStep("Found existing plan for this month - will reuse and regenerate", { 
+        logStep("Found existing plan for this month - will add missing days only", { 
           existingPlanId: existingPlan.id, 
           existingPlanName: existingPlan.name,
           targetMonth: `${targetYear}-${targetMonth + 1}`
         });
         
-        // Delete existing meal items to regenerate fresh
-        const { error: deleteError } = await supabaseClient
+        // Fetch existing items to know which days already have recipes
+        const { data: existingItems, error: fetchItemsError } = await supabaseClient
           .from("meal_plan_items")
-          .delete()
+          .select("day_of_week, week_number")
           .eq("meal_plan_id", existingPlan.id);
         
-        if (deleteError) {
-          logStep("Error deleting existing meal items", { error: deleteError.message });
-        } else {
-          logStep("Deleted existing meal items for regeneration");
+        if (fetchItemsError) {
+          logStep("Error fetching existing items", { error: fetchItemsError.message });
+        } else if (existingItems && existingItems.length > 0) {
+          // Create a set of existing day+week combinations
+          existingItems.forEach(item => {
+            existingDays.add(`${item.week_number}-${item.day_of_week}`);
+          });
+          logStep("Existing days found", { 
+            count: existingDays.size,
+            days: Array.from(existingDays)
+          });
         }
         
-        // Reutilizar o plano existente
+        // Reutilizar o plano existente SEM deletar items
         existingPlanId = existingPlan.id;
         reusingExistingPlan = true;
       } else {
@@ -839,8 +847,18 @@ serve(async (req) => {
     
     const allDays: any[] = [];
     const usedRecipes = [...previousRecipes];
+    const targetWeekNum = weekNumber || 1;
+    let skippedDays = 0;
     
     for (let i = 0; i < daysCount; i++) {
+      // Check if this day already exists in the plan
+      const dayKey = `${targetWeekNum}-${i}`;
+      if (existingDays.has(dayKey)) {
+        logStep(`Skipping day ${i + 1}/${daysCount} - already exists`, { dayKey });
+        skippedDays++;
+        continue;
+      }
+      
       logStep(`Generating day ${i + 1}/${daysCount}`);
       
       const dayData = await generateSingleDay(
@@ -877,7 +895,25 @@ serve(async (req) => {
     }
     
     let mealPlanData: any = { days: allDays };
-    logStep("All days generated", { daysCount: allDays.length });
+    logStep("All days generated", { 
+      daysGenerated: allDays.length, 
+      daysSkipped: skippedDays,
+      totalRequested: daysCount 
+    });
+    
+    // If all days were skipped, return early with success
+    if (allDays.length === 0 && skippedDays > 0) {
+      logStep("All requested days already exist - nothing to generate");
+      return new Response(JSON.stringify({
+        success: true,
+        message: "Todos os dias solicitados já existem no plano",
+        mealPlan: { id: existingPlanId },
+        skippedDays
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
 
     // ========================================
     // VALIDAÇÃO E COMPLETAÇÃO DE REFEIÇÕES FALTANTES

@@ -13,18 +13,22 @@ import { cn } from "@/lib/utils";
 export type CustomMealTimes = Record<string, string>;
 
 interface CustomMealTimesEditorProps {
-  customTimes: CustomMealTimes | null;
-  onSave: (customTimes: CustomMealTimes | null) => Promise<boolean>;
+  customTimes?: CustomMealTimes | null;
+  onSave?: (customTimes: CustomMealTimes | null) => Promise<boolean>;
+  onChange?: (customTimes: CustomMealTimes | null) => void;
   isLoading?: boolean;
   compact?: boolean;
+  disabled?: boolean;
   className?: string;
 }
 
 export function CustomMealTimesEditor({
   customTimes,
   onSave,
+  onChange,
   isLoading = false,
   compact = false,
+  disabled = false,
   className,
 }: CustomMealTimesEditorProps) {
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
@@ -53,16 +57,22 @@ export function CustomMealTimesEditor({
   }, [globalSettings, customTimes]);
 
   const handleTimeChange = (mealType: string, value: string) => {
-    setLocalTimes(prev => ({
-      ...prev,
-      [mealType]: value,
-    }));
+    const newTimes = { ...localTimes, [mealType]: value };
+    setLocalTimes(newTimes);
     setHasChanges(true);
+    // Se tem onChange, notifica em tempo real
+    if (onChange && useCustomTimes) {
+      onChange(newTimes);
+    }
   };
 
   const handleToggleCustomTimes = (enabled: boolean) => {
     setUseCustomTimes(enabled);
     setHasChanges(true);
+    // Notifica onChange
+    if (onChange) {
+      onChange(enabled ? localTimes : null);
+    }
   };
 
   const handleResetToGlobal = () => {
@@ -72,6 +82,9 @@ export function CustomMealTimesEditor({
     });
     setLocalTimes(resetTimes);
     setHasChanges(true);
+    if (onChange && useCustomTimes) {
+      onChange(resetTimes);
+    }
   };
 
   const handleSave = async () => {
@@ -127,7 +140,7 @@ export function CustomMealTimesEditor({
           id="custom-times-toggle"
           checked={useCustomTimes}
           onCheckedChange={handleToggleCustomTimes}
-          disabled={isLoading || isSaving}
+          disabled={isLoading || isSaving || disabled}
         />
       </div>
 
@@ -150,7 +163,7 @@ export function CustomMealTimesEditor({
               value={localTimes[setting.meal_type] || ""}
               onChange={(e) => handleTimeChange(setting.meal_type, e.target.value)}
               className="w-28 text-center"
-              disabled={!useCustomTimes || isLoading || isSaving}
+              disabled={!useCustomTimes || isLoading || isSaving || disabled}
             />
           </div>
         ))}
@@ -162,27 +175,29 @@ export function CustomMealTimesEditor({
           variant="ghost"
           size="sm"
           onClick={handleResetToGlobal}
-          disabled={!useCustomTimes || isLoading || isSaving}
+          disabled={!useCustomTimes || isLoading || isSaving || disabled}
           className="text-xs"
         >
           <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
           Restaurar padrão
         </Button>
-        <Button
-          size="sm"
-          onClick={handleSave}
-          disabled={!hasChanges || isLoading || isSaving}
-          className="min-w-20"
-        >
-          {isSaving ? (
-            <span className="animate-pulse">Salvando...</span>
-          ) : (
-            <>
-              <Check className="h-3.5 w-3.5 mr-1.5" />
-              Salvar
-            </>
-          )}
-        </Button>
+        {onSave && (
+          <Button
+            size="sm"
+            onClick={handleSave}
+            disabled={!hasChanges || isLoading || isSaving || disabled}
+            className="min-w-20"
+          >
+            {isSaving ? (
+              <span className="animate-pulse">Salvando...</span>
+            ) : (
+              <>
+                <Check className="h-3.5 w-3.5 mr-1.5" />
+                Salvar
+              </>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );

@@ -2,45 +2,72 @@ import { useCallback, useMemo } from 'react';
 import { useUserProfileContext } from './useUserProfileContext';
 
 // Mapeamento de intolerâncias para ingredientes problemáticos
+// SINCRONIZADO com supabase/functions/_shared/recipeConfig.ts
 // Com keywords de segurança para evitar falsos positivos (ex: "leite de coco" não é lactose)
 interface IntoleranceMapping {
   forbidden: string[];
   safeKeywords: string[];
 }
 
+// EXCEÇÕES SEGURAS GLOBAIS - ingredientes que parecem problemáticos mas são seguros
+// Deve estar sincronizado com validateIngredient() em recipeConfig.ts
+const GLOBAL_SAFE_EXCEPTIONS = [
+  "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+  "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+  "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
+  "creme de leite de coco", "iogurte de coco", "manteiga de coco",
+  "leite de castanha", "leite de macadamia", "leite de quinoa",
+  "sem lactose", "zero lactose", "sem gluten", "gluten free",
+  "sem acucar", "zero acucar", "diet", "sugar free"
+];
+
 const INTOLERANCE_INGREDIENTS: Record<string, IntoleranceMapping> = {
   lactose: {
     forbidden: [
-      "leite integral", "leite desnatado", "leite em pó", "leite pasteurizado",
-      "queijo", "iogurte", "manteiga", "creme de leite", "nata", "requeijão",
-      "cream cheese", "ricota", "mussarela", "muçarela", "parmesão", "gorgonzola",
-      "provolone", "coalho", "cottage", "mascarpone", "brie", "camembert", "emmental",
-      "cheddar", "gouda", "feta", "chantilly", "whey", "soro de leite", "kefir",
-      "coalhada", "catupiry", "leite condensado", "doce de leite", "caseína",
+      // Leite e derivados diretos - precisa ser específico para evitar falsos positivos
+      "leite integral", "leite desnatado", "leite em po", "leite pasteurizado",
+      "leite condensado", "leite evaporado",
+      // Queijos
+      "queijo", "mussarela", "mucaarela", "parmesao", "prato", "coalho",
+      "cottage", "ricota", "gorgonzola", "provolone", "brie", "camembert",
+      "emmental", "cheddar", "gouda", "feta", "mascarpone", "cream cheese",
+      "requeijao", "catupiry",
+      // Creme e manteiga
+      "manteiga", "creme de leite", "nata", "chantilly", "chantili",
+      // Iogurte
+      "iogurte", "coalhada", "kefir",
+      // Produtos com lactose
+      "whey", "soro de leite", "caseina",
+      // Doces
+      "doce de leite", "brigadeiro",
+      // Molhos
       "molho branco", "molho alfredo", "bechamel", "fondue"
     ],
     safeKeywords: [
-      "sem lactose", "zero lactose", "leite de coco", "leite de amendoa", "leite de aveia",
-      "leite de arroz", "leite vegetal", "creme de coco", "iogurte vegetal", "iogurte de coco",
-      "queijo vegano", "manteiga vegana", "leite de castanha", "leite de soja"
+      "leite de coco", "leite de amendoa", "leite de aveia", "leite de soja",
+      "leite de arroz", "leite vegetal", "creme de coco", "iogurte vegetal",
+      "iogurte de coco", "queijo vegano", "manteiga vegana", "sem lactose",
+      "zero lactose", "leite de castanha"
     ]
   },
   gluten: {
     forbidden: [
       "trigo", "farinha de trigo", "farinha branca", "pao", "macarrao", "espaguete",
       "massa de lasanha", "biscoito", "bolacha", "bolo", "cevada", "centeio",
-      "cerveja", "molho shoyu", "shoyu", "seitan", "bulgur", "cuscuz", "semolina",
+      "cerveja", "molho shoyu", "shoyu", "seitan", "bulgur", "cuscuz de trigo", "semolina",
       "crouton", "empanado", "milanesa", "farinha de rosca", "torrada", "croissant",
       "pizza", "pastel", "penne", "fusilli", "talharim", "fettuccine", "ravioli"
     ],
     safeKeywords: [
       "sem gluten", "gluten free", "farinha de arroz", "farinha de amendoa",
-      "farinha de coco", "farinha de mandioca", "polvilho", "tapioca", "goma de tapioca"
+      "farinha de coco", "farinha de mandioca", "polvilho", "tapioca", 
+      "goma de tapioca", "farinha de aveia sem gluten"
     ]
   },
   amendoim: {
     forbidden: [
-      "amendoim", "pasta de amendoim", "manteiga de amendoim", "pacoca", "oleo de amendoim"
+      "amendoim", "pasta de amendoim", "manteiga de amendoim", "pacoca", "oleo de amendoim",
+      "farinha de amendoim", "pe de moleque"
     ],
     safeKeywords: ["sem amendoim"]
   },
@@ -48,36 +75,37 @@ const INTOLERANCE_INGREDIENTS: Record<string, IntoleranceMapping> = {
     forbidden: [
       "camarao", "lagosta", "caranguejo", "siri", "lula", "polvo", "mexilhao", "ostra",
       "vieira", "marisco", "salmao", "atum", "tilapia", "bacalhau", "sardinha",
-      "anchova", "truta", "robalo", "pescada", "merluza", "peixe"
+      "anchova", "truta", "robalo", "pescada", "merluza", "peixe", "camarao seco"
     ],
     safeKeywords: []
   },
   ovo: {
     forbidden: [
-      "ovo", "ovos", "clara de ovo", "gema", "omelete", "fritada", "maionese", "merengue"
+      "ovo", "ovos", "clara de ovo", "gema", "omelete", "fritada", "maionese", "merengue",
+      "gemada", "ovo cozido", "ovo frito", "ovo mexido", "ovo poche"
     ],
-    safeKeywords: ["sem ovo", "vegano", "vegan"]
+    safeKeywords: ["sem ovo", "vegano", "vegan", "maionese vegana"]
   },
   soja: {
     forbidden: [
       "soja", "tofu", "leite de soja", "molho shoyu", "shoyu", "tempeh", "misso",
-      "edamame", "proteina de soja"
+      "edamame", "proteina de soja", "lecitina de soja"
     ],
     safeKeywords: ["sem soja"]
   },
   castanhas: {
     forbidden: [
       "castanha", "nozes", "noz", "amendoa", "avela", "pistache", "macadamia", "pinhao",
-      "caju", "castanha de caju", "castanha do para"
+      "caju", "castanha de caju", "castanha do para", "noz peca", "nutella"
     ],
     safeKeywords: ["sem castanha", "sem nozes"]
   },
   acucar: {
     forbidden: [
       "acucar", "mel", "melado", "xarope", "rapadura", "caramelo", "acucar mascavo",
-      "acucar demerara", "acucar refinado"
+      "acucar demerara", "acucar refinado", "acucar cristal", "acucar de confeiteiro"
     ],
-    safeKeywords: ["sem acucar", "zero acucar", "diet", "sugar free"]
+    safeKeywords: ["sem acucar", "zero acucar", "diet", "sugar free", "adocante"]
   }
 };
 
@@ -185,6 +213,14 @@ export function useDynamicDietaryCompatibility() {
 
       const normalizedItem = normalizeText(itemName);
 
+      // PRIMEIRO: Verifica exceções globais seguras (ex: leite de coco, queijo vegano)
+      const isGlobalSafe = GLOBAL_SAFE_EXCEPTIONS.some(safe => 
+        normalizedItem.includes(normalizeText(safe))
+      );
+      
+      // Se o ingrediente é globalmente seguro, pula toda a verificação
+      if (isGlobalSafe) continue;
+
       // 1. Verifica intolerâncias do usuário
       const userIntolerances = profileContext.intolerances || [];
       for (const intolerance of userIntolerances) {
@@ -193,7 +229,7 @@ export function useDynamicDietaryCompatibility() {
         const mapping = INTOLERANCE_INGREDIENTS[intolerance];
         if (!mapping) continue;
 
-        // PRIMEIRO: Verifica se o ingrediente tem uma keyword de segurança
+        // Verifica se o ingrediente tem uma keyword de segurança específica
         const isSafe = mapping.safeKeywords.some(safe => 
           normalizedItem.includes(normalizeText(safe))
         );

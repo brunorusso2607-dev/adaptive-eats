@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -13,6 +13,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type FridgeIngredient = {
   nome: string;
@@ -71,6 +72,7 @@ export default function FridgeScanner() {
   } | null>(null);
   const [savingRecipeIndex, setSavingRecipeIndex] = useState<number | null>(null);
   const [pendingSlot, setPendingSlot] = useState<FridgeSlot["id"] | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -81,12 +83,21 @@ export default function FridgeScanner() {
   const hasGeladeiraPhoto = geladeiraSlot?.image !== null;
   const photoCount = slots.filter(slot => slot.image !== null).length;
 
+  // Smooth transition helper
+  const transitionToPhase = useCallback((newPhase: CapturePhase) => {
+    setIsTransitioning(true);
+    setTimeout(() => {
+      setCapturePhase(newPhase);
+      setTimeout(() => setIsTransitioning(false), 50);
+    }, 200);
+  }, []);
+
   // Auto-advance to next phase after capturing initial photo
   useEffect(() => {
     if (capturePhase === "initial" && hasGeladeiraPhoto && pendingSlot === null) {
-      setCapturePhase("freezer");
+      transitionToPhase("freezer");
     }
-  }, [hasGeladeiraPhoto, capturePhase, pendingSlot]);
+  }, [hasGeladeiraPhoto, capturePhase, pendingSlot, transitionToPhase]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -112,11 +123,11 @@ export default function FridgeScanner() {
       ));
       setPendingSlot(null);
       
-      // Auto-advance capture phase
+      // Auto-advance capture phase with transition
       if (currentPendingSlot === "geladeira") {
-        setCapturePhase("freezer");
+        transitionToPhase("freezer");
       } else if (currentPendingSlot === "freezer") {
-        setCapturePhase("porta");
+        transitionToPhase("porta");
       } else if (currentPendingSlot === "porta") {
         // All photos taken, start analysis
         setTimeout(() => startAnalysis(), 300);
@@ -147,7 +158,7 @@ export default function FridgeScanner() {
 
   const skipPhase = () => {
     if (capturePhase === "freezer") {
-      setCapturePhase("porta");
+      transitionToPhase("porta");
     } else if (capturePhase === "porta") {
       startAnalysis();
     }
@@ -534,7 +545,10 @@ export default function FridgeScanner() {
 
         {/* Phase: Initial - Take main fridge photo */}
         {capturePhase === "initial" && !categoryError && (
-          <Card className="glass-card">
+          <Card className={cn(
+            "glass-card transition-all duration-300",
+            isTransitioning ? "opacity-0 scale-95" : "opacity-100 scale-100 animate-fade-in"
+          )}>
             <CardContent className="p-6 space-y-4">
               <PhotoGuide type="geladeira" />
               
@@ -562,11 +576,14 @@ export default function FridgeScanner() {
 
         {/* Phase: Freezer - Optional freezer photo */}
         {capturePhase === "freezer" && !categoryError && (
-          <div className="space-y-3">
+          <div className={cn(
+            "space-y-3 transition-all duration-300",
+            isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0 animate-fade-in"
+          )}>
             {/* Show captured photos */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 animate-scale-in">
               {geladeiraSlot?.image && (
-                <div className="relative aspect-video w-24 rounded-lg overflow-hidden border-2 border-primary/50">
+                <div className="relative aspect-video w-24 rounded-lg overflow-hidden border-2 border-primary/50 shadow-md">
                   <img src={geladeiraSlot.image} alt="Geladeira" className="w-full h-full object-cover" />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
                     <p className="text-[9px] text-white font-medium flex items-center gap-0.5">
@@ -607,11 +624,14 @@ export default function FridgeScanner() {
 
         {/* Phase: Porta - Optional door photo */}
         {capturePhase === "porta" && !categoryError && (
-          <div className="space-y-3">
+          <div className={cn(
+            "space-y-3 transition-all duration-300",
+            isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0 animate-fade-in"
+          )}>
             {/* Show captured photos */}
-            <div className="flex gap-2">
+            <div className="flex gap-2 animate-scale-in">
               {geladeiraSlot?.image && (
-                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-primary/50">
+                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-primary/50 shadow-md">
                   <img src={geladeiraSlot.image} alt="Geladeira" className="w-full h-full object-cover" />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
                     <p className="text-[8px] text-white font-medium flex items-center gap-0.5">
@@ -622,7 +642,7 @@ export default function FridgeScanner() {
                 </div>
               )}
               {freezerSlot?.image && (
-                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-cyan-500/50">
+                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-cyan-500/50 shadow-md">
                   <img src={freezerSlot.image} alt="Freezer" className="w-full h-full object-cover" />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
                     <p className="text-[8px] text-white font-medium flex items-center gap-0.5">

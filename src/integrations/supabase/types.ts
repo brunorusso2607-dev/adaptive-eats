@@ -856,8 +856,10 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          source_plan_id: string | null
           start_date: string
           status: string | null
+          unlocks_at: string | null
           updated_at: string
           user_id: string
         }
@@ -869,8 +871,10 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          source_plan_id?: string | null
           start_date: string
           status?: string | null
+          unlocks_at?: string | null
           updated_at?: string
           user_id: string
         }
@@ -882,12 +886,22 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          source_plan_id?: string | null
           start_date?: string
           status?: string | null
+          unlocks_at?: string | null
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "meal_plans_source_plan_id_fkey"
+            columns: ["source_plan_id"]
+            isOneToOne: false
+            referencedRelation: "meal_plans"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       meal_reminder_settings: {
         Row: {

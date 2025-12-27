@@ -7,12 +7,11 @@ import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangl
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
-import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
-import { checkUserIntoleranceConflict, getIntoleranceLabel } from "@/lib/intoleranceDetection";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -72,7 +71,6 @@ export default function FoodSearchDrawer({
 }: FoodSearchDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
-  const [userProfile, setUserProfile] = useState<{ intolerances: string[] | null; dietary_preference: string | null } | null>(null);
   const [conflictDialog, setConflictDialog] = useState<{ open: boolean; food: Food | null; conflict: { ingredient: string; restriction: string; restrictionLabel: string } | null }>({
     open: false,
     food: null,
@@ -104,29 +102,20 @@ export default function FoodSearchDrawer({
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
   const { saveConsumption } = useMealConsumption();
-  const { checkConflict } = useIngredientConflictCheck(userProfile);
+  const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
 
-  // Fetch user profile for conflict checking
-  useEffect(() => {
-    const fetchProfile = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data } = await supabase
-        .from("profiles")
-        .select("intolerances, dietary_preference")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (data) {
-        setUserProfile(data);
-      }
-    };
-
-    if (open) {
-      fetchProfile();
+  // Helper to convert new hook format to legacy format for dialogs
+  const checkFoodConflicts = useCallback((foodName: string) => {
+    const result = checkFood(foodName);
+    if (result.hasConflict) {
+      return {
+        ingredient: foodName,
+        restriction: result.conflicts[0],
+        restrictionLabel: `intolerante a ${result.badgeLabel}`,
+      };
     }
-  }, [open]);
+    return null;
+  }, [checkFood]);
 
   // Debounced search
   useEffect(() => {
@@ -194,8 +183,7 @@ export default function FoodSearchDrawer({
     conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
     ingredients: string[];
   } | null> => {
-    if (!userProfile?.intolerances || userProfile.intolerances.length === 0 || 
-        userProfile.intolerances.every(i => i === "nenhuma")) {
+    if (!hasIntolerances || intolerances.length === 0) {
       return null;
     }
 
@@ -203,7 +191,7 @@ export default function FoodSearchDrawer({
       const { data, error } = await supabase.functions.invoke('analyze-food-intolerances', {
         body: { 
           foodName, 
-          userIntolerances: userProfile.intolerances.filter(i => i !== "nenhuma") 
+          userIntolerances: intolerances
         }
       });
 
@@ -221,33 +209,7 @@ export default function FoodSearchDrawer({
       console.error("Erro ao chamar análise de IA:", err);
       return null;
     }
-  }, [userProfile]);
-
-  // Check for intolerance conflicts - first local, then AI if needed
-  const checkFoodConflicts = useCallback((foodName: string) => {
-    // First check with hook (ingredient-based)
-    const ingredientConflict = checkConflict(foodName);
-    if (ingredientConflict) {
-      return ingredientConflict;
-    }
-    
-    // Then check with detection function (name-based for processed foods)
-    if (userProfile?.intolerances) {
-      const { hasConflict, conflicts } = checkUserIntoleranceConflict(
-        foodName,
-        userProfile.intolerances
-      );
-      if (hasConflict && conflicts.length > 0) {
-        return {
-          ingredient: foodName,
-          restriction: conflicts[0],
-          restrictionLabel: `intolerante a ${getIntoleranceLabel(conflicts[0])}`,
-        };
-      }
-    }
-    
-    return null;
-  }, [checkConflict, userProfile]);
+  }, [hasIntolerances, intolerances]);
 
   // Handle adding food with AI analysis for unknown foods
   const handleAddFood = useCallback(async (food: Food) => {
@@ -260,8 +222,7 @@ export default function FoodSearchDrawer({
     }
 
     // For foods not in local mapping, use AI analysis
-    if (userProfile?.intolerances && 
-        userProfile.intolerances.some(i => i !== "nenhuma")) {
+    if (hasIntolerances) {
       setIsAnalyzingIntolerance(true);
       
       const aiResult = await analyzeWithAI(food.name);
@@ -280,7 +241,7 @@ export default function FoodSearchDrawer({
     }
 
     addFoodToList(food);
-  }, [checkFoodConflicts, userProfile, analyzeWithAI]);
+  }, [checkFoodConflicts, hasIntolerances, analyzeWithAI]);
 
   const addFoodToList = (food: Food) => {
     const defaultServing = food.default_serving_size || 100;
@@ -915,7 +876,7 @@ export default function FoodSearchDrawer({
             <AlertDialogDescription asChild>
               <div className="space-y-3 pt-2">
                 <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
-                  ⚠️ Este alimento pode conter {aiConflictDialog.conflict?.restriction && getIntoleranceLabel(aiConflictDialog.conflict.restriction)}
+                  ⚠️ Este alimento pode conter {aiConflictDialog.conflict?.restrictionLabel?.replace('intolerante a ', '')}
                 </p>
                 <p className="text-sm text-muted-foreground">
                   De acordo com seu perfil, você é {aiConflictDialog.conflict?.restrictionLabel}. Deseja adicionar mesmo assim?

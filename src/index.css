@@ -320,11 +320,69 @@
     @apply transition-all duration-200;
     @apply hover:shadow-md hover:-translate-y-0.5;
   }
+
+  /* Toast styles - consistent across the app */
+  .toast-success {
+    @apply border-l-4;
+    border-left-color: hsl(var(--success));
+  }
+
+  .toast-error {
+    @apply border-l-4;
+    border-left-color: hsl(var(--destructive));
+  }
+
+  .toast-warning {
+    @apply border-l-4;
+    border-left-color: hsl(var(--warning));
+  }
+
+  .toast-info {
+    @apply border-l-4;
+    border-left-color: hsl(var(--info));
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Toast utility colors */
+  .text-success {
+    color: hsl(var(--success));
+  }
+
+  .text-warning {
+    color: hsl(var(--warning));
+  }
+
+  .text-info {
+    color: hsl(var(--info));
+  }
+
+  .bg-success\/5 {
+    background-color: hsl(var(--success) / 0.05);
+  }
+
+  .bg-warning\/5 {
+    background-color: hsl(var(--warning) / 0.05);
+  }
+
+  .bg-info\/5 {
+    background-color: hsl(var(--info) / 0.05);
+  }
+
+  .border-success\/30 {
+    border-color: hsl(var(--success) / 0.3);
+  }
+
+  .border-warning\/30 {
+    border-color: hsl(var(--warning) / 0.3);
+  }
+
+  .border-info\/30 {
+    border-color: hsl(var(--info) / 0.3);
   }
 }
 

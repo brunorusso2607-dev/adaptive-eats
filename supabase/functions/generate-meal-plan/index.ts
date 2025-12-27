@@ -542,8 +542,8 @@ serve(async (req) => {
 
     const requestBody = await req.json();
     const daysCount = Math.min(requestBody.daysCount || 7, 7);
-    const { planName, startDate, existingPlanId, weekNumber } = requestBody;
-    logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber });
+    const { planName, startDate, existingPlanId, weekNumber, customMealTimes } = requestBody;
+    logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber, hasCustomMealTimes: !!customMealTimes });
 
     // Fetch previous week's recipes to avoid repetition
     let previousRecipes: string[] = [];
@@ -781,7 +781,8 @@ serve(async (req) => {
           name: planName || `Plano ${start.toLocaleDateString('pt-BR')}`,
           start_date: start.toISOString().split('T')[0],
           end_date: endDate.toISOString().split('T')[0],
-          is_active: true
+          is_active: true,
+          custom_meal_times: customMealTimes || null
         })
         .select()
         .single();

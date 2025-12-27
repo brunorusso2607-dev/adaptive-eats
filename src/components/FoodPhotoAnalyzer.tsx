@@ -1436,35 +1436,37 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 />
               </div>
 
-              {/* Spacer for fixed footer + bottom nav */}
-              <div className="h-36 md:h-24" />
+              {/* Calories summary - simple text above footer */}
+              <div className="flex items-center justify-center gap-2 py-3 text-muted-foreground">
+                <Flame className="w-4 h-4 text-orange-500" />
+                <span className="text-sm">
+                  Total: <span className="font-semibold text-foreground">{foodAnalysis.total_geral.calorias_totais} kcal</span>
+                </span>
+              </div>
 
-              {/* Fixed Footer with Calories + Actions - positioned above mobile nav */}
+              {/* Spacer for fixed footer + bottom nav */}
+              <div className="h-28 md:h-20" />
+
+              {/* Fixed Footer with Actions - positioned above mobile nav */}
               <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 z-40">
                 <div className="max-w-lg mx-auto flex items-center gap-3">
-                  {/* Calories summary */}
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-orange-500/10 border border-orange-500/20">
-                    <Flame className="w-4 h-4 text-orange-500" />
-                    <span className="font-bold text-foreground">{foodAnalysis.total_geral.calorias_totais}</span>
-                    <span className="text-xs text-muted-foreground">kcal</span>
-                  </div>
-
-                  {/* Action buttons */}
+                  {/* Primary action */}
                   <Button
                     onClick={() => setRegisterMealOpen(true)}
                     className="flex-1 gradient-primary"
                   >
                     <Check className="w-4 h-4 mr-2" />
-                    Registrar
+                    Vou comer agora
                   </Button>
 
+                  {/* Secondary action */}
                   <Button
                     variant="outline"
                     onClick={resetAnalysis}
-                    size="icon"
                     className="flex-shrink-0"
                   >
-                    <RotateCcw className="w-4 h-4" />
+                    <Camera className="w-4 h-4 mr-2" />
+                    Nova foto
                   </Button>
                 </div>
               </div>

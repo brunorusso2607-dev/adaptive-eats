@@ -125,6 +125,12 @@ export function MealHistorySheet({
     return acc;
   }, {});
 
+  // Calculate wellness summary counts
+  const wellnessSummary = isWellnessDiary ? {
+    okCount: meals.filter(m => m.feedbackStatus === "well" || m.feedbackStatus === "auto_well").length,
+    symptomsCount: meals.filter(m => m.feedbackStatus === "symptoms").length,
+  } : null;
+
   const getDateLabel = (dateStr: string) => {
     const date = new Date(dateStr);
     if (isToday(date)) return "Hoje";
@@ -140,9 +146,21 @@ export function MealHistorySheet({
             {isWellnessDiary ? "Diário de Bem-estar" : "Histórico de Refeições"}
           </SheetTitle>
           {isWellnessDiary && (
-            <p className="text-xs text-muted-foreground mt-1">
-              Suas avaliações após as refeições
-            </p>
+            <div className="mt-1 space-y-1">
+              <p className="text-xs text-muted-foreground">
+                Suas avaliações após as refeições
+              </p>
+              {wellnessSummary && !isLoading && (
+                <p className="text-xs font-medium">
+                  <span className="text-green-600">✅ {wellnessSummary.okCount} OK</span>
+                  <span className="text-muted-foreground mx-2">•</span>
+                  <span className="text-orange-600">⚠️ {wellnessSummary.symptomsCount} com sintomas</span>
+                  <span className="text-muted-foreground ml-1">
+                    ({filters.days === 0 ? "hoje" : `últimos ${filters.days} dias`})
+                  </span>
+                </p>
+              )}
+            </div>
           )}
         </SheetHeader>
 

@@ -44,7 +44,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   const { planId, userId } = options;
   
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
-  const [customTimes, setCustomTimes] = useState<CustomMealTimesWithExtras | null>(null);
+  const [customTimes, setCustomTimes] = useState<CustomMealTimesWithExtras | null | undefined>(undefined);
   const [activePlanId, setActivePlanId] = useState<string | null>(planId || null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
@@ -124,7 +124,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   // Buscar custom_meal_times se temos planId mas não temos customTimes
   useEffect(() => {
     async function fetchPlanCustomTimes() {
-      if (!activePlanId || customTimes !== null) return;
+      if (!activePlanId || customTimes !== undefined) return;
 
       try {
         const { data, error } = await supabase
@@ -269,7 +269,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
 
   // Verificar se o plano tem horários personalizados
   const hasCustomTimes = useMemo(() => {
-    return customTimes !== null && Object.keys(customTimes).length > 0;
+    return customTimes !== null && customTimes !== undefined && Object.keys(customTimes).length > 0;
   }, [customTimes]);
 
   // Atualizar horários personalizados do plano

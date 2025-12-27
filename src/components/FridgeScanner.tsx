@@ -1,12 +1,18 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert, Cat, Package, ImageOff } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert, Cat, Package, ImageOff, Lightbulb, SkipForward, Snowflake, DoorOpen } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import LegalDisclaimer from "./LegalDisclaimer";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 type FridgeIngredient = {
   nome: string;
@@ -43,8 +49,8 @@ type FridgeSlot = {
   required: boolean;
 };
 
-type AnalysisStep = "upload" | "ingredients" | "recipes";
-type FridgeFlowStep = "geladeira" | "extras" | "review";
+type AnalysisStep = "capture" | "analyzing" | "ingredients" | "recipes";
+type CapturePhase = "initial" | "freezer" | "porta";
 
 export default function FridgeScanner() {
   const [slots, setSlots] = useState<FridgeSlot[]>([
@@ -52,13 +58,11 @@ export default function FridgeScanner() {
     { id: "freezer", label: "Freezer", description: "Congelador", image: null, required: false },
     { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null, required: false },
   ]);
-  const [flowStep, setFlowStep] = useState<FridgeFlowStep>("geladeira");
-  const [activeSlot, setActiveSlot] = useState<FridgeSlot["id"] | null>(null);
+  const [capturePhase, setCapturePhase] = useState<CapturePhase>("initial");
+  const [currentStep, setCurrentStep] = useState<AnalysisStep>("capture");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [isGeneratingRecipes, setIsGeneratingRecipes] = useState(false);
   const [analysis, setAnalysis] = useState<FridgeAnalysis | null>(null);
-  const [currentStep, setCurrentStep] = useState<AnalysisStep>("upload");
-  const [notFridgeError, setNotFridgeError] = useState<string | null>(null);
   const [categoryError, setCategoryError] = useState<{
     categoria: string;
     descricao: string;
@@ -66,18 +70,29 @@ export default function FridgeScanner() {
     dica?: string;
   } | null>(null);
   const [savingRecipeIndex, setSavingRecipeIndex] = useState<number | null>(null);
+  const [pendingSlot, setPendingSlot] = useState<FridgeSlot["id"] | null>(null);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const geladeiraSlot = slots.find(s => s.id === "geladeira");
+  const freezerSlot = slots.find(s => s.id === "freezer");
+  const portaSlot = slots.find(s => s.id === "porta");
   const hasGeladeiraPhoto = geladeiraSlot?.image !== null;
-  const hasAtLeastOnePhoto = slots.some(slot => slot.image !== null);
   const photoCount = slots.filter(slot => slot.image !== null).length;
+
+  // Auto-advance to next phase after capturing initial photo
+  useEffect(() => {
+    if (capturePhase === "initial" && hasGeladeiraPhoto && pendingSlot === null) {
+      setCapturePhase("freezer");
+    }
+  }, [hasGeladeiraPhoto, capturePhase, pendingSlot]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
-    if (!file || !activeSlot) return;
+    const currentPendingSlot = pendingSlot;
+    
+    if (!file || !currentPendingSlot) return;
 
     if (!file.type.startsWith("image/")) {
       toast.error("Por favor, selecione uma imagem");
@@ -93,9 +108,19 @@ export default function FridgeScanner() {
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
       setSlots(prev => prev.map(slot => 
-        slot.id === activeSlot ? { ...slot, image: base64 } : slot
+        slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
       ));
-      setActiveSlot(null);
+      setPendingSlot(null);
+      
+      // Auto-advance capture phase
+      if (currentPendingSlot === "geladeira") {
+        setCapturePhase("freezer");
+      } else if (currentPendingSlot === "freezer") {
+        setCapturePhase("porta");
+      } else if (currentPendingSlot === "porta") {
+        // All photos taken, start analysis
+        setTimeout(() => startAnalysis(), 300);
+      }
     };
     reader.readAsDataURL(file);
     
@@ -111,33 +136,43 @@ export default function FridgeScanner() {
   };
 
   const openCamera = (slotId: FridgeSlot["id"]) => {
-    setActiveSlot(slotId);
+    setPendingSlot(slotId);
     cameraInputRef.current?.click();
   };
 
   const openGallery = (slotId: FridgeSlot["id"]) => {
-    setActiveSlot(slotId);
+    setPendingSlot(slotId);
     fileInputRef.current?.click();
   };
 
-  const analyzePhotos = async () => {
-    if (!hasAtLeastOnePhoto) {
+  const skipPhase = () => {
+    if (capturePhase === "freezer") {
+      setCapturePhase("porta");
+    } else if (capturePhase === "porta") {
+      startAnalysis();
+    }
+  };
+
+  const startAnalysis = async () => {
+    const photosToAnalyze = slots.filter(slot => slot.image);
+    if (photosToAnalyze.length === 0) {
       toast.error("Tire pelo menos uma foto");
       return;
     }
 
+    setCurrentStep("analyzing");
     setIsAnalyzing(true);
-    setNotFridgeError(null);
+    setCategoryError(null);
     
     try {
-      // Combine all photos into one request
-      const images = slots
-        .filter(slot => slot.image)
-        .map(slot => ({ area: slot.label, imageBase64: slot.image }));
+      const images = photosToAnalyze.map(slot => ({ 
+        area: slot.label, 
+        imageBase64: slot.image 
+      }));
 
       const { data, error } = await supabase.functions.invoke("analyze-fridge-photo", {
         body: { 
-          imageBase64: images[0].imageBase64, // Primary image
+          imageBase64: images[0].imageBase64,
           additionalImages: images.slice(1).map(img => img.imageBase64),
           areas: images.map(img => img.area)
         },
@@ -146,7 +181,6 @@ export default function FridgeScanner() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // NEW: Handle structured category error with detailed feedback
       if (data.categoryError || data.notFridge) {
         if (data.categoryError && data.categoria_detectada) {
           setCategoryError({
@@ -156,12 +190,17 @@ export default function FridgeScanner() {
             dica: data.dica
           });
         } else {
-          setNotFridgeError(data.message || "Não foi possível identificar uma geladeira ou despensa na imagem.");
+          setCategoryError({
+            categoria: "unknown",
+            descricao: "",
+            mensagem: data.message || "Não foi possível identificar uma geladeira ou despensa na imagem.",
+          });
         }
+        setCurrentStep("capture");
+        setCapturePhase("initial");
         return;
       }
 
-      // Store analysis but only show ingredients first
       setAnalysis({
         ...data.analysis,
         receitas_sugeridas: data.analysis.receitas_sugeridas || []
@@ -171,6 +210,7 @@ export default function FridgeScanner() {
     } catch (error) {
       console.error("Error analyzing fridge:", error);
       toast.error(error instanceof Error ? error.message : "Erro ao analisar fotos");
+      setCurrentStep("capture");
     } finally {
       setIsAnalyzing(false);
     }
@@ -182,8 +222,6 @@ export default function FridgeScanner() {
     setIsGeneratingRecipes(true);
     
     try {
-      // The analysis already has recipes from the initial call
-      // Just transition to show them
       setCurrentStep("recipes");
       toast.success("Receitas geradas para seu perfil!");
     } catch (error) {
@@ -204,12 +242,10 @@ export default function FridgeScanner() {
         return;
       }
 
-      // Determine complexity enum value
       const complexityValue = recipe.dificuldade === "fácil" ? "rapida" as const : 
                               recipe.dificuldade === "média" ? "equilibrada" as const : 
                               "elaborada" as const;
 
-      // Convert fridge recipe to standard recipe format
       const recipeData = {
         user_id: user.id,
         name: recipe.nome,
@@ -260,15 +296,13 @@ export default function FridgeScanner() {
       { id: "freezer", label: "Freezer", description: "Congelador", image: null, required: false },
       { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null, required: false },
     ]);
-    setFlowStep("geladeira");
+    setCapturePhase("initial");
     setAnalysis(null);
-    setCurrentStep("upload");
-    setNotFridgeError(null);
+    setCurrentStep("capture");
     setCategoryError(null);
-    setActiveSlot(null);
+    setPendingSlot(null);
   };
 
-  // Helper para obter ícone e cor baseado na categoria detectada
   const getCategoryFeedback = (categoria: string) => {
     switch (categoria) {
       case "pessoa_corpo":
@@ -351,26 +385,82 @@ export default function FridgeScanner() {
     </>
   );
 
-  // Step 1: Upload photos - Fluxo flexível
-  if (currentStep === "upload") {
-    const freezerSlot = slots.find(s => s.id === "freezer");
-    const portaSlot = slots.find(s => s.id === "porta");
-    
+  // Illustration guide component
+  const PhotoGuide = ({ type }: { type: "geladeira" | "freezer" | "porta" }) => {
+    const guides = {
+      geladeira: {
+        icon: <Refrigerator className="w-12 h-12 text-primary" />,
+        title: "Interior da Geladeira",
+        tips: [
+          "Abra a porta para ver o interior",
+          "Certifique-se de boa iluminação",
+          "Capture todas as prateleiras visíveis"
+        ]
+      },
+      freezer: {
+        icon: <Snowflake className="w-12 h-12 text-cyan-500" />,
+        title: "Freezer / Congelador",
+        tips: [
+          "Fotografe os itens congelados",
+          "Não precisa abrir 100%",
+          "Capture carnes, vegetais, etc."
+        ]
+      },
+      porta: {
+        icon: <DoorOpen className="w-12 h-12 text-amber-500" />,
+        title: "Porta da Geladeira",
+        tips: [
+          "Molhos, laticínios, bebidas",
+          "Ovos e condimentos",
+          "Itens nas prateleiras da porta"
+        ]
+      }
+    };
+
+    const guide = guides[type];
+
+    return (
+      <div className="bg-muted/30 rounded-xl p-4 border border-border/50">
+        <div className="flex items-start gap-3">
+          <div className="w-16 h-16 rounded-xl bg-background flex items-center justify-center shadow-sm flex-shrink-0">
+            {guide.icon}
+          </div>
+          <div className="flex-1 min-w-0">
+            <h4 className="font-semibold text-foreground text-sm mb-1.5">{guide.title}</h4>
+            <ul className="space-y-1">
+              {guide.tips.map((tip, i) => (
+                <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
+                  <Lightbulb className="w-3 h-3 mt-0.5 text-primary/70 flex-shrink-0" />
+                  {tip}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
+  // Step: Capture photos with sequential flow
+  if (currentStep === "capture") {
     return (
       <div className="space-y-4">
         {renderHiddenInputs()}
         
+        {/* Header */}
         <div className="text-center space-y-2 mb-4">
           <h2 className="text-xl font-bold text-foreground">Geladeira Inteligente</h2>
           <p className="text-sm text-muted-foreground">
-            {flowStep === "geladeira" 
-              ? "Comece fotografando o interior da sua geladeira"
-              : `${photoCount}/3 áreas fotografadas`
+            {capturePhase === "initial" 
+              ? "Fotografe o interior da sua geladeira"
+              : capturePhase === "freezer"
+              ? "Deseja adicionar foto do freezer?"
+              : "Deseja adicionar foto da porta?"
             }
           </p>
         </div>
 
-        {/* Progress indicator */}
+        {/* Progress indicator - only show after first photo */}
         {hasGeladeiraPhoto && (
           <div className="flex items-center justify-center gap-2 mb-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
@@ -378,141 +468,26 @@ export default function FridgeScanner() {
             }`}>
               {geladeiraSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '1'}
             </div>
-            <div className="w-6 h-0.5 bg-muted" />
+            <div className={`w-6 h-0.5 ${capturePhase !== "initial" ? 'bg-primary/50' : 'bg-muted'}`} />
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-              freezerSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              freezerSlot?.image ? 'bg-primary text-primary-foreground' : 
+              capturePhase === "freezer" ? 'bg-primary/20 text-primary ring-2 ring-primary' : 
+              'bg-muted text-muted-foreground'
             }`}>
               {freezerSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '2'}
             </div>
-            <div className="w-6 h-0.5 bg-muted" />
+            <div className={`w-6 h-0.5 ${capturePhase === "porta" || portaSlot?.image ? 'bg-primary/50' : 'bg-muted'}`} />
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-              portaSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              portaSlot?.image ? 'bg-primary text-primary-foreground' : 
+              capturePhase === "porta" ? 'bg-primary/20 text-primary ring-2 ring-primary' : 
+              'bg-muted text-muted-foreground'
             }`}>
               {portaSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '3'}
             </div>
           </div>
         )}
 
-        {/* Passo 1: Foto da Geladeira (obrigatório) */}
-        {flowStep === "geladeira" && !hasGeladeiraPhoto && (
-          <Card className="glass-card">
-            <CardContent className="p-6">
-              <div className="flex flex-col items-center gap-4">
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Refrigerator className="w-8 h-8 text-primary" />
-                </div>
-                <div className="text-center">
-                  <h3 className="font-semibold text-foreground">Passo 1: Interior da Geladeira</h3>
-                  <p className="text-sm text-muted-foreground mt-1">Abra a geladeira e fotografe o interior principal</p>
-                </div>
-                <Button
-                  className="w-full gradient-primary h-14"
-                  onClick={() => openCamera("geladeira")}
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  Tirar Foto da Geladeira
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Após primeira foto: mostra resumo + opções extras */}
-        {hasGeladeiraPhoto && (
-          <>
-            {/* Fotos já tiradas */}
-            <div className="grid grid-cols-3 gap-2">
-              {slots.map((slot) => (
-                slot.image ? (
-                  <div key={slot.id} className="relative aspect-square rounded-lg overflow-hidden border-2 border-primary/50">
-                    <img 
-                      src={slot.image} 
-                      alt={slot.label}
-                      className="w-full h-full object-cover"
-                    />
-                    <Button
-                      variant="destructive"
-                      size="icon"
-                      className="absolute top-1 right-1 w-5 h-5"
-                      onClick={() => removePhoto(slot.id)}
-                    >
-                      <X className="w-3 h-3" />
-                    </Button>
-                    <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1.5">
-                      <p className="text-[10px] text-white font-medium flex items-center gap-1">
-                        <CheckCircle2 className="w-3 h-3" />
-                        {slot.label}
-                      </p>
-                    </div>
-                  </div>
-                ) : null
-              ))}
-            </div>
-
-            {/* Opções extras (freezer e porta) */}
-            {(photoCount < 3) && (
-              <Card className="glass-card">
-                <CardContent className="p-4">
-                  <p className="text-sm text-muted-foreground text-center mb-3">
-                    Adicione mais fotos para receitas mais completas (opcional)
-                  </p>
-                  <div className="grid grid-cols-2 gap-3">
-                    {/* Freezer */}
-                    {!freezerSlot?.image && (
-                      <Button
-                        variant="outline"
-                        className="h-20 flex flex-col gap-1"
-                        onClick={() => openCamera("freezer")}
-                      >
-                        <Refrigerator className="w-5 h-5" />
-                        <span className="text-xs font-medium">Freezer</span>
-                        <span className="text-[10px] text-muted-foreground">Congelador</span>
-                      </Button>
-                    )}
-                    
-                    {/* Porta */}
-                    {!portaSlot?.image && (
-                      <Button
-                        variant="outline"
-                        className="h-20 flex flex-col gap-1"
-                        onClick={() => openCamera("porta")}
-                      >
-                        <Refrigerator className="w-5 h-5" />
-                        <span className="text-xs font-medium">Porta</span>
-                        <span className="text-[10px] text-muted-foreground">Prateleiras</span>
-                      </Button>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Botão Analisar */}
-            <Button
-              onClick={analyzePhotos}
-              disabled={isAnalyzing}
-              className="w-full gradient-primary h-14"
-              size="lg"
-            >
-              {isAnalyzing ? (
-                <>
-                  <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-                  <span className="flex items-center gap-1">
-                    <User className="w-4 h-4" />
-                    Analisando {photoCount} área{photoCount > 1 ? 's' : ''}...
-                  </span>
-                </>
-              ) : (
-                <>
-                  <Refrigerator className="w-5 h-5 mr-2" />
-                  Analisar Agora ({photoCount} foto{photoCount > 1 ? 's' : ''})
-                </>
-              )}
-            </Button>
-          </>
-        )}
-
-        {/* Category validation error - detailed feedback */}
+        {/* Category error display */}
         {categoryError && (
           <Card className={`glass-card border-2 ${getCategoryFeedback(categoryError.categoria).borderColor}`}>
             <CardContent className="p-5">
@@ -550,28 +525,6 @@ export default function FridgeScanner() {
                   size="lg"
                 >
                   <Camera className="w-5 h-5 mr-2" />
-                  Fotografar Geladeira
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Simple error message (legacy) */}
-        {notFridgeError && !categoryError && (
-          <Card className="glass-card border-yellow-500/30">
-            <CardContent className="p-4">
-              <div className="flex flex-col items-center gap-3 text-center">
-                <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
-                  <AlertTriangle className="w-6 h-6 text-yellow-500" />
-                </div>
-                <p className="text-muted-foreground">{notFridgeError}</p>
-                <Button
-                  variant="outline"
-                  onClick={resetAll}
-                  className="mt-2"
-                >
-                  <RotateCcw className="w-4 h-4 mr-2" />
                   Tentar Novamente
                 </Button>
               </div>
@@ -579,19 +532,190 @@ export default function FridgeScanner() {
           </Card>
         )}
 
+        {/* Phase: Initial - Take main fridge photo */}
+        {capturePhase === "initial" && !categoryError && (
+          <Card className="glass-card">
+            <CardContent className="p-6 space-y-4">
+              <PhotoGuide type="geladeira" />
+              
+              <div className="space-y-3">
+                <Button
+                  className="w-full gradient-primary h-14"
+                  onClick={() => openCamera("geladeira")}
+                >
+                  <Camera className="w-5 h-5 mr-2" />
+                  Tirar Foto da Geladeira
+                </Button>
+                
+                <Button
+                  variant="outline"
+                  className="w-full h-12"
+                  onClick={() => openGallery("geladeira")}
+                >
+                  <Upload className="w-4 h-4 mr-2" />
+                  Escolher da Galeria
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Phase: Freezer - Optional freezer photo */}
+        {capturePhase === "freezer" && !categoryError && (
+          <div className="space-y-3">
+            {/* Show captured photos */}
+            <div className="flex gap-2">
+              {geladeiraSlot?.image && (
+                <div className="relative aspect-video w-24 rounded-lg overflow-hidden border-2 border-primary/50">
+                  <img src={geladeiraSlot.image} alt="Geladeira" className="w-full h-full object-cover" />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                    <p className="text-[9px] text-white font-medium flex items-center gap-0.5">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      Geladeira
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Card className="glass-card">
+              <CardContent className="p-5 space-y-4">
+                <PhotoGuide type="freezer" />
+                
+                <div className="space-y-2">
+                  <Button
+                    className="w-full gradient-primary h-12"
+                    onClick={() => openCamera("freezer")}
+                  >
+                    <Camera className="w-5 h-5 mr-2" />
+                    Fotografar Freezer
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 text-muted-foreground"
+                    onClick={skipPhase}
+                  >
+                    <SkipForward className="w-4 h-4 mr-2" />
+                    Pular este passo
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
+        {/* Phase: Porta - Optional door photo */}
+        {capturePhase === "porta" && !categoryError && (
+          <div className="space-y-3">
+            {/* Show captured photos */}
+            <div className="flex gap-2">
+              {geladeiraSlot?.image && (
+                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-primary/50">
+                  <img src={geladeiraSlot.image} alt="Geladeira" className="w-full h-full object-cover" />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                    <p className="text-[8px] text-white font-medium flex items-center gap-0.5">
+                      <CheckCircle2 className="w-2 h-2" />
+                      Geladeira
+                    </p>
+                  </div>
+                </div>
+              )}
+              {freezerSlot?.image && (
+                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-cyan-500/50">
+                  <img src={freezerSlot.image} alt="Freezer" className="w-full h-full object-cover" />
+                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
+                    <p className="text-[8px] text-white font-medium flex items-center gap-0.5">
+                      <CheckCircle2 className="w-2 h-2" />
+                      Freezer
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <Card className="glass-card">
+              <CardContent className="p-5 space-y-4">
+                <PhotoGuide type="porta" />
+                
+                <div className="space-y-2">
+                  <Button
+                    className="w-full gradient-primary h-12"
+                    onClick={() => openCamera("porta")}
+                  >
+                    <Camera className="w-5 h-5 mr-2" />
+                    Fotografar Porta
+                  </Button>
+                  
+                  <Button
+                    variant="ghost"
+                    className="w-full h-10 text-muted-foreground"
+                    onClick={skipPhase}
+                  >
+                    <SkipForward className="w-4 h-4 mr-2" />
+                    Analisar com {photoCount} foto{photoCount > 1 ? 's' : ''}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+
         <p className="text-xs text-muted-foreground text-center">
-          📸 Dica: {hasGeladeiraPhoto 
-            ? "Quanto mais áreas fotografar, melhores as sugestões de receitas"
-            : "Fotografe o interior da geladeira para começar"
-          }
+          📸 Quanto mais áreas fotografar, melhores as sugestões de receitas
         </p>
+      </div>
+    );
+  }
+
+  // Step: Analyzing
+  if (currentStep === "analyzing") {
+    return (
+      <div className="space-y-4">
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-xl font-bold text-foreground">Analisando...</h2>
+          <p className="text-sm text-muted-foreground">
+            Identificando ingredientes na sua geladeira
+          </p>
+        </div>
+
+        <Card className="glass-card">
+          <CardContent className="p-8 flex flex-col items-center gap-4">
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full bg-primary/10 flex items-center justify-center">
+                <Refrigerator className="w-10 h-10 text-primary animate-pulse" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-background border-2 border-primary flex items-center justify-center">
+                <Loader2 className="w-4 h-4 text-primary animate-spin" />
+              </div>
+            </div>
+            
+            <div className="text-center space-y-1">
+              <p className="font-medium text-foreground">Analisando {photoCount} foto{photoCount > 1 ? 's' : ''}</p>
+              <p className="text-sm text-muted-foreground">
+                Identificando ingredientes e verificando suas restrições...
+              </p>
+            </div>
+
+            {/* Show captured photos */}
+            <div className="flex gap-2 mt-2">
+              {slots.filter(s => s.image).map((slot) => (
+                <div key={slot.id} className="relative w-16 h-16 rounded-lg overflow-hidden border border-border">
+                  <img src={slot.image!} alt={slot.label} className="w-full h-full object-cover opacity-50" />
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <Loader2 className="w-4 h-4 text-primary animate-spin" />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
       </div>
     );
   }
 
   // Step 2: Show ingredients
   if (currentStep === "ingredients" && analysis) {
-    // Separate ingredients into healthy (no alerts) and attention needed (with alerts)
     const healthyIngredients = analysis.ingredientes_identificados.filter(ing => !ing.alerta_seguranca);
     const attentionIngredients = analysis.ingredientes_identificados.filter(ing => ing.alerta_seguranca);
 
@@ -698,71 +822,60 @@ export default function FridgeScanner() {
 
         {/* Section 3: General Safety Alerts */}
         {analysis.alertas_gerais && analysis.alertas_gerais.length > 0 && (
-          <Collapsible defaultOpen>
-            <Card className="glass-card border-orange-500/30">
-              <CollapsibleTrigger className="w-full">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-base flex items-center gap-2 text-orange-600">
-                    <AlertTriangle className="w-5 h-5" />
-                    Alertas de Segurança ({analysis.alertas_gerais.length})
-                    <ChevronDown className="w-4 h-4 ml-auto transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                  </CardTitle>
-                </CardHeader>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <CardContent className="space-y-2 pt-0">
-                  {analysis.alertas_gerais.map((alerta, index) => (
-                    <div key={index} className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/20 text-sm text-foreground">
-                      {alerta}
-                    </div>
-                  ))}
-                </CardContent>
-              </CollapsibleContent>
-            </Card>
-          </Collapsible>
+          <Card className="glass-card border-red-500/30">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base flex items-center gap-2 text-red-600">
+                <AlertTriangle className="w-5 h-5" />
+                Alertas Gerais
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pt-0">
+              {analysis.alertas_gerais.map((alerta, index) => (
+                <div key={index} className="p-3 rounded-lg bg-red-500/5 border border-red-500/20">
+                  <p className="text-sm text-red-600">{alerta}</p>
+                </div>
+              ))}
+            </CardContent>
+          </Card>
         )}
 
-        {/* Generate recipes button */}
+        {/* Generate Recipes Button */}
         <Button
           onClick={generateRecipes}
           disabled={isGeneratingRecipes}
-          className="w-full gradient-primary"
+          className="w-full gradient-primary h-14"
           size="lg"
         >
           {isGeneratingRecipes ? (
             <>
               <Loader2 className="w-5 h-5 mr-2 animate-spin" />
-              <span className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                Gerando receitas para seu perfil...
-              </span>
+              Gerando Receitas...
             </>
           ) : (
             <>
               <ChefHat className="w-5 h-5 mr-2" />
-              Gerar Receitas
+              Ver Receitas Sugeridas
             </>
           )}
         </Button>
 
-        {/* Legal Disclaimer */}
-        <LegalDisclaimer className="mt-2" />
-
-        {/* Feedback and Back button */}
-        <div className="flex items-center justify-between">
-          <AnalysisFeedbackButton 
-            analysisType="fridge" 
-            analysisData={analysis} 
-          />
+        {/* Action buttons */}
+        <div className="flex gap-2">
           <Button
             variant="outline"
             onClick={resetAll}
-            size="sm"
+            className="flex-1"
           >
             <RotateCcw className="w-4 h-4 mr-2" />
             Nova Análise
           </Button>
+          <AnalysisFeedbackButton
+            analysisType="fridge"
+            analysisData={analysis}
+          />
         </div>
+
+        <LegalDisclaimer />
       </div>
     );
   }
@@ -771,142 +884,149 @@ export default function FridgeScanner() {
   if (currentStep === "recipes" && analysis) {
     return (
       <div className="space-y-4 animate-fade-in">
-        {/* Recipe suggestions */}
-        <Card className="glass-card">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base flex items-center gap-2">
-              <ChefHat className="w-5 h-5 text-primary" />
-              Receitas Sugeridas
-              <span className="text-xs font-normal text-muted-foreground ml-auto flex items-center gap-1">
-                <User className="w-3 h-3" />
-                Personalizadas
-              </span>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+        <div className="text-center space-y-2 mb-4">
+          <h2 className="text-xl font-bold text-foreground">Receitas para Você</h2>
+          <p className="text-sm text-muted-foreground">
+            Baseadas nos ingredientes da sua geladeira e seu perfil
+          </p>
+        </div>
+
+        {analysis.receitas_sugeridas.length === 0 ? (
+          <Card className="glass-card">
+            <CardContent className="p-6 text-center">
+              <ChefHat className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                Não foi possível gerar receitas com os ingredientes disponíveis.
+              </p>
+              <Button
+                variant="outline"
+                onClick={() => setCurrentStep("ingredients")}
+                className="mt-4"
+              >
+                Ver Ingredientes
+              </Button>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-4">
             {analysis.receitas_sugeridas.map((recipe, index) => (
-              <div key={index} className="p-4 rounded-lg bg-muted/50 space-y-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <h4 className="font-semibold text-foreground">{recipe.nome}</h4>
-                    <p className="text-xs text-muted-foreground mt-0.5">{recipe.descricao}</p>
+              <Card key={index} className="glass-card overflow-hidden">
+                <CardHeader className="pb-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <CardTitle className="text-lg">{recipe.nome}</CardTitle>
+                      <p className="text-sm text-muted-foreground mt-1">{recipe.descricao}</p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => saveRecipe(recipe, index)}
+                      disabled={savingRecipeIndex === index}
+                      className="flex-shrink-0"
+                    >
+                      {savingRecipeIndex === index ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : (
+                        <Bookmark className="w-5 h-5" />
+                      )}
+                    </Button>
                   </div>
-                  <span className="text-xs px-2 py-1 rounded-full bg-primary/10 text-primary">
-                    {recipe.calorias_estimadas} kcal
-                  </span>
-                </div>
-                
-                {recipe.alerta_receita && (
-                  <div className="p-2 rounded-lg bg-yellow-500/10 border border-yellow-500/20">
-                    <p className="text-xs text-yellow-600 flex items-start gap-1">
-                      <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
-                      {recipe.alerta_receita}
-                    </p>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Meta info */}
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {recipe.tempo_preparo}min
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <UtensilsCrossed className="w-4 h-4" />
+                      {recipe.dificuldade}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      🔥 {recipe.calorias_estimadas}kcal
+                    </span>
                   </div>
-                )}
-                
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-3 h-3" />
-                    {recipe.tempo_preparo} min
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <UtensilsCrossed className="w-3 h-3" />
-                    {recipe.dificuldade}
-                  </span>
-                </div>
 
-                <div>
-                  <p className="text-xs font-medium text-foreground mb-1">Ingredientes da geladeira:</p>
-                  <div className="flex flex-wrap gap-1">
-                    {recipe.ingredientes_da_geladeira.map((ing, i) => (
-                      <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-green-500/20 text-green-600">
-                        ✓ {ing}
-                      </span>
-                    ))}
-                  </div>
-                </div>
+                  {/* Alert if any */}
+                  {recipe.alerta_receita && (
+                    <div className="p-2 rounded-lg bg-amber-500/10 border border-amber-500/20">
+                      <p className="text-xs text-amber-600 flex items-start gap-1">
+                        <AlertTriangle className="w-3 h-3 mt-0.5 flex-shrink-0" />
+                        {recipe.alerta_receita}
+                      </p>
+                    </div>
+                  )}
 
-                {recipe.ingredientes_extras.length > 0 && (
+                  {/* Ingredients */}
                   <div>
-                    <p className="text-xs font-medium text-foreground mb-1">Você vai precisar:</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Ingredientes da sua geladeira:</p>
                     <div className="flex flex-wrap gap-1">
-                      {recipe.ingredientes_extras.map((ing, i) => (
-                        <span key={i} className="text-xs px-2 py-0.5 rounded-full bg-yellow-500/20 text-yellow-600">
-                          + {ing}
+                      {recipe.ingredientes_da_geladeira.map((ing, i) => (
+                        <span key={i} className="text-xs px-2 py-1 rounded-full bg-green-500/10 text-green-600">
+                          {ing}
                         </span>
                       ))}
                     </div>
+                    {recipe.ingredientes_extras.length > 0 && (
+                      <>
+                        <p className="text-xs font-medium text-muted-foreground mt-3 mb-2">Você vai precisar também:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {recipe.ingredientes_extras.map((ing, i) => (
+                            <span key={i} className="text-xs px-2 py-1 rounded-full bg-muted text-muted-foreground">
+                              {ing}
+                            </span>
+                          ))}
+                        </div>
+                      </>
+                    )}
                   </div>
-                )}
 
-                <div>
-                  <p className="text-xs font-medium text-foreground mb-1">Como fazer:</p>
-                  <ol className="text-xs text-muted-foreground space-y-1">
-                    {recipe.instrucoes_resumidas.map((step, i) => (
-                      <li key={i} className="flex gap-2">
-                        <span className="text-primary font-medium">{i + 1}.</span>
-                        {step}
-                      </li>
-                    ))}
-                  </ol>
-                </div>
-
-                {/* Save button */}
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="w-full mt-2"
-                  onClick={() => saveRecipe(recipe, index)}
-                  disabled={savingRecipeIndex === index}
-                >
-                  {savingRecipeIndex === index ? (
-                    <>
-                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Salvando...
-                    </>
-                  ) : (
-                    <>
-                      <Bookmark className="w-4 h-4 mr-2" />
-                      Salvar Receita
-                    </>
-                  )}
-                </Button>
-              </div>
+                  {/* Instructions */}
+                  <Collapsible>
+                    <CollapsibleTrigger className="flex items-center gap-2 text-sm text-primary hover:underline">
+                      <ChevronDown className="w-4 h-4" />
+                      Ver instruções
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-3">
+                      <ol className="space-y-2">
+                        {recipe.instrucoes_resumidas.map((step, i) => (
+                          <li key={i} className="flex gap-2 text-sm">
+                            <span className="w-5 h-5 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xs flex-shrink-0">
+                              {i + 1}
+                            </span>
+                            <span className="text-muted-foreground">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                    </CollapsibleContent>
+                  </Collapsible>
+                </CardContent>
+              </Card>
             ))}
-          </CardContent>
-        </Card>
-
-        {/* Tip */}
-        {analysis.dica && (
-          <Card className="glass-card border-primary/20">
-            <CardContent className="p-4">
-              <div className="flex gap-2">
-                <ChefHat className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-muted-foreground">{analysis.dica}</p>
-              </div>
-            </CardContent>
-          </Card>
+          </div>
         )}
 
-        {/* Back to ingredients */}
-        <Button
-          variant="outline"
-          onClick={() => setCurrentStep("ingredients")}
-          className="w-full"
-        >
-          <RotateCcw className="w-4 h-4 mr-2" />
-          Ver Ingredientes
-        </Button>
+        {/* Action buttons */}
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            onClick={() => setCurrentStep("ingredients")}
+            className="flex-1"
+          >
+            Ver Ingredientes
+          </Button>
+          <Button
+            variant="outline"
+            onClick={resetAll}
+            className="flex-1"
+          >
+            <RotateCcw className="w-4 h-4 mr-2" />
+            Nova Análise
+          </Button>
+        </div>
 
-        {/* Reset */}
-        <Button
-          variant="ghost"
-          onClick={resetAll}
-          className="w-full"
-        >
-          Fotografar Outra Geladeira
-        </Button>
+        <LegalDisclaimer />
       </div>
     );
   }

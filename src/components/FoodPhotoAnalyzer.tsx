@@ -1428,26 +1428,23 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               {/* Legal Disclaimer */}
               <LegalDisclaimer className="mt-2" />
 
-              {/* Discrete feedback link */}
-              <div className="flex justify-center">
-                <AnalysisFeedbackButton 
-                  analysisType="food" 
-                  analysisData={{ foodAnalysis, perfilAplicado, metaDiaria }} 
-                />
-              </div>
-
               {/* Spacer for fixed footer + bottom nav */}
               <div className="h-32 md:h-24" />
 
               {/* Fixed Footer with Calories Info + Actions - positioned above mobile nav */}
               <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 z-40">
                 <div className="max-w-lg mx-auto space-y-2">
-                  {/* Calories info text */}
+                  {/* Calories info + Report problem */}
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Flame className="w-4 h-4 text-orange-500" />
                     <span className="text-sm">
                       Total: <span className="font-semibold text-foreground">{foodAnalysis.total_geral.calorias_totais} kcal</span>
                     </span>
+                    <span className="text-muted-foreground/40">|</span>
+                    <AnalysisFeedbackButton 
+                      analysisType="food" 
+                      analysisData={{ foodAnalysis, perfilAplicado, metaDiaria }} 
+                    />
                   </div>
                   
                   {/* Action buttons */}

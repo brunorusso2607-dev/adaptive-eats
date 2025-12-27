@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { X, Plus, Search, AlertTriangle, Check, Loader2, Lightbulb, ChefHat, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useIngredientConflictCheck, ConflictType } from "@/hooks/useIngredientConflictCheck";
+import { useIntoleranceWarning, ConflictType } from "@/hooks/useIntoleranceWarning";
 import IngredientConflictDialog from "@/components/IngredientConflictDialog";
 import { useIngredientCombinationValidation, ValidationResult } from "@/hooks/useIngredientCombinationValidation";
 
@@ -579,7 +579,7 @@ export default function IngredientTagInput({
   const [pendingIngredient, setPendingIngredient] = useState<string | null>(null);
   
   // Hook de verificação de conflitos (intolerâncias)
-  const { checkConflict } = useIngredientConflictCheck(userProfile);
+  const { checkConflict } = useIntoleranceWarning();
   
   // Hook de validação de combinações culinárias
   const {

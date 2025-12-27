@@ -11,7 +11,6 @@ import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
-import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
 import { getMealLabelsSync, getMealOrderSync } from "@/lib/mealTimeConfig";
 import {
   AlertDialog,
@@ -83,8 +82,7 @@ export default function FreeFormMealLogger({
   const [showManualModal, setShowManualModal] = useState(false);
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
-  const { checkConflict } = useIngredientConflictCheck(userProfile);
-  const { checkFood } = useIntoleranceWarning();
+  const { checkFood, checkConflict } = useIntoleranceWarning();
   
   // Get meal labels and order
   const mealLabels = getMealLabelsSync();

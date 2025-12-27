@@ -8,7 +8,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, Sparkles, ShieldCheck } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
-import { useIngredientConflictCheck } from "@/hooks/useIngredientConflictCheck";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { useSafeIngredientSuggestions } from "@/hooks/useSafeIngredientSuggestions";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
@@ -87,7 +87,7 @@ export default function IngredientSubstitutionSheet({
     },
   });
 
-  const { checkConflict } = useIngredientConflictCheck(profile);
+  const { checkConflict } = useIntoleranceWarning();
   const { 
     getSuggestions, 
     getUserRestrictionLabels, 

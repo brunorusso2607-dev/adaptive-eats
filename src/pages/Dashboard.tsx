@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield, Settings } from "lucide-react";
+import { ChefHat, LogOut, Sparkles, Crown, Loader2, Star, Check, Calendar, Heart, History, UtensilsCrossed, Zap, Baby, TrendingDown, User, Download, Scale, ArrowLeft, X, Shield, Settings, Plus } from "lucide-react";
 import { DesktopProfileDropdown } from "@/components/DesktopProfileDropdown";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Switch } from "@/components/ui/switch";
@@ -25,6 +25,7 @@ import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
 import PendingMealsList from "@/components/PendingMealsList";
+import FreeFormMealLogger from "@/components/FreeFormMealLogger";
 
 
 import WeightUpdateModal from "@/components/WeightUpdateModal";
@@ -130,6 +131,7 @@ export default function Dashboard() {
   const [showFoodAnalyzer, setShowFoodAnalyzer] = useState(false);
   const [selectedPhotoMode, setSelectedPhotoMode] = useState<PhotoMode | null>(null);
   const [showPlanSheet, setShowPlanSheet] = useState(false);
+  const [showFreeFormLogger, setShowFreeFormLogger] = useState(false);
   // User profile for ingredient validation
   const [userProfile, setUserProfile] = useState<{
     intolerances?: string[] | null;
@@ -873,6 +875,44 @@ export default function Dashboard() {
                   onStreakRefresh={gamification.refresh} 
                   onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
                   userProfile={userProfile} 
+                />
+
+                {/* 4. Registro Livre de Refeição - Para quem não segue plano */}
+                <Card className="bg-card border border-border shadow-sm">
+                  <CardContent className="p-5 space-y-4">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-green-500/10 flex items-center justify-center shrink-0">
+                        <Plus className="w-5 h-5 text-green-600" strokeWidth={1.5} />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-foreground tracking-wide">
+                          Registrar Refeição
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Anote o que você comeu agora
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      className="w-full border-green-500/30 text-green-600 hover:bg-green-500/10"
+                      onClick={() => setShowFreeFormLogger(true)}
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Adicionar Refeição
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Free Form Meal Logger Sheet */}
+                <FreeFormMealLogger
+                  open={showFreeFormLogger}
+                  onOpenChange={setShowFreeFormLogger}
+                  onSuccess={() => {
+                    refetchDailyConsumption();
+                    refetchPendingMeals();
+                  }}
                 />
 
                 {/* 5. Gerar Receita - Ferramenta secundária */}

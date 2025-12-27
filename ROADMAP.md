@@ -9,7 +9,7 @@
 | Fase | Status | Progresso |
 |------|--------|-----------|
 | FASE 1: Preparação Banco | ✅ Concluída | 100% |
-| FASE 2: Features Principais | ⏳ Pendente | 0% |
+| FASE 2: Features Principais | 🔄 Em andamento | 20% |
 | FASE 3: Reorganização UI | ⏳ Pendente | 0% |
 
 **Última atualização:** 27/12/2024
@@ -67,17 +67,17 @@ ADD COLUMN IF NOT EXISTS meal_time time;
 
 ## 📦 FASE 2: Features Principais
 
-### 2.1 Módulo "Registro Livre de Refeições"
-**Objetivo:** Substituir posição do "Surpreenda-me" por registro manual
+### 2.1 Módulo "Registro Livre de Refeições" ✅
+**Objetivo:** Permitir registro manual de refeições sem depender de plano alimentar
 
 #### Sub-tarefas:
-- [ ] Criar componente `FreeFormMealLogger.tsx`
-- [ ] Interface para buscar/selecionar alimentos
-- [ ] Seletor de tipo de refeição (café, almoço, etc.)
-- [ ] Seletor de horário
-- [ ] Salvar em `meal_consumption` com `source_type = 'manual'`
-- [ ] Integrar com `FoodSearchDrawer` existente
-- [ ] Adicionar ao menu principal / Dashboard
+- [x] Criar componente `FreeFormMealLogger.tsx`
+- [x] Interface para buscar/selecionar alimentos (reutiliza lógica do FoodSearchDrawer)
+- [x] Seletor de tipo de refeição (café, almoço, etc.)
+- [x] Seletor de horário
+- [x] Salvar em `meal_consumption` com `source_type = 'manual'`
+- [x] Suporte a sugestões de IA quando alimento não encontrado
+- [x] Adicionar card "Registrar Refeição" no Dashboard
 
 **Fluxo do usuário:**
 ```
@@ -85,9 +85,14 @@ Dashboard → "Registrar Refeição" → Buscar alimento →
 Selecionar tipo → Confirmar horário → Salvo ✓
 ```
 
-**Status:** ⏳ Pendente  
-**Estimativa:** 1-2 sessões  
-**Data conclusão:** -
+**Componente criado:** `src/components/FreeFormMealLogger.tsx`
+- Fluxo em 3 passos: alimentos → tipo → horário
+- Integração com busca de alimentos e IA
+- Validação de intolerâncias
+- Nome personalizado opcional
+
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
 
 ---
 

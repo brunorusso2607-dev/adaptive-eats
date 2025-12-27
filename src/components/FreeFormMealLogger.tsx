@@ -12,16 +12,6 @@ import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { getMealLabelsSync, getMealOrderSync } from "@/lib/mealTimeConfig";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 interface FreeFormMealLoggerProps {
   open: boolean;
@@ -66,11 +56,8 @@ export default function FreeFormMealLogger({
   const [customMealName, setCustomMealName] = useState("");
   
   const [userProfile, setUserProfile] = useState<{ intolerances: string[] | null; dietary_preference: string | null } | null>(null);
-  const [conflictDialog, setConflictDialog] = useState<{ open: boolean; food: Food | null; conflict: { ingredient: string; restriction: string; restrictionLabel: string } | null }>({
-    open: false,
-    food: null,
-    conflict: null,
-  });
+  // Track foods with conflicts for informative display
+  const [foodsWithConflicts, setFoodsWithConflicts] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
   // AI suggestions state
@@ -124,6 +111,7 @@ export default function FreeFormMealLogger({
     if (!open) {
       setSearchQuery("");
       setSelectedFoods([]);
+      setFoodsWithConflicts([]);
       setSelectedMealType(null);
       setStep('foods');
       setCustomMealName("");
@@ -195,11 +183,18 @@ export default function FreeFormMealLogger({
     return null;
   }, [checkConflict, checkFood]);
 
+  // Handle adding food - always add, just show warning if conflict
   const handleAddFood = useCallback(async (food: Food) => {
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
-      setConflictDialog({ open: true, food, conflict: localConflict });
+      // Add food and show informative toast
+      addFoodToList(food);
+      setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
+      toast.warning(
+        `${food.name} contém ${localConflict.restrictionLabel.replace('intolerante a ', '')}`,
+        { duration: 4000 }
+      );
       return;
     }
 
@@ -232,13 +227,10 @@ export default function FreeFormMealLogger({
     setShowAISuggestions(false);
   };
 
-  // Add AI suggestion as food
+  // Add AI suggestion as food - always add, show warning if conflict
   const handleAddAISuggestion = async (suggestion: AISuggestion) => {
     const conflict = checkFoodConflicts(suggestion.name);
-    if (conflict) {
-      toast.error(`Este alimento contém ${conflict.ingredient}, você é ${conflict.restrictionLabel}`);
-      return;
-    }
+    const hasLocalConflict = !!conflict;
 
     try {
       const normalizedName = suggestion.name
@@ -313,6 +305,15 @@ export default function FreeFormMealLogger({
       clearFoods();
       setAiSuggestions([]);
       setShowAISuggestions(false);
+
+      // Show warning toast if there was a conflict
+      if (hasLocalConflict && conflict) {
+        setFoodsWithConflicts(prev => [...new Set([...prev, suggestion.name])]);
+        toast.warning(
+          `${suggestion.name} contém ${conflict.restrictionLabel.replace('intolerante a ', '')}`,
+          { duration: 4000 }
+        );
+      }
     } catch (error) {
       console.error("Error adding AI suggestion:", error);
       toast.error("Erro ao adicionar alimento");
@@ -332,12 +333,6 @@ export default function FreeFormMealLogger({
     addFoodToList(fullFood);
   };
 
-  const handleConfirmConflict = () => {
-    if (conflictDialog.food) {
-      addFoodToList(conflictDialog.food);
-    }
-    setConflictDialog({ open: false, food: null, conflict: null });
-  };
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
     const numValue = parseFloat(newValue) || 0;
@@ -866,27 +861,6 @@ export default function FreeFormMealLogger({
         </SheetContent>
       </Sheet>
 
-      {/* Conflict Dialog */}
-      <AlertDialog open={conflictDialog.open} onOpenChange={(open) => !open && setConflictDialog({ open: false, food: null, conflict: null })}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Alimento com restrição</AlertDialogTitle>
-            <AlertDialogDescription>
-              <strong>{conflictDialog.food?.name}</strong> contém <strong>{conflictDialog.conflict?.ingredient}</strong>.
-              <br />
-              Você é <strong>{conflictDialog.conflict?.restrictionLabel}</strong>.
-              <br /><br />
-              Deseja adicionar mesmo assim?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmConflict}>
-              Adicionar mesmo assim
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
 
       {/* Manual Food Modal */}
       <ManualFoodModal

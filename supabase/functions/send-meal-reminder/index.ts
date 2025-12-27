@@ -367,23 +367,64 @@ serve(async (req) => {
     
     // Helper to parse custom time string "HH:MM" to minutes
     const parseTimeToMinutes = (timeStr: string): number => {
-      const [hours, minutes] = timeStr.split(':').map(Number);
-      return hours * 60 + (minutes || 0);
+      if (!timeStr || typeof timeStr !== 'string') return 0;
+      const parts = timeStr.split(':');
+      const hours = parseInt(parts[0], 10) || 0;
+      const minutes = parseInt(parts[1], 10) || 0;
+      return hours * 60 + minutes;
+    };
+    
+    // Type for custom meal times (new format with extras support)
+    type ExtraMeal = { id: string; name: string; time: string; isNew?: boolean };
+    type CustomMealTimesWithExtras = {
+      [key: string]: string | ExtraMeal[] | undefined;
+      extras?: ExtraMeal[];
     };
     
     // Helper to get meal start time (custom or default)
     const getMealStartTime = (
       mealType: string, 
-      customMealTimes: Record<string, { start: string; end: string }> | null,
+      customMealTimes: CustomMealTimesWithExtras | null,
       defaultSettings: Array<{ meal_type: string; start_hour: number }>
     ): number => {
-      // Check custom times first
-      if (customMealTimes && customMealTimes[mealType]) {
-        return parseTimeToMinutes(customMealTimes[mealType].start);
+      if (!customMealTimes) {
+        const defaultSetting = defaultSettings.find(s => s.meal_type === mealType);
+        return defaultSetting ? defaultSetting.start_hour * 60 : 0;
       }
+      
+      // Check if it's an extra meal
+      if (mealType.startsWith('extra_')) {
+        const extras = customMealTimes.extras;
+        if (Array.isArray(extras)) {
+          const extra = extras.find(e => e.id === mealType);
+          if (extra && extra.time) {
+            return parseTimeToMinutes(extra.time);
+          }
+        }
+        return 0;
+      }
+      
+      // Check custom times for standard meals (format: "HH:MM")
+      const customTime = customMealTimes[mealType];
+      if (typeof customTime === 'string') {
+        return parseTimeToMinutes(customTime);
+      }
+      
       // Fall back to default settings
       const defaultSetting = defaultSettings.find(s => s.meal_type === mealType);
       return defaultSetting ? defaultSetting.start_hour * 60 : 0;
+    };
+    
+    // Helper to get extra meals from custom times
+    const getExtraMeals = (customMealTimes: CustomMealTimesWithExtras | null): Array<{ meal_type: string; label: string; start_hour: number }> => {
+      if (!customMealTimes?.extras || !Array.isArray(customMealTimes.extras)) return [];
+      return customMealTimes.extras
+        .filter(e => !e.isNew) // Only confirmed extras
+        .map(extra => ({
+          meal_type: extra.id,
+          label: extra.name,
+          start_hour: parseTimeToMinutes(extra.time) / 60,
+        }));
     };
     
     for (const plan of validPlans) {
@@ -402,8 +443,8 @@ serve(async (req) => {
       
       console.log(`User ${plan.user_id} timezone: ${userTimezone}, local time: ${currentHour}:${currentMinute}`);
       
-      // Parse custom meal times from plan
-      const customMealTimes = plan.custom_meal_times as Record<string, { start: string; end: string }> | null;
+      // Parse custom meal times from plan (new format)
+      const customMealTimes = plan.custom_meal_times as CustomMealTimesWithExtras | null;
       if (customMealTimes) {
         console.log(`Plan ${plan.id} has custom meal times:`, JSON.stringify(customMealTimes));
       }
@@ -411,10 +452,18 @@ serve(async (req) => {
       // Calculate the time to check (current time + reminder_minutes_before)
       const checkTimeInMinutes = currentTimeInMinutes + userSettings.reminder_minutes_before;
       
+      // Get all meal types including extras
+      const allMealSettings = [
+        ...mealTimeSettings,
+        ...getExtraMeals(customMealTimes),
+      ];
+      
       // Find meals that should trigger a reminder now
-      const mealsToRemind = mealTimeSettings.filter((setting: { meal_type: string; start_hour: number; label: string }) => {
-        // Skip if user disabled this meal type
-        if (!userSettings.enabled_meals.includes(setting.meal_type)) {
+      const mealsToRemind = allMealSettings.filter((setting: { meal_type: string; start_hour: number; label: string }) => {
+        // Skip if user disabled this meal type (for standard meals)
+        // For extra meals, check if the base meal type is enabled or allow all extras
+        const isExtraMeal = setting.meal_type.startsWith('extra_');
+        if (!isExtraMeal && !userSettings.enabled_meals.includes(setting.meal_type)) {
           return false;
         }
         

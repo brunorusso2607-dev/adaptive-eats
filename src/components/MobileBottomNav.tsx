@@ -1,7 +1,7 @@
-import { Home, Calendar, Heart, User, Camera } from "lucide-react";
+import { Home, Calendar, Heart, User, Camera, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type MobileNavTab = "home" | "meal-plan" | "scan" | "favorites" | "profile";
+export type MobileNavTab = "home" | "meal-plan" | "scan" | "history" | "profile";
 
 interface MobileBottomNavProps {
   activeTab: MobileNavTab;
@@ -14,7 +14,7 @@ const navItems = [
   { id: "home" as MobileNavTab, label: "Home", icon: Home },
   { id: "meal-plan" as MobileNavTab, label: "Plano", icon: Calendar },
   { id: "scan" as MobileNavTab, label: "Foto", icon: Camera, isMain: true },
-  { id: "favorites" as MobileNavTab, label: "Favoritos", icon: Heart },
+  { id: "history" as MobileNavTab, label: "Histórico", icon: ClipboardList },
   { id: "profile" as MobileNavTab, label: "Perfil", icon: User },
 ];
 

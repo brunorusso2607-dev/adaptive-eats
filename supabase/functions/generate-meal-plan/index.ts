@@ -721,22 +721,57 @@ serve(async (req) => {
       const monthEnd = new Date(targetYear, targetMonth + 1, 0).toISOString().split('T')[0];
       
       // Check if there's already a plan that overlaps with this month
+      // Order by number of items to prefer plans with more recipes
       const { data: existingPlans, error: checkError } = await supabaseClient
         .from("meal_plans")
-        .select("id, name, start_date, end_date")
+        .select(`
+          id, 
+          name, 
+          start_date, 
+          end_date,
+          meal_plan_items(count)
+        `)
         .eq("user_id", user.id)
         .gte("end_date", monthStart)
-        .lte("start_date", monthEnd);
+        .lte("start_date", monthEnd)
+        .order("created_at", { ascending: false });
       
       if (checkError) {
         logStep("Error checking existing plans", { error: checkError.message });
       } else if (existingPlans && existingPlans.length > 0) {
-        const existingPlan = existingPlans[0];
+        // Prefer plan with most items, or first if all have same count
+        const plansWithCounts = existingPlans.map(plan => ({
+          ...plan,
+          itemCount: (plan.meal_plan_items as any)?.[0]?.count || 0
+        }));
+        
+        // Sort by item count descending to get the plan with most items
+        plansWithCounts.sort((a, b) => b.itemCount - a.itemCount);
+        const existingPlan = plansWithCounts[0];
+        
         logStep("Found existing plan for this month - will add missing days only", { 
           existingPlanId: existingPlan.id, 
           existingPlanName: existingPlan.name,
-          targetMonth: `${targetYear}-${targetMonth + 1}`
+          existingItemCount: existingPlan.itemCount,
+          targetMonth: `${targetYear}-${targetMonth + 1}`,
+          totalPlansFound: existingPlans.length
         });
+        
+        // If there are duplicate empty plans, clean them up
+        if (plansWithCounts.length > 1) {
+          const emptyPlans = plansWithCounts.filter(p => p.itemCount === 0 && p.id !== existingPlan.id);
+          if (emptyPlans.length > 0) {
+            logStep("Found empty duplicate plans to cleanup", { count: emptyPlans.length });
+            for (const emptyPlan of emptyPlans) {
+              await supabaseClient
+                .from("meal_plans")
+                .delete()
+                .eq("id", emptyPlan.id)
+                .eq("user_id", user.id);
+            }
+            logStep("Cleaned up empty duplicate plans");
+          }
+        }
         
         // Fetch existing items to know which days already have recipes
         const { data: existingItems, error: fetchItemsError } = await supabaseClient
@@ -913,6 +948,12 @@ serve(async (req) => {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
         status: 200,
       });
+    }
+    
+    // If no days were generated and none were skipped, there's an error - don't create empty plan
+    if (allDays.length === 0) {
+      logStep("No days generated and none skipped - returning error to avoid empty plan");
+      throw new Error("Não foi possível gerar nenhuma refeição. Tente novamente.");
     }
 
     // ========================================

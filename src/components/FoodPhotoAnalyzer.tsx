@@ -1119,29 +1119,53 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           {/* Food Analysis results */}
           {foodAnalysis && (
             <div className="space-y-4 animate-fade-in">
-              {/* SAFETY STATUS - Compact badge version */}
+              {/* SAFETY STATUS - Compact badge with confidence */}
               {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
                 <div className="animate-reveal animate-reveal-1">
                   {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30">
-                      <ShieldX className="w-4 h-4 text-destructive flex-shrink-0" />
-                      <span className="text-sm font-medium text-destructive">
-                        Contém {perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}
-                      </span>
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-destructive/10 border border-destructive/30">
+                      <div className="flex items-center gap-2">
+                        <ShieldX className="w-4 h-4 text-destructive flex-shrink-0" />
+                        <span className="text-sm font-medium text-destructive">
+                          Contém {perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}
+                        </span>
+                      </div>
+                      {foodAnalysis.prato_identificado?.confianca && (
+                        <span className="text-xs text-muted-foreground">
+                          Confiança: {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
+                           foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
+                        </span>
+                      )}
                     </div>
                   ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
-                      <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0" />
-                      <span className="text-sm font-medium text-yellow-600">
-                        Verificar: {perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}
-                      </span>
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+                      <div className="flex items-center gap-2">
+                        <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-yellow-600">
+                          Verificar: {perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}
+                        </span>
+                      </div>
+                      {foodAnalysis.prato_identificado?.confianca && (
+                        <span className="text-xs text-muted-foreground">
+                          Confiança: {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
+                           foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
+                        </span>
+                      )}
                     </div>
                   ) : (
-                    <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30">
-                      <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
-                      <span className="text-sm font-medium text-green-600">
-                        Compatível com seu perfil
-                      </span>
+                    <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-green-500/10 border border-green-500/30">
+                      <div className="flex items-center gap-2">
+                        <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0" />
+                        <span className="text-sm font-medium text-green-600">
+                          Compatível com seu perfil
+                        </span>
+                      </div>
+                      {foodAnalysis.prato_identificado?.confianca && (
+                        <span className="text-xs text-muted-foreground">
+                          Confiança: {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
+                           foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
+                        </span>
+                      )}
                     </div>
                   )}
                 </div>
@@ -1299,29 +1323,6 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
-              {/* Confidence indicator - neutral gray line */}
-              {foodAnalysis.prato_identificado && (
-                <div className="flex items-center justify-between px-3 py-2 rounded-lg bg-muted/50 border border-border/50 animate-reveal animate-reveal-5">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-muted-foreground">🔍 Confiança da análise:</span>
-                    <span className={`text-xs font-medium ${
-                      foodAnalysis.prato_identificado.confianca === "baixa" 
-                        ? "text-yellow-600" 
-                        : foodAnalysis.prato_identificado.confianca === "media"
-                        ? "text-blue-600"
-                        : "text-muted-foreground"
-                    }`}>
-                      {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
-                       foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
-                    </span>
-                  </div>
-                  {foodAnalysis.prato_identificado.culinaria && (
-                    <span className="text-xs text-muted-foreground">
-                      {foodAnalysis.prato_identificado.culinaria}
-                    </span>
-                  )}
-                </div>
-              )}
 
               {/* Individual items with confidence levels - Now editable */}
               <Card className="glass-card">

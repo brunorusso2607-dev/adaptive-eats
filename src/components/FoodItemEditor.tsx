@@ -42,6 +42,46 @@ interface FoodItemEditorProps {
 export default function FoodItemEditor({ food, index, onSave, onSelectAlternative }: FoodItemEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editedFood, setEditedFood] = useState<FoodItem>(food);
+  const [originalPortion, setOriginalPortion] = useState<number | null>(null);
+
+  // Extract numeric value from portion string (e.g., "200g" -> 200, "1 xícara (150g)" -> 150)
+  const extractPortionNumber = (portion: string): number | null => {
+    // Try to find a number followed by 'g' first (most common)
+    const gramsMatch = portion.match(/(\d+(?:[.,]\d+)?)\s*g/i);
+    if (gramsMatch) {
+      return parseFloat(gramsMatch[1].replace(',', '.'));
+    }
+    // Otherwise try to find any number
+    const anyNumberMatch = portion.match(/(\d+(?:[.,]\d+)?)/);
+    if (anyNumberMatch) {
+      return parseFloat(anyNumberMatch[1].replace(',', '.'));
+    }
+    return null;
+  };
+
+  // Handle portion change with proportional recalculation
+  const handlePortionChange = (newPortionText: string) => {
+    const newPortionValue = extractPortionNumber(newPortionText);
+    
+    // If we have both old and new numeric values, recalculate proportionally
+    if (originalPortion && newPortionValue && originalPortion > 0 && newPortionValue > 0) {
+      const ratio = newPortionValue / originalPortion;
+      
+      setEditedFood({
+        ...editedFood,
+        porcao_estimada: newPortionText,
+        calorias: Math.round(food.calorias * ratio),
+        macros: {
+          proteinas: Math.round(food.macros.proteinas * ratio * 10) / 10,
+          carboidratos: Math.round(food.macros.carboidratos * ratio * 10) / 10,
+          gorduras: Math.round(food.macros.gorduras * ratio * 10) / 10,
+        },
+      });
+    } else {
+      // Just update the text without recalculating
+      setEditedFood({ ...editedFood, porcao_estimada: newPortionText });
+    }
+  };
 
   const handleSave = () => {
     onSave(index, {
@@ -49,11 +89,19 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
       corrigido_manualmente: true,
     });
     setIsEditing(false);
+    setOriginalPortion(null);
   };
 
   const handleCancel = () => {
     setEditedFood(food);
     setIsEditing(false);
+    setOriginalPortion(null);
+  };
+
+  const startEditing = () => {
+    setEditedFood(food);
+    setOriginalPortion(extractPortionNumber(food.porcao_estimada));
+    setIsEditing(true);
   };
 
   const handleAlternativeClick = (alternativeName: string) => {
@@ -93,10 +141,15 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
               <Input
                 id={`porcao-${index}`}
                 value={editedFood.porcao_estimada}
-                onChange={(e) => setEditedFood({ ...editedFood, porcao_estimada: e.target.value })}
+                onChange={(e) => handlePortionChange(e.target.value)}
                 className="mt-1"
                 placeholder="Ex: 150g, 1 xícara, 2 fatias"
               />
+              {originalPortion && (
+                <p className="text-xs text-muted-foreground mt-1">
+                  💡 Altere o peso para recalcular automaticamente
+                </p>
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -248,7 +301,7 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
           className="w-full"
           onClick={(e) => {
             e.preventDefault();
-            setIsEditing(true);
+            startEditing();
           }}
         >
           <Pencil className="w-4 h-4 mr-2" />

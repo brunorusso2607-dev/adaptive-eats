@@ -342,19 +342,19 @@ function MealCard({ meal }: { meal: MealHistoryItem }) {
                 {meal.totalProtein && (
                   <div className="flex items-center gap-1 text-red-600">
                     <Beef className="w-3 h-3" />
-                    <span>{meal.totalProtein}g prot</span>
+                    <span>{Math.round(meal.totalProtein * 10) / 10}g prot</span>
                   </div>
                 )}
                 {meal.totalCarbs && (
                   <div className="flex items-center gap-1 text-amber-600">
                     <Wheat className="w-3 h-3" />
-                    <span>{meal.totalCarbs}g carb</span>
+                    <span>{Math.round(meal.totalCarbs * 10) / 10}g carb</span>
                   </div>
                 )}
                 {meal.totalFat && (
                   <div className="flex items-center gap-1 text-blue-600">
                     <span>🧈</span>
-                    <span>{meal.totalFat}g gord</span>
+                    <span>{Math.round(meal.totalFat * 10) / 10}g gord</span>
                   </div>
                 )}
               </div>

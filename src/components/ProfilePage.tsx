@@ -7,7 +7,7 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart
 } from "lucide-react";
 import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Link } from "react-router-dom";
@@ -16,6 +16,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import RecipeList from "./RecipeList";
 import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptions";
 
 type UserProfile = {
@@ -145,6 +146,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
   const [isSaving, setIsSaving] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
+  const [showFavorites, setShowFavorites] = useState(false);
 
   const sendTestNotification = async () => {
     setIsSendingTestNotification(true);
@@ -393,6 +395,26 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
 
     return (
       <div className="space-y-6">
+        {/* Receitas Favoritas - Acesso rápido */}
+        <button
+          onClick={() => setShowFavorites(true)}
+          className={cn(
+            "w-full flex items-center gap-4 p-4 rounded-xl",
+            "bg-rose-500/5 border border-rose-500/20",
+            "hover:bg-rose-500/10 hover:border-rose-500/30",
+            "transition-all duration-200 active:scale-[0.98]"
+          )}
+        >
+          <div className="w-10 h-10 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0">
+            <Heart className="w-5 h-5 text-rose-500" />
+          </div>
+          <div className="text-left flex-1">
+            <p className="font-semibold text-sm text-foreground">Receitas Favoritas</p>
+            <p className="text-xs text-muted-foreground">Suas receitas salvas</p>
+          </div>
+          <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
+        </button>
+
         {/* Botão Editar */}
         <Button 
           className="w-full bg-primary text-primary-foreground hover:bg-[#D3D3D3] hover:text-foreground" 
@@ -572,6 +594,17 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
       </div>
     );
   };
+
+  // Se está mostrando favoritos, renderiza o RecipeList
+  if (showFavorites) {
+    return (
+      <RecipeList
+        type="favorites"
+        onBack={() => setShowFavorites(false)}
+        onSelectRecipe={() => {}}
+      />
+    );
+  }
 
   return (
     <div className="space-y-6">

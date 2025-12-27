@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from "react";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart, CheckCircle2, Clock } from "lucide-react";
+import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart, CheckCircle2, Clock, Settings2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -13,6 +13,7 @@ import CustomMealPlanBuilder from "./CustomMealPlanBuilder";
 import MealPlanCalendar from "./MealPlanCalendar";
 import MealRecipeDetail from "./MealRecipeDetail";
 import ShoppingList from "./ShoppingList";
+import MealPlanEditor from "./MealPlanEditor";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -112,12 +113,13 @@ type UserProfile = {
 };
 
 export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
-  const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-simple" | "create-custom" | "calendar" | "recipe" | "shopping">("list");
+  const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-simple" | "create-custom" | "calendar" | "recipe" | "shopping" | "edit">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealPlanItem | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
 
   // Swipe to close with visual feedback
   const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
@@ -433,6 +435,26 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     );
   }
 
+  if (view === "edit" && editingPlanId) {
+    return (
+      <MealPlanEditor
+        planId={editingPlanId}
+        onClose={() => {
+          setEditingPlanId(null);
+          setView("list");
+        }}
+        onPlanUpdated={() => {
+          fetchMealPlans();
+        }}
+        onPlanDeleted={() => {
+          fetchMealPlans();
+          setEditingPlanId(null);
+          setView("list");
+        }}
+      />
+    );
+  }
+
   return (
     <div 
       {...swipeHandlers} 
@@ -578,6 +600,19 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                       >
                         <Eye className="w-4 h-4 sm:mr-2" />
                         <span className="hidden sm:inline">Ver</span>
+                      </Button>
+                      
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="w-8 h-8 sm:w-10 sm:h-10"
+                        onClick={() => {
+                          setEditingPlanId(plan.id);
+                          setView("edit");
+                        }}
+                        title="Editar plano"
+                      >
+                        <Settings2 className="w-4 h-4" />
                       </Button>
                       
                       <AlertDialog>

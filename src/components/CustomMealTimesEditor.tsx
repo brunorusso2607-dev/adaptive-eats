@@ -222,6 +222,23 @@ export function CustomMealTimesEditor({
     }
   };
 
+  // Confirma/salva um extra individual (remove a flag isNew)
+  const handleConfirmExtra = (mealId: string) => {
+    const newExtras = extraMeals.map(extra =>
+      extra.id === mealId ? { ...extra, isNew: false } : extra
+    );
+    setExtraMeals(newExtras);
+    setHasChanges(true);
+    
+    if (onChange && useCustomTimes) {
+      const data: CustomMealTimesWithExtras = { ...localTimes };
+      data.extras = newExtras;
+      onChange(data);
+    }
+    
+    toast.success("Refeição extra adicionada");
+  };
+
   const handleToggleCustomTimes = (enabled: boolean) => {
     setUseCustomTimes(enabled);
     setHasChanges(true);
@@ -382,18 +399,31 @@ export function CustomMealTimesEditor({
                     </Select>
                   </div>
                   
-                  {/* Botão remover para extras */}
+                  {/* Botão salvar para extras novos, remover para extras salvos */}
                   {meal.isExtra && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => handleRemoveExtra(meal.id)}
-                      disabled={!useCustomTimes || isLoading || isSaving || disabled}
-                      className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
-                    >
-                      <Trash2 className="h-3.5 w-3.5 mr-1.5" />
-                      Remover refeição
-                    </Button>
+                    meal.isNew ? (
+                      <Button
+                        variant="default"
+                        size="sm"
+                        onClick={() => handleConfirmExtra(meal.id)}
+                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
+                        className="w-full"
+                      >
+                        <Check className="h-3.5 w-3.5 mr-1.5" />
+                        Salvar refeição
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRemoveExtra(meal.id)}
+                        disabled={!useCustomTimes || isLoading || isSaving || disabled}
+                        className="w-full text-destructive hover:text-destructive hover:bg-destructive/10"
+                      >
+                        <Trash2 className="h-3.5 w-3.5 mr-1.5" />
+                        Remover refeição
+                      </Button>
+                    )
                   )}
                 </div>
               </AccordionContent>

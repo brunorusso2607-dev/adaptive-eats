@@ -334,18 +334,17 @@ serve(async (req) => {
       dailyCalorieGoal 
     });
 
-    // ========== FETCH SAVED CORRECTIONS FOR AUTO-IMPROVEMENT ==========
-    const { data: savedCorrections, error: correctionsError } = await supabaseClient
-      .from("food_corrections")
-      .select("original_item, corrected_item, corrected_calorias, corrected_proteinas, corrected_carboidratos, corrected_gorduras, corrected_porcao, cuisine_origin")
-      .order("created_at", { ascending: false })
-      .limit(500);
-
-    if (correctionsError) {
-      logStep("Corrections fetch error (non-blocking)", { error: correctionsError.message });
-    }
-
-    // Build correction map for quick lookups (case-insensitive)
+    // ========== DISABLED: AUTO-CORRECTION APPLICATION ==========
+    // Previously, we fetched saved corrections and applied them to new photos.
+    // This has been disabled because:
+    // 1. Each new photo should be analyzed fresh by the AI
+    // 2. A "pêssego" today may be a different size than yesterday's
+    // 3. Corrections were meant for the current session, not as permanent overrides
+    // 4. Users found it confusing when new photos showed as "corrected"
+    //
+    // The food_corrections table is still populated for potential future use
+    // (e.g., training data, admin analytics) but corrections are NOT auto-applied.
+    
     const correctionMap = new Map<string, {
       correctedItem: string;
       calorias: number | null;
@@ -355,28 +354,8 @@ serve(async (req) => {
       porcao: string | null;
       culinaria: string | null;
     }>();
-
-    if (savedCorrections && savedCorrections.length > 0) {
-      for (const correction of savedCorrections) {
-        const key = correction.original_item.toLowerCase().trim();
-        // Only store the first (most recent) correction for each item
-        if (!correctionMap.has(key)) {
-          correctionMap.set(key, {
-            correctedItem: correction.corrected_item,
-            calorias: correction.corrected_calorias,
-            proteinas: correction.corrected_proteinas,
-            carboidratos: correction.corrected_carboidratos,
-            gorduras: correction.corrected_gorduras,
-            porcao: correction.corrected_porcao,
-            culinaria: correction.cuisine_origin
-          });
-        }
-      }
-      logStep("Corrections loaded for auto-improvement", { 
-        totalCorrections: savedCorrections.length,
-        uniqueItems: correctionMap.size 
-      });
-    }
+    
+    logStep("Auto-correction disabled - each analysis starts fresh");
 
     const { imageBase64 } = await req.json();
     if (!imageBase64) throw new Error("No image provided");

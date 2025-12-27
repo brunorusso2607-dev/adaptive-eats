@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { format, isToday, isYesterday, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -82,12 +82,17 @@ export function MealHistorySheet({
   defaultStatus = "all",
 }: MealHistorySheetProps) {
   // Determine if this is the wellness diary context (only evaluated meals)
-  const isWellnessDiary = defaultStatus === "evaluated";
+  const isWellnessDiary = defaultStatus === "evaluated" || defaultStatus === "ok" || defaultStatus === "symptoms";
   
   const [filters, setFilters] = useState<MealHistoryFilters>({
     days: 30,
     status: defaultStatus,
   });
+
+  // Update filters when defaultStatus changes (e.g., clicking different cards)
+  useEffect(() => {
+    setFilters(prev => ({ ...prev, status: defaultStatus }));
+  }, [defaultStatus]);
 
   const { meals, isLoading } = useMealHistory(filters);
 

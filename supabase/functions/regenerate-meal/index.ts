@@ -86,9 +86,6 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const GOOGLE_AI_API_KEY = await getGeminiApiKey();
-    logStep("Gemini API key fetched from database");
-
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
 
@@ -146,63 +143,129 @@ serve(async (req) => {
 
     logStep("Target calories calculated", { mealType, targetCalories, dailyCalories: macros.dailyCalories });
 
-    // Build prompt using centralized config
-    const ingredientsToUse = mode === "with_ingredients" ? ingredients : undefined;
-    const prompt = buildRegenerateMealPrompt(
-      profile as UserProfile,
-      mealType,
-      targetCalories,
-      ingredientsToUse
-    );
+    let recipeData: any = null;
+    let recipeFromPool = false;
 
-    logStep("Calling Google Gemini API with retry logic");
+    // STEP 1: Se não for modo com ingredientes específicos, busca no pool primeiro
+    if (mode !== "with_ingredients") {
+      logStep("Searching recipe pool first");
+      
+      const poolRecipes = await searchRecipePool(supabaseClient, {
+        mealType: mealType,
+        countryCode: profile.country || "BR",
+        dietaryPreference: profile.dietary_preference,
+        intolerances: profile.intolerances || [],
+        excludedIngredients: profile.excluded_ingredients || [],
+        limit: 5
+      });
 
-    // Call Google Gemini API with retry
-    const response = await callGeminiWithRetry(GOOGLE_AI_API_KEY, {
-      contents: [
-        {
-          parts: [
-            { text: prompt }
-          ]
+      if (poolRecipes.length > 0) {
+        // Seleciona uma receita aleatória do pool (para variedade)
+        const randomIndex = Math.floor(Math.random() * poolRecipes.length);
+        const poolRecipe = poolRecipes[randomIndex];
+        
+        logStep("Found recipe in pool", { name: poolRecipe.name, id: poolRecipe.id });
+        
+        // Marca a receita como usada
+        await markRecipeAsUsed(supabaseClient, poolRecipe.id);
+        
+        recipeData = {
+          recipe_name: poolRecipe.name,
+          recipe_calories: poolRecipe.calories,
+          recipe_protein: poolRecipe.protein,
+          recipe_carbs: poolRecipe.carbs,
+          recipe_fat: poolRecipe.fat,
+          recipe_prep_time: poolRecipe.prep_time,
+          recipe_ingredients: poolRecipe.ingredients,
+          recipe_instructions: [] // Pool pode não ter instruções detalhadas
+        };
+        recipeFromPool = true;
+      }
+    }
+
+    // STEP 2: Se não encontrou no pool ou é modo com ingredientes, gera via IA
+    if (!recipeData) {
+      logStep("Generating recipe via AI");
+      
+      const GOOGLE_AI_API_KEY = await getGeminiApiKey();
+      logStep("Gemini API key fetched from database");
+
+      // Build prompt using centralized config
+      const ingredientsToUse = mode === "with_ingredients" ? ingredients : undefined;
+      const prompt = buildRegenerateMealPrompt(
+        profile as UserProfile,
+        mealType,
+        targetCalories,
+        ingredientsToUse
+      );
+
+      logStep("Calling Google Gemini API with retry logic");
+
+      // Call Google Gemini API with retry
+      const response = await callGeminiWithRetry(GOOGLE_AI_API_KEY, {
+        contents: [
+          {
+            parts: [
+              { text: prompt }
+            ]
+          }
+        ],
+        generationConfig: {
+          temperature: 0.4,
+          maxOutputTokens: 2048,
         }
-      ],
-      generationConfig: {
-        temperature: 0.4,
-        maxOutputTokens: 2048,
+      });
+
+      const aiData = await response.json();
+      logStep("AI response received");
+
+      // Extract content from Google Gemini response format
+      const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!content) {
+        throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
       }
-    });
 
-    const aiData = await response.json();
-    logStep("AI response received");
-
-    // Extract content from Google Gemini response format
-    const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!content) {
-      throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
-    }
-
-    let recipeData;
-    try {
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (jsonMatch) {
-        recipeData = JSON.parse(jsonMatch[0]);
-      } else {
-        throw new Error("No JSON found in response");
+      try {
+        const jsonMatch = content.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          recipeData = JSON.parse(jsonMatch[0]);
+        } else {
+          throw new Error("No JSON found in response");
+        }
+      } catch (parseError) {
+        logStep("Parse error", { error: String(parseError), content: content.slice(0, 200) });
+        throw new Error("Não foi possível processar a receita. Tente novamente.");
       }
-    } catch (parseError) {
-      logStep("Parse error", { error: String(parseError), content: content.slice(0, 200) });
-      throw new Error("Não foi possível processar a receita. Tente novamente.");
-    }
 
-    if (!recipeData || !recipeData.recipe_name) {
-      throw new Error("A IA não retornou uma receita válida. Tente novamente.");
-    }
+      if (!recipeData || !recipeData.recipe_name) {
+        throw new Error("A IA não retornou uma receita válida. Tente novamente.");
+      }
 
-    logStep("Recipe parsed", { 
-      name: recipeData.recipe_name,
-      calories: recipeData.recipe_calories,
-      hasChefTip: !!recipeData.chef_tip
-    });
+      logStep("Recipe parsed from AI", { 
+        name: recipeData.recipe_name,
+        calories: recipeData.recipe_calories,
+        hasChefTip: !!recipeData.chef_tip
+      });
+
+      // STEP 3: Salva a receita gerada no pool para reutilização futura
+      const saveResult = await saveRecipeToPool(supabaseClient, {
+        name: recipeData.recipe_name,
+        mealType: mealType,
+        calories: Number(recipeData.recipe_calories) || targetCalories,
+        protein: Number(recipeData.recipe_protein) || 0,
+        carbs: Number(recipeData.recipe_carbs) || 0,
+        fat: Number(recipeData.recipe_fat) || 0,
+        prepTime: Number(recipeData.recipe_prep_time) || 30,
+        ingredients: recipeData.recipe_ingredients || [],
+        instructions: recipeData.recipe_instructions || [],
+        description: recipeData.chef_tip || null,
+        countryCode: profile.country || "BR",
+        sourceModule: "regenerate_meal",
+        compatibleMealTimes: [mealType]
+      });
+
+      logStep("Recipe saved to pool", { success: saveResult.success, id: saveResult.id });
+    }
 
     // Update the meal item
     const { data: updatedMeal, error: updateError } = await supabaseClient
@@ -222,11 +285,12 @@ serve(async (req) => {
       .single();
 
     if (updateError) throw new Error(`Error updating meal: ${updateError.message}`);
-    logStep("Meal updated successfully", { mealId: mealItemId });
+    logStep("Meal updated successfully", { mealId: mealItemId, source: recipeFromPool ? "pool" : "ai" });
 
     return new Response(JSON.stringify({
       success: true,
-      meal: updatedMeal
+      meal: updatedMeal,
+      source: recipeFromPool ? "pool" : "ai"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,

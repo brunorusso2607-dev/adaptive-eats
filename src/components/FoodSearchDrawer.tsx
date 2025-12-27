@@ -75,6 +75,9 @@ export default function FoodSearchDrawer({
   
   // Manual food modal state
   const [showManualModal, setShowManualModal] = useState(false);
+  
+  // Removing animation state
+  const [removingFoodIds, setRemovingFoodIds] = useState<Set<string>>(new Set());
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
   const { saveConsumption } = useMealConsumption();
@@ -393,15 +396,35 @@ export default function FoodSearchDrawer({
     const foodToRemove = selectedFoods.find((f) => f.id === foodId);
     if (!foodToRemove) return;
 
-    // Remove immediately
-    setSelectedFoods((prev) => prev.filter((f) => f.id !== foodId));
+    // Start fade-out animation
+    setRemovingFoodIds((prev) => new Set(prev).add(foodId));
+
+    // Wait for animation to complete, then remove
+    setTimeout(() => {
+      setSelectedFoods((prev) => prev.filter((f) => f.id !== foodId));
+      setRemovingFoodIds((prev) => {
+        const next = new Set(prev);
+        next.delete(foodId);
+        return next;
+      });
+    }, 300);
 
     // Show toast with undo option
     toast(`"${foodName}" removido`, {
       action: {
         label: "Desfazer",
         onClick: () => {
-          setSelectedFoods((prev) => [...prev, foodToRemove]);
+          // Remove from removing set if still animating
+          setRemovingFoodIds((prev) => {
+            const next = new Set(prev);
+            next.delete(foodId);
+            return next;
+          });
+          // Restore food if not already in list
+          setSelectedFoods((prev) => {
+            if (prev.find((f) => f.id === foodId)) return prev;
+            return [...prev, foodToRemove];
+          });
           toast.success(`"${foodName}" restaurado`);
         },
       },
@@ -684,8 +707,9 @@ export default function FoodSearchDrawer({
                         <div
                           key={food.id}
                           className={cn(
-                            "bg-card border rounded-lg p-3 space-y-2",
-                            conflict && "border-amber-200 bg-amber-50/30"
+                            "bg-card border rounded-lg p-3 space-y-2 transition-all duration-300",
+                            conflict && "border-amber-200 bg-amber-50/30",
+                            removingFoodIds.has(food.id) && "opacity-0 scale-95 -translate-x-4"
                           )}
                         >
                           <div className="flex items-center justify-between">

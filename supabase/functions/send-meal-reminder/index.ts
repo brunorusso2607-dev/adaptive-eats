@@ -258,10 +258,10 @@ serve(async (req) => {
       });
     }
     
-    // Get all active meal plans with user profiles (for timezone)
+    // Get all active meal plans with user profiles (for timezone) and custom meal times
     const { data: activePlans, error: plansError } = await supabase
       .from("meal_plans")
-      .select("id, user_id, start_date");
+      .select("id, user_id, start_date, end_date, is_active, custom_meal_times, unlocks_at");
     
     if (plansError) throw plansError;
     if (!activePlans || activePlans.length === 0) {
@@ -288,8 +288,17 @@ serve(async (req) => {
       timezoneMap.set(p.id, p.timezone || 'America/Sao_Paulo');
     });
     
-    // Filter active plans based on user's local date
+    // Filter active plans based on user's local date and exclude locked plans
     const activePlansFiltered = activePlans.filter(plan => {
+      // Skip plans that are still locked (scheduled for future)
+      if (plan.unlocks_at) {
+        const unlocksAt = new Date(plan.unlocks_at);
+        if (unlocksAt > new Date()) {
+          console.log(`Plan ${plan.id} is still locked until ${plan.unlocks_at}`);
+          return false;
+        }
+      }
+      
       const userTimezone = timezoneMap.get(plan.user_id) || 'America/Sao_Paulo';
       const { dateStr } = getCurrentTimeInTimezone(userTimezone);
       return plan.start_date <= dateStr;
@@ -304,21 +313,13 @@ serve(async (req) => {
     
     console.log(`Found ${activePlansFiltered.length} active meal plans`);
     
-    // Check which plans are actually active (within date range)
-    const { data: fullPlans, error: fullPlansError } = await supabase
-      .from("meal_plans")
-      .select("id, user_id, start_date, end_date, is_active")
-      .in("id", activePlansFiltered.map(p => p.id))
-      .eq("is_active", true);
-    
-    if (fullPlansError) throw fullPlansError;
-    
-    // Filter by end_date based on user timezone
-    const validPlans = fullPlans?.filter(plan => {
+    // Filter by end_date based on user timezone and is_active
+    const validPlans = activePlansFiltered.filter(plan => {
+      if (!plan.is_active) return false;
       const userTimezone = timezoneMap.get(plan.user_id) || 'America/Sao_Paulo';
       const { dateStr } = getCurrentTimeInTimezone(userTimezone);
       return plan.start_date <= dateStr && plan.end_date >= dateStr;
-    }) || [];
+    });
     
     if (validPlans.length === 0) {
       console.log("No valid active meal plans found");
@@ -364,6 +365,27 @@ serve(async (req) => {
     let notificationsSent = 0;
     const mealsNotified: string[] = [];
     
+    // Helper to parse custom time string "HH:MM" to minutes
+    const parseTimeToMinutes = (timeStr: string): number => {
+      const [hours, minutes] = timeStr.split(':').map(Number);
+      return hours * 60 + (minutes || 0);
+    };
+    
+    // Helper to get meal start time (custom or default)
+    const getMealStartTime = (
+      mealType: string, 
+      customMealTimes: Record<string, { start: string; end: string }> | null,
+      defaultSettings: Array<{ meal_type: string; start_hour: number }>
+    ): number => {
+      // Check custom times first
+      if (customMealTimes && customMealTimes[mealType]) {
+        return parseTimeToMinutes(customMealTimes[mealType].start);
+      }
+      // Fall back to default settings
+      const defaultSetting = defaultSettings.find(s => s.meal_type === mealType);
+      return defaultSetting ? defaultSetting.start_hour * 60 : 0;
+    };
+    
     for (const plan of validPlans) {
       const userSettings = userSettingsMap.get(plan.user_id);
       
@@ -380,19 +402,33 @@ serve(async (req) => {
       
       console.log(`User ${plan.user_id} timezone: ${userTimezone}, local time: ${currentHour}:${currentMinute}`);
       
+      // Parse custom meal times from plan
+      const customMealTimes = plan.custom_meal_times as Record<string, { start: string; end: string }> | null;
+      if (customMealTimes) {
+        console.log(`Plan ${plan.id} has custom meal times:`, JSON.stringify(customMealTimes));
+      }
+      
       // Calculate the time to check (current time + reminder_minutes_before)
       const checkTimeInMinutes = currentTimeInMinutes + userSettings.reminder_minutes_before;
       
       // Find meals that should trigger a reminder now
-      const mealsToRemind = mealTimeSettings.filter((setting: { meal_type: string; start_hour: number }) => {
+      const mealsToRemind = mealTimeSettings.filter((setting: { meal_type: string; start_hour: number; label: string }) => {
         // Skip if user disabled this meal type
         if (!userSettings.enabled_meals.includes(setting.meal_type)) {
           return false;
         }
         
-        const startTimeInMinutes = setting.start_hour * 60;
+        // Get start time (custom or default)
+        const startTimeInMinutes = getMealStartTime(setting.meal_type, customMealTimes, mealTimeSettings);
+        
         // Send notification in the first 5 minutes of the check window
-        return checkTimeInMinutes >= startTimeInMinutes && checkTimeInMinutes < startTimeInMinutes + 5;
+        const shouldNotify = checkTimeInMinutes >= startTimeInMinutes && checkTimeInMinutes < startTimeInMinutes + 5;
+        
+        if (shouldNotify) {
+          console.log(`Meal ${setting.meal_type} should notify: checkTime=${checkTimeInMinutes}, startTime=${startTimeInMinutes}`);
+        }
+        
+        return shouldNotify;
       });
       
       if (mealsToRemind.length === 0) {

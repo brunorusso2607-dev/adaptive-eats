@@ -78,12 +78,12 @@ const isPastMonth = (planEndDate: string) => {
   return endDate < today && !isSameMonth(endDate, today);
 };
 
-// Helper to check if we're within 2 days of month end
+// Helper to check if we're within 5 days of month end
 const isNearMonthEnd = () => {
   const today = new Date();
   const lastDayOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
   const daysUntilEnd = lastDayOfMonth.getDate() - today.getDate();
-  return daysUntilEnd <= 2;
+  return daysUntilEnd <= 5;
 };
 
 // Helper to check if there's an active plan for current month

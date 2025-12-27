@@ -1,15 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -85,9 +75,6 @@ export default function FoodSearchDrawer({
   
   // Manual food modal state
   const [showManualModal, setShowManualModal] = useState(false);
-  
-  // Delete confirmation state
-  const [foodToDelete, setFoodToDelete] = useState<{ id: string; name: string } | null>(null);
 
   const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
   const { saveConsumption } = useMealConsumption();
@@ -401,15 +388,25 @@ export default function FoodSearchDrawer({
     );
   };
 
-  const confirmRemoveFood = (foodId: string, foodName: string) => {
-    setFoodToDelete({ id: foodId, name: foodName });
-  };
+  const removeFood = (foodId: string, foodName: string) => {
+    // Find and store the food before removing
+    const foodToRemove = selectedFoods.find((f) => f.id === foodId);
+    if (!foodToRemove) return;
 
-  const removeFood = () => {
-    if (foodToDelete) {
-      setSelectedFoods((prev) => prev.filter((f) => f.id !== foodToDelete.id));
-      setFoodToDelete(null);
-    }
+    // Remove immediately
+    setSelectedFoods((prev) => prev.filter((f) => f.id !== foodId));
+
+    // Show toast with undo option
+    toast(`"${foodName}" removido`, {
+      action: {
+        label: "Desfazer",
+        onClick: () => {
+          setSelectedFoods((prev) => [...prev, foodToRemove]);
+          toast.success(`"${foodName}" restaurado`);
+        },
+      },
+      duration: 5000,
+    });
   };
 
   const calculateMacros = (food: SelectedFood) => {
@@ -702,7 +699,7 @@ export default function FoodSearchDrawer({
                               )}
                             </div>
                             <button
-                              onClick={() => confirmRemoveFood(food.id, food.name)}
+                              onClick={() => removeFood(food.id, food.name)}
                               className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
                               title="Remover alimento"
                             >
@@ -817,24 +814,6 @@ export default function FoodSearchDrawer({
         initialName={searchQuery}
         onFoodCreated={handleManualFoodCreated}
       />
-
-      {/* Delete confirmation dialog */}
-      <AlertDialog open={!!foodToDelete} onOpenChange={(open) => !open && setFoodToDelete(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Remover alimento?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Deseja remover "{foodToDelete?.name}" da lista?
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={removeFood} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Remover
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 }

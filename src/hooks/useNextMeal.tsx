@@ -4,7 +4,8 @@ import {
   getMealTimeRangesSync, 
   getMealLabelsSync, 
   getMealOrderSync,
-  formatMealTime 
+  formatMealTime,
+  MealTimeRanges
 } from "@/lib/mealTimeConfig";
 
 type Ingredient = { item: string; quantity: string; unit: string };
@@ -28,6 +29,8 @@ export type NextMealData = {
   completed_at: string | null;
 };
 
+type CustomMealTimes = Record<string, string>; // { "cafe_manha": "07:00" }
+
 // Re-exportar funções para compatibilidade - SEMPRE usar as funções sync para valores atualizados
 export function getMealLabels() {
   return getMealLabelsSync();
@@ -37,11 +40,41 @@ export function getMealTimeRanges() {
   return getMealTimeRangesSync();
 }
 
-// No normalization needed - "lanche" is now the standard
+// Converter horário customizado para range
+function parseCustomTimeToRange(
+  customTime: string, 
+  globalRange: { start: number; end: number }
+): { start: number; end: number } {
+  const [hours] = customTime.split(":").map(Number);
+  const duration = globalRange.end - globalRange.start;
+  return {
+    start: hours,
+    end: hours + duration
+  };
+}
 
-function getCurrentMealType(): string {
+// Mesclar horários globais com customizados
+function getMergedTimeRanges(customTimes: CustomMealTimes | null): MealTimeRanges {
+  const globalRanges = getMealTimeRangesSync();
+  
+  if (!customTimes || Object.keys(customTimes).length === 0) {
+    return globalRanges;
+  }
+
+  const merged: MealTimeRanges = { ...globalRanges };
+  
+  for (const [mealType, customTime] of Object.entries(customTimes)) {
+    if (globalRanges[mealType]) {
+      merged[mealType] = parseCustomTimeToRange(customTime, globalRanges[mealType]);
+    }
+  }
+
+  return merged;
+}
+
+function getCurrentMealType(customTimes?: CustomMealTimes | null): string {
   const hour = new Date().getHours();
-  const timeRanges = getMealTimeRangesSync();
+  const timeRanges = getMergedTimeRanges(customTimes || null);
   const mealOrder = getMealOrderSync();
   
   for (const mealType of mealOrder) {
@@ -76,7 +109,12 @@ function getMealSortIndex(mealType: string): number {
   return 999;
 }
 
-function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
+// Versão que aceita custom times opcionais
+export function getMealStatusWithCustomTimes(
+  mealType: string, 
+  completedAt: string | null,
+  customTimes?: CustomMealTimes | null
+): MealStatus {
   if (completedAt) return "completed";
   
   const now = new Date();
@@ -84,7 +122,7 @@ function getMealStatus(mealType: string, completedAt: string | null): MealStatus
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const timeRanges = getMealTimeRangesSync();
+  const timeRanges = getMergedTimeRanges(customTimes || null);
   const range = timeRanges[mealType];
   
   if (!range) {
@@ -112,13 +150,21 @@ function getMealStatus(mealType: string, completedAt: string | null): MealStatus
   return "on_time";
 }
 
-function getMinutesOverdue(mealType: string): number {
+// Versão retrocompatível
+function getMealStatus(mealType: string, completedAt: string | null): MealStatus {
+  return getMealStatusWithCustomTimes(mealType, completedAt, null);
+}
+
+export function getMinutesOverdueWithCustomTimes(
+  mealType: string,
+  customTimes?: CustomMealTimes | null
+): number {
   const now = new Date();
   const hour = now.getHours();
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const timeRanges = getMealTimeRangesSync();
+  const timeRanges = getMergedTimeRanges(customTimes || null);
   const range = timeRanges[mealType];
   if (!range) return 0;
   
@@ -131,13 +177,20 @@ function getMinutesOverdue(mealType: string): number {
   return 0;
 }
 
-export function getMinutesUntilStart(mealType: string): number {
+function getMinutesOverdue(mealType: string): number {
+  return getMinutesOverdueWithCustomTimes(mealType, null);
+}
+
+export function getMinutesUntilStartWithCustomTimes(
+  mealType: string,
+  customTimes?: CustomMealTimes | null
+): number {
   const now = new Date();
   const hour = now.getHours();
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const timeRanges = getMealTimeRangesSync();
+  const timeRanges = getMergedTimeRanges(customTimes || null);
   const range = timeRanges[mealType];
   if (!range) return 0;
   
@@ -150,12 +203,17 @@ export function getMinutesUntilStart(mealType: string): number {
   return 0;
 }
 
+export function getMinutesUntilStart(mealType: string): number {
+  return getMinutesUntilStartWithCustomTimes(mealType, null);
+}
+
 export function useNextMeal() {
-  console.log("🔄 [useNextMeal] Hook v5 - nomenclatura corrigida");
+  console.log("🔄 [useNextMeal] Hook v6 - com suporte a custom meal times");
   const [nextMeal, setNextMeal] = useState<NextMealData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
+  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
 
   const fetchNextMeal = useCallback(async () => {
     try {
@@ -165,8 +223,7 @@ export function useNextMeal() {
         return;
       }
 
-      // Buscar plano ativo
-      // Usar data local para cálculos
+      // Buscar plano ativo COM custom_meal_times
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
@@ -174,7 +231,7 @@ export function useNextMeal() {
       
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id, start_date")
+        .select("id, start_date, custom_meal_times")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -185,6 +242,7 @@ export function useNextMeal() {
       if (!plans || plans.length === 0) {
         setHasMealPlan(false);
         setNextMeal(null);
+        setCustomMealTimes(null);
         setIsLoading(false);
         return;
       }
@@ -192,21 +250,23 @@ export function useNextMeal() {
       setHasMealPlan(true);
       const activePlan = plans[0];
       const activePlanId = activePlan.id;
+      
+      // Extrair custom_meal_times do plano
+      const planCustomTimes = activePlan.custom_meal_times as CustomMealTimes | null;
+      setCustomMealTimes(planCustomTimes);
+      
+      console.log("[useNextMeal] Custom meal times do plano:", planCustomTimes);
 
       // Calcular day_of_week baseado na data de início do plano
-      // O banco usa day_of_week como dias desde o início do plano: 0=primeiro dia, 1=segundo dia, etc.
-      // Parsing correta da data para evitar problemas de timezone
       const [year, month, day] = activePlan.start_date.split('-').map(Number);
-      const planStartDate = new Date(year, month - 1, day); // month é 0-indexed
+      const planStartDate = new Date(year, month - 1, day);
       
       const diffTime = today.getTime() - planStartDate.getTime();
       const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
       
-      // Calcular qual semana e dia do plano
       const weekNumber = Math.floor(daysSinceStart / 7) + 1;
       const dayOfWeek = daysSinceStart % 7;
       
-      // Se hoje é antes do início do plano, não há refeição
       if (daysSinceStart < 0) {
         console.log("[useNextMeal] Plano ainda não começou, daysSinceStart:", daysSinceStart);
         setNextMeal(null);
@@ -216,7 +276,6 @@ export function useNextMeal() {
       
       console.log("[useNextMeal] today:", today.toLocaleDateString('pt-BR'), "planStart:", planStartDate.toLocaleDateString('pt-BR'), "daysSinceStart:", daysSinceStart, "dayOfWeek:", dayOfWeek, "weekNumber:", weekNumber, "planId:", activePlanId);
       
-      // Buscar refeições sem ordenação do SQL - ordenamos no JavaScript
       const { data: meals, error: mealsError } = await supabase
         .from("meal_plan_items")
         .select("*")
@@ -234,7 +293,6 @@ export function useNextMeal() {
         return;
       }
 
-      // Log detalhado para debug
       console.log("[useNextMeal] Refeições do banco:", meals.map(m => ({
         type: m.meal_type,
         sortIndex: getMealSortIndex(m.meal_type),
@@ -242,7 +300,6 @@ export function useNextMeal() {
         name: m.recipe_name?.substring(0, 20)
       })));
 
-      // Ordenar as refeições: cafe_manha=0, almoco=1, lanche=2, jantar=3, ceia=4
       const sortedMeals = [...meals].sort((a, b) => {
         const indexA = getMealSortIndex(a.meal_type);
         const indexB = getMealSortIndex(b.meal_type);
@@ -253,7 +310,6 @@ export function useNextMeal() {
         `${m.meal_type}(idx=${getMealSortIndex(m.meal_type)}, done=${!!m.completed_at})`
       ).join(" → "));
 
-      // Pegar a primeira refeição não completada do dia
       const nextMealItem = sortedMeals.find(meal => !meal.completed_at);
       
       if (nextMealItem) {
@@ -277,22 +333,23 @@ export function useNextMeal() {
   useEffect(() => {
     fetchNextMeal();
     
-    // Atualizar a cada minuto para checar status
     const interval = setInterval(fetchNextMeal, 60000);
     return () => clearInterval(interval);
   }, [fetchNextMeal]);
 
+  // Calcular status usando custom times
   const mealStatus = useMemo<MealStatus>(() => {
     if (!nextMeal) return "on_time";
-    const status = getMealStatus(nextMeal.meal_type, nextMeal.completed_at);
-    console.log("[useNextMeal] mealStatus calculado:", status, "para meal_type:", nextMeal.meal_type);
+    const status = getMealStatusWithCustomTimes(nextMeal.meal_type, nextMeal.completed_at, customMealTimes);
+    console.log("[useNextMeal] mealStatus calculado:", status, "para meal_type:", nextMeal.meal_type, "customTimes:", !!customMealTimes);
     return status;
-  }, [nextMeal]);
+  }, [nextMeal, customMealTimes]);
 
+  // Calcular minutos de atraso usando custom times
   const minutesOverdue = useMemo(() => {
-    if (!nextMeal || mealStatus === "on_time" || mealStatus === "completed") return 0;
-    return getMinutesOverdue(nextMeal.meal_type);
-  }, [nextMeal, mealStatus]);
+    if (!nextMeal || mealStatus === "on_time" || mealStatus === "completed" || mealStatus === "upcoming") return 0;
+    return getMinutesOverdueWithCustomTimes(nextMeal.meal_type, customMealTimes);
+  }, [nextMeal, mealStatus, customMealTimes]);
 
   const markAsComplete = useCallback(async () => {
     if (!nextMeal) return false;
@@ -316,8 +373,6 @@ export function useNextMeal() {
   const skipMeal = useCallback(async () => {
     if (!nextMeal) return false;
     
-    // Marcar como completada (pulada) sem registrar horário real
-    // Usar um timestamp especial para indicar que foi pulada
     try {
       const { error } = await supabase
         .from("meal_plan_items")
@@ -362,6 +417,7 @@ export function useNextMeal() {
     mealStatus,
     minutesOverdue,
     isRegenerating,
+    customMealTimes,
     markAsComplete,
     skipMeal,
     regenerateMeal,

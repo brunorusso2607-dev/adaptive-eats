@@ -111,17 +111,28 @@ serve(async (req) => {
         // Marca a receita como usada
         await markRecipeAsUsed(supabaseClient, poolRecipe.id);
         
+        // Transforma ingredientes do pool para o formato esperado
+        const formattedIngredients = Array.isArray(poolRecipe.ingredients) 
+          ? poolRecipe.ingredients.map((ing: any) => {
+              if (typeof ing === 'string') {
+                return { item: ing, quantity: "", unit: "" };
+              }
+              return ing;
+            })
+          : [];
+        
         recipe = {
           name: poolRecipe.name,
-          calories: poolRecipe.calories,
-          protein: poolRecipe.protein,
-          carbs: poolRecipe.carbs,
-          fat: poolRecipe.fat,
-          prep_time: poolRecipe.prep_time,
-          ingredients: poolRecipe.ingredients,
+          calories: poolRecipe.calories || 0,
+          protein: poolRecipe.protein || 0,
+          carbs: poolRecipe.carbs || 0,
+          fat: poolRecipe.fat || 0,
+          prep_time: poolRecipe.prep_time || 30,
+          ingredients: formattedIngredients,
           instructions: [],
           description: poolRecipe.description || "",
-          servings: 2
+          servings: 2,
+          complexity: "equilibrada"
         };
         recipeFromPool = true;
       }

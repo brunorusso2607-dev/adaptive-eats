@@ -26,8 +26,14 @@ const PERIOD_OPTIONS: { value: HealthPeriod; label: string }[] = [
 
 export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyFilter, setHistoryFilter] = useState<MealStatus>("evaluated");
   const [chartOpen, setChartOpen] = useState(false);
   const [selectedPeriod, setSelectedPeriod] = useState<HealthPeriod>(7);
+
+  const openHistoryWithFilter = (filter: MealStatus) => {
+    setHistoryFilter(filter);
+    setHistoryOpen(true);
+  };
   
   const { analysis, isLoading: isLoadingAnalysis } = useSymptomAnalysis(30); // Always 30 days for main score
   const { 
@@ -190,16 +196,22 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
           </p>
         </div>
 
-        {/* Metrics Row */}
+        {/* Metrics Row - Clickable */}
         <div className="grid grid-cols-2 gap-3">
-          <div className="text-center p-3 rounded-lg bg-muted/30">
+          <button
+            onClick={() => openHistoryWithFilter("ok")}
+            className="text-center p-3 rounded-lg bg-muted/30 hover:bg-green-500/10 hover:ring-1 hover:ring-green-500/30 transition-all cursor-pointer"
+          >
             <div className="flex items-center justify-center gap-1.5">
               <span className="text-xl font-semibold text-green-600">{wellMealsCount}</span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">refeições OK ({selectedPeriod}d)</p>
-          </div>
+          </button>
           
-          <div className="text-center p-3 rounded-lg bg-muted/30">
+          <button
+            onClick={() => openHistoryWithFilter("symptoms")}
+            className="text-center p-3 rounded-lg bg-muted/30 hover:bg-orange-500/10 hover:ring-1 hover:ring-orange-500/30 transition-all cursor-pointer"
+          >
             <div className="flex items-center justify-center gap-1.5">
               <span className={cn(
                 "text-xl font-semibold",
@@ -207,7 +219,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
               )}>{symptomsCount}</span>
             </div>
             <p className="text-[11px] text-muted-foreground mt-0.5">com sintomas ({selectedPeriod}d)</p>
-          </div>
+          </button>
         </div>
 
         {/* Insight Card */}
@@ -272,18 +284,18 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
 
         {/* Action Button */}
         <button
-          onClick={() => setHistoryOpen(true)}
+          onClick={() => openHistoryWithFilter("evaluated")}
           className="w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
         >
           Ver diário de bem-estar
           <ChevronRight className="h-4 w-4" />
         </button>
 
-        {/* History Sheet - Only evaluated meals */}
+        {/* History Sheet - With dynamic filter */}
         <MealHistorySheet
           open={historyOpen}
           onOpenChange={setHistoryOpen}
-          defaultStatus="evaluated"
+          defaultStatus={historyFilter}
         />
       </CardContent>
     </Card>

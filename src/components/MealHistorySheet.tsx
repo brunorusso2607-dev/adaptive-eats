@@ -81,6 +81,9 @@ export function MealHistorySheet({
   onOpenChange,
   defaultStatus = "all",
 }: MealHistorySheetProps) {
+  // Determine if this is the wellness diary context (only evaluated meals)
+  const isWellnessDiary = defaultStatus === "evaluated";
+  
   const [filters, setFilters] = useState<MealHistoryFilters>({
     days: 30,
     status: defaultStatus,
@@ -134,8 +137,13 @@ export function MealHistorySheet({
       <SheetContent side="bottom" className="h-[80vh] p-6">
         <SheetHeader className="mb-4">
           <SheetTitle className="text-lg font-semibold">
-            Histórico de Refeições
+            {isWellnessDiary ? "Diário de Bem-estar" : "Histórico de Refeições"}
           </SheetTitle>
+          {isWellnessDiary && (
+            <p className="text-xs text-muted-foreground mt-1">
+              Suas avaliações após as refeições
+            </p>
+          )}
         </SheetHeader>
 
         {/* Filters */}
@@ -158,23 +166,26 @@ export function MealHistorySheet({
             </SelectContent>
           </Select>
 
-          <Select
-            value={filters.status}
-            onValueChange={(v) =>
-              setFilters((f) => ({ ...f, status: v as MealStatus }))
-            }
-          >
-            <SelectTrigger className="w-32 h-9">
-              <SelectValue>{getStatusLabel(filters.status)}</SelectValue>
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas</SelectItem>
-              <SelectItem value="evaluated">Avaliadas</SelectItem>
-              <SelectItem value="ok">OK ✓</SelectItem>
-              <SelectItem value="symptoms">Com sintomas</SelectItem>
-              <SelectItem value="pending">Pendentes</SelectItem>
-            </SelectContent>
-          </Select>
+          {/* Hide status filter in wellness diary mode */}
+          {!isWellnessDiary && (
+            <Select
+              value={filters.status}
+              onValueChange={(v) =>
+                setFilters((f) => ({ ...f, status: v as MealStatus }))
+              }
+            >
+              <SelectTrigger className="w-32 h-9">
+                <SelectValue>{getStatusLabel(filters.status)}</SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="evaluated">Avaliadas</SelectItem>
+                <SelectItem value="ok">OK ✓</SelectItem>
+                <SelectItem value="symptoms">Com sintomas</SelectItem>
+                <SelectItem value="pending">Pendentes</SelectItem>
+              </SelectContent>
+            </Select>
+          )}
 
           <div className="flex-1" />
 
@@ -221,7 +232,7 @@ export function MealHistorySheet({
                     {/* Meals for this date */}
                     <div className="space-y-2">
                       {dateMeals.map((meal) => (
-                        <MealCard key={meal.id} meal={meal} />
+                        <MealCard key={meal.id} meal={meal} isWellnessMode={isWellnessDiary} />
                       ))}
                     </div>
                   </div>
@@ -241,11 +252,27 @@ export function MealHistorySheet({
   );
 }
 
-function MealCard({ meal }: { meal: MealHistoryItem }) {
+interface MealCardProps {
+  meal: MealHistoryItem;
+  isWellnessMode?: boolean;
+}
+
+function MealCard({ meal, isWellnessMode = false }: MealCardProps) {
   const [isOpen, setIsOpen] = useState(false);
   const status = statusConfig[meal.feedbackStatus as keyof typeof statusConfig] || statusConfig.pending;
   const hasSymptoms = meal.symptoms.length > 0;
   const StatusIcon = status.icon;
+
+  // In wellness mode, show status as main info
+  const mainLabel = isWellnessMode 
+    ? (hasSymptoms ? "Tive sintomas" : "Me senti bem")
+    : meal.recipeName;
+
+  const cardBg = isWellnessMode
+    ? hasSymptoms 
+      ? "bg-orange-500/5 border-orange-500/20 hover:bg-orange-500/10" 
+      : "bg-green-500/5 border-green-500/20 hover:bg-green-500/10"
+    : "bg-card hover:bg-accent/50";
 
   return (
     <Collapsible open={isOpen} onOpenChange={setIsOpen}>
@@ -253,28 +280,41 @@ function MealCard({ meal }: { meal: MealHistoryItem }) {
         <button className="w-full text-left">
           <div className={cn(
             "flex items-center gap-3 p-3 rounded-xl border transition-all",
-            "bg-card hover:bg-accent/50",
-            isOpen && "bg-accent/30 border-primary/20"
+            cardBg,
+            isOpen && "border-primary/20"
           )}>
             {/* Status indicator */}
-            <div className={cn("w-2.5 h-2.5 rounded-full shrink-0", status.dot)} />
+            <StatusIcon className={cn("h-5 w-5 shrink-0", status.iconColor)} />
             
             {/* Content */}
             <div className="flex-1 min-w-0">
-              <p className="font-medium text-sm truncate">{meal.recipeName}</p>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
-                <span>{format(new Date(meal.consumedAt), "HH:mm", { locale: ptBR })}</span>
-                {meal.totalCalories > 0 && (
-                  <>
-                    <span className="opacity-50">•</span>
-                    <span>{meal.totalCalories} kcal</span>
-                  </>
-                )}
-              </div>
+              {isWellnessMode ? (
+                <>
+                  <p className={cn(
+                    "font-medium text-sm",
+                    hasSymptoms ? "text-orange-700" : "text-green-700"
+                  )}>
+                    {hasSymptoms ? "⚠️ Tive sintomas" : "✅ Me senti bem"}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                    {meal.recipeName} • {format(new Date(meal.consumedAt), "HH:mm", { locale: ptBR })}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="font-medium text-sm truncate">{meal.recipeName}</p>
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5">
+                    <span>{format(new Date(meal.consumedAt), "HH:mm", { locale: ptBR })}</span>
+                    {meal.totalCalories > 0 && (
+                      <>
+                        <span className="opacity-50">•</span>
+                        <span>{meal.totalCalories} kcal</span>
+                      </>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-
-            {/* Status icon */}
-            <StatusIcon className={cn("h-4 w-4 shrink-0", status.iconColor)} />
 
             {hasSymptoms && (
               <ChevronDown className={cn(

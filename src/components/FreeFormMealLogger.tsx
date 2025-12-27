@@ -519,8 +519,13 @@ export default function FreeFormMealLogger({
   return (
     <>
       <Sheet open={open} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[95vh] max-h-[95vh] flex flex-col p-0">
-          <SheetHeader className="px-4 pb-2 pt-4 flex-shrink-0 border-b">
+        <SheetContent side="bottom" className="h-[85vh] max-h-[85vh] flex flex-col p-0">
+          {/* Drag handle */}
+          <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
+            <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
+          </div>
+          
+          <SheetHeader className="px-4 pb-3 flex-shrink-0 border-b">
             <SheetTitle className="text-base flex items-center gap-2">
               <UtensilsCrossed className="w-5 h-5 text-primary" />
               {step === 'foods' && "O que você comeu?"}

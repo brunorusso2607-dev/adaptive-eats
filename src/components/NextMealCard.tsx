@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
-import { useNextMeal, getMealLabels, getMinutesUntilStart, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
+import { useNextMeal, getMealLabels, getMinutesUntilStartWithCustomTimes, type MealStatus, type NextMealData } from "@/hooks/useNextMeal";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { usePlanMealTimes } from "@/hooks/usePlanMealTimes";
@@ -58,6 +58,7 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
     hasMealPlan,
     mealStatus,
     minutesOverdue,
+    customMealTimes,
     skipMeal,
     refetch,
   } = useNextMeal();
@@ -93,13 +94,13 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
     if (mealStatus !== "upcoming" || !nextMeal) return;
     
     const updateCountdown = () => {
-      setMinutesUntilStart(getMinutesUntilStart(nextMeal.meal_type));
+      setMinutesUntilStart(getMinutesUntilStartWithCustomTimes(nextMeal.meal_type, customMealTimes));
     };
     
     updateCountdown();
     const interval = setInterval(updateCountdown, 1000);
     return () => clearInterval(interval);
-  }, [mealStatus, nextMeal]);
+  }, [mealStatus, nextMeal, customMealTimes]);
 
   const { saveConsumption } = useMealConsumption();
 

@@ -6,16 +6,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,7 +18,7 @@ import {
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Loader2, Plus, Sparkles, AlertTriangle, ShieldAlert, Check, X, Wand2 } from "lucide-react";
+import { Loader2, Plus, Sparkles, AlertTriangle, Check, X, Wand2 } from "lucide-react";
 import { z } from "zod";
 import { suggestServingByName, type ServingSuggestion } from "@/lib/servingSuggestion";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
@@ -111,28 +101,8 @@ export default function ManualFoodModal({
   const [aiApplied, setAiApplied] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   
-  // AI intolerance conflict dialog
-  const [intoleranceDialog, setIntoleranceDialog] = useState<{
-    open: boolean;
-    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
-    ingredients: string[];
-    pendingData: typeof pendingFoodData;
-  }>({
-    open: false,
-    conflicts: [],
-    ingredients: [],
-    pendingData: null,
-  });
-  const [pendingFoodData, setPendingFoodData] = useState<{
-    name: string;
-    normalizedName: string;
-    calories: number;
-    protein: number;
-    carbs: number;
-    fat: number;
-    defaultServingSize: number;
-    servingUnit: string;
-  } | null>(null);
+  // Track if food has intolerance conflict for informative display
+  const [hasIntoleranceConflict, setHasIntoleranceConflict] = useState(false);
 
   // Fetch user profile for intolerance checking
   useEffect(() => {
@@ -284,7 +254,7 @@ export default function ManualFoodModal({
     setServingUnit("g");
     setSuggestion(null);
     setErrors({});
-    setPendingFoodData(null);
+    setHasIntoleranceConflict(false);
     setAiValidation(null);
     setAiApplied(false);
   };
@@ -351,13 +321,6 @@ export default function ManualFoodModal({
     }
   };
 
-  // Handle confirming despite intolerance conflict
-  const handleConfirmDespiteConflict = async () => {
-    if (intoleranceDialog.pendingData) {
-      await saveFood(intoleranceDialog.pendingData);
-    }
-    setIntoleranceDialog({ open: false, conflicts: [], ingredients: [], pendingData: null });
-  };
 
   const handleSubmit = async () => {
     setErrors({});
@@ -399,44 +362,36 @@ export default function ManualFoodModal({
       servingUnit: validation.data.servingUnit,
     };
 
-    // First, check local intolerance detection using the hook
+    let conflictWarning = "";
+
+    // Check for conflicts but don't block - just collect warning message
     if (hasIntolerances) {
       const intoleranceResult = checkFood(name);
 
       if (intoleranceResult.hasConflict && intoleranceResult.conflicts.length > 0) {
-        setPendingFoodData(foodData);
-        setIntoleranceDialog({
-          open: true,
-          conflicts: intoleranceResult.conflicts.map((c, idx) => ({
-            intolerance: c,
-            intoleranceLabel: intoleranceResult.labels[idx],
-            foundIngredients: [name],
-          })),
-          ingredients: [name],
-          pendingData: foodData,
-        });
-        return;
-      }
+        conflictWarning = `${name} contém ${intoleranceResult.badgeLabel}`;
+        setHasIntoleranceConflict(true);
+      } else {
+        // If no local conflict, use AI analysis
+        setIsAnalyzing(true);
+        const aiResult = await analyzeWithAI(name);
+        setIsAnalyzing(false);
 
-      // If no local conflict, use AI analysis
-      setIsAnalyzing(true);
-      const aiResult = await analyzeWithAI(name);
-      setIsAnalyzing(false);
-
-      if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
-        setPendingFoodData(foodData);
-        setIntoleranceDialog({
-          open: true,
-          conflicts: aiResult.conflicts,
-          ingredients: aiResult.ingredients,
-          pendingData: foodData,
-        });
-        return;
+        if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
+          const conflictLabels = aiResult.conflicts.map(c => c.intoleranceLabel).join(', ');
+          conflictWarning = `${name} contém ${conflictLabels}`;
+          setHasIntoleranceConflict(true);
+        }
       }
     }
 
-    // No conflicts, save directly
+    // Always save the food
     await saveFood(foodData);
+
+    // Show warning toast if there was a conflict
+    if (conflictWarning) {
+      toast.warning(conflictWarning, { duration: 4000 });
+    }
   };
 
   return (
@@ -673,67 +628,6 @@ export default function ManualFoodModal({
         </DialogFooter>
       </DialogContent>
 
-      {/* Intolerance Conflict Dialog */}
-      <AlertDialog 
-        open={intoleranceDialog.open} 
-        onOpenChange={(open) => {
-          if (!open) {
-            setIntoleranceDialog({ open: false, conflicts: [], ingredients: [], pendingData: null });
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle className="flex items-center gap-2 text-amber-600">
-              <ShieldAlert className="w-5 h-5" />
-              Alerta de Intolerância
-            </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>
-                  A IA identificou que <span className="font-semibold">{name}</span> pode conter ingredientes incompatíveis com suas restrições:
-                </p>
-                
-                {intoleranceDialog.ingredients.length > 0 && (
-                  <div className="bg-muted/50 rounded-md p-3">
-                    <p className="text-xs text-muted-foreground mb-1">Ingredientes identificados:</p>
-                    <p className="text-sm">{intoleranceDialog.ingredients.join(", ")}</p>
-                  </div>
-                )}
-                
-                <div className="space-y-2">
-                  {intoleranceDialog.conflicts.map((conflict, idx) => (
-                    <div key={idx} className="flex items-start gap-2 p-2 bg-amber-50 dark:bg-amber-950/30 rounded-md">
-                      <AlertTriangle className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                      <div>
-                        <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                          {conflict.intoleranceLabel}
-                        </p>
-                        <p className="text-xs text-muted-foreground">
-                          Encontrados: {conflict.foundIngredients.join(", ")}
-                        </p>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                
-                <p className="text-sm text-muted-foreground">
-                  Deseja cadastrar mesmo assim?
-                </p>
-              </div>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleConfirmDespiteConflict}
-              className="bg-amber-600 hover:bg-amber-700"
-            >
-              Cadastrar Mesmo Assim
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </Dialog>
   );
 }

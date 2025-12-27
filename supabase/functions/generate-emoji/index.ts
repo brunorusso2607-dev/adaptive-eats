@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import { extractUsageFromGeminiResponse, logAIUsage } from "../_shared/logAIUsage.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -97,6 +98,15 @@ Respond with only the icon name, no quotes, no punctuation.`,
     if (response.ok) {
       const data = await response.json();
       const rawResponse = data.candidates?.[0]?.content?.parts?.[0]?.text?.trim()?.toLowerCase() || "utensils";
+      
+      // Log AI usage
+      const usage = extractUsageFromGeminiResponse(data);
+      await logAIUsage({
+        functionName: "generate-emoji",
+        model: "gemini-2.5-flash-lite",
+        ...usage,
+        metadata: { label }
+      });
       
       // Validate that the response is one of the available icons
       const cleanedIcon = rawResponse.replace(/[^a-z-]/g, '');

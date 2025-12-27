@@ -210,22 +210,24 @@ export default function FreeFormMealLogger({
   }, [checkFoodConflicts]);
 
   const addFoodToList = (food: Food) => {
-    const defaultServing = food.default_serving_size || 100;
-    const displayQty = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : 1;
-    const actualGrams = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : defaultServing;
+    // Start with empty quantity (0) for new foods to allow user input
+    const isGramUnit = food.serving_unit === 'g' || food.serving_unit === 'ml';
 
     setSelectedFoods((prev) => {
       const existing = prev.find((f) => f.id === food.id);
       if (existing) {
-        const newDisplayQty = existing.displayQuantity + displayQty;
-        const newQuantity = food.serving_unit === 'g' || food.serving_unit === 'ml' 
+        // If already exists, increment by 100g or 1 unit
+        const increment = isGramUnit ? 100 : 1;
+        const newDisplayQty = existing.displayQuantity + increment;
+        const newQuantity = isGramUnit 
           ? newDisplayQty 
           : newDisplayQty * (food.default_serving_size || 100);
         return prev.map((f) =>
           f.id === food.id ? { ...f, displayQuantity: newDisplayQty, quantity: newQuantity } : f
         );
       }
-      return [...prev, { ...food, displayQuantity: displayQty, quantity: actualGrams }];
+      // New food starts with 0 quantity - user must set it
+      return [...prev, { ...food, displayQuantity: 0, quantity: 0 }];
     });
     setSearchQuery("");
     clearFoods();
@@ -355,6 +357,20 @@ export default function FreeFormMealLogger({
     );
   };
 
+  const incrementQuantity = (foodId: string, amount: number) => {
+    setSelectedFoods((prev) =>
+      prev.map((f) => {
+        if (f.id === foodId) {
+          const isGramUnit = f.serving_unit === 'g' || f.serving_unit === 'ml';
+          const newDisplayQty = f.displayQuantity + (isGramUnit ? amount : Math.round(amount / (f.default_serving_size || 100)));
+          const actualGrams = isGramUnit ? newDisplayQty : newDisplayQty * (f.default_serving_size || 100);
+          return { ...f, displayQuantity: Math.max(0, newDisplayQty), quantity: Math.max(0, actualGrams) };
+        }
+        return f;
+      }).filter((f) => f.displayQuantity > 0)
+    );
+  };
+
   const removeFood = (foodId: string) => {
     setSelectedFoods((prev) => prev.filter((f) => f.id !== foodId));
   };
@@ -397,6 +413,14 @@ export default function FreeFormMealLogger({
       toast.error("Adicione pelo menos um alimento");
       return;
     }
+    
+    // Check if any food has zero quantity
+    const invalidFoods = selectedFoods.filter(f => f.displayQuantity <= 0);
+    if (invalidFoods.length > 0) {
+      toast.error(`Informe a quantidade de: ${invalidFoods.map(f => f.name).join(', ')}`);
+      return;
+    }
+    
     setStep('meal-type');
   };
 
@@ -620,41 +644,68 @@ export default function FreeFormMealLogger({
                     </p>
                   </div>
                 ) : (
-                  <div className="space-y-2 pb-4">
+                  <div className="space-y-3 pb-4">
                     {selectedFoods.map((food) => {
                       const macros = calculateMacros(food);
+                      const isGramUnit = food.serving_unit === 'g' || food.serving_unit === 'ml';
+                      const incrementButtons = isGramUnit 
+                        ? [50, 100, 150, 200] 
+                        : [1, 2, 3, 4];
+                      
                       return (
                         <div
                           key={food.id}
-                          className="flex items-center gap-3 p-3 rounded-lg border bg-card"
+                          className="p-3 rounded-lg border bg-card space-y-3"
                         >
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-sm truncate">{food.name}</p>
-                            <p className="text-xs text-muted-foreground">
-                              {macros.calories} kcal • P: {macros.protein}g • C: {macros.carbs}g • G: {macros.fat}g
-                            </p>
-                          </div>
-                          
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={food.displayQuantity}
-                              onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
-                              className="w-16 h-8 text-center text-sm"
-                              min="0"
-                              step={food.serving_unit === 'g' || food.serving_unit === 'ml' ? 10 : 1}
-                            />
-                            <span className="text-xs text-muted-foreground w-8">
-                              {getUnitLabel(food.serving_unit || 'g', food.displayQuantity)}
-                            </span>
+                          {/* Header with name and remove button */}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium text-sm truncate">{food.name}</p>
+                              <p className="text-xs text-muted-foreground">
+                                {macros.calories} kcal • P: {macros.protein}g • C: {macros.carbs}g • G: {macros.fat}g
+                              </p>
+                            </div>
                             <Button
                               variant="ghost"
                               size="icon"
-                              className="h-8 w-8"
+                              className="h-7 w-7 -mr-1 -mt-1"
                               onClick={() => removeFood(food.id)}
                             >
                               <X className="w-4 h-4" />
                             </Button>
+                          </div>
+                          
+                          {/* Quantity input with increment buttons */}
+                          <div className="flex items-center gap-2">
+                            <div className="relative flex-shrink-0">
+                              <Input
+                                type="number"
+                                value={food.displayQuantity || ''}
+                                onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
+                                placeholder="0"
+                                className="w-20 h-9 text-center text-sm pr-7"
+                                min="0"
+                                step={isGramUnit ? 10 : 1}
+                              />
+                              <span className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-muted-foreground pointer-events-none">
+                                {getUnitLabel(food.serving_unit || 'g', food.displayQuantity)}
+                              </span>
+                            </div>
+                            
+                            {/* Increment buttons */}
+                            <div className="flex items-center gap-1 flex-1 overflow-x-auto">
+                              {incrementButtons.map((amount) => (
+                                <Button
+                                  key={amount}
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-9 px-3 text-xs whitespace-nowrap flex-shrink-0"
+                                  onClick={() => incrementQuantity(food.id, isGramUnit ? amount : amount * (food.default_serving_size || 100))}
+                                >
+                                  +{amount}{isGramUnit ? 'g' : ''}
+                                </Button>
+                              ))}
+                            </div>
                           </div>
                         </div>
                       );

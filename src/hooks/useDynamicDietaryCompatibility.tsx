@@ -1,139 +1,264 @@
 import { useCallback, useMemo } from 'react';
 import { useUserProfileContext } from './useUserProfileContext';
 
-// Mapeamento de intolerâncias para ingredientes problemáticos
-// SINCRONIZADO com supabase/functions/_shared/recipeConfig.ts
-// Com keywords de segurança para evitar falsos positivos (ex: "leite de coco" não é lactose)
+// ============================================
+// SINCRONIZADO COM: supabase/functions/_shared/recipeConfig.ts
+// Esta é a fonte única de verdade para validação de compatibilidade
+// Qualquer alteração aqui deve refletir no backend também
+// ============================================
+
 interface IntoleranceMapping {
   forbidden: string[];
   safeKeywords: string[];
 }
 
 // EXCEÇÕES SEGURAS GLOBAIS - ingredientes que parecem problemáticos mas são seguros
-// Deve estar sincronizado com validateIngredient() em recipeConfig.ts
 const GLOBAL_SAFE_EXCEPTIONS = [
-  "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+  "leite de coco", "leite de amendoas", "leite de amêndoas", "leite de aveia", "leite vegetal",
   "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
   "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
   "creme de leite de coco", "iogurte de coco", "manteiga de coco",
   "leite de castanha", "leite de macadamia", "leite de quinoa",
   "sem lactose", "zero lactose", "sem gluten", "gluten free",
-  "sem acucar", "zero acucar", "diet", "sugar free"
+  "sem acucar", "zero acucar", "diet", "sugar free",
+  "maionese vegana", "requeijao vegano", "chantilly vegano"
 ];
 
+// ============================================
+// MAPEAMENTO EXPANDIDO DE INGREDIENTES PROIBIDOS
+// Sincronizado com FORBIDDEN_INGREDIENTS do recipeConfig.ts
+// ============================================
 const INTOLERANCE_INGREDIENTS: Record<string, IntoleranceMapping> = {
   lactose: {
     forbidden: [
-      // Leite e derivados diretos - precisa ser específico para evitar falsos positivos
-      "leite integral", "leite desnatado", "leite em po", "leite pasteurizado",
-      "leite condensado", "leite evaporado",
+      // Leite e derivados diretos
+      "leite", "leite integral", "leite desnatado", "leite semidesnatado", "leite em po",
+      "leite condensado", "leite evaporado", "leite de vaca", "leite de cabra", "leite de bufala",
       // Queijos
-      "queijo", "mussarela", "mucaarela", "parmesao", "prato", "coalho",
-      "cottage", "ricota", "gorgonzola", "provolone", "brie", "camembert",
-      "emmental", "cheddar", "gouda", "feta", "mascarpone", "cream cheese",
-      "requeijao", "catupiry",
+      "queijo", "queijo mucaarela", "queijo mussarela", "queijo parmesao", "queijo prato",
+      "queijo coalho", "queijo minas", "queijo cottage", "queijo ricota", "queijo gorgonzola",
+      "queijo provolone", "queijo brie", "queijo camembert", "queijo cheddar", "queijo gouda",
+      "queijo gruyere", "queijo feta", "queijo roquefort", "queijo mascarpone", "queijo cream cheese",
+      "queijo pecorino", "queijo manchego", "queijo emmental", "queijo suico", "cream cheese",
+      "mussarela", "parmesao", "prato", "coalho", "cottage", "ricota", "gorgonzola",
+      "provolone", "brie", "camembert", "cheddar", "gouda", "feta", "mascarpone",
       // Creme e manteiga
-      "manteiga", "creme de leite", "nata", "chantilly", "chantili",
+      "manteiga", "manteiga com sal", "manteiga sem sal", "manteiga ghee", "ghee",
+      "creme de leite", "creme de leite fresco", "nata", "chantilly", "chantili",
+      "creme chantilly", "creme fraiche", "creme azedo", "sour cream",
       // Iogurte
-      "iogurte", "coalhada", "kefir",
-      // Produtos com lactose
-      "whey", "soro de leite", "caseina",
-      // Doces
-      "doce de leite", "brigadeiro",
-      // Molhos
-      "molho branco", "molho alfredo", "bechamel", "fondue"
+      "iogurte", "iogurte natural", "iogurte grego", "iogurte integral", "iogurte desnatado",
+      "coalhada", "kefir", "leite fermentado", "yakult",
+      // Requeijão e similares
+      "requeijao", "requeijao cremoso", "requeijao light", "catupiry", "polenguinho",
+      // Produtos processados com lactose
+      "whey", "whey protein", "proteina do soro do leite", "caseina", "caseinato",
+      "lactose", "soro de leite", "lactoalbumina", "lactoglobulina",
+      // Doces com lactose
+      "doce de leite", "brigadeiro", "leite moca", "pudim de leite",
+      // Outros
+      "fondue", "bechamel", "molho branco", "molho quatro queijos", "molho alfredo"
     ],
     safeKeywords: [
       "leite de coco", "leite de amendoa", "leite de aveia", "leite de soja",
       "leite de arroz", "leite vegetal", "creme de coco", "iogurte vegetal",
       "iogurte de coco", "queijo vegano", "manteiga vegana", "sem lactose",
-      "zero lactose", "leite de castanha"
+      "zero lactose", "leite de castanha", "vegano", "vegan", "plant-based"
     ]
   },
   gluten: {
     forbidden: [
-      "trigo", "farinha de trigo", "farinha branca", "pao", "macarrao", "espaguete",
-      "massa de lasanha", "biscoito", "bolacha", "bolo", "cevada", "centeio",
-      "cerveja", "molho shoyu", "shoyu", "seitan", "bulgur", "cuscuz de trigo", "semolina",
-      "crouton", "empanado", "milanesa", "farinha de rosca", "torrada", "croissant",
-      "pizza", "pastel", "penne", "fusilli", "talharim", "fettuccine", "ravioli"
+      // Trigo e derivados
+      "trigo", "farinha de trigo", "farinha branca", "farinha integral", "farinha de rosca",
+      "farelo de trigo", "germen de trigo", "trigo integral", "trigo sarraceno",
+      // Pães
+      "pao", "pao frances", "pao de forma", "pao integral", "pao sirio", "pao arabe",
+      "pao ciabatta", "pao italiano", "pao de leite", "torrada",
+      "crouton", "bruschetta", "focaccia", "bagel", "brioche",
+      // Massas
+      "macarrao", "espaguete", "penne", "fusilli", "farfalle", "lasanha", "nhoque",
+      "ravioli", "tortellini", "capeletti", "talharim", "fettuccine", "massa",
+      "massa folhada", "massa de pizza", "massa de torta", "massa de pastel",
+      // Cereais
+      "aveia", "aveia em flocos", "farelo de aveia", "cevada", "centeio", "malte",
+      "cerveja", "uisque", "whisky",
+      // Biscoitos e bolos
+      "biscoito", "bolacha", "cookie", "bolo", "bolo pronto", "mistura para bolo",
+      "wafer", "pretzel", "cream cracker",
+      // Empanados
+      "empanado", "milanesa", "breading", "nuggets", "croquete",
+      // Molhos
+      "molho shoyu", "shoyu", "molho de soja industrializado", "molho teriyaki",
+      "molho ingles", "molho barbecue industrializado",
+      // Outros
+      "seitan", "bulgur", "cuscuz de trigo", "semolina", "semola"
     ],
     safeKeywords: [
       "sem gluten", "gluten free", "farinha de arroz", "farinha de amendoa",
-      "farinha de coco", "farinha de mandioca", "polvilho", "tapioca", 
-      "goma de tapioca", "farinha de aveia sem gluten"
+      "farinha de coco", "farinha de mandioca", "polvilho", "tapioca",
+      "goma de tapioca", "farinha de aveia sem gluten", "pao sem gluten"
     ]
   },
   amendoim: {
     forbidden: [
-      "amendoim", "pasta de amendoim", "manteiga de amendoim", "pacoca", "oleo de amendoim",
-      "farinha de amendoim", "pe de moleque"
+      "amendoim", "amendoins", "pasta de amendoim", "manteiga de amendoim", "pacoca",
+      "oleo de amendoim", "farinha de amendoim", "pe de moleque"
     ],
     safeKeywords: ["sem amendoim"]
   },
   frutos_mar: {
     forbidden: [
-      "camarao", "lagosta", "caranguejo", "siri", "lula", "polvo", "mexilhao", "ostra",
-      "vieira", "marisco", "salmao", "atum", "tilapia", "bacalhau", "sardinha",
-      "anchova", "truta", "robalo", "pescada", "merluza", "peixe", "camarao seco"
+      // Peixes
+      "peixe", "salmao", "atum", "tilapia", "bacalhau", "sardinha", "anchova",
+      "truta", "robalo", "dourado", "pescada", "merluza", "linguado", "badejo",
+      "cavala", "arenque", "carpa", "pacu", "pintado", "surubim", "pirarucu",
+      // Frutos do mar
+      "camarao", "camaroes", "lagosta", "lagostim", "caranguejo", "siri",
+      "lula", "polvo", "mexilhao", "marisco", "ostra", "vieira", "berbigao",
+      "sururu", "vongole",
+      // Derivados
+      "oleo de peixe", "molho de peixe", "molho de ostra", "pasta de anchova",
+      "caldo de peixe", "fumet"
     ],
     safeKeywords: []
   },
   ovo: {
     forbidden: [
-      "ovo", "ovos", "clara de ovo", "gema", "omelete", "fritada", "maionese", "merengue",
-      "gemada", "ovo cozido", "ovo frito", "ovo mexido", "ovo poche"
+      "ovo", "ovos", "ovo inteiro", "clara de ovo", "gema de ovo", "ovo caipira",
+      "ovo de codorna", "ovo cozido", "ovo frito", "ovo mexido", "omelete",
+      "fritada", "gemada", "merengue", "suspiro", "clara em neve",
+      // Produtos com ovo
+      "maionese", "aioli", "molho holandes", "molho bearnaise", "carbonara",
+      "massa fresca com ovo", "panqueca", "waffle", "brioche", "pao de lo"
     ],
     safeKeywords: ["sem ovo", "vegano", "vegan", "maionese vegana"]
   },
   soja: {
     forbidden: [
-      "soja", "tofu", "leite de soja", "molho shoyu", "shoyu", "tempeh", "misso",
-      "edamame", "proteina de soja", "lecitina de soja"
+      "soja", "grao de soja", "proteina de soja", "proteina texturizada de soja",
+      "tofu", "tofu firme", "tofu macio", "tofu defumado",
+      "leite de soja", "bebida de soja", "iogurte de soja",
+      "edamame", "misso", "molho shoyu", "shoyu", "tamari",
+      "tempeh", "natto", "oleo de soja", "lecitina de soja"
     ],
     safeKeywords: ["sem soja"]
   },
   castanhas: {
     forbidden: [
-      "castanha", "nozes", "noz", "amendoa", "avela", "pistache", "macadamia", "pinhao",
-      "caju", "castanha de caju", "castanha do para", "noz peca", "nutella"
+      "castanha", "castanhas", "castanha de caju", "castanha do para", "castanha do brasil",
+      "nozes", "noz", "noz peca", "noz moscada",
+      "amendoa", "amendoas", "farinha de amendoa", "leite de amendoa",
+      "avela", "avelas", "creme de avela", "nutella",
+      "pistache", "pistaches", "macadamia", "pinhao", "pinhoes",
+      "pasta de castanha", "manteiga de amendoa", "manteiga de castanha"
     ],
     safeKeywords: ["sem castanha", "sem nozes"]
   },
   acucar: {
     forbidden: [
-      "acucar", "mel", "melado", "xarope", "rapadura", "caramelo", "acucar mascavo",
-      "acucar demerara", "acucar refinado", "acucar cristal", "acucar de confeiteiro"
+      // Açúcares diretos
+      "acucar", "acucar refinado", "acucar cristal", "acucar mascavo", "acucar demerara",
+      "acucar de confeiteiro", "acucar invertido", "acucar de coco",
+      // Xaropes
+      "mel", "melado", "melaco", "xarope de milho", "xarope de glicose", "xarope de agave",
+      "xarope de bordo", "maple syrup", "xarope de frutose",
+      // Outros doces
+      "rapadura", "caramelo", "calda", "geleia", "compota", "doce",
+      // Adoçantes calóricos
+      "maltodextrina", "dextrose", "frutose"
     ],
     safeKeywords: ["sem acucar", "zero acucar", "diet", "sugar free", "adocante"]
   }
 };
 
-// Ingredientes proibidos por dieta
+// ============================================
+// INGREDIENTES PROIBIDOS POR DIETA
+// Sincronizado com DIETARY_FORBIDDEN_INGREDIENTS do recipeConfig.ts
+// ============================================
 const DIETARY_FORBIDDEN: Record<string, string[]> = {
   vegetariana: [
-    "carne", "frango", "peixe", "camarao", "bacon", "presunto", "salsicha", "linguica",
-    "bife", "picanha", "alcatra", "file", "cordeiro", "porco", "peru", "pato",
-    "atum", "salmao", "sardinha", "lagosta", "caranguejo", "lula", "polvo"
+    // Carnes vermelhas
+    "carne", "carne bovina", "carne de boi", "bife", "picanha", "file mignon", "alcatra", "patinho",
+    "acem", "musculo", "costela bovina", "carne moida", "hamburguer de carne", "carne seca",
+    "charque", "carne de porco", "lombo", "pernil", "bacon", "panceta", "linguica de porco",
+    "salsicha", "presunto", "mortadela", "copa", "salame", "calabresa",
+    "carne de cordeiro", "cordeiro", "carneiro", "cabrito",
+    // Aves
+    "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "frango desfiado",
+    "carne de frango", "peru", "pato", "chester", "galinha", "canja de galinha",
+    // Peixes
+    "peixe", "salmao", "tilapia", "bacalhau", "atum", "sardinha", "pescada", "robalo", "dourado",
+    "namorado", "linguado", "merluza", "truta", "pacu", "pintado", "surubim", "pirarucu",
+    // Frutos do mar
+    "camarao", "lagosta", "caranguejo", "siri", "lula", "polvo", "mexilhao", "ostra", "vieira",
+    "marisco", "frutos do mar",
+    // Produtos derivados de carne
+    "caldo de carne", "caldo de galinha", "caldo de frango", "extrato de carne", "gelatina",
+    "banha", "gordura de porco", "toucinho"
   ],
   vegana: [
-    "carne", "frango", "peixe", "camarao", "bacon", "presunto", "salsicha", "linguica",
-    "bife", "picanha", "alcatra", "file", "cordeiro", "porco", "peru", "pato",
-    "atum", "salmao", "sardinha", "lagosta", "caranguejo", "lula", "polvo",
-    "leite", "queijo", "iogurte", "manteiga", "creme de leite", "requeijao",
-    "cream cheese", "ricota", "mussarela", "parmesao", "chantilly", "whey", "kefir",
-    "ovo", "ovos", "clara", "gema", "maionese", "mel"
+    // Carnes (tudo de vegetariana)
+    "carne", "carne bovina", "carne de boi", "bife", "picanha", "file mignon", "alcatra", "patinho",
+    "acem", "musculo", "costela bovina", "carne moida", "hamburguer de carne", "carne seca",
+    "charque", "carne de porco", "lombo", "pernil", "bacon", "panceta", "linguica de porco",
+    "salsicha", "presunto", "mortadela", "copa", "salame", "calabresa",
+    "carne de cordeiro", "cordeiro", "carneiro", "cabrito",
+    "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "frango desfiado",
+    "peru", "pato", "chester", "galinha",
+    "peixe", "salmao", "tilapia", "bacalhau", "atum", "sardinha", "pescada", "robalo",
+    "camarao", "lagosta", "caranguejo", "siri", "lula", "polvo", "mexilhao", "ostra", "vieira",
+    "caldo de carne", "caldo de galinha", "caldo de frango", "extrato de carne", "gelatina",
+    "banha", "gordura de porco", "toucinho",
+    // Laticínios
+    "leite", "leite integral", "leite desnatado", "leite condensado", "leite em po",
+    "queijo", "queijo mucaarela", "queijo parmesao", "queijo prato", "queijo cottage", "queijo ricota",
+    "cream cheese", "requeijao", "catupiry",
+    "manteiga", "creme de leite", "nata", "chantilly", "iogurte", "coalhada", "kefir",
+    "whey", "whey protein", "caseina", "soro de leite",
+    // Ovos
+    "ovo", "ovos", "clara de ovo", "gema de ovo", "ovo cozido", "ovo frito", "omelete",
+    "maionese", "maionese tradicional",
+    // Mel e derivados
+    "mel", "mel de abelha", "propolis", "geleia real"
   ],
   pescetariana: [
-    "carne", "frango", "bacon", "presunto", "salsicha", "linguica", "bife", "picanha",
-    "alcatra", "file", "cordeiro", "porco", "peru", "pato"
+    // Apenas carnes vermelhas e aves
+    "carne", "carne bovina", "carne de boi", "bife", "picanha", "file mignon", "alcatra", "patinho",
+    "acem", "musculo", "costela bovina", "carne moida", "hamburguer de carne", "carne seca",
+    "charque", "carne de porco", "lombo", "pernil", "bacon", "panceta", "linguica de porco",
+    "salsicha", "presunto", "mortadela", "copa", "salame", "calabresa",
+    "carne de cordeiro", "cordeiro", "carneiro", "cabrito",
+    "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango", "frango desfiado",
+    "peru", "pato", "chester", "galinha",
+    "caldo de carne", "caldo de galinha", "caldo de frango",
+    "banha", "gordura de porco", "toucinho"
   ],
   low_carb: [
-    "acucar", "pao", "arroz branco", "macarrao", "massa", "batata inglesa", "farinha de trigo"
+    // Carboidratos refinados e açúcares
+    "acucar", "acucar refinado", "acucar mascavo", "acucar demerara", "acucar cristal",
+    "mel", "melado", "xarope de milho", "xarope de glicose", "xarope de agave",
+    "pao", "pao frances", "pao de forma", "pao integral", "torrada",
+    "arroz branco", "arroz", "macarrao", "espaguete", "massa", "lasanha",
+    "batata", "batata inglesa", "batata frita", "pure de batata",
+    "farinha de trigo", "farinha branca", "amido de milho", "maisena",
+    "biscoito", "bolacha", "bolo", "doce", "sobremesa acucarada",
+    "refrigerante", "suco industrializado", "suco de caixinha",
+    "cerveja", "bebida alcoolica doce"
   ],
   cetogenica: [
-    "acucar", "pao", "arroz", "macarrao", "massa", "batata", "feijao", "lentilha",
-    "grao de bico", "milho", "farinha de trigo"
+    // Ainda mais restritivo que low_carb
+    "acucar", "acucar refinado", "acucar mascavo", "acucar demerara", "mel", "melado",
+    "xarope de milho", "xarope de glicose", "xarope de agave",
+    "pao", "pao frances", "pao de forma", "torrada", "croissant", "bolo",
+    "arroz", "arroz branco", "arroz integral", "macarrao", "massa", "lasanha",
+    "batata", "batata inglesa", "batata doce", "mandioca", "macaxeira", "aipim",
+    "inhame", "cara", "batata baroa", "mandioquinha",
+    "farinha de trigo", "farinha", "amido de milho", "maisena", "polvilho",
+    "feijao", "feijao preto", "feijao carioca", "lentilha", "grao de bico", "ervilha",
+    "milho", "pipoca", "canjica",
+    "banana", "manga", "uva", "abacaxi", "melancia", "frutas doces",
+    "biscoito", "bolacha", "doce", "sobremesa",
+    "refrigerante", "suco de fruta", "suco industrializado"
   ]
 };
 
@@ -240,8 +365,9 @@ export function useDynamicDietaryCompatibility() {
         // Verifica ingredientes proibidos
         for (const forbidden of mapping.forbidden) {
           const normalizedForbidden = normalizeText(forbidden);
-          if (normalizedItem.includes(normalizedForbidden) || 
-              normalizedForbidden.includes(normalizedItem)) {
+          // Match mais preciso: verifica se o termo proibido está no ingrediente
+          // Mas não o contrário (evita que "leite" match "leite de coco")
+          if (normalizedItem.includes(normalizedForbidden)) {
             // Evitar duplicatas
             const exists = conflicts.some(c => 
               c.type === 'intolerance' && 
@@ -268,8 +394,7 @@ export function useDynamicDietaryCompatibility() {
         const forbiddenByDiet = DIETARY_FORBIDDEN[dietaryPref] || [];
         for (const forbidden of forbiddenByDiet) {
           const normalizedForbidden = normalizeText(forbidden);
-          if (normalizedItem.includes(normalizedForbidden) || 
-              normalizedForbidden.includes(normalizedItem)) {
+          if (normalizedItem.includes(normalizedForbidden)) {
             const exists = conflicts.some(c => 
               c.type === 'dietary' && 
               c.key === dietaryPref && 

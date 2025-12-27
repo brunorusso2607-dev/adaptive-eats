@@ -999,20 +999,17 @@ serve(async (req) => {
       totalMeals: validationSummary.totalMeals,
       validMeals: validationSummary.validMeals,
       invalidMeals: validationSummary.invalidMeals,
-      issues: validationSummary.issues.length > 0 
-        ? validationSummary.issues.map(i => `${i.recipeName}: ${i.invalidIngredients.join(", ")}`)
-        : "none"
+      issuesCount: validationSummary.issues.length
     });
-
-    // Se houver receitas inválidas, tenta regenerá-las
-    if (validationSummary.issues.length > 0) {
-      logStep("Attempting to regenerate invalid meals", { count: validationSummary.issues.length });
+    
+    // Regenerar receitas com problemas
+    if (validationSummary.issues.length > 0 && validationSummary.issues.length <= 5) {
+      logStep("Regenerating invalid meals", { count: validationSummary.issues.length });
       
-      // Use dynamic calories calculation
-      const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, mealTypesToGenerate);
+      // Calcular calorias por tipo de refeição
+      const caloriesPerMealMap = calculateCaloriesPerMeal(macros.dailyCalories, mealTypesToGenerate);
       
       for (const issue of validationSummary.issues) {
-        // Encontra o dia e a refeição correspondente
         const day = mealPlanData.days[issue.dayIndex];
         if (!day) continue;
         
@@ -1025,7 +1022,7 @@ serve(async (req) => {
         const newMeal = await generateSingleMeal(
           profile as UserProfile,
           issue.mealType,
-          caloriesPerMeal[issue.mealType] || 400,
+          caloriesPerMealMap[issue.mealType] || 400,
           GOOGLE_AI_API_KEY
         );
         
@@ -1051,6 +1048,26 @@ serve(async (req) => {
         remainingIssues: finalValidation.issues.length
       });
     }
+    
+    // ========================================
+    // VALIDAÇÃO FINAL - GARANTIR QUE TEMOS REFEIÇÕES SUFICIENTES
+    // ========================================
+    const totalMealsGenerated = mealPlanData.days.reduce((sum: number, day: any) => sum + (day.meals?.length || 0), 0);
+    const minMealsRequired = allDays.length * Math.max(1, mealTypesToGenerate.length - 1); // At least N-1 meals per day
+    
+    if (totalMealsGenerated < minMealsRequired) {
+      logStep("Insufficient meals generated - aborting to prevent incomplete plan", {
+        totalMealsGenerated,
+        minMealsRequired,
+        daysGenerated: allDays.length
+      });
+      throw new Error(`Geração incompleta: apenas ${totalMealsGenerated} refeições foram geradas. Tente novamente.`);
+    }
+    
+    logStep("TRANSACTIONAL: All meals generated successfully, now persisting to database", {
+      totalMeals: totalMealsGenerated,
+      daysCount: allDays.length
+    });
 
     // Calculate dates
     const start = startDate ? new Date(startDate) : new Date();

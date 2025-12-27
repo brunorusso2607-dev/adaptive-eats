@@ -23,7 +23,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimesWithExtras | null>(null);
 
-  // Fetch user profile to get excluded ingredients
+  // Fetch user profile to get excluded ingredients and default meal times
   useEffect(() => {
     const fetchProfile = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -31,12 +31,17 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       
       const { data: profile } = await supabase
         .from("profiles")
-        .select("excluded_ingredients")
+        .select("excluded_ingredients, default_meal_times")
         .eq("id", session.user.id)
         .single();
       
       if (profile?.excluded_ingredients) {
         setExcludedIngredients(profile.excluded_ingredients);
+      }
+      
+      // Usar horários padrão do perfil como template
+      if (profile?.default_meal_times) {
+        setCustomMealTimes(profile.default_meal_times as CustomMealTimesWithExtras);
       }
     };
     

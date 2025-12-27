@@ -81,6 +81,8 @@ export function CustomMealTimesEditor({
   useEffect(() => {
     if (globalSettings.length === 0) return;
 
+    console.log("[CustomMealTimesEditor] Initializing with customTimes:", customTimes);
+
     const initialTimes: Record<string, string> = {};
     globalSettings.forEach(setting => {
       const customValue = customTimes?.[setting.meal_type];
@@ -94,18 +96,25 @@ export function CustomMealTimesEditor({
     
     // Carregar extras se existirem
     const extras = customTimes?.extras;
-    if (Array.isArray(extras)) {
+    if (Array.isArray(extras) && extras.length > 0) {
+      console.log("[CustomMealTimesEditor] Loading extras:", extras);
       setExtraMeals(extras);
     } else {
       setExtraMeals([]);
     }
     
-    // Em modo compact sempre ativar para capturar dados para geração
-    const hasExistingData = customTimes != null && Object.keys(customTimes).length > 0;
+    // Verifica se há dados personalizados (refeições extras ou horários customizados)
+    const hasExtras = Array.isArray(customTimes?.extras) && customTimes.extras.length > 0;
+    const hasCustomTimeValues = customTimes != null && Object.keys(customTimes).some(key => key !== 'extras');
+    const hasExistingData = hasExtras || hasCustomTimeValues;
+    
+    console.log("[CustomMealTimesEditor] hasExistingData:", hasExistingData, "hasExtras:", hasExtras, "hasCustomTimeValues:", hasCustomTimeValues);
+    
     if (compact) {
       // Sempre ativo em modo compact (geração de plano)
       setUseCustomTimes(true);
     } else {
+      // No modo edição, ativar toggle se houver dados salvos
       setUseCustomTimes(hasExistingData);
     }
   }, [globalSettings, customTimes, compact]);

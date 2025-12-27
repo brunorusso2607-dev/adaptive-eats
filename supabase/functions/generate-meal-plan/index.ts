@@ -10,6 +10,13 @@ import {
   type RecipeValidationSummary,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import {
+  searchRecipePool,
+  saveRecipeToPool,
+  markRecipeAsUsed,
+  type RecipePoolSearchParams,
+  type SourceModule,
+} from "../_shared/recipePool.ts";
 
 const DAY_NAMES = ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"];
 
@@ -266,15 +273,112 @@ async function validateAndCompleteMeals(
   return mealPlanData;
 }
 
-// Generate a single day's meals
+// Try to get meals from the recipe pool first
+async function getMealsFromPool(
+  supabase: any,
+  profile: UserProfile,
+  mealTypes: string[]
+): Promise<Map<string, any>> {
+  const results = new Map<string, any>();
+  
+  for (const mealType of mealTypes) {
+    const poolRecipes = await searchRecipePool(supabase, {
+      mealType,
+      countryCode: profile.country || "BR",
+      dietaryPreference: profile.dietary_preference || undefined,
+      intolerances: profile.intolerances || [],
+      excludedIngredients: profile.excluded_ingredients || [],
+      limit: 3
+    });
+
+    if (poolRecipes.length > 0) {
+      // Seleciona uma receita aleatória entre as encontradas
+      const randomIndex = Math.floor(Math.random() * poolRecipes.length);
+      const recipe = poolRecipes[randomIndex];
+      
+      // Marca como usada
+      await markRecipeAsUsed(supabase, recipe.id);
+      
+      results.set(mealType, {
+        meal_type: mealType,
+        recipe_name: recipe.name,
+        recipe_calories: recipe.calories,
+        recipe_protein: recipe.protein,
+        recipe_carbs: recipe.carbs,
+        recipe_fat: recipe.fat,
+        recipe_prep_time: recipe.prep_time,
+        recipe_ingredients: recipe.ingredients,
+        recipe_instructions: [],
+        from_pool: true
+      });
+      
+      logStep(`Found meal in pool`, { mealType, recipeName: recipe.name });
+    }
+  }
+  
+  return results;
+}
+
+// Save generated meals to the pool for future reuse
+async function saveMealsToPool(
+  supabase: any,
+  meals: any[],
+  profile: UserProfile
+): Promise<void> {
+  for (const meal of meals) {
+    if (meal.from_pool) continue; // Já está no pool
+    
+    await saveRecipeToPool(supabase, {
+      name: meal.recipe_name,
+      mealType: meal.meal_type,
+      calories: meal.recipe_calories || 0,
+      protein: meal.recipe_protein || 0,
+      carbs: meal.recipe_carbs || 0,
+      fat: meal.recipe_fat || 0,
+      prepTime: meal.recipe_prep_time || 30,
+      ingredients: meal.recipe_ingredients || [],
+      instructions: meal.recipe_instructions || [],
+      countryCode: profile.country || "BR",
+      languageCode: "pt-BR",
+      sourceModule: "plano_ia" as SourceModule,
+      compatibleMealTimes: [meal.meal_type]
+    });
+  }
+}
+
+// Generate a single day's meals with pool fallback
 async function generateSingleDay(
   profile: UserProfile,
   dayIndex: number,
   macros: { dailyCalories: number; dailyProtein: number },
   previousRecipes: string[],
-  apiKey: string
+  apiKey: string,
+  supabase?: any
 ): Promise<any | null> {
   const dayName = DAY_NAMES[dayIndex % 7];
+  const mealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  
+  // Tenta buscar do pool primeiro
+  let poolMeals = new Map<string, any>();
+  if (supabase) {
+    poolMeals = await getMealsFromPool(supabase, profile, mealTypes);
+    logStep(`Pool results for day ${dayIndex}`, { 
+      foundInPool: poolMeals.size, 
+      meals: Array.from(poolMeals.keys()) 
+    });
+  }
+  
+  // Se encontrou todas as refeições no pool, retorna direto
+  if (poolMeals.size === mealTypes.length) {
+    logStep(`Day ${dayIndex} fully from pool`);
+    return {
+      day_index: dayIndex,
+      day_name: dayName,
+      meals: Array.from(poolMeals.values())
+    };
+  }
+  
+  // Precisa gerar via IA para as refeições faltantes
   const prompt = buildSingleDayPrompt(profile, dayIndex, dayName, macros as any, previousRecipes);
   
   try {
@@ -298,12 +402,29 @@ async function generateSingleDay(
 
     if (!response.ok) {
       logStep(`Day ${dayIndex} API error`, { status: response.status });
+      // Se tiver receitas do pool, retorna elas
+      if (poolMeals.size > 0) {
+        return {
+          day_index: dayIndex,
+          day_name: dayName,
+          meals: Array.from(poolMeals.values())
+        };
+      }
       return null;
     }
 
     const aiData = await response.json();
     const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textContent) return null;
+    if (!textContent) {
+      if (poolMeals.size > 0) {
+        return {
+          day_index: dayIndex,
+          day_name: dayName,
+          meals: Array.from(poolMeals.values())
+        };
+      }
+      return null;
+    }
 
     let cleanedJson = textContent.trim();
     if (cleanedJson.startsWith("```json")) cleanedJson = cleanedJson.slice(7);
@@ -312,10 +433,56 @@ async function generateSingleDay(
     cleanedJson = cleanedJson.trim();
 
     const dayData = JSON.parse(cleanedJson);
-    logStep(`Day ${dayIndex} generated`, { meals: dayData.meals?.length || 0 });
-    return dayData;
+    
+    // Mescla receitas do pool com receitas geradas
+    const aiMeals = dayData.meals || [];
+    const finalMeals: any[] = [];
+    
+    for (const mealType of mealTypes) {
+      // Prioriza pool
+      if (poolMeals.has(mealType)) {
+        finalMeals.push(poolMeals.get(mealType));
+      } else {
+        // Usa a receita gerada pela IA
+        const aiMeal = aiMeals.find((m: any) => 
+          m.meal_type === mealType || 
+          m.meal_type === mealType.replace("_", " ")
+        );
+        if (aiMeal) {
+          finalMeals.push({ ...aiMeal, from_pool: false });
+        }
+      }
+    }
+    
+    // Salva as receitas geradas pela IA no pool
+    if (supabase) {
+      const newMeals = finalMeals.filter(m => !m.from_pool);
+      if (newMeals.length > 0) {
+        await saveMealsToPool(supabase, newMeals, profile);
+        logStep(`Saved ${newMeals.length} new meals to pool`);
+      }
+    }
+    
+    logStep(`Day ${dayIndex} generated`, { 
+      fromPool: poolMeals.size, 
+      fromAI: finalMeals.length - poolMeals.size,
+      total: finalMeals.length 
+    });
+    
+    return {
+      ...dayData,
+      meals: finalMeals
+    };
   } catch (error) {
     logStep(`Day ${dayIndex} error`, { error: String(error) });
+    // Se tiver receitas do pool, retorna elas
+    if (poolMeals.size > 0) {
+      return {
+        day_index: dayIndex,
+        day_name: dayName,
+        meals: Array.from(poolMeals.values())
+      };
+    }
     return null;
   }
 }
@@ -437,7 +604,8 @@ serve(async (req) => {
         i,
         macros,
         usedRecipes,
-        GOOGLE_AI_API_KEY
+        GOOGLE_AI_API_KEY,
+        supabaseClient // Passa o cliente para buscar do pool
       );
       
       if (dayData && dayData.meals) {

@@ -1345,6 +1345,9 @@ GERE AS ${quantity} RECEITAS AGORA:`;
         ai_generated: true,
         component_type: categoryKey,
         sort_order: index,
+        source_module: "plano_simples", // Pool central
+        usage_count: 0,
+        last_used_at: null,
       }));
 
     if (mealsToInsert.length === 0) {

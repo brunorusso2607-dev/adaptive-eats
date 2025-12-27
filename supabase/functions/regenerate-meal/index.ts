@@ -6,6 +6,11 @@ import {
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import {
+  searchRecipePool,
+  saveRecipeToPool,
+  markRecipeAsUsed,
+} from "../_shared/recipePool.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

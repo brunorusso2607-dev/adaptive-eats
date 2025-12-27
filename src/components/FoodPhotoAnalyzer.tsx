@@ -1422,7 +1422,16 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
               {/* Individual items with confidence levels - Now editable */}
               <Card className="glass-card">
-                <CardHeader className="pb-2">
+                <CardHeader 
+                  className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg"
+                  onClick={() => {
+                    // Click the first food item's details element to toggle it
+                    const firstDetails = document.querySelector('#food-items-list details');
+                    if (firstDetails) {
+                      (firstDetails as HTMLDetailsElement).open = !(firstDetails as HTMLDetailsElement).open;
+                    }
+                  }}
+                >
                   <CardTitle className="text-base flex items-center justify-between">
                     <span className="flex items-center gap-2">
                       Alimentos Identificados
@@ -1433,7 +1442,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                     </span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-2">
+                <CardContent id="food-items-list" className="space-y-2">
                   {foodAnalysis.alimentos.map((food, index) => (
                     <FoodItemEditor
                       key={index}

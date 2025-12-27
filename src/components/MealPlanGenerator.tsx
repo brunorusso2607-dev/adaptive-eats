@@ -9,9 +9,7 @@ import { toast } from "sonner";
 import { format, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { CustomMealTimesEditor } from "@/components/CustomMealTimesEditor";
-
-type CustomMealTimes = Record<string, string>;
+import { CustomMealTimesEditor, CustomMealTimesWithExtras } from "@/components/CustomMealTimesEditor";
 
 type MealPlanGeneratorProps = {
   onClose: () => void;
@@ -23,7 +21,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
-  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
+  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimesWithExtras | null>(null);
 
   // Fetch user profile to get excluded ingredients
   useEffect(() => {

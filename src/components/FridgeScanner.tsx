@@ -171,44 +171,39 @@ export default function FridgeScanner() {
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
       
-      // For the initial fridge photo, validate it first before accepting
-      if (currentPendingSlot === "geladeira") {
-        // Set to validating state with the image preview
-        setSlots(prev => prev.map(slot => 
-          slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
-        ));
-        setCurrentStep("validating");
-        
-        const isValid = await validateSingleImage(base64, currentPendingSlot);
-        
-        if (isValid) {
-          // Image is valid, proceed to next phase
-          setCurrentStep("capture");
-          setPendingSlot(null);
-          transitionToPhase("freezer");
-          toast.success("Geladeira identificada!");
-        } else {
-          // Image is invalid - remove it and stay in capture mode
-          setSlots(prev => prev.map(slot => 
-            slot.id === currentPendingSlot ? { ...slot, image: null } : slot
-          ));
-          setCurrentStep("capture");
-          setPendingSlot(null);
-          // invalidImageError will be set by validateSingleImage
-        }
-      } else {
-        // For freezer/porta photos, just accept without validation
-        setSlots(prev => prev.map(slot => 
-          slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
-        ));
+      // Set to validating state with the image preview
+      setSlots(prev => prev.map(slot => 
+        slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
+      ));
+      setCurrentStep("validating");
+      
+      const isValid = await validateSingleImage(base64, currentPendingSlot);
+      
+      if (isValid) {
+        // Image is valid, proceed to next phase
+        setCurrentStep("capture");
         setPendingSlot(null);
         
-        if (currentPendingSlot === "freezer") {
+        const slotLabel = currentPendingSlot === "geladeira" ? "Geladeira" : 
+                          currentPendingSlot === "freezer" ? "Freezer" : "Porta";
+        toast.success(`${slotLabel} identificada!`);
+        
+        if (currentPendingSlot === "geladeira") {
+          transitionToPhase("freezer");
+        } else if (currentPendingSlot === "freezer") {
           transitionToPhase("porta");
         } else if (currentPendingSlot === "porta") {
           // All photos taken, start analysis
           setTimeout(() => startAnalysis(), 300);
         }
+      } else {
+        // Image is invalid - remove it and stay in capture mode
+        setSlots(prev => prev.map(slot => 
+          slot.id === currentPendingSlot ? { ...slot, image: null } : slot
+        ));
+        setCurrentStep("capture");
+        setPendingSlot(null);
+        // invalidImageError will be set by validateSingleImage
       }
     };
     reader.readAsDataURL(file);
@@ -395,8 +390,18 @@ export default function FridgeScanner() {
   };
 
   const retryCapture = () => {
+    // Stay in the current phase - just clear the error to retry
+    const currentSlot = invalidImageError?.slotId;
     setInvalidImageError(null);
-    setCapturePhase("initial");
+    
+    // Set the correct phase based on which slot had the error
+    if (currentSlot === "geladeira") {
+      setCapturePhase("initial");
+    } else if (currentSlot === "freezer") {
+      setCapturePhase("freezer");
+    } else if (currentSlot === "porta") {
+      setCapturePhase("porta");
+    }
   };
 
   const getCategoryFeedback = (categoria: string) => {
@@ -633,6 +638,12 @@ export default function FridgeScanner() {
           <Card className={`glass-card border-2 ${getCategoryFeedback(invalidImageError.categoria).borderColor} animate-scale-in`}>
             <CardContent className="p-5">
               <div className={`flex flex-col items-center gap-4 text-center p-4 rounded-xl ${getCategoryFeedback(invalidImageError.categoria).bgColor}`}>
+                {/* Show which area had the error */}
+                {invalidImageError.slotId !== "geladeira" && (
+                  <div className="px-3 py-1 bg-primary/10 rounded-full text-xs font-medium text-primary">
+                    Foto do {invalidImageError.slotId === "freezer" ? "Freezer" : "Porta"}
+                  </div>
+                )}
                 <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-md">
                   {getCategoryFeedback(invalidImageError.categoria).icon}
                 </div>
@@ -659,15 +670,34 @@ export default function FridgeScanner() {
                     💡 {invalidImageError.dica}
                   </p>
                 )}
-                <Button
-                  variant="default"
-                  onClick={retryCapture}
-                  className="mt-2 gradient-primary"
-                  size="lg"
-                >
-                  <Camera className="w-5 h-5 mr-2" />
-                  Tirar Nova Foto
-                </Button>
+                <div className="flex gap-2 mt-2">
+                  <Button
+                    variant="default"
+                    onClick={retryCapture}
+                    className="gradient-primary"
+                    size="lg"
+                  >
+                    <Camera className="w-5 h-5 mr-2" />
+                    Tirar Nova Foto
+                  </Button>
+                  {invalidImageError.slotId !== "geladeira" && (
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setInvalidImageError(null);
+                        if (invalidImageError.slotId === "freezer") {
+                          transitionToPhase("porta");
+                        } else {
+                          startAnalysis();
+                        }
+                      }}
+                      size="lg"
+                    >
+                      <SkipForward className="w-5 h-5 mr-2" />
+                      Pular
+                    </Button>
+                  )}
+                </div>
               </div>
             </CardContent>
           </Card>

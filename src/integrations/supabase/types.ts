@@ -1221,6 +1221,7 @@ export type Database = {
           id: string
           image_url: string | null
           ingredients: Json
+          instructions: Json | null
           is_active: boolean
           language_code: string | null
           last_used_at: string | null
@@ -1250,6 +1251,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           ingredients?: Json
+          instructions?: Json | null
           is_active?: boolean
           language_code?: string | null
           last_used_at?: string | null
@@ -1279,6 +1281,7 @@ export type Database = {
           id?: string
           image_url?: string | null
           ingredients?: Json
+          instructions?: Json | null
           is_active?: boolean
           language_code?: string | null
           last_used_at?: string | null

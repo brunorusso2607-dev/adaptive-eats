@@ -724,11 +724,14 @@ export type Database = {
         Row: {
           consumed_at: string
           created_at: string
+          custom_meal_name: string | null
           feedback_status: string
           followed_plan: boolean
           id: string
           meal_plan_item_id: string | null
+          meal_time: string | null
           notes: string | null
+          source_type: string | null
           total_calories: number
           total_carbs: number
           total_fat: number
@@ -738,11 +741,14 @@ export type Database = {
         Insert: {
           consumed_at?: string
           created_at?: string
+          custom_meal_name?: string | null
           feedback_status?: string
           followed_plan?: boolean
           id?: string
           meal_plan_item_id?: string | null
+          meal_time?: string | null
           notes?: string | null
+          source_type?: string | null
           total_calories?: number
           total_carbs?: number
           total_fat?: number
@@ -752,11 +758,14 @@ export type Database = {
         Update: {
           consumed_at?: string
           created_at?: string
+          custom_meal_name?: string | null
           feedback_status?: string
           followed_plan?: boolean
           id?: string
           meal_plan_item_id?: string | null
+          meal_time?: string | null
           notes?: string | null
+          source_type?: string | null
           total_calories?: number
           total_carbs?: number
           total_fat?: number

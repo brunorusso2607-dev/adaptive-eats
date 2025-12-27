@@ -72,6 +72,9 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       return;
     }
 
+    // Log para debug - verificar se customMealTimes está sendo capturado
+    console.log("[MealPlanGenerator] Gerando plano com customMealTimes:", customMealTimes);
+
     setIsGenerating(true);
     setProgress(0);
 

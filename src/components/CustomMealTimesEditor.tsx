@@ -99,8 +99,15 @@ export function CustomMealTimesEditor({
       setExtraMeals([]);
     }
     
-    setUseCustomTimes(customTimes != null && Object.keys(customTimes).length > 0);
-  }, [globalSettings, customTimes]);
+    // Se customTimes já tem dados, usar. Caso contrário, ativar por padrão no modo compact (geração de plano)
+    const hasExistingData = customTimes != null && Object.keys(customTimes).length > 0;
+    setUseCustomTimes(hasExistingData || compact);
+    
+    // Emitir dados iniciais para o parent quando em modo compact (geração de plano)
+    if (compact && onChange && !hasExistingData) {
+      onChange(initialTimes);
+    }
+  }, [globalSettings, customTimes, compact]);
 
   // Combina refeições padrão + extras
   // Extras novos (não salvos) ficam no final, extras salvos são ordenados por horário

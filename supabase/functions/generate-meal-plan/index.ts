@@ -729,6 +729,7 @@ serve(async (req) => {
           name, 
           start_date, 
           end_date,
+          created_at,
           meal_plan_items(count)
         `)
         .eq("user_id", user.id)
@@ -739,14 +740,17 @@ serve(async (req) => {
       if (checkError) {
         logStep("Error checking existing plans", { error: checkError.message });
       } else if (existingPlans && existingPlans.length > 0) {
-        // Prefer plan with most items, or first if all have same count
+        // Prefer plan with most items, or most recent if all have same count
         const plansWithCounts = existingPlans.map(plan => ({
           ...plan,
           itemCount: (plan.meal_plan_items as any)?.[0]?.count || 0
         }));
         
-        // Sort by item count descending to get the plan with most items
-        plansWithCounts.sort((a, b) => b.itemCount - a.itemCount);
+        // Sort by item count descending, then by created_at descending
+        plansWithCounts.sort((a, b) => {
+          if (b.itemCount !== a.itemCount) return b.itemCount - a.itemCount;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
         const existingPlan = plansWithCounts[0];
         
         logStep("Found existing plan for this month - will add missing days only", { 
@@ -757,20 +761,34 @@ serve(async (req) => {
           totalPlansFound: existingPlans.length
         });
         
-        // If there are duplicate empty plans, clean them up
+        // CRITICAL: Delete ALL duplicate plans (including those with items if they have less than the best one)
         if (plansWithCounts.length > 1) {
-          const emptyPlans = plansWithCounts.filter(p => p.itemCount === 0 && p.id !== existingPlan.id);
-          if (emptyPlans.length > 0) {
-            logStep("Found empty duplicate plans to cleanup", { count: emptyPlans.length });
-            for (const emptyPlan of emptyPlans) {
-              await supabaseClient
-                .from("meal_plans")
-                .delete()
-                .eq("id", emptyPlan.id)
-                .eq("user_id", user.id);
-            }
-            logStep("Cleaned up empty duplicate plans");
+          const duplicatePlans = plansWithCounts.filter(p => p.id !== existingPlan.id);
+          logStep("Found duplicate plans to cleanup", { 
+            count: duplicatePlans.length,
+            duplicateIds: duplicatePlans.map(p => p.id),
+            duplicateItemCounts: duplicatePlans.map(p => p.itemCount)
+          });
+          
+          for (const duplicatePlan of duplicatePlans) {
+            // First delete items, then delete plan
+            await supabaseClient
+              .from("meal_plan_items")
+              .delete()
+              .eq("meal_plan_id", duplicatePlan.id);
+              
+            await supabaseClient
+              .from("meal_plans")
+              .delete()
+              .eq("id", duplicatePlan.id)
+              .eq("user_id", user.id);
+              
+            logStep("Deleted duplicate plan", { 
+              planId: duplicatePlan.id, 
+              hadItems: duplicatePlan.itemCount 
+            });
           }
+          logStep("Cleaned up all duplicate plans");
         }
         
         // Fetch existing items to know which days already have recipes

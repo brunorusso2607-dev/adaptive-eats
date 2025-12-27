@@ -275,7 +275,7 @@ export function HealthCard({ pendingCount = 0, onOpenFeedback }: HealthCardProps
           onClick={() => setHistoryOpen(true)}
           className="w-full flex items-center justify-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors py-1"
         >
-          Ver histórico
+          Ver diário de bem-estar
           <ChevronRight className="h-4 w-4" />
         </button>
 

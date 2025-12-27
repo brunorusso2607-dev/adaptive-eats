@@ -705,6 +705,54 @@ serve(async (req) => {
     const { planName, startDate, existingPlanId, weekNumber, customMealTimes } = requestBody;
     logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber, hasCustomMealTimes: !!customMealTimes });
 
+    // ========================================
+    // VALIDAÇÃO DE DUPLICAÇÃO - IMPEDIR PLANOS DUPLICADOS NO MESMO MÊS
+    // ========================================
+    if (!existingPlanId) {
+      const start = startDate ? new Date(startDate) : new Date();
+      const targetMonth = start.getMonth();
+      const targetYear = start.getFullYear();
+      
+      // Calculate first and last day of the target month
+      const monthStart = new Date(targetYear, targetMonth, 1).toISOString().split('T')[0];
+      const monthEnd = new Date(targetYear, targetMonth + 1, 0).toISOString().split('T')[0];
+      
+      // Check if there's already a plan that overlaps with this month
+      const { data: existingPlans, error: checkError } = await supabaseClient
+        .from("meal_plans")
+        .select("id, name, start_date, end_date")
+        .eq("user_id", user.id)
+        .gte("end_date", monthStart)
+        .lte("start_date", monthEnd);
+      
+      if (checkError) {
+        logStep("Error checking existing plans", { error: checkError.message });
+      } else if (existingPlans && existingPlans.length > 0) {
+        const existingPlan = existingPlans[0];
+        logStep("Duplicate plan detected", { 
+          existingPlanId: existingPlan.id, 
+          existingPlanName: existingPlan.name,
+          targetMonth: `${targetYear}-${targetMonth + 1}`
+        });
+        
+        // Return error with existing plan info
+        return new Response(
+          JSON.stringify({
+            error: `Já existe um plano para este mês: "${existingPlan.name}". Exclua o plano existente antes de criar um novo.`,
+            existingPlanId: existingPlan.id,
+            existingPlanName: existingPlan.name,
+            isDuplicate: true
+          }),
+          { 
+            status: 409, // Conflict
+            headers: { ...corsHeaders, "Content-Type": "application/json" } 
+          }
+        );
+      }
+      
+      logStep("No duplicate plan found, proceeding with creation");
+    }
+
     // Fetch previous week's recipes to avoid repetition
     let previousRecipes: string[] = [];
     const targetWeekNumber = weekNumber || 1;

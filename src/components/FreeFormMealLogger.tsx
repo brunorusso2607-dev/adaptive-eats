@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,6 +51,9 @@ export default function FreeFormMealLogger({
   onOpenChange,
   onSuccess,
 }: FreeFormMealLoggerProps) {
+  // Ref for search input focus
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  
   // Step management: 'foods' -> 'meal-type' -> 'time'
   const [step, setStep] = useState<'foods' | 'meal-type' | 'time'>('foods');
   
@@ -542,6 +545,7 @@ export default function FreeFormMealLogger({
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <Input
+                    ref={searchInputRef}
                     placeholder="Buscar alimento..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -710,6 +714,15 @@ export default function FreeFormMealLogger({
                         </div>
                       );
                     })}
+                    
+                    {/* Add more button */}
+                    <button
+                      onClick={() => searchInputRef.current?.focus()}
+                      className="w-full py-3 border-2 border-dashed border-muted-foreground/30 rounded-lg text-sm text-muted-foreground hover:border-primary/50 hover:text-primary transition-colors flex items-center justify-center gap-2"
+                    >
+                      <Plus className="w-4 h-4" />
+                      Adicionar alimento
+                    </button>
                   </div>
                 )}
               </ScrollArea>

@@ -69,7 +69,8 @@ export function CustomMealTimesEditor({
 }: CustomMealTimesEditorProps) {
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
   const [isOpen, setIsOpen] = useState(!compact);
-  const [useCustomTimes, setUseCustomTimes] = useState(customTimes != null && Object.keys(customTimes).length > 0);
+  // Em modo compact (geração de plano), sempre inicia ativo para capturar dados
+  const [useCustomTimes, setUseCustomTimes] = useState(compact || (customTimes != null && Object.keys(customTimes).length > 0));
   const [localTimes, setLocalTimes] = useState<Record<string, string>>({});
   const [extraMeals, setExtraMeals] = useState<ExtraMeal[]>([]);
   const [isSaving, setIsSaving] = useState(false);
@@ -99,13 +100,20 @@ export function CustomMealTimesEditor({
       setExtraMeals([]);
     }
     
-    // Se customTimes já tem dados, usar. Caso contrário, ativar por padrão no modo compact (geração de plano)
+    // Em modo compact sempre ativar para capturar dados para geração
     const hasExistingData = customTimes != null && Object.keys(customTimes).length > 0;
-    setUseCustomTimes(hasExistingData || compact);
-    
-    // Emitir dados iniciais para o parent quando em modo compact (geração de plano)
-    if (compact && onChange && !hasExistingData) {
-      onChange(initialTimes);
+    if (compact) {
+      setUseCustomTimes(true);
+      // Emitir dados iniciais imediatamente para o parent
+      if (onChange) {
+        const dataToEmit: CustomMealTimesWithExtras = { ...initialTimes };
+        if (Array.isArray(extras) && extras.length > 0) {
+          dataToEmit.extras = extras;
+        }
+        onChange(dataToEmit);
+      }
+    } else {
+      setUseCustomTimes(hasExistingData);
     }
   }, [globalSettings, customTimes, compact]);
 

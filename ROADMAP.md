@@ -9,7 +9,7 @@
 | Fase | Status | Progresso |
 |------|--------|-----------|
 | FASE 1: Preparação Banco | ✅ Concluída | 100% |
-| FASE 2: Features Principais | 🔄 Em andamento | 20% |
+| FASE 2: Features Principais | 🔄 Em andamento | 40% |
 | FASE 3: Reorganização UI | ⏳ Pendente | 0% |
 
 **Última atualização:** 27/12/2024
@@ -96,16 +96,16 @@ Selecionar tipo → Confirmar horário → Salvo ✓
 
 ---
 
-### 2.2 Foto do Prato → Registrar Refeição
+### 2.2 Foto do Prato → Registrar Refeição ✅
 **Objetivo:** Após analisar foto, perguntar se quer registrar como refeição
 
 #### Sub-tarefas:
-- [ ] Adicionar botão fixo no `FoodPhotoAnalyzer` após análise
-- [ ] Modal/Dialog "Registrar esta refeição?"
-- [ ] Seletor de tipo de refeição
-- [ ] Seletor de horário (default: agora)
-- [ ] Salvar em `meal_consumption` com `source_type = 'photo'`
-- [ ] Vincular dados nutricionais da análise
+- [x] Adicionar botão fixo no `FoodPhotoAnalyzer` após análise
+- [x] Modal/Dialog "Registrar esta refeição?"
+- [x] Seletor de tipo de refeição
+- [x] Seletor de horário (default: agora)
+- [x] Salvar em `meal_consumption` com `source_type = 'photo'`
+- [x] Vincular dados nutricionais da análise
 
 **Fluxo do usuário:**
 ```
@@ -113,9 +113,14 @@ Tirar foto → Análise IA → "Registrar como refeição?" →
 Sim → Qual refeição? → Horário → Salvo ✓
 ```
 
-**Status:** ⏳ Pendente  
-**Estimativa:** 30-45 minutos  
-**Data conclusão:** -
+**Componente criado:** `src/components/RegisterMealFromPhotoSheet.tsx`
+- Sheet com 2 passos: tipo de refeição → horário
+- Exibe resumo dos macros da foto analisada
+- Salva em `meal_consumption` com `source_type = 'photo'`
+- Salva itens individuais em `consumption_items`
+
+**Status:** ✅ Concluída  
+**Data conclusão:** 27/12/2024
 
 ---
 

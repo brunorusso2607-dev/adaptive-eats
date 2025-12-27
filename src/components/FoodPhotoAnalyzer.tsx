@@ -2,10 +2,11 @@ import { useState, useRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil, UtensilsCrossed } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import LegalDisclaimer from "./LegalDisclaimer";
 import FoodItemEditor from "./FoodItemEditor";
+import RegisterMealFromPhotoSheet from "./RegisterMealFromPhotoSheet";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import FridgeScanner from "./FridgeScanner";
@@ -150,6 +151,9 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     intolerancia: string;
     produto: string;
   } | null>(null);
+  
+  // Register meal from photo sheet
+  const [registerMealOpen, setRegisterMealOpen] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -1508,6 +1512,16 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               {/* Legal Disclaimer */}
               <LegalDisclaimer className="mt-2" />
 
+              {/* Register Meal Button - Primary Action */}
+              <Button
+                onClick={() => setRegisterMealOpen(true)}
+                className="w-full gradient-primary"
+                size="lg"
+              >
+                <UtensilsCrossed className="w-5 h-5 mr-2" />
+                Registrar como Refeição
+              </Button>
+
               {/* Feedback and Reset buttons */}
               <div className="flex items-center justify-between">
                 <AnalysisFeedbackButton 
@@ -1523,6 +1537,14 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   Nova Análise
                 </Button>
               </div>
+
+              {/* Register Meal Sheet */}
+              <RegisterMealFromPhotoSheet
+                open={registerMealOpen}
+                onOpenChange={setRegisterMealOpen}
+                foodAnalysis={foodAnalysis}
+                onSuccess={resetAnalysis}
+              />
             </div>
           )}
 

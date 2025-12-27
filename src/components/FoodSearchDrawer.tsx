@@ -111,6 +111,7 @@ export default function FoodSearchDrawer({
       setSearchQuery("");
       setSelectedFoods([]);
       setFoodsWithConflicts([]);
+      setRemovingFoodIds(new Set()); // Reset animation state
       clearFoods();
       setAiSuggestions([]);
       setShowAISuggestions(false);
@@ -235,6 +236,16 @@ export default function FoodSearchDrawer({
     const defaultServing = food.default_serving_size || 100;
     const displayQty = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : 1;
     const actualGrams = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : defaultServing;
+
+    // Ensure food is not in removing state (in case it was being removed)
+    setRemovingFoodIds((prev) => {
+      if (prev.has(food.id)) {
+        const next = new Set(prev);
+        next.delete(food.id);
+        return next;
+      }
+      return prev;
+    });
 
     setSelectedFoods((prev) => {
       const existing = prev.find((f) => f.id === food.id);

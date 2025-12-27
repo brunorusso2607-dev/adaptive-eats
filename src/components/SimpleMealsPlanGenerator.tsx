@@ -22,7 +22,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
-import { useUserIntolerances } from "@/hooks/useUserIntolerances";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
 import { 
   useUserProfileContext, 
@@ -110,7 +110,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
   const { getCompatibility, isLoading: isLoadingCompatibility } = useDietaryCompatibility(
     dietary_preference
   );
-  const { checkMealConflict } = useUserIntolerances();
+  const { checkMeal } = useIntoleranceWarning();
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -185,8 +185,8 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
       
       // Depois ordena por compatibilidade (sem conflito primeiro)
       sortedMeals.sort((a, b) => {
-        const conflictA = checkMealConflict(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
-        const conflictB = checkMealConflict(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
+        const conflictA = checkMeal(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
+        const conflictB = checkMeal(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
         
         if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
         if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
@@ -197,7 +197,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
     });
     
     return grouped;
-  }, [simpleMeals, checkMealConflict, recipeStyle, mealCalorieRanges]);
+  }, [simpleMeals, checkMeal, recipeStyle, mealCalorieRanges]);
 
   const sortedMealTypes = useMemo(() => {
     return MEAL_TYPE_ORDER.filter(type => mealsByType[type]?.length > 0);
@@ -439,7 +439,7 @@ export default function SimpleMealsPlanGenerator({ onClose, onPlanGenerated }: S
                   <div className="border-t border-border p-2 space-y-2 bg-muted/30">
                     {meals.map((meal) => {
                       const isSelected = selectedMeal?.id === meal.id;
-                      const conflict = checkMealConflict(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
+                      const conflict = checkMeal(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
                       const styleBadge = getRecipeStyleBadge(meal.calories, recipeStyle);
                       const StyleIcon = styleBadge.config?.icon;
                       

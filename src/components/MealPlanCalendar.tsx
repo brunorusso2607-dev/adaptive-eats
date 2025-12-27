@@ -506,6 +506,12 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                         <div className="min-w-0 flex-1">
                           <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                             {config.label}
+                            <span className="normal-case font-normal text-muted-foreground/70">
+                              {getMealTime(mealType)}
+                            </span>
+                            {hasCustomTimes && (
+                              <span className="text-[8px] text-primary/60">•</span>
+                            )}
                             {isPastMeal && (
                               <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
                                 Passou
@@ -567,6 +573,12 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                     <div className="flex-1">
                       <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
                         {config.label}
+                        <span className="normal-case font-normal text-muted-foreground/70">
+                          {getMealTime(mealType)}
+                        </span>
+                        {hasCustomTimes && (
+                          <span className="text-[8px] text-primary/60">•</span>
+                        )}
                         {isPastMeal && (
                           <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
                             Passou

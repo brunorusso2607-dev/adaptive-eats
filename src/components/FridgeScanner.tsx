@@ -126,6 +126,11 @@ export default function FridgeScanner() {
 
       // Check if image is invalid (not a fridge/freezer/pantry)
       if (data.categoryError || data.notFridge) {
+        // Haptic feedback for invalid image
+        if (navigator.vibrate) {
+          navigator.vibrate([100, 50, 100]); // Short double vibration pattern
+        }
+        
         setInvalidImageError({
           categoria: data.categoria_detectada || "unknown",
           descricao: data.objeto_identificado || "",

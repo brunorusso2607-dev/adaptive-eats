@@ -232,6 +232,7 @@ export function CustomMealTimesEditor({
     );
     setExtraMeals(newExtras);
     setHasChanges(true);
+    setOpenAccordion(undefined); // Fecha o accordion após salvar
     
     if (onChange && useCustomTimes) {
       const data: CustomMealTimesWithExtras = { ...localTimes };

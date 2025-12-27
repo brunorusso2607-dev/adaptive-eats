@@ -47,8 +47,62 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
   const [portionQuantity, setPortionQuantity] = useState<string>("1");
   const [portionUnit, setPortionUnit] = useState<string>("g");
 
-  // Unit options for dropdown
-  const unitOptions = useMemo(() => [
+  // Food-specific units with approximate gram values
+  const foodSpecificUnits: Record<string, { value: string; label: string; grams: number }[]> = useMemo(() => ({
+    // Fruits
+    banana: [{ value: "banana", label: "1 banana média (~120g)", grams: 120 }],
+    maçã: [{ value: "maca", label: "1 maçã média (~180g)", grams: 180 }],
+    maca: [{ value: "maca", label: "1 maçã média (~180g)", grams: 180 }],
+    laranja: [{ value: "laranja", label: "1 laranja média (~150g)", grams: 150 }],
+    pera: [{ value: "pera", label: "1 pera média (~170g)", grams: 170 }],
+    pêra: [{ value: "pera", label: "1 pera média (~170g)", grams: 170 }],
+    mamão: [{ value: "mamao", label: "1 fatia média (~150g)", grams: 150 }],
+    mamao: [{ value: "mamao", label: "1 fatia média (~150g)", grams: 150 }],
+    manga: [{ value: "manga", label: "1 manga média (~200g)", grams: 200 }],
+    abacaxi: [{ value: "abacaxi", label: "1 fatia (~100g)", grams: 100 }],
+    melancia: [{ value: "melancia", label: "1 fatia (~200g)", grams: 200 }],
+    melão: [{ value: "melao", label: "1 fatia (~150g)", grams: 150 }],
+    melao: [{ value: "melao", label: "1 fatia (~150g)", grams: 150 }],
+    morango: [{ value: "morango", label: "1 unidade (~12g)", grams: 12 }],
+    uva: [{ value: "uva", label: "1 cacho (~100g)", grams: 100 }],
+    kiwi: [{ value: "kiwi", label: "1 kiwi (~75g)", grams: 75 }],
+    limão: [{ value: "limao", label: "1 limão (~65g)", grams: 65 }],
+    limao: [{ value: "limao", label: "1 limão (~65g)", grams: 65 }],
+    abacate: [{ value: "abacate", label: "1/2 abacate (~100g)", grams: 100 }],
+    // Eggs
+    ovo: [{ value: "ovo", label: "1 ovo (~50g)", grams: 50 }],
+    ovos: [{ value: "ovo", label: "1 ovo (~50g)", grams: 50 }],
+    // Bread
+    pão: [
+      { value: "fatia_pao", label: "1 fatia (~25g)", grams: 25 },
+      { value: "pao_frances", label: "1 pão francês (~50g)", grams: 50 },
+    ],
+    pao: [
+      { value: "fatia_pao", label: "1 fatia (~25g)", grams: 25 },
+      { value: "pao_frances", label: "1 pão francês (~50g)", grams: 50 },
+    ],
+    torrada: [{ value: "torrada", label: "1 torrada (~15g)", grams: 15 }],
+    biscoito: [{ value: "biscoito", label: "1 unidade (~8g)", grams: 8 }],
+    bolacha: [{ value: "bolacha", label: "1 unidade (~8g)", grams: 8 }],
+  }), []);
+
+  // Detect food-specific units based on food name
+  const detectedFoodUnits = useMemo(() => {
+    const foodName = food.item.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const units: { value: string; label: string; grams: number }[] = [];
+    
+    for (const [keyword, foodUnits] of Object.entries(foodSpecificUnits)) {
+      const normalizedKeyword = keyword.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+      if (foodName.includes(normalizedKeyword)) {
+        units.push(...foodUnits);
+      }
+    }
+    
+    return units;
+  }, [food.item, foodSpecificUnits]);
+
+  // Base unit options for dropdown
+  const baseUnitOptions = useMemo(() => [
     { value: "g", label: "Gramas (g)", grams: 1 },
     { value: "kg", label: "Quilos (kg)", grams: 1000 },
     { value: "ml", label: "Mililitros (ml)", grams: 1 },
@@ -61,6 +115,14 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
     { value: "pedaco", label: "Pedaço (~50g)", grams: 50 },
     { value: "unidade", label: "Unidade (~80g)", grams: 80 },
   ], []);
+
+  // Combine food-specific units with base units (food-specific first)
+  const unitOptions = useMemo(() => {
+    if (detectedFoodUnits.length > 0) {
+      return [...detectedFoodUnits, ...baseUnitOptions];
+    }
+    return baseUnitOptions;
+  }, [detectedFoodUnits, baseUnitOptions]);
 
   // Approximate gram equivalents for common units
   const unitToGrams: Record<string, number> = {

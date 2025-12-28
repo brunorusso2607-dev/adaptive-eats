@@ -485,15 +485,26 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                 onClick={() => !isPastDay && setSelectedDayIndex(index)}
                 disabled={isPastDay}
                 className={cn(
-                  "flex flex-col items-center py-2 px-1 sm:p-3 rounded-xl transition-all border",
+                  "relative flex flex-col items-center py-2 px-1 sm:p-3 rounded-xl transition-all border",
                   isPastDay 
                     ? "bg-muted/50 text-muted-foreground border-muted cursor-not-allowed opacity-60"
                     : isSelected 
                       ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
                       : "bg-background hover:bg-muted border-border hover:border-primary/50",
-                  isToday && !isSelected && !isPastDay && "ring-2 ring-primary/50"
+                  isToday && !isSelected && !isPastDay && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-[0_0_12px_rgba(var(--primary),0.4)]"
                 )}
               >
+                {/* Today Badge */}
+                {isToday && !isPastDay && (
+                  <span className={cn(
+                    "absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider",
+                    isSelected 
+                      ? "bg-primary-foreground text-primary" 
+                      : "bg-primary text-primary-foreground"
+                  )}>
+                    Hoje
+                  </span>
+                )}
                 <span className={cn(
                   "text-[10px] sm:text-xs font-medium",
                   isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-muted-foreground"

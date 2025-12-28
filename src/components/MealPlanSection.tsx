@@ -607,10 +607,10 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
                   isLocked && "border-amber-500/30"
                 )}
               >
-                {/* Locked overlay - click to view/edit */}
+                {/* Locked overlay - click to view/edit - exclude action buttons area */}
                 {isLocked && (
                   <div 
-                    className="absolute inset-0 bg-background/40 backdrop-blur-[1px] z-10 flex items-center justify-center cursor-pointer hover:bg-background/30 transition-colors"
+                    className="absolute inset-0 right-[140px] sm:right-[160px] bg-background/40 backdrop-blur-[1px] z-10 flex items-center justify-center cursor-pointer hover:bg-background/30 transition-colors"
                     onClick={() => handleViewPlan(plan)}
                   >
                     <div className="text-center p-4">

@@ -25,7 +25,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
 
   // Fetch user profile to get excluded ingredients and default meal times
   useEffect(() => {
-    const fetchProfile = async () => {
+    const fetchProfileAndTemplate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
       
@@ -42,10 +42,23 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       // Usar horários padrão do perfil como template
       if (profile?.default_meal_times) {
         setCustomMealTimes(profile.default_meal_times as CustomMealTimesWithExtras);
+      } else {
+        // Se não há template no perfil, buscar do último plano criado
+        const { data: lastPlan } = await supabase
+          .from("meal_plans")
+          .select("custom_meal_times")
+          .eq("user_id", session.user.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+        
+        if (lastPlan?.custom_meal_times) {
+          setCustomMealTimes(lastPlan.custom_meal_times as CustomMealTimesWithExtras);
+        }
       }
     };
     
-    fetchProfile();
+    fetchProfileAndTemplate();
   }, []);
 
   // Calculate remaining days and determine if we should use next month

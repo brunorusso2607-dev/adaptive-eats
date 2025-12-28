@@ -45,23 +45,27 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
       return { nextMeal: null, overdueMeals: [] };
     }
 
-    // Encontrar a primeira refeição que ainda está "on_time" ou a próxima a começar
-    // As refeições estão ordenadas por data decrescente, então precisamos inverter para encontrar a próxima
+    // Calcular status para todas as refeições
     const mealsWithStatus = pendingMeals.map(meal => ({
       ...meal,
       status: getMealStatusForMeal(meal.meal_type, meal.actual_date, meal.completed_at),
     }));
 
-    // Encontrar a refeição que está on_time (será a próxima)
+    // Próxima refeição = a primeira que está "on_time" (já começou mas ainda no prazo)
+    // Se não há nenhuma on_time, pegar a primeira da lista (que é ordenada por proximidade no hook)
     const onTimeMeal = mealsWithStatus.find(meal => meal.status === "on_time");
     
-    // Todas as outras são atrasadas (delayed ou critical)
+    // Se não encontrou on_time, a próxima refeição é a primeira da lista (pode ser futura)
+    // O hook já retorna a refeição mais próxima na primeira posição
+    const nextMealCandidate = onTimeMeal || mealsWithStatus[0];
+    
+    // Atrasadas = delayed ou critical (excluindo a próxima refeição selecionada)
     const delayed = mealsWithStatus.filter(meal => 
-      meal.status === "delayed" || meal.status === "critical"
+      (meal.status === "delayed" || meal.status === "critical") && meal.id !== nextMealCandidate?.id
     );
 
     return {
-      nextMeal: onTimeMeal || null,
+      nextMeal: nextMealCandidate,
       overdueMeals: delayed,
     };
   }, [pendingMeals, getMealStatusForMeal]);

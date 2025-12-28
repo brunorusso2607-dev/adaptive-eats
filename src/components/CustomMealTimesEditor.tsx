@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { Clock, RotateCcw, Check, ChevronDown, ChevronUp, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -8,8 +8,10 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Json } from "@/integrations/supabase/types";
 
 // Gera opções de horário com intervalos de 15 minutos
 const generateTimeOptions = () => {
@@ -156,13 +158,37 @@ export function CustomMealTimesEditor({
   }, [globalSettings, localTimes, extraMeals]);
 
   // Gera dados para salvar
-  const getDataToSave = (): CustomMealTimesWithExtras => {
+  const getDataToSave = useCallback((): CustomMealTimesWithExtras => {
     const data: CustomMealTimesWithExtras = { ...localTimes };
     if (extraMeals.length > 0) {
-      data.extras = extraMeals;
+      data.extras = extraMeals.map(e => ({ ...e, isNew: false }));
     }
     return data;
-  };
+  }, [localTimes, extraMeals]);
+
+  // Salvar template no perfil do usuário
+  const saveTemplateToProfile = useCallback(async (dataToSave: CustomMealTimesWithExtras) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ default_meal_times: dataToSave as Json })
+        .eq("id", session.user.id);
+
+      if (error) {
+        console.error("[CustomMealTimesEditor] Error saving to profile:", error);
+        return false;
+      }
+
+      console.log("[CustomMealTimesEditor] Saved template to profile:", dataToSave);
+      return true;
+    } catch (error) {
+      console.error("[CustomMealTimesEditor] Exception saving to profile:", error);
+      return false;
+    }
+  }, []);
 
   const handleTimeChange = (mealId: string, value: string, isExtra: boolean) => {
     setHasChanges(true);
@@ -200,23 +226,44 @@ export function CustomMealTimesEditor({
     setOpenAccordion(newExtraId);
   };
 
-  const handleRemoveExtra = (mealId: string) => {
+  const handleRemoveExtra = async (mealId: string) => {
     const newExtras = extraMeals.filter(extra => extra.id !== mealId);
     setExtraMeals(newExtras);
     setHasChanges(true);
+
+    // Salvar automaticamente no perfil
+    const dataToSave: CustomMealTimesWithExtras = { ...localTimes };
+    if (newExtras.length > 0) {
+      dataToSave.extras = newExtras.map(e => ({ ...e, isNew: false }));
+    }
+    
+    const saved = await saveTemplateToProfile(dataToSave);
+    if (saved) {
+      toast.success("Refeição extra removida do seu perfil");
+    }
   };
 
-  const handleConfirmExtra = (mealId: string) => {
+  const handleConfirmExtra = async (mealId: string) => {
     const newExtras = extraMeals.map(extra =>
       extra.id === mealId ? { ...extra, isNew: false } : extra
     );
     setExtraMeals(newExtras);
     setHasChanges(true);
     setOpenAccordion(undefined);
-    toast.success("Refeição extra adicionada");
+
+    // Salvar automaticamente no perfil
+    const dataToSave: CustomMealTimesWithExtras = { ...localTimes };
+    dataToSave.extras = newExtras.map(e => ({ ...e, isNew: false }));
+    
+    const saved = await saveTemplateToProfile(dataToSave);
+    if (saved) {
+      toast.success("Refeição extra salva no seu perfil");
+    } else {
+      toast.success("Refeição extra adicionada");
+    }
   };
 
-  const handleResetToGlobal = () => {
+  const handleResetToGlobal = async () => {
     const resetTimes: Record<string, string> = {};
     globalSettings.forEach(setting => {
       resetTimes[setting.meal_type] = `${setting.start_hour.toString().padStart(2, '0')}:00`;
@@ -224,6 +271,10 @@ export function CustomMealTimesEditor({
     setLocalTimes(resetTimes);
     setExtraMeals([]);
     setHasChanges(true);
+
+    // Salvar reset no perfil
+    await saveTemplateToProfile(resetTimes as CustomMealTimesWithExtras);
+    toast.success("Horários restaurados ao padrão");
   };
 
   const handleSave = async () => {

@@ -1516,8 +1516,8 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 
 /**
  * Constrói prompt para geração de UM DIA do plano alimentar
- * Persona: Mestre Chef ReceitAI - receitas ricas e detalhadas
- * Agora com suporte a regionalização por país
+ * FOCO: REFEIÇÕES/DIETA - Composição de alimentos com porções
+ * Não gera receitas elaboradas - gera O QUE COMER
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -1528,28 +1528,20 @@ export function buildSingleDayPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
-  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile); // Updated to include dietary restrictions
-  const dietaryBlock = buildDietaryRestrictionBlock(profile); // New dietary block
+  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile);
+  const dietaryBlock = buildDietaryRestrictionBlock(profile);
   const isKidsMode = profile.context === "modo_kids";
-  const complexity = "equilibrada";
   const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
   // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
   const ingredientPriority = getIngredientPriority(profile.country);
   
-  // Gerar exemplos regionalizados para cada tipo de refeição
-  const regionalExamples = selectedMealTypes.map(mealType => {
-    const examples = getMealExamples(mealType, profile.country);
-    const label = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType];
-    return `${label}: ${examples.slice(0, 3).join(", ")}`;
-  }).join("\n");
-
-  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes criativos e divertidos, sabores suaves, apresentação atraente." : "";
+  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Alimentos que crianças gostam, porções adequadas." : "";
   
-  // CRITICAL: Show more previous recipes to ensure real variation (up to 30)
-  const avoidRecipes = previousRecipes.length > 0 
-    ? `\n⚠️ PROIBIDO REPETIR ESTAS RECEITAS (crie algo DIFERENTE):\n${previousRecipes.slice(0, 30).join("\n")}` 
+  // Evitar repetições
+  const avoidMeals = previousRecipes.length > 0 
+    ? `\n⚠️ EVITE REPETIR ESTAS REFEIÇÕES:\n${previousRecipes.slice(0, 20).join("\n")}` 
     : "";
 
   const excludedConstraint = excludedIngredientsStr 
@@ -1557,69 +1549,112 @@ export function buildSingleDayPrompt(
     : "";
 
   const forbiddenBlock = forbiddenList 
-    ? `\n\n🚨 LISTA NEGRA - NUNCA USE NENHUM DESTES INGREDIENTES:\n${forbiddenList}`
+    ? `\n\n🚨 LISTA NEGRA - NUNCA INCLUA NENHUM DESTES:\n${forbiddenList}`
     : "";
 
-  const complexityInstructions: Record<string, string> = {
-    rapida: "Receitas práticas (max 20 min). 4-5 ingredientes simples. 3-4 passos diretos.",
-    equilibrada: "Receitas balanceadas (20-40 min). 6-7 ingredientes. 4-5 passos bem explicados.",
-    elaborada: "Receitas sofisticadas (40+ min). 7-8 ingredientes premium. 5-6 passos com técnicas culinárias."
-  };
+  // Exemplos de refeições por tipo
+  const mealExamplesBlock = `
+📋 EXEMPLOS DE COMPOSIÇÃO DE REFEIÇÕES:
 
-  return `🧑‍🍳 MESTRE CHEF RECEITAI - Plano Alimentar Personalizado
+☕ CAFÉ DA MANHÃ (exemplos):
+- 1 fatia de pão integral (30g) + 1 ovo mexido (50g) + 1 banana média (100g)
+- 1 tapioca média (60g) + 2 fatias de queijo branco (40g) + 1 copo de suco natural (200ml)
+- 1 tigela de mingau de aveia (150g) + 1 colher de mel (15g) + frutas picadas (80g)
 
-📅 Gere as 5 refeições para: ${dayName}
-🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receitas típicas desta culinária!
+🍽️ ALMOÇO (exemplos):
+- 3 colheres de arroz (90g) + 2 colheres de feijão (60g) + 1 filé de frango grelhado (120g) + salada verde (100g)
+- Macarrão integral (150g) + molho de tomate caseiro (80g) + carne moída (100g) + legumes (80g)
+- Peixe assado (150g) + purê de batata doce (120g) + brócolis refogado (100g)
+
+🥪 LANCHE DA TARDE (exemplos):
+- 1 sanduíche natural de frango (pão + frango + alface + tomate)
+- 1 iogurte natural (170g) + 1 banana (100g) + granola (30g)
+- 1 fatia de bolo integral (60g) + 1 maçã (150g)
+
+🍲 JANTAR (exemplos):
+- Sopa de legumes com frango desfiado (300ml)
+- Omelete de 2 ovos + queijo + legumes + salada
+- Wrap integral + atum + vegetais
+
+🌙 CEIA (exemplos):
+- 1 copo de leite morno (200ml) + 2 biscoitos integrais
+- 1 iogurte natural (170g) + 1 colher de mel (15g)
+- 1 banana (100g) + 1 colher de pasta de amendoim (20g)`;
+
+  return `🍽️ NUTRICIONISTA RECEITAI - PLANO ALIMENTAR PERSONALIZADO
+
+📅 Gere as 5 REFEIÇÕES para: ${dayName}
+🌍 PAÍS/REGIÃO: ${countryConfig.name}
 ${dietaryBlock}
 ╔══════════════════════════════════════════════════════════════════════════════════════════════╗
 ║  🚨🚨🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA 🚨🚨🚨                                ║
-║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS! QUALQUER ERRO PODE CAUSAR PROBLEMAS!                   ║
+║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS! RESPEITE TODAS AS RESTRIÇÕES!                          ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 
-⛔ INGREDIENTES 100% PROIBIDOS - NUNCA USE NENHUM DESTES:
+⛔ INGREDIENTES 100% PROIBIDOS - NUNCA INCLUA:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 🛑 REGRA DE TOLERÂNCIA ZERO:
-→ Se tiver QUALQUER DÚVIDA sobre um ingrediente → NÃO USE
-→ Se não tiver CERTEZA ABSOLUTA que é seguro → NÃO USE  
-→ Se o ingrediente PODE conter algo proibido → NÃO USE
-→ Use APENAS ingredientes que você tem 100% de certeza que são seguros
-
-⚠️ INGREDIENTES TRAIÇOEIROS (PARECEM SEGUROS MAS NÃO SÃO):
-- "Queijo vegetal" → MUITOS contêm traços de leite → NÃO USE
-- "Manteiga ghee" → Derivado de leite → NÃO USE para lactose
-- "Molho shoyu" → Contém trigo → NÃO USE para glúten
-- "Maionese" → Contém ovo → NÃO USE para alergia a ovo
-- "Whey" / "proteína isolada" → Contém leite → NÃO USE
+→ Se tiver QUALQUER DÚVIDA sobre um alimento → NÃO INCLUA
+→ Use APENAS alimentos que você tem 100% certeza que são seguros
 
 👤 PERFIL DO CLIENTE:
 • Dieta: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
 • Objetivo: ${GOAL_LABELS[profile.goal || "manter"]}
 • Meta diária: ${macros.dailyCalories}kcal, ${macros.dailyProtein}g proteína
 • Contexto: ${CONTEXT_LABELS[profile.context || "individual"]}
+${kidsNote}${avoidMeals}
 
-⏱️ COMPLEXIDADE: ${COMPLEXITY_LABELS[complexity]}
-${complexityInstructions[complexity]}${kidsNote}${avoidRecipes}
+${mealExamplesBlock}
 
-🍽️ REFEIÇÕES A GERAR (com exemplos regionais de ${countryConfig.name}):
-${regionalExamples}
+═══════════════════════════════════════════════════════════════════════════════════════════════
+🎯 INSTRUÇÕES IMPORTANTES - GERE REFEIÇÕES, NÃO RECEITAS:
+═══════════════════════════════════════════════════════════════════════════════════════════════
 
-📋 INSTRUÇÕES DO CHEF:
-• Nomes criativos e apetitosos para cada receita
-• Use APENAS ingredientes COMUNS e 100% SEGUROS
-• Ingredientes com quantidades precisas (g, ml, unidades)
-• Macros realistas que somem ~${macros.dailyCalories}kcal no dia
-• ${ingredientPriority}
+1. GERE UMA COMPOSIÇÃO DE ALIMENTOS para cada refeição
+   - Liste O QUE a pessoa vai COMER, não como preparar
+   - Inclua porções específicas (gramas, unidades, colheres)
 
-🔧 FORMATO JSON - CAMPO is_safe É OBRIGATÓRIO:
+2. CADA ALIMENTO DEVE TER:
+   - Nome do alimento simples (ex: "arroz branco", "peito de frango grelhado")
+   - Quantidade em gramas OU unidade clara (ex: "1 fatia", "2 colheres de sopa")
+
+3. OS MACROS DEVEM:
+   - Somar aproximadamente ${macros.dailyCalories}kcal no dia todo
+   - Distribuir: Café ~20%, Almoço ~30%, Lanche ~15%, Jantar ~25%, Ceia ~10%
+
+4. ${ingredientPriority}
+
+🔧 FORMATO JSON OBRIGATÓRIO:
 {"day_index":${dayIndex},"day_name":"${dayName}","meals":[
-  {"meal_type":"cafe_manha","recipe_name":"Nome Criativo","is_safe":true,"recipe_calories":450,"recipe_protein":25,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,
-   "recipe_ingredients":[{"item":"Ingrediente","quantity":"100","unit":"g"}],
-   "recipe_instructions":["Passo 1 detalhado","Passo 2 detalhado"]}
+  {
+    "meal_type":"cafe_manha",
+    "recipe_name":"Café da Manhã Equilibrado",
+    "is_safe":true,
+    "recipe_calories":400,
+    "recipe_protein":15,
+    "recipe_carbs":55,
+    "recipe_fat":12,
+    "recipe_prep_time":10,
+    "recipe_ingredients":[
+      {"item":"pão integral","quantity":"2","unit":"fatias (60g)"},
+      {"item":"ovo mexido","quantity":"1","unit":"unidade (50g)"},
+      {"item":"queijo branco","quantity":"1","unit":"fatia (30g)"},
+      {"item":"banana","quantity":"1","unit":"unidade média (100g)"},
+      {"item":"café com leite","quantity":"1","unit":"xícara (200ml)"}
+    ],
+    "recipe_instructions":["Prepare os alimentos conforme sua preferência"]
+  }
 ]}
 
-🚨 IMPORTANTE: Se tiver QUALQUER DÚVIDA sobre QUALQUER ingrediente, defina "is_safe": false
-Receitas com is_safe: false serão descartadas e regeneradas automaticamente.`;
+📝 OBSERVAÇÕES:
+- "recipe_name" = Nome descritivo da refeição (ex: "Almoço Proteico", "Lanche Leve")
+- "recipe_ingredients" = LISTA DE ALIMENTOS que a pessoa vai comer COM PORÇÕES
+- "recipe_instructions" = Pode ser uma dica simples ou vazio
+- "recipe_prep_time" = Tempo estimado de preparo (pode ser baixo para refeições simples)
+
+🚨 Se tiver QUALQUER DÚVIDA sobre QUALQUER alimento, defina "is_safe": false
+Refeições com is_safe: false serão descartadas e regeneradas.`;
 }
 
 /**
@@ -1637,7 +1672,7 @@ export function buildMealPlanPrompt(
 
 /**
  * Constrói prompt para regeneração de refeição individual
- * Agora com suporte a regionalização por país
+ * FOCO: REFEIÇÕES/DIETA - Composição de alimentos com porções
  */
 export function buildRegenerateMealPrompt(
   profile: UserProfile,
@@ -1647,8 +1682,8 @@ export function buildRegenerateMealPrompt(
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
-  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile); // Updated to include dietary restrictions
-  const dietaryBlock = buildDietaryRestrictionBlock(profile); // New dietary block
+  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile);
+  const dietaryBlock = buildDietaryRestrictionBlock(profile);
   
   // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
@@ -1657,64 +1692,76 @@ export function buildRegenerateMealPrompt(
   const ingredientPriority = getIngredientPriority(profile.country);
   
   const isKidsMode = profile.context === "modo_kids";
-  const kidsNote = isKidsMode ? " 🧒 Modo Kids: nome divertido, sabores suaves, máx 25 min." : "";
-  const ingredientsNote = ingredients ? `\nINGREDIENTES OBRIGATÓRIOS: ${ingredients}` : "";
+  const kidsNote = isKidsMode ? " 🧒 Modo Kids: alimentos que crianças gostam." : "";
+  const ingredientsNote = ingredients ? `\nALIMENTOS OBRIGATÓRIOS NA REFEIÇÃO: ${ingredients}` : "";
   
   const excludedConstraint = excludedIngredientsStr 
     ? `\nALIMENTOS PROIBIDOS (usuário não consome): ${excludedIngredientsStr}`
     : "";
 
   const forbiddenBlock = forbiddenList 
-    ? `\n\n🚨 LISTA NEGRA - NUNCA USE:\n${forbiddenList}`
+    ? `\n\n🚨 LISTA NEGRA - NUNCA INCLUA:\n${forbiddenList}`
     : "";
 
-  return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
-🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receita típica desta culinária!
+  // Exemplos por tipo de refeição
+  const mealTypeExamples: Record<string, string> = {
+    cafe_manha: "1 pão integral + 1 ovo mexido + 1 banana + café com leite",
+    almoco: "3 col. arroz + 2 col. feijão + 1 filé de frango + salada",
+    lanche: "1 iogurte + 1 fruta + granola OU sanduíche natural",
+    jantar: "Sopa de legumes + frango desfiado OU omelete + salada",
+    ceia: "1 iogurte + mel OU 1 banana + pasta de amendoim"
+  };
+
+  return `🍽️ NUTRICIONISTA RECEITAI - Regenerar ${mealLabel.toUpperCase()}
+🌍 PAÍS/REGIÃO: ${countryConfig.name}
 ${dietaryBlock}
 ╔══════════════════════════════════════════════════════════════════════════════════════════════╗
-║  🚨🚨🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA 🚨🚨🚨                                ║
-║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS! QUALQUER ERRO CAUSA PROBLEMAS!                         ║
+║  🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA                                          ║
+║  RESPEITE TODAS AS RESTRIÇÕES ALIMENTARES!                                                   ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 
 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
 
-⛔ INGREDIENTES 100% PROIBIDOS - NUNCA USE:
+⛔ ALIMENTOS 100% PROIBIDOS - NUNCA INCLUA:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 🛑 REGRA DE TOLERÂNCIA ZERO:
-→ Se tiver QUALQUER DÚVIDA sobre um ingrediente → NÃO USE
-→ Se não tiver CERTEZA ABSOLUTA que é seguro → NÃO USE
-→ Use APENAS ingredientes COMUNS que você tem 100% certeza que são seguros
-
-⚠️ INGREDIENTES TRAIÇOEIROS (NÃO USE):
-- "Queijo vegetal" → Muitos contêm leite → NÃO USE
-- "Manteiga ghee" → Derivado de leite → NÃO USE
-- "Molho shoyu" → Contém trigo → NÃO USE
-- "Maionese" → Contém ovo → NÃO USE
+→ Se tiver QUALQUER DÚVIDA sobre um alimento → NÃO INCLUA
+→ Use APENAS alimentos COMUNS que você tem 100% certeza que são seguros
 ${kidsNote}${ingredientsNote}
 
-REGRAS:
-1. 🚨 TOLERÂNCIA ZERO: NÃO USE ingredientes da lista proibida
-2. ~${targetCalories} calorias
-3. ${ingredientPriority}
-4. Exemplos típicos: ${mealExamples.slice(0, 5).join(", ")}
+═══════════════════════════════════════════════════════════════════════════════════════════════
+🎯 GERE UMA REFEIÇÃO (COMPOSIÇÃO DE ALIMENTOS), NÃO UMA RECEITA ELABORADA
+═══════════════════════════════════════════════════════════════════════════════════════════════
 
-JSON - CAMPO is_safe É OBRIGATÓRIO:
+REGRAS:
+1. 🚨 TOLERÂNCIA ZERO: NÃO inclua alimentos da lista proibida
+2. Meta: ~${targetCalories} calorias
+3. ${ingredientPriority}
+4. Exemplo típico de ${mealLabel}: ${mealTypeExamples[mealType] || mealExamples.slice(0, 3).join(", ")}
+
+🔧 FORMATO JSON:
 {
-  "recipe_name": "Nome",
+  "recipe_name": "Nome da Refeição (ex: Almoço Proteico)",
   "is_safe": true,
   "recipe_calories": ${targetCalories},
   "recipe_protein": 25,
   "recipe_carbs": 30,
   "recipe_fat": 15,
-  "recipe_prep_time": ${isKidsMode ? 20 : 30},
-  "recipe_ingredients": [{"item": "ingrediente seguro", "quantity": "100", "unit": "g"}],
-  "recipe_instructions": ["Passo 1", "Passo 2"],
-  "chef_tip": "Dica culinária"
+  "recipe_prep_time": ${isKidsMode ? 10 : 15},
+  "recipe_ingredients": [
+    {"item": "nome do alimento", "quantity": "1", "unit": "porção (gramas)"}
+  ],
+  "recipe_instructions": ["Prepare conforme sua preferência"],
+  "chef_tip": "Dica nutricional opcional"
 }
 
-🚨 Se tiver QUALQUER DÚVIDA sobre QUALQUER ingrediente: "is_safe": false
-Receitas com is_safe: false serão descartadas automaticamente.
+📝 LEMBRE-SE:
+- "recipe_ingredients" = LISTA DE ALIMENTOS para comer (com porções em gramas ou unidades)
+- "recipe_instructions" = Pode ser simples ou vazio (não é receita elaborada)
+
+🚨 Se tiver QUALQUER DÚVIDA sobre QUALQUER alimento: "is_safe": false
+Refeições com is_safe: false serão descartadas automaticamente.
 
 Responda APENAS com JSON.`;
 }

@@ -92,3 +92,9 @@ verify_jwt = false
 
 [functions.import-ciqual-foods]
 verify_jwt = false
+
+[functions.import-mccance-foods]
+verify_jwt = false
+
+[functions.upload-mccance-file]
+verify_jwt = false

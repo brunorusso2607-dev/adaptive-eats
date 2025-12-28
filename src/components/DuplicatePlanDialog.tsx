@@ -162,15 +162,17 @@ export default function DuplicatePlanDialog({
       const newItems: any[] = [];
       const missingDays = new Set<number>(); // Days of week that need AI generation
 
+      // Extract all unique meal_types from the original plan (including custom ones like "refeicao_extra")
+      const allMealTypes = [...new Set(plan.items.map(item => item.meal_type))];
+      console.log("[DuplicatePlan] All meal types from original plan:", allMealTypes);
+
       for (let day = 1; day <= totalDaysNextMonth; day++) {
         const date = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
         const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
         const weekNumber = Math.ceil(day / 7);
 
-        // Find meals for this day of week in the original plan
-        const mealTypes = ['cafe_manha', 'almoco', 'lanche', 'jantar', 'ceia'];
-        
-        mealTypes.forEach(mealType => {
+        // Find meals for this day of week in the original plan (using dynamic meal types)
+        allMealTypes.forEach(mealType => {
           const key = `${dayOfWeek}-${mealType}`;
           const originalItem = itemsByDayAndType.get(key);
           

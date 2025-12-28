@@ -6,6 +6,7 @@ import {
   calculateMacroTargets,
   MEAL_TYPE_LABELS,
   validateMealPlan,
+  validateRecipe,
   type UserProfile,
   type RecipeValidationSummary,
 } from "../_shared/recipeConfig.ts";
@@ -438,13 +439,15 @@ async function validateAndCompleteMeals(
 
 // Try to get meals from the recipe pool first
 // CRITICAL: Now receives usedRecipes to exclude already-used recipes and ensure variation
+// ALSO validates each recipe against user profile to ensure 0% incompatibility
 async function getMealsFromPool(
   supabase: any,
   profile: UserProfile,
   mealTypes: string[],
   usedRecipes: string[] = [] // NEW: List of recipes already used in this plan
-): Promise<Map<string, any>> {
+): Promise<{ meals: Map<string, any>; incompatibleMealTypes: string[] }> {
   const results = new Map<string, any>();
+  const incompatibleMealTypes: string[] = []; // Track meal types where pool had only incompatible recipes
   
   // Convert usedRecipes to lowercase for case-insensitive comparison
   const usedRecipesLower = usedRecipes.map(r => r.toLowerCase().trim());
@@ -456,7 +459,7 @@ async function getMealsFromPool(
       dietaryPreference: profile.dietary_preference || undefined,
       intolerances: profile.intolerances || [],
       excludedIngredients: profile.excluded_ingredients || [],
-      limit: 20 // Fetch more to have options after filtering
+      limit: 30 // Fetch more to have options after filtering
     });
 
     if (poolRecipes.length > 0) {
@@ -466,34 +469,71 @@ async function getMealsFromPool(
       );
       
       if (availableRecipes.length > 0) {
-        // Select a random recipe from available (unused) recipes
-        const randomIndex = Math.floor(Math.random() * availableRecipes.length);
-        const recipe = availableRecipes[randomIndex];
+        // CRITICAL POST-POOL VALIDATION: Check each recipe against user profile
+        // Try multiple recipes until we find one that's compatible
+        let foundCompatible = false;
+        const shuffled = [...availableRecipes].sort(() => Math.random() - 0.5); // Randomize order
         
-        // Mark as used
-        await markRecipeAsUsed(supabase, recipe.id);
+        for (const recipe of shuffled) {
+          // Validate this recipe against user's restrictions
+          const validation = validateRecipe(
+            {
+              recipe_name: recipe.name,
+              recipe_ingredients: recipe.ingredients || []
+            },
+            profile
+          );
+          
+          if (validation.isValid) {
+            // Recipe is safe for this user!
+            await markRecipeAsUsed(supabase, recipe.id);
+            
+            results.set(mealType, {
+              meal_type: mealType,
+              recipe_name: recipe.name,
+              recipe_calories: recipe.calories,
+              recipe_protein: recipe.protein,
+              recipe_carbs: recipe.carbs,
+              recipe_fat: recipe.fat,
+              recipe_prep_time: recipe.prep_time,
+              recipe_ingredients: recipe.ingredients,
+              recipe_instructions: [],
+              from_pool: true
+            });
+            
+            logStep(`✅ VALIDATED meal from pool`, { 
+              mealType, 
+              recipeName: recipe.name, 
+              availableCount: availableRecipes.length 
+            });
+            foundCompatible = true;
+            break; // Found a valid recipe, stop searching
+          } else {
+            logStep(`⚠️ Pool recipe INCOMPATIBLE, trying next`, { 
+              mealType, 
+              recipeName: recipe.name, 
+              reason: validation.reason 
+            });
+          }
+        }
         
-        results.set(mealType, {
-          meal_type: mealType,
-          recipe_name: recipe.name,
-          recipe_calories: recipe.calories,
-          recipe_protein: recipe.protein,
-          recipe_carbs: recipe.carbs,
-          recipe_fat: recipe.fat,
-          recipe_prep_time: recipe.prep_time,
-          recipe_ingredients: recipe.ingredients,
-          recipe_instructions: [],
-          from_pool: true
-        });
-        
-        logStep(`Found UNUSED meal in pool`, { mealType, recipeName: recipe.name, availableCount: availableRecipes.length });
+        if (!foundCompatible) {
+          // All available recipes were incompatible - need AI for this meal type
+          logStep(`❌ All pool recipes incompatible for ${mealType} - will use AI`, { 
+            totalChecked: shuffled.length 
+          });
+          incompatibleMealTypes.push(mealType);
+        }
       } else {
-        logStep(`All pool recipes already used for ${mealType}`, { totalInPool: poolRecipes.length, usedCount: usedRecipesLower.length });
+        logStep(`All pool recipes already used for ${mealType}`, { 
+          totalInPool: poolRecipes.length, 
+          usedCount: usedRecipesLower.length 
+        });
       }
     }
   }
   
-  return results;
+  return { meals: results, incompatibleMealTypes };
 }
 
 // Save generated meals to the pool for future reuse
@@ -618,15 +658,23 @@ async function generateSingleDay(
   // STEP 2: GET MEALS FROM POOL (when sufficient)
   // ========================================
   if (supabase && mealsFromPool.length > 0) {
-    const poolMeals = await getMealsFromPool(supabase, profile, mealsFromPool, previousRecipes);
-    poolMeals.forEach((meal, mealType) => {
+    const poolResult = await getMealsFromPool(supabase, profile, mealsFromPool, previousRecipes);
+    poolResult.meals.forEach((meal, mealType) => {
       finalMeals.push(meal);
       logStep(`Got ${mealType} from pool`, { recipeName: meal.recipe_name });
     });
     
+    // Add incompatible meal types to AI queue (these had no safe recipes in pool)
+    if (poolResult.incompatibleMealTypes.length > 0) {
+      mealsNeedingAI.push(...poolResult.incompatibleMealTypes);
+      logStep(`Pool had incompatible recipes for some meal types`, { 
+        incompatible: poolResult.incompatibleMealTypes 
+      });
+    }
+    
     // Check if any pool meals failed - add them to AI list
     for (const mealType of mealsFromPool) {
-      if (!poolMeals.has(mealType)) {
+      if (!poolResult.meals.has(mealType) && !poolResult.incompatibleMealTypes.includes(mealType)) {
         mealsNeedingAI.push(mealType);
         logStep(`Pool failed for ${mealType}, adding to AI queue`);
       }

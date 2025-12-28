@@ -1403,35 +1403,49 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
 
   // Build comprehensive safety block
   const safetyBlock = `
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  🚨🚨🚨 SEGURANÇA ALIMENTAR - PRIORIDADE ABSOLUTA 🚨🚨🚨                     ║
-║  VERIFICAR ANTES DE QUALQUER COISA! NÃO PROSSIGA SEM LER!                   ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+║  🚨🚨🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA 🚨🚨🚨                                ║
+║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS - QUALQUER ERRO PODE CAUSAR PROBLEMAS DE SAÚDE!        ║
+║  LER COMPLETAMENTE ANTES DE GERAR QUALQUER COISA!                                           ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 
-⛔ INTOLERÂNCIAS/ALERGIAS DO USUÁRIO - INGREDIENTES PROIBIDOS:
+⛔ INTOLERÂNCIAS/ALERGIAS DO USUÁRIO - INGREDIENTES 100% PROIBIDOS:
 ${intolerancesStr}
 ${excludedConstraint}
 ${forbiddenBlock}
 
-📋 CHECKLIST OBRIGATÓRIO (executar ANTES de gerar receita):
-✓ Verificar CADA ingrediente contra a LISTA NEGRA acima
-✓ Verificar ingredientes "escondidos" em molhos e temperos  
-✓ Verificar ingredientes excluídos manualmente pelo usuário
-✓ QUEIJOS VEGETAIS contêm caseína = PROIBIDOS para intolerantes a lactose
-✓ Se qualquer ingrediente for duvidoso, NÃO incluir
+🛑 REGRA ABSOLUTA - TOLERÂNCIA ZERO:
+1. Se você tiver QUALQUER DÚVIDA sobre um ingrediente → NÃO USE
+2. Se não tiver CERTEZA ABSOLUTA que é seguro → NÃO USE
+3. Se o ingrediente PODE conter algo proibido → NÃO USE
+4. Na dúvida, SEMPRE escolha o ingrediente mais seguro e comum
 
-⚠️ ATENÇÃO ESPECIAL - INGREDIENTES QUE PARECEM SEGUROS MAS NÃO SÃO:
-- "Queijo vegetal" / "queijo sem lactose" → MUITOS contêm traços de leite
-- "Manteiga ghee" → É derivado de leite = PROIBIDO para lactose
-- "Molho shoyu" → Contém trigo = PROIBIDO para glúten
-- "Maionese" → Contém ovo = PROIBIDO para alergia a ovo
-- "Proteína isolada" → Pode conter soja ou leite
+📋 CHECKLIST OBRIGATÓRIO (executar para CADA ingrediente):
+✓ Este ingrediente está na LISTA NEGRA? → Se SIM, não use
+✓ Este ingrediente PODE conter algo da lista? → Se TALVEZ, não use  
+✓ Existe alternativa mais segura? → Se SIM, use a alternativa
+✓ Tenho 100% de certeza que é seguro? → Se NÃO, não use
 
-🔴 EM CASO DE DÚVIDA: NÃO INCLUA O INGREDIENTE!
+⚠️ INGREDIENTES TRAIÇOEIROS - PARECEM SEGUROS MAS NÃO SÃO:
+- "Queijo vegetal" / "queijo sem lactose" → MUITOS contêm traços de leite → NÃO USE
+- "Manteiga ghee" → É derivado de leite = PROIBIDO para lactose → NÃO USE
+- "Molho shoyu" → Contém trigo = PROIBIDO para glúten → NÃO USE
+- "Maionese" → Contém ovo = PROIBIDO para alergia a ovo → NÃO USE
+- "Proteína isolada" / "whey" → Contém leite → NÃO USE
+- "Molho inglês" → Contém glúten → NÃO USE
+- "Cream cheese" → Contém lactose → NÃO USE
+- "Requeijão" → Contém lactose → NÃO USE
 
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  SE VOCÊ INCLUIR QUALQUER INGREDIENTE PROIBIDO, A RECEITA SERÁ REJEITADA   ║
-╚══════════════════════════════════════════════════════════════════════════════╝`;
+🔴 INSTRUÇÃO CRÍTICA - SE HOUVER QUALQUER DÚVIDA:
+→ NÃO inclua o ingrediente
+→ Substitua por alternativa 100% segura
+→ Ou retorne is_safe: false para que o sistema gere outra receita
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+║  🚨 CAMPO OBRIGATÓRIO NO JSON: "is_safe": true OU "is_safe": false                          ║
+║  SE is_safe: false → A RECEITA SERÁ DESCARTADA E OUTRA SERÁ GERADA AUTOMATICAMENTE         ║
+║  USE is_safe: false SE TIVER QUALQUER DÚVIDA SOBRE QUALQUER INGREDIENTE!                    ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════╝`;
 
   return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas e SEGURAS.
 
@@ -1557,18 +1571,26 @@ export function buildSingleDayPrompt(
 📅 Gere as 5 refeições para: ${dayName}
 🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receitas típicas desta culinária!
 ${dietaryBlock}
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! LER ANTES DE TUDO! 🚨          ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+║  🚨🚨🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA 🚨🚨🚨                                ║
+║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS! QUALQUER ERRO PODE CAUSAR PROBLEMAS!                   ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 
-⛔ RESTRIÇÕES DO USUÁRIO - JAMAIS INCLUIR ESTES INGREDIENTES:
+⛔ INGREDIENTES 100% PROIBIDOS - NUNCA USE NENHUM DESTES:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
-📋 ANTES DE GERAR CADA RECEITA:
-✓ Verificar CADA ingrediente contra as restrições acima
-✓ "Queijo vegetal" / "sem lactose" → VERIFICAR se realmente não tem lactose
-✓ Molhos prontos → Podem conter glúten ou leite escondido
-✓ EM CASO DE DÚVIDA: NÃO INCLUA!
+🛑 REGRA DE TOLERÂNCIA ZERO:
+→ Se tiver QUALQUER DÚVIDA sobre um ingrediente → NÃO USE
+→ Se não tiver CERTEZA ABSOLUTA que é seguro → NÃO USE  
+→ Se o ingrediente PODE conter algo proibido → NÃO USE
+→ Use APENAS ingredientes que você tem 100% de certeza que são seguros
+
+⚠️ INGREDIENTES TRAIÇOEIROS (PARECEM SEGUROS MAS NÃO SÃO):
+- "Queijo vegetal" → MUITOS contêm traços de leite → NÃO USE
+- "Manteiga ghee" → Derivado de leite → NÃO USE para lactose
+- "Molho shoyu" → Contém trigo → NÃO USE para glúten
+- "Maionese" → Contém ovo → NÃO USE para alergia a ovo
+- "Whey" / "proteína isolada" → Contém leite → NÃO USE
 
 👤 PERFIL DO CLIENTE:
 • Dieta: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
@@ -1584,18 +1606,20 @@ ${regionalExamples}
 
 📋 INSTRUÇÕES DO CHEF:
 • Nomes criativos e apetitosos para cada receita
+• Use APENAS ingredientes COMUNS e 100% SEGUROS
 • Ingredientes com quantidades precisas (g, ml, unidades)
-• Modo de preparo detalhado e claro
 • Macros realistas que somem ~${macros.dailyCalories}kcal no dia
 • ${ingredientPriority}
-• 🚨 VERIFICAR CADA INGREDIENTE CONTRA AS RESTRIÇÕES!
 
-🔧 FORMATO JSON (responda APENAS com JSON válido):
+🔧 FORMATO JSON - CAMPO is_safe É OBRIGATÓRIO:
 {"day_index":${dayIndex},"day_name":"${dayName}","meals":[
-  {"meal_type":"cafe_manha","recipe_name":"Nome Criativo","recipe_calories":450,"recipe_protein":25,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,
+  {"meal_type":"cafe_manha","recipe_name":"Nome Criativo","is_safe":true,"recipe_calories":450,"recipe_protein":25,"recipe_carbs":50,"recipe_fat":15,"recipe_prep_time":15,
    "recipe_ingredients":[{"item":"Ingrediente","quantity":"100","unit":"g"}],
    "recipe_instructions":["Passo 1 detalhado","Passo 2 detalhado"]}
-]}`;
+]}
+
+🚨 IMPORTANTE: Se tiver QUALQUER DÚVIDA sobre QUALQUER ingrediente, defina "is_safe": false
+Receitas com is_safe: false serão descartadas e regeneradas automaticamente.`;
 }
 
 /**
@@ -1647,41 +1671,50 @@ export function buildRegenerateMealPrompt(
   return `Mestre Chef ReceitAI. Regenerar ${mealLabel.toUpperCase()}.
 🌍 PAÍS/REGIÃO: ${countryConfig.name} - Gere receita típica desta culinária!
 ${dietaryBlock}
-╔══════════════════════════════════════════════════════════════════════════════╗
-║  🚨 SEGURANÇA ALIMENTAR - PRIORIDADE MÁXIMA! 🚨                             ║
-╚══════════════════════════════════════════════════════════════════════════════╝
+╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+║  🚨🚨🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA 🚨🚨🚨                                ║
+║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS! QUALQUER ERRO CAUSA PROBLEMAS!                         ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 
 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
 
-⛔ JAMAIS INCLUIR (verificar CADA ingrediente):
+⛔ INGREDIENTES 100% PROIBIDOS - NUNCA USE:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
-📋 CHECKLIST DE SEGURANÇA:
-✓ Verificar CADA ingrediente contra intolerâncias
-✓ Verificar ingredientes "escondidos" em molhos
-✓ Verificar alimentos proibidos pelo usuário
-✓ EM CASO DE DÚVIDA: NÃO INCLUA!
+🛑 REGRA DE TOLERÂNCIA ZERO:
+→ Se tiver QUALQUER DÚVIDA sobre um ingrediente → NÃO USE
+→ Se não tiver CERTEZA ABSOLUTA que é seguro → NÃO USE
+→ Use APENAS ingredientes COMUNS que você tem 100% certeza que são seguros
+
+⚠️ INGREDIENTES TRAIÇOEIROS (NÃO USE):
+- "Queijo vegetal" → Muitos contêm leite → NÃO USE
+- "Manteiga ghee" → Derivado de leite → NÃO USE
+- "Molho shoyu" → Contém trigo → NÃO USE
+- "Maionese" → Contém ovo → NÃO USE
 ${kidsNote}${ingredientsNote}
 
 REGRAS:
-1. 🚨 SEGURANÇA PRIMEIRO: NUNCA ingredientes das restrições
+1. 🚨 TOLERÂNCIA ZERO: NÃO USE ingredientes da lista proibida
 2. ~${targetCalories} calorias
 3. ${ingredientPriority}
-4. Exemplos típicos de ${countryConfig.name}: ${mealExamples.slice(0, 5).join(", ")}
+4. Exemplos típicos: ${mealExamples.slice(0, 5).join(", ")}
 
-JSON:
+JSON - CAMPO is_safe É OBRIGATÓRIO:
 {
   "recipe_name": "Nome",
+  "is_safe": true,
   "recipe_calories": ${targetCalories},
   "recipe_protein": 25,
   "recipe_carbs": 30,
   "recipe_fat": 15,
   "recipe_prep_time": ${isKidsMode ? 20 : 30},
-  "is_safe": true,
-  "recipe_ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
+  "recipe_ingredients": [{"item": "ingrediente seguro", "quantity": "100", "unit": "g"}],
   "recipe_instructions": ["Passo 1", "Passo 2"],
   "chef_tip": "Dica culinária"
 }
+
+🚨 Se tiver QUALQUER DÚVIDA sobre QUALQUER ingrediente: "is_safe": false
+Receitas com is_safe: false serão descartadas automaticamente.
 
 Responda APENAS com JSON.`;
 }

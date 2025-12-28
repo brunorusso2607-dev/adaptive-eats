@@ -744,6 +744,35 @@ async function generateSingleDay(
             );
             
             if (aiMeal) {
+              // CRITICAL: Check if AI flagged the recipe as unsafe
+              if (aiMeal.is_safe === false) {
+                logStep(`⚠️ AI flagged recipe as UNSAFE for ${mealType}`, { 
+                  recipeName: aiMeal.recipe_name,
+                  reason: "AI indicated uncertainty about ingredients"
+                });
+                // Skip this meal - it will be regenerated or filled later
+                continue;
+              }
+              
+              // CRITICAL: Validate recipe against user restrictions (double-check)
+              const validation = validateRecipe(
+                {
+                  recipe_name: aiMeal.recipe_name || "",
+                  recipe_ingredients: aiMeal.recipe_ingredients || []
+                },
+                profile
+              );
+              
+              if (!validation.isValid) {
+                logStep(`🚫 AI recipe FAILED validation for ${mealType}`, { 
+                  recipeName: aiMeal.recipe_name,
+                  invalidIngredients: validation.invalidIngredients,
+                  reason: validation.reason
+                });
+                // Skip this meal - it contains forbidden ingredients
+                continue;
+              }
+              
               // Check it's not a duplicate of something we already have
               const isDuplicate = finalMeals.some(m => 
                 m.recipe_name.toLowerCase().trim() === aiMeal.recipe_name?.toLowerCase().trim()
@@ -751,18 +780,18 @@ async function generateSingleDay(
               
               if (!isDuplicate) {
                 finalMeals.push({ ...aiMeal, meal_type: mealType, from_pool: false });
-                logStep(`AI generated ${mealType}`, { recipeName: aiMeal.recipe_name });
+                logStep(`✅ AI generated SAFE ${mealType}`, { recipeName: aiMeal.recipe_name });
               } else {
                 logStep(`AI returned duplicate for ${mealType}, skipping`, { recipeName: aiMeal.recipe_name });
               }
             }
           }
           
-          // Save new AI-generated meals to pool for future users
+          // Save new AI-generated meals to pool for future users (ONLY VALIDATED ONES)
           const newMeals = finalMeals.filter(m => !m.from_pool && standardTypes.includes(m.meal_type));
           if (newMeals.length > 0 && supabase) {
             await saveMealsToPool(supabase, newMeals, profile);
-            logStep(`Saved ${newMeals.length} new AI meals to pool for future users`);
+            logStep(`Saved ${newMeals.length} new VALIDATED AI meals to pool for future users`);
           }
         }
       } else {

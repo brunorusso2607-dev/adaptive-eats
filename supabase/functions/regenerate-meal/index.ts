@@ -3,6 +3,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
   buildRegenerateMealPrompt,
   calculateMacroTargets,
+  validateRecipe,
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
@@ -156,40 +157,66 @@ serve(async (req) => {
         dietaryPreference: profile.dietary_preference,
         intolerances: profile.intolerances || [],
         excludedIngredients: profile.excluded_ingredients || [],
-        limit: 5
+        limit: 10 // Increased to have more options for validation
       });
 
       if (poolRecipes.length > 0) {
-        // Seleciona uma receita aleatória do pool (para variedade)
-        const randomIndex = Math.floor(Math.random() * poolRecipes.length);
-        const poolRecipe = poolRecipes[randomIndex];
+        // CRITICAL: Validate each recipe before using
+        const shuffled = [...poolRecipes].sort(() => Math.random() - 0.5);
         
-        logStep("Found recipe in pool", { name: poolRecipe.name, id: poolRecipe.id });
+        for (const poolRecipe of shuffled) {
+          // Validate recipe against user restrictions
+          const validation = validateRecipe(
+            {
+              recipe_name: poolRecipe.name,
+              recipe_ingredients: poolRecipe.ingredients || []
+            },
+            profile as UserProfile
+          );
+          
+          if (validation.isValid) {
+            logStep("✅ Found SAFE recipe in pool", { name: poolRecipe.name, id: poolRecipe.id });
+            
+            // Mark as used
+            await markRecipeAsUsed(supabaseClient, poolRecipe.id);
+            
+            recipeData = {
+              recipe_name: poolRecipe.name,
+              recipe_calories: poolRecipe.calories,
+              recipe_protein: poolRecipe.protein,
+              recipe_carbs: poolRecipe.carbs,
+              recipe_fat: poolRecipe.fat,
+              recipe_prep_time: poolRecipe.prep_time,
+              recipe_ingredients: poolRecipe.ingredients,
+              recipe_instructions: []
+            };
+            recipeFromPool = true;
+            break; // Found a valid recipe
+          } else {
+            logStep("⚠️ Pool recipe INCOMPATIBLE", { 
+              name: poolRecipe.name, 
+              reason: validation.reason 
+            });
+          }
+        }
         
-        // Marca a receita como usada
-        await markRecipeAsUsed(supabaseClient, poolRecipe.id);
-        
-        recipeData = {
-          recipe_name: poolRecipe.name,
-          recipe_calories: poolRecipe.calories,
-          recipe_protein: poolRecipe.protein,
-          recipe_carbs: poolRecipe.carbs,
-          recipe_fat: poolRecipe.fat,
-          recipe_prep_time: poolRecipe.prep_time,
-          recipe_ingredients: poolRecipe.ingredients,
-          recipe_instructions: [] // Pool pode não ter instruções detalhadas
-        };
-        recipeFromPool = true;
+        if (!recipeData) {
+          logStep("❌ All pool recipes incompatible - will generate via AI");
+        }
       }
     }
 
     // STEP 2: Se não encontrou no pool ou é modo com ingredientes, gera via IA
-    if (!recipeData) {
-      logStep("Generating recipe via AI");
+    // With retry logic for safety validation
+    const MAX_AI_RETRIES = 3;
+    let aiAttempt = 0;
+    
+    while (!recipeData && aiAttempt < MAX_AI_RETRIES) {
+      aiAttempt++;
+      logStep(`Generating recipe via AI (attempt ${aiAttempt}/${MAX_AI_RETRIES})`);
       
       const GOOGLE_AI_API_KEY = await getGeminiApiKey();
-      logStep("Gemini API key fetched from database");
-
+      
       // Build prompt using centralized config
       const ingredientsToUse = mode === "with_ingredients" ? ingredients : undefined;
       const prompt = buildRegenerateMealPrompt(
@@ -211,7 +238,7 @@ serve(async (req) => {
           }
         ],
         generationConfig: {
-          temperature: 0.4,
+          temperature: 0.4 + (aiAttempt * 0.1), // Increase temperature on retries for variation
           maxOutputTokens: 2048,
         }
       });
@@ -222,32 +249,65 @@ serve(async (req) => {
       // Extract content from Google Gemini response format
       const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
       if (!content) {
-        throw new Error("A IA não retornou uma resposta válida. Tente novamente.");
+        logStep(`AI returned empty response on attempt ${aiAttempt}`);
+        continue;
       }
 
       try {
         const jsonMatch = content.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
-          recipeData = JSON.parse(jsonMatch[0]);
+          const parsedRecipe = JSON.parse(jsonMatch[0]);
+          
+          // CRITICAL: Check if AI flagged the recipe as unsafe
+          if (parsedRecipe.is_safe === false) {
+            logStep(`⚠️ AI flagged recipe as UNSAFE on attempt ${aiAttempt}`, { 
+              recipeName: parsedRecipe.recipe_name,
+              reason: "AI indicated uncertainty about ingredients"
+            });
+            continue; // Try again
+          }
+          
+          // CRITICAL: Validate recipe against user restrictions (double-check)
+          const validation = validateRecipe(
+            {
+              recipe_name: parsedRecipe.recipe_name || "",
+              recipe_ingredients: parsedRecipe.recipe_ingredients || []
+            },
+            profile as UserProfile
+          );
+          
+          if (!validation.isValid) {
+            logStep(`🚫 AI recipe FAILED validation on attempt ${aiAttempt}`, { 
+              recipeName: parsedRecipe.recipe_name,
+              invalidIngredients: validation.invalidIngredients,
+              reason: validation.reason
+            });
+            continue; // Try again
+          }
+          
+          // Recipe passed all validations!
+          recipeData = parsedRecipe;
+          logStep(`✅ AI generated SAFE recipe on attempt ${aiAttempt}`, { 
+            name: recipeData.recipe_name,
+            calories: recipeData.recipe_calories
+          });
+          
         } else {
           throw new Error("No JSON found in response");
         }
       } catch (parseError) {
-        logStep("Parse error", { error: String(parseError), content: content.slice(0, 200) });
-        throw new Error("Não foi possível processar a receita. Tente novamente.");
+        logStep("Parse error", { error: String(parseError), attempt: aiAttempt });
+        continue;
       }
+    }
+    
+    // If we exhausted all retries
+    if (!recipeData) {
+      throw new Error("Não foi possível gerar uma receita segura após múltiplas tentativas. O sistema detectou que todas as opções continham ingredientes incompatíveis com suas restrições.");
+    }
 
-      if (!recipeData || !recipeData.recipe_name) {
-        throw new Error("A IA não retornou uma receita válida. Tente novamente.");
-      }
-
-      logStep("Recipe parsed from AI", { 
-        name: recipeData.recipe_name,
-        calories: recipeData.recipe_calories,
-        hasChefTip: !!recipeData.chef_tip
-      });
-
-      // STEP 3: Salva a receita gerada no pool para reutilização futura
+    // STEP 3: Salva a receita gerada no pool para reutilização futura (only if from AI and validated)
+    if (!recipeFromPool && recipeData.recipe_name) {
       const saveResult = await saveRecipeToPool(supabaseClient, {
         name: recipeData.recipe_name,
         mealType: mealType,
@@ -264,7 +324,7 @@ serve(async (req) => {
         compatibleMealTimes: [mealType]
       });
 
-      logStep("Recipe saved to pool", { success: saveResult.success, id: saveResult.id });
+      logStep("VALIDATED recipe saved to pool", { success: saveResult.success, id: saveResult.id });
     }
 
     // Update the meal item

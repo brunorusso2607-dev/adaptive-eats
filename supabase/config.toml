@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.generate-ai-meal-plan]
 verify_jwt = false
+
+[functions.lookup-ingredient]
+verify_jwt = false

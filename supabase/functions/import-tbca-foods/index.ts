@@ -30,10 +30,15 @@ function parseNutrientValue(value: string | null | undefined): number {
   return isNaN(parsed) ? 0 : parsed;
 }
 
-function getNutrientValue(nutrientes: any[], componente: string): number {
-  const nutrient = nutrientes.find((n: any) => 
-    n.Componente?.toLowerCase() === componente.toLowerCase()
-  );
+function getNutrientValue(nutrientes: any[], componente: string, unidade?: string): number {
+  // Find nutrient matching both component name and optionally unit
+  const nutrient = nutrientes.find((n: any) => {
+    const matchesComponent = n.Componente?.toLowerCase() === componente.toLowerCase();
+    if (unidade) {
+      return matchesComponent && n.Unidades?.toLowerCase() === unidade.toLowerCase();
+    }
+    return matchesComponent;
+  });
   return nutrient ? parseNutrientValue(nutrient['Valor por 100g']) : 0;
 }
 
@@ -89,8 +94,8 @@ serve(async (req) => {
         const category = item.classe || null;
         const nutrientes = item.nutrientes || [];
 
-        // Extract nutrients from array format
-        const calories = getNutrientValue(nutrientes, 'Energia');
+        // Extract nutrients from array format - use kcal specifically, not kJ
+        const calories = getNutrientValue(nutrientes, 'Energia', 'kcal');
         const protein = getNutrientValue(nutrientes, 'Proteína');
         const carbs = getNutrientValue(nutrientes, 'Carboidrato total');
         const fat = getNutrientValue(nutrientes, 'Lipídios');

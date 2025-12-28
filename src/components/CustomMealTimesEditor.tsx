@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Clock, RotateCcw, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,10 +8,8 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import type { Json } from "@/integrations/supabase/types";
 
 // Gera opções de horário com intervalos de 15 minutos
 const generateTimeOptions = () => {
@@ -64,11 +62,8 @@ export function CustomMealTimesEditor({
   const [isOpen, setIsOpen] = useState(!compact);
   const [localTimes, setLocalTimes] = useState<Record<string, string>>({});
   const [localEnabledMeals, setLocalEnabledMeals] = useState<string[]>([]);
-  const [isSaving, setIsSaving] = useState(false);
-  const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [savedMealId, setSavedMealId] = useState<string | null>(null);
 
   // Sincronizar com customTimes e enabledMeals do prop
   useEffect(() => {
@@ -128,109 +123,33 @@ export function CustomMealTimesEditor({
     })).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
   }, [globalSettings, localTimes, localEnabledMeals]);
 
-  // Gera dados para salvar
+  // Gera dados para salvar (não usado mais, mas mantido para compatibilidade)
   const getDataToSave = useCallback((): CustomMealTimes => {
     return { ...localTimes };
   }, [localTimes]);
 
-  // Salvar template no perfil do usuário
-  const saveTemplateToProfile = useCallback(async (dataToSave: CustomMealTimes) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return false;
-
-      const { error } = await supabase
-        .from("profiles")
-        .update({ default_meal_times: dataToSave as Json })
-        .eq("id", session.user.id);
-
-      if (error) {
-        console.error("[CustomMealTimesEditor] Error saving to profile:", error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("[CustomMealTimesEditor] Exception saving to profile:", error);
-      return false;
-    }
-  }, []);
-
-  // Salvar enabledMeals no perfil do usuário
-  const saveEnabledMealsToProfile = useCallback(async (meals: string[]) => {
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return false;
-
-      // Se todos estão habilitados, salvar null (default)
-      const allMealTypes = globalSettings.map(s => s.meal_type);
-      const isAllEnabled = allMealTypes.every(m => meals.includes(m));
-      
-      const { error } = await supabase
-        .from("profiles")
-        .update({ enabled_meals: isAllEnabled ? null : meals })
-        .eq("id", session.user.id);
-
-      if (error) {
-        console.error("[CustomMealTimesEditor] Error saving enabled_meals:", error);
-        return false;
-      }
-
-      return true;
-    } catch (error) {
-      console.error("[CustomMealTimesEditor] Exception saving enabled_meals:", error);
-      return false;
-    }
-  }, [globalSettings]);
-
-  const handleTimeChange = async (mealId: string, value: string) => {
-    setHasChanges(true);
-    
+  // Apenas atualiza estado local - salva só quando clicar em "Salvar Alterações"
+  const handleTimeChange = (mealId: string, value: string) => {
     const newTimes = { ...localTimes, [mealId]: value };
     setLocalTimes(newTimes);
-    
-    // Salvar automaticamente no perfil do usuário
-    const saved = await saveTemplateToProfile(newTimes);
-    if (saved) {
-      toast.success("Horário atualizado", { duration: 1500 });
-    }
   };
 
-  const handleToggleMeal = async (mealId: string, enabled: boolean) => {
-    let newEnabledMeals: string[];
-    
-    if (enabled) {
-      newEnabledMeals = [...localEnabledMeals, mealId];
-    } else {
-      // Não permitir desabilitar todas as refeições
-      if (localEnabledMeals.length <= 1) {
-        toast.error("Você deve ter pelo menos uma refeição ativa");
-        return;
-      }
-      newEnabledMeals = localEnabledMeals.filter(m => m !== mealId);
+  // Apenas atualiza estado local - salva só quando clicar em "Salvar Alterações"
+  const handleToggleMeal = (mealId: string, enabled: boolean) => {
+    if (!enabled && localEnabledMeals.length <= 1) {
+      toast.error("Você deve ter pelo menos uma refeição ativa");
+      return;
     }
+    
+    const newEnabledMeals = enabled
+      ? [...localEnabledMeals, mealId]
+      : localEnabledMeals.filter(m => m !== mealId);
     
     setLocalEnabledMeals(newEnabledMeals);
-    setHasChanges(true);
-    
-    // Salvar automaticamente no perfil
-    const saved = await saveEnabledMealsToProfile(newEnabledMeals);
-    if (saved) {
-      // Mostrar checkmark temporário
-      setSavedMealId(mealId);
-      setTimeout(() => setSavedMealId(null), 1500);
-    } else {
-      // Reverter se falhou
-      if (enabled) {
-        setLocalEnabledMeals(prev => prev.filter(m => m !== mealId));
-      } else {
-        setLocalEnabledMeals(prev => [...prev, mealId]);
-      }
-      toast.error("Erro ao salvar preferência. Tente novamente.");
-    }
   };
 
-  const handleResetToGlobal = async () => {
+  // Restaurar ao padrão global (apenas estado local)
+  const handleResetToGlobal = () => {
     const resetTimes: Record<string, string> = {};
     const allMealTypes: string[] = [];
     globalSettings.forEach(setting => {
@@ -239,34 +158,7 @@ export function CustomMealTimesEditor({
     });
     setLocalTimes(resetTimes);
     setLocalEnabledMeals(allMealTypes);
-    setHasChanges(true);
-
-    // Salvar reset no perfil
-    await saveTemplateToProfile(resetTimes);
-    await saveEnabledMealsToProfile(allMealTypes);
     toast.success("Horários e refeições restaurados ao padrão");
-  };
-
-  const handleSave = async () => {
-    if (!onSave) return;
-    
-    setIsSaving(true);
-    try {
-      const dataToSave = getDataToSave();
-      const success = await onSave(dataToSave);
-      
-      if (success) {
-        toast.success("Horários salvos com sucesso");
-        setHasChanges(false);
-      } else {
-        toast.error("Erro ao salvar horários");
-      }
-    } catch (error) {
-      console.error("Error saving custom times:", error);
-      toast.error("Erro ao salvar horários");
-    } finally {
-      setIsSaving(false);
-    }
   };
 
   // Contagem de refeições ativas
@@ -315,25 +207,15 @@ export function CustomMealTimesEditor({
               <div className="flex items-center justify-between w-full pr-2">
                 <div className="flex items-center gap-3">
                   {showEnableToggle && (
-                    <div className="flex items-center gap-1.5">
-                      <Switch
-                        checked={meal.enabled}
-                        onCheckedChange={(checked) => {
-                          // Prevent accordion toggle
-                          handleToggleMeal(meal.id, checked);
-                        }}
-                        onClick={(e) => e.stopPropagation()}
-                        disabled={isLoading || isSaving || disabled}
-                        className="data-[state=checked]:bg-primary"
-                      />
-                      {/* Checkmark temporário após salvar */}
-                      <div className={cn(
-                        "flex items-center justify-center w-5 h-5 rounded-full bg-green-500/20 text-green-600 transition-all duration-300",
-                        savedMealId === meal.id ? "opacity-100 scale-100" : "opacity-0 scale-75"
-                      )}>
-                        <Check className="h-3 w-3" />
-                      </div>
-                    </div>
+                    <Switch
+                      checked={meal.enabled}
+                      onCheckedChange={(checked) => {
+                        handleToggleMeal(meal.id, checked);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={isLoading || disabled}
+                      className="data-[state=checked]:bg-primary"
+                    />
                   )}
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className={cn(
@@ -355,7 +237,7 @@ export function CustomMealTimesEditor({
                   <Select
                     value={meal.time || ""}
                     onValueChange={(value) => handleTimeChange(meal.id, value)}
-                    disabled={isLoading || isSaving || disabled || !meal.enabled}
+                    disabled={isLoading || disabled || !meal.enabled}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue placeholder="Selecionar" />
@@ -375,35 +257,18 @@ export function CustomMealTimesEditor({
         ))}
       </Accordion>
 
-      {/* Ações */}
-      <div className="flex items-center justify-between pt-2 border-t border-border/50">
+      {/* Ação de reset */}
+      <div className="flex items-center pt-2 border-t border-border/50">
         <Button
           variant="ghost"
           size="sm"
           onClick={handleResetToGlobal}
-          disabled={isLoading || isSaving || disabled}
+          disabled={isLoading || disabled}
           className="text-xs"
         >
           <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
           Restaurar padrão
         </Button>
-        {onSave && (
-          <Button
-            size="sm"
-            onClick={handleSave}
-            disabled={!hasChanges || isLoading || isSaving || disabled}
-            className="min-w-20"
-          >
-            {isSaving ? (
-              <span className="animate-pulse">Salvando...</span>
-            ) : (
-              <>
-                <Check className="h-3.5 w-3.5 mr-1.5" />
-                Salvar
-              </>
-            )}
-          </Button>
-        )}
       </div>
     </div>
   );

@@ -150,11 +150,12 @@ function containsForbiddenWord(ingredient: string, forbidden: string): boolean {
  */
 function isIngredientForbidden(
   ingredientName: string,
-  forbiddenList: string[]
+  forbiddenList: string[],
+  dynamicSafeList?: string[]
 ): { isForbidden: boolean; matchedForbidden: string | null } {
   const normalized = normalizeTextForPool(ingredientName);
   
-  // Primeiro verifica se é uma exceção segura
+  // Primeiro verifica se é uma exceção segura (lista estática)
   const isSafeException = SAFE_INGREDIENT_EXCEPTIONS.some(safe => 
     normalized.includes(normalizeTextForPool(safe))
   );
@@ -163,8 +164,17 @@ function isIngredientForbidden(
     return { isForbidden: false, matchedForbidden: null };
   }
   
+  // Verifica lista dinâmica de exceções (do banco de dados)
+  if (dynamicSafeList && dynamicSafeList.length > 0) {
+    const isDynamicSafe = dynamicSafeList.some(safe => 
+      normalized.includes(normalizeTextForPool(safe))
+    );
+    if (isDynamicSafe) {
+      return { isForbidden: false, matchedForbidden: null };
+    }
+  }
+  
   // Verifica se o ingrediente indica AUSÊNCIA de um alérgeno
-  // Ex: "verificar sem lactose e glúten" não deve ser bloqueado
   const hasAbsencePattern = SAFE_ABSENCE_PATTERNS.some(pattern =>
     normalized.includes(normalizeTextForPool(pattern))
   );
@@ -175,10 +185,9 @@ function isIngredientForbidden(
     
     // Se encontra "sem X" ou "livre de X" antes do termo proibido, não bloqueia
     if (hasAbsencePattern) {
-      // Verifica se o termo proibido está no contexto de ausência
       const absenceRegex = new RegExp(`(sem|livre de|isento de|zero|ausencia de|ausência de)\\s+${normalizedForbidden}`, 'i');
       if (absenceRegex.test(normalized)) {
-        continue; // Pula este termo, é indicação de ausência
+        continue;
       }
     }
     
@@ -235,9 +244,11 @@ export function validateRecipeAgainstProfile(
   recipe: { name: string; ingredients: any[] },
   dietaryPreference?: string,
   intolerances?: string[],
-  excludedIngredients?: string[]
-): { isValid: boolean; invalidIngredients: string[] } {
+  excludedIngredients?: string[],
+  dynamicSafeList?: string[]
+): { isValid: boolean; invalidIngredients: string[]; blockedDetails: BlockedIngredientInfo[] } {
   const invalidIngredients: string[] = [];
+  const blockedDetails: BlockedIngredientInfo[] = [];
   
   // Constrói lista completa de proibidos
   const forbiddenList = buildForbiddenListForProfile(
@@ -248,7 +259,7 @@ export function validateRecipeAgainstProfile(
   
   // Se não há restrições, tudo é válido
   if (forbiddenList.length === 0) {
-    return { isValid: true, invalidIngredients: [] };
+    return { isValid: true, invalidIngredients: [], blockedDetails: [] };
   }
   
   // Verifica cada ingrediente da receita
@@ -259,17 +270,115 @@ export function validateRecipeAgainstProfile(
     
     if (!ingredientName) continue;
     
-    const { isForbidden, matchedForbidden } = isIngredientForbidden(ingredientName, forbiddenList);
+    const { isForbidden, matchedForbidden } = isIngredientForbidden(
+      ingredientName, 
+      forbiddenList,
+      dynamicSafeList
+    );
     
     if (isForbidden && matchedForbidden) {
       invalidIngredients.push(`${ingredientName} (contém: ${matchedForbidden})`);
+      blockedDetails.push({
+        ingredient: ingredientName,
+        blockedReason: matchedForbidden,
+        intoleranceOrDiet: dietaryPreference || intolerances?.join(', ') || 'unknown',
+        recipeName: recipe.name
+      });
     }
   }
   
   return {
     isValid: invalidIngredients.length === 0,
-    invalidIngredients
+    invalidIngredients,
+    blockedDetails
   };
+}
+
+/**
+ * Interface para informações de ingredientes bloqueados
+ */
+export interface BlockedIngredientInfo {
+  ingredient: string;
+  blockedReason: string;
+  intoleranceOrDiet: string;
+  recipeName: string;
+}
+
+/**
+ * Registra ingredientes bloqueados no banco para revisão posterior
+ */
+export async function logBlockedIngredients(
+  supabase: SupabaseClient,
+  blockedItems: BlockedIngredientInfo[],
+  userId?: string
+): Promise<void> {
+  if (!blockedItems || blockedItems.length === 0) return;
+  
+  try {
+    // Agrupa por ingrediente único para evitar duplicatas
+    const uniqueBlocks = new Map<string, BlockedIngredientInfo>();
+    for (const item of blockedItems) {
+      const key = `${item.ingredient.toLowerCase()}_${item.intoleranceOrDiet}`;
+      if (!uniqueBlocks.has(key)) {
+        uniqueBlocks.set(key, item);
+      }
+    }
+    
+    const records = Array.from(uniqueBlocks.values()).map(item => ({
+      ingredient: item.ingredient,
+      blocked_reason: item.blockedReason,
+      intolerance_or_diet: item.intoleranceOrDiet,
+      recipe_context: item.recipeName,
+      user_id: userId || null,
+      status: 'pending'
+    }));
+    
+    // Verifica se já existem registros pendentes para estes ingredientes
+    for (const record of records) {
+      const { data: existing } = await supabase
+        .from('blocked_ingredients_review')
+        .select('id')
+        .eq('ingredient', record.ingredient)
+        .eq('intolerance_or_diet', record.intolerance_or_diet)
+        .eq('status', 'pending')
+        .limit(1);
+      
+      if (!existing || existing.length === 0) {
+        await supabase
+          .from('blocked_ingredients_review')
+          .insert(record);
+        
+        logStep(`📝 Logged blocked ingredient for review: "${record.ingredient}"`);
+      }
+    }
+  } catch (error) {
+    logStep('Error logging blocked ingredients', { error: String(error) });
+  }
+}
+
+/**
+ * Busca lista de exceções dinâmicas do banco de dados
+ */
+export async function fetchDynamicSafeIngredients(
+  supabase: SupabaseClient,
+  safeFor: string[]
+): Promise<string[]> {
+  if (!safeFor || safeFor.length === 0) return [];
+  
+  try {
+    const { data, error } = await supabase
+      .from('dynamic_safe_ingredients')
+      .select('ingredient')
+      .eq('is_active', true)
+      .in('safe_for', safeFor);
+    
+    if (error || !data) return [];
+    
+    return data.map(d => d.ingredient);
+  } catch (error) {
+    logStep('Error fetching dynamic safe ingredients', { error: String(error) });
+    return [];
+  }
 }
 
 // ============================================
@@ -352,10 +461,24 @@ export async function searchRecipePool(
     logStep("Raw results from pool", { count: recipes.length });
 
     // ============================================
+    // BUSCA EXCEÇÕES DINÂMICAS DO BANCO
+    // ============================================
+    const safeForList: string[] = [];
+    if (dietaryPreference) safeForList.push(dietaryPreference);
+    if (intolerances && intolerances.length > 0) safeForList.push(...intolerances);
+    
+    const dynamicSafeList = await fetchDynamicSafeIngredients(supabase, safeForList);
+    
+    if (dynamicSafeList.length > 0) {
+      logStep("Loaded dynamic safe ingredients", { count: dynamicSafeList.length });
+    }
+
+    // ============================================
     // FILTRO 2: VALIDAÇÃO RIGOROSA CONTRA PERFIL DO USUÁRIO
     // ============================================
     let rejectedCount = 0;
     const rejectedRecipes: string[] = [];
+    const allBlockedDetails: BlockedIngredientInfo[] = [];
     
     // Filtra receitas compatíveis com VALIDAÇÃO RIGOROSA
     const compatibleRecipes = recipes.filter((recipe: any) => {
@@ -371,12 +494,14 @@ export async function searchRecipePool(
         { name: recipe.name, ingredients: recipe.ingredients || [] },
         dietaryPreference,
         intolerances,
-        excludedIngredients
+        excludedIngredients,
+        dynamicSafeList
       );
       
       if (!validation.isValid) {
         rejectedCount++;
         rejectedRecipes.push(`${recipe.name}: ${validation.invalidIngredients.join(', ')}`);
+        allBlockedDetails.push(...validation.blockedDetails);
         logStep(`❌ BLOQUEADA pelo Filtro 2: "${recipe.name}"`, { 
           reason: validation.invalidIngredients 
         });
@@ -385,6 +510,11 @@ export async function searchRecipePool(
 
       return true;
     });
+
+    // Loga ingredientes bloqueados para revisão automática posterior
+    if (allBlockedDetails.length > 0) {
+      logBlockedIngredients(supabase, allBlockedDetails);
+    }
 
     if (rejectedCount > 0) {
       logStep(`🛑 Filtro 2 bloqueou ${rejectedCount} receitas do pool`, { 

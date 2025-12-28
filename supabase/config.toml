@@ -74,3 +74,6 @@ verify_jwt = false
 
 [functions.validate-food-ai]
 verify_jwt = false
+
+[functions.review-blocked-ingredients]
+verify_jwt = false

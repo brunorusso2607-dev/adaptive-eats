@@ -1230,8 +1230,36 @@ serve(async (req) => {
     // Get configurations
     const countryConfig = getCountryConfig(countryCode);
     const selectedMealType = MEAL_TYPES.find(m => m.key === mealType) || MEAL_TYPES[Math.floor(Math.random() * MEAL_TYPES.length)];
-    const selectedCategory = typeof category === 'string' 
-      ? RECIPE_CATEGORIES.find(c => c.key === category || c.label === category) || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)]
+    // Normaliza categoria para comparação case-insensitive
+    // Função para extrair radical para comparação (ex: vegetarian -> vegetari)
+    const getRoot = (text: string): string => {
+      const normalized = normalizeText(text);
+      // Remove sufixos comuns em português para comparação
+      return normalized.replace(/(a|o|as|os|iana|iano|icas|icos|ica|ico)$/, '');
+    };
+    
+    const normalizedCategoryInput = typeof category === 'string' ? normalizeText(category) : '';
+    const categoryRoot = getRoot(category || '');
+    
+    const selectedCategory = typeof category === 'string' && normalizedCategoryInput
+      ? RECIPE_CATEGORIES.find(c => {
+          const keyNorm = normalizeText(c.key);
+          const labelNorm = normalizeText(c.label);
+          const keyRoot = getRoot(c.key);
+          const labelRoot = getRoot(c.label);
+          
+          return (
+            // Match exato
+            keyNorm === normalizedCategoryInput || 
+            labelNorm === normalizedCategoryInput ||
+            // Match por radical (vegetarian = vegetariana)
+            keyRoot === categoryRoot ||
+            labelRoot === categoryRoot ||
+            // Match parcial
+            keyNorm.startsWith(normalizedCategoryInput.substring(0, 5)) ||
+            normalizedCategoryInput.startsWith(keyNorm.substring(0, 5))
+          );
+        }) || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)]
       : category || RECIPE_CATEGORIES[Math.floor(Math.random() * RECIPE_CATEGORIES.length)];
     const mealExamples = getMealExamples(selectedMealType.key, countryCode);
     const ingredientPriority = getIngredientPriority(countryCode);

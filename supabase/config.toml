@@ -1,5 +1,8 @@
 project_id = "upnqkxrvtimtlqsuuvci"
 
+[functions.upload-ciqual-file]
+verify_jwt = false
+
 [functions.send-meal-reminder]
 verify_jwt = false
 

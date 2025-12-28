@@ -101,3 +101,12 @@ verify_jwt = false
 
 [functions.upload-mccance-file]
 verify_jwt = false
+
+[functions.import-bls-foods]
+verify_jwt = false
+
+[functions.import-aesan-foods]
+verify_jwt = false
+
+[functions.import-crea-foods]
+verify_jwt = false

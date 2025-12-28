@@ -439,30 +439,20 @@ export function usePendingMeals() {
         meal.actual_date && isMealValidSinceCreation(meal.meal_type, meal.actual_date)
       );
 
-      console.log("[usePendingMeals] validMeals count:", validMeals.length);
-      console.log("[usePendingMeals] currentRanges:", currentRanges);
-
       // Encontrar a refeição ATUAL (já começou mas ainda não passou da tolerância - on_time)
       const currentMeal = validMeals.find(meal => 
         meal.actual_date && isMealCurrent(meal.meal_type, meal.actual_date)
       );
-
-      console.log("[usePendingMeals] currentMeal:", currentMeal?.recipe_name, currentMeal?.meal_type);
 
       // Filtrar refeições PASSADAS (start_hour + tolerância ultrapassado) - são as atrasadas
       const overdueMeals = validMeals.filter(meal => 
         meal.actual_date && isMealPast(meal.meal_type, meal.actual_date)
       );
 
-      console.log("[usePendingMeals] overdueMeals count:", overdueMeals.length);
-      overdueMeals.forEach(m => console.log("[usePendingMeals] overdue:", m.meal_type, m.recipe_name));
-
       // Encontrar refeições FUTURAS (ainda não começaram) - apenas das válidas
       const futureMeals = validMeals.filter(meal => 
         meal.actual_date && !isMealPast(meal.meal_type, meal.actual_date) && !isMealCurrent(meal.meal_type, meal.actual_date)
       );
-
-      console.log("[usePendingMeals] futureMeals count:", futureMeals.length);
 
       // Ordenar refeições futuras por data e horário (mais próxima primeiro)
       const sortedFutureMeals = futureMeals.sort((a, b) => {
@@ -477,8 +467,6 @@ export function usePendingMeals() {
       // A "próxima refeição" é: refeição atual OU a primeira futura (se não há atual)
       const nextMeal = currentMeal ? [currentMeal] : (sortedFutureMeals.length > 0 ? [sortedFutureMeals[0]] : []);
 
-      console.log("[usePendingMeals] nextMeal:", nextMeal.length > 0 ? nextMeal[0].recipe_name : "none");
-
       // Ordenar atrasadas por data DECRESCENTE (mais recente primeiro)
       const sortedOverdueMeals = overdueMeals.sort((a, b) => {
         const dateA = a.actual_date?.getTime() || 0;
@@ -492,8 +480,6 @@ export function usePendingMeals() {
       // Combinar: próxima refeição + atrasadas
       // A próxima refeição vem primeiro para ser identificada como "on_time"
       const combinedMeals = [...nextMeal, ...sortedOverdueMeals];
-
-      console.log("[usePendingMeals] combinedMeals count:", combinedMeals.length);
 
       setPendingMeals(combinedMeals);
     } catch (error) {

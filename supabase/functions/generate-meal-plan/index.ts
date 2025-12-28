@@ -19,6 +19,8 @@ interface NutritionistFood {
   id: string;
   name: string;
   category: string;
+  component_type: string;
+  portion_label: string;
   calories_per_100g: number;
   protein_per_100g: number;
   carbs_per_100g: number;
@@ -30,12 +32,9 @@ interface NutritionistFood {
 }
 
 interface MealIngredient {
-  name: string;
+  item: string;
   quantity: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
+  unit: string;
 }
 
 interface GeneratedMeal {
@@ -61,34 +60,35 @@ interface CustomMealTimesWithExtras {
   extras?: ExtraMeal[];
 }
 
-// ============= MEAL COMPOSITION RULES =============
-const MEAL_COMPOSITION: Record<string, { categories: string[]; description: string }> = {
+// ============= MEAL COMPOSITION RULES (based on nutritionist standards) =============
+// Each meal type has required component_types
+const MEAL_COMPOSITION: Record<string, { components: string[]; description: string }> = {
   cafe_manha: {
-    categories: ["cafe", "fruta"],
+    components: ["beverage", "breakfast_carb", "breakfast_protein", "breakfast_fruit"],
     description: "Café da Manhã"
   },
   almoco: {
-    categories: ["carb", "protein", "legume", "vegetal"],
+    components: ["main_protein", "rice", "beans", "vegetable"],
     description: "Almoço"
   },
-  lanche: {
-    categories: ["lanche"],
-    description: "Lanche"
-  },
   lanche_manha: {
-    categories: ["lanche", "fruta"],
+    components: ["snack_main"],
     description: "Lanche da Manhã"
   },
   lanche_tarde: {
-    categories: ["lanche", "fruta"],
+    components: ["snack_main", "snack_complement"],
     description: "Lanche da Tarde"
   },
+  lanche: {
+    components: ["snack_main", "snack_complement"],
+    description: "Lanche"
+  },
   jantar: {
-    categories: ["carb", "protein", "vegetal"],
+    components: ["light_dinner"],
     description: "Jantar"
   },
   ceia: {
-    categories: ["ceia", "fruta"],
+    components: ["supper"],
     description: "Ceia"
   }
 };
@@ -128,7 +128,7 @@ function normalizeMealType(mealType: string): string {
 }
 
 function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimesWithExtras | null): string[] {
-  const defaultMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+  const defaultMealTypes = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
   
   if (!customMealTimes || typeof customMealTimes !== 'object') {
     return defaultMealTypes;
@@ -178,22 +178,19 @@ function getMealTypeLabel(mealType: string, customMealTimes?: CustomMealTimesWit
 function calculateCaloriesPerMeal(dailyCalories: number, mealTypes: string[]): Record<string, number> {
   const caloriesPerMeal: Record<string, number> = {};
   
-  let totalPercentage = 0;
   const standardMeals: string[] = [];
   const extraMeals: string[] = [];
   
   for (const mealType of mealTypes) {
     if (CALORIE_DISTRIBUTION[mealType] !== undefined) {
       standardMeals.push(mealType);
-      totalPercentage += CALORIE_DISTRIBUTION[mealType];
     } else {
       extraMeals.push(mealType);
     }
   }
   
-  // Redistribute if we have extras
   if (extraMeals.length > 0) {
-    const reductionFactor = 0.92; // Reduce standard meals by 8%
+    const reductionFactor = 0.92;
     const extraPercentage = (standardMeals.length * 0.08 * CALORIE_DISTRIBUTION.lanche) / extraMeals.length;
     
     for (const mealType of standardMeals) {
@@ -226,25 +223,37 @@ function filterFoodsForUser(foods: NutritionistFood[], profile: UserProfile): Nu
     }
     
     // Check dietary preference
-    if (dietaryPref === 'vegana' && !food.dietary_tags.includes('vegano')) {
+    if (dietaryPref === 'vegana' && !food.dietary_tags.includes('vegana')) {
       return false;
     }
-    if (dietaryPref === 'vegetariana' && !food.dietary_tags.includes('vegetariano') && !food.dietary_tags.includes('vegano')) {
+    if (dietaryPref === 'vegetariana' && !food.dietary_tags.includes('vegetariana') && !food.dietary_tags.includes('vegana')) {
       return false;
     }
     if (dietaryPref === 'low_carb' && !food.dietary_tags.includes('low_carb')) {
-      // For low_carb, prefer low_carb tagged foods but don't exclude others with reasonable carbs
       if (food.carbs_per_100g > 30) return false;
+    }
+    if (dietaryPref === 'pescetariana') {
+      // Pescetarian: fish + vegetarian foods
+      const isVegetarian = food.dietary_tags.includes('vegetariana') || food.dietary_tags.includes('vegana');
+      const isFish = food.dietary_tags.includes('pescetariana');
+      if (!isVegetarian && !isFish) return false;
     }
     
     // Check intolerances
     for (const intolerance of intolerances) {
-      const tag = `sem_${intolerance.toLowerCase().replace('intolerancia_', '')}`;
-      if (intolerance.includes('gluten') && !food.dietary_tags.includes('sem_gluten')) {
-        return false;
+      if (intolerance.includes('lactose')) {
+        const hasDairy = ['leite', 'queijo', 'iogurte', 'ricota', 'cottage', 'requeijão']
+          .some(dairy => foodNameLower.includes(dairy));
+        if (hasDairy && !food.dietary_tags.includes('sem_lactose')) {
+          return false;
+        }
       }
-      if (intolerance.includes('lactose') && !food.dietary_tags.includes('sem_lactose')) {
-        return false;
+      if (intolerance.includes('gluten')) {
+        const hasGluten = ['pão', 'aveia', 'bolo', 'biscoito', 'torrada', 'cuscuz']
+          .some(gluten => foodNameLower.includes(gluten));
+        if (hasGluten && !food.dietary_tags.includes('sem_gluten')) {
+          return false;
+        }
       }
     }
     
@@ -252,23 +261,23 @@ function filterFoodsForUser(foods: NutritionistFood[], profile: UserProfile): Nu
   });
 }
 
-// Pick a random food from a category that's compatible with the meal type
-function pickRandomFood(
+// Pick a random food by component_type
+function pickRandomByComponentType(
   foods: NutritionistFood[],
-  category: string,
+  componentType: string,
   mealType: string,
   usedFoodsToday: Set<string>
 ): NutritionistFood | null {
   const compatible = foods.filter(f => 
-    f.category === category && 
+    f.component_type === componentType && 
     f.compatible_meals.includes(mealType) &&
     !usedFoodsToday.has(f.id)
   );
   
   if (compatible.length === 0) {
-    // Fallback: allow used foods if no fresh options
+    // Fallback: allow used foods
     const fallback = foods.filter(f => 
-      f.category === category && 
+      f.component_type === componentType && 
       f.compatible_meals.includes(mealType)
     );
     if (fallback.length === 0) return null;
@@ -278,26 +287,15 @@ function pickRandomFood(
   return compatible[Math.floor(Math.random() * compatible.length)];
 }
 
-// Adjust portion to meet calorie target
-function adjustPortion(food: NutritionistFood, targetCalories: number, maxPortion: number = 300): number {
-  const caloriesPer100g = food.calories_per_100g || 100;
-  const calculatedPortion = (targetCalories / caloriesPer100g) * 100;
-  
-  // Clamp between min and max reasonable portions
-  const minPortion = 30;
-  return Math.round(Math.max(minPortion, Math.min(calculatedPortion, maxPortion)));
-}
-
 // Generate a single meal using component-based approach
 function generateMealFromComponents(
   mealType: string,
-  targetCalories: number,
   filteredFoods: NutritionistFood[],
   usedFoodsToday: Set<string>,
   customMealTimes?: CustomMealTimesWithExtras | null
 ): GeneratedMeal {
   const composition = MEAL_COMPOSITION[mealType] || MEAL_COMPOSITION.lanche;
-  const categories = composition.categories;
+  const componentTypes = composition.components;
   const label = getMealTypeLabel(mealType, customMealTimes);
   
   const ingredients: MealIngredient[] = [];
@@ -306,61 +304,40 @@ function generateMealFromComponents(
   let totalCarbs = 0;
   let totalFat = 0;
   
-  // Distribute calories across components
-  const caloriesPerComponent = Math.round(targetCalories / categories.length);
-  
-  for (const category of categories) {
-    const food = pickRandomFood(filteredFoods, category, mealType, usedFoodsToday);
+  for (const componentType of componentTypes) {
+    const food = pickRandomByComponentType(filteredFoods, componentType, mealType, usedFoodsToday);
     
     if (food) {
       usedFoodsToday.add(food.id);
       
-      // For simpler meals (lanches), use default portion
-      // For main meals, adjust to meet calorie target
-      let portion: number;
-      if (mealType.includes('lanche') || mealType === 'ceia') {
-        portion = food.default_portion_grams;
-      } else {
-        portion = adjustPortion(food, caloriesPerComponent);
-      }
-      
+      // Use default portion and portion_label (nutritionist format)
+      const portion = food.default_portion_grams;
       const factor = portion / 100;
-      const ingredientCalories = Math.round(food.calories_per_100g * factor);
-      const ingredientProtein = Math.round(food.protein_per_100g * factor * 10) / 10;
-      const ingredientCarbs = Math.round(food.carbs_per_100g * factor * 10) / 10;
-      const ingredientFat = Math.round(food.fat_per_100g * factor * 10) / 10;
       
+      // Add ingredient with nutritionist-style format
       ingredients.push({
-        name: food.name,
-        quantity: `${portion}g`,
-        calories: ingredientCalories,
-        protein: ingredientProtein,
-        carbs: ingredientCarbs,
-        fat: ingredientFat
+        item: food.name,
+        quantity: food.portion_label, // "1 fatia", "3 colheres de sopa", etc.
+        unit: ""
       });
       
-      totalCalories += ingredientCalories;
-      totalProtein += ingredientProtein;
-      totalCarbs += ingredientCarbs;
-      totalFat += ingredientFat;
+      totalCalories += Math.round(food.calories_per_100g * factor);
+      totalProtein += food.protein_per_100g * factor;
+      totalCarbs += food.carbs_per_100g * factor;
+      totalFat += food.fat_per_100g * factor;
     }
   }
   
-  // Generate recipe name from ingredients
-  const recipeName = ingredients.length > 0 
-    ? `${label}: ${ingredients.map(i => i.name).join(', ')}`
-    : `${label} Simples`;
-  
   return {
     meal_type: mealType,
-    recipe_name: recipeName,
+    recipe_name: label, // Just the meal type label, e.g., "Café da Manhã"
     recipe_calories: Math.round(totalCalories),
     recipe_protein: Math.round(totalProtein * 10) / 10,
     recipe_carbs: Math.round(totalCarbs * 10) / 10,
     recipe_fat: Math.round(totalFat * 10) / 10,
     recipe_prep_time: 15,
     recipe_ingredients: ingredients,
-    recipe_instructions: [] // Always empty in nutritionist mode
+    recipe_instructions: []
   };
 }
 
@@ -368,7 +345,6 @@ function generateMealFromComponents(
 function generateDayMeals(
   dayIndex: number,
   mealTypes: string[],
-  caloriesPerMeal: Record<string, number>,
   filteredFoods: NutritionistFood[],
   previousDayFoods: Set<string>,
   customMealTimes?: CustomMealTimesWithExtras | null
@@ -377,11 +353,8 @@ function generateDayMeals(
   const meals: GeneratedMeal[] = [];
   
   for (const mealType of mealTypes) {
-    const targetCalories = caloriesPerMeal[mealType] || 300;
-    
     const meal = generateMealFromComponents(
       mealType,
-      targetCalories,
       filteredFoods,
       usedFoodsToday,
       customMealTimes
@@ -392,9 +365,7 @@ function generateDayMeals(
       logStep(`Generated meal`, { 
         dayIndex, 
         mealType, 
-        recipeName: meal.recipe_name,
-        calories: meal.recipe_calories,
-        ingredients: meal.recipe_ingredients.length
+        ingredients: meal.recipe_ingredients.map(i => `${i.quantity} de ${i.item}`)
       });
     }
   }
@@ -416,7 +387,7 @@ serve(async (req) => {
   );
 
   try {
-    logStep("Function started - Component-Based Nutritionist Mode");
+    logStep("Function started - Component-Based Nutritionist Mode v2");
 
     // Auth
     const authHeader = req.headers.get("Authorization");
@@ -527,7 +498,7 @@ serve(async (req) => {
     });
 
     // Filter foods based on user restrictions
-    const filteredFoods = filterFoodsForUser(allFoods, profile as UserProfile);
+    const filteredFoods = filterFoodsForUser(allFoods as NutritionistFood[], profile as UserProfile);
     logStep("Foods filtered for user", { 
       original: allFoods.length, 
       filtered: filteredFoods.length 
@@ -544,10 +515,6 @@ serve(async (req) => {
     // Extract meal types
     const mealTypesToGenerate = getMealTypesFromCustomTimes(customMealTimes as CustomMealTimesWithExtras | null);
     logStep("Meal types to generate", { mealTypes: mealTypesToGenerate });
-    
-    // Calculate calories per meal
-    const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, mealTypesToGenerate);
-    logStep("Calories per meal", caloriesPerMeal);
 
     // Generate days
     const allDays: { day_index: number; day_name: string; meals: GeneratedMeal[] }[] = [];
@@ -568,7 +535,6 @@ serve(async (req) => {
       const { meals, usedFoods } = generateDayMeals(
         i,
         mealTypesToGenerate,
-        caloriesPerMeal,
         filteredFoods,
         previousDayFoods,
         customMealTimes as CustomMealTimesWithExtras | null
@@ -580,7 +546,6 @@ serve(async (req) => {
         meals
       });
       
-      // Use this day's foods to avoid in next day (for variety)
       previousDayFoods = usedFoods;
     }
     
@@ -590,7 +555,6 @@ serve(async (req) => {
       totalMeals: allDays.reduce((sum, d) => sum + d.meals.length, 0)
     });
     
-    // If all days were skipped
     if (allDays.length === 0 && skippedDays > 0) {
       logStep("All requested days already exist");
       return new Response(JSON.stringify({

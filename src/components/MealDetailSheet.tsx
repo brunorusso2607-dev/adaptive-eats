@@ -380,11 +380,11 @@ export default function MealDetailSheet({
                 </CardContent>
               </Card>
 
-              {/* Ingredients */}
+              {/* Alimentos da Refeição */}
               <Card className="glass-card">
                 <CardContent className="p-4">
                   <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                    🥗 Ingredientes
+                    🍽️ Alimentos
                     {isPastMeal ? (
                       <span className="text-xs text-muted-foreground/60 font-normal ml-auto flex items-center gap-1">
                         <Clock className="w-3 h-3" />
@@ -432,23 +432,23 @@ export default function MealDetailSheet({
                 </CardContent>
               </Card>
 
-              {/* Instructions */}
-              {instructions.length > 0 && (
+              {/* Dicas de Preparo (opcional) */}
+              {instructions.length > 0 && instructions[0] !== "" && (
                 <Card className="glass-card">
                   <CardContent className="p-4">
                     <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-                      👨‍🍳 Modo de Preparo
+                      💡 Dicas de Preparo
                     </h3>
-                    <ol className="space-y-4">
+                    <ul className="space-y-2">
                       {instructions.map((instruction, index) => (
-                        <li key={index} className="flex gap-4">
-                          <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
+                        <li key={index} className="flex gap-3 items-start">
+                          <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 text-primary text-sm font-medium">
                             {index + 1}
                           </div>
-                          <p className="flex-1 pt-1">{instruction}</p>
+                          <p className="flex-1 text-muted-foreground">{instruction}</p>
                         </li>
                       ))}
-                    </ol>
+                    </ul>
                   </CardContent>
                 </Card>
               )}

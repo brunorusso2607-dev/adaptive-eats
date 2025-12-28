@@ -395,7 +395,7 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
             className="text-sm text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors py-1 disabled:opacity-50"
           >
             <Eye className="w-4 h-4 text-primary stroke-[1.5]" />
-            Receita
+            Ver detalhes
           </button>
 
 

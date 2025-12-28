@@ -37,6 +37,7 @@ export function useFoodsSearch() {
         .from("foods")
         .select("*")
         .eq("is_recipe", false)
+        .eq("is_verified", true)
         .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
         .order("name")
         .limit(20);

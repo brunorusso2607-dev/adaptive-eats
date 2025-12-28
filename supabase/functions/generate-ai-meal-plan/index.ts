@@ -708,6 +708,264 @@ const CALORIE_DISTRIBUTION: Record<string, number> = {
   ceia: 0.08,
 };
 
+// ============= INGREDIENTES PROIBIDOS POR RESTRICAO =============
+const FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
+  // Intolerâncias
+  lactose: ['leite', 'queijo', 'iogurte', 'manteiga', 'requeijao', 'creme de leite', 'nata', 'coalho', 'mussarela', 'parmesao', 'ricota', 'cottage', 'cream cheese', 'chantilly', 'leite condensado', 'doce de leite', 'milk', 'cheese', 'yogurt', 'butter', 'cream', 'fromage', 'lait', 'beurre', 'formaggio', 'latte', 'burro', 'käse', 'milch', 'queso', 'crema', 'mantequilla'],
+  gluten: ['trigo', 'pao', 'massa', 'macarrao', 'pizza', 'bolo', 'biscoito', 'bolacha', 'torrada', 'farinha de trigo', 'cevada', 'centeio', 'aveia', 'wheat', 'bread', 'pasta', 'cake', 'cookie', 'biscuit', 'flour', 'barley', 'rye', 'oat', 'pain', 'gateau', 'farine', 'pane', 'torta', 'farina', 'brot', 'kuchen', 'mehl', 'pan', 'harina', 'galleta'],
+  amendoim: ['amendoim', 'pasta de amendoim', 'peanut', 'cacahuete', 'mani', 'arachide', 'erdnuss'],
+  frutos_do_mar: ['camarao', 'lagosta', 'caranguejo', 'siri', 'marisco', 'lula', 'polvo', 'ostra', 'mexilhao', 'shrimp', 'lobster', 'crab', 'oyster', 'squid', 'octopus', 'crevette', 'homard', 'crabe', 'gambero', 'aragosta', 'granchio', 'garnele', 'hummer', 'krabbe', 'camaron', 'langosta', 'cangrejo'],
+  peixe: ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'robalo', 'fish', 'salmon', 'tuna', 'cod', 'sardine', 'poisson', 'saumon', 'thon', 'morue', 'pesce', 'salmone', 'tonno', 'merluzzo', 'fisch', 'lachs', 'thunfisch', 'kabeljau', 'pescado', 'atun', 'bacalao'],
+  ovos: ['ovo', 'ovos', 'gema', 'clara', 'omelete', 'egg', 'eggs', 'omelette', 'oeuf', 'omelette', 'uovo', 'uova', 'frittata', 'ei', 'eier', 'omelett', 'huevo', 'huevos', 'tortilla'],
+  soja: ['soja', 'tofu', 'edamame', 'leite de soja', 'molho de soja', 'shoyu', 'soy', 'soya', 'sojamilch', 'sojasauce'],
+  cafeina: ['cafe', 'cha preto', 'cha verde', 'guarana', 'chocolate', 'coffee', 'tea', 'cafe', 'the', 'caffe', 'te', 'kaffee', 'tee', 'schokolade'],
+  milho: ['milho', 'fuba', 'polenta', 'pipoca', 'corn', 'maize', 'mais', 'polenta', 'popcorn', 'granoturco', 'maiz', 'palomitas'],
+  leguminosas: ['feijao', 'lentilha', 'grao de bico', 'ervilha', 'fava', 'beans', 'lentils', 'chickpeas', 'peas', 'haricots', 'lentilles', 'pois chiches', 'petits pois', 'fagioli', 'lenticchie', 'ceci', 'piselli', 'bohnen', 'linsen', 'kichererbsen', 'erbsen', 'frijoles', 'lentejas', 'garbanzos', 'guisantes'],
+};
+
+// Ingredientes de origem animal (para vegano/vegetariano)
+const ANIMAL_INGREDIENTS = ['carne', 'frango', 'porco', 'boi', 'peru', 'pato', 'bacon', 'presunto', 'salsicha', 'linguica', 'mortadela', 'salame', 'peito de frango', 'file', 'costela', 'picanha', 'alcatra', 'patinho', 'acém', 'maminha', 'coxa', 'sobrecoxa', 'asa', 'meat', 'chicken', 'pork', 'beef', 'turkey', 'duck', 'ham', 'sausage', 'viande', 'poulet', 'porc', 'boeuf', 'dinde', 'jambon', 'saucisse', 'carne', 'pollo', 'maiale', 'manzo', 'tacchino', 'prosciutto', 'fleisch', 'hähnchen', 'schwein', 'rind', 'pute', 'schinken', 'wurst', 'cerdo', 'res', 'pavo', 'jamon', 'salchicha'];
+
+const DAIRY_AND_EGGS = ['leite', 'queijo', 'iogurte', 'ovo', 'ovos', 'manteiga', 'creme de leite', 'requeijao', 'milk', 'cheese', 'yogurt', 'egg', 'eggs', 'butter', 'cream', 'lait', 'fromage', 'yaourt', 'oeuf', 'oeufs', 'beurre', 'creme', 'latte', 'formaggio', 'uovo', 'uova', 'burro', 'panna', 'milch', 'käse', 'joghurt', 'ei', 'eier', 'sahne', 'leche', 'queso', 'yogur', 'huevo', 'huevos', 'mantequilla', 'crema', 'mel', 'honey', 'miel', 'honig'];
+
+const FISH_INGREDIENTS = ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'fish', 'salmon', 'tuna', 'cod', 'sardine', 'poisson', 'saumon', 'thon', 'pesce', 'salmone', 'tonno', 'fisch', 'lachs', 'thunfisch', 'pescado', 'atun'];
+
+// ============= VALIDACAO POS-GERACAO =============
+interface ValidationResult {
+  isValid: boolean;
+  violations: Array<{
+    food: string;
+    reason: string;
+    restriction: string;
+  }>;
+  cleanedFoods: string[];
+}
+
+interface IntoleranceMapping {
+  ingredient: string;
+  intolerance_key: string;
+}
+
+interface SafeKeyword {
+  keyword: string;
+  intolerance_key: string;
+}
+
+async function fetchIntoleranceMappings(supabaseClient: any): Promise<{
+  mappings: IntoleranceMapping[];
+  safeKeywords: SafeKeyword[];
+}> {
+  const [mappingsResult, safeKeywordsResult] = await Promise.all([
+    supabaseClient.from('intolerance_mappings').select('ingredient, intolerance_key'),
+    supabaseClient.from('intolerance_safe_keywords').select('keyword, intolerance_key'),
+  ]);
+
+  return {
+    mappings: mappingsResult.data || [],
+    safeKeywords: safeKeywordsResult.data || [],
+  };
+}
+
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function checkForbiddenIngredient(
+  food: string,
+  forbiddenList: string[],
+  safeKeywords: string[] = []
+): boolean {
+  const normalizedFood = normalizeText(food);
+  
+  // Primeiro verifica se é seguro (ex: "leite de coco" é seguro para lactose)
+  for (const safe of safeKeywords) {
+    if (normalizedFood.includes(normalizeText(safe))) {
+      return false; // É seguro, não é proibido
+    }
+  }
+  
+  // Depois verifica se contém ingrediente proibido
+  for (const forbidden of forbiddenList) {
+    if (normalizedFood.includes(normalizeText(forbidden))) {
+      return true; // Contém ingrediente proibido
+    }
+  }
+  
+  return false;
+}
+
+function validateFood(
+  food: string,
+  restrictions: {
+    intolerances: string[];
+    dietaryPreference: string;
+    excludedIngredients: string[];
+  },
+  dbMappings: IntoleranceMapping[],
+  dbSafeKeywords: SafeKeyword[]
+): { isValid: boolean; reason?: string; restriction?: string } {
+  const normalizedFood = normalizeText(food);
+  
+  // 1. Verificar ingredientes excluídos pelo usuário
+  for (const excluded of restrictions.excludedIngredients) {
+    if (normalizedFood.includes(normalizeText(excluded))) {
+      return {
+        isValid: false,
+        reason: `Contém ingrediente excluído: ${excluded}`,
+        restriction: 'excluded_ingredient',
+      };
+    }
+  }
+  
+  // 2. Verificar intolerâncias
+  for (const intolerance of restrictions.intolerances) {
+    // Safe keywords para esta intolerância
+    const safeForIntolerance = dbSafeKeywords
+      .filter(sk => sk.intolerance_key === intolerance)
+      .map(sk => sk.keyword);
+    
+    // Primeiro verifica se é seguro
+    let isSafe = false;
+    for (const safe of safeForIntolerance) {
+      if (normalizedFood.includes(normalizeText(safe))) {
+        isSafe = true;
+        break;
+      }
+    }
+    
+    if (!isSafe) {
+      // Verifica mapeamentos do banco
+      const dbForbidden = dbMappings
+        .filter(m => m.intolerance_key === intolerance)
+        .map(m => m.ingredient);
+      
+      for (const forbidden of dbForbidden) {
+        if (normalizedFood.includes(normalizeText(forbidden))) {
+          return {
+            isValid: false,
+            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
+            restriction: `intolerance_${intolerance}`,
+          };
+        }
+      }
+      
+      // Verifica lista hardcoded
+      const hardcodedForbidden = FORBIDDEN_INGREDIENTS[intolerance] || [];
+      for (const forbidden of hardcodedForbidden) {
+        if (normalizedFood.includes(normalizeText(forbidden))) {
+          return {
+            isValid: false,
+            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
+            restriction: `intolerance_${intolerance}`,
+          };
+        }
+      }
+    }
+  }
+  
+  // 3. Verificar preferência dietética
+  const diet = restrictions.dietaryPreference;
+  
+  if (diet === 'vegana') {
+    // Vegano: sem carne, peixe, laticínios, ovos
+    const allAnimal = [...ANIMAL_INGREDIENTS, ...DAIRY_AND_EGGS, ...FISH_INGREDIENTS];
+    for (const animal of allAnimal) {
+      if (normalizedFood.includes(normalizeText(animal))) {
+        return {
+          isValid: false,
+          reason: `Contém ingrediente animal: ${animal}`,
+          restriction: 'dietary_vegan',
+        };
+      }
+    }
+  } else if (diet === 'vegetariana') {
+    // Vegetariano: sem carne e peixe
+    const meatAndFish = [...ANIMAL_INGREDIENTS, ...FISH_INGREDIENTS];
+    for (const item of meatAndFish) {
+      if (normalizedFood.includes(normalizeText(item))) {
+        return {
+          isValid: false,
+          reason: `Contém carne/peixe: ${item}`,
+          restriction: 'dietary_vegetarian',
+        };
+      }
+    }
+  } else if (diet === 'pescetariana') {
+    // Pescetariano: sem carne, mas pode peixe
+    for (const meat of ANIMAL_INGREDIENTS) {
+      if (normalizedFood.includes(normalizeText(meat))) {
+        return {
+          isValid: false,
+          reason: `Contém carne: ${meat}`,
+          restriction: 'dietary_pescetarian',
+        };
+      }
+    }
+  }
+  
+  return { isValid: true };
+}
+
+function validateMealPlan(
+  dayPlan: SimpleDayPlan,
+  restrictions: {
+    intolerances: string[];
+    dietaryPreference: string;
+    excludedIngredients: string[];
+  },
+  dbMappings: IntoleranceMapping[],
+  dbSafeKeywords: SafeKeyword[]
+): {
+  validatedPlan: SimpleDayPlan;
+  violations: Array<{ meal: string; food: string; reason: string; restriction: string }>;
+} {
+  const violations: Array<{ meal: string; food: string; reason: string; restriction: string }> = [];
+  
+  const validatedMeals = dayPlan.meals.map(meal => {
+    const validatedOptions = meal.options.map(option => {
+      const cleanedFoods: string[] = [];
+      
+      for (const food of option.foods) {
+        const validation = validateFood(food, restrictions, dbMappings, dbSafeKeywords);
+        
+        if (validation.isValid) {
+          cleanedFoods.push(food);
+        } else {
+          violations.push({
+            meal: meal.label,
+            food,
+            reason: validation.reason || 'Restrição violada',
+            restriction: validation.restriction || 'unknown',
+          });
+          // Não adiciona o alimento violador
+        }
+      }
+      
+      return {
+        ...option,
+        foods: cleanedFoods.length > 0 ? cleanedFoods : ['Opção removida por restrição'],
+      };
+    });
+    
+    return {
+      ...meal,
+      options: validatedOptions,
+    };
+  });
+  
+  return {
+    validatedPlan: {
+      ...dayPlan,
+      meals: validatedMeals,
+    },
+    violations,
+  };
+}
+
 // ============= MAIN SERVER =============
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -769,6 +1027,14 @@ serve(async (req) => {
 
     logStep("User restrictions", restrictions);
 
+    // Fetch intolerance mappings from database for validation
+    logStep("Fetching intolerance mappings from database");
+    const { mappings: dbMappings, safeKeywords: dbSafeKeywords } = await fetchIntoleranceMappings(supabaseClient);
+    logStep("Intolerance mappings loaded", { 
+      mappingsCount: dbMappings.length, 
+      safeKeywordsCount: dbSafeKeywords.length 
+    });
+
     // Build meals with target calories and regional labels
     const meals = mealTypes.map((type: string) => ({
       type,
@@ -778,6 +1044,7 @@ serve(async (req) => {
 
     // Generate plan for each day
     const generatedDays: SimpleDayPlan[] = [];
+    const allViolations: Array<{ day: number; meal: string; food: string; reason: string; restriction: string }> = [];
 
     for (let dayIndex = 0; dayIndex < daysCount; dayIndex++) {
       const dayName = regional.dayNames[dayIndex % 7];
@@ -840,11 +1107,46 @@ serve(async (req) => {
         content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
         const dayPlan: SimpleDayPlan = JSON.parse(content);
-        generatedDays.push(dayPlan);
         
-        logStep(`Day ${dayIndex + 1} generated successfully`, { 
-          mealsCount: dayPlan.meals?.length,
-          totalCalories: dayPlan.total_calories 
+        // ============= VALIDAÇÃO PÓS-GERAÇÃO =============
+        logStep(`Validating day ${dayIndex + 1} against restrictions`);
+        
+        const validationResult = validateMealPlan(
+          dayPlan,
+          {
+            intolerances: restrictions.intolerances,
+            dietaryPreference: restrictions.dietaryPreference,
+            excludedIngredients: restrictions.excludedIngredients,
+          },
+          dbMappings,
+          dbSafeKeywords
+        );
+        
+        // Registrar violações encontradas
+        if (validationResult.violations.length > 0) {
+          logStep(`⚠️ VIOLATIONS FOUND on day ${dayIndex + 1}`, {
+            count: validationResult.violations.length,
+            violations: validationResult.violations,
+          });
+          
+          // Adicionar ao array de todas as violações
+          validationResult.violations.forEach(v => {
+            allViolations.push({
+              day: dayIndex + 1,
+              ...v,
+            });
+          });
+        } else {
+          logStep(`✓ Day ${dayIndex + 1} passed validation - no violations`);
+        }
+        
+        // Usar o plano validado (com alimentos problemáticos removidos)
+        generatedDays.push(validationResult.validatedPlan);
+        
+        logStep(`Day ${dayIndex + 1} generated and validated`, { 
+          mealsCount: validationResult.validatedPlan.meals?.length,
+          totalCalories: validationResult.validatedPlan.total_calories,
+          violationsRemoved: validationResult.violations.length,
         });
       } catch (parseError) {
         logStep("JSON parse error", { error: parseError, content: content.substring(0, 500) });
@@ -852,7 +1154,20 @@ serve(async (req) => {
       }
     }
 
-    logStep("All days generated", { totalDays: generatedDays.length });
+    // Log summary of all violations
+    if (allViolations.length > 0) {
+      logStep("⚠️ TOTAL VIOLATIONS SUMMARY", {
+        totalViolations: allViolations.length,
+        byRestriction: allViolations.reduce((acc, v) => {
+          acc[v.restriction] = (acc[v.restriction] || 0) + 1;
+          return acc;
+        }, {} as Record<string, number>),
+      });
+    } else {
+      logStep("✓ ALL DAYS PASSED VALIDATION - no violations detected");
+    }
+
+    logStep("All days generated and validated", { totalDays: generatedDays.length });
 
     return new Response(
       JSON.stringify({
@@ -867,6 +1182,10 @@ serve(async (req) => {
             measurement_system: regional.measurementSystem,
           },
           days: generatedDays,
+        },
+        validation: {
+          totalViolationsRemoved: allViolations.length,
+          violations: allViolations.length > 0 ? allViolations : undefined,
         },
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

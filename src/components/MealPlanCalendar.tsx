@@ -129,12 +129,17 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return ranges;
   }, [getTimeRanges]);
 
-  // Lista de tipos de refeição ordenados (inclui extras)
+  // Lista de tipos de refeição que existem no plano, ordenados
   const orderedMealTypes = useMemo(() => {
+    // Extrair apenas os meal_types que existem no plano
+    const planMealTypes = new Set(mealPlan.items.map(item => item.meal_type));
+    
+    // Usar a ordem global, mas filtrar apenas os que existem no plano
     const order = getMealOrder();
-    if (order.length === 0) return [...STANDARD_MEAL_TYPES];
-    return order;
-  }, [getMealOrder]);
+    const orderedList = order.length > 0 ? order : [...STANDARD_MEAL_TYPES];
+    
+    return orderedList.filter(mealType => planMealTypes.has(mealType));
+  }, [getMealOrder, mealPlan.items]);
 
   // Labels dinâmicas para refeições (inclui extras)
   const mealLabels = useMemo(() => {

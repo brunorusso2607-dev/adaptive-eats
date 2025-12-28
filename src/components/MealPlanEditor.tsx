@@ -1,11 +1,10 @@
 import { useState, useEffect } from "react";
-import { ArrowLeft, Calendar, Save, Loader2, Trash2, Clock } from "lucide-react";
+import { ArrowLeft, Calendar, Save, Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -29,17 +28,7 @@ interface MealPlan {
   end_date: string;
   is_active: boolean;
   status?: string;
-  custom_meal_times?: CustomMealTimes | null;
 }
-
-// Type guard for custom meal times
-const isCustomMealTimes = (value: unknown): value is CustomMealTimes | null => {
-  if (value === null || value === undefined) return true;
-  if (typeof value !== 'object') return false;
-  if (Array.isArray(value)) return false;
-  const obj = value as Record<string, unknown>;
-  return Object.values(obj).every(v => typeof v === 'string');
-};
 
 interface MealPlanEditorProps {
   planId: string;
@@ -59,7 +48,6 @@ export default function MealPlanEditor({
   const [isDeleting, setIsDeleting] = useState(false);
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [planName, setPlanName] = useState("");
-  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch plan data
@@ -69,17 +57,11 @@ export default function MealPlanEditor({
       try {
         const { data, error } = await supabase
           .from("meal_plans")
-          .select("*")
+          .select("id, name, start_date, end_date, is_active, status")
           .eq("id", planId)
           .single();
 
         if (error) throw error;
-
-        const customTimes = isCustomMealTimes(data.custom_meal_times) 
-          ? data.custom_meal_times as CustomMealTimes
-          : null;
-
-        console.log("[MealPlanEditor] Loaded plan with custom_meal_times:", customTimes);
 
         setPlan({
           id: data.id,
@@ -88,10 +70,8 @@ export default function MealPlanEditor({
           end_date: data.end_date,
           is_active: data.is_active,
           status: data.status ?? undefined,
-          custom_meal_times: customTimes
         });
         setPlanName(data.name);
-        setCustomMealTimes(customTimes);
       } catch (error) {
         console.error("Error fetching plan:", error);
         toast.error("Erro ao carregar plano");
@@ -109,12 +89,6 @@ export default function MealPlanEditor({
     setHasChanges(true);
   };
 
-  const handleCustomTimesChange = (times: CustomMealTimes | null) => {
-    console.log("[MealPlanEditor] Custom times changed:", times);
-    setCustomMealTimes(times);
-    setHasChanges(true);
-  };
-
   const handleSave = async () => {
     if (!plan) return;
 
@@ -124,7 +98,6 @@ export default function MealPlanEditor({
         .from("meal_plans")
         .update({
           name: planName.trim() || plan.name,
-          custom_meal_times: customMealTimes as any,
           updated_at: new Date().toISOString()
         })
         .eq("id", planId);
@@ -212,7 +185,7 @@ export default function MealPlanEditor({
           <div>
             <h2 className="font-display text-xl font-bold text-foreground">Editar Plano</h2>
             <p className="text-sm text-muted-foreground">
-              Configure horários e detalhes do seu plano
+              Altere o nome ou exclua o plano
             </p>
           </div>
         </div>
@@ -255,26 +228,6 @@ export default function MealPlanEditor({
               </span>
             )}
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Custom Meal Times Editor */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Clock className="h-4 w-4 text-primary" />
-            Horários e Refeições Extras
-          </CardTitle>
-          <CardDescription>
-            Personalize os horários das refeições e adicione refeições extras ao seu plano.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <CustomMealTimesEditor
-            customTimes={customMealTimes}
-            onChange={handleCustomTimesChange}
-            isLoading={isLoading}
-          />
         </CardContent>
       </Card>
 

@@ -1127,6 +1127,60 @@ export type Database = {
         }
         Relationships: []
       }
+      nutritionist_foods: {
+        Row: {
+          calories_per_100g: number
+          carbs_per_100g: number
+          category: string
+          compatible_meals: string[]
+          created_at: string
+          default_portion_grams: number
+          dietary_tags: string[] | null
+          fat_per_100g: number
+          fiber_per_100g: number | null
+          id: string
+          is_active: boolean
+          name: string
+          protein_per_100g: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          calories_per_100g?: number
+          carbs_per_100g?: number
+          category: string
+          compatible_meals?: string[]
+          created_at?: string
+          default_portion_grams?: number
+          dietary_tags?: string[] | null
+          fat_per_100g?: number
+          fiber_per_100g?: number | null
+          id?: string
+          is_active?: boolean
+          name: string
+          protein_per_100g?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          calories_per_100g?: number
+          carbs_per_100g?: number
+          category?: string
+          compatible_meals?: string[]
+          created_at?: string
+          default_portion_grams?: number
+          dietary_tags?: string[] | null
+          fat_per_100g?: number
+          fiber_per_100g?: number | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          protein_per_100g?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       onboarding_options: {
         Row: {
           category: string

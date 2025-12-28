@@ -26,9 +26,20 @@ import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { useUserProfileContext } from "@/hooks/useUserProfileContext";
+import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
 import FoodSearchPanel, { type SelectedFoodItem } from "./FoodSearchPanel";
+
+// Mapeamento de meal_type para ícones
+const MEAL_ICONS: Record<string, string> = {
+  cafe_manha: "☕",
+  lanche_manha: "🥐",
+  almoco: "🍽️",
+  lanche_tarde: "🍎",
+  jantar: "🌙",
+  ceia: "🍵"
+};
 
 type MealSlot = {
   id: string;
@@ -43,41 +54,30 @@ type MealSlot = {
   instructions: any;
 };
 
-type DayPlan = {
-  breakfast: MealSlot | null;
-  lunch: MealSlot | null;
-  snack: MealSlot | null;
-  dinner: MealSlot | null;
-  supper: MealSlot | null;
-};
+// DayPlan agora é dinâmico baseado nas configurações de refeições
+type DayPlan = Record<string, MealSlot | null>;
 
+type MealSlotConfig = {
+  key: string;
+  label: string;
+  icon: string;
+  mealType: string;
+};
 
 type CustomMealPlanBuilderProps = {
   onClose: () => void;
   onPlanGenerated: () => void;
 };
 
-const MEAL_SLOTS = [
-  { key: "breakfast" as const, label: "Café da Manhã", icon: "☕", mealType: "cafe_manha" },
-  { key: "lunch" as const, label: "Almoço", icon: "🍽️", mealType: "almoco" },
-  { key: "snack" as const, label: "Lanche", icon: "🍎", mealType: "lanche" },
-  { key: "dinner" as const, label: "Jantar", icon: "🌙", mealType: "jantar" },
-  { key: "supper" as const, label: "Ceia", icon: "🍵", mealType: "ceia" }
-];
-
-
 export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: CustomMealPlanBuilderProps) {
   const [planName, setPlanName] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
-  const [dayPlan, setDayPlan] = useState<DayPlan>({
-    breakfast: null,
-    lunch: null,
-    snack: null,
-    dinner: null,
-    supper: null
-  });
-  const [activeSlot, setActiveSlot] = useState<keyof DayPlan | null>(null);
+  const [dayPlan, setDayPlan] = useState<DayPlan>({});
+  const [activeSlot, setActiveSlot] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("search");
+
+  // Buscar configurações de refeições dinamicamente
+  const { settings: mealTimeSettings, isLoading: isLoadingMealTimes } = useMealTimeSettings();
 
   // Week/Day selection
   const today = new Date();
@@ -88,6 +88,43 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
   const { checkMeal, hasIntolerances } = useIntoleranceWarning();
   const { recipeStyle, isLoading: isLoadingProfile } = useUserProfileContext();
+
+  // Converter meal_time_settings para MEAL_SLOTS dinâmico
+  const mealSlots = useMemo((): MealSlotConfig[] => {
+    if (!mealTimeSettings || mealTimeSettings.length === 0) {
+      // Fallback se não tiver configurações
+      return [
+        { key: "cafe_manha", label: "Café da Manhã", icon: "☕", mealType: "cafe_manha" },
+        { key: "lanche_manha", label: "Lanche da Manhã", icon: "🥐", mealType: "lanche_manha" },
+        { key: "almoco", label: "Almoço", icon: "🍽️", mealType: "almoco" },
+        { key: "lanche_tarde", label: "Lanche da Tarde", icon: "🍎", mealType: "lanche_tarde" },
+        { key: "jantar", label: "Jantar", icon: "🌙", mealType: "jantar" },
+        { key: "ceia", label: "Ceia", icon: "🍵", mealType: "ceia" }
+      ];
+    }
+
+    return mealTimeSettings
+      .sort((a, b) => a.sort_order - b.sort_order)
+      .map(setting => ({
+        key: setting.meal_type,
+        label: setting.label,
+        icon: MEAL_ICONS[setting.meal_type] || "🍽️",
+        mealType: setting.meal_type
+      }));
+  }, [mealTimeSettings]);
+
+  // Inicializar dayPlan quando mealSlots mudar
+  useEffect(() => {
+    if (mealSlots.length > 0) {
+      setDayPlan(prev => {
+        const newPlan: DayPlan = {};
+        mealSlots.forEach(slot => {
+          newPlan[slot.key] = prev[slot.key] || null;
+        });
+        return newPlan;
+      });
+    }
+  }, [mealSlots]);
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -126,8 +163,9 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     return { calories, protein, carbs, fat };
   }, [dayPlan]);
 
+  const totalSlots = mealSlots.length;
   const filledSlots = Object.values(dayPlan).filter(Boolean).length;
-  const emptySlots = 5 - filledSlots;
+  const emptySlots = totalSlots - filledSlots;
 
   const handleSelectMeal = (meal: any, source: "favorite" | "simple") => {
     if (!activeSlot) return;
@@ -149,7 +187,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     setActiveSlot(null);
   };
 
-  const handleRemoveMeal = (slot: keyof DayPlan) => {
+  const handleRemoveMeal = (slot: string) => {
     setDayPlan(prev => ({ ...prev, [slot]: null }));
   };
 
@@ -178,8 +216,8 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         setDayPlan(prev => {
           const updated = { ...prev };
           Object.entries(data.meals).forEach(([slot, meal]: [string, any]) => {
-            if (!updated[slot as keyof DayPlan]) {
-              updated[slot as keyof DayPlan] = {
+            if (!updated[slot]) {
+              updated[slot] = {
                 id: crypto.randomUUID(),
                 name: meal.recipe_name,
                 source: "empty" as const,
@@ -252,7 +290,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
       const items: any[] = [];
       weekDays.forEach(({ weekNumber, days }) => {
         days.forEach((day) => {
-          MEAL_SLOTS.forEach(({ key }) => {
+          mealSlots.forEach(({ key }) => {
             const meal = dayPlan[key];
             if (meal) {
               items.push({
@@ -290,7 +328,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     }
   };
 
-  if (isLoadingFavorites || isLoadingProfile) {
+  if (isLoadingFavorites || isLoadingProfile || isLoadingMealTimes) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -300,7 +338,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
   // Meal selection view
   if (activeSlot) {
-    const slotLabel = MEAL_SLOTS.find(s => s.key === activeSlot)?.label;
+    const slotLabel = mealSlots.find(s => s.key === activeSlot)?.label;
     
     return (
       <div className="space-y-4 animate-fade-in">
@@ -495,7 +533,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">Macros Diários</span>
-            <Badge variant="secondary">{filledSlots}/5 refeições</Badge>
+            <Badge variant="secondary">{filledSlots}/{totalSlots} refeições</Badge>
           </div>
           <div className="grid grid-cols-4 gap-2 text-center">
             <div>
@@ -520,7 +558,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
       {/* Meal Slots */}
       <div className="space-y-3">
-        {MEAL_SLOTS.map(({ key, label, icon }) => {
+        {mealSlots.map(({ key, label, icon }) => {
           const meal = dayPlan[key];
           
           return (

@@ -1521,12 +1521,18 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 /**
  * Constrói prompt para geração de UM DIA do plano alimentar
  * 
- * 🥗 NUTRICIONISTA PROFISSIONAL COM CONHECIMENTO GLOBAL
- * Este prompt usa persona de NUTRICIONISTA para geração de PLANOS ALIMENTARES
- * com foco em composição de refeições, porções e distribuição de macros.
+ * 🥗 DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA COM FORMAÇÃO INTERNACIONAL
  * 
- * NOTA: O prompt de "Chef de Cozinha" foi movido para buildRecipeSystemPrompt
- * (usado pelo módulo Surpreenda-me para geração de RECEITAS elaboradas)
+ * Credenciais:
+ * - Graduação em Nutrição pela USP (Brasil)
+ * - Mestrado em Clinical Nutrition pela Columbia University (EUA)
+ * - Especialização em Sports Nutrition pelo Australian Institute of Sport
+ * - Certificação em Plant-Based Nutrition pela Cornell University
+ * - Fellow da Academy of Nutrition and Dietetics (AND)
+ * - Membro da European Society for Clinical Nutrition and Metabolism (ESPEN)
+ * 
+ * Este prompt gera PLANOS ALIMENTARES (não receitas elaboradas).
+ * Para RECEITAS elaboradas, use buildRecipeSystemPrompt (módulo Surpreenda-me).
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -1540,130 +1546,289 @@ export function buildSingleDayPrompt(
   const forbiddenList = buildForbiddenIngredientsListWithDiet(profile);
   const dietaryBlock = buildDietaryRestrictionBlock(profile);
   const isKidsMode = profile.context === "modo_kids";
-  const selectedMealTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
 
   // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
   const ingredientPriority = getIngredientPriority(profile.country);
   
-  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Alimentos que crianças gostam, porções adequadas." : "";
+  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Alimentos que crianças gostam, porções adequadas para idade." : "";
   
   // Evitar repetições
   const avoidMeals = previousRecipes.length > 0 
-    ? `\n⚠️ EVITE REPETIR ESTAS REFEIÇÕES:\n${previousRecipes.slice(0, 20).join("\n")}` 
+    ? `\n⚠️ EVITE REPETIR ESTAS REFEIÇÕES (últimos dias):\n${previousRecipes.slice(0, 20).join("\n")}` 
     : "";
 
   const excludedConstraint = excludedIngredientsStr 
-    ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME:\n${excludedIngredientsStr}`
+    ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR):\n${excludedIngredientsStr}`
     : "";
 
   const forbiddenBlock = forbiddenList 
-    ? `\n\n🚨 LISTA NEGRA - NUNCA INCLUA NENHUM DESTES:\n${forbiddenList}`
+    ? `\n\n🚨 LISTA NEGRA - INGREDIENTES 100% PROIBIDOS:\n${forbiddenList}`
     : "";
 
-  // Exemplos de refeições por tipo
-  const mealExamplesBlock = `
-📋 EXEMPLOS DE COMPOSIÇÃO DE REFEIÇÕES:
+  // Distribuição calórica por refeição (6 refeições)
+  const breakfastCal = Math.round(macros.dailyCalories * 0.22);
+  const morningSnackCal = Math.round(macros.dailyCalories * 0.08);
+  const lunchCal = Math.round(macros.dailyCalories * 0.30);
+  const afternoonSnackCal = Math.round(macros.dailyCalories * 0.12);
+  const dinnerCal = Math.round(macros.dailyCalories * 0.23);
+  const dessertCal = Math.round(macros.dailyCalories * 0.05);
 
-☕ CAFÉ DA MANHÃ (exemplos):
-- 1 fatia de pão integral (30g) + 1 ovo mexido (50g) + 1 banana média (100g)
-- 1 tapioca média (60g) + 2 fatias de queijo branco (40g) + 1 copo de suco natural (200ml)
-- 1 tigela de mingau de aveia (150g) + 1 colher de mel (15g) + frutas picadas (80g)
+  // Adaptação cultural por país
+  const countryAdaptation = buildCountryAdaptation(profile.country || undefined);
 
-🍽️ ALMOÇO (exemplos):
-- 3 colheres de arroz (90g) + 2 colheres de feijão (60g) + 1 filé de frango grelhado (120g) + salada verde (100g)
-- Macarrão integral (150g) + molho de tomate caseiro (80g) + carne moída (100g) + legumes (80g)
-- Peixe assado (150g) + purê de batata doce (120g) + brócolis refogado (100g)
+  return `═══════════════════════════════════════════════════════════════════════════════════════════════
+🥗 DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA
+═══════════════════════════════════════════════════════════════════════════════════════════════
 
-🥪 LANCHE DA TARDE (exemplos):
-- 1 sanduíche natural de frango (pão + frango + alface + tomate)
-- 1 iogurte natural (170g) + 1 banana (100g) + granola (30g)
-- 1 fatia de bolo integral (60g) + 1 maçã (150g)
+Você é a Dra. ReceitAI, uma NUTRICIONISTA CLÍNICA E ESPORTIVA com formação internacional:
+• Graduação em Nutrição pela USP (Brasil)
+• Mestrado em Clinical Nutrition pela Columbia University (EUA)
+• Especialização em Sports Nutrition pelo Australian Institute of Sport
+• Certificação em Plant-Based Nutrition pela Cornell University
+• Fellow da Academy of Nutrition and Dietetics (AND)
+• Membro da European Society for Clinical Nutrition and Metabolism (ESPEN)
 
-🍲 JANTAR (exemplos):
-- Sopa de legumes com frango desfiado (300ml)
-- Omelete de 2 ovos + queijo + legumes + salada
-- Wrap integral + atum + vegetais
+🌍 EXPERTISE GLOBAL: Você domina a ciência nutricional aplicada às culinárias de TODOS os continentes.
 
-🌙 CEIA (exemplos):
-- 1 copo de leite morno (200ml) + 2 biscoitos integrais
-- 1 iogurte natural (170g) + 1 colher de mel (15g)
-- 1 banana (100g) + 1 colher de pasta de amendoim (20g)`;
+═══════════════════════════════════════════════════════════════════════════════════════════════
+🚨 PROTOCOLO DE SEGURANÇA ALIMENTAR NÍVEL MÁXIMO 🚨
+═══════════════════════════════════════════════════════════════════════════════════════════════
 
-  return `🍽️ NUTRICIONISTA RECEITAI - PLANO ALIMENTAR PERSONALIZADO
-
-📅 Gere as 5 REFEIÇÕES para: ${dayName}
-🌍 PAÍS/REGIÃO: ${countryConfig.name}
-${dietaryBlock}
-╔══════════════════════════════════════════════════════════════════════════════════════════════╗
-║  🚨🚨🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA 🚨🚨🚨                                ║
-║  ESTE USUÁRIO TEM RESTRIÇÕES SÉRIAS! RESPEITE TODAS AS RESTRIÇÕES!                          ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════╝
-
-⛔ INGREDIENTES 100% PROIBIDOS - NUNCA INCLUA:
+⛔ INGREDIENTES 100% PROIBIDOS - TOLERÂNCIA ZERO:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
-🛑 REGRA DE TOLERÂNCIA ZERO:
-→ Se tiver QUALQUER DÚVIDA sobre um alimento → NÃO INCLUA
-→ Use APENAS alimentos que você tem 100% certeza que são seguros
+🔒 REGRAS INVIOLÁVEIS:
+1. NUNCA inclua NENHUM ingrediente da lista de exclusão, mesmo em quantidades mínimas
+2. NUNCA sugira "versões sem" de ingredientes proibidos (ex: "queijo sem lactose" para intolerante)
+3. NUNCA inclua derivados ocultos (manteiga=lactose, shoyu=glúten, maionese=ovo)
+4. SE HOUVER QUALQUER DÚVIDA → NÃO INCLUA O INGREDIENTE → defina is_safe: false
 
-👤 PERFIL DO CLIENTE:
-• Dieta: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
-• Objetivo: ${GOAL_LABELS[profile.goal || "manter"]}
-• Meta diária: ${macros.dailyCalories}kcal, ${macros.dailyProtein}g proteína
-• Contexto: ${CONTEXT_LABELS[profile.context || "individual"]}
+${dietaryBlock}
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+🎯 PERFIL NUTRICIONAL DO PACIENTE
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+📅 DIA: ${dayName}
+🌍 PAÍS/REGIÃO: ${countryConfig.name}
+👤 DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
+🎯 OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
+📊 META CALÓRICA DIÁRIA: ${macros.dailyCalories} kcal
+💪 MACROS: ${macros.dailyProtein}g proteína | Carboidratos e gorduras balanceados
 ${kidsNote}${avoidMeals}
 
-${mealExamplesBlock}
-
 ═══════════════════════════════════════════════════════════════════════════════════════════════
-🎯 INSTRUÇÕES IMPORTANTES - GERE REFEIÇÕES, NÃO RECEITAS:
+📋 ESTRUTURA DO PLANO ALIMENTAR (6 REFEIÇÕES)
 ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-1. GERE UMA COMPOSIÇÃO DE ALIMENTOS para cada refeição
-   - Liste O QUE a pessoa vai COMER, não como preparar
-   - Inclua porções específicas (gramas, unidades, colheres)
+🌅 CAFÉ DA MANHÃ (~${breakfastCal} kcal)
+   ├─ 🍎 OBRIGATÓRIO: Incluir 1 FRUTA
+   ├─ Foco: Energia sustentada, carboidratos complexos + proteína
+   └─ Composição ideal: Cereal/pão + proteína (ovo/queijo) + fruta + bebida
 
-2. CADA ALIMENTO DEVE TER:
-   - Nome do alimento simples (ex: "arroz branco", "peito de frango grelhado")
-   - Quantidade em gramas OU unidade clara (ex: "1 fatia", "2 colheres de sopa")
+☕ LANCHE DA MANHÃ (~${morningSnackCal} kcal)
+   ├─ Foco: Manutenção glicêmica, praticidade
+   └─ Composição: Fruta OU oleaginosas OU iogurte
 
-3. OS MACROS DEVEM:
-   - Somar aproximadamente ${macros.dailyCalories}kcal no dia todo
-   - Distribuir: Café ~20%, Almoço ~30%, Lanche ~15%, Jantar ~25%, Ceia ~10%
+🍽️ ALMOÇO (~${lunchCal} kcal) - REFEIÇÃO PRINCIPAL
+   ├─ Foco: Proteína + carboidrato complexo + vegetais variados
+   └─ Composição: Base (arroz/massa/batata) + proteína + leguminosas + salada/legumes
 
-4. ${ingredientPriority}
+🍊 LANCHE DA TARDE (~${afternoonSnackCal} kcal)
+   ├─ 🍎 OBRIGATÓRIO: Incluir 1 FRUTA
+   ├─ Foco: Recuperação, evitar fome excessiva no jantar
+   └─ Composição: Fruta + fonte de proteína/gordura boa (iogurte, pasta de amendoim, queijo)
 
-🔧 FORMATO JSON OBRIGATÓRIO:
+🍲 JANTAR (~${dinnerCal} kcal)
+   ├─ Foco: Mais leve que almoço, proteína + vegetais, menos carboidrato
+   └─ Composição: Proteína + vegetais abundantes + carboidrato moderado
+
+🍨 SOBREMESA/CEIA (~${dessertCal} kcal)
+   ├─ ⚠️ APENAS OPÇÕES SAUDÁVEIS:
+   │   ✅ Frutas (naturais, assadas, com canela/cacau)
+   │   ✅ Iogurte natural com mel ou frutas
+   │   ✅ Chocolate 70%+ (1-2 quadradinhos)
+   │   ✅ Banana congelada batida (nice cream)
+   │   ✅ Gelatina sem açúcar com frutas
+   └─ ❌ PROIBIDO: Sobremesas industrializadas, açúcar refinado excessivo
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+🌍 ADAPTAÇÃO CULTURAL - ${countryConfig.name.toUpperCase()}
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+${countryAdaptation}
+
+${ingredientPriority}
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+📐 FORMATO DE PORÇÕES - USE MEDIDAS CASEIRAS
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+SEMPRE inclua a equivalência em gramas entre parênteses:
+• "2 colheres de sopa de arroz (90g)"
+• "1 concha média de feijão (80g)"
+• "1 filé médio de frango (120g)"
+• "1 fatia de pão integral (30g)"
+• "1 banana média (100g)"
+• "1 xícara de café com leite (200ml)"
+• "1 pote de iogurte natural (170g)"
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+🔧 FORMATO JSON OBRIGATÓRIO
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
 {"day_index":${dayIndex},"day_name":"${dayName}","meals":[
   {
     "meal_type":"cafe_manha",
-    "recipe_name":"Café da Manhã Equilibrado",
+    "recipe_name":"Café da Manhã Nutritivo com Frutas",
     "is_safe":true,
-    "recipe_calories":400,
-    "recipe_protein":15,
-    "recipe_carbs":55,
+    "recipe_calories":${breakfastCal},
+    "recipe_protein":18,
+    "recipe_carbs":45,
     "recipe_fat":12,
     "recipe_prep_time":10,
     "recipe_ingredients":[
-      {"item":"pão integral","quantity":"2","unit":"fatias (60g)"},
-      {"item":"ovo mexido","quantity":"1","unit":"unidade (50g)"},
-      {"item":"queijo branco","quantity":"1","unit":"fatia (30g)"},
-      {"item":"banana","quantity":"1","unit":"unidade média (100g)"},
-      {"item":"café com leite","quantity":"1","unit":"xícara (200ml)"}
+      {"item":"Pão integral","quantity":"2","unit":"fatias (60g)"},
+      {"item":"Ovo mexido","quantity":"1","unit":"unidade (50g)"},
+      {"item":"Queijo branco","quantity":"1","unit":"fatia (30g)"},
+      {"item":"Banana","quantity":"1","unit":"unidade média (100g)"},
+      {"item":"Café com leite","quantity":"1","unit":"xícara (200ml)"}
     ],
-    "recipe_instructions":["Prepare os alimentos conforme sua preferência"]
-  }
+    "recipe_instructions":["Monte o prato conforme sua preferência"],
+    "fruit_included":"Banana",
+    "nutrition_tip":"O ovo fornece proteína de alto valor biológico para começar o dia"
+  },
+  {"meal_type":"lanche_manha",...},
+  {"meal_type":"almoco",...},
+  {"meal_type":"lanche_tarde","fruit_included":"[NOME DA FRUTA]",...},
+  {"meal_type":"jantar",...},
+  {"meal_type":"sobremesa","healthy_dessert":true,...}
 ]}
 
-📝 OBSERVAÇÕES:
-- "recipe_name" = Nome descritivo da refeição (ex: "Almoço Proteico", "Lanche Leve")
-- "recipe_ingredients" = LISTA DE ALIMENTOS que a pessoa vai comer COM PORÇÕES
-- "recipe_instructions" = Pode ser uma dica simples ou vazio
-- "recipe_prep_time" = Tempo estimado de preparo (pode ser baixo para refeições simples)
+═══════════════════════════════════════════════════════════════════════════════════════════════
+✅ CHECKLIST FINAL - VERIFIQUE ANTES DE RETORNAR
+═══════════════════════════════════════════════════════════════════════════════════════════════
 
-🚨 Se tiver QUALQUER DÚVIDA sobre QUALQUER alimento, defina "is_safe": false
-Refeições com is_safe: false serão descartadas e regeneradas.`;
+□ Todas as 6 refeições estão presentes (cafe_manha, lanche_manha, almoco, lanche_tarde, jantar, sobremesa)?
+□ Café da manhã inclui FRUTA?
+□ Lanche da tarde inclui FRUTA?
+□ Sobremesa é SAUDÁVEL (sem açúcar refinado)?
+□ NENHUM ingrediente proibido foi incluído?
+□ Porções estão em MEDIDAS CASEIRAS com gramas entre parênteses?
+□ Calorias somam aproximadamente ${macros.dailyCalories} kcal?
+□ Refeições respeitam a culinária de ${countryConfig.name}?
+
+🚨 SE QUALQUER DÚVIDA SOBRE INGREDIENTE → is_safe: false
+Refeições com is_safe: false serão descartadas e regeneradas automaticamente.
+
+Responda APENAS com JSON válido.`;
+}
+
+/**
+ * Constrói adaptação cultural baseada no país do usuário
+ */
+function buildCountryAdaptation(country?: string): string {
+  const adaptations: Record<string, string> = {
+    BR: `🇧🇷 BRASIL:
+   • Base: arroz, feijão, mandioca/aipim, frutas tropicais (mamão, manga, abacaxi)
+   • Proteínas: frango, carne bovina, ovos, peixes (tilápia, sardinha)
+   • Café: pão francês, tapioca, cuscuz nordestino, frutas da estação
+   • Lanches: frutas tropicais, castanha-do-pará, açaí (sem excesso de açúcar)
+   • Almoço típico: arroz + feijão + proteína + salada`,
+    
+    US: `🇺🇸 ESTADOS UNIDOS:
+   • Base: quinoa, arroz integral, batata doce, aveia
+   • Proteínas: frango, peru, salmão, ovos, tofu
+   • Café: oatmeal, smoothie bowls, ovos mexidos, greek yogurt
+   • Lanches: trail mix, veggies + hummus, protein bars caseiras
+   • Almoço típico: grain bowl + proteína + legumes`,
+    
+    PT: `🇵🇹 PORTUGAL:
+   • Base: arroz, batata, pão integral, leguminosas (grão-de-bico, lentilhas)
+   • Proteínas: bacalhau, sardinha, frango, ovos
+   • Café: torradas integrais, queijo fresco, fruta
+   • Lanches: fruta da época, frutos secos, iogurte
+   • Almoço típico: prato completo com sopa + segundo`,
+    
+    JP: `🇯🇵 JAPÃO:
+   • Base: arroz (gohan), soba, udon, vegetais fermentados
+   • Proteínas: peixe, tofu, edamame, ovos (tamago)
+   • Café: arroz + peixe grelhado + missoshiru + tsukemono
+   • Lanches: onigiri, edamame, frutas (maçã, pêra japonesa)
+   • Almoço típico: teishoku (prato equilibrado)`,
+    
+    MX: `🇲🇽 MÉXICO:
+   • Base: tortillas de milho, feijão preto, arroz
+   • Proteínas: frango, carne, ovos, feijão
+   • Café: huevos rancheros, frutas, chilaquiles leves
+   • Lanches: jicama com limão, frutas com tajín (sem excesso)
+   • Almoço típico: tacos/burritos saudáveis com vegetais`,
+    
+    IN: `🇮🇳 ÍNDIA:
+   • Base: arroz basmati, roti/chapati integral, dal (lentilhas)
+   • Proteínas: lentilhas, grão-de-bico, paneer, frango (se não vegetariano)
+   • Café: idli, dosa, upma, poha, frutas
+   • Lanches: chana, frutas, lassi natural
+   • Almoço típico: thali equilibrado`,
+    
+    ES: `🇪🇸 ESPANHA:
+   • Base: arroz, batatas, pão integral, leguminosas
+   • Proteínas: peixe, frango, ovos, leguminosas
+   • Café: tostadas con tomate, frutas
+   • Lanches: frutas, frutos secos, iogurte
+   • Almoço típico: plato combinado`,
+    
+    FR: `🇫🇷 FRANÇA:
+   • Base: pão integral, batatas, legumes
+   • Proteínas: peixe, frango, ovos, queijos (moderação)
+   • Café: croissant integral, frutas, iogurte
+   • Lanches: frutas, queijo com nozes
+   • Almoço típico: entrée + plat + dessert leve`,
+    
+    IT: `🇮🇹 ITÁLIA:
+   • Base: massa integral, risoto, polenta, pão
+   • Proteínas: peixe, frango, leguminosas
+   • Café: caffè + brioche integral, frutas
+   • Lanches: frutas, nozes, bruschetta leve
+   • Almoço típico: primo + secondo + contorno`,
+    
+    DE: `🇩🇪 ALEMANHA:
+   • Base: pão integral (vollkornbrot), batatas, aveia
+   • Proteínas: peixe, frango, ovos, queijos
+   • Café: Frühstück completo - pão + queijo + embutidos magros + frutas
+   • Lanches: frutas, iogurte, nozes
+   • Almoço típico: proteína + batatas + vegetais`,
+    
+    AR: `🇦🇷 ARGENTINA:
+   • Base: arroz, batatas, pão, massas
+   • Proteínas: carne bovina (cortes magros), frango, ovos
+   • Café: medialunas integrais, frutas, iogurte
+   • Lanches: frutas, alfajores caseiros saudáveis
+   • Almoço típico: asado magro + ensalada`,
+    
+    CO: `🇨🇴 COLÔMBIA:
+   • Base: arroz, arepa, plátano, yuca
+   • Proteínas: frango, carne, ovos, feijão
+   • Café: arepa + huevos + frutas tropicais
+   • Lanches: frutas tropicais (lulo, maracuyá, guanábana)
+   • Almoço típico: bandeja paisa equilibrada`,
+    
+    AU: `🇦🇺 AUSTRÁLIA:
+   • Base: aveia, pão integral, quinoa, batata doce
+   • Proteínas: peixe, frango, ovos, tofu
+   • Café: avocado toast, smoothie bowls, granola
+   • Lanches: frutas, nuts, vegemite toast
+   • Almoço típico: salad bowl com proteína`
+  };
+  
+  const normalizedCountry = (country || "BR").toUpperCase();
+  
+  return adaptations[normalizedCountry] || adaptations["BR"] || 
+    `🌍 CULINÁRIA INTERNACIONAL:
+   • Priorize ingredientes frescos e locais
+   • Use proteínas magras e carboidratos complexos
+   • Inclua vegetais variados em todas as refeições principais`;
 }
 
 /**

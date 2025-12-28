@@ -49,15 +49,9 @@ interface GeneratedMeal {
   recipe_instructions: string[];
 }
 
-interface ExtraMeal {
-  id: string;
-  name: string;
-  time: string;
-}
-
-interface CustomMealTimesWithExtras {
-  [key: string]: string | ExtraMeal[] | undefined;
-  extras?: ExtraMeal[];
+// Custom meal times type (simplified - no extras)
+interface CustomMealTimes {
+  [key: string]: string | undefined;
 }
 
 // ============= MEAL COMPOSITION RULES (based on nutritionist standards) =============
@@ -127,8 +121,9 @@ function normalizeMealType(mealType: string): string {
   return normalizations[normalized] || normalized;
 }
 
-function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimesWithExtras | null): string[] {
-  const defaultMealTypes = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimes | null): string[] {
+  // Default now includes lanche_manha
+  const defaultMealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
   
   if (!customMealTimes || typeof customMealTimes !== 'object') {
     return defaultMealTypes;
@@ -137,7 +132,6 @@ function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimesWithExtras
   const mealTypes: string[] = [];
   
   for (const [key, value] of Object.entries(customMealTimes)) {
-    if (key === 'extras') continue;
     if (typeof value === 'string' && value) {
       mealTypes.push(key);
     }
@@ -147,31 +141,14 @@ function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimesWithExtras
     mealTypes.push(...defaultMealTypes);
   }
   
-  const extras = customMealTimes.extras;
-  if (Array.isArray(extras)) {
-    for (const extra of extras) {
-      if (extra.id && extra.time) {
-        mealTypes.push(extra.id);
-      }
-    }
-  }
-  
   return mealTypes;
 }
 
-function getMealTypeLabel(mealType: string, customMealTimes?: CustomMealTimesWithExtras | null): string {
+function getMealTypeLabel(mealType: string): string {
   const composition = MEAL_COMPOSITION[mealType];
   if (composition) {
     return composition.description;
   }
-  
-  if (customMealTimes?.extras && Array.isArray(customMealTimes.extras)) {
-    const extra = customMealTimes.extras.find((e: ExtraMeal) => e.id === mealType);
-    if (extra) {
-      return extra.name;
-    }
-  }
-  
   return mealType;
 }
 
@@ -296,12 +273,11 @@ function pickRandomByComponentType(
 function generateMealFromComponents(
   mealType: string,
   filteredFoods: NutritionistFood[],
-  usedFoodsToday: Set<string>,
-  customMealTimes?: CustomMealTimesWithExtras | null
+  usedFoodsToday: Set<string>
 ): GeneratedMeal {
   const composition = MEAL_COMPOSITION[mealType] || MEAL_COMPOSITION.lanche;
   const componentTypes = composition.components;
-  const label = getMealTypeLabel(mealType, customMealTimes);
+  const label = getMealTypeLabel(mealType);
   
   const ingredients: MealIngredient[] = [];
   let totalCalories = 0;
@@ -351,8 +327,7 @@ function generateDayMeals(
   dayIndex: number,
   mealTypes: string[],
   filteredFoods: NutritionistFood[],
-  previousDayFoods: Set<string>,
-  customMealTimes?: CustomMealTimesWithExtras | null
+  previousDayFoods: Set<string>
 ): { meals: GeneratedMeal[]; usedFoods: Set<string> } {
   const usedFoodsToday = new Set<string>();
   const meals: GeneratedMeal[] = [];
@@ -361,8 +336,7 @@ function generateDayMeals(
     const meal = generateMealFromComponents(
       mealType,
       filteredFoods,
-      usedFoodsToday,
-      customMealTimes
+      usedFoodsToday
     );
     
     if (meal.recipe_ingredients.length > 0) {
@@ -518,7 +492,7 @@ serve(async (req) => {
     logStep("Macros calculated", macros);
 
     // Extract meal types
-    const mealTypesToGenerate = getMealTypesFromCustomTimes(customMealTimes as CustomMealTimesWithExtras | null);
+    const mealTypesToGenerate = getMealTypesFromCustomTimes(customMealTimes as CustomMealTimes | null);
     logStep("Meal types to generate", { mealTypes: mealTypesToGenerate });
 
     // Generate days
@@ -541,8 +515,7 @@ serve(async (req) => {
         i,
         mealTypesToGenerate,
         filteredFoods,
-        previousDayFoods,
-        customMealTimes as CustomMealTimesWithExtras | null
+        previousDayFoods
       );
       
       allDays.push({

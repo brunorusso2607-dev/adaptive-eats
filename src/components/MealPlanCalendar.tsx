@@ -558,7 +558,6 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           const config = getDynamicMealConfig(mealType);
           const Icon = config.icon;
           const isPastMeal = isMealPastTime(mealType, selectedDay);
-          const isExtraMeal = mealType.startsWith('extra_');
 
           return (
             <Card 
@@ -568,8 +567,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                 isPastMeal 
                   ? "opacity-50 cursor-not-allowed border-muted bg-muted/20" 
                   : "hover:border-primary/30 cursor-pointer group",
-                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30",
-                isExtraMeal && "border-primary/20"
+                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30"
               )}
               onClick={() => !isPastMeal && meal && onSelectMeal(meal)}
             >

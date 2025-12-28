@@ -438,7 +438,7 @@ export async function searchRecipePool(
       .is("source_url", null) // Exclui receitas importadas de fontes externas
       .order("usage_count", { ascending: false })
       .order("created_at", { ascending: false })
-      .limit(limit * 3); // Busca mais para filtrar depois
+      .limit(limit + 10); // OTIMIZADO: busca menos para reduzir CPU
 
     // Filtro por tipo de refeição - usa compatible_meal_times ou meal_type
     // A receita é compatível se o meal_type bate OU se está em compatible_meal_times
@@ -500,11 +500,11 @@ export async function searchRecipePool(
       
       if (!validation.isValid) {
         rejectedCount++;
-        rejectedRecipes.push(`${recipe.name}: ${validation.invalidIngredients.join(', ')}`);
+        // OTIMIZADO: não loga cada receita individualmente para economizar CPU
+        if (rejectedRecipes.length < 5) {
+          rejectedRecipes.push(`${recipe.name}: ${validation.invalidIngredients.join(', ')}`);
+        }
         allBlockedDetails.push(...validation.blockedDetails);
-        logStep(`❌ BLOQUEADA pelo Filtro 2: "${recipe.name}"`, { 
-          reason: validation.invalidIngredients 
-        });
         return false;
       }
 

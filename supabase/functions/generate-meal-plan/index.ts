@@ -579,7 +579,7 @@ async function checkPoolSufficiency(
     dietaryPreference: profile.dietary_preference || undefined,
     intolerances: profile.intolerances || [],
     excludedIngredients: profile.excluded_ingredients || [],
-    limit: 50 // Fetch more to check availability
+    limit: 15 // OTIMIZADO: limite reduzido para economizar CPU
   });
   
   const usedRecipesLower = usedRecipes.map(r => r.toLowerCase().trim());

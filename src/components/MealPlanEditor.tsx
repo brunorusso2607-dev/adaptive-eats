@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
-import { CustomMealTimesEditor, type CustomMealTimesWithExtras } from "@/components/CustomMealTimesEditor";
+import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, parseISO } from "date-fns";
@@ -120,7 +120,7 @@ export default function MealPlanEditor({
     setHasChanges(true);
   };
 
-  const handleCustomTimesChange = (times: CustomMealTimesWithExtras | null) => {
+  const handleCustomTimesChange = (times: CustomMealTimes | null) => {
     console.log("[MealPlanEditor] Custom times changed:", times);
     setCustomMealTimes(times);
     setHasChanges(true);

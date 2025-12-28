@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { format, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { CustomMealTimesEditor, CustomMealTimesWithExtras } from "@/components/CustomMealTimesEditor";
+import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import type { Json } from "@/integrations/supabase/types";
 
 type MealPlanGeneratorProps = {

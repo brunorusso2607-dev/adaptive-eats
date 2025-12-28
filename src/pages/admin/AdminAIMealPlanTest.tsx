@@ -57,10 +57,11 @@ const INTOLERANCES = [
 
 const MEAL_TYPES = [
   { value: "cafe_manha", label: "Cafe da Manha" },
-  { value: "lanche_manha", label: "Lanche da Manha" },
-  { value: "almoco", label: "Almoco" },
-  { value: "lanche_tarde", label: "Lanche da Tarde" },
+  { value: "lanche_manha", label: "Lanche da Manhã" },
+  { value: "almoco", label: "Almoço" },
+  { value: "lanche", label: "Lanche da Tarde" },
   { value: "jantar", label: "Jantar" },
+  { value: "ceia", label: "Ceia" },
 ];
 
 interface FoodItem {

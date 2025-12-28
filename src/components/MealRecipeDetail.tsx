@@ -34,6 +34,7 @@ type MealRecipeDetailProps = {
 
 const MEAL_LABELS: Record<string, string> = {
   cafe_manha: "Café da Manhã",
+  lanche_manha: "Lanche da Manhã",
   almoco: "Almoço",
   lanche: "Lanche da Tarde",
   jantar: "Jantar",

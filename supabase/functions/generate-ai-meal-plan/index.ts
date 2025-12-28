@@ -1230,9 +1230,19 @@ serve(async (req) => {
       daysCount = 1,
       optionsPerMeal = 3,
       mealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"],
+      // Novos parâmetros para salvar no banco (vindos do MealPlanGenerator)
+      planName,
+      startDate,
+      existingPlanId,
+      weekNumber,
+      customMealTimes,
+      saveToDatabase = false, // Por padrão não salva (modo teste admin)
     } = requestBody;
+    
+    // Detectar automaticamente se deve salvar no banco
+    const shouldSaveToDatabase = saveToDatabase || planName || startDate;
 
-    logStep("Request params", { dailyCalories, daysCount, optionsPerMeal, mealTypes });
+    logStep("Request params", { dailyCalories, daysCount, optionsPerMeal, mealTypes, shouldSaveToDatabase });
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
@@ -1400,6 +1410,146 @@ serve(async (req) => {
 
     logStep("All days generated and validated", { totalDays: generatedDays.length });
 
+    // ============= SALVAR NO BANCO DE DADOS (se solicitado) =============
+    if (shouldSaveToDatabase) {
+      logStep("Saving to database...");
+      
+      const start = startDate ? new Date(startDate) : new Date();
+      const endDate = new Date(start);
+      endDate.setDate(endDate.getDate() + daysCount - 1);
+      
+      let mealPlanIdToUse = existingPlanId;
+      let mealPlan;
+      
+      if (existingPlanId) {
+        // Atualizar plano existente
+        const { data: existingPlan, error: fetchError } = await supabaseClient
+          .from("meal_plans")
+          .select("*")
+          .eq("id", existingPlanId)
+          .eq("user_id", user.id)
+          .single();
+
+        if (fetchError || !existingPlan) {
+          throw new Error("Plano alimentar não encontrado");
+        }
+
+        const newEndDate = endDate.toISOString().split('T')[0];
+        
+        const updateData: any = { 
+          updated_at: new Date().toISOString(),
+          custom_meal_times: customMealTimes || existingPlan.custom_meal_times || null
+        };
+        
+        if (newEndDate > existingPlan.end_date) {
+          updateData.end_date = newEndDate;
+        }
+        
+        await supabaseClient
+          .from("meal_plans")
+          .update(updateData)
+          .eq("id", existingPlanId);
+        
+        mealPlan = { ...existingPlan, custom_meal_times: customMealTimes || existingPlan.custom_meal_times };
+        mealPlanIdToUse = existingPlan.id;
+        logStep("Updated existing meal plan", { planId: mealPlanIdToUse });
+      } else {
+        // Criar novo plano
+        const { data: newPlan, error: planError } = await supabaseClient
+          .from("meal_plans")
+          .insert({
+            user_id: user.id,
+            name: planName || `Plano ${start.toLocaleDateString('pt-BR')}`,
+            start_date: start.toISOString().split('T')[0],
+            end_date: endDate.toISOString().split('T')[0],
+            is_active: true,
+            custom_meal_times: customMealTimes || null
+          })
+          .select()
+          .single();
+
+        if (planError) throw new Error(`Error creating meal plan: ${planError.message}`);
+        
+        mealPlan = newPlan;
+        mealPlanIdToUse = newPlan.id;
+        logStep("Meal plan created", { planId: mealPlanIdToUse });
+
+        // Desativar outros planos
+        await supabaseClient
+          .from("meal_plans")
+          .update({ is_active: false })
+          .eq("user_id", user.id)
+          .neq("id", mealPlanIdToUse);
+      }
+
+      // Converter os dias gerados para meal_plan_items
+      const items: any[] = [];
+      const targetWeekNum = weekNumber || 1;
+      
+      for (let dayIndex = 0; dayIndex < generatedDays.length; dayIndex++) {
+        const day = generatedDays[dayIndex];
+        
+        for (const meal of day.meals) {
+          // Pegar a primeira opção de cada refeição (optionsPerMeal = 1)
+          const firstOption = meal.options?.[0];
+          if (!firstOption) continue;
+          
+          // Converter foods para o formato recipe_ingredients
+          const recipeIngredients = (firstOption.foods || []).map((food: any) => {
+            if (typeof food === 'string') {
+              return { item: food, quantity: "", unit: "" };
+            }
+            return {
+              item: food.name || food.item || "",
+              quantity: food.grams ? `${food.grams}g` : (food.quantity || ""),
+              unit: food.unit || ""
+            };
+          });
+          
+          items.push({
+            meal_plan_id: mealPlanIdToUse,
+            day_of_week: dayIndex,
+            meal_type: meal.meal_type,
+            recipe_name: firstOption.title || meal.label,
+            recipe_calories: firstOption.calculated_calories || firstOption.calories_kcal || meal.target_calories,
+            recipe_protein: 0, // A IA não retorna macros detalhados neste formato
+            recipe_carbs: 0,
+            recipe_fat: 0,
+            recipe_prep_time: 15,
+            recipe_ingredients: recipeIngredients,
+            recipe_instructions: [],
+            week_number: targetWeekNum
+          });
+        }
+      }
+
+      logStep("Inserting meal items", { count: items.length });
+
+      const { error: itemsError } = await supabaseClient
+        .from("meal_plan_items")
+        .insert(items);
+
+      if (itemsError) throw new Error(`Error creating meal plan items: ${itemsError.message}`);
+      logStep("Meal plan items created", { count: items.length });
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          mealPlan: {
+            id: mealPlanIdToUse,
+            ...mealPlan,
+            items: items
+          },
+          stats: {
+            daysGenerated: generatedDays.length,
+            totalMeals: items.length,
+          }
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Retorno padrão para modo teste (sem salvar no banco)
     return new Response(
       JSON.stringify({
         success: true,

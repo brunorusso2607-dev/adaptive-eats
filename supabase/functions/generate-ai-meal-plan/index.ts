@@ -635,6 +635,14 @@ CONTROLE ANTI-REPETICAO (OBRIGATORIO):
 - Varie as fontes de proteina, carboidrato e gordura entre opcoes
 - Cada opcao deve ser genuinamente diferente, nao apenas variacao minima
 
+SCORING DE NATURALIDADE (VALIDACAO INTERNA):
+Antes de incluir cada opcao, avalie mentalmente:
+- Popularidade cultural (0-3): essa refeicao e comum e reconhecivel na regiao?
+- Simplicidade (0-2): e facil de preparar e entender?
+- Coerencia de combinacao (0-3): os alimentos combinam bem juntos?
+- Apelo humano (0-2): alguem escolheria isso por vontade propria?
+Se a soma for menor que 7, descarte e gere outra opcao.
+
 PADRAO DE QUALIDADE HUMANA (VALIDACAO FINAL):
 - "Uma pessoa comum pediria isso num restaurante ou faria em casa?"
 - "Parece comida ou parece dieta?"

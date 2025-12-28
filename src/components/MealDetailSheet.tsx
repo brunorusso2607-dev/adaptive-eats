@@ -38,6 +38,10 @@ interface Ingredient {
   item: string;
   quantity: string;
   unit?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
 }
 
 type RawIngredient = {
@@ -45,6 +49,10 @@ type RawIngredient = {
   name?: string;
   quantity?: string;
   unit?: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
   [key: string]: unknown;
 };
 
@@ -106,7 +114,11 @@ export default function MealDetailSheet({
     .map((i) => ({ 
       item: i.item || i.name || '', 
       quantity: i.quantity || '',
-      unit: i.unit || ''
+      unit: i.unit || '',
+      calories: typeof i.calories === 'number' ? i.calories : undefined,
+      protein: typeof i.protein === 'number' ? i.protein : undefined,
+      carbs: typeof i.carbs === 'number' ? i.carbs : undefined,
+      fat: typeof i.fat === 'number' ? i.fat : undefined,
     }));
 
   // Reset local state when meal changes
@@ -409,9 +421,14 @@ export default function MealDetailSheet({
                         {/* Bullet point */}
                         <span className="text-primary mt-1.5">•</span>
                         
-                        {/* Formato nutricionista: "1 fatia de pão integral" */}
+                        {/* Formato nutricionista: "170g de Iogurte vegetal (102 kcal)" */}
                         <span className="flex-1 text-foreground">
                           {ingredient.quantity}{ingredient.quantity && ' de '}{ingredient.item}
+                          {ingredient.calories !== undefined && (
+                            <span className="text-muted-foreground text-sm ml-1">
+                              ({ingredient.calories} kcal)
+                            </span>
+                          )}
                         </span>
                         
                         {!isPastMeal && (

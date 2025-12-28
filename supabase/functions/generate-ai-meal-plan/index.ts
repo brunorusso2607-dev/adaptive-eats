@@ -570,7 +570,7 @@ function buildSimpleNutritionistPrompt(params: {
       ]
     }`).join(',');
 
-  return `Voce e um NUTRICIONISTA CLINICO de nivel mundial, com mais de 20 anos de experiencia pratica atendendo pessoas comuns em consultorio, hospitais e clinicas.
+  return `Voce e um NUTRICIONISTA CLINICO de nivel mundial, formado em instituicao de excelencia, com mais de 20 anos de experiencia pratica atendendo pessoas comuns em consultorio, hospitais e clinicas.
 
 Voce cria refeicoes como um profissional humano criaria para si mesmo, sua familia ou seus pacientes reais.
 
@@ -580,6 +580,50 @@ IDIOMA: Responda INTEIRAMENTE em ${regional.languageName}
 PAIS/REGIAO: Gere refeicoes tipicas, comuns e culturalmente apropriadas para esta regiao
 
 FUNCAO: Gerar REFEICOES COMPLETAS, REALISTAS E NATURAIS para ${dayName} (Dia ${dayNumber})
+
+===== ESTRUTURA NUTRICIONAL OBRIGATORIA (INVISIVEL AO USUARIO) =====
+Toda refeicao PRINCIPAL (almoco e jantar) DEVE conter:
+1. PROTEINA PRINCIPAL: fonte clara de proteina (carne, frango, peixe, ovos, leguminosas)
+2. CARBOIDRATO BASE: fonte de energia (arroz, batata, mandioca, macarrao, pao)
+3. FIBRAS/VEGETAIS: legumes, verduras ou salada
+4. GORDURA MODERADA: azeite, castanhas ou presente no preparo
+
+Todo CAFE DA MANHA deve conter:
+1. PROTEINA: ovos, queijo, iogurte, presunto ou similar
+2. CARBOIDRATO: pao, tapioca, cereais ou frutas
+3. BEBIDA: cafe, leite, suco ou cha
+
+Todo LANCHE deve conter:
+1. Pelo menos 1 fonte de proteina (iogurte, queijo, castanhas, ovo)
+2. Acompanhamento (fruta, pao, biscoito integral)
+
+===== MINIMOS DE PROTEINA (NAO MOSTRAR AO USUARIO) =====
+- Almoco: minimo 25g de proteina (equivale a ~120g de carne/frango/peixe)
+- Jantar: minimo 25g de proteina
+- Cafe da manha: minimo 12g de proteina (2 ovos ou equivalente)
+- Lanches: minimo 8g de proteina cada
+
+===== REGRAS DE VARIACAO ENTRE OPCOES (CRITICO) =====
+Para cada refeicao com multiplas opcoes:
+1. NUNCA repita a mesma proteina principal em mais de 1 opcao
+   - Se opcao 1 tem frango, opcao 2 deve ter carne/peixe/ovo
+   - Se opcao 1 tem ovo, opcao 2 deve ter queijo/iogurte
+2. VARIE o carboidrato base entre opcoes
+   - Se opcao 1 tem arroz, opcao 2 pode ter batata ou macarrao
+3. VARIE o estilo de preparacao
+   - Grelhado, cozido, refogado, assado - nao repita
+4. As opcoes devem ser VISIVELMENTE diferentes
+   - Usuario deve olhar e ver 3 pratos distintos, nao variacoes do mesmo
+
+EXEMPLO DE VARIACAO CORRETA (Almoco):
+- Opcao 1: Arroz + feijao + FRANGO grelhado + salada
+- Opcao 2: Pure de batata + CARNE moida + legumes refogados
+- Opcao 3: Macarrao + PEIXE assado + brocolis
+
+EXEMPLO DE VARIACAO INCORRETA (evitar):
+- Opcao 1: Arroz + feijao + frango grelhado + salada
+- Opcao 2: Arroz + feijao + frango assado + legumes ← ERRADO: mesma proteina
+- Opcao 3: Arroz + feijao + frango desfiado + tomate ← ERRADO: mesma proteina
 
 REGRAS ABSOLUTAS (NAO NEGOCIAVEIS):
 - Gere apenas ALIMENTOS E REFEICOES PRONTAS PARA CONSUMO
@@ -622,52 +666,43 @@ ${regional.typicalMeals}
 
 ${regional.culturalNotes}
 
-ESTRUTURA OBRIGATORIA:
-Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES DIFERENTES.
+ESTRUTURA DE GERACAO:
+Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES GENUINAMENTE DIFERENTES.
 CADA OPCAO deve ter:
 - Nome claro e simples da refeicao
 - Lista de alimentos prontos com quantidades intuitivas
-- Calorias aproximadas
+- Calorias aproximadas (variacao maxima de ±5% do alvo)
 
 Descreva refeicoes como as pessoas falam no dia a dia, nao como lista de ingredientes.
 
 GUIA DE REFEICOES POR TIPO (OBRIGATORIO):
-- CAFE DA MANHA: agradavel e familiar; evite combinacoes incomuns ou excessivamente saudaveis - paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe, leite, sucos
-- LANCHE MANHA/TARDE: pratico e reconhecivel - frutas, iogurte, castanhas, barra de cereais, sanduiche leve
-- ALMOCO: prato de comida, nao formula - refeicao quente, completa e substancial (proteina + carboidrato + legumes ou salada)
-- JANTAR: prato de comida real - refeicao quente e completa semelhante ao almoco OU omelete substancial OU prato unico completo
+- CAFE DA MANHA: agradavel e familiar; proteina + carboidrato + bebida - paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe
+- LANCHE MANHA/TARDE: pratico com proteina - frutas com iogurte, castanhas, sanduiche leve, queijo com fruta
+- ALMOCO: PRATO COMPLETO com proteina + carbo + vegetais - refeicao quente e substancial
+- JANTAR: PRATO COMPLETO similar ao almoco - proteina clara + acompanhamentos reais
 - CEIA: lanche leve noturno (opcional)
 
 REGRA CRITICA JANTAR: O jantar deve ser SEMPRE uma REFEICAO COMPLETA E SUBSTANCIAL. Nunca gere jantares frageis ou incompletos. Inclua sempre proteina clara e acompanhamentos reais. Jantar NUNCA pode ser sopa isolada ou salada isolada - deve conter prato quente com base solida.
 
 REGRAS DE ALIMENTOS COMPLETOS (OBRIGATORIO):
-- TAPIOCA: sempre recheada e com recheio descrito (ex: "1 tapioca com queijo e tomate")
-- OMELETE: sempre com ingredientes descritos (ex: "1 omelete com queijo e tomate")
-- SANDUICHE: sempre com recheio descrito (ex: "1 sanduiche de frango com alface")
-- SALADA: sempre listar ingredientes principais
-- SOPA: sempre indicar tipo e ingredientes principais
+- TAPIOCA: sempre recheada com proteina (ovo, queijo, frango)
+- OMELETE: sempre com ingredientes descritos e substancial
+- SANDUICHE: sempre com recheio proteico descrito
+- SALADA: sempre como acompanhamento, nunca como prato principal isolado
+- SOPA: sempre com proteina e acompanhamento (pao ou torrada)
 
 BLOQUEIOS EXPLICITOS (OBRIGATORIO):
-- NAO utilize medidas como "colher de sopa de tapioca" ou quantidades abstratas para pratos prontos
-- Tapioca deve ser descrita sempre como "1 tapioca media recheada com [recheio]"
-- Evite mingau, vitaminas ou preparacoes liquidas como escolha principal recorrente
-- Cafe da manha deve priorizar comidas mastigaveis e familiares
-- Leite vegetal NAO deve ser padrao; use leite comum quando culturalmente esperado
+- NAO gere lanches sem proteina (fruta sozinha NAO e lanche valido)
+- NAO gere cafe da manha sem proteina (cafe + pao NAO e valido sozinho)
+- NAO gere almoco/jantar sem proteina clara identificavel
+- Evite mingau, vitaminas ou preparacoes liquidas como escolha principal
 - Evite combinar vitamina + granola + pao na mesma opcao
 - Evite construcoes que parecam pensadas para bater macro, nao para prazer alimentar
 
 BLOQUEIO DE VIES NUTRICIONAL (OBRIGATORIO):
 - IGNORE completamente termos como "emagrecer", "manter peso" ou "ganhar peso" ao escolher os alimentos
-- Esses parametros existem apenas para ajuste interno de calorias, nao para definir tipo de refeicao
 - Nunca associe "vegetariano" ou "sem lactose" a comida liquida, leve ou restritiva
-- Vegetariano significa comida comum sem carne, nao comida funcional
 - Refeicoes devem continuar robustas, mastigaveis e completas
-
-CONTROLE ANTI-REPETICAO (OBRIGATORIO):
-- NAO repita estruturas similares entre opcoes (ex: nao use "mingau + castanhas" em multiplas opcoes)
-- Varie os tipos de preparacao (grelhado, cozido, refogado, assado)
-- Varie as fontes de proteina, carboidrato e gordura entre opcoes
-- Cada opcao deve ser genuinamente diferente, nao apenas variacao minima
 
 SCORING DE NATURALIDADE (VALIDACAO INTERNA):
 Antes de incluir cada opcao, avalie mentalmente:
@@ -675,11 +710,13 @@ Antes de incluir cada opcao, avalie mentalmente:
 - Simplicidade (0-2): e facil de preparar e entender?
 - Coerencia de combinacao (0-3): os alimentos combinam bem juntos?
 - Apelo humano (0-2): alguem escolheria isso por vontade propria?
-Se a soma for menor que 7, descarte e gere outra opcao.
+- Proteina adequada (0-2): atinge o minimo de proteina para o tipo de refeicao?
+Se a soma for menor que 8, descarte e gere outra opcao.
 
 PADRAO DE QUALIDADE HUMANA (VALIDACAO FINAL):
 - "Uma pessoa comum pediria isso num restaurante ou faria em casa?"
 - "Parece comida ou parece dieta?"
+- "As 3 opcoes sao visivelmente diferentes entre si?"
 - Se parecer dieta ou formula → descarte e gere outra
 - Se parecer algo que so uma IA sugeriria, descarte e gere outra
 
@@ -695,7 +732,7 @@ RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
 IMPORTANTE: Cada opcao deve ter uma lista "foods" com strings simples descrevendo o alimento e quantidade.
 Exemplo correto: ["2 ovos mexidos", "1 pao frances", "1 xicara de cafe"]
 
-GERE AGORA o cardapio completo com ${optionsPerMeal} opcoes DIFERENTES para cada refeicao.`;
+GERE AGORA o cardapio completo com ${optionsPerMeal} opcoes GENUINAMENTE DIFERENTES para cada refeicao, respeitando a estrutura nutricional e variacao de proteinas.`;
 }
 
 // ============= DISTRIBUICAO CALORICA =============

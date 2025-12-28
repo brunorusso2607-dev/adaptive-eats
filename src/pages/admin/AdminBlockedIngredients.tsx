@@ -260,9 +260,10 @@ export default function AdminBlockedIngredients() {
     }
   };
 
-  const pendingCount = blockedIngredients?.filter(i => i.status === "pending").length || 0;
+  const pendingCount = blockedIngredients?.filter(i => i.status === "pending" || i.status === "error").length || 0;
   const approvedCount = blockedIngredients?.filter(i => i.status === "approved").length || 0;
   const confirmedCount = blockedIngredients?.filter(i => i.status === "confirmed_block").length || 0;
+  const errorCount = blockedIngredients?.filter(i => i.status === "error").length || 0;
 
   return (
     <div className="space-y-6">
@@ -360,9 +361,16 @@ export default function AdminBlockedIngredients() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {blockedIngredients?.filter(i => i.status === "pending").map((item) => (
+                    {blockedIngredients?.filter(i => i.status === "pending" || i.status === "error").map((item) => (
                       <TableRow key={item.id}>
-                        <TableCell className="font-medium">{item.ingredient}</TableCell>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            {item.ingredient}
+                            {item.status === "error" && (
+                              <Badge variant="destructive" className="text-xs">Erro</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <Badge variant="outline">{item.blocked_reason}</Badge>
                         </TableCell>
@@ -384,7 +392,7 @@ export default function AdminBlockedIngredients() {
                         </TableCell>
                       </TableRow>
                     ))}
-                    {blockedIngredients?.filter(i => i.status === "pending").length === 0 && (
+                    {blockedIngredients?.filter(i => i.status === "pending" || i.status === "error").length === 0 && (
                       <TableRow>
                         <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                           Nenhum ingrediente pendente de revisão

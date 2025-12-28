@@ -4,8 +4,14 @@
 // Este módulo centraliza a busca e salvamento de receitas.
 // Antes de gerar via IA, todos os módulos devem buscar no banco.
 // Receitas geradas são automaticamente salvas para reutilização.
+// 
+// FILTRO 2: Validação rigorosa contra perfil do usuário antes de usar
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import {
+  FORBIDDEN_INGREDIENTS,
+  DIETARY_FORBIDDEN_INGREDIENTS,
+} from "./recipeConfig.ts";
 
 // ============================================
 // TIPOS
@@ -59,6 +65,145 @@ export interface SaveRecipeParams {
   languageCode?: string;
   sourceModule: SourceModule;
   compatibleMealTimes?: string[];
+}
+
+// ============================================
+// FILTRO 2: VALIDAÇÃO RIGOROSA DE RECEITAS DO POOL
+// ============================================
+
+/**
+ * Normaliza texto para comparação (remove acentos, lowercase)
+ */
+function normalizeTextForPool(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+/**
+ * Exceções de ingredientes que são substitutos seguros
+ */
+const SAFE_INGREDIENT_EXCEPTIONS = [
+  "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+  "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+  "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
+  "creme de leite de coco", "iogurte de coco", "manteiga de coco",
+  "farinha de arroz", "farinha de mandioca", "polvilho", "tapioca",
+  "farinha de amendoas", "farinha de coco", "castanha de caju", 
+  "castanha do para", "amendoas", "nozes"
+];
+
+/**
+ * Verifica se um ingrediente específico é proibido para o perfil
+ */
+function isIngredientForbidden(
+  ingredientName: string,
+  forbiddenList: string[]
+): { isForbidden: boolean; matchedForbidden: string | null } {
+  const normalized = normalizeTextForPool(ingredientName);
+  
+  // Primeiro verifica se é uma exceção segura
+  const isSafeException = SAFE_INGREDIENT_EXCEPTIONS.some(safe => 
+    normalized.includes(normalizeTextForPool(safe))
+  );
+  
+  if (isSafeException) {
+    return { isForbidden: false, matchedForbidden: null };
+  }
+  
+  // Verifica contra lista de proibidos
+  for (const forbidden of forbiddenList) {
+    const normalizedForbidden = normalizeTextForPool(forbidden);
+    if (normalized.includes(normalizedForbidden)) {
+      return { isForbidden: true, matchedForbidden: forbidden };
+    }
+  }
+  
+  return { isForbidden: false, matchedForbidden: null };
+}
+
+/**
+ * Constrói lista completa de ingredientes proibidos baseado no perfil
+ */
+function buildForbiddenListForProfile(
+  dietaryPreference?: string,
+  intolerances?: string[],
+  excludedIngredients?: string[]
+): string[] {
+  const allForbidden: string[] = [];
+  
+  // Adiciona proibidos da preferência dietética
+  if (dietaryPreference) {
+    const dietaryForbidden = DIETARY_FORBIDDEN_INGREDIENTS[dietaryPreference];
+    if (dietaryForbidden) {
+      allForbidden.push(...dietaryForbidden);
+    }
+  }
+  
+  // Adiciona proibidos das intolerâncias
+  if (intolerances && intolerances.length > 0) {
+    for (const intolerance of intolerances) {
+      const forbidden = FORBIDDEN_INGREDIENTS[intolerance.toLowerCase()];
+      if (forbidden) {
+        allForbidden.push(...forbidden);
+      }
+    }
+  }
+  
+  // Adiciona ingredientes excluídos manualmente
+  if (excludedIngredients && excludedIngredients.length > 0) {
+    allForbidden.push(...excludedIngredients);
+  }
+  
+  // Remove duplicatas
+  return [...new Set(allForbidden)];
+}
+
+/**
+ * FILTRO 2: Valida uma receita do pool contra o perfil COMPLETO do usuário
+ * Esta é a última linha de defesa antes de entregar a receita ao usuário
+ */
+export function validateRecipeAgainstProfile(
+  recipe: { name: string; ingredients: any[] },
+  dietaryPreference?: string,
+  intolerances?: string[],
+  excludedIngredients?: string[]
+): { isValid: boolean; invalidIngredients: string[] } {
+  const invalidIngredients: string[] = [];
+  
+  // Constrói lista completa de proibidos
+  const forbiddenList = buildForbiddenListForProfile(
+    dietaryPreference,
+    intolerances,
+    excludedIngredients
+  );
+  
+  // Se não há restrições, tudo é válido
+  if (forbiddenList.length === 0) {
+    return { isValid: true, invalidIngredients: [] };
+  }
+  
+  // Verifica cada ingrediente da receita
+  for (const ingredient of recipe.ingredients) {
+    const ingredientName = typeof ingredient === 'string' 
+      ? ingredient 
+      : ingredient.name || ingredient.item || '';
+    
+    if (!ingredientName) continue;
+    
+    const { isForbidden, matchedForbidden } = isIngredientForbidden(ingredientName, forbiddenList);
+    
+    if (isForbidden && matchedForbidden) {
+      invalidIngredients.push(`${ingredientName} (contém: ${matchedForbidden})`);
+    }
+  }
+  
+  return {
+    isValid: invalidIngredients.length === 0,
+    invalidIngredients
+  };
 }
 
 // ============================================
@@ -140,7 +285,13 @@ export async function searchRecipePool(
 
     logStep("Raw results from pool", { count: recipes.length });
 
-    // Filtra receitas compatíveis
+    // ============================================
+    // FILTRO 2: VALIDAÇÃO RIGOROSA CONTRA PERFIL DO USUÁRIO
+    // ============================================
+    let rejectedCount = 0;
+    const rejectedRecipes: string[] = [];
+    
+    // Filtra receitas compatíveis com VALIDAÇÃO RIGOROSA
     const compatibleRecipes = recipes.filter((recipe: any) => {
       // Verifica compatibilidade com meal_type
       const isCompatibleMealType = 
@@ -149,31 +300,37 @@ export async function searchRecipePool(
 
       if (!isCompatibleMealType) return false;
 
-      // Verifica intolerâncias e ingredientes excluídos
-      if (intolerances.length > 0 || excludedIngredients.length > 0) {
-        const recipeIngredients = getIngredientNames(recipe.ingredients);
-        
-        // Verifica se contém ingredientes proibidos por intolerância
-        for (const intolerance of intolerances) {
-          if (hasIntoleranceConflict(recipeIngredients, intolerance)) {
-            return false;
-          }
-        }
-        
-        // Verifica ingredientes excluídos pelo usuário
-        for (const excluded of excludedIngredients) {
-          if (recipeIngredients.some(ing => 
-            ing.toLowerCase().includes(excluded.toLowerCase())
-          )) {
-            return false;
-          }
-        }
+      // FILTRO 2: Validação rigorosa usando a função centralizada
+      const validation = validateRecipeAgainstProfile(
+        { name: recipe.name, ingredients: recipe.ingredients || [] },
+        dietaryPreference,
+        intolerances,
+        excludedIngredients
+      );
+      
+      if (!validation.isValid) {
+        rejectedCount++;
+        rejectedRecipes.push(`${recipe.name}: ${validation.invalidIngredients.join(', ')}`);
+        logStep(`❌ BLOQUEADA pelo Filtro 2: "${recipe.name}"`, { 
+          reason: validation.invalidIngredients 
+        });
+        return false;
       }
 
       return true;
     });
 
-    logStep("Compatible recipes after filtering", { count: compatibleRecipes.length });
+    if (rejectedCount > 0) {
+      logStep(`🛑 Filtro 2 bloqueou ${rejectedCount} receitas do pool`, { 
+        rejectedRecipes: rejectedRecipes.slice(0, 5) 
+      });
+    }
+    
+    logStep("Compatible recipes after Filtro 2", { 
+      total: recipes.length, 
+      passed: compatibleRecipes.length, 
+      blocked: rejectedCount 
+    });
 
     // Prioriza receitas do país do usuário
     const sortedRecipes = compatibleRecipes.sort((a: any, b: any) => {

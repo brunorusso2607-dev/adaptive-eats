@@ -605,6 +605,15 @@ CADA OPCAO deve ter:
 - Lista de alimentos prontos com quantidades em unidades domesticas
 - Calorias aproximadas
 
+GUIA DE REFEICOES POR TIPO (MUITO IMPORTANTE):
+- CAFE DA MANHA: paes, tapioca, ovos, frutas, iogurte, cereais, cafe, sucos
+- LANCHE MANHA/TARDE: frutas, iogurte, castanhas, barra de cereais, sanduiche leve
+- ALMOCO: prato principal completo (proteina + carboidrato + legumes/salada), refeicao quente e substancial
+- JANTAR: prato principal completo similar ao almoco (proteina + carboidrato + vegetais), sopas completas, omeletes substanciais - NAO use apenas pao/fatias de pao como acompanhamento principal
+- CEIA: lanche leve noturno, cha, leite, frutas
+
+REGRA CRITICA JANTAR: O jantar deve ser uma REFEICAO COMPLETA E SUBSTANCIAL, nunca apenas "sopa com fatia de pao". Inclua sempre proteina significativa (grelhados, refogados, omeletes ricos) com acompanhamentos substantivos.
+
 PADRAO DE QUALIDADE:
 - Opcoes devem parecer criadas por nutricionista humano experiente
 - Nao repetir mesmas refeicoes entre opcoes

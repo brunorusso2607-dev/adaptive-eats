@@ -69,8 +69,12 @@ function getMergedTimeRanges(profileTimes: CustomMealTimes | null): MealTimeRang
   return merged;
 }
 
-// Função para verificar se o horário da refeição já começou
-export function isMealTimeStarted(mealType: string, actualDate: Date | undefined): boolean {
+// Função para verificar se o horário da refeição já começou (com suporte a ranges customizados)
+export function isMealTimeStartedWithRanges(
+  mealType: string, 
+  actualDate: Date | undefined,
+  customRanges?: MealTimeRanges | null
+): boolean {
   if (!actualDate) return false;
   
   const now = new Date();
@@ -88,12 +92,17 @@ export function isMealTimeStarted(mealType: string, actualDate: Date | undefined
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const timeRanges = getMealTimeRangesSync();
+  const timeRanges = customRanges || getMealTimeRangesSync();
   const range = timeRanges[mealType];
   if (!range) return true;
   
   const startTimeInMinutes = range.start * 60;
   return currentTimeInMinutes >= startTimeInMinutes;
+}
+
+// Versão retrocompatível
+export function isMealTimeStarted(mealType: string, actualDate: Date | undefined): boolean {
+  return isMealTimeStartedWithRanges(mealType, actualDate, null);
 }
 
 // Labels em português - usar do banco
@@ -138,7 +147,13 @@ function getCurrentMealType(): string {
   return mealOrder[0] || "cafe_manha";
 }
 
-export function getMealStatus(mealType: string, actualDate: Date | undefined, completedAt: string | null): MealStatus {
+// Versão com suporte a ranges customizados
+export function getMealStatusWithRanges(
+  mealType: string, 
+  actualDate: Date | undefined, 
+  completedAt: string | null,
+  customRanges?: MealTimeRanges | null
+): MealStatus {
   if (completedAt) return "completed";
   
   if (!actualDate) return "on_time";
@@ -162,7 +177,7 @@ export function getMealStatus(mealType: string, actualDate: Date | undefined, co
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
   
-  const timeRanges = getMealTimeRangesSync();
+  const timeRanges = customRanges || getMealTimeRangesSync();
   const range = timeRanges[mealType];
   if (!range) return "on_time";
   
@@ -180,12 +195,24 @@ export function getMealStatus(mealType: string, actualDate: Date | undefined, co
   return "on_time";
 }
 
-export function getMinutesOverdue(mealType: string, actualDate: Date | undefined): number {
+// Versão retrocompatível (usa ranges globais)
+export function getMealStatus(mealType: string, actualDate: Date | undefined, completedAt: string | null): MealStatus {
+  return getMealStatusWithRanges(mealType, actualDate, completedAt, null);
+}
+
+// Versão com suporte a ranges customizados
+export function getMinutesOverdueWithRanges(
+  mealType: string, 
+  actualDate: Date | undefined,
+  customRanges?: MealTimeRanges | null
+): number {
   if (!actualDate) return 0;
   
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+  
+  const timeRanges = customRanges || getMealTimeRangesSync();
   
   // Se a refeição é de um dia futuro, não está atrasada
   if (mealDate >= today) {
@@ -195,7 +222,6 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
       const minutes = now.getMinutes();
       const currentTimeInMinutes = hour * 60 + minutes;
       
-      const timeRanges = getMealTimeRangesSync();
       const range = timeRanges[mealType];
       if (!range) return 0;
       
@@ -211,7 +237,6 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
   
   // Se é de um dia anterior, calcular dias de atraso
   const daysDiff = Math.floor((today.getTime() - mealDate.getTime()) / (1000 * 60 * 60 * 24));
-  const timeRanges = getMealTimeRangesSync();
   const range = timeRanges[mealType];
   if (!range) return daysDiff * 24 * 60;
   
@@ -221,6 +246,11 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
   const delayStartInMinutes = (range.start * 60) + (MEAL_DELAY_TOLERANCE_HOURS * 60);
   
   return (daysDiff * 24 * 60) + currentTimeInMinutes - delayStartInMinutes;
+}
+
+// Versão retrocompatível (usa ranges globais)
+export function getMinutesOverdue(mealType: string, actualDate: Date | undefined): number {
+  return getMinutesOverdueWithRanges(mealType, actualDate, null);
 }
 
 export function usePendingMeals() {
@@ -532,6 +562,28 @@ export function usePendingMeals() {
     }
   }, [fetchPendingMeals]);
 
+  // Funções wrapper que usam os effectiveTimeRanges
+  const getMealStatusWithEffectiveRanges = useCallback(
+    (mealType: string, actualDate: Date | undefined, completedAt: string | null) => {
+      return getMealStatusWithRanges(mealType, actualDate, completedAt, effectiveTimeRanges);
+    },
+    [effectiveTimeRanges]
+  );
+
+  const getMinutesOverdueWithEffectiveRanges = useCallback(
+    (mealType: string, actualDate: Date | undefined) => {
+      return getMinutesOverdueWithRanges(mealType, actualDate, effectiveTimeRanges);
+    },
+    [effectiveTimeRanges]
+  );
+
+  const isMealTimeStartedWithEffectiveRanges = useCallback(
+    (mealType: string, actualDate: Date | undefined) => {
+      return isMealTimeStartedWithRanges(mealType, actualDate, effectiveTimeRanges);
+    },
+    [effectiveTimeRanges]
+  );
+
   return {
     pendingMeals,
     isLoading,
@@ -542,7 +594,8 @@ export function usePendingMeals() {
     effectiveTimeRanges,
     MEAL_LABELS,
     DAY_LABELS,
-    getMealStatus,
-    getMinutesOverdue,
+    getMealStatusForMeal: getMealStatusWithEffectiveRanges,
+    getMinutesOverdueForMeal: getMinutesOverdueWithEffectiveRanges,
+    isMealTimeStartedForMeal: isMealTimeStartedWithEffectiveRanges,
   };
 }

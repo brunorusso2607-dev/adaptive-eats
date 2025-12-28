@@ -6,6 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Search, Plus, X, Flame, Loader2, PenLine, UtensilsCrossed, AlertTriangle } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
+import { useUserCountry } from "@/hooks/useUserCountry";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
@@ -61,7 +62,8 @@ export default function FreeFormMealLogger({
   // Registration flow state
   const [showRegistrationFlow, setShowRegistrationFlow] = useState(false);
 
-  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
+  const { country: userCountry } = useUserCountry();
+  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch(userCountry);
   const { checkFood, checkConflict } = useIntoleranceWarning();
 
   // Fetch user profile for conflict checking

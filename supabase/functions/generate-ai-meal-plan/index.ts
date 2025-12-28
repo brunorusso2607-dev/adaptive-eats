@@ -11,35 +11,24 @@ const logStep = (step: string, details?: any) => {
   console.log(`[AI-MEAL-PLAN] ${step}${detailsStr}`);
 };
 
-// ============= TIPOS =============
-interface MealOption {
-  name: string;
-  description: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  prep_time: number;
-  ingredients: {
-    item: string;
-    quantity: string;
-    unit: string;
-    calories: number;
-  }[];
-  instructions: string[];
+// ============= TIPOS - FORMATO SIMPLIFICADO =============
+interface SimpleMealOption {
+  title: string;
+  foods: string[];
+  calories_kcal: number;
 }
 
-interface MealSlot {
+interface SimpleMeal {
   meal_type: string;
   label: string;
   target_calories: number;
-  options: MealOption[];
+  options: SimpleMealOption[];
 }
 
-interface DayPlan {
+interface SimpleDayPlan {
   day: number;
   day_name: string;
-  meals: MealSlot[];
+  meals: SimpleMeal[];
   total_calories: number;
 }
 
@@ -48,12 +37,11 @@ interface RegionalConfig {
   language: string;
   languageName: string;
   measurementSystem: 'metric' | 'imperial';
-  currencySymbol: string;
   typicalMeals: string;
   culturalNotes: string;
   mealLabels: Record<string, string>;
   dayNames: string[];
-  exampleIngredients: string;
+  domesticUnits: string;
 }
 
 const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
@@ -62,24 +50,21 @@ const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
     language: 'pt-BR',
     languageName: 'Português Brasileiro',
     measurementSystem: 'metric',
-    currencySymbol: 'R$',
     typicalMeals: `
-- CAFÉ DA MANHÃ: Pão francês, tapioca, cuscuz, café com leite, frutas tropicais
-- ALMOÇO: Arroz + feijão + proteína + salada (estrutura clássica brasileira)
-- LANCHES: Frutas, pão de queijo, açaí, sanduíches naturais
-- JANTAR: Similar ao almoço ou mais leve (sopas, omeletes)
-- CEIA: Chá com biscoitos, frutas`,
-    culturalNotes: 'Valorize ingredientes brasileiros: mandioca, açaí, cupuaçu, castanha-do-pará, feijão preto, carne de sol.',
+CAFE DA MANHA: Pao frances, tapioca, ovos, cafe com leite, frutas tropicais, iogurte
+LANCHE: Frutas, castanhas, pao de queijo, sanduiches leves
+ALMOCO: Arroz + feijao + proteina (frango, carne, peixe) + salada - estrutura classica brasileira
+JANTAR: Similar ao almoco ou mais leve (sopas, omeletes, sanduiches)`,
+    culturalNotes: 'Ingredientes brasileiros: mandioca, acai, feijao preto, frango, carne bovina, banana, mamao, laranja.',
     mealLabels: {
-      cafe_manha: "Café da Manhã",
-      lanche_manha: "Lanche da Manhã",
-      almoco: "Almoço",
-      lanche_tarde: "Lanche da Tarde",
+      cafe_manha: "Cafe da manha",
+      lanche_manha: "Lanche da manha",
+      almoco: "Almoco",
+      lanche_tarde: "Lanche da tarde",
       jantar: "Jantar",
-      ceia: "Ceia",
     },
-    dayNames: ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Pão francês", "quantity": "2", "unit": "unidades", "calories": 150}',
+    dayNames: ["Segunda-feira", "Terca-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sabado", "Domingo"],
+    domesticUnits: 'unidade, colher de sopa, copo, fatia, prato medio, concha, porcao',
   },
 
   // USA
@@ -87,99 +72,87 @@ const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
     language: 'en-US',
     languageName: 'American English',
     measurementSystem: 'imperial',
-    currencySymbol: '$',
     typicalMeals: `
-- BREAKFAST: Eggs, bacon, toast, oatmeal, pancakes, smoothies, cereal
-- LUNCH: Sandwiches, salads, wraps, soups, leftovers
-- SNACKS: Fruits, nuts, yogurt, granola bars, cheese
-- DINNER: Protein + starch + vegetables (grilled chicken, pasta, steak)
-- LATE SNACK: Light options like fruit or yogurt`,
-    culturalNotes: 'Use American ingredients: turkey, peanut butter, maple syrup, sweet potatoes, ranch dressing, corn.',
+BREAKFAST: Eggs, bacon, toast, oatmeal, pancakes, smoothies, cereal, yogurt
+SNACK: Fruits, nuts, yogurt, granola bars, cheese sticks
+LUNCH: Sandwiches, salads, wraps, soups, grain bowls
+DINNER: Protein + starch + vegetables (grilled chicken, pasta, steak, fish)`,
+    culturalNotes: 'American ingredients: turkey, peanut butter, sweet potatoes, chicken breast, salmon, berries, avocado.',
     mealLabels: {
       cafe_manha: "Breakfast",
       lanche_manha: "Morning Snack",
       almoco: "Lunch",
       lanche_tarde: "Afternoon Snack",
       jantar: "Dinner",
-      ceia: "Evening Snack",
     },
     dayNames: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    exampleIngredients: '{"item": "Whole wheat bread", "quantity": "2", "unit": "slices", "calories": 140}',
+    domesticUnits: 'piece, tablespoon, cup, slice, medium plate, serving, portion',
   },
 
   // MEXICO
   'MX': {
     language: 'es-MX',
-    languageName: 'Español Mexicano',
+    languageName: 'Espanol Mexicano',
     measurementSystem: 'metric',
-    currencySymbol: '$',
     typicalMeals: `
-- DESAYUNO: Huevos rancheros, chilaquiles, quesadillas, licuados, fruta
-- ALMUERZO/COMIDA: Sopa, arroz, frijoles, proteína, tortillas, ensalada
-- COLACIÓN: Frutas, jícama, pepino con limón, tostadas
-- CENA: Más ligera - tacos, quesadillas, sopas
-- ANTES DE DORMIR: Leche, fruta, galletas integrales`,
-    culturalNotes: 'Use ingredientes mexicanos: tortillas de maíz, frijoles negros, aguacate, chile, nopales, limón, cilantro.',
+DESAYUNO: Huevos rancheros, chilaquiles, quesadillas, licuados, fruta, frijoles
+COLACION: Frutas, jicama, pepino con limon, tostadas, nueces
+COMIDA: Sopa, arroz, frijoles, proteina, tortillas, ensalada
+CENA: Tacos, quesadillas, sopas, platillos mas ligeros`,
+    culturalNotes: 'Ingredientes mexicanos: tortillas de maiz, frijoles negros, aguacate, chile, pollo, carne, huevos.',
     mealLabels: {
       cafe_manha: "Desayuno",
-      lanche_manha: "Colación Matutina",
+      lanche_manha: "Colacion Matutina",
       almoco: "Comida",
-      lanche_tarde: "Colación Vespertina",
+      lanche_tarde: "Colacion Vespertina",
       jantar: "Cena",
-      ceia: "Antes de Dormir",
     },
-    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Tortilla de maíz", "quantity": "3", "unit": "piezas", "calories": 150}',
+    dayNames: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    domesticUnits: 'pieza, cucharada, vaso, rebanada, plato mediano, porcion',
   },
 
   // SPAIN
   'ES': {
     language: 'es-ES',
-    languageName: 'Español de España',
+    languageName: 'Espanol de Espana',
     measurementSystem: 'metric',
-    currencySymbol: '€',
     typicalMeals: `
-- DESAYUNO: Tostada con tomate y aceite, café con leche, zumo de naranja
-- ALMUERZO: Comida principal del día - paella, cocido, pescado, ensaladas
-- MERIENDA: Bocadillo, fruta, café
-- CENA: Más ligera - tortilla española, ensaladas, tapas
-- ANTES DE DORMIR: Infusión, fruta`,
-    culturalNotes: 'Use ingredientes españoles: aceite de oliva, jamón serrano, queso manchego, garbanzos, pimentón, azafrán.',
+DESAYUNO: Tostada con tomate y aceite, cafe con leche, zumo de naranja, cereales
+ALMUERZO: Comida principal - paella, cocido, pescado, ensaladas, legumbres
+MERIENDA: Bocadillo, fruta, cafe, yogur
+CENA: Tortilla espanola, ensaladas, sopas, platos ligeros`,
+    culturalNotes: 'Ingredientes espanoles: aceite de oliva, jamon serrano, queso, garbanzos, pescado, pollo.',
     mealLabels: {
       cafe_manha: "Desayuno",
-      lanche_manha: "Media Mañana",
+      lanche_manha: "Media Manana",
       almoco: "Almuerzo",
       lanche_tarde: "Merienda",
       jantar: "Cena",
-      ceia: "Antes de Dormir",
     },
-    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Pan de pueblo", "quantity": "2", "unit": "rebanadas", "calories": 140}',
+    dayNames: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, rebanada, plato mediano, racion',
   },
 
   // FRANCE
   'FR': {
     language: 'fr-FR',
-    languageName: 'Français',
+    languageName: 'Francais',
     measurementSystem: 'metric',
-    currencySymbol: '€',
     typicalMeals: `
-- PETIT-DÉJEUNER: Croissant, pain, confiture, café, jus d'orange
-- DÉJEUNER: Repas principal - entrée, plat principal, fromage ou dessert
-- GOÛTER: Fruit, yaourt, biscuits
-- DÎNER: Plus léger - soupe, quiche, salade
-- AVANT LE COUCHER: Tisane, fruit`,
-    culturalNotes: 'Utilisez des ingrédients français: baguette, fromages (brie, camembert), beurre, crème fraîche, herbes de Provence.',
+PETIT-DEJEUNER: Croissant, pain, confiture, cafe, jus orange, yaourt
+DEJEUNER: Repas principal - entree, plat principal, fromage ou dessert
+GOUTER: Fruit, yaourt, biscuits
+DINER: Soupe, quiche, salade, plats legers`,
+    culturalNotes: 'Ingredients francais: baguette, fromages, beurre, poulet, poisson, legumes frais.',
     mealLabels: {
-      cafe_manha: "Petit-déjeuner",
+      cafe_manha: "Petit-dejeuner",
       lanche_manha: "Collation du matin",
-      almoco: "Déjeuner",
-      lanche_tarde: "Goûter",
-      jantar: "Dîner",
-      ceia: "Avant le coucher",
+      almoco: "Dejeuner",
+      lanche_tarde: "Gouter",
+      jantar: "Diner",
     },
     dayNames: ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"],
-    exampleIngredients: '{"item": "Baguette", "quantity": "1/4", "unit": "pièce", "calories": 140}',
+    domesticUnits: 'piece, cuillere a soupe, verre, tranche, assiette moyenne, portion',
   },
 
   // GERMANY
@@ -187,24 +160,21 @@ const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
     language: 'de-DE',
     languageName: 'Deutsch',
     measurementSystem: 'metric',
-    currencySymbol: '€',
     typicalMeals: `
-- FRÜHSTÜCK: Vollkornbrot, Müsli, Wurst, Käse, Eier, Kaffee
-- MITTAGESSEN: Hauptmahlzeit - Fleisch/Fisch, Kartoffeln, Gemüse
-- ZWISCHENMAHLZEIT: Obst, Joghurt, Nüsse
-- ABENDESSEN: Kalt - Brot, Aufschnitt, Käse, Salat
-- SPÄTIMBISS: Tee, Obst`,
-    culturalNotes: 'Verwenden Sie deutsche Zutaten: Vollkornbrot, Sauerkraut, Bratwurst, Kartoffeln, Quark, Senf.',
+FRUHSTUCK: Vollkornbrot, Musli, Wurst, Kase, Eier, Kaffee
+MITTAGESSEN: Fleisch oder Fisch, Kartoffeln, Gemuse
+ZWISCHENMAHLZEIT: Obst, Joghurt, Nusse
+ABENDESSEN: Brot, Aufschnitt, Kase, Salat`,
+    culturalNotes: 'Deutsche Zutaten: Vollkornbrot, Kartoffeln, Hahnchen, Fisch, Quark, Gemuse.',
     mealLabels: {
-      cafe_manha: "Frühstück",
+      cafe_manha: "Fruhstuck",
       lanche_manha: "Vormittagssnack",
       almoco: "Mittagessen",
       lanche_tarde: "Nachmittagssnack",
       jantar: "Abendessen",
-      ceia: "Spätimbiss",
     },
     dayNames: ["Montag", "Dienstag", "Mittwoch", "Donnerstag", "Freitag", "Samstag", "Sonntag"],
-    exampleIngredients: '{"item": "Vollkornbrot", "quantity": "2", "unit": "Scheiben", "calories": 140}',
+    domesticUnits: 'Stuck, Essloffel, Glas, Scheibe, mittlerer Teller, Portion',
   },
 
   // ITALY
@@ -212,74 +182,65 @@ const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
     language: 'it-IT',
     languageName: 'Italiano',
     measurementSystem: 'metric',
-    currencySymbol: '€',
     typicalMeals: `
-- COLAZIONE: Cornetto, caffè, cappuccino, biscotti, succo
-- PRANZO: Primo (pasta/risotto), secondo (carne/pesce), contorno, frutta
-- SPUNTINO: Frutta, yogurt, crackers
-- CENA: Più leggera - minestra, insalata, pesce
-- PRIMA DI DORMIRE: Tisana, frutta`,
-    culturalNotes: 'Usa ingredienti italiani: pasta, olio d\'oliva, pomodoro, mozzarella, prosciutto, parmigiano, basilico.',
+COLAZIONE: Cornetto, caffe, cappuccino, biscotti, succo, yogurt
+PRANZO: Primo (pasta/risotto), secondo (carne/pesce), contorno, frutta
+SPUNTINO: Frutta, yogurt, crackers
+CENA: Minestra, insalata, pesce, piatti leggeri`,
+    culturalNotes: 'Ingredienti italiani: pasta, olio oliva, pomodoro, mozzarella, pollo, pesce, verdure.',
     mealLabels: {
       cafe_manha: "Colazione",
       lanche_manha: "Spuntino Mattutino",
       almoco: "Pranzo",
       lanche_tarde: "Merenda",
       jantar: "Cena",
-      ceia: "Prima di Dormire",
     },
-    dayNames: ["Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica"],
-    exampleIngredients: '{"item": "Pane integrale", "quantity": "2", "unit": "fette", "calories": 140}',
+    dayNames: ["Lunedi", "Martedi", "Mercoledi", "Giovedi", "Venerdi", "Sabato", "Domenica"],
+    domesticUnits: 'pezzo, cucchiaio, bicchiere, fetta, piatto medio, porzione',
   },
 
   // ARGENTINA
   'AR': {
     language: 'es-AR',
-    languageName: 'Español Argentino',
+    languageName: 'Espanol Argentino',
     measurementSystem: 'metric',
-    currencySymbol: '$',
     typicalMeals: `
-- DESAYUNO: Medialunas, tostadas, mate, café con leche
-- ALMUERZO: Asado, milanesas, pastas, empanadas, ensaladas
-- MERIENDA: Mate con facturas, fruta
-- CENA: Similar al almuerzo - carnes, pastas, pizzas
-- ANTES DE DORMIR: Infusión, fruta`,
-    culturalNotes: 'Usa ingredientes argentinos: carne vacuna, dulce de leche, mate, chimichurri, empanadas, alfajores.',
+DESAYUNO: Medialunas, tostadas, mate, cafe con leche, frutas
+ALMUERZO: Asado, milanesas, pastas, empanadas, ensaladas
+MERIENDA: Mate con facturas, fruta, yogur
+CENA: Carnes, pastas, pizzas, ensaladas`,
+    culturalNotes: 'Ingredientes argentinos: carne vacuna, pollo, pastas, empanadas, verduras, frutas.',
     mealLabels: {
       cafe_manha: "Desayuno",
-      lanche_manha: "Colación",
+      lanche_manha: "Colacion",
       almoco: "Almuerzo",
       lanche_tarde: "Merienda",
       jantar: "Cena",
-      ceia: "Antes de Dormir",
     },
-    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Tostada de pan integral", "quantity": "2", "unit": "unidades", "calories": 140}',
+    dayNames: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, rebanada, plato mediano, porcion',
   },
 
   // PORTUGAL
   'PT': {
     language: 'pt-PT',
-    languageName: 'Português Europeu',
+    languageName: 'Portugues Europeu',
     measurementSystem: 'metric',
-    currencySymbol: '€',
     typicalMeals: `
-- PEQUENO-ALMOÇO: Pão com manteiga, cereais, café, sumo de laranja
-- ALMOÇO: Sopa, prato principal (bacalhau, carne, peixe), arroz/batatas
-- LANCHE: Fruta, iogurte, tostas
-- JANTAR: Similar ao almoço mas pode ser mais leve
-- CEIA: Chá, fruta, bolachas`,
-    culturalNotes: 'Use ingredientes portugueses: bacalhau, azeite, batatas, grelos, chouriço, queijo da serra.',
+PEQUENO-ALMOCO: Pao com manteiga, cereais, cafe, sumo de laranja
+ALMOCO: Sopa, prato principal (bacalhau, carne, peixe), arroz/batatas
+LANCHE: Fruta, iogurte, tostas
+JANTAR: Similar ao almoco ou mais leve`,
+    culturalNotes: 'Ingredientes portugueses: bacalhau, azeite, batatas, frango, peixe, legumes.',
     mealLabels: {
-      cafe_manha: "Pequeno-almoço",
-      lanche_manha: "Lanche da Manhã",
-      almoco: "Almoço",
+      cafe_manha: "Pequeno-almoco",
+      lanche_manha: "Lanche da Manha",
+      almoco: "Almoco",
       lanche_tarde: "Lanche da Tarde",
       jantar: "Jantar",
-      ceia: "Ceia",
     },
-    dayNames: ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Pão de mistura", "quantity": "2", "unit": "fatias", "calories": 140}',
+    dayNames: ["Segunda-feira", "Terca-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sabado", "Domingo"],
+    domesticUnits: 'unidade, colher de sopa, copo, fatia, prato medio, porcao',
   },
 
   // UK
@@ -287,200 +248,252 @@ const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
     language: 'en-GB',
     languageName: 'British English',
     measurementSystem: 'metric',
-    currencySymbol: '£',
     typicalMeals: `
-- BREAKFAST: Full English (eggs, bacon, beans, toast), porridge, cereal
-- LUNCH: Sandwiches, jacket potatoes, soups, salads
-- AFTERNOON TEA: Scones, biscuits, cake, tea
-- DINNER: Roast dinner, fish and chips, pies, curries
-- SUPPER: Light snack, tea, biscuits`,
-    culturalNotes: 'Use British ingredients: baked beans, cheddar cheese, marmite, clotted cream, fish, lamb.',
+BREAKFAST: Eggs, bacon, toast, porridge, cereal, yogurt
+LUNCH: Sandwiches, jacket potatoes, soups, salads
+AFTERNOON TEA: Scones, biscuits, fruit, tea
+DINNER: Roast dinner, fish and chips, pies, grilled meats`,
+    culturalNotes: 'British ingredients: chicken, fish, potatoes, beans, cheese, vegetables, eggs.',
     mealLabels: {
       cafe_manha: "Breakfast",
       lanche_manha: "Elevenses",
       almoco: "Lunch",
       lanche_tarde: "Afternoon Tea",
       jantar: "Dinner",
-      ceia: "Supper",
     },
     dayNames: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-    exampleIngredients: '{"item": "Wholemeal bread", "quantity": "2", "unit": "slices", "calories": 140}',
+    domesticUnits: 'piece, tablespoon, cup, slice, medium plate, serving, portion',
   },
 
   // CHILE
   'CL': {
     language: 'es-CL',
-    languageName: 'Español Chileno',
+    languageName: 'Espanol Chileno',
     measurementSystem: 'metric',
-    currencySymbol: '$',
     typicalMeals: `
-- DESAYUNO: Pan con palta, huevos, café, té
-- ALMUERZO: Cazuela, pastel de choclo, porotos, ensaladas
-- ONCE: Pan con agregados, té (reemplaza la cena)
-- CENA: Más ligera si se tomó once, o similar al almuerzo
-- ANTES DE DORMIR: Fruta, infusión`,
-    culturalNotes: 'Usa ingredientes chilenos: palta, porotos granados, choclo, mariscos, merkén, manjar.',
+DESAYUNO: Pan con palta, huevos, cafe, te
+ALMUERZO: Cazuela, porotos, pollo, carne, ensaladas
+ONCE: Pan con agregados, te
+CENA: Platos ligeros o similar al almuerzo`,
+    culturalNotes: 'Ingredientes chilenos: palta, porotos, pollo, carne, pescado, verduras, frutas.',
     mealLabels: {
       cafe_manha: "Desayuno",
-      lanche_manha: "Colación",
+      lanche_manha: "Colacion",
       almoco: "Almuerzo",
       lanche_tarde: "Once",
       jantar: "Cena",
-      ceia: "Antes de Dormir",
     },
-    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Pan integral", "quantity": "2", "unit": "unidades", "calories": 140}',
+    dayNames: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, rebanada, plato mediano, porcion',
   },
 
   // COLOMBIA
   'CO': {
     language: 'es-CO',
-    languageName: 'Español Colombiano',
+    languageName: 'Espanol Colombiano',
     measurementSystem: 'metric',
-    currencySymbol: '$',
     typicalMeals: `
-- DESAYUNO: Arepa, huevos, calentado, chocolate, frutas
-- ALMUERZO: Bandeja paisa, sancocho, arroz, frijoles, carne, ensalada
-- ONCES: Empanadas, buñuelos, fruta, café
-- CENA: Más ligera - sopas, arepas, huevos
-- ANTES DE DORMIR: Aromática, fruta`,
-    culturalNotes: 'Usa ingredientes colombianos: arepa, plátano, yuca, frijoles, hogao, ají, panela.',
+DESAYUNO: Arepa, huevos, calentado, chocolate, frutas
+ALMUERZO: Arroz, frijoles, carne, pollo, ensalada
+ONCES: Empanadas, fruta, cafe
+CENA: Sopas, arepas, huevos, platos ligeros`,
+    culturalNotes: 'Ingredientes colombianos: arepa, platano, yuca, frijoles, pollo, carne, frutas.',
     mealLabels: {
       cafe_manha: "Desayuno",
       lanche_manha: "Medias Nueves",
       almoco: "Almuerzo",
       lanche_tarde: "Onces",
       jantar: "Cena",
-      ceia: "Antes de Dormir",
     },
-    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
-    exampleIngredients: '{"item": "Arepa de maíz", "quantity": "2", "unit": "unidades", "calories": 150}',
+    dayNames: ["Lunes", "Martes", "Miercoles", "Jueves", "Viernes", "Sabado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, tajada, plato mediano, porcion',
   },
 };
 
-// Fallback para países não mapeados
 const DEFAULT_CONFIG: RegionalConfig = REGIONAL_CONFIGS['US'];
 
 function getRegionalConfig(countryCode: string): RegionalConfig {
   return REGIONAL_CONFIGS[countryCode?.toUpperCase()] || DEFAULT_CONFIG;
 }
 
-// ============= MAPEAMENTO DE INTOLERÂNCIAS MULTILÍNGUE =============
-function getIntoleranceInstructions(intolerances: string[], language: string): string {
+// ============= RESTRICOES MULTILINGUE - SIMPLIFICADO =============
+function getRestrictionText(restrictions: {
+  intolerances: string[];
+  dietaryPreference: string;
+  excludedIngredients: string[];
+  goal: string;
+}, language: string): string {
   const isSpanish = language.startsWith('es');
   const isFrench = language.startsWith('fr');
   const isGerman = language.startsWith('de');
   const isItalian = language.startsWith('it');
   const isPortuguese = language.startsWith('pt');
 
-  const maps: Record<string, Record<string, string>> = {
+  // Intolerances mapping
+  const intoleranceMap: Record<string, Record<string, string>> = {
     en: {
-      'lactose': 'NO DAIRY (milk, cheese, yogurt, butter, cream)',
-      'gluten': 'NO GLUTEN (wheat bread, pasta, oats, cookies, cakes with wheat flour)',
-      'amendoim': 'NO PEANUTS AND DERIVATIVES',
-      'frutos_do_mar': 'NO SHELLFISH (shrimp, lobster, crab, mussels)',
-      'peixe': 'NO FISH',
-      'ovos': 'NO EGGS',
-      'soja': 'NO SOY AND DERIVATIVES',
-      'frutose': 'LOW FRUCTOSE (avoid very sweet fruits)',
-      'fodmap': 'LOW FODMAP (avoid garlic, onion, wheat, milk, excess legumes)',
-      'histamina': 'LOW HISTAMINE (avoid fermented foods, cured meats, aged cheeses)',
-      'cafeina': 'NO CAFFEINE (coffee, black tea, green tea, chocolate)',
-      'sulfitos': 'NO SULFITES (avoid wine, dried fruits, preserves)',
-      'sorbitol': 'NO SORBITOL (avoid artificial sweeteners, some fruits)',
-      'salicilato': 'LOW SALICYLATE',
-      'milho': 'NO CORN AND DERIVATIVES',
-      'leguminosas': 'NO LEGUMES (beans, lentils, chickpeas, peas)',
+      'lactose': 'NO dairy products',
+      'gluten': 'NO gluten (wheat, pasta, bread)',
+      'amendoim': 'NO peanuts',
+      'frutos_do_mar': 'NO shellfish',
+      'peixe': 'NO fish',
+      'ovos': 'NO eggs',
+      'soja': 'NO soy',
+      'cafeina': 'NO caffeine',
+      'milho': 'NO corn',
+      'leguminosas': 'NO legumes',
     },
     es: {
-      'lactose': 'SIN LÁCTEOS (leche, queso, yogur, mantequilla, crema)',
-      'gluten': 'SIN GLUTEN (pan de trigo, pasta, avena, galletas, pasteles con harina de trigo)',
-      'amendoim': 'SIN MANÍ/CACAHUATE Y DERIVADOS',
-      'frutos_do_mar': 'SIN MARISCOS (camarón, langosta, cangrejo, mejillones)',
-      'peixe': 'SIN PESCADO',
-      'ovos': 'SIN HUEVOS',
-      'soja': 'SIN SOJA Y DERIVADOS',
-      'frutose': 'BAJA FRUCTOSA (evitar frutas muy dulces)',
-      'fodmap': 'BAJO FODMAP (evitar ajo, cebolla, trigo, leche, exceso de legumbres)',
-      'histamina': 'BAJA HISTAMINA (evitar fermentados, embutidos, quesos curados)',
-      'cafeina': 'SIN CAFEÍNA (café, té negro, té verde, chocolate)',
-      'sulfitos': 'SIN SULFITOS (evitar vino, frutas secas, conservas)',
-      'sorbitol': 'SIN SORBITOL (evitar edulcorantes artificiales, algunas frutas)',
-      'salicilato': 'BAJO SALICILATO',
-      'milho': 'SIN MAÍZ Y DERIVADOS',
-      'leguminosas': 'SIN LEGUMBRES (frijoles, lentejas, garbanzos, guisantes)',
+      'lactose': 'SIN lacteos',
+      'gluten': 'SIN gluten (trigo, pasta, pan)',
+      'amendoim': 'SIN mani/cacahuate',
+      'frutos_do_mar': 'SIN mariscos',
+      'peixe': 'SIN pescado',
+      'ovos': 'SIN huevos',
+      'soja': 'SIN soja',
+      'cafeina': 'SIN cafeina',
+      'milho': 'SIN maiz',
+      'leguminosas': 'SIN legumbres',
     },
     pt: {
-      'lactose': 'SEM LATICÍNIOS (leite, queijo, iogurte, manteiga, creme de leite)',
-      'gluten': 'SEM GLÚTEN (pão de trigo, macarrão, aveia, biscoitos, bolos com farinha de trigo)',
-      'amendoim': 'SEM AMENDOIM E DERIVADOS',
-      'frutos_do_mar': 'SEM FRUTOS DO MAR (camarão, lagosta, caranguejo, mexilhão)',
-      'peixe': 'SEM PEIXE',
-      'ovos': 'SEM OVOS',
-      'soja': 'SEM SOJA E DERIVADOS',
-      'frutose': 'BAIXO EM FRUTOSE (evitar frutas muito doces)',
-      'fodmap': 'LOW FODMAP (evitar alho, cebola, trigo, leite, leguminosas em excesso)',
-      'histamina': 'BAIXA HISTAMINA (evitar fermentados, embutidos, queijos curados)',
-      'cafeina': 'SEM CAFEÍNA (café, chá preto, chá verde, chocolate)',
-      'sulfitos': 'SEM SULFITOS (evitar vinho, frutas secas, conservas)',
-      'sorbitol': 'SEM SORBITOL (evitar adoçantes artificiais, algumas frutas)',
-      'salicilato': 'BAIXO SALICILATO',
-      'milho': 'SEM MILHO E DERIVADOS',
-      'leguminosas': 'SEM LEGUMINOSAS (feijão, lentilha, grão-de-bico, ervilha)',
+      'lactose': 'SEM laticinios',
+      'gluten': 'SEM gluten (trigo, massa, pao)',
+      'amendoim': 'SEM amendoim',
+      'frutos_do_mar': 'SEM frutos do mar',
+      'peixe': 'SEM peixe',
+      'ovos': 'SEM ovos',
+      'soja': 'SEM soja',
+      'cafeina': 'SEM cafeina',
+      'milho': 'SEM milho',
+      'leguminosas': 'SEM leguminosas',
     },
     fr: {
-      'lactose': 'SANS PRODUITS LAITIERS (lait, fromage, yaourt, beurre, crème)',
-      'gluten': 'SANS GLUTEN (pain de blé, pâtes, avoine, biscuits, gâteaux à la farine de blé)',
-      'amendoim': 'SANS ARACHIDES ET DÉRIVÉS',
-      'frutos_do_mar': 'SANS FRUITS DE MER (crevettes, homard, crabe, moules)',
-      'peixe': 'SANS POISSON',
-      'ovos': 'SANS ŒUFS',
-      'soja': 'SANS SOJA ET DÉRIVÉS',
-      'frutose': 'FAIBLE EN FRUCTOSE (éviter les fruits très sucrés)',
-      'fodmap': 'FAIBLE FODMAP (éviter ail, oignon, blé, lait, excès de légumineuses)',
-      'histamina': 'FAIBLE HISTAMINE (éviter fermentés, charcuterie, fromages affinés)',
-      'cafeina': 'SANS CAFÉINE (café, thé noir, thé vert, chocolat)',
-      'sulfitos': 'SANS SULFITES (éviter vin, fruits secs, conserves)',
-      'sorbitol': 'SANS SORBITOL (éviter édulcorants artificiels, certains fruits)',
-      'salicilato': 'FAIBLE SALICYLATE',
-      'milho': 'SANS MAÏS ET DÉRIVÉS',
-      'leguminosas': 'SANS LÉGUMINEUSES (haricots, lentilles, pois chiches, pois)',
+      'lactose': 'SANS produits laitiers',
+      'gluten': 'SANS gluten (ble, pates, pain)',
+      'amendoim': 'SANS arachides',
+      'frutos_do_mar': 'SANS fruits de mer',
+      'peixe': 'SANS poisson',
+      'ovos': 'SANS oeufs',
+      'soja': 'SANS soja',
+      'cafeina': 'SANS cafeine',
+      'milho': 'SANS mais',
+      'leguminosas': 'SANS legumineuses',
     },
     de: {
-      'lactose': 'OHNE MILCHPRODUKTE (Milch, Käse, Joghurt, Butter, Sahne)',
-      'gluten': 'OHNE GLUTEN (Weizenbrot, Nudeln, Hafer, Kekse, Kuchen mit Weizenmehl)',
-      'amendoim': 'OHNE ERDNÜSSE UND DERIVATE',
-      'frutos_do_mar': 'OHNE MEERESFRÜCHTE (Garnelen, Hummer, Krabben, Muscheln)',
-      'peixe': 'OHNE FISCH',
-      'ovos': 'OHNE EIER',
-      'soja': 'OHNE SOJA UND DERIVATE',
-      'frutose': 'WENIG FRUKTOSE (sehr süße Früchte vermeiden)',
-      'fodmap': 'NIEDRIG FODMAP (Knoblauch, Zwiebel, Weizen, Milch, übermäßige Hülsenfrüchte vermeiden)',
-      'histamina': 'WENIG HISTAMIN (Fermentiertes, Wurst, gereifter Käse vermeiden)',
-      'cafeina': 'OHNE KOFFEIN (Kaffee, schwarzer Tee, grüner Tee, Schokolade)',
-      'sulfitos': 'OHNE SULFITE (Wein, Trockenfrüchte, Konserven vermeiden)',
-      'sorbitol': 'OHNE SORBITOL (künstliche Süßstoffe, einige Früchte vermeiden)',
-      'salicilato': 'WENIG SALICYLAT',
-      'milho': 'OHNE MAIS UND DERIVATE',
-      'leguminosas': 'OHNE HÜLSENFRÜCHTE (Bohnen, Linsen, Kichererbsen, Erbsen)',
+      'lactose': 'OHNE Milchprodukte',
+      'gluten': 'OHNE Gluten (Weizen, Nudeln, Brot)',
+      'amendoim': 'OHNE Erdnusse',
+      'frutos_do_mar': 'OHNE Meeresfruchte',
+      'peixe': 'OHNE Fisch',
+      'ovos': 'OHNE Eier',
+      'soja': 'OHNE Soja',
+      'cafeina': 'OHNE Koffein',
+      'milho': 'OHNE Mais',
+      'leguminosas': 'OHNE Hulsenfruchte',
     },
     it: {
-      'lactose': 'SENZA LATTICINI (latte, formaggio, yogurt, burro, panna)',
-      'gluten': 'SENZA GLUTINE (pane di grano, pasta, avena, biscotti, torte con farina di grano)',
-      'amendoim': 'SENZA ARACHIDI E DERIVATI',
-      'frutos_do_mar': 'SENZA FRUTTI DI MARE (gamberetti, aragosta, granchio, cozze)',
-      'peixe': 'SENZA PESCE',
-      'ovos': 'SENZA UOVA',
-      'soja': 'SENZA SOIA E DERIVATI',
-      'frutose': 'BASSO FRUTTOSIO (evitare frutta molto dolce)',
-      'fodmap': 'BASSO FODMAP (evitare aglio, cipolla, grano, latte, eccesso di legumi)',
-      'histamina': 'BASSA ISTAMINA (evitare fermentati, salumi, formaggi stagionati)',
-      'cafeina': 'SENZA CAFFEINA (caffè, tè nero, tè verde, cioccolato)',
-      'sulfitos': 'SENZA SOLFITI (evitare vino, frutta secca, conserve)',
-      'sorbitol': 'SENZA SORBITOLO (evitare dolcificanti artificiali, alcuni frutti)',
-      'salicilato': 'BASSO SALICILATO',
-      'milho': 'SENZA MAIS E DERIVATI',
-      'leguminosas': 'SENZA LEGUMI (fagioli, lenticchie, ceci, piselli)',
+      'lactose': 'SENZA latticini',
+      'gluten': 'SENZA glutine (grano, pasta, pane)',
+      'amendoim': 'SENZA arachidi',
+      'frutos_do_mar': 'SENZA frutti di mare',
+      'peixe': 'SENZA pesce',
+      'ovos': 'SENZA uova',
+      'soja': 'SENZA soia',
+      'cafeina': 'SENZA caffeina',
+      'milho': 'SENZA mais',
+      'leguminosas': 'SENZA legumi',
+    },
+  };
+
+  // Dietary preferences
+  const dietaryMap: Record<string, Record<string, string>> = {
+    en: {
+      'comum': 'Omnivore - all foods allowed',
+      'vegetariana': 'VEGETARIAN - NO meat',
+      'vegana': 'VEGAN - NO meat, eggs, dairy',
+      'low_carb': 'LOW CARB - avoid rice, bread, pasta',
+      'pescetariana': 'PESCATARIAN - NO red meat, only fish',
+      'cetogenica': 'KETOGENIC - very low carbs',
+      'flexitariana': 'FLEXITARIAN - mostly vegetarian',
+    },
+    es: {
+      'comum': 'Omnivoro - todos los alimentos permitidos',
+      'vegetariana': 'VEGETARIANO - SIN carnes',
+      'vegana': 'VEGANO - SIN carnes, huevos, lacteos',
+      'low_carb': 'LOW CARB - evitar arroz, pan, pasta',
+      'pescetariana': 'PESCETARIANO - SIN carnes rojas, solo pescado',
+      'cetogenica': 'CETOGENICO - muy bajo en carbohidratos',
+      'flexitariana': 'FLEXITARIANO - mayormente vegetariano',
+    },
+    pt: {
+      'comum': 'Onivoro - todos os alimentos permitidos',
+      'vegetariana': 'VEGETARIANO - SEM carnes',
+      'vegana': 'VEGANO - SEM carnes, ovos, laticinios',
+      'low_carb': 'LOW CARB - evitar arroz, pao, massa',
+      'pescetariana': 'PESCETARIANO - SEM carnes vermelhas, apenas peixe',
+      'cetogenica': 'CETOGENICO - muito baixo em carboidratos',
+      'flexitariana': 'FLEXITARIANO - predominantemente vegetariano',
+    },
+    fr: {
+      'comum': 'Omnivore - tous les aliments autorises',
+      'vegetariana': 'VEGETARIEN - SANS viande',
+      'vegana': 'VEGAN - SANS viande, oeufs, produits laitiers',
+      'low_carb': 'LOW CARB - eviter riz, pain, pates',
+      'pescetariana': 'PESCETARIEN - SANS viande rouge, seulement poisson',
+      'cetogenica': 'CETOGENE - tres faible en glucides',
+      'flexitariana': 'FLEXITARIEN - principalement vegetarien',
+    },
+    de: {
+      'comum': 'Omnivor - alle Lebensmittel erlaubt',
+      'vegetariana': 'VEGETARISCH - OHNE Fleisch',
+      'vegana': 'VEGAN - OHNE Fleisch, Eier, Milchprodukte',
+      'low_carb': 'LOW CARB - Reis, Brot, Nudeln vermeiden',
+      'pescetariana': 'PESCETARISCH - OHNE rotes Fleisch, nur Fisch',
+      'cetogenica': 'KETOGEN - sehr wenig Kohlenhydrate',
+      'flexitariana': 'FLEXITARISCH - uberwiegend vegetarisch',
+    },
+    it: {
+      'comum': 'Onnivoro - tutti gli alimenti consentiti',
+      'vegetariana': 'VEGETARIANO - SENZA carne',
+      'vegana': 'VEGANO - SENZA carne, uova, latticini',
+      'low_carb': 'LOW CARB - evitare riso, pane, pasta',
+      'pescetariana': 'PESCETARIANO - SENZA carne rossa, solo pesce',
+      'cetogenica': 'CHETOGENICO - carboidrati molto bassi',
+      'flexitariana': 'FLEXITARIANO - principalmente vegetariano',
+    },
+  };
+
+  // Goal mapping
+  const goalMap: Record<string, Record<string, string>> = {
+    en: {
+      'emagrecer': 'GOAL: Weight loss - prioritize lean proteins and vegetables',
+      'manter': 'GOAL: Maintenance - balanced diet',
+      'ganhar_peso': 'GOAL: Weight gain - include calorie-dense foods',
+    },
+    es: {
+      'emagrecer': 'OBJETIVO: Perder peso - priorizar proteinas magras y vegetales',
+      'manter': 'OBJETIVO: Mantenimiento - dieta equilibrada',
+      'ganhar_peso': 'OBJETIVO: Ganar peso - incluir alimentos caloricos',
+    },
+    pt: {
+      'emagrecer': 'OBJETIVO: Emagrecimento - priorizar proteinas magras e vegetais',
+      'manter': 'OBJETIVO: Manutencao - dieta equilibrada',
+      'ganhar_peso': 'OBJETIVO: Ganho de peso - incluir alimentos caloricos',
+    },
+    fr: {
+      'emagrecer': 'OBJECTIF: Perte de poids - privilegier proteines maigres et legumes',
+      'manter': 'OBJECTIF: Maintien - alimentation equilibree',
+      'ganhar_peso': 'OBJECTIF: Prise de poids - inclure aliments caloriques',
+    },
+    de: {
+      'emagrecer': 'ZIEL: Gewichtsverlust - magere Proteine und Gemuse priorisieren',
+      'manter': 'ZIEL: Erhaltung - ausgewogene Ernahrung',
+      'ganhar_peso': 'ZIEL: Gewichtszunahme - kalorienreiche Lebensmittel einbeziehen',
+    },
+    it: {
+      'emagrecer': 'OBIETTIVO: Perdita di peso - privilegiare proteine magre e verdure',
+      'manter': 'OBIETTIVO: Mantenimento - dieta equilibrata',
+      'ganhar_peso': 'OBIETTIVO: Aumento di peso - includere cibi calorici',
     },
   };
 
@@ -491,138 +504,33 @@ function getIntoleranceInstructions(intolerances: string[], language: string): s
   else if (isItalian) langKey = 'it';
   else if (isPortuguese) langKey = 'pt';
 
-  const map = maps[langKey];
-  return intolerances.map(i => map[i] || `NO ${i.toUpperCase()}`).join('\n- ');
+  const parts: string[] = [];
+
+  // Dietary preference
+  parts.push(dietaryMap[langKey][restrictions.dietaryPreference] || dietaryMap[langKey]['comum']);
+
+  // Goal
+  parts.push(goalMap[langKey][restrictions.goal] || goalMap[langKey]['manter']);
+
+  // Intolerances
+  if (restrictions.intolerances.length > 0) {
+    const intoleranceTexts = restrictions.intolerances
+      .map(i => intoleranceMap[langKey][i] || `NO ${i}`)
+      .join(', ');
+    parts.push(intoleranceTexts);
+  }
+
+  // Excluded ingredients
+  if (restrictions.excludedIngredients.length > 0) {
+    const excludedLabel = isPortuguese ? 'Evitar:' : isSpanish ? 'Evitar:' : isFrench ? 'Eviter:' : isGerman ? 'Vermeiden:' : isItalian ? 'Evitare:' : 'Avoid:';
+    parts.push(`${excludedLabel} ${restrictions.excludedIngredients.join(', ')}`);
+  }
+
+  return parts.join('\n');
 }
 
-// ============= PREFERÊNCIAS ALIMENTARES MULTILÍNGUE =============
-function getDietaryInstructions(preference: string, language: string): string {
-  const isSpanish = language.startsWith('es');
-  const isFrench = language.startsWith('fr');
-  const isGerman = language.startsWith('de');
-  const isItalian = language.startsWith('it');
-  const isPortuguese = language.startsWith('pt');
-
-  const instructions: Record<string, Record<string, string>> = {
-    en: {
-      'comum': 'Omnivore diet - all foods allowed (meat, fish, eggs, dairy, vegetables)',
-      'vegetariana': 'VEGETARIAN - NO MEAT (may include eggs, dairy)',
-      'vegana': 'VEGAN - 100% PLANT-BASED (no meat, no eggs, no dairy, no honey)',
-      'low_carb': 'LOW CARB - Maximum 50g carbs per day. Focus on proteins and healthy fats.',
-      'pescetariana': 'PESCATARIAN - No red meat or poultry. May include fish and seafood.',
-      'cetogenica': 'KETOGENIC - Maximum 20g carbs per day. High fat, moderate protein.',
-      'flexitariana': 'FLEXITARIAN - Predominantly vegetarian, but may include meat occasionally.',
-    },
-    es: {
-      'comum': 'Dieta omnívora - todos los alimentos permitidos (carnes, pescados, huevos, lácteos, vegetales)',
-      'vegetariana': 'VEGETARIANA - SIN CARNES (puede incluir huevos, lácteos)',
-      'vegana': 'VEGANA - 100% VEGETAL (sin carnes, sin huevos, sin lácteos, sin miel)',
-      'low_carb': 'LOW CARB - Máximo 50g de carbohidratos por día. Enfoque en proteínas y grasas saludables.',
-      'pescetariana': 'PESCETARIANA - Sin carnes rojas ni aves. Puede incluir pescados y mariscos.',
-      'cetogenica': 'CETOGÉNICA - Máximo 20g de carbohidratos por día. Alto en grasas, moderado en proteínas.',
-      'flexitariana': 'FLEXITARIANA - Predominantemente vegetariana, pero puede incluir carnes ocasionalmente.',
-    },
-    pt: {
-      'comum': 'Dieta onívora - todos os alimentos permitidos (carnes, peixes, ovos, laticínios, vegetais)',
-      'vegetariana': 'VEGETARIANA - SEM CARNES (pode incluir ovos, laticínios)',
-      'vegana': 'VEGANA - 100% VEGETAL (sem carnes, sem ovos, sem laticínios, sem mel)',
-      'low_carb': 'LOW CARB - Máximo 50g de carboidratos por dia. Foco em proteínas e gorduras saudáveis.',
-      'pescetariana': 'PESCETARIANA - Sem carnes vermelhas e aves. Pode incluir peixes e frutos do mar.',
-      'cetogenica': 'CETOGÊNICA - Máximo 20g de carboidratos por dia. Alto em gorduras, moderado em proteínas.',
-      'flexitariana': 'FLEXITARIANA - Predominantemente vegetariana, mas pode incluir carnes ocasionalmente.',
-    },
-    fr: {
-      'comum': 'Régime omnivore - tous les aliments autorisés (viandes, poissons, œufs, produits laitiers, légumes)',
-      'vegetariana': 'VÉGÉTARIEN - SANS VIANDE (peut inclure œufs, produits laitiers)',
-      'vegana': 'VÉGAN - 100% VÉGÉTAL (sans viande, sans œufs, sans produits laitiers, sans miel)',
-      'low_carb': 'LOW CARB - Maximum 50g de glucides par jour. Focus sur protéines et graisses saines.',
-      'pescetariana': 'PESCÉTARIEN - Sans viande rouge ni volaille. Peut inclure poissons et fruits de mer.',
-      'cetogenica': 'CÉTOGÈNE - Maximum 20g de glucides par jour. Riche en graisses, modéré en protéines.',
-      'flexitariana': 'FLEXITARIEN - Principalement végétarien, mais peut inclure de la viande occasionnellement.',
-    },
-    de: {
-      'comum': 'Omnivore Ernährung - alle Lebensmittel erlaubt (Fleisch, Fisch, Eier, Milchprodukte, Gemüse)',
-      'vegetariana': 'VEGETARISCH - OHNE FLEISCH (kann Eier, Milchprodukte enthalten)',
-      'vegana': 'VEGAN - 100% PFLANZLICH (ohne Fleisch, ohne Eier, ohne Milchprodukte, ohne Honig)',
-      'low_carb': 'LOW CARB - Maximal 50g Kohlenhydrate pro Tag. Fokus auf Proteine und gesunde Fette.',
-      'pescetariana': 'PESCETARISCH - Ohne rotes Fleisch und Geflügel. Kann Fisch und Meeresfrüchte enthalten.',
-      'cetogenica': 'KETOGEN - Maximal 20g Kohlenhydrate pro Tag. Reich an Fetten, mäßig an Proteinen.',
-      'flexitariana': 'FLEXITARISCH - Überwiegend vegetarisch, kann aber gelegentlich Fleisch enthalten.',
-    },
-    it: {
-      'comum': 'Dieta onnivora - tutti gli alimenti consentiti (carne, pesce, uova, latticini, verdure)',
-      'vegetariana': 'VEGETARIANA - SENZA CARNE (può includere uova, latticini)',
-      'vegana': 'VEGANA - 100% VEGETALE (senza carne, senza uova, senza latticini, senza miele)',
-      'low_carb': 'LOW CARB - Massimo 50g di carboidrati al giorno. Focus su proteine e grassi sani.',
-      'pescetariana': 'PESCETARIANA - Senza carne rossa e pollame. Può includere pesce e frutti di mare.',
-      'cetogenica': 'CHETOGENICA - Massimo 20g di carboidrati al giorno. Alto in grassi, moderato in proteine.',
-      'flexitariana': 'FLEXITARIANA - Prevalentemente vegetariana, ma può includere carne occasionalmente.',
-    },
-  };
-
-  let langKey = 'en';
-  if (isSpanish) langKey = 'es';
-  else if (isFrench) langKey = 'fr';
-  else if (isGerman) langKey = 'de';
-  else if (isItalian) langKey = 'it';
-  else if (isPortuguese) langKey = 'pt';
-
-  return instructions[langKey][preference] || instructions[langKey]['comum'];
-}
-
-// ============= OBJETIVOS MULTILÍNGUE =============
-function getGoalInstructions(goal: string, language: string): string {
-  const isSpanish = language.startsWith('es');
-  const isFrench = language.startsWith('fr');
-  const isGerman = language.startsWith('de');
-  const isItalian = language.startsWith('it');
-  const isPortuguese = language.startsWith('pt');
-
-  const instructions: Record<string, Record<string, string>> = {
-    en: {
-      'emagrecer': 'GOAL: WEIGHT LOSS - Prioritize lean proteins, fiber, low caloric density. Avoid sugars and refined carbs.',
-      'manter': 'GOAL: MAINTENANCE - Balanced diet with all macronutrients.',
-      'ganhar_peso': 'GOAL: WEIGHT/MUSCLE GAIN - Include calorie-dense foods, quality proteins, complex carbs.',
-    },
-    es: {
-      'emagrecer': 'OBJETIVO: PÉRDIDA DE PESO - Priorizar proteínas magras, fibra, baja densidad calórica. Evitar azúcares y carbohidratos refinados.',
-      'manter': 'OBJETIVO: MANTENIMIENTO - Dieta equilibrada con todos los macronutrientes.',
-      'ganhar_peso': 'OBJETIVO: GANANCIA DE PESO/MASA - Incluir alimentos densos en calorías, proteínas de calidad, carbohidratos complejos.',
-    },
-    pt: {
-      'emagrecer': 'OBJETIVO: EMAGRECIMENTO - Priorize proteínas magras, fibras, baixa densidade calórica. Evite açúcares e carboidratos refinados.',
-      'manter': 'OBJETIVO: MANUTENÇÃO - Dieta equilibrada com todos os macronutrientes.',
-      'ganhar_peso': 'OBJETIVO: GANHO DE PESO/MASSA - Incluir alimentos densos em calorias, proteínas de qualidade, carboidratos complexos.',
-    },
-    fr: {
-      'emagrecer': 'OBJECTIF: PERTE DE POIDS - Privilégier protéines maigres, fibres, faible densité calorique. Éviter sucres et glucides raffinés.',
-      'manter': 'OBJECTIF: MAINTIEN - Alimentation équilibrée avec tous les macronutriments.',
-      'ganhar_peso': 'OBJECTIF: PRISE DE POIDS/MASSE - Inclure aliments denses en calories, protéines de qualité, glucides complexes.',
-    },
-    de: {
-      'emagrecer': 'ZIEL: GEWICHTSVERLUST - Magere Proteine, Ballaststoffe, niedrige Kaloriendichte priorisieren. Zucker und raffinierte Kohlenhydrate vermeiden.',
-      'manter': 'ZIEL: ERHALTUNG - Ausgewogene Ernährung mit allen Makronährstoffen.',
-      'ganhar_peso': 'ZIEL: GEWICHTS-/MUSKELZUNAHME - Kalorienreiche Lebensmittel, hochwertige Proteine, komplexe Kohlenhydrate einbeziehen.',
-    },
-    it: {
-      'emagrecer': 'OBIETTIVO: PERDITA DI PESO - Privilegiare proteine magre, fibre, bassa densità calorica. Evitare zuccheri e carboidrati raffinati.',
-      'manter': 'OBIETTIVO: MANTENIMENTO - Dieta equilibrata con tutti i macronutrienti.',
-      'ganhar_peso': 'OBIETTIVO: AUMENTO DI PESO/MASSA - Includere cibi densi di calorie, proteine di qualità, carboidrati complessi.',
-    },
-  };
-
-  let langKey = 'en';
-  if (isSpanish) langKey = 'es';
-  else if (isFrench) langKey = 'fr';
-  else if (isGerman) langKey = 'de';
-  else if (isItalian) langKey = 'it';
-  else if (isPortuguese) langKey = 'pt';
-
-  return instructions[langKey][goal] || instructions[langKey]['manter'];
-}
-
-// ============= PROMPT DO NUTRICIONISTA PROFISSIONAL INTERNACIONAL =============
-function buildNutritionistPrompt(params: {
+// ============= PROMPT DO NUTRICIONISTA HIBRIDO (SIMPLES + INTELIGENTE) =============
+function buildSimpleNutritionistPrompt(params: {
   dailyCalories: number;
   meals: { type: string; label: string; targetCalories: number }[];
   optionsPerMeal: number;
@@ -638,104 +546,87 @@ function buildNutritionistPrompt(params: {
 }): string {
   const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional } = params;
 
-  const intoleranceInstructions = getIntoleranceInstructions(restrictions.intolerances, regional.language);
-  const dietaryInstructions = getDietaryInstructions(restrictions.dietaryPreference, regional.language);
-  const goalInstructions = getGoalInstructions(restrictions.goal, regional.language);
+  const restrictionText = getRestrictionText(restrictions, regional.language);
 
   const mealsDescription = meals.map(m => 
-    `- ${m.label} (${m.type}): ~${m.targetCalories} kcal`
+    `- ${m.label}: ${m.targetCalories} kcal`
   ).join('\n');
 
-  const measurementNote = regional.measurementSystem === 'imperial' 
-    ? 'Use IMPERIAL measurements: cups, tablespoons, teaspoons, oz, lbs'
-    : 'Use METRIC measurements: grams, ml, kg';
+  const mealsJsonTemplate = meals.map(m => `
+    {
+      "meal_type": "${m.type}",
+      "label": "${m.label}",
+      "target_calories": ${m.targetCalories},
+      "options": [
+        {
+          "title": "Nome claro da refeicao",
+          "foods": [
+            "2 ovos mexidos",
+            "2 fatias de pao",
+            "1 xicara de cafe"
+          ],
+          "calories_kcal": ${m.targetCalories}
+        }
+      ]
+    }`).join(',');
 
-  return `You are an INTERNATIONAL PROFESSIONAL NUTRITIONIST with 20 years of clinical and sports nutrition experience.
+  return `Voce e um NUTRICIONISTA CLINICO de nivel mundial com 20 anos de experiencia.
 
-LANGUAGE: Respond ENTIRELY in ${regional.languageName}
-COUNTRY/REGION: Generate meals typical and culturally appropriate for this region
+IDIOMA: Responda INTEIRAMENTE em ${regional.languageName}
+PAIS/REGIAO: Gere refeicoes tipicas e culturalmente apropriadas para esta regiao
 
-MISSION: Create a COMPLETE meal plan for ${dayName} (Day ${dayNumber}) with EXACTLY ${optionsPerMeal} options per meal.
+FUNCAO: Gerar REFEICOES COMPLETAS E REALISTAS para ${dayName} (Dia ${dayNumber})
 
-═══════════════════════════════════════════════════
-DAILY CALORIE TARGET: ${dailyCalories} kcal
-═══════════════════════════════════════════════════
+REGRAS ABSOLUTAS:
+- Gere apenas ALIMENTOS E REFEICOES PRONTAS PARA CONSUMO
+- As refeicoes devem ser SIMPLES, COMUNS e ACESSIVEIS
+- NAO use emojis
+- NAO mencione objetivos corporais ou resultados
+- NAO de conselhos medicos
+- Use UNIDADES DOMESTICAS: ${regional.domesticUnits}
 
-MEALS FOR THE DAY:
+META CALORICA DIARIA: ${dailyCalories} kcal
+
+REFEICOES DO DIA:
 ${mealsDescription}
 
-═══════════════════════════════════════════════════
-CULTURAL CONTEXT - IMPORTANT:
-═══════════════════════════════════════════════════
+RESTRICOES OBRIGATORIAS:
+${restrictionText}
 
+CONTEXTO CULTURAL:
 ${regional.typicalMeals}
 
 ${regional.culturalNotes}
 
-${measurementNote}
+ESTRUTURA OBRIGATORIA:
+Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES DIFERENTES.
+CADA OPCAO deve ter:
+- Nome claro da refeicao
+- Lista de alimentos prontos com quantidades em unidades domesticas
+- Calorias aproximadas
 
-═══════════════════════════════════════════════════
-MANDATORY RESTRICTIONS (NEVER VIOLATE):
-═══════════════════════════════════════════════════
+PADRAO DE QUALIDADE:
+- Opcoes devem parecer criadas por nutricionista humano experiente
+- Nao repetir mesmas refeicoes entre opcoes
+- Variar fontes de proteina, carboidrato e gordura
+- Manter coerencia alimentar (nao usar comida de almoco no cafe da manha)
 
-DIETARY PREFERENCE:
-${dietaryInstructions}
-
-${restrictions.intolerances.length > 0 ? `INTOLERANCES/ALLERGIES:
-- ${intoleranceInstructions}` : 'No registered intolerances.'}
-
-${restrictions.excludedIngredients.length > 0 ? `USER EXCLUDED INGREDIENTS:
-${restrictions.excludedIngredients.map(i => `- ${i}`).join('\n')}` : ''}
-
-${goalInstructions}
-
-═══════════════════════════════════════════════════
-RESPONSE FORMAT - CRITICAL:
-═══════════════════════════════════════════════════
-
-Respond EXCLUSIVELY with valid JSON, no markdown, no explanations.
-Use double quotes for all strings.
-Do not use special characters that break JSON.
-ALL TEXT MUST BE IN ${regional.languageName}.
-
+RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
 {
   "day": ${dayNumber},
   "day_name": "${dayName}",
-  "meals": [
-    {
-      "meal_type": "cafe_manha",
-      "label": "${regional.mealLabels.cafe_manha}",
-      "target_calories": 500,
-      "options": [
-        {
-          "name": "Complete Dish Name in ${regional.languageName}",
-          "description": "Short description in ${regional.languageName}",
-          "calories": 485,
-          "protein": 22,
-          "carbs": 45,
-          "fat": 18,
-          "prep_time": 15,
-          "ingredients": [
-            ${regional.exampleIngredients}
-          ],
-          "instructions": [
-            "Step 1 in ${regional.languageName}",
-            "Step 2 in ${regional.languageName}"
-          ]
-        }
-      ]
-    }
+  "meals": [${mealsJsonTemplate}
   ],
   "total_calories": ${dailyCalories}
 }
 
-GENERATE NOW the complete meal plan with ${optionsPerMeal} DIFFERENT options for each meal.
-Each option must be a COMPLETE DISH with all ingredients and instructions.
-Nutritional values must be REALISTIC and sum approximately to the target calories of each meal.
-USE CULTURALLY APPROPRIATE INGREDIENTS AND DISHES FOR THE REGION.`;
+IMPORTANTE: Cada opcao deve ter uma lista "foods" com strings simples descrevendo o alimento e quantidade.
+Exemplo correto: ["2 ovos mexidos", "2 fatias de pao integral", "1 xicara de cafe"]
+
+GERE AGORA o cardapio completo com ${optionsPerMeal} opcoes DIFERENTES para cada refeicao.`;
 }
 
-// ============= DISTRIBUIÇÃO CALÓRICA =============
+// ============= DISTRIBUICAO CALORICA =============
 const CALORIE_DISTRIBUTION: Record<string, number> = {
   cafe_manha: 0.22,
   lanche_manha: 0.08,
@@ -758,7 +649,7 @@ serve(async (req) => {
   );
 
   try {
-    logStep("AI Meal Plan Generator started - International Version");
+    logStep("AI Meal Plan Generator - Hybrid Mode (Simple + Smart)");
 
     // Auth
     const authHeader = req.headers.get("Authorization");
@@ -777,7 +668,7 @@ serve(async (req) => {
       dailyCalories = 2000,
       daysCount = 1,
       optionsPerMeal = 3,
-      mealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar", "ceia"],
+      mealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"],
     } = requestBody;
 
     logStep("Request params", { dailyCalories, daysCount, optionsPerMeal, mealTypes });
@@ -814,14 +705,14 @@ serve(async (req) => {
     }));
 
     // Generate plan for each day
-    const generatedDays: DayPlan[] = [];
+    const generatedDays: SimpleDayPlan[] = [];
 
     for (let dayIndex = 0; dayIndex < daysCount; dayIndex++) {
       const dayName = regional.dayNames[dayIndex % 7];
       
       logStep(`Generating day ${dayIndex + 1}`, { dayName, language: regional.language });
 
-      const prompt = buildNutritionistPrompt({
+      const prompt = buildSimpleNutritionistPrompt({
         dailyCalories,
         meals,
         optionsPerMeal,
@@ -846,7 +737,6 @@ serve(async (req) => {
           messages: [
             { role: "user", content: prompt }
           ],
-          temperature: 0.7,
         }),
       });
 
@@ -873,7 +763,7 @@ serve(async (req) => {
         // Remove markdown code blocks if present
         content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
         
-        const dayPlan: DayPlan = JSON.parse(content);
+        const dayPlan: SimpleDayPlan = JSON.parse(content);
         generatedDays.push(dayPlan);
         
         logStep(`Day ${dayIndex + 1} generated successfully`, { 

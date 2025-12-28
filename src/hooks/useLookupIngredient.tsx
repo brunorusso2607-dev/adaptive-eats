@@ -1,0 +1,82 @@
+import { useState, useCallback } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+
+interface LookupFood {
+  id: string;
+  name: string;
+  name_normalized: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  fiber_per_100g: number;
+  sodium_per_100g: number;
+  category: string | null;
+  source: string;
+  is_verified: boolean;
+  default_serving_size: number;
+  serving_unit: string;
+}
+
+interface LookupResult {
+  results: LookupFood[];
+  source: 'local' | 'alias' | 'usda' | 'none';
+  count: number;
+  message?: string;
+}
+
+export function useLookupIngredient() {
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [results, setResults] = useState<LookupFood[]>([]);
+  const [source, setSource] = useState<string | null>(null);
+
+  const lookup = useCallback(async (query: string, limit = 5): Promise<LookupResult | null> => {
+    if (!query || query.trim().length < 2) {
+      setResults([]);
+      setSource(null);
+      return null;
+    }
+
+    setIsLoading(true);
+    setError(null);
+
+    try {
+      const { data, error: fnError } = await supabase.functions.invoke('lookup-ingredient', {
+        body: { query: query.trim(), limit }
+      });
+
+      if (fnError) {
+        throw new Error(fnError.message);
+      }
+
+      const result = data as LookupResult;
+      setResults(result.results || []);
+      setSource(result.source);
+      return result;
+    } catch (err: any) {
+      const errorMessage = err?.message || 'Erro ao buscar ingrediente';
+      setError(errorMessage);
+      setResults([]);
+      setSource(null);
+      return null;
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  const reset = useCallback(() => {
+    setResults([]);
+    setSource(null);
+    setError(null);
+  }, []);
+
+  return {
+    lookup,
+    reset,
+    results,
+    source,
+    isLoading,
+    error
+  };
+}

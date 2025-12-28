@@ -1845,11 +1845,12 @@ export function buildMealPlanPrompt(
 }
 
 /**
+/**
  * Constrói prompt para regeneração de refeição individual
  * 
- * 🥗 NUTRICIONISTA PROFISSIONAL
+ * 👩‍⚕️ DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA
  * Usado para regenerar uma refeição específica dentro do plano alimentar
- * Mantém a persona de nutricionista (não chef)
+ * Mantém a persona de nutricionista profissional com formação internacional
  */
 export function buildRegenerateMealPrompt(
   profile: UserProfile,
@@ -1865,82 +1866,147 @@ export function buildRegenerateMealPrompt(
   // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
   const mealLabel = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
-  const mealExamples = getMealExamples(mealType, profile.country);
-  const ingredientPriority = getIngredientPriority(profile.country);
+  const countryAdaptation = buildCountryAdaptation(profile.country || undefined);
   
   const isKidsMode = profile.context === "modo_kids";
-  const kidsNote = isKidsMode ? " 🧒 Modo Kids: alimentos que crianças gostam." : "";
-  const ingredientsNote = ingredients ? `\nALIMENTOS OBRIGATÓRIOS NA REFEIÇÃO: ${ingredients}` : "";
+  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS ATIVO: Priorize apresentação divertida e alimentos que crianças gostam." : "";
+  const ingredientsNote = ingredients ? `\n\n🥘 ALIMENTOS OBRIGATÓRIOS NA REFEIÇÃO:\n${ingredients}` : "";
   
   const excludedConstraint = excludedIngredientsStr 
-    ? `\nALIMENTOS PROIBIDOS (usuário não consome): ${excludedIngredientsStr}`
+    ? `\n❌ Alimentos excluídos pelo usuário: ${excludedIngredientsStr}`
     : "";
 
   const forbiddenBlock = forbiddenList 
-    ? `\n\n🚨 LISTA NEGRA - NUNCA INCLUA:\n${forbiddenList}`
+    ? `\n${forbiddenList}`
     : "";
 
-  // Exemplos por tipo de refeição
-  const mealTypeExamples: Record<string, string> = {
-    cafe_manha: "1 pão integral + 1 ovo mexido + 1 banana + café com leite",
-    almoco: "3 col. arroz + 2 col. feijão + 1 filé de frango + salada",
-    lanche: "1 iogurte + 1 fruta + granola OU sanduíche natural",
-    jantar: "Sopa de legumes + frango desfiado OU omelete + salada",
-    ceia: "1 iogurte + mel OU 1 banana + pasta de amendoim"
+  // Regras específicas por tipo de refeição
+  const mealSpecificRules: Record<string, string> = {
+    cafe_manha: `
+🍳 REGRAS PARA CAFÉ DA MANHÃ:
+• OBRIGATÓRIO incluir 1 FRUTA (banana, maçã, mamão, morango, etc.)
+• Foco em carboidratos complexos + proteína para energia matinal
+• Exemplo: 2 fatias pão integral (60g) + 1 ovo mexido (50g) + 1 banana (100g) + café com leite (200ml)`,
+    
+    lanche_manha: `
+🍎 REGRAS PARA LANCHE DA MANHÃ:
+• Lanche leve para manter energia até o almoço
+• Priorize frutas, oleaginosas, iogurte
+• Exemplo: 1 maçã (150g) + 5 castanhas (15g)`,
+    
+    almoco: `
+🍽️ REGRAS PARA ALMOÇO:
+• Refeição principal do dia com proteína + carboidrato + vegetais
+• Base brasileira: arroz + feijão + proteína + salada
+• Exemplo: 4 col. arroz (120g) + 2 col. feijão (86g) + 120g frango grelhado + salada variada`,
+    
+    lanche_tarde: `
+🍌 REGRAS PARA LANCHE DA TARDE:
+• OBRIGATÓRIO incluir 1 FRUTA
+• Lanche nutritivo para evitar fome excessiva no jantar
+• Exemplo: 1 banana (100g) + 2 col. pasta de amendoim (30g) + 1 copo de leite (200ml)`,
+    
+    jantar: `
+🥗 REGRAS PARA JANTAR:
+• Refeição mais leve que o almoço
+• Boa quantidade de proteína + vegetais, carboidrato moderado
+• Exemplo: Omelete de 2 ovos (100g) + salada verde + 2 fatias pão integral (60g)`,
+    
+    sobremesa: `
+🍨 REGRAS PARA SOBREMESA/CEIA:
+• DEVE SER SAUDÁVEL - SEM açúcar refinado excessivo
+• Opções: frutas, iogurte natural com mel, gelatina diet, chocolate 70%
+• Exemplo: 1 iogurte natural (170g) + 1 col. mel (20g) + morangos (100g)
+• ❌ PROIBIDO: sorvetes industriais, tortas, bolos, doces processados`
   };
 
-  return `🍽️ NUTRICIONISTA RECEITAI - Regenerar ${mealLabel.toUpperCase()}
-🌍 PAÍS/REGIÃO: ${countryConfig.name}
-${dietaryBlock}
-╔══════════════════════════════════════════════════════════════════════════════════════════════╗
-║  🚨 TOLERÂNCIA ZERO - SEGURANÇA ALIMENTAR ABSOLUTA                                          ║
-║  RESPEITE TODAS AS RESTRIÇÕES ALIMENTARES!                                                   ║
+  const mealRules = mealSpecificRules[mealType] || "";
+
+  return `╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+║  👩‍⚕️ DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA COM FORMAÇÃO INTERNACIONAL            ║
+║  Universidade de São Paulo (USP) • Columbia University • Australian Institute of Sport       ║
+║  Especialização: Nutrição Clínica, Esportiva e Comportamental                                ║
+║  Certificações: AND (Academy of Nutrition and Dietetics) • ESPEN                             ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
 
-PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}, ${GOAL_LABELS[profile.goal || "manter"]}
+🔄 REGENERANDO: ${mealLabel.toUpperCase()}
+🌍 PAÍS/REGIÃO: ${countryConfig.name}
+🎯 META CALÓRICA: ~${targetCalories} kcal
 
-⛔ ALIMENTOS 100% PROIBIDOS - NUNCA INCLUA:
+${dietaryBlock}
+
+╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+║  🚨 PROTOCOLO DE SEGURANÇA ALIMENTAR - TOLERÂNCIA ZERO                                       ║
+╚══════════════════════════════════════════════════════════════════════════════════════════════╝
+
+⛔ INGREDIENTES 100% PROIBIDOS - JAMAIS INCLUIR:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
-🛑 REGRA DE TOLERÂNCIA ZERO:
-→ Se tiver QUALQUER DÚVIDA sobre um alimento → NÃO INCLUA
-→ Use APENAS alimentos COMUNS que você tem 100% certeza que são seguros
+🛑 REGRA ABSOLUTA DE SEGURANÇA:
+→ Se houver QUALQUER dúvida sobre um ingrediente → NÃO INCLUA
+→ Se não tiver 100% de certeza que é seguro → NÃO INCLUA
+→ Use APENAS alimentos comuns e seguros
+→ Marque "is_safe": false se tiver qualquer incerteza
 ${kidsNote}${ingredientsNote}
 
 ═══════════════════════════════════════════════════════════════════════════════════════════════
-🎯 GERE UMA REFEIÇÃO (COMPOSIÇÃO DE ALIMENTOS), NÃO UMA RECEITA ELABORADA
+🎯 VOCÊ ESTÁ GERANDO UMA COMPOSIÇÃO DE REFEIÇÃO, NÃO UMA RECEITA ELABORADA
 ═══════════════════════════════════════════════════════════════════════════════════════════════
 
-REGRAS:
-1. 🚨 TOLERÂNCIA ZERO: NÃO inclua alimentos da lista proibida
-2. Meta: ~${targetCalories} calorias
-3. ${ingredientPriority}
-4. Exemplo típico de ${mealLabel}: ${mealTypeExamples[mealType] || mealExamples.slice(0, 3).join(", ")}
+Como nutricionista, você monta um PRATO BALANCEADO - uma lista de alimentos com porções.
+Não é uma receita gourmet com técnicas de preparo. É uma orientação nutricional prática.
 
-🔧 FORMATO JSON:
+${mealRules}
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+📍 ADAPTAÇÃO CULTURAL - ${countryConfig.name}
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
+${countryAdaptation}
+
+═══════════════════════════════════════════════════════════════════════════════════════════════
+📐 FORMATO DE SAÍDA - JSON OBRIGATÓRIO
+═══════════════════════════════════════════════════════════════════════════════════════════════
+
 {
-  "recipe_name": "Nome da Refeição (ex: Almoço Proteico)",
+  "recipe_name": "${mealLabel} Equilibrado",
   "is_safe": true,
   "recipe_calories": ${targetCalories},
   "recipe_protein": 25,
-  "recipe_carbs": 30,
-  "recipe_fat": 15,
+  "recipe_carbs": 35,
+  "recipe_fat": 12,
   "recipe_prep_time": ${isKidsMode ? 10 : 15},
   "recipe_ingredients": [
-    {"item": "nome do alimento", "quantity": "1", "unit": "porção (gramas)"}
+    {"item": "Nome do alimento", "quantity": "2", "unit": "colheres de sopa (60g)"},
+    {"item": "Outro alimento", "quantity": "1", "unit": "unidade média (100g)"}
   ],
-  "recipe_instructions": ["Prepare conforme sua preferência"],
-  "nutrition_tip": "Dica nutricional opcional"
+  "recipe_instructions": ["Monte o prato conforme sua preferência"],
+  ${mealType === 'cafe_manha' || mealType === 'lanche_tarde' ? '"fruit_included": "Nome da fruta incluída",' : ''}
+  ${mealType === 'sobremesa' ? '"healthy_dessert": true,' : ''}
+  "nutrition_tip": "Dica nutricional breve sobre os benefícios desta refeição"
 }
 
-📝 LEMBRE-SE:
-- "recipe_ingredients" = LISTA DE ALIMENTOS para comer (com porções em gramas ou unidades)
-- "recipe_instructions" = Pode ser simples ou vazio (não é receita elaborada)
+📝 REGRAS DO JSON:
+• "recipe_ingredients" = LISTA DE ALIMENTOS para comer (não é receita de preparo)
+• "unit" = SEMPRE em medida caseira COM gramas entre parênteses: "2 fatias (60g)", "1 xícara (200ml)"
+• "recipe_instructions" = Apenas 1-2 dicas práticas OU deixar simples
+• "recipe_prep_time" = Estimativa em minutos
 
-🚨 Se tiver QUALQUER DÚVIDA sobre QUALQUER alimento: "is_safe": false
-Refeições com is_safe: false serão descartadas automaticamente.
+═══════════════════════════════════════════════════════════════════════════════════════════════
+✅ CHECKLIST ANTES DE RESPONDER
+═══════════════════════════════════════════════════════════════════════════════════════════════
 
-Responda APENAS com JSON.`;
+□ NENHUM ingrediente proibido foi incluído?
+□ Porções estão em MEDIDAS CASEIRAS + gramas?
+□ Calorias somam aproximadamente ${targetCalories} kcal?
+□ Refeição respeita a culinária de ${countryConfig.name}?
+${mealType === 'cafe_manha' || mealType === 'lanche_tarde' ? '□ Inclui pelo menos 1 FRUTA?' : ''}
+${mealType === 'sobremesa' ? '□ Sobremesa é SAUDÁVEL (sem açúcar refinado excessivo)?' : ''}
+
+🚨 SE QUALQUER DÚVIDA SOBRE INGREDIENTE → is_safe: false
+Refeições com is_safe: false serão descartadas e regeneradas automaticamente.
+
+Responda APENAS com JSON válido.`;
 }
 
 // ============================================

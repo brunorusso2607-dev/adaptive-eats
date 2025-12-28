@@ -307,7 +307,7 @@ serve(async (req) => {
     // Fetch user's full profile for calorie calculation
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("intolerances, excluded_ingredients, dietary_preference, weight_current, height, age, sex, activity_level, goal")
+      .select("intolerances, excluded_ingredients, dietary_preference, weight_current, height, age, sex, activity_level, goal, country")
       .eq("id", user.id)
       .single();
 
@@ -436,7 +436,13 @@ VERIFICAÇÃO NEGATIVA (FAIL-SAFE):
     }
 
 
+    // Get user country for nutritional source
+    const userCountry = profile?.country || "BR";
+    const globalNutritionPrompt = getGlobalNutritionPrompt(userCountry);
+
     const systemPrompt = `You are an expert nutritionist AI specialized in GLOBAL CUISINE visual analysis and FOOD SAFETY for people with intolerances and allergies.
+
+${globalNutritionPrompt}
 
 === STEP ZERO - IMAGE CLASSIFICATION (EXECUTE FIRST!) ===
 
@@ -533,6 +539,7 @@ When NOT sure about an ingredient or preparation:
       "item": "food name",
       "item_original_language": "name in original cuisine language if applicable",
       "porcao_estimada": "quantity in g or ml",
+      "porcao_gramas": 150,
       "calorias": 0,
       "macros": {
         "proteinas": 0,
@@ -544,7 +551,8 @@ When NOT sure about an ingredient or preparation:
       "culinaria_origem": "cuisine of origin (e.g., Brazilian, Italian, Thai)",
       "ingredientes_visiveis": ["list of visible ingredients"],
       "ingredientes_provaveis_ocultos": ["typical ingredients that may be present but not visible"],
-      "metodo_preparo_provavel": "probable cooking method"
+      "metodo_preparo_provavel": "probable cooking method",
+      "fonte_nutricional": "TBCA | USDA | CIQUAL | McCance | BLS | AESAN | CREA | BAM"
     }
   ],
   "total_geral": {

@@ -1,6 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { recalculateSuggestion } from "../_shared/calorieTable.ts";
+import {
+  getGlobalNutritionPrompt,
+  getNutritionalSource,
+  getPortionFormat
+} from "../_shared/nutritionPrompt.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -115,12 +120,20 @@ serve(async (req) => {
 
     const countryContext = getCountryContext(userCountry);
 
+    // Build global nutrition prompt for this user's country
+    const globalNutritionPrompt = getGlobalNutritionPrompt(userCountry);
+    const nutritionalSource = getNutritionalSource(userCountry);
+    const portionFormat = getPortionFormat(userCountry);
+
     const systemPrompt = `You are a GLOBAL nutrition expert with encyclopedic knowledge of foods from ALL countries and cultures.
+
+${globalNutritionPrompt}
 
 CORE MISSION:
 - Identify the food the user is searching for, even with typos or partial names
 - Recognize foods in ANY LANGUAGE (English, Portuguese, Spanish, Japanese, Korean, Chinese, Arabic, French, German, Italian, Thai, etc.)
 - Return 1-5 relevant suggestions with accurate nutritional values
+- Use ${nutritionalSource.sourceName} as primary nutritional source for this user
 ${countryContext}
 
 === GLOBAL FAST-FOOD CHAINS ===
@@ -212,12 +225,14 @@ ${countryContext}
       "name_english": "Name in English for reference",
       "cuisine": "Origin cuisine (Japanese, Brazilian, American, etc.)",
       "portion_description": "1 unit (250g)" or "100g" or "1 slice (150g)",
+      "portion_display_local": "${portionFormat.examples[0]}",
       "portion_grams": 250,
       "calories": 540,
       "protein": 28,
       "carbs": 42,
       "fat": 29,
-      "confidence": "alta" | "média" | "baixa"
+      "confidence": "alta" | "média" | "baixa",
+      "nutritional_source": "${nutritionalSource.sourceKey}"
     }
   ]
 }

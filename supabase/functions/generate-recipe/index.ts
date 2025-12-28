@@ -13,6 +13,10 @@ import {
   markRecipeAsUsed,
 } from "../_shared/recipePool.ts";
 import { recalculateRecipeCalories } from "../_shared/calorieTable.ts";
+import {
+  getGlobalNutritionPrompt,
+  getNutritionalSource
+} from "../_shared/nutritionPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -154,7 +158,13 @@ serve(async (req) => {
         type,
       };
 
-      const systemPrompt = buildRecipeSystemPrompt(promptOptions);
+      // Get global nutrition prompt for user's country
+      const userCountry = profile.country || "BR";
+      const globalNutritionPrompt = getGlobalNutritionPrompt(userCountry);
+      const nutritionalSource = getNutritionalSource(userCountry);
+
+      const baseSystemPrompt = buildRecipeSystemPrompt(promptOptions);
+      const systemPrompt = `${globalNutritionPrompt}\n\nUSE ${nutritionalSource.sourceName} AS PRIMARY NUTRITIONAL SOURCE.\n\n${baseSystemPrompt}`;
       const userPrompt = buildRecipeUserPrompt(promptOptions);
 
       logStep("Prompts built", { 

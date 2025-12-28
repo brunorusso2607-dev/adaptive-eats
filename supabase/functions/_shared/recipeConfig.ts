@@ -1360,7 +1360,11 @@ export interface RecipePromptOptions {
 }
 
 /**
- * Constrói o System Prompt completo para geração de receita
+ * Constrói o System Prompt completo para geração de receita (SURPREENDA-ME)
+ * 
+ * 🍳 CHEF DE COZINHA PROFISSIONAL COM CONHECIMENTO GLOBAL
+ * Este prompt mantém a persona de chef para geração de RECEITAS elaboradas
+ * com instruções detalhadas de preparo, ingredientes e técnicas culinárias.
  */
 export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
   const { profile, categoryContext } = options;
@@ -1375,7 +1379,7 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
     macros = calculateMacroTargets(profile);
   }
 
-  // NOVO: Obter contexto completo do objetivo
+  // Obter contexto completo do objetivo
   const goalContext = getGoalContext(profile);
   const goalContextInstructions = buildGoalContextInstructions(profile);
 
@@ -1392,7 +1396,7 @@ export function buildRecipeSystemPrompt(options: RecipePromptOptions): string {
     .join("\n");
 
   // Build excluded ingredients constraint
-  const excludedConstraint = excludedIngredientsStr 
+  const excludedConstraint = excludedIngredientsStr
     ? `\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR): ${excludedIngredientsStr}`
     : "";
 
@@ -1447,7 +1451,7 @@ ${forbiddenBlock}
 ║  USE is_safe: false SE TIVER QUALQUER DÚVIDA SOBRE QUALQUER INGREDIENTE!                    ║
 ╚══════════════════════════════════════════════════════════════════════════════════════════════╝`;
 
-  return `Você é o Mestre Chef ReceitAI, nutricionista e chef especializado em receitas personalizadas e SEGURAS.
+  return `Você é o Mestre Chef ReceitAI, um chef de cozinha profissional com conhecimento global em gastronomia, especializado em criar receitas personalizadas, criativas e SEGURAS.
 
 ${safetyBlock}
 ${categoryConstraint}
@@ -1516,8 +1520,13 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 
 /**
  * Constrói prompt para geração de UM DIA do plano alimentar
- * FOCO: REFEIÇÕES/DIETA - Composição de alimentos com porções
- * Não gera receitas elaboradas - gera O QUE COMER
+ * 
+ * 🥗 NUTRICIONISTA PROFISSIONAL COM CONHECIMENTO GLOBAL
+ * Este prompt usa persona de NUTRICIONISTA para geração de PLANOS ALIMENTARES
+ * com foco em composição de refeições, porções e distribuição de macros.
+ * 
+ * NOTA: O prompt de "Chef de Cozinha" foi movido para buildRecipeSystemPrompt
+ * (usado pelo módulo Surpreenda-me para geração de RECEITAS elaboradas)
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -1672,7 +1681,10 @@ export function buildMealPlanPrompt(
 
 /**
  * Constrói prompt para regeneração de refeição individual
- * FOCO: REFEIÇÕES/DIETA - Composição de alimentos com porções
+ * 
+ * 🥗 NUTRICIONISTA PROFISSIONAL
+ * Usado para regenerar uma refeição específica dentro do plano alimentar
+ * Mantém a persona de nutricionista (não chef)
  */
 export function buildRegenerateMealPrompt(
   profile: UserProfile,
@@ -1753,7 +1765,7 @@ REGRAS:
     {"item": "nome do alimento", "quantity": "1", "unit": "porção (gramas)"}
   ],
   "recipe_instructions": ["Prepare conforme sua preferência"],
-  "chef_tip": "Dica nutricional opcional"
+  "nutrition_tip": "Dica nutricional opcional"
 }
 
 📝 LEMBRE-SE:

@@ -638,6 +638,7 @@ export type Database = {
           fiber_per_100g: number | null
           id: string
           is_recipe: boolean
+          is_verified: boolean | null
           name: string
           name_normalized: string
           protein_per_100g: number
@@ -660,6 +661,7 @@ export type Database = {
           fiber_per_100g?: number | null
           id?: string
           is_recipe?: boolean
+          is_verified?: boolean | null
           name: string
           name_normalized: string
           protein_per_100g?: number
@@ -682,6 +684,7 @@ export type Database = {
           fiber_per_100g?: number | null
           id?: string
           is_recipe?: boolean
+          is_verified?: boolean | null
           name?: string
           name_normalized?: string
           protein_per_100g?: number

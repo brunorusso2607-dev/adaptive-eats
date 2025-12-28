@@ -87,22 +87,43 @@ serve(async (req) => {
   }
 
   try {
-    const { fileUrl, dryRun = false, limit = 0 } = await req.json();
+    const { fileUrl, storagePath, dryRun = false, limit = 0 } = await req.json();
     
-    log('Starting import', { fileUrl, dryRun, limit });
+    log('Starting import', { fileUrl, storagePath, dryRun, limit });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Fetch the Excel file
-    log('Fetching Excel file...');
-    const response = await fetch(fileUrl);
-    if (!response.ok) {
-      throw new Error(`Failed to fetch file: ${response.status}`);
+    let arrayBuffer: ArrayBuffer;
+
+    // Try storage first, then URL
+    if (storagePath) {
+      log('Downloading from storage...', { storagePath });
+      const { data, error } = await supabase.storage
+        .from('app-assets')
+        .download(storagePath);
+      
+      if (error) {
+        throw new Error(`Failed to download from storage: ${error.message}`);
+      }
+      arrayBuffer = await data.arrayBuffer();
+    } else if (fileUrl) {
+      log('Fetching Excel file from URL...');
+      const response = await fetch(fileUrl, {
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+        }
+      });
+      if (!response.ok) {
+        throw new Error(`Failed to fetch file: ${response.status}`);
+      }
+      arrayBuffer = await response.arrayBuffer();
+    } else {
+      throw new Error('Either fileUrl or storagePath is required');
     }
 
-    const arrayBuffer = await response.arrayBuffer();
+    log('File loaded', { size: arrayBuffer.byteLength });
     const workbook = XLSX.read(new Uint8Array(arrayBuffer), { type: 'array' });
     
     const sheetName = workbook.SheetNames[0];

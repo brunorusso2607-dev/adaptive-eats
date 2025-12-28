@@ -32,7 +32,7 @@ export type CustomMealTimes = Record<string, string>;
 interface CustomMealTimesEditorProps {
   customTimes?: CustomMealTimes | null;
   enabledMeals?: string[] | null;
-  onSave?: (customTimes: CustomMealTimes | null) => Promise<boolean>;
+  onSave?: (customTimes: CustomMealTimes | null, enabledMeals?: string[] | null) => Promise<boolean>;
   onChange?: (customTimes: CustomMealTimes | null) => void;
   onEnabledMealsChange?: (enabledMeals: string[]) => void;
   isLoading?: boolean;
@@ -168,21 +168,31 @@ export function CustomMealTimesEditor({
   const handleSaveToProfile = async () => {
     setIsSaving(true);
     try {
+      const allMealTypes = globalSettings.map(s => s.meal_type);
+      const isAllEnabled = allMealTypes.every(m => localEnabledMeals.includes(m));
+      const enabledMealsToSave = isAllEnabled ? null : localEnabledMeals;
+
+      // Se tiver callback onSave, usar ele (ProfilePage)
+      if (onSave) {
+        const success = await onSave(localTimes, enabledMealsToSave);
+        if (success && compact) {
+          setIsOpen(false);
+        }
+        return;
+      }
+
+      // Caso contrário, salvar diretamente (MealPlanGenerator)
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast.error("Usuário não autenticado");
         return;
       }
 
-      // Salvar horários e refeições ativas
-      const allMealTypes = globalSettings.map(s => s.meal_type);
-      const isAllEnabled = allMealTypes.every(m => localEnabledMeals.includes(m));
-
       const { error } = await supabase
         .from("profiles")
         .update({ 
           default_meal_times: localTimes as Json,
-          enabled_meals: isAllEnabled ? null : localEnabledMeals 
+          enabled_meals: enabledMealsToSave 
         })
         .eq("id", session.user.id);
 

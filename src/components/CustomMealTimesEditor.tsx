@@ -216,6 +216,14 @@ export function CustomMealTimesEditor({
     const saved = await saveEnabledMealsToProfile(newEnabledMeals);
     if (saved) {
       toast.success(enabled ? "Refeição ativada" : "Refeição desativada", { duration: 1500 });
+    } else {
+      // Reverter se falhou
+      if (enabled) {
+        setLocalEnabledMeals(prev => prev.filter(m => m !== mealId));
+      } else {
+        setLocalEnabledMeals(prev => [...prev, mealId]);
+      }
+      toast.error("Erro ao salvar preferência. Tente novamente.");
     }
   };
 

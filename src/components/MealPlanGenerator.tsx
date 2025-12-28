@@ -228,7 +228,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
               Complete seu mês de {monthName}
             </p>
             <p className="text-sm text-muted-foreground">
-              com <span className="font-semibold text-primary">{remainingDays} dias</span> de receitas personalizadas
+              com <span className="font-semibold text-primary">{remainingDays} dias</span> de refeições personalizadas
             </p>
           </div>
 
@@ -242,7 +242,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
                 />
               </div>
               <p className="text-sm text-muted-foreground text-center">
-                Gerando receitas... {progress}%
+                Gerando refeições... {progress}%
               </p>
             </div>
           )}
@@ -286,7 +286,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
               <div className="flex-1">
                 <h4 className="font-semibold text-foreground">Ingredientes excluídos</h4>
                 <p className="text-xs text-muted-foreground mt-1 mb-2">
-                  Esses ingredientes serão evitados em todas as receitas
+                  Esses alimentos serão evitados em todas as refeições
                 </p>
                 <div className="flex flex-wrap gap-1.5">
                   {excludedIngredients.map((item) => (
@@ -311,9 +311,9 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             <div>
               <h4 className="font-semibold text-foreground">Como funciona?</h4>
               <ul className="text-sm text-muted-foreground mt-1 space-y-1">
-              <li>• {remainingDays} dias de receitas serão gerados automaticamente</li>
+              <li>• {remainingDays} dias de refeições serão gerados automaticamente</li>
               <li>• Refeições personalizadas conforme seus horários</li>
-              <li>• Receitas variadas adaptadas ao seu perfil</li>
+              <li>• Cardápio variado adaptado ao seu perfil</li>
               <li>• Um novo plano poderá ser criado no próximo mês</li>
               </ul>
             </div>

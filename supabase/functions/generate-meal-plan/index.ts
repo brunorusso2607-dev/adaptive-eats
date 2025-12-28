@@ -437,12 +437,17 @@ async function validateAndCompleteMeals(
 }
 
 // Try to get meals from the recipe pool first
+// CRITICAL: Now receives usedRecipes to exclude already-used recipes and ensure variation
 async function getMealsFromPool(
   supabase: any,
   profile: UserProfile,
-  mealTypes: string[]
+  mealTypes: string[],
+  usedRecipes: string[] = [] // NEW: List of recipes already used in this plan
 ): Promise<Map<string, any>> {
   const results = new Map<string, any>();
+  
+  // Convert usedRecipes to lowercase for case-insensitive comparison
+  const usedRecipesLower = usedRecipes.map(r => r.toLowerCase().trim());
   
   for (const mealType of mealTypes) {
     const poolRecipes = await searchRecipePool(supabase, {
@@ -451,31 +456,40 @@ async function getMealsFromPool(
       dietaryPreference: profile.dietary_preference || undefined,
       intolerances: profile.intolerances || [],
       excludedIngredients: profile.excluded_ingredients || [],
-      limit: 3
+      limit: 20 // Fetch more to have options after filtering
     });
 
     if (poolRecipes.length > 0) {
-      // Seleciona uma receita aleatória entre as encontradas
-      const randomIndex = Math.floor(Math.random() * poolRecipes.length);
-      const recipe = poolRecipes[randomIndex];
+      // CRITICAL: Filter out recipes that have already been used
+      const availableRecipes = poolRecipes.filter(recipe => 
+        !usedRecipesLower.includes(recipe.name.toLowerCase().trim())
+      );
       
-      // Marca como usada
-      await markRecipeAsUsed(supabase, recipe.id);
-      
-      results.set(mealType, {
-        meal_type: mealType,
-        recipe_name: recipe.name,
-        recipe_calories: recipe.calories,
-        recipe_protein: recipe.protein,
-        recipe_carbs: recipe.carbs,
-        recipe_fat: recipe.fat,
-        recipe_prep_time: recipe.prep_time,
-        recipe_ingredients: recipe.ingredients,
-        recipe_instructions: [],
-        from_pool: true
-      });
-      
-      logStep(`Found meal in pool`, { mealType, recipeName: recipe.name });
+      if (availableRecipes.length > 0) {
+        // Select a random recipe from available (unused) recipes
+        const randomIndex = Math.floor(Math.random() * availableRecipes.length);
+        const recipe = availableRecipes[randomIndex];
+        
+        // Mark as used
+        await markRecipeAsUsed(supabase, recipe.id);
+        
+        results.set(mealType, {
+          meal_type: mealType,
+          recipe_name: recipe.name,
+          recipe_calories: recipe.calories,
+          recipe_protein: recipe.protein,
+          recipe_carbs: recipe.carbs,
+          recipe_fat: recipe.fat,
+          recipe_prep_time: recipe.prep_time,
+          recipe_ingredients: recipe.ingredients,
+          recipe_instructions: [],
+          from_pool: true
+        });
+        
+        logStep(`Found UNUSED meal in pool`, { mealType, recipeName: recipe.name, availableCount: availableRecipes.length });
+      } else {
+        logStep(`All pool recipes already used for ${mealType}`, { totalInPool: poolRecipes.length, usedCount: usedRecipesLower.length });
+      }
     }
   }
   
@@ -510,6 +524,7 @@ async function saveMealsToPool(
 }
 
 // Generate a single day's meals with pool fallback
+// CRITICAL: Now receives previousRecipes to ensure variation and avoid repetition
 async function generateSingleDay(
   profile: UserProfile,
   dayIndex: number,
@@ -527,29 +542,19 @@ async function generateSingleDay(
   // Calculate calories dynamically
   const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, targetMealTypes);
   
-  // Tenta buscar do pool primeiro (only for standard meal types)
+  // STRATEGY CHANGE: Prioritize AI generation for variation
+  // Only use pool as FALLBACK when AI fails, and ONLY for recipes not already used
   const standardTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
-  const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
-  
-  let poolMeals = new Map<string, any>();
-  if (supabase && standardMealsToFetch.length > 0) {
-    poolMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch);
-    logStep(`Pool results for day ${dayIndex}`, { 
-      foundInPool: poolMeals.size, 
-      meals: Array.from(poolMeals.keys()) 
-    });
-  }
-  
-  // Se encontrou todas as refeições no pool, retorna direto (only if no extras)
   const extraMealTypes = targetMealTypes.filter(t => !standardTypes.includes(t));
-  if (poolMeals.size === standardMealsToFetch.length && extraMealTypes.length === 0) {
-    logStep(`Day ${dayIndex} fully from pool`);
-    return {
-      day_index: dayIndex,
-      day_name: dayName,
-      meals: Array.from(poolMeals.values())
-    };
-  }
+  
+  // Log what recipes we're trying to avoid
+  logStep(`Day ${dayIndex} - avoiding ${previousRecipes.length} previous recipes`, {
+    sample: previousRecipes.slice(0, 5)
+  });
+  
+  // IMPORTANT: For variation, we ALWAYS try AI first, pool is only for fallback
+  // Pool is no longer used as primary source to ensure unique recipes each day
+  let poolMeals = new Map<string, any>();
   
   // Precisa gerar via IA para as refeições faltantes
   const prompt = buildSingleDayPrompt(profile, dayIndex, dayName, macros as any, previousRecipes);
@@ -575,13 +580,17 @@ async function generateSingleDay(
 
     if (!response.ok) {
       logStep(`Day ${dayIndex} API error`, { status: response.status });
-      // Se tiver receitas do pool, retorna elas
-      if (poolMeals.size > 0) {
-        return {
-          day_index: dayIndex,
-          day_name: dayName,
-          meals: Array.from(poolMeals.values())
-        };
+      // FALLBACK: Try pool only when AI fails, passing previousRecipes to avoid used ones
+      if (supabase) {
+        const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
+        poolMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch, previousRecipes);
+        if (poolMeals.size > 0) {
+          return {
+            day_index: dayIndex,
+            day_name: dayName,
+            meals: Array.from(poolMeals.values())
+          };
+        }
       }
       return null;
     }
@@ -600,12 +609,17 @@ async function generateSingleDay(
     
     const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!textContent) {
-      if (poolMeals.size > 0) {
-        return {
-          day_index: dayIndex,
-          day_name: dayName,
-          meals: Array.from(poolMeals.values())
-        };
+      // FALLBACK: Try pool when AI returns empty
+      if (supabase) {
+        const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
+        poolMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch, previousRecipes);
+        if (poolMeals.size > 0) {
+          return {
+            day_index: dayIndex,
+            day_name: dayName,
+            meals: Array.from(poolMeals.values())
+          };
+        }
       }
       return null;
     }
@@ -618,41 +632,57 @@ async function generateSingleDay(
 
     const dayData = JSON.parse(cleanedJson);
     
-    // Mescla receitas do pool com receitas geradas
+    // PRIORITY: Use AI-generated meals directly (no pool mixing for variation)
     const aiMeals = dayData.meals || [];
     const finalMeals: any[] = [];
     
+    // Track which meal types AI successfully generated
+    const aiGeneratedTypes = new Set<string>();
+    
     for (const mealType of targetMealTypes) {
-      // Prioriza pool (only for standard types)
-      if (poolMeals.has(mealType)) {
-        finalMeals.push(poolMeals.get(mealType));
-      } else {
-        // Usa a receita gerada pela IA
-        const aiMeal = aiMeals.find((m: any) => 
-          m.meal_type === mealType || 
-          m.meal_type === mealType.replace("_", " ") ||
-          normalizeMealType(m.meal_type) === mealType
-        );
-        if (aiMeal) {
-          finalMeals.push({ ...aiMeal, meal_type: mealType, from_pool: false });
-        }
+      // Find AI-generated meal for this type
+      const aiMeal = aiMeals.find((m: any) => 
+        m.meal_type === mealType || 
+        m.meal_type === mealType.replace("_", " ") ||
+        normalizeMealType(m.meal_type) === mealType
+      );
+      
+      if (aiMeal) {
+        finalMeals.push({ ...aiMeal, meal_type: mealType, from_pool: false });
+        aiGeneratedTypes.add(mealType);
       }
     }
     
-    // Salva as receitas geradas pela IA no pool (only standard types)
+    // FALLBACK: Only use pool for meal types that AI didn't generate
+    const missingMealTypes = targetMealTypes.filter(t => !aiGeneratedTypes.has(t));
+    if (missingMealTypes.length > 0 && supabase) {
+      const standardMissing = missingMealTypes.filter(t => standardTypes.includes(t));
+      if (standardMissing.length > 0) {
+        // Pass previousRecipes + already generated recipes to avoid duplicates
+        const allUsed = [...previousRecipes, ...finalMeals.map(m => m.recipe_name)];
+        const fallbackMeals = await getMealsFromPool(supabase, profile, standardMissing, allUsed);
+        fallbackMeals.forEach((meal, mealType) => {
+          finalMeals.push(meal);
+          logStep(`Fallback from pool for missing ${mealType}`, { recipeName: meal.recipe_name });
+        });
+      }
+    }
+    
+    // Save AI-generated meals to pool for future use (only standard types)
     if (supabase) {
       const newMeals = finalMeals.filter(m => !m.from_pool && standardTypes.includes(m.meal_type));
       if (newMeals.length > 0) {
         await saveMealsToPool(supabase, newMeals, profile);
-        logStep(`Saved ${newMeals.length} new meals to pool`);
+        logStep(`Saved ${newMeals.length} new AI meals to pool`);
       }
     }
     
-    logStep(`Day ${dayIndex} generated`, { 
-      fromPool: poolMeals.size, 
-      fromAI: finalMeals.length - poolMeals.size,
+    logStep(`Day ${dayIndex} generated with VARIATION`, { 
+      fromAI: aiGeneratedTypes.size,
+      fromPool: finalMeals.length - aiGeneratedTypes.size,
       total: finalMeals.length,
-      mealTypes: targetMealTypes
+      mealTypes: targetMealTypes,
+      recipesGenerated: finalMeals.map(m => m.recipe_name)
     });
     
     return {
@@ -661,13 +691,17 @@ async function generateSingleDay(
     };
   } catch (error) {
     logStep(`Day ${dayIndex} error`, { error: String(error) });
-    // Se tiver receitas do pool, retorna elas
-    if (poolMeals.size > 0) {
-      return {
-        day_index: dayIndex,
-        day_name: dayName,
-        meals: Array.from(poolMeals.values())
-      };
+    // FALLBACK: Try pool when there's an exception, passing previousRecipes
+    if (supabase) {
+      const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
+      const fallbackMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch, previousRecipes);
+      if (fallbackMeals.size > 0) {
+        return {
+          day_index: dayIndex,
+          day_name: dayName,
+          meals: Array.from(fallbackMeals.values())
+        };
+      }
     }
     return null;
   }

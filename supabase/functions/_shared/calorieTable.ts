@@ -570,3 +570,125 @@ export function recalculateWithTable(
     note: `Alimento não mapeado na tabela, usando estimativa da IA (${grams}g)`,
   };
 }
+
+// ============= FUNÇÕES PARA RECÁLCULO EM LOTE =============
+
+/**
+ * Recalcula sugestão de alimento (formato suggest-food-ai)
+ * Formato: { name, portion_grams, calories, protein, carbs, fat }
+ */
+export function recalculateSuggestion(suggestion: {
+  name: string;
+  portion_grams?: number;
+  portion_description?: string;
+  calories: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+}): typeof suggestion & { calorie_source: string } {
+  const grams = suggestion.portion_grams || extractGramsFromPortion(suggestion.portion_description || '') || 100;
+  const kcalPerGram = findCaloriesPerGram(suggestion.name);
+  
+  if (kcalPerGram !== null) {
+    const calculatedCalories = Math.round(grams * kcalPerGram);
+    return {
+      ...suggestion,
+      calories: calculatedCalories,
+      calorie_source: 'table',
+    };
+  }
+  
+  return {
+    ...suggestion,
+    calorie_source: 'ai',
+  };
+}
+
+/**
+ * Recalcula valores por 100g (formato search-ingredient, validate-food-ai)
+ * Formato: { name, calories_per_100g ou per_100g.calories }
+ */
+export function recalculatePer100g(
+  foodName: string,
+  aiCaloriesPer100g: number
+): { calories_per_100g: number; calorie_source: string } {
+  const normalized = normalizeForCalorieTable(foodName);
+  
+  // Busca exata primeiro
+  if (CALORIE_TABLE[normalized]) {
+    return {
+      calories_per_100g: CALORIE_TABLE[normalized],
+      calorie_source: 'table',
+    };
+  }
+  
+  // Busca parcial
+  for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return {
+        calories_per_100g: kcalPer100g,
+        calorie_source: 'table',
+      };
+    }
+  }
+  
+  return {
+    calories_per_100g: aiCaloriesPer100g,
+    calorie_source: 'ai',
+  };
+}
+
+/**
+ * Recalcula ingredientes de receita e total (formato generate-recipe, regenerate-meal)
+ * Retorna ingredientes atualizados + novo total de calorias
+ */
+export function recalculateRecipeCalories(
+  ingredients: Array<{ item?: string; name?: string; quantity?: string; grams?: number }>,
+  aiTotalCalories: number
+): { 
+  ingredients: typeof ingredients; 
+  totalCalories: number; 
+  recalculated: boolean;
+  sources: { table: number; ai: number };
+} {
+  let totalFromTable = 0;
+  let countFromTable = 0;
+  let countFromAi = 0;
+  
+  const updatedIngredients = ingredients.map(ing => {
+    const name = ing.item || ing.name || '';
+    const grams = ing.grams || extractGramsFromPortion(ing.quantity || '') || null;
+    
+    if (!grams || !name) {
+      countFromAi++;
+      return ing;
+    }
+    
+    const kcalPerGram = findCaloriesPerGram(name);
+    if (kcalPerGram !== null) {
+      const calories = Math.round(grams * kcalPerGram);
+      totalFromTable += calories;
+      countFromTable++;
+      return { ...ing, calculated_calories: calories };
+    }
+    
+    countFromAi++;
+    return ing;
+  });
+  
+  // Se conseguimos calcular pelo menos 50% dos ingredientes, usa o total calculado
+  const totalIngredients = countFromTable + countFromAi;
+  const recalculated = totalIngredients > 0 && (countFromTable / totalIngredients) >= 0.5;
+  
+  // Estima proporcional se parcial
+  const estimatedTotal = recalculated && countFromAi > 0
+    ? Math.round(totalFromTable * (totalIngredients / countFromTable))
+    : totalFromTable;
+  
+  return {
+    ingredients: updatedIngredients,
+    totalCalories: recalculated ? estimatedTotal : aiTotalCalories,
+    recalculated,
+    sources: { table: countFromTable, ai: countFromAi },
+  };
+}

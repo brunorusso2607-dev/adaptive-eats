@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { recalculatePer100g } from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -408,11 +409,19 @@ serve(async (req) => {
     // Save to database for future use
     const savedFood = await saveIngredientToDatabase(supabase, aiData);
     
+    // Recalcular calorias usando tabela compartilhada
+    const recalculated = recalculatePer100g(aiData.name, aiData.per_100g.calories);
+    logStep('Calories recalculated', { 
+      original: aiData.per_100g.calories, 
+      final: recalculated.calories_per_100g,
+      source: recalculated.calorie_source 
+    });
+
     const result = {
       id: savedFood?.id || null,
       name: aiData.name,
       name_en: aiData.name_en,
-      calories_per_100g: aiData.per_100g.calories,
+      calories_per_100g: recalculated.calories_per_100g,
       protein_per_100g: aiData.per_100g.protein,
       carbs_per_100g: aiData.per_100g.carbs,
       fat_per_100g: aiData.per_100g.fat,
@@ -421,6 +430,7 @@ serve(async (req) => {
       confidence: aiData.confidence,
       verified: false,
       notes: aiData.notes,
+      calorie_source: recalculated.calorie_source,
     };
 
     logStep('Returning AI result', { name: result.name, saved: !!savedFood });

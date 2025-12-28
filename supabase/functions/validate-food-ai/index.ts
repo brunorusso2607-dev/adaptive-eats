@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { recalculatePer100g } from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -118,6 +119,17 @@ Responda APENAS com JSON no formato:
     } catch (e) {
       logStep('JSON parse error', { error: e, content });
       parsed = { isValid: false, reason: 'Erro ao processar resposta' };
+    }
+
+    // Recalcular calorias usando tabela compartilhada
+    if (parsed.isValid && parsed.nutrition?.calories && parsed.name) {
+      const recalculated = recalculatePer100g(parsed.name, parsed.nutrition.calories);
+      parsed.nutrition.calories = recalculated.calories_per_100g;
+      parsed.calorie_source = recalculated.calorie_source;
+      logStep('Calories recalculated', { 
+        name: parsed.name,
+        source: recalculated.calorie_source 
+      });
     }
 
     logStep('Returning validation result', { isValid: parsed.isValid });

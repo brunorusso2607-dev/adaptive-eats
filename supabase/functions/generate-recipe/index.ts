@@ -12,6 +12,7 @@ import {
   saveRecipeToPool,
   markRecipeAsUsed,
 } from "../_shared/recipePool.ts";
+import { recalculateRecipeCalories } from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -241,6 +242,22 @@ serve(async (req) => {
         hasChefTip: !!recipe.chef_tip,
         hasSafetyStatus: !!recipe.safety_status
       });
+
+      // Recalcular calorias usando tabela compartilhada
+      if (recipe.ingredients && Array.isArray(recipe.ingredients)) {
+        const recalcResult = recalculateRecipeCalories(
+          recipe.ingredients,
+          Number(recipe.calories) || 0
+        );
+        if (recalcResult.recalculated) {
+          recipe.calories = recalcResult.totalCalories;
+          logStep("Recipe calories recalculated", { 
+            original: recipe.calories,
+            recalculated: recalcResult.totalCalories,
+            sources: recalcResult.sources
+          });
+        }
+      }
 
       // STEP 3: Salva a receita gerada no pool para reutilização futura
       const mealTypeForSave = categoryContext?.category === "sobremesa" ? "lanche" : 

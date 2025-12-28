@@ -7,7 +7,6 @@ export type MealTimeSetting = {
   meal_type: string;
   label: string;
   start_hour: number;
-  end_hour: number;
   sort_order: number;
 };
 
@@ -15,6 +14,9 @@ export type MealTimeSetting = {
 let cachedSettings: MealTimeSetting[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
+
+// Constante: tolerância em horas para considerar refeição atrasada
+export const MEAL_DELAY_TOLERANCE_HOURS = 1;
 
 export function useMealTimeSettings() {
   const [settings, setSettings] = useState<MealTimeSetting[]>(cachedSettings || []);
@@ -42,7 +44,6 @@ export function useMealTimeSettings() {
         meal_type: item.meal_type,
         label: item.label,
         start_hour: Number(item.start_hour),
-        end_hour: Number(item.end_hour),
         sort_order: item.sort_order,
       }));
 
@@ -65,10 +66,16 @@ export function useMealTimeSettings() {
   }, [fetchSettings]);
 
   // Converter para o formato Record usado nos hooks existentes
+  // Agora o "end" é calculado como start + tolerância (para compatibilidade)
   const getTimeRanges = useCallback((): Record<string, { start: number; end: number }> => {
     const ranges: Record<string, { start: number; end: number }> = {};
-    settings.forEach(s => {
-      ranges[s.meal_type] = { start: s.start_hour, end: s.end_hour };
+    const sortedSettings = [...settings].sort((a, b) => a.sort_order - b.sort_order);
+    
+    sortedSettings.forEach((s, index) => {
+      // O "fim" agora é o início da próxima refeição, ou start + tolerância se for a última
+      const nextSetting = sortedSettings[index + 1];
+      const end = nextSetting ? nextSetting.start_hour : s.start_hour + MEAL_DELAY_TOLERANCE_HOURS;
+      ranges[s.meal_type] = { start: s.start_hour, end };
     });
     return ranges;
   }, [settings]);
@@ -118,7 +125,6 @@ export function useMealTimeSettingsAdmin() {
         meal_type: item.meal_type,
         label: item.label,
         start_hour: Number(item.start_hour),
-        end_hour: Number(item.end_hour),
         sort_order: item.sort_order,
       }));
       

@@ -17,6 +17,9 @@ let cachedMealOrder: string[] | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 
+// Constante: tolerância em horas para considerar refeição atrasada
+export const MEAL_DELAY_TOLERANCE_HOURS = 1;
+
 // Standard meal types - single source of truth
 export const STANDARD_MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] as const;
 export type StandardMealType = typeof STANDARD_MEAL_TYPES[number];
@@ -89,6 +92,25 @@ function saveToStorage(): void {
 // Initialize from storage
 loadFromStorage();
 
+// Calcula ranges baseado apenas em start_hour
+// O "end" é o início da próxima refeição ou start + tolerância
+function calculateRangesFromSettings(data: Array<{ meal_type: string; start_hour: number; sort_order: number }>): MealTimeRanges {
+  const ranges: MealTimeRanges = {};
+  const sorted = [...data].sort((a, b) => a.sort_order - b.sort_order);
+  
+  sorted.forEach((item, index) => {
+    const nextItem = sorted[index + 1];
+    // O fim é o início da próxima refeição, ou start + tolerância se for a última
+    const end = nextItem ? Number(nextItem.start_hour) : Number(item.start_hour) + MEAL_DELAY_TOLERANCE_HOURS;
+    ranges[item.meal_type] = { 
+      start: Number(item.start_hour), 
+      end 
+    };
+  });
+  
+  return ranges;
+}
+
 async function fetchMealTimeSettings(forceRefresh = false): Promise<void> {
   const isCacheValid = cachedTimeRanges && Date.now() - cacheTimestamp < CACHE_DURATION;
   
@@ -106,20 +128,16 @@ async function fetchMealTimeSettings(forceRefresh = false): Promise<void> {
     if (error) throw error;
 
     if (data && data.length > 0) {
-      const ranges: MealTimeRanges = {};
       const labels: MealLabels = {};
       const order: string[] = [];
 
       data.forEach(item => {
-        ranges[item.meal_type] = { 
-          start: Number(item.start_hour), 
-          end: Number(item.end_hour) 
-        };
         labels[item.meal_type] = item.label;
         order.push(item.meal_type);
       });
 
-      cachedTimeRanges = ranges;
+      // Calcular ranges baseado em start_hour apenas
+      cachedTimeRanges = calculateRangesFromSettings(data);
       cachedLabels = labels;
       cachedMealOrder = order;
       cacheTimestamp = Date.now();

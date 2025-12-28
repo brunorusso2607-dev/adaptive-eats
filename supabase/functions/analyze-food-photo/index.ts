@@ -7,6 +7,11 @@ import {
   getMappingsStats,
   INTOLERANCE_LABELS 
 } from "../_shared/getIntoleranceMappings.ts";
+import { 
+  recalculateWithTable,
+  extractGramsFromPortion,
+  CALORIE_TABLE
+} from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -649,6 +654,75 @@ RULES:
     // Ensure alertas_intolerancia exists
     if (!analysis.alertas_intolerancia) {
       analysis.alertas_intolerancia = [];
+    }
+
+    // ========== RECÁLCULO DE CALORIAS COM TABELA COMPARTILHADA ==========
+    // Garante consistência com o módulo de plano alimentar
+    let caloriasRecalculadas = 0;
+    const detalhesRecalculo: Array<{ item: string; original: number; recalculado: number; source: string; note: string }> = [];
+    
+    if (analysis.alimentos && Array.isArray(analysis.alimentos)) {
+      for (let i = 0; i < analysis.alimentos.length; i++) {
+        const food = analysis.alimentos[i];
+        const originalCalories = food.calorias || 0;
+        
+        // Usa a função compartilhada para recalcular
+        const result = recalculateWithTable(
+          food.item || "",
+          food.porcao_estimada || "",
+          originalCalories
+        );
+        
+        // Atualiza as calorias se foi recalculado com sucesso pela tabela
+        if (result.source === 'table') {
+          analysis.alimentos[i].calorias = result.calories;
+          analysis.alimentos[i].calculo_fonte = 'tabela_referencia';
+          analysis.alimentos[i].gramas_extraidas = result.grams;
+          caloriasRecalculadas++;
+          
+          detalhesRecalculo.push({
+            item: food.item,
+            original: originalCalories,
+            recalculado: result.calories,
+            source: result.source,
+            note: result.note
+          });
+        } else {
+          // Mantém o valor da IA mas marca a fonte
+          analysis.alimentos[i].calculo_fonte = result.source;
+          if (result.grams) {
+            analysis.alimentos[i].gramas_extraidas = result.grams;
+          }
+        }
+      }
+      
+      // Recalcular totais se houve recálculos
+      if (caloriasRecalculadas > 0) {
+        let totalCalorias = 0;
+        let totalProteinas = 0;
+        let totalCarboidratos = 0;
+        let totalGorduras = 0;
+        
+        for (const food of analysis.alimentos) {
+          totalCalorias += food.calorias || 0;
+          totalProteinas += food.macros?.proteinas || 0;
+          totalCarboidratos += food.macros?.carboidratos || 0;
+          totalGorduras += food.macros?.gorduras || 0;
+        }
+        
+        analysis.total_geral = {
+          calorias_totais: Math.round(totalCalorias),
+          proteinas_totais: Math.round(totalProteinas * 10) / 10,
+          carboidratos_totais: Math.round(totalCarboidratos * 10) / 10,
+          gorduras_totais: Math.round(totalGorduras * 10) / 10
+        };
+        
+        logStep("Calorias recalculadas com tabela compartilhada", { 
+          itensRecalculados: caloriasRecalculadas,
+          detalhes: detalhesRecalculo,
+          novosTotais: analysis.total_geral 
+        });
+      }
     }
 
     // ========== APPLY SAVED CORRECTIONS AUTOMATICALLY WITH FUZZY MATCHING ==========

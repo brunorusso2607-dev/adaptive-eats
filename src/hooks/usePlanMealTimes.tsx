@@ -45,80 +45,68 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
   const [customTimes, setCustomTimes] = useState<CustomMealTimesWithExtras | null | undefined>(undefined);
+  const [profileTimes, setProfileTimes] = useState<CustomMealTimesWithExtras | null | undefined>(undefined);
   const [activePlanId, setActivePlanId] = useState<string | null>(planId || null);
   const [isLoadingPlan, setIsLoadingPlan] = useState(false);
 
-  // Buscar plano ativo se não foi passado planId
+  // Buscar plano ativo e perfil do usuário
   useEffect(() => {
-    async function fetchActivePlan() {
-      if (planId) {
-        setActivePlanId(planId);
-        return;
-      }
-
-      if (!userId) {
-        // Buscar usuário atual
+    async function fetchActivePlanAndProfile() {
+      // Determinar userId
+      let currentUserId = userId;
+      if (!currentUserId) {
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
+        currentUserId = user.id;
+      }
 
-        setIsLoadingPlan(true);
-        try {
-          const today = new Date().toISOString().split('T')[0];
-          const { data, error } = await supabase
-            .from("meal_plans")
-            .select("id, custom_meal_times")
-            .eq("user_id", user.id)
-            .eq("is_active", true)
-            .lte("start_date", today)
-            .gte("end_date", today)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (error) {
-            console.error("Error fetching active plan:", error);
-            return;
-          }
-
-          if (data) {
-            setActivePlanId(data.id);
-            setCustomTimes(data.custom_meal_times as CustomMealTimesWithExtras | null);
-          }
-        } finally {
-          setIsLoadingPlan(false);
+      setIsLoadingPlan(true);
+      try {
+        // Buscar perfil do usuário (para default_meal_times)
+        const { data: profileData } = await supabase
+          .from("profiles")
+          .select("default_meal_times")
+          .eq("id", currentUserId)
+          .single();
+        
+        if (profileData?.default_meal_times) {
+          setProfileTimes(profileData.default_meal_times as CustomMealTimesWithExtras);
         }
-      } else {
-        // Usar userId passado
-        setIsLoadingPlan(true);
-        try {
-          const today = new Date().toISOString().split('T')[0];
-          const { data, error } = await supabase
-            .from("meal_plans")
-            .select("id, custom_meal_times")
-            .eq("user_id", userId)
-            .eq("is_active", true)
-            .lte("start_date", today)
-            .gte("end_date", today)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
 
-          if (error) {
-            console.error("Error fetching active plan:", error);
-            return;
-          }
-
-          if (data) {
-            setActivePlanId(data.id);
-            setCustomTimes(data.custom_meal_times as CustomMealTimesWithExtras | null);
-          }
-        } finally {
-          setIsLoadingPlan(false);
+        // Se planId foi passado, usar ele
+        if (planId) {
+          setActivePlanId(planId);
+          return;
         }
+
+        // Buscar plano ativo
+        const today = new Date().toISOString().split('T')[0];
+        const { data, error } = await supabase
+          .from("meal_plans")
+          .select("id, custom_meal_times")
+          .eq("user_id", currentUserId)
+          .eq("is_active", true)
+          .lte("start_date", today)
+          .gte("end_date", today)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (error) {
+          console.error("Error fetching active plan:", error);
+          return;
+        }
+
+        if (data) {
+          setActivePlanId(data.id);
+          setCustomTimes(data.custom_meal_times as CustomMealTimesWithExtras | null);
+        }
+      } finally {
+        setIsLoadingPlan(false);
       }
     }
 
-    fetchActivePlan();
+    fetchActivePlanAndProfile();
   }, [planId, userId]);
 
   // Buscar custom_meal_times se temos planId mas não temos customTimes
@@ -153,11 +141,25 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
     return hours;
   }, []);
 
-  // Extrair extras do customTimes
+  // Fonte de dados efetiva: plano > perfil > global
+  // Prioridade: customTimes (do plano) > profileTimes (do perfil) > global
+  const effectiveTimes = useMemo((): CustomMealTimesWithExtras | null => {
+    // Se o plano tem horários customizados, usar eles
+    if (customTimes && Object.keys(customTimes).length > 0) {
+      return customTimes;
+    }
+    // Se o perfil tem horários, usar eles
+    if (profileTimes && Object.keys(profileTimes).length > 0) {
+      return profileTimes;
+    }
+    return null;
+  }, [customTimes, profileTimes]);
+
+  // Extrair extras do effectiveTimes
   const extraMeals = useMemo((): ExtraMeal[] => {
-    if (!customTimes?.extras || !Array.isArray(customTimes.extras)) return [];
-    return customTimes.extras;
-  }, [customTimes]);
+    if (!effectiveTimes?.extras || !Array.isArray(effectiveTimes.extras)) return [];
+    return effectiveTimes.extras;
+  }, [effectiveTimes]);
 
   // Mesclar horários globais com personalizados + extras
   const mergedSettings = useMemo((): MealTimeConfig[] => {
@@ -165,10 +167,14 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
 
     // Primeiro, processar refeições padrão
     const standardMeals = globalSettings.map(setting => {
-      const customTime = customTimes?.[setting.meal_type];
+      // Hierarquia: plano > perfil > global
+      const planTime = customTimes?.[setting.meal_type];
+      const profileTime = profileTimes?.[setting.meal_type];
+      const effectiveTime = typeof planTime === 'string' ? planTime : 
+                           typeof profileTime === 'string' ? profileTime : null;
       
-      if (typeof customTime === 'string') {
-        const customHour = parseTimeToHour(customTime);
+      if (effectiveTime) {
+        const customHour = parseTimeToHour(effectiveTime);
         return {
           meal_type: setting.meal_type,
           label: setting.label,
@@ -212,7 +218,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
     allMeals.sort((a, b) => a.start_hour - b.start_hour);
 
     return allMeals;
-  }, [globalSettings, customTimes, parseTimeToHour, extraMeals]);
+  }, [globalSettings, customTimes, profileTimes, parseTimeToHour, extraMeals]);
 
   // Converter para formato Record
   const getTimeRanges = useCallback((): Record<string, { start: number; end: number; isCustom: boolean; isExtra?: boolean }> => {
@@ -252,10 +258,14 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
       return "";
     }
     
-    // Se tiver horário customizado, usar ele diretamente
-    const customTime = customTimes?.[mealType];
-    if (typeof customTime === 'string') {
-      return customTime;
+    // Hierarquia: plano > perfil > global
+    const planTime = customTimes?.[mealType];
+    const profileTime = profileTimes?.[mealType];
+    if (typeof planTime === 'string') {
+      return planTime;
+    }
+    if (typeof profileTime === 'string') {
+      return profileTime;
     }
     
     // Verificar se é um extra
@@ -265,12 +275,14 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
     }
     
     return formatHour(setting.start_hour);
-  }, [mergedSettings, customTimes, formatHour, extraMeals]);
+  }, [mergedSettings, customTimes, profileTimes, formatHour, extraMeals]);
 
-  // Verificar se o plano tem horários personalizados
+  // Verificar se há horários personalizados (plano ou perfil)
   const hasCustomTimes = useMemo(() => {
-    return customTimes !== null && customTimes !== undefined && Object.keys(customTimes).length > 0;
-  }, [customTimes]);
+    const planHasTimes = customTimes !== null && customTimes !== undefined && Object.keys(customTimes).length > 0;
+    const profileHasTimes = profileTimes !== null && profileTimes !== undefined && Object.keys(profileTimes).length > 0;
+    return planHasTimes || profileHasTimes;
+  }, [customTimes, profileTimes]);
 
   // Atualizar horários personalizados do plano
   const updateCustomTimes = useCallback(async (newCustomTimes: CustomMealTimes | null): Promise<boolean> => {
@@ -299,6 +311,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
     settings: mergedSettings,
     globalSettings,
     customTimes,
+    profileTimes,
     activePlanId,
     isLoading: globalLoading || isLoadingPlan,
     hasCustomTimes,

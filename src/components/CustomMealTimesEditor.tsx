@@ -196,17 +196,31 @@ export function CustomMealTimesEditor({
     }
   }, []);
 
-  const handleTimeChange = (mealId: string, value: string, isExtra: boolean) => {
+  const handleTimeChange = async (mealId: string, value: string, isExtra: boolean) => {
     setHasChanges(true);
     
+    let newExtras = extraMeals;
+    let newTimes = localTimes;
+    
     if (isExtra) {
-      const newExtras = extraMeals.map(extra =>
+      newExtras = extraMeals.map(extra =>
         extra.id === mealId ? { ...extra, time: value } : extra
       );
       setExtraMeals(newExtras);
     } else {
-      const newTimes = { ...localTimes, [mealId]: value };
+      newTimes = { ...localTimes, [mealId]: value };
       setLocalTimes(newTimes);
+    }
+    
+    // Salvar automaticamente no perfil do usuário
+    const dataToSave: CustomMealTimesWithExtras = { ...newTimes };
+    if (newExtras.length > 0) {
+      dataToSave.extras = newExtras.map(e => ({ ...e, isNew: false }));
+    }
+    
+    const saved = await saveTemplateToProfile(dataToSave);
+    if (saved) {
+      toast.success("Horário atualizado", { duration: 1500 });
     }
   };
 

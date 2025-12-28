@@ -83,3 +83,6 @@ verify_jwt = false
 
 [functions.import-tbca-foods]
 verify_jwt = false
+
+[functions.import-ciqual-foods]
+verify_jwt = false

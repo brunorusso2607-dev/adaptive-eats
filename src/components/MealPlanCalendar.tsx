@@ -208,9 +208,14 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     replaceIncompatibleMeals(incompatibleMeals, onMealUpdated);
   }, [incompatibleMeals, replaceIncompatibleMeals, onMealUpdated]);
 
-  // Use the current month for dynamic weeks calculation
-  const currentDate = new Date();
-  const { weeks, totalWeeks, currentWeek, todayWeek, todayDayIndex, monthName, year } = useMonthWeeks(currentDate);
+  // Use the plan's start date for weeks calculation (not current date)
+  // This ensures scheduled/future plans show their correct month structure
+  const planStartDate = useMemo(() => {
+    const [year, month, day] = mealPlan.start_date.split('-').map(Number);
+    return new Date(year, month - 1, day);
+  }, [mealPlan.start_date]);
+  
+  const { weeks, totalWeeks, currentWeek, todayWeek, todayDayIndex, monthName, year } = useMonthWeeks(planStartDate);
 
   // Initialize selected week to current week
   const [selectedWeek, setSelectedWeek] = useState(currentWeek);
@@ -229,8 +234,8 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   // Calculate week date range for display
   const weekRangeText = useMemo(() => {
     if (!currentWeekData) return "";
-    return formatWeekRange(currentWeekData, currentDate);
-  }, [currentWeekData, currentDate]);
+    return formatWeekRange(currentWeekData, planStartDate);
+  }, [currentWeekData, planStartDate]);
 
   // Auto-select first visible non-past day when week changes (only on week change, not day click)
   useEffect(() => {

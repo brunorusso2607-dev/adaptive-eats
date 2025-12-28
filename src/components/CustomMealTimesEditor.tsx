@@ -90,7 +90,7 @@ export function CustomMealTimesEditor({
     });
     setLocalTimes(initialTimes);
     
-    // Carregar extras se existirem
+    // Carregar extras se existirem - sempre sincronizar quando customTimes muda
     const extras = customTimes?.extras;
     if (Array.isArray(extras) && extras.length > 0) {
       // Garantir que extras carregados do template não tenham isNew: true
@@ -99,13 +99,15 @@ export function CustomMealTimesEditor({
         isNew: false
       }));
       setExtraMeals(cleanedExtras);
-      setIsInitialized(true);
-    } else if (!isInitialized && customTimes !== null) {
-      // Se customTimes existe mas sem extras, resetar extras apenas na primeira vez
+      console.log("[CustomMealTimesEditor] Loaded extras from template:", cleanedExtras);
+    } else if (customTimes !== null && customTimes !== undefined) {
+      // Se customTimes existe mas sem extras, resetar extras
+      // Não usa isInitialized para garantir sincronização
       setExtraMeals([]);
-      setIsInitialized(true);
     }
-  }, [globalSettings, customTimes, isInitialized]);
+    // Marcar como inicializado após processar
+    setIsInitialized(true);
+  }, [globalSettings, customTimes]);
 
   // Emitir dados sempre que houver mudanças (sem depender de toggle)
   useEffect(() => {

@@ -109,7 +109,11 @@ function getMealSortIndex(mealType: string): number {
   return 999;
 }
 
+// Constante: tolerância em minutos para considerar refeição atrasada (1 hora)
+const MEAL_DELAY_TOLERANCE_MINUTES = 60;
+
 // Versão que aceita custom times opcionais
+// Nova lógica: 1 hora após start_hour = atrasado
 export function getMealStatusWithCustomTimes(
   mealType: string, 
   completedAt: string | null,
@@ -131,22 +135,27 @@ export function getMealStatusWithCustomTimes(
   }
   
   const startTimeInMinutes = range.start * 60;
-  const endTimeInMinutes = range.end * 60;
-  const delayedThreshold = endTimeInMinutes + 30;
-  const criticalThreshold = endTimeInMinutes + 60;
+  // Atrasado = 1 hora após o início
+  const delayedThreshold = startTimeInMinutes + MEAL_DELAY_TOLERANCE_MINUTES;
+  // Crítico = 1.5 horas após o início  
+  const criticalThreshold = startTimeInMinutes + MEAL_DELAY_TOLERANCE_MINUTES + 30;
   
+  // Se ainda não começou, está upcoming
   if (currentTimeInMinutes < startTimeInMinutes) {
     return "upcoming";
   }
   
+  // Se passou 1.5h do início, está crítico
   if (currentTimeInMinutes >= criticalThreshold) {
     return "critical";
-  } else if (currentTimeInMinutes >= delayedThreshold) {
-    return "delayed";
-  } else if (currentTimeInMinutes >= endTimeInMinutes) {
+  }
+  
+  // Se passou 1h do início, está atrasado
+  if (currentTimeInMinutes >= delayedThreshold) {
     return "delayed";
   }
   
+  // Ainda dentro do período normal (até 1h após início)
   return "on_time";
 }
 
@@ -168,10 +177,12 @@ export function getMinutesOverdueWithCustomTimes(
   const range = timeRanges[mealType];
   if (!range) return 0;
   
-  const endTimeInMinutes = range.end * 60;
+  const startTimeInMinutes = range.start * 60;
+  // Atraso começa 1 hora após o início
+  const delayedThreshold = startTimeInMinutes + MEAL_DELAY_TOLERANCE_MINUTES;
   
-  if (currentTimeInMinutes > endTimeInMinutes) {
-    return currentTimeInMinutes - endTimeInMinutes;
+  if (currentTimeInMinutes > delayedThreshold) {
+    return currentTimeInMinutes - delayedThreshold;
   }
   
   return 0;

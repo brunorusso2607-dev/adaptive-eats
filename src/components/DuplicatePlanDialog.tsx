@@ -76,37 +76,71 @@ export default function DuplicatePlanDialog({
   today.setHours(0, 0, 0, 0);
   const daysUntilUnlock = Math.ceil((nextMonthDates.start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
-  // Calculate how many recipes will be copied vs generated
+  // Calculate EXACT number of recipes that will be copied vs generated
   const getRecipeStats = () => {
-    // Group original items by day_of_week and meal_type
-    const itemsByDayAndType = new Map<string, MealPlanItem>();
+    // Step 1: Count how many recipes exist per day_of_week in the original plan
+    const recipesPerDayOfWeek = new Map<number, number>();
+    const mealTypesPerDayOfWeek = new Map<number, Set<string>>();
+    
     plan.items.forEach(item => {
-      const key = `${item.day_of_week}-${item.meal_type}`;
-      if (!itemsByDayAndType.has(key)) {
-        itemsByDayAndType.set(key, item);
+      // Count unique recipes per day_of_week
+      const currentCount = recipesPerDayOfWeek.get(item.day_of_week) || 0;
+      recipesPerDayOfWeek.set(item.day_of_week, currentCount + 1);
+      
+      // Track meal types per day
+      if (!mealTypesPerDayOfWeek.has(item.day_of_week)) {
+        mealTypesPerDayOfWeek.set(item.day_of_week, new Set());
+      }
+      mealTypesPerDayOfWeek.get(item.day_of_week)!.add(item.meal_type);
+    });
+
+    // Get unique meal types from original plan to know how many meals per day we need
+    const allMealTypes = new Set(plan.items.map(item => item.meal_type));
+    const mealsPerDay = allMealTypes.size || 5; // fallback to 5 if empty
+
+    // Step 2: Count how many times each day_of_week appears in the target month
+    const dayOfWeekCounts = new Map<number, number>();
+    for (let i = 0; i < 7; i++) {
+      dayOfWeekCounts.set(i, 0);
+    }
+    
+    for (let day = 1; day <= totalDaysNextMonth; day++) {
+      const date = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
+      const dayOfWeek = date.getDay();
+      dayOfWeekCounts.set(dayOfWeek, (dayOfWeekCounts.get(dayOfWeek) || 0) + 1);
+    }
+
+    // Step 3: Calculate exact numbers
+    let totalRecipesToCopy = 0;
+    let totalRecipesToGenerate = 0;
+    let daysWithTemplate = 0;
+    let daysWithoutTemplate = 0;
+
+    dayOfWeekCounts.forEach((occurrences, dayOfWeek) => {
+      const recipesForThisDay = mealTypesPerDayOfWeek.get(dayOfWeek)?.size || 0;
+      
+      if (recipesForThisDay > 0) {
+        // This day_of_week has recipes in the template
+        // Each occurrence in the month will copy these recipes
+        totalRecipesToCopy += recipesForThisDay * occurrences;
+        daysWithTemplate++;
+      } else {
+        // This day_of_week has no recipes - need to generate
+        // Each occurrence needs all meal types generated
+        totalRecipesToGenerate += mealsPerDay * occurrences;
+        daysWithoutTemplate++;
       }
     });
 
-    // Count unique day_of_week values in original plan
-    const daysWithRecipes = new Set(plan.items.map(i => i.day_of_week));
-    const daysInWeekWithRecipes = daysWithRecipes.size;
-    const daysInWeekWithoutRecipes = 7 - daysInWeekWithRecipes;
-
-    // Estimate how many will be copied vs generated
-    const mealTypesPerDay = 5; // cafe_manha, almoco, lanche, jantar, ceia
-    const totalMealsNeeded = totalDaysNextMonth * mealTypesPerDay;
-    
-    // Meals that can be copied (days that have recipes in original)
-    const weeksInMonth = Math.ceil(totalDaysNextMonth / 7);
-    const mealsThatCanBeCopied = daysInWeekWithRecipes * mealTypesPerDay * weeksInMonth;
-    const mealsToGenerate = daysInWeekWithoutRecipes * mealTypesPerDay * weeksInMonth;
+    const totalMealsNeeded = totalRecipesToCopy + totalRecipesToGenerate;
 
     return {
       totalMealsNeeded,
-      mealsThatCanBeCopied: Math.min(mealsThatCanBeCopied, plan.items.length * weeksInMonth),
-      mealsToGenerate,
-      daysWithRecipes: daysInWeekWithRecipes,
-      daysWithoutRecipes: daysInWeekWithoutRecipes,
+      recipesToCopy: totalRecipesToCopy,
+      recipesToGenerate: totalRecipesToGenerate,
+      daysWithTemplate,
+      daysWithoutTemplate,
+      mealsPerDay,
     };
   };
 
@@ -343,15 +377,26 @@ export default function DuplicatePlanDialog({
           </div>
 
           {/* Recipe stats */}
-          {stats.daysWithoutRecipes > 0 && (
+          {stats.daysWithoutTemplate > 0 ? (
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-4 space-y-2">
               <div className="flex items-center gap-2 text-sm">
                 <Sparkles className="w-4 h-4 text-primary" />
                 <span className="font-medium text-foreground">Geração inteligente</span>
               </div>
               <p className="text-xs text-muted-foreground">
-                Seu plano atual tem receitas para {stats.daysWithRecipes} dia(s) da semana. 
-                A IA irá gerar automaticamente as receitas para os {stats.daysWithoutRecipes} dia(s) restantes.
+                <strong>{stats.recipesToCopy}</strong> receitas serão copiadas do plano atual ({stats.daysWithTemplate} dias da semana com template). 
+                A IA irá gerar <strong>{stats.recipesToGenerate}</strong> receitas para os {stats.daysWithoutTemplate} dia(s) da semana sem template.
+              </p>
+            </div>
+          ) : (
+            <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-lg p-4 space-y-2">
+              <div className="flex items-center gap-2 text-sm">
+                <Copy className="w-4 h-4 text-emerald-500" />
+                <span className="font-medium text-foreground">Cópia completa</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Todas as <strong>{stats.recipesToCopy}</strong> receitas serão copiadas do plano atual. 
+                Não será necessário gerar novas receitas.
               </p>
             </div>
           )}

@@ -692,13 +692,55 @@ ${regional.typicalMeals}
 ${regional.culturalNotes}
 
 --------------------------------------------------
+TABELA DE REFERENCIA CALORICA (USE OBRIGATORIAMENTE):
+--------------------------------------------------
+PROTEINAS:
+- 1 ovo: 70 kcal | 2 ovos: 140 kcal
+- 100g frango grelhado: 165 kcal
+- 100g carne bovina magra: 180 kcal
+- 100g peixe: 120 kcal
+- 1 fatia presunto: 30 kcal
+- 100g tofu: 80 kcal
+
+CARBOIDRATOS:
+- 1 pao frances (50g): 150 kcal
+- 2 fatias pao integral: 140 kcal
+- 1 tapioca media: 70 kcal (sem recheio)
+- 100g arroz cozido: 130 kcal
+- 100g macarrao cozido: 130 kcal
+- 100g batata cozida: 85 kcal
+- 1 banana: 90 kcal
+- 1 maca: 70 kcal
+- 1 fatia mamao: 45 kcal
+
+LATICINIOS/ALTERNATIVAS:
+- 1 pote iogurte natural (170g): 100 kcal
+- 1 pote iogurte vegetal (170g): 120 kcal
+- 1 fatia queijo mussarela: 80 kcal
+- 200ml leite: 120 kcal
+- 200ml leite vegetal: 60 kcal
+
+OUTROS:
+- 1 colher sopa granola: 55 kcal
+- 1 colher sopa azeite: 90 kcal
+- 30g castanhas/nozes: 180 kcal
+- 1 xicara cafe puro: 5 kcal
+- 1 xicara cafe com leite: 70 kcal
+- 1 xicara cafe com leite vegetal: 40 kcal
+
+CALCULO OBRIGATORIO:
+- Some as calorias de CADA ingrediente usando esta tabela
+- O total DEVE bater com o alvo (margem de ±5%)
+- Se nao bater, ajuste quantidades ou substitua ingredientes
+
+--------------------------------------------------
 ESTRUTURA DE GERACAO:
 --------------------------------------------------
 Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES GENUINAMENTE DIFERENTES.
 CADA OPCAO deve ter:
 - Nome claro e simples da refeicao
 - Lista de alimentos prontos com quantidades intuitivas
-- Calorias aproximadas (variacao maxima de ±5% do alvo)
+- Calorias CALCULADAS somando cada ingrediente (NAO estimar)
 
 Descreva refeicoes como as pessoas falam no dia a dia, nao como lista de ingredientes.
 

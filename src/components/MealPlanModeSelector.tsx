@@ -1,9 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Sparkles, UtensilsCrossed, Pencil } from "lucide-react";
+import { ArrowLeft, Sparkles, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export type MealPlanMode = "ai" | "simple" | "custom";
+export type MealPlanMode = "ai" | "custom";
 
 type ModeOption = {
   id: MealPlanMode;
@@ -32,18 +32,6 @@ const modeOptions: ModeOption[] = [
       "Variedade de receitas garantida"
     ],
     recommended: true
-  },
-  {
-    id: "simple",
-    title: "Refeições Simples",
-    description: "Monte seu plano com receitas rápidas e práticas",
-    icon: <UtensilsCrossed className="w-6 h-6" />,
-    features: [
-      "Catálogo de refeições pré-definidas",
-      "Receitas rápidas (até 15 min)",
-      "Indicador de compatibilidade",
-      "Ideal para rotina agitada"
-    ]
   },
   {
     id: "custom",

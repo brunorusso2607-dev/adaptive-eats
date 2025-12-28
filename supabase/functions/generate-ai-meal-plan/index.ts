@@ -585,6 +585,7 @@ REGRAS ABSOLUTAS (NAO NEGOCIAVEIS):
 - Gere apenas ALIMENTOS E REFEICOES PRONTAS PARA CONSUMO
 - As refeicoes devem ser SIMPLES, COMUNS e ACESSIVEIS
 - As refeicoes devem parecer "comida de verdade", nao dieta artificial
+- Evite cardapios excessivamente monotonos ou com aparencia hospitalar
 - NAO use emojis
 - NAO mencione objetivos corporais ou resultados
 - NAO de conselhos medicos
@@ -614,7 +615,7 @@ CADA OPCAO deve ter:
 - Calorias aproximadas
 
 GUIA DE REFEICOES POR TIPO (OBRIGATORIO):
-- CAFE DA MANHA: deve ser agradavel, nao "funcional" - paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe, leite, sucos
+- CAFE DA MANHA: agradavel e familiar; evite combinacoes incomuns ou excessivamente saudaveis - paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe, leite, sucos
 - LANCHE MANHA/TARDE: pratico e reconhecivel - frutas, iogurte, castanhas, barra de cereais, sanduiche leve
 - ALMOCO: prato de comida, nao formula - refeicao quente, completa e substancial (proteina + carboidrato + legumes ou salada)
 - JANTAR: prato de comida real - refeicao quente e completa semelhante ao almoco OU omelete substancial OU prato unico completo
@@ -647,6 +648,7 @@ PADRAO DE QUALIDADE HUMANA (VALIDACAO FINAL):
 - "Uma pessoa comum pediria isso num restaurante ou faria em casa?"
 - "Parece comida ou parece dieta?"
 - Se parecer dieta ou formula → descarte e gere outra
+- Se parecer algo que so uma IA sugeriria, descarte e gere outra
 
 RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
 {

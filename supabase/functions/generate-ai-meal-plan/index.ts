@@ -605,8 +605,17 @@ ${restrictionText}
 COMPLIANCE DE RESTRICOES (CRITICO):
 - Se houver intolerancia declarada, TODOS os alimentos devem respeitar ESTRITAMENTE
 - NAO inclua NENHUM alimento que contenha ou derive do ingrediente restrito
-- Intolerancia a lactose = ZERO leite, queijo, iogurte, manteiga ou derivados lacteos
 - Em caso de duvida, substitua por alternativa segura
+
+PROIBICOES ABSOLUTAS PARA INTOLERANCIA LACTOSE:
+- NAO use NUNCA: queijo, iogurte natural, leite, manteiga, requeijao, creme de leite, pao de queijo, queijo coalho
+- USE NO LUGAR: queijo vegetal, iogurte vegetal, leite vegetal, margarina vegetal
+- "Tapioca com queijo" deve virar "Tapioca com ovo" ou "Tapioca com frango"
+- "Omelete de queijo" deve virar "Omelete de legumes" ou "Omelete de tomate"
+- "Iogurte natural" deve virar "Iogurte vegetal" ou fruta
+- "Cafe com leite" deve virar "Cafe puro" ou "Cafe com leite vegetal"
+- "Pao de queijo" deve virar "Pao frances" ou "Tapioca"
+- QUALQUER prato com queijo ou derivado lacteo esta PROIBIDO para intolerancia lactose
 
 CONTEXTO CULTURAL:
 ${regional.typicalMeals}

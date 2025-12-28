@@ -641,6 +641,13 @@ BLOQUEIOS EXPLICITOS (OBRIGATORIO):
 - Evite combinar vitamina + granola + pao na mesma opcao
 - Evite construcoes que parecam pensadas para bater macro, nao para prazer alimentar
 
+BLOQUEIO DE VIES NUTRICIONAL (OBRIGATORIO):
+- IGNORE completamente termos como "emagrecer", "manter peso" ou "ganhar peso" ao escolher os alimentos
+- Esses parametros existem apenas para ajuste interno de calorias, nao para definir tipo de refeicao
+- Nunca associe "vegetariano" ou "sem lactose" a comida liquida, leve ou restritiva
+- Vegetariano significa comida comum sem carne, nao comida funcional
+- Refeicoes devem continuar robustas, mastigaveis e completas
+
 CONTROLE ANTI-REPETICAO (OBRIGATORIO):
 - NAO repita estruturas similares entre opcoes (ex: nao use "mingau + castanhas" em multiplas opcoes)
 - Varie os tipos de preparacao (grelhado, cozido, refogado, assado)

@@ -377,6 +377,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   if (view === "create-ai") {
     return (
       <MealPlanGenerator
+        key={`meal-plan-generator-${Date.now()}`}
         onClose={() => setView("list")}
         onPlanGenerated={() => {
           fetchMealPlans();

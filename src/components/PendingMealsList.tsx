@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { UtensilsCrossed, ChevronDown, Flame, ChevronRight, Check } from "lucide-react";
-import { usePendingMeals, getMealStatus, getMinutesOverdue, MEAL_LABELS, MEAL_TIME_RANGES, formatMealTime, isMealTimeStarted } from "@/hooks/usePendingMeals";
+import { usePendingMeals, formatMealTime } from "@/hooks/usePendingMeals";
 import PendingMealCard from "./PendingMealCard";
 import MealDetailSheet from "./MealDetailSheet";
 import MealSubstanceBadges from "./MealSubstanceBadges";
@@ -32,6 +32,11 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     hasMealPlan,
     skipMeal,
     refetch,
+    effectiveTimeRanges,
+    MEAL_LABELS,
+    getMealStatusForMeal,
+    getMinutesOverdueForMeal,
+    isMealTimeStartedForMeal,
   } = usePendingMeals();
 
   // Separar: próxima refeição (verde) vs atrasadas (amarela/vermelha)
@@ -44,7 +49,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     // As refeições estão ordenadas por data decrescente, então precisamos inverter para encontrar a próxima
     const mealsWithStatus = pendingMeals.map(meal => ({
       ...meal,
-      status: getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at),
+      status: getMealStatusForMeal(meal.meal_type, meal.actual_date, meal.completed_at),
     }));
 
     // Encontrar a refeição que está on_time (será a próxima)
@@ -59,7 +64,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
       nextMeal: onTimeMeal || null,
       overdueMeals: delayed,
     };
-  }, [pendingMeals]);
+  }, [pendingMeals, getMealStatusForMeal]);
 
   // Loading state
   if (isLoading) {
@@ -133,11 +138,11 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
   }
 
   const mealLabel = nextMeal ? (MEAL_LABELS[nextMeal.meal_type] || nextMeal.meal_type) : "";
-  const mealTimeRange = nextMeal ? MEAL_TIME_RANGES[nextMeal.meal_type] : null;
+  const mealTimeRange = nextMeal ? effectiveTimeRanges[nextMeal.meal_type] : null;
   const mealTimeText = mealTimeRange 
-    ? `${formatMealTime(mealTimeRange.start)} às ${formatMealTime(mealTimeRange.end)}`
+    ? `${formatMealTime(mealTimeRange.start)}`
     : "";
-  const showButtons = nextMeal ? isMealTimeStarted(nextMeal.meal_type, nextMeal.actual_date) : false;
+  const showButtons = nextMeal ? isMealTimeStartedForMeal(nextMeal.meal_type, nextMeal.actual_date) : false;
 
   return (
     <div className="space-y-3">
@@ -210,8 +215,8 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                 
                 <CollapsibleContent className="px-4 pb-4 space-y-2">
                   {overdueMeals.map((meal) => {
-                    const status = getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
-                    const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.actual_date);
+                    const status = getMealStatusForMeal(meal.meal_type, meal.actual_date, meal.completed_at);
+                    const minutesOverdue = getMinutesOverdueForMeal(meal.meal_type, meal.actual_date);
                     
                     return (
                       <PendingMealCard
@@ -265,8 +270,8 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
               
               <CollapsibleContent className="px-4 pb-4 space-y-2">
                 {overdueMeals.map((meal) => {
-                  const status = getMealStatus(meal.meal_type, meal.actual_date, meal.completed_at);
-                  const minutesOverdue = getMinutesOverdue(meal.meal_type, meal.actual_date);
+                  const status = getMealStatusForMeal(meal.meal_type, meal.actual_date, meal.completed_at);
+                  const minutesOverdue = getMinutesOverdueForMeal(meal.meal_type, meal.actual_date);
                   
                   return (
                     <PendingMealCard

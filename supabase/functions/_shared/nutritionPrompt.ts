@@ -67,6 +67,30 @@ export function getNutritionalSource(countryCode: string): NutritionalSource {
   return NUTRITIONAL_SOURCES[countryCode] || NUTRITIONAL_SOURCES.US;
 }
 
+// Mapeamento de país para locale
+const COUNTRY_TO_LOCALE: Record<string, string> = {
+  BR: 'pt-BR',
+  PT: 'pt-PT',
+  US: 'en-US',
+  GB: 'en-GB',
+  FR: 'fr-FR',
+  DE: 'de-DE',
+  ES: 'es-ES',
+  IT: 'it-IT',
+  MX: 'es-MX',
+  AR: 'es-AR',
+  CL: 'es-CL',
+  CO: 'es-CO',
+  PE: 'es-PE',
+  JP: 'ja-JP',
+  KR: 'ko-KR',
+  CN: 'zh-CN',
+};
+
+export function getLocaleFromCountry(countryCode: string): string {
+  return COUNTRY_TO_LOCALE[countryCode] || 'en-US';
+}
+
 /**
  * Gera o prompt de sistema nutricional global
  * @param countryCode - Código do país do usuário (BR, US, FR, etc.)

@@ -71,3 +71,6 @@ verify_jwt = false
 
 [functions.review-blocked-ingredients]
 verify_jwt = false
+
+[functions.generate-ai-meal-plan]
+verify_jwt = false

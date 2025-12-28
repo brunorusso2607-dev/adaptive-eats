@@ -68,6 +68,7 @@ export function CustomMealTimesEditor({
   const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [savedMealId, setSavedMealId] = useState<string | null>(null);
 
   // Sincronizar com customTimes e enabledMeals do prop
   useEffect(() => {
@@ -215,7 +216,9 @@ export function CustomMealTimesEditor({
     // Salvar automaticamente no perfil
     const saved = await saveEnabledMealsToProfile(newEnabledMeals);
     if (saved) {
-      toast.success(enabled ? "Refeição ativada" : "Refeição desativada", { duration: 1500 });
+      // Mostrar checkmark temporário
+      setSavedMealId(mealId);
+      setTimeout(() => setSavedMealId(null), 1500);
     } else {
       // Reverter se falhou
       if (enabled) {
@@ -312,16 +315,25 @@ export function CustomMealTimesEditor({
               <div className="flex items-center justify-between w-full pr-2">
                 <div className="flex items-center gap-3">
                   {showEnableToggle && (
-                    <Switch
-                      checked={meal.enabled}
-                      onCheckedChange={(checked) => {
-                        // Prevent accordion toggle
-                        handleToggleMeal(meal.id, checked);
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                      disabled={isLoading || isSaving || disabled}
-                      className="data-[state=checked]:bg-primary"
-                    />
+                    <div className="flex items-center gap-1.5">
+                      <Switch
+                        checked={meal.enabled}
+                        onCheckedChange={(checked) => {
+                          // Prevent accordion toggle
+                          handleToggleMeal(meal.id, checked);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        disabled={isLoading || isSaving || disabled}
+                        className="data-[state=checked]:bg-primary"
+                      />
+                      {/* Checkmark temporário após salvar */}
+                      <div className={cn(
+                        "flex items-center justify-center w-5 h-5 rounded-full bg-green-500/20 text-green-600 transition-all duration-300",
+                        savedMealId === meal.id ? "opacity-100 scale-100" : "opacity-0 scale-75"
+                      )}>
+                        <Check className="h-3 w-3" />
+                      </div>
+                    </div>
                   )}
                   <Clock className="h-4 w-4 text-muted-foreground" />
                   <span className={cn(

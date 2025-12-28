@@ -1476,7 +1476,9 @@ FORMATO JSON:
     "verified_against_excluded": true,
     "contains_hidden_allergens": false
   },
-  "ingredients": [{"item": "ingrediente", "quantity": "100", "unit": "g"}],
+  "ingredients": [
+    {"item": "ingrediente", "quantity": "100", "unit": "g", "calories": 150, "protein": 10, "carbs": 15, "fat": 5}
+  ],
   "instructions": ["Passo 1...", "Passo 2...", "Passo 3..."],
   "prep_time": ${isKidsMode ? 20 : 30},
   "complexity": "${isKidsMode ? "rapida" : "equilibrada"}",
@@ -1487,6 +1489,9 @@ FORMATO JSON:
   "fat": ${isWeightLossMode ? 12 : isWeightGainMode ? 22 : 18},
   "chef_tip": "Dica de técnica culinária"
 }
+
+📊 IMPORTANTE: Cada ingrediente DEVE incluir seus macros (calories, protein, carbs, fat).
+A SOMA dos macros dos ingredientes DEVE ser igual aos totais da receita.
 
 Valores nutricionais são POR PORÇÃO. Responda APENAS com JSON.`
 }
@@ -1602,12 +1607,18 @@ CADA ingrediente DEVE ter:
 • item: nome do alimento
 • quantity: número da porção
 • unit: medida caseira + gramas entre parênteses
+• calories: calorias do ingrediente (número)
+• protein: gramas de proteína (número)
+• carbs: gramas de carboidrato (número)
+• fat: gramas de gordura (número)
 
 Exemplos CORRETOS:
-✅ {"item": "Arroz integral cozido", "quantity": "4", "unit": "col. sopa (100g)"}
-✅ {"item": "Peito de frango grelhado", "quantity": "1", "unit": "filé médio (120g)"}
-✅ {"item": "Banana prata", "quantity": "1", "unit": "unidade média (90g)"}
-✅ {"item": "Azeite de oliva", "quantity": "1", "unit": "col. sopa (13ml)"}
+✅ {"item": "Arroz integral cozido", "quantity": "4", "unit": "col. sopa (100g)", "calories": 130, "protein": 3, "carbs": 28, "fat": 1}
+✅ {"item": "Peito de frango grelhado", "quantity": "1", "unit": "filé médio (120g)", "calories": 165, "protein": 31, "carbs": 0, "fat": 4}
+✅ {"item": "Banana prata", "quantity": "1", "unit": "unidade média (90g)", "calories": 80, "protein": 1, "carbs": 21, "fat": 0}
+✅ {"item": "Azeite de oliva", "quantity": "1", "unit": "col. sopa (13ml)", "calories": 117, "protein": 0, "carbs": 0, "fat": 13}
+
+📊 IMPORTANTE: A SOMA das calorias/macros dos ingredientes DEVE ser igual aos totais da refeição!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🔧 FORMATO JSON (responda APENAS isto):
@@ -1627,9 +1638,9 @@ Exemplos CORRETOS:
       "recipe_fat": 12,
       "recipe_prep_time": 10,
       "recipe_ingredients": [
-        {"item": "Pão integral", "quantity": "2", "unit": "fatias (50g)"},
-        {"item": "Ovo cozido", "quantity": "2", "unit": "unidades (100g)"},
-        {"item": "Banana", "quantity": "1", "unit": "unidade média (90g)"}
+        {"item": "Pão integral", "quantity": "2", "unit": "fatias (50g)", "calories": 120, "protein": 4, "carbs": 22, "fat": 2},
+        {"item": "Ovo cozido", "quantity": "2", "unit": "unidades (100g)", "calories": 155, "protein": 13, "carbs": 1, "fat": 11},
+        {"item": "Banana", "quantity": "1", "unit": "unidade média (90g)", "calories": 80, "protein": 1, "carbs": 21, "fat": 0}
       ],
       "recipe_instructions": []
     },
@@ -1640,9 +1651,10 @@ Exemplos CORRETOS:
 ⚠️ REGRAS CRÍTICAS:
 1. recipe_instructions SEMPRE vazio: []
 2. recipe_name = descrição simples da refeição
-3. recipe_ingredients = lista de ALIMENTOS com porções em gramas
-4. Macros devem bater aproximadamente com as calorias indicadas
-5. Se is_safe: false, a refeição será regenerada
+3. recipe_ingredients = lista de ALIMENTOS com porções E MACROS individuais
+4. A SOMA dos macros dos ingredientes DEVE ser igual ao total da refeição
+5. recipe_protein, recipe_carbs, recipe_fat = totais calculados pela soma dos ingredientes
+6. Se is_safe: false, a refeição será regenerada
 
 Responda APENAS com JSON válido.`;
 }

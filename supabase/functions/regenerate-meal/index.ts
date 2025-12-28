@@ -12,6 +12,7 @@ import {
   saveRecipeToPool,
   markRecipeAsUsed,
 } from "../_shared/recipePool.ts";
+import { recalculateRecipeCalories } from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -287,6 +288,23 @@ serve(async (req) => {
           
           // Recipe passed all validations!
           recipeData = parsedRecipe;
+          
+          // Recalcular calorias usando tabela compartilhada
+          if (recipeData.recipe_ingredients && Array.isArray(recipeData.recipe_ingredients)) {
+            const recalcResult = recalculateRecipeCalories(
+              recipeData.recipe_ingredients,
+              Number(recipeData.recipe_calories) || targetCalories
+            );
+            if (recalcResult.recalculated) {
+              recipeData.recipe_calories = recalcResult.totalCalories;
+              logStep("Recipe calories recalculated", { 
+                original: parsedRecipe.recipe_calories,
+                recalculated: recalcResult.totalCalories,
+                sources: recalcResult.sources
+              });
+            }
+          }
+          
           logStep(`✅ AI generated SAFE recipe on attempt ${aiAttempt}`, { 
             name: recipeData.recipe_name,
             calories: recipeData.recipe_calories

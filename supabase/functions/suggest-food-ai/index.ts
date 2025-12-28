@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { recalculateSuggestion } from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -284,6 +285,15 @@ O usuário digitou: "${query}". Identifique o alimento e sugira opções com val
     } catch (e) {
       logStep('JSON parse error', { error: e, content });
       parsed = { suggestions: [] };
+    }
+
+    // Recalcular calorias usando tabela compartilhada
+    if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
+      parsed.suggestions = parsed.suggestions.map((s: any) => recalculateSuggestion(s));
+      logStep('Calories recalculated with shared table', { 
+        count: parsed.suggestions.length,
+        sources: parsed.suggestions.map((s: any) => s.calorie_source)
+      });
     }
 
     return new Response(

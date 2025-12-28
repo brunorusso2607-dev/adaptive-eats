@@ -73,6 +73,7 @@ export function CustomMealTimesEditor({
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
+  const [isInitialized, setIsInitialized] = useState(false);
 
   // Inicializar horários locais e extras
   useEffect(() => {
@@ -92,11 +93,19 @@ export function CustomMealTimesEditor({
     // Carregar extras se existirem
     const extras = customTimes?.extras;
     if (Array.isArray(extras) && extras.length > 0) {
-      setExtraMeals(extras);
-    } else {
+      // Garantir que extras carregados do template não tenham isNew: true
+      const cleanedExtras = extras.map(extra => ({
+        ...extra,
+        isNew: false
+      }));
+      setExtraMeals(cleanedExtras);
+      setIsInitialized(true);
+    } else if (!isInitialized && customTimes !== null) {
+      // Se customTimes existe mas sem extras, resetar extras apenas na primeira vez
       setExtraMeals([]);
+      setIsInitialized(true);
     }
-  }, [globalSettings, customTimes]);
+  }, [globalSettings, customTimes, isInitialized]);
 
   // Emitir dados sempre que houver mudanças (sem depender de toggle)
   useEffect(() => {

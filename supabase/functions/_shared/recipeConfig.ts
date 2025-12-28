@@ -1520,7 +1520,10 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 
 /**
  * Constrói prompt para geração de UM DIA do plano alimentar
- * 🥗 NUTRICIONISTA PROFISSIONAL - Prompt otimizado para Flash-Lite
+ * 🥗 NUTRICIONISTA PROFISSIONAL - Cardápio simples com alimentos e porções
+ * 
+ * MODO NUTRICIONISTA: Gera listas de alimentos com gramaturas precisas,
+ * SEM receitas elaboradas ou instruções de preparo.
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -1536,55 +1539,112 @@ export function buildSingleDayPrompt(
   const isKidsMode = profile.context === "modo_kids";
   const countryConfig = getCountryConfig(profile.country);
   
-  const kidsNote = isKidsMode ? " 🧒 MODO KIDS." : "";
+  const kidsNote = isKidsMode ? " 🧒 MODO KIDS - Alimentos kid-friendly." : "";
   const avoidMeals = previousRecipes.length > 0 
-    ? `\nEVITE: ${previousRecipes.slice(0, 10).join(", ")}` 
+    ? `\n⚠️ NÃO REPETIR: ${previousRecipes.slice(0, 8).join(", ")}` 
     : "";
 
   const excludedConstraint = excludedIngredientsStr 
-    ? `\n❌ Excluídos: ${excludedIngredientsStr}` : "";
+    ? `\n❌ Alimentos excluídos pelo usuário: ${excludedIngredientsStr}` : "";
   const forbiddenBlock = forbiddenList 
-    ? `\n🚫 Proibidos: ${forbiddenList}` : "";
+    ? `\n🚫 Lista negra (NUNCA usar): ${forbiddenList}` : "";
 
-  // Distribuição calórica
-  const breakfastCal = Math.round(macros.dailyCalories * 0.22);
-  const morningSnackCal = Math.round(macros.dailyCalories * 0.08);
+  // Distribuição calórica equilibrada
+  const breakfastCal = Math.round(macros.dailyCalories * 0.25);
   const lunchCal = Math.round(macros.dailyCalories * 0.30);
-  const afternoonSnackCal = Math.round(macros.dailyCalories * 0.12);
-  const dinnerCal = Math.round(macros.dailyCalories * 0.23);
-  const dessertCal = Math.round(macros.dailyCalories * 0.05);
+  const snackCal = Math.round(macros.dailyCalories * 0.15);
+  const dinnerCal = Math.round(macros.dailyCalories * 0.25);
+  const suppCal = Math.round(macros.dailyCalories * 0.05);
 
-  return `🥗 NUTRICIONISTA RECEITAI - Plano Alimentar
-📅 ${dayName} | 🌍 ${countryConfig.name} | 🎯 ${macros.dailyCalories}kcal
+  return `🥗 CARDÁPIO NUTRICIONAL - ${dayName}
+🌍 ${countryConfig.name} | 🎯 Meta: ${macros.dailyCalories} kcal/dia | ${macros.dailyProtein}g proteína
 
 ${dietaryBlock}
 
-⛔ INGREDIENTES PROIBIDOS (NUNCA INCLUA):
+⛔ RESTRIÇÕES ALIMENTARES - TOLERÂNCIA ZERO:
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 🔒 REGRA: Se dúvida sobre ingrediente → is_safe: false${kidsNote}${avoidMeals}
 
-📊 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]} | ${GOAL_LABELS[profile.goal || "manter"]} | ${macros.dailyProtein}g proteína
+📊 PERFIL NUTRICIONAL:
+• Dieta: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
+• Objetivo: ${GOAL_LABELS[profile.goal || "manter"]}
 
-📋 6 REFEIÇÕES:
-• cafe_manha (~${breakfastCal}kcal) - 🍎 OBRIGATÓRIO: 1 FRUTA
-• lanche_manha (~${morningSnackCal}kcal) - Leve
-• almoco (~${lunchCal}kcal) - Principal: proteína+carb+vegetais
-• lanche_tarde (~${afternoonSnackCal}kcal) - 🍎 OBRIGATÓRIO: 1 FRUTA
-• jantar (~${dinnerCal}kcal) - Leve: proteína+vegetais
-• sobremesa (~${dessertCal}kcal) - SAUDÁVEL: frutas/iogurte/chocolate70%
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 GERAR 5 REFEIÇÕES (cardápio de nutricionista):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-📐 PORÇÕES: Use medidas caseiras + gramas: "2 col. sopa arroz (90g)"
+• cafe_manha (~${breakfastCal} kcal)
+  Exemplo: "Café da manhã proteico"
+  Alimentos: pão integral, ovos, frutas, iogurte natural
 
-🔧 JSON (SEM recipe_instructions - apenas ingredientes):
-{"day_index":${dayIndex},"day_name":"${dayName}","meals":[
-  {"meal_type":"cafe_manha","recipe_name":"...","is_safe":true,"recipe_calories":${breakfastCal},"recipe_protein":18,"recipe_carbs":45,"recipe_fat":12,"recipe_prep_time":10,"recipe_ingredients":[{"item":"Pão integral","quantity":"2","unit":"fatias (60g)"}],"fruit_included":"Banana"},
-  {"meal_type":"lanche_manha",...},{"meal_type":"almoco",...},
-  {"meal_type":"lanche_tarde","fruit_included":"...",...},
-  {"meal_type":"jantar",...},{"meal_type":"sobremesa","healthy_dessert":true,...}
-]}
+• almoco (~${lunchCal} kcal) 
+  Exemplo: "Almoço completo"
+  Alimentos: arroz, feijão, proteína (frango/peixe/carne), salada, legumes
 
-Responda APENAS com JSON válido. NÃO inclua recipe_instructions.`;
+• lanche (~${snackCal} kcal)
+  Exemplo: "Lanche nutritivo"
+  Alimentos: frutas, castanhas, iogurte, sanduíche natural
+
+• jantar (~${dinnerCal} kcal)
+  Exemplo: "Jantar leve"
+  Alimentos: proteína magra, legumes, salada, carboidrato leve
+
+• ceia (~${suppCal} kcal)
+  Exemplo: "Ceia leve"
+  Alimentos: chá, frutas, iogurte, leite
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📐 FORMATO DOS INGREDIENTES (OBRIGATÓRIO):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+CADA ingrediente DEVE ter:
+• item: nome do alimento
+• quantity: número da porção
+• unit: medida caseira + gramas entre parênteses
+
+Exemplos CORRETOS:
+✅ {"item": "Arroz integral cozido", "quantity": "4", "unit": "col. sopa (100g)"}
+✅ {"item": "Peito de frango grelhado", "quantity": "1", "unit": "filé médio (120g)"}
+✅ {"item": "Banana prata", "quantity": "1", "unit": "unidade média (90g)"}
+✅ {"item": "Azeite de oliva", "quantity": "1", "unit": "col. sopa (13ml)"}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔧 FORMATO JSON (responda APENAS isto):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+{
+  "day_index": ${dayIndex},
+  "day_name": "${dayName}",
+  "meals": [
+    {
+      "meal_type": "cafe_manha",
+      "recipe_name": "Café da manhã equilibrado",
+      "is_safe": true,
+      "recipe_calories": ${breakfastCal},
+      "recipe_protein": 20,
+      "recipe_carbs": 45,
+      "recipe_fat": 12,
+      "recipe_prep_time": 10,
+      "recipe_ingredients": [
+        {"item": "Pão integral", "quantity": "2", "unit": "fatias (50g)"},
+        {"item": "Ovo cozido", "quantity": "2", "unit": "unidades (100g)"},
+        {"item": "Banana", "quantity": "1", "unit": "unidade média (90g)"}
+      ],
+      "recipe_instructions": []
+    },
+    ... (almoco, lanche, jantar, ceia)
+  ]
+}
+
+⚠️ REGRAS CRÍTICAS:
+1. recipe_instructions SEMPRE vazio: []
+2. recipe_name = descrição simples da refeição
+3. recipe_ingredients = lista de ALIMENTOS com porções em gramas
+4. Macros devem bater aproximadamente com as calorias indicadas
+5. Se is_safe: false, a refeição será regenerada
+
+Responda APENAS com JSON válido.`;
 }
 
 /**
@@ -1708,7 +1768,7 @@ export function buildMealPlanPrompt(
 
 /**
  * Constrói prompt para regeneração de refeição individual
- * 🥗 NUTRICIONISTA - Prompt otimizado para Flash-Lite
+ * 🥗 NUTRICIONISTA - Cardápio simples com alimentos e porções
  */
 export function buildRegenerateMealPrompt(
   profile: UserProfile,
@@ -1724,46 +1784,57 @@ export function buildRegenerateMealPrompt(
   const mealLabel = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
   
   const isKidsMode = profile.context === "modo_kids";
-  const kidsNote = isKidsMode ? " 🧒 KIDS." : "";
-  const ingredientsNote = ingredients ? `\n🥘 INCLUIR: ${ingredients}` : "";
+  const kidsNote = isKidsMode ? " 🧒 Alimentos kid-friendly." : "";
+  const ingredientsNote = ingredients ? `\n🥘 INCLUIR ESTES ALIMENTOS: ${ingredients}` : "";
   
   const excludedConstraint = excludedIngredientsStr 
     ? `\n❌ Excluídos: ${excludedIngredientsStr}` : "";
   const forbiddenBlock = forbiddenList 
-    ? `\n🚫 ${forbiddenList}` : "";
+    ? `\n🚫 Proibidos: ${forbiddenList}` : "";
 
-  // Regras compactas por tipo
-  const mealRules: Record<string, string> = {
-    cafe_manha: "🍎 OBRIGATÓRIO: 1 FRUTA | Carb+proteína",
-    lanche_manha: "Leve: fruta/oleaginosas/iogurte",
-    almoco: "Principal: proteína+carb+vegetais",
-    lanche_tarde: "🍎 OBRIGATÓRIO: 1 FRUTA | Nutritivo",
-    jantar: "Leve: proteína+vegetais",
-    sobremesa: "SAUDÁVEL: frutas/iogurte/chocolate70% | ❌ industrializados"
+  // Orientações por tipo de refeição
+  const mealGuidelines: Record<string, string> = {
+    cafe_manha: "Carboidrato + proteína + fruta. Ex: pão, ovos, banana",
+    almoco: "Proteína + carboidrato + vegetais + salada",
+    lanche: "Leve e nutritivo: frutas, iogurte, castanhas, sanduíche",
+    jantar: "Proteína magra + vegetais + carboidrato leve",
+    ceia: "Muito leve: chá, fruta, iogurte ou leite"
   };
 
-  const fruitField = (mealType === 'cafe_manha' || mealType === 'lanche_tarde') 
-    ? ',"fruit_included":"..."' : '';
-  const dessertField = mealType === 'sobremesa' ? ',"healthy_dessert":true' : '';
-
-  return `🥗 NUTRICIONISTA - Regenerar ${mealLabel}
-🌍 ${countryConfig.name} | 🎯 ~${targetCalories}kcal${kidsNote}
+  return `🥗 NUTRICIONISTA - Gerar ${mealLabel}
+🌍 ${countryConfig.name} | 🎯 Meta: ~${targetCalories} kcal${kidsNote}
 
 ${dietaryBlock}
 
-⛔ PROIBIDOS (NUNCA):
+⛔ RESTRIÇÕES (NUNCA incluir):
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 🔒 Dúvida sobre ingrediente → is_safe: false${ingredientsNote}
 
-📋 ${mealLabel}: ${mealRules[mealType] || "Balanceado"}
+📋 ${mealLabel}: ${mealGuidelines[mealType] || "Refeição equilibrada"}
 
-📐 PORÇÕES: medidas caseiras + gramas: "2 col. sopa (90g)"
+📐 FORMATO DOS INGREDIENTES:
+Cada item: {"item": "Alimento", "quantity": "X", "unit": "medida (Xg)"}
+Exemplos:
+• {"item": "Arroz integral", "quantity": "4", "unit": "col. sopa (100g)"}
+• {"item": "Frango grelhado", "quantity": "1", "unit": "filé (120g)"}
 
 🔧 JSON (SEM recipe_instructions):
-{"recipe_name":"${mealLabel} Nutritivo","is_safe":true,"recipe_calories":${targetCalories},"recipe_protein":25,"recipe_carbs":35,"recipe_fat":12,"recipe_prep_time":${isKidsMode ? 10 : 15},"recipe_ingredients":[{"item":"...","quantity":"2","unit":"col. sopa (60g)"}]${fruitField}${dessertField}}
+{
+  "recipe_name": "${mealLabel} nutritivo",
+  "is_safe": true,
+  "recipe_calories": ${targetCalories},
+  "recipe_protein": 25,
+  "recipe_carbs": 35,
+  "recipe_fat": 12,
+  "recipe_prep_time": ${isKidsMode ? 10 : 15},
+  "recipe_ingredients": [
+    {"item": "...", "quantity": "...", "unit": "... (Xg)"}
+  ],
+  "recipe_instructions": []
+}
 
-Responda APENAS JSON válido. NÃO inclua recipe_instructions.`;
+Responda APENAS JSON válido.`;
 }
 
 // ============================================

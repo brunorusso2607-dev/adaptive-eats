@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,25 +127,28 @@ serve(async (req) => {
       }
     }
 
-    // Generate insights using AI
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    
+    // Generate insights using Gemini
     let aiInsights: string[] = [];
     
-    if (LOVABLE_API_KEY && Object.keys(symptomFoodCorrelations).length > 0) {
-      const correlationSummary = Object.entries(symptomFoodCorrelations)
-        .map(([symptom, foods]) => {
-          const topFoods = Object.entries(foods)
-            .sort(([, a], [, b]) => b - a)
-            .slice(0, 5)
-            .map(([food, count]) => `${food} (${count}x)`);
-          return `${symptom}: ${topFoods.join(", ")}`;
-        })
-        .join("\n");
+    if (Object.keys(symptomFoodCorrelations).length > 0) {
+      try {
+        const geminiApiKey = await getGeminiApiKey();
+        
+        const correlationSummary = Object.entries(symptomFoodCorrelations)
+          .map(([symptom, foods]) => {
+            const topFoods = Object.entries(foods)
+              .sort(([, a], [, b]) => b - a)
+              .slice(0, 5)
+              .map(([food, count]) => `${food} (${count}x)`);
+            return `${symptom}: ${topFoods.join(", ")}`;
+          })
+          .join("\n");
 
-      const userIntolerances = profile?.intolerances?.join(", ") || "nenhuma informada";
-      
-      const prompt = `Analise os seguintes padrões de sintomas e alimentos consumidos de um usuário com intolerâncias alimentares.
+        const userIntolerances = profile?.intolerances?.join(", ") || "nenhuma informada";
+        
+        const prompt = `Você é um nutricionista especializado em intolerâncias alimentares. Seja direto e prático.
+
+Analise os seguintes padrões de sintomas e alimentos consumidos de um usuário com intolerâncias alimentares.
 
 Intolerâncias do usuário: ${userIntolerances}
 
@@ -162,26 +166,28 @@ Foque em:
 
 Responda apenas com os insights, um por linha, sem numeração.`;
 
-      try {
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=' + geminiApiKey, {
           method: "POST",
           headers: {
-            Authorization: `Bearer ${LOVABLE_API_KEY}`,
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash",
-            messages: [
-              { role: "system", content: "Você é um nutricionista especializado em intolerâncias alimentares. Seja direto e prático." },
-              { role: "user", content: prompt }
+            contents: [
+              {
+                role: 'user',
+                parts: [{ text: prompt }]
+              }
             ],
-            max_tokens: 300,
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 300,
+            }
           }),
         });
 
         if (aiResponse.ok) {
           const aiData = await aiResponse.json();
-          const content = aiData.choices?.[0]?.message?.content || "";
+          const content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
           aiInsights = content.split("\n").filter((line: string) => line.trim().length > 0).slice(0, 3);
           console.log("AI insights generated:", aiInsights);
         }

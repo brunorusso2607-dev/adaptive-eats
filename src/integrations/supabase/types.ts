@@ -278,6 +278,48 @@ export type Database = {
         }
         Relationships: []
       }
+      blocked_ingredients_review: {
+        Row: {
+          ai_analysis: string | null
+          ai_decision: string | null
+          blocked_reason: string
+          created_at: string
+          id: string
+          ingredient: string
+          intolerance_or_diet: string
+          recipe_context: string | null
+          reviewed_at: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          ai_analysis?: string | null
+          ai_decision?: string | null
+          blocked_reason: string
+          created_at?: string
+          id?: string
+          ingredient: string
+          intolerance_or_diet: string
+          recipe_context?: string | null
+          reviewed_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          ai_analysis?: string | null
+          ai_decision?: string | null
+          blocked_reason?: string
+          created_at?: string
+          id?: string
+          ingredient?: string
+          intolerance_or_diet?: string
+          recipe_context?: string | null
+          reviewed_at?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string
@@ -426,6 +468,56 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      dynamic_safe_ingredients: {
+        Row: {
+          approved_by: string | null
+          confidence: string | null
+          created_at: string
+          id: string
+          ingredient: string
+          is_active: boolean
+          reason: string
+          review_id: string | null
+          safe_for: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          ingredient: string
+          is_active?: boolean
+          reason: string
+          review_id?: string | null
+          safe_for: string
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          confidence?: string | null
+          created_at?: string
+          id?: string
+          ingredient?: string
+          is_active?: boolean
+          reason?: string
+          review_id?: string | null
+          safe_for?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "dynamic_safe_ingredients_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "blocked_ingredients_review"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       feature_flags: {
         Row: {

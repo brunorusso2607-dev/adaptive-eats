@@ -13,7 +13,7 @@ import {
   Clock, 
   Heart,
   Sparkles,
-  UtensilsCrossed,
+  Search,
   Plus,
   X,
   AlertTriangle
@@ -28,7 +28,7 @@ import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { useUserProfileContext } from "@/hooks/useUserProfileContext";
 import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
-import RecipeRatingStars from "./RecipeRatingStars";
+import FoodSearchPanel, { type SelectedFoodItem } from "./FoodSearchPanel";
 
 type MealSlot = {
   id: string;
@@ -51,20 +51,6 @@ type DayPlan = {
   supper: MealSlot | null;
 };
 
-type SimpleMeal = {
-  id: string;
-  name: string;
-  meal_type: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  prep_time: number;
-  ingredients: any;
-  rating: number | null;
-  rating_count: number | null;
-  source_name: string | null;
-};
 
 type CustomMealPlanBuilderProps = {
   onClose: () => void;
@@ -79,20 +65,10 @@ const MEAL_SLOTS = [
   { key: "supper" as const, label: "Ceia", icon: "🍵", mealType: "ceia" }
 ];
 
-// Mapeamento de slot para meal_type do banco
-const SLOT_TO_MEAL_TYPE: Record<keyof DayPlan, string> = {
-  breakfast: "cafe_manha",
-  lunch: "almoco",
-  snack: "lanche",
-  dinner: "jantar",
-  supper: "ceia"
-};
 
 export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: CustomMealPlanBuilderProps) {
   const [planName, setPlanName] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [simpleMeals, setSimpleMeals] = useState<SimpleMeal[]>([]);
   const [dayPlan, setDayPlan] = useState<DayPlan>({
     breakfast: null,
     lunch: null,
@@ -101,7 +77,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     supper: null
   });
   const [activeSlot, setActiveSlot] = useState<keyof DayPlan | null>(null);
-  const [activeTab, setActiveTab] = useState("simple");
+  const [activeTab, setActiveTab] = useState("favorites");
 
   // Week/Day selection
   const today = new Date();
@@ -111,7 +87,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
   const { favorites, isLoading: isLoadingFavorites } = useUnifiedFavorites();
   const { checkMeal, hasIntolerances } = useIntoleranceWarning();
-  const { recipeStyle, country, isLoading: isLoadingProfile } = useUserProfileContext();
+  const { recipeStyle, isLoading: isLoadingProfile } = useUserProfileContext();
 
   // Calculate available days from selected week onwards
   const { totalDays, weekDays } = useMemo(() => {
@@ -136,36 +112,6 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
       }
     }
   }, [selectedWeek, weeks]);
-
-  useEffect(() => {
-    const fetchSimpleMeals = async () => {
-      if (isLoadingProfile) return;
-      
-      setIsLoading(true);
-      try {
-        let query = supabase
-          .from("simple_meals")
-          .select("*")
-          .eq("is_active", true);
-        
-        // Filtrar por país do usuário
-        if (country) {
-          query = query.eq("country_code", country);
-        }
-        
-        const { data, error } = await query.order("sort_order", { ascending: true });
-
-        if (error) throw error;
-        setSimpleMeals(data || []);
-      } catch (error) {
-        console.error("Error fetching simple meals:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchSimpleMeals();
-  }, [country, isLoadingProfile]);
 
   const totalMacros = useMemo(() => {
     let calories = 0, protein = 0, carbs = 0, fat = 0;
@@ -344,7 +290,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     }
   };
 
-  if (isLoading || isLoadingFavorites || isLoadingProfile) {
+  if (isLoadingFavorites || isLoadingProfile) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -374,9 +320,9 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
               <Heart className="w-4 h-4" />
               Favoritos
             </TabsTrigger>
-            <TabsTrigger value="simple" className="gap-2">
-              <UtensilsCrossed className="w-4 h-4" />
-              Catálogo
+            <TabsTrigger value="search" className="gap-2">
+              <Search className="w-4 h-4" />
+              Buscar Alimentos
             </TabsTrigger>
           </TabsList>
 
@@ -479,114 +425,26 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="simple" className="mt-4">
-            <ScrollArea className="h-[calc(100vh-280px)]">
-              <div className="space-y-2 pr-4">
-                {(() => {
-                  const filteredMeals = activeSlot 
-                    ? simpleMeals.filter(meal => meal.meal_type === SLOT_TO_MEAL_TYPE[activeSlot])
-                    : simpleMeals;
-                  
-                  // Ordenar: por objetivo do usuário primeiro, depois por compatibilidade
-                  const sortedMeals = [...filteredMeals].sort((a, b) => {
-                    // 1. Ordenar por estilo de receita (objetivo do usuário)
-                    if (recipeStyle === 'fitness') {
-                      // Para fitness: menor caloria primeiro
-                      if (a.calories !== b.calories) return a.calories - b.calories;
-                    } else if (recipeStyle === 'high_calorie') {
-                      // Para ganho de peso: maior caloria primeiro
-                      if (a.calories !== b.calories) return b.calories - a.calories;
-                    }
-                    
-                    // 2. Ordenar por conflito de intolerâncias
-                    const conflictA = checkMeal(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
-                    const conflictB = checkMeal(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
-                    
-                    if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
-                    if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
-                    return 0;
-                  });
-                  
-                  if (sortedMeals.length === 0) {
-                    return (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <UtensilsCrossed className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                        <p>Nenhuma refeição disponível</p>
-                        <p className="text-xs">Não há opções cadastradas para este horário</p>
-                      </div>
-                    );
-                  }
-                  
-                  return sortedMeals.map((meal) => {
-                    const conflict = checkMeal(meal.name, Array.isArray(meal.ingredients) ? meal.ingredients : undefined);
-                    const styleBadge = getRecipeStyleBadge(meal.calories, recipeStyle);
-                    const StyleIcon = styleBadge.config?.icon;
-                    
-                    return (
-                      <Card
-                        key={meal.id}
-                        className={cn(
-                          "glass-card cursor-pointer hover:bg-muted/50 transition-colors",
-                          conflict.hasConflict && "border-destructive/50 bg-destructive/5"
-                        )}
-                        onClick={() => handleSelectMeal(meal, "simple")}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-sm">{meal.name}</p>
-                                {styleBadge.config && StyleIcon && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                      "text-[10px] px-1.5 py-0 gap-1",
-                                      styleBadge.config.className,
-                                      styleBadge.isRecommended && "ring-1 ring-primary/50"
-                                    )}
-                                  >
-                                    <StyleIcon className="w-2.5 h-2.5" />
-                                    {styleBadge.config.label}
-                                    {styleBadge.isRecommended && <Sparkles className="w-2 h-2" />}
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                <span>{meal.calories} kcal</span>
-                                <span>•</span>
-                                <span>{meal.prep_time} min</span>
-                              </div>
-                              {meal.rating && meal.rating > 0 && (
-                                <RecipeRatingStars 
-                                  rating={meal.rating} 
-                                  ratingCount={meal.rating_count}
-                                  className="mt-1"
-                                />
-                              )}
-                              {conflict.hasConflict && (
-                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                  <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
-                                  {conflict.labels.map((label) => (
-                                    <Badge 
-                                      key={label} 
-                                      variant="outline" 
-                                      className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30"
-                                    >
-                                      Contém {label}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <Plus className="w-5 h-5 text-primary shrink-0" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  });
-                })()}
-              </div>
-            </ScrollArea>
+          <TabsContent value="search" className="mt-4">
+            <FoodSearchPanel 
+              onSelectFood={(food: SelectedFoodItem) => {
+                if (!activeSlot) return;
+                const mealSlot: MealSlot = {
+                  id: food.id,
+                  name: food.name,
+                  source: "simple",
+                  calories: food.calories,
+                  protein: food.protein,
+                  carbs: food.carbs,
+                  fat: food.fat,
+                  prep_time: food.prep_time,
+                  ingredients: food.ingredients,
+                  instructions: food.instructions
+                };
+                setDayPlan(prev => ({ ...prev, [activeSlot]: mealSlot }));
+                setActiveSlot(null);
+              }}
+            />
           </TabsContent>
         </Tabs>
       </div>

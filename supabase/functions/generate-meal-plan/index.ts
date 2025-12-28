@@ -216,42 +216,47 @@ function filterFoodsForUser(foods: NutritionistFood[], profile: UserProfile): Nu
   const excludedIngredients = (profile.excluded_ingredients || []).map(i => i.toLowerCase());
   
   return foods.filter(food => {
-    // Check excluded ingredients
     const foodNameLower = food.name.toLowerCase();
+    const tags = food.dietary_tags || [];
+    
+    // Check excluded ingredients
     if (excludedIngredients.some(excluded => foodNameLower.includes(excluded))) {
       return false;
     }
     
-    // Check dietary preference
-    if (dietaryPref === 'vegana' && !food.dietary_tags.includes('vegana')) {
-      return false;
+    // Check dietary preference - be more permissive
+    if (dietaryPref === 'vegana') {
+      if (!tags.includes('vegana')) return false;
+    } else if (dietaryPref === 'vegetariana') {
+      // Vegetarian can eat: vegetariana, vegana, or comum (if no meat)
+      const isVegetarianFriendly = tags.includes('vegetariana') || tags.includes('vegana');
+      if (!isVegetarianFriendly) return false;
+    } else if (dietaryPref === 'low_carb') {
+      if (!tags.includes('low_carb') && food.carbs_per_100g > 25) return false;
+    } else if (dietaryPref === 'pescetariana') {
+      const isAllowed = tags.includes('vegetariana') || tags.includes('vegana') || tags.includes('pescetariana');
+      if (!isAllowed) return false;
     }
-    if (dietaryPref === 'vegetariana' && !food.dietary_tags.includes('vegetariana') && !food.dietary_tags.includes('vegana')) {
-      return false;
-    }
-    if (dietaryPref === 'low_carb' && !food.dietary_tags.includes('low_carb')) {
-      if (food.carbs_per_100g > 30) return false;
-    }
-    if (dietaryPref === 'pescetariana') {
-      // Pescetarian: fish + vegetarian foods
-      const isVegetarian = food.dietary_tags.includes('vegetariana') || food.dietary_tags.includes('vegana');
-      const isFish = food.dietary_tags.includes('pescetariana');
-      if (!isVegetarian && !isFish) return false;
-    }
+    // 'comum' accepts all foods
     
-    // Check intolerances
+    // Check intolerances - must have sem_X tag or not contain problematic ingredients
     for (const intolerance of intolerances) {
       if (intolerance.includes('lactose')) {
-        const hasDairy = ['leite', 'queijo', 'iogurte', 'ricota', 'cottage', 'requeijão']
+        const hasDairyKeyword = ['leite', 'queijo', 'iogurte', 'ricota', 'cottage', 'requeijão', 'nata', 'creme']
           .some(dairy => foodNameLower.includes(dairy));
-        if (hasDairy && !food.dietary_tags.includes('sem_lactose')) {
+        if (hasDairyKeyword && !tags.includes('sem_lactose')) {
           return false;
         }
       }
       if (intolerance.includes('gluten')) {
-        const hasGluten = ['pão', 'aveia', 'bolo', 'biscoito', 'torrada', 'cuscuz']
+        const hasGlutenKeyword = ['pão', 'aveia', 'bolo', 'biscoito', 'torrada', 'cuscuz', 'macarrão', 'massa', 'trigo']
           .some(gluten => foodNameLower.includes(gluten));
-        if (hasGluten && !food.dietary_tags.includes('sem_gluten')) {
+        if (hasGlutenKeyword && !tags.includes('sem_gluten')) {
+          return false;
+        }
+      }
+      if (intolerance.includes('amendoim')) {
+        if (foodNameLower.includes('amendoim') || foodNameLower.includes('pasta de amendoim')) {
           return false;
         }
       }

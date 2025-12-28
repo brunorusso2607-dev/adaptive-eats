@@ -1576,19 +1576,15 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 📐 PORÇÕES: Use medidas caseiras + gramas: "2 col. sopa arroz (90g)"
 
-🔧 JSON:
+🔧 JSON (SEM recipe_instructions - apenas ingredientes):
 {"day_index":${dayIndex},"day_name":"${dayName}","meals":[
-  {"meal_type":"cafe_manha","recipe_name":"...",is_safe":true,"recipe_calories":${breakfastCal},"recipe_protein":18,"recipe_carbs":45,"recipe_fat":12,"recipe_prep_time":10,"recipe_ingredients":[{"item":"Pão integral","quantity":"2","unit":"fatias (60g)"}],"recipe_instructions":["Monte conforme preferência"],"fruit_included":"Banana","nutrition_tip":"..."},
-  {"meal_type":"lanche_manha",...},
-  {"meal_type":"almoco",...},
+  {"meal_type":"cafe_manha","recipe_name":"...","is_safe":true,"recipe_calories":${breakfastCal},"recipe_protein":18,"recipe_carbs":45,"recipe_fat":12,"recipe_prep_time":10,"recipe_ingredients":[{"item":"Pão integral","quantity":"2","unit":"fatias (60g)"}],"fruit_included":"Banana"},
+  {"meal_type":"lanche_manha",...},{"meal_type":"almoco",...},
   {"meal_type":"lanche_tarde","fruit_included":"...",...},
-  {"meal_type":"jantar",...},
-  {"meal_type":"sobremesa","healthy_dessert":true,...}
+  {"meal_type":"jantar",...},{"meal_type":"sobremesa","healthy_dessert":true,...}
 ]}
 
-✅ CHECKLIST: 6 refeições | Frutas no café+lanche_tarde | Sobremesa saudável | Sem proibidos | ~${macros.dailyCalories}kcal
-
-Responda APENAS com JSON válido.`;
+Responda APENAS com JSON válido. NÃO inclua recipe_instructions.`;
 }
 
 /**
@@ -1764,10 +1760,10 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 📐 PORÇÕES: medidas caseiras + gramas: "2 col. sopa (90g)"
 
-🔧 JSON:
-{"recipe_name":"${mealLabel} Nutritivo","is_safe":true,"recipe_calories":${targetCalories},"recipe_protein":25,"recipe_carbs":35,"recipe_fat":12,"recipe_prep_time":${isKidsMode ? 10 : 15},"recipe_ingredients":[{"item":"...","quantity":"2","unit":"col. sopa (60g)"}],"recipe_instructions":["Monte conforme preferência"]${fruitField}${dessertField},"nutrition_tip":"..."}
+🔧 JSON (SEM recipe_instructions):
+{"recipe_name":"${mealLabel} Nutritivo","is_safe":true,"recipe_calories":${targetCalories},"recipe_protein":25,"recipe_carbs":35,"recipe_fat":12,"recipe_prep_time":${isKidsMode ? 10 : 15},"recipe_ingredients":[{"item":"...","quantity":"2","unit":"col. sopa (60g)"}]${fruitField}${dessertField}}
 
-Responda APENAS com JSON válido.`;
+Responda APENAS JSON válido. NÃO inclua recipe_instructions.`;
 }
 
 // ============================================

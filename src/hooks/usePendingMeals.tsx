@@ -5,7 +5,8 @@ import {
   getMealLabelsSync, 
   getMealOrderSync,
   getMealTimeRanges,
-  formatMealTime as formatTime 
+  formatMealTime as formatTime,
+  MealTimeRanges
 } from "@/lib/mealTimeConfig";
 
 type Ingredient = { item: string; quantity: string; unit: string };
@@ -31,12 +32,40 @@ export type PendingMealData = {
   actual_date?: Date;
 };
 
+// Tipo para horários customizados do perfil
+type CustomMealTimes = Record<string, string>;
+
 // Re-exportar para manter compatibilidade
 export const MEAL_TIME_RANGES = getMealTimeRangesSync();
 
 // Função para formatar horário (ex: 6 -> "06:00", 17.5 -> "17:30")
 export function formatMealTime(hour: number): string {
   return formatTime(hour);
+}
+
+// Função para mesclar horários globais com customizados do perfil
+function getMergedTimeRanges(profileTimes: CustomMealTimes | null): MealTimeRanges {
+  const globalRanges = getMealTimeRangesSync();
+  
+  if (!profileTimes || Object.keys(profileTimes).length === 0) {
+    return globalRanges;
+  }
+
+  const merged: MealTimeRanges = { ...globalRanges };
+  
+  for (const [mealType, customTime] of Object.entries(profileTimes)) {
+    if (typeof customTime !== 'string') continue;
+    if (globalRanges[mealType]) {
+      const [hours] = customTime.split(":").map(Number);
+      const duration = globalRanges[mealType].end - globalRanges[mealType].start;
+      merged[mealType] = {
+        start: hours,
+        end: hours + duration
+      };
+    }
+  }
+
+  return merged;
 }
 
 // Função para verificar se o horário da refeição já começou
@@ -197,6 +226,7 @@ export function usePendingMeals() {
   const [pendingMeals, setPendingMeals] = useState<PendingMealData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMealPlan, setHasMealPlan] = useState(false);
+  const [effectiveTimeRanges, setEffectiveTimeRanges] = useState<MealTimeRanges>(getMealTimeRangesSync());
 
   const fetchPendingMeals = useCallback(async () => {
     try {
@@ -206,10 +236,22 @@ export function usePendingMeals() {
         return;
       }
 
+      // Buscar perfil do usuário para pegar horários customizados
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("default_meal_times")
+        .eq("id", session.user.id)
+        .single();
+      
+      // Mesclar horários do perfil com os globais
+      const profileTimes = profile?.default_meal_times as CustomMealTimes | null;
+      const mergedRanges = getMergedTimeRanges(profileTimes);
+      setEffectiveTimeRanges(mergedRanges);
+
       // Buscar plano ativo com start_date e created_at
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id, start_date, created_at, unlocks_at")
+        .select("id, start_date, created_at, unlocks_at, custom_meal_times")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
         .order("created_at", { ascending: false })
@@ -236,6 +278,13 @@ export function usePendingMeals() {
           setIsLoading(false);
           return;
         }
+      }
+
+      // Se o plano tem horários customizados, usar eles (prioridade sobre perfil)
+      const planCustomTimes = plan.custom_meal_times as CustomMealTimes | null;
+      if (planCustomTimes && Object.keys(planCustomTimes).length > 0) {
+        const planMergedRanges = getMergedTimeRanges(planCustomTimes);
+        setEffectiveTimeRanges(planMergedRanges);
       }
 
       setHasMealPlan(true);
@@ -272,11 +321,16 @@ export function usePendingMeals() {
         return date;
       };
 
+      // Usar ranges mesclados (plano > perfil > global)
+      const currentRanges = planCustomTimes && Object.keys(planCustomTimes).length > 0 
+        ? getMergedTimeRanges(planCustomTimes)
+        : mergedRanges;
+
       // Verificar se uma refeição existia quando o plano foi criado
       // (se o horário da refeição é APÓS a criação do plano)
       const isMealValidSinceCreation = (mealType: string, actualDate: Date): boolean => {
         // Pegar o horário de fim da refeição naquele dia
-        const range = MEAL_TIME_RANGES[mealType];
+        const range = currentRanges[mealType];
         if (!range) return true;
         
         // Criar data/hora do fim da refeição
@@ -310,7 +364,7 @@ export function usePendingMeals() {
         const minutes = now.getMinutes();
         const currentTimeInMinutes = hour * 60 + minutes;
         
-        const range = MEAL_TIME_RANGES[mealType];
+        const range = currentRanges[mealType];
         if (!range) return false;
         
         const endTimeInMinutes = range.end * 60;
@@ -332,7 +386,7 @@ export function usePendingMeals() {
         const minutes = now.getMinutes();
         const currentTimeInMinutes = hour * 60 + minutes;
         
-        const range = MEAL_TIME_RANGES[mealType];
+        const range = currentRanges[mealType];
         if (!range) return false;
         
         const startTimeInMinutes = range.start * 60;
@@ -484,6 +538,7 @@ export function usePendingMeals() {
     markAsComplete,
     skipMeal,
     refetch: fetchPendingMeals,
+    effectiveTimeRanges,
     MEAL_LABELS,
     DAY_LABELS,
     getMealStatus,

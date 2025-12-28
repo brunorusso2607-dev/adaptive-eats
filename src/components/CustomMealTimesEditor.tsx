@@ -76,45 +76,47 @@ export function CustomMealTimesEditor({
   const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
-  const [initialCustomTimes, setInitialCustomTimes] = useState<CustomMealTimesWithExtras | null>(null);
 
-  // Capturar customTimes inicial apenas uma vez
-  useEffect(() => {
-    if (!isInitialized && customTimes !== undefined) {
-      setInitialCustomTimes(customTimes);
-    }
-  }, [customTimes, isInitialized]);
-
-  // Inicializar horários locais e extras - apenas uma vez quando globalSettings estiver pronto
+  // Sincronizar com customTimes do prop (perfil) sempre que mudar
   useEffect(() => {
     if (globalSettings.length === 0) return;
-    if (isInitialized) return; // Não re-inicializar
-
-    const initialTimes: Record<string, string> = {};
+    
+    const newTimes: Record<string, string> = {};
     globalSettings.forEach(setting => {
-      const customValue = initialCustomTimes?.[setting.meal_type];
+      const customValue = customTimes?.[setting.meal_type];
       if (typeof customValue === 'string') {
-        initialTimes[setting.meal_type] = customValue;
+        newTimes[setting.meal_type] = customValue;
       } else {
-        initialTimes[setting.meal_type] = `${setting.start_hour.toString().padStart(2, '0')}:00`;
+        newTimes[setting.meal_type] = `${setting.start_hour.toString().padStart(2, '0')}:00`;
       }
     });
-    setLocalTimes(initialTimes);
     
-    // Carregar extras se existirem no template inicial
-    const extras = initialCustomTimes?.extras;
+    // Só atualiza se realmente mudou (evita loops)
+    const hasChanged = Object.keys(newTimes).some(key => newTimes[key] !== localTimes[key]);
+    if (hasChanged || Object.keys(localTimes).length === 0) {
+      console.log("[CustomMealTimesEditor] Syncing times from prop:", newTimes);
+      setLocalTimes(newTimes);
+    }
+    
+    // Carregar extras se existirem
+    const extras = customTimes?.extras;
     if (Array.isArray(extras) && extras.length > 0) {
-      // Extras carregados do perfil são considerados "salvos" (isNew: false)
       const cleanedExtras = extras.map(extra => ({
         ...extra,
         isNew: false
       }));
-      setExtraMeals(cleanedExtras);
-      console.log("[CustomMealTimesEditor] Loaded extras from profile:", cleanedExtras);
+      // Só atualiza se diferente
+      if (JSON.stringify(cleanedExtras) !== JSON.stringify(extraMeals)) {
+        setExtraMeals(cleanedExtras);
+        console.log("[CustomMealTimesEditor] Loaded extras from profile:", cleanedExtras);
+      }
+    } else if (extraMeals.length > 0 && !customTimes?.extras) {
+      // Limpar extras se não existem mais no prop
+      setExtraMeals([]);
     }
     
     setIsInitialized(true);
-  }, [globalSettings, initialCustomTimes, isInitialized]);
+  }, [globalSettings, customTimes]);
 
   // Emitir dados sempre que houver mudanças (sem depender de toggle)
   useEffect(() => {
@@ -210,6 +212,7 @@ export function CustomMealTimesEditor({
     } else {
       newTimes = { ...localTimes, [mealId]: value };
       setLocalTimes(newTimes);
+      console.log("[CustomMealTimesEditor] Time changed:", mealId, value, newTimes);
     }
     
     // Salvar automaticamente no perfil do usuário

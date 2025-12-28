@@ -139,22 +139,25 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     const nearMonthEnd = isNearMonthEnd();
     const hasNextMonthPlan = hasPlanForNextMonth(mealPlans);
     
-    // Can create if:
-    // 1. No active plan this month, OR
-    // 2. Near month end (2 days) and no plan for next month yet
-    if (!hasActiveThisMonth) return true;
-    if (nearMonthEnd && !hasNextMonthPlan) return true;
-    return false;
+    // Se estamos perto do fim do mês, verificar se já existe plano para o próximo mês
+    if (nearMonthEnd) {
+      // Só pode criar se NÃO existe plano para o próximo mês
+      return !hasNextMonthPlan;
+    }
+    
+    // Fora do período de fim de mês, só pode criar se não tem plano ativo este mês
+    return !hasActiveThisMonth;
   }, [mealPlans]);
 
   const getNewPlanDisabledReason = useMemo(() => {
     if (canCreateNewPlan) return null;
     const nearMonthEnd = isNearMonthEnd();
-    if (nearMonthEnd) {
+    const hasNextMonthPlan = hasPlanForNextMonth(mealPlans);
+    if (nearMonthEnd && hasNextMonthPlan) {
       return "Você já tem um plano para o próximo mês";
     }
     return "Você já tem um plano ativo este mês. Exclua-o para criar um novo.";
-  }, [canCreateNewPlan]);
+  }, [canCreateNewPlan, mealPlans]);
 
   const fetchMealPlans = async () => {
     setIsLoading(true);

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo, useCallback } from "react";
-import { Clock, RotateCcw, ChevronDown, ChevronUp } from "lucide-react";
+import { Clock, RotateCcw, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +8,10 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import type { Json } from "@/integrations/supabase/types";
 
 // Gera opções de horário com intervalos de 15 minutos
 const generateTimeOptions = () => {
@@ -64,6 +66,7 @@ export function CustomMealTimesEditor({
   const [localEnabledMeals, setLocalEnabledMeals] = useState<string[]>([]);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
 
   // Sincronizar com customTimes e enabledMeals do prop
   useEffect(() => {
@@ -159,6 +162,48 @@ export function CustomMealTimesEditor({
     setLocalTimes(resetTimes);
     setLocalEnabledMeals(allMealTypes);
     toast.success("Horários e refeições restaurados ao padrão");
+  };
+
+  // Salvar no perfil do usuário e fechar o Collapsible
+  const handleSaveToProfile = async () => {
+    setIsSaving(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast.error("Usuário não autenticado");
+        return;
+      }
+
+      // Salvar horários e refeições ativas
+      const allMealTypes = globalSettings.map(s => s.meal_type);
+      const isAllEnabled = allMealTypes.every(m => localEnabledMeals.includes(m));
+
+      const { error } = await supabase
+        .from("profiles")
+        .update({ 
+          default_meal_times: localTimes as Json,
+          enabled_meals: isAllEnabled ? null : localEnabledMeals 
+        })
+        .eq("id", session.user.id);
+
+      if (error) {
+        console.error("[CustomMealTimesEditor] Error saving to profile:", error);
+        toast.error("Erro ao salvar configurações");
+        return;
+      }
+
+      toast.success("Configurações salvas com sucesso");
+      
+      // Fechar o Collapsible (se compact)
+      if (compact) {
+        setIsOpen(false);
+      }
+    } catch (error) {
+      console.error("[CustomMealTimesEditor] Exception saving to profile:", error);
+      toast.error("Erro ao salvar configurações");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Contagem de refeições ativas
@@ -257,17 +302,32 @@ export function CustomMealTimesEditor({
         ))}
       </Accordion>
 
-      {/* Ação de reset */}
-      <div className="flex items-center pt-2 border-t border-border/50">
+      {/* Ações */}
+      <div className="flex items-center justify-between pt-2 border-t border-border/50">
         <Button
           variant="ghost"
           size="sm"
           onClick={handleResetToGlobal}
-          disabled={isLoading || disabled}
+          disabled={isLoading || disabled || isSaving}
           className="text-xs"
         >
           <RotateCcw className="h-3.5 w-3.5 mr-1.5" />
           Restaurar padrão
+        </Button>
+        <Button
+          size="sm"
+          onClick={handleSaveToProfile}
+          disabled={isLoading || disabled || isSaving}
+          className="gradient-primary border-0"
+        >
+          {isSaving ? (
+            <span className="animate-pulse">Salvando...</span>
+          ) : (
+            <>
+              <Check className="h-3.5 w-3.5 mr-1.5" />
+              Salvar
+            </>
+          )}
         </Button>
       </div>
     </div>

@@ -88,14 +88,20 @@ function normalizeTextForPool(text: string): string {
 const SAFE_INGREDIENT_EXCEPTIONS = [
   // Leites vegetais
   "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
-  "leite de soja", "leite de arroz", "leite de castanha",
-  // Substitutos veganos
-  "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+  "leite de soja", "leite de arroz", "leite de castanha", "bebida vegetal",
+  // Substitutos veganos - TODOS os tipos de queijo vegano/vegetal
+  "queijo vegano", "queijo vegetal", "queijo de castanha", "queijo de amendoas",
+  "manteiga vegana", "iogurte vegetal", "creme de coco",
   "nata vegetal", "cream cheese vegano", "creme de leite de coco", 
-  "iogurte de coco", "manteiga de coco",
+  "iogurte de coco", "manteiga de coco", "requeijao vegano", "requeijão vegano",
+  // Levedura nutricional (substituto de queijo, não contém laticínios)
+  "levedura nutricional", "nutritional yeast",
+  // Proteínas vegetais
+  "proteina vegetal", "proteína vegetal", "proteina de ervilha", "proteína de ervilha",
   // Farinhas sem glúten
   "farinha de arroz", "farinha de mandioca", "polvilho", "tapioca",
   "farinha de amendoas", "farinha de coco", "farinha de milho",
+  "aveia sem gluten", "aveia sem glúten", "flocos de aveia sem gluten",
   // Oleaginosas
   "castanha de caju", "castanha do para", "amendoas", "nozes",
   // VEGETAIS com nomes confusos (não são derivados animais!)
@@ -106,7 +112,21 @@ const SAFE_INGREDIENT_EXCEPTIONS = [
   "pimenta calabresa em flocos", "calabresa em flocos",
   // Outros termos seguros
   "ovo vegano", "maionese vegana", "bacon vegano", "linguica vegana",
-  "linguiça vegana", "presunto vegano", "salsicha vegana"
+  "linguiça vegana", "presunto vegano", "salsicha vegana",
+  // Caldos vegetais
+  "caldo de legumes", "caldo vegetal"
+];
+
+/**
+ * Termos que indicam ausência de um ingrediente (quando na descrição)
+ * Se o ingrediente menciona "sem X", não deve ser bloqueado por X
+ */
+const SAFE_ABSENCE_PATTERNS = [
+  "sem lactose", "sem gluten", "sem glúten", "sem acucar", "sem açúcar",
+  "livre de lactose", "livre de gluten", "livre de glúten",
+  "isento de lactose", "isento de gluten",
+  "zero lactose", "zero gluten", "lactose free", "gluten free",
+  "ausencia de lactose", "ausência de lactose"
 ];
 
 /**
@@ -143,9 +163,25 @@ function isIngredientForbidden(
     return { isForbidden: false, matchedForbidden: null };
   }
   
+  // Verifica se o ingrediente indica AUSÊNCIA de um alérgeno
+  // Ex: "verificar sem lactose e glúten" não deve ser bloqueado
+  const hasAbsencePattern = SAFE_ABSENCE_PATTERNS.some(pattern =>
+    normalized.includes(normalizeTextForPool(pattern))
+  );
+  
   // Verifica contra lista de proibidos usando word boundary
   for (const forbidden of forbiddenList) {
     const normalizedForbidden = normalizeTextForPool(forbidden);
+    
+    // Se encontra "sem X" ou "livre de X" antes do termo proibido, não bloqueia
+    if (hasAbsencePattern) {
+      // Verifica se o termo proibido está no contexto de ausência
+      const absenceRegex = new RegExp(`(sem|livre de|isento de|zero|ausencia de|ausência de)\\s+${normalizedForbidden}`, 'i');
+      if (absenceRegex.test(normalized)) {
+        continue; // Pula este termo, é indicação de ausência
+      }
+    }
+    
     if (containsForbiddenWord(normalized, normalizedForbidden)) {
       return { isForbidden: true, matchedForbidden: forbidden };
     }

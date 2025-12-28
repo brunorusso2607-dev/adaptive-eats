@@ -61,7 +61,6 @@ const MODULE_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   "regenerate-meal": { label: "Regenerar Refeição", icon: RefreshCw, color: "#6366f1" },
   "analyze-symptom-patterns": { label: "Análise de Sintomas", icon: Heart, color: "#ef4444" },
   "suggest-food-ai": { label: "Sugestão de Alimentos", icon: Search, color: "#84cc16" },
-  "generate-simple-meals": { label: "Gerar Refeições Simples", icon: Utensils, color: "#06b6d4" },
   "generate-description": { label: "Gerar Descrição", icon: FileText, color: "#a855f7" },
   "generate-emoji": { label: "Gerar Emoji/Ícone", icon: Smile, color: "#eab308" },
   "generate-meal-plan": { label: "Plano Alimentar", icon: Calendar, color: "#0ea5e9" },

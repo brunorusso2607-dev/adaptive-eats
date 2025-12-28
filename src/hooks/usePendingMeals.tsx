@@ -358,20 +358,15 @@ export function usePendingMeals() {
         : mergedRanges;
 
       // Verificar se uma refeição existia quando o plano foi criado
-      // (se o horário da refeição é APÓS a criação do plano)
+      // Refeições do mesmo dia sempre são válidas (para permitir registro retroativo)
+      // Refeições de dias anteriores à criação do plano são excluídas
       const isMealValidSinceCreation = (mealType: string, actualDate: Date): boolean => {
-        // Pegar o horário de fim da refeição naquele dia
-        const range = currentRanges[mealType];
-        if (!range) return true;
+        const createdDate = new Date(planCreatedAt.getFullYear(), planCreatedAt.getMonth(), planCreatedAt.getDate());
+        const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
         
-        // Criar data/hora do fim da refeição
-        const mealEndTime = new Date(actualDate);
-        const endHour = Math.floor(range.end);
-        const endMinutes = (range.end % 1) * 60;
-        mealEndTime.setHours(endHour, endMinutes, 0, 0);
-        
-        // A refeição só é válida se o horário de fim dela é DEPOIS da criação do plano
-        return mealEndTime >= planCreatedAt;
+        // Se a refeição é do mesmo dia ou posterior à criação do plano, é válida
+        // Isso permite que refeições "atrasadas" do mesmo dia apareçam para registro
+        return mealDate >= createdDate;
       };
 
       // Verificar se uma refeição já passou (start_hour + tolerância ultrapassado)
@@ -444,20 +439,30 @@ export function usePendingMeals() {
         meal.actual_date && isMealValidSinceCreation(meal.meal_type, meal.actual_date)
       );
 
-      // Encontrar a refeição ATUAL (já começou mas ainda não terminou)
+      console.log("[usePendingMeals] validMeals count:", validMeals.length);
+      console.log("[usePendingMeals] currentRanges:", currentRanges);
+
+      // Encontrar a refeição ATUAL (já começou mas ainda não passou da tolerância - on_time)
       const currentMeal = validMeals.find(meal => 
         meal.actual_date && isMealCurrent(meal.meal_type, meal.actual_date)
       );
 
-      // Filtrar refeições PASSADAS (horário de fim já ultrapassado) - são as atrasadas
+      console.log("[usePendingMeals] currentMeal:", currentMeal?.recipe_name, currentMeal?.meal_type);
+
+      // Filtrar refeições PASSADAS (start_hour + tolerância ultrapassado) - são as atrasadas
       const overdueMeals = validMeals.filter(meal => 
         meal.actual_date && isMealPast(meal.meal_type, meal.actual_date)
       );
+
+      console.log("[usePendingMeals] overdueMeals count:", overdueMeals.length);
+      overdueMeals.forEach(m => console.log("[usePendingMeals] overdue:", m.meal_type, m.recipe_name));
 
       // Encontrar refeições FUTURAS (ainda não começaram) - apenas das válidas
       const futureMeals = validMeals.filter(meal => 
         meal.actual_date && !isMealPast(meal.meal_type, meal.actual_date) && !isMealCurrent(meal.meal_type, meal.actual_date)
       );
+
+      console.log("[usePendingMeals] futureMeals count:", futureMeals.length);
 
       // Ordenar refeições futuras por data e horário (mais próxima primeiro)
       const sortedFutureMeals = futureMeals.sort((a, b) => {
@@ -472,6 +477,8 @@ export function usePendingMeals() {
       // A "próxima refeição" é: refeição atual OU a primeira futura (se não há atual)
       const nextMeal = currentMeal ? [currentMeal] : (sortedFutureMeals.length > 0 ? [sortedFutureMeals[0]] : []);
 
+      console.log("[usePendingMeals] nextMeal:", nextMeal.length > 0 ? nextMeal[0].recipe_name : "none");
+
       // Ordenar atrasadas por data DECRESCENTE (mais recente primeiro)
       const sortedOverdueMeals = overdueMeals.sort((a, b) => {
         const dateA = a.actual_date?.getTime() || 0;
@@ -485,6 +492,8 @@ export function usePendingMeals() {
       // Combinar: próxima refeição + atrasadas
       // A próxima refeição vem primeiro para ser identificada como "on_time"
       const combinedMeals = [...nextMeal, ...sortedOverdueMeals];
+
+      console.log("[usePendingMeals] combinedMeals count:", combinedMeals.length);
 
       setPendingMeals(combinedMeals);
     } catch (error) {

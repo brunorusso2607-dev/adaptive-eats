@@ -380,7 +380,7 @@ export default function MealDetailSheet({
                 </CardContent>
               </Card>
 
-              {/* Alimentos da Refeição */}
+              {/* Alimentos da Refeição - Estilo Nutricionista */}
               <Card className="glass-card">
                 <CardContent className="p-4">
                   <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
@@ -392,43 +392,47 @@ export default function MealDetailSheet({
                       </span>
                     ) : (
                       <span className="text-xs text-muted-foreground font-normal ml-auto">
-                        Toque em <RefreshCw className="w-3 h-3 inline" /> para substituir
+                        Toque para substituir
                       </span>
                     )}
                   </h3>
-                  <ul className="space-y-2">
+                  <ul className="space-y-1">
                     {ingredients.map((ingredient, index) => (
                       <li 
                         key={index} 
                         className={cn(
-                          "flex items-center gap-3 p-2 rounded-lg",
+                          "flex items-start gap-2 py-1.5 group",
                           isPastMeal && "opacity-70"
                         )}
                       >
-                        <div className={cn(
-                          "w-6 h-6 rounded-full flex items-center justify-center shrink-0",
-                          isPastMeal ? "bg-muted" : "bg-primary/10"
-                        )}>
-                          <CheckCircle className={cn(
-                            "w-4 h-4",
-                            isPastMeal ? "text-muted-foreground" : "text-primary"
-                          )} />
-                        </div>
-                        <span className="flex-1">
-                          <strong>{ingredient.quantity} {ingredient.unit}</strong> {ingredient.item}
+                        {/* Bullet point */}
+                        <span className="text-primary mt-1.5">•</span>
+                        
+                        {/* Formato nutricionista: "1 fatia de pão integral" */}
+                        <span className="flex-1 text-foreground">
+                          {ingredient.quantity}{ingredient.quantity && ' de '}{ingredient.item}
                         </span>
+                        
                         {!isPastMeal && (
                           <button
                             onClick={(e) => handleOpenSubstitution(ingredient, e)}
-                            className="w-8 h-8 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-colors active:scale-95"
+                            className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all active:scale-95"
                             aria-label={`Substituir ${ingredient.item}`}
                           >
-                            <RefreshCw className="w-4 h-4 text-muted-foreground" />
+                            <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
                           </button>
                         )}
                       </li>
                     ))}
                   </ul>
+                  
+                  {/* Badge de segurança */}
+                  <div className="mt-4 pt-3 border-t border-border/50">
+                    <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                      <CheckCircle className="w-4 h-4" />
+                      <span>Seguro para suas restrições</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 

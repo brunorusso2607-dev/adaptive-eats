@@ -319,9 +319,23 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
                   )}
                 </span>
               </div>
-              <h3 className="font-display font-semibold text-foreground truncate">
+              <h3 className="font-display font-semibold text-foreground">
                 {nextMeal.recipe_name}
               </h3>
+              {/* Preview dos ingredientes no formato nutricionista */}
+              {nextMeal.recipe_ingredients && Array.isArray(nextMeal.recipe_ingredients) && nextMeal.recipe_ingredients.length > 0 && (
+                <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                  {(nextMeal.recipe_ingredients as Array<{item?: string; quantity?: string}>).slice(0, 3).map((ing, idx) => (
+                    <div key={idx} className="flex items-start gap-1">
+                      <span className="text-primary/60">•</span>
+                      <span>{ing.quantity}{ing.quantity && ' de '}{ing.item}</span>
+                    </div>
+                  ))}
+                  {nextMeal.recipe_ingredients.length > 3 && (
+                    <span className="text-primary/60 text-[10px]">+{nextMeal.recipe_ingredients.length - 3} mais</span>
+                  )}
+                </div>
+              )}
               <MealSubstanceBadges 
                 ingredients={nextMeal.recipe_ingredients} 
                 userProfile={userProfile}

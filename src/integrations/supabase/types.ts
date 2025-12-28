@@ -1133,6 +1133,7 @@ export type Database = {
           carbs_per_100g: number
           category: string
           compatible_meals: string[]
+          component_type: string | null
           created_at: string
           default_portion_grams: number
           dietary_tags: string[] | null
@@ -1141,6 +1142,7 @@ export type Database = {
           id: string
           is_active: boolean
           name: string
+          portion_label: string | null
           protein_per_100g: number
           sort_order: number
           updated_at: string
@@ -1150,6 +1152,7 @@ export type Database = {
           carbs_per_100g?: number
           category: string
           compatible_meals?: string[]
+          component_type?: string | null
           created_at?: string
           default_portion_grams?: number
           dietary_tags?: string[] | null
@@ -1158,6 +1161,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name: string
+          portion_label?: string | null
           protein_per_100g?: number
           sort_order?: number
           updated_at?: string
@@ -1167,6 +1171,7 @@ export type Database = {
           carbs_per_100g?: number
           category?: string
           compatible_meals?: string[]
+          component_type?: string | null
           created_at?: string
           default_portion_grams?: number
           dietary_tags?: string[] | null
@@ -1175,6 +1180,7 @@ export type Database = {
           id?: string
           is_active?: boolean
           name?: string
+          portion_label?: string | null
           protein_per_100g?: number
           sort_order?: number
           updated_at?: string

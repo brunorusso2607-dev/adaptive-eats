@@ -129,7 +129,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             )
           ) : null;
 
-        const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
+        const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
           body: {
             planName: finalPlanName,
             startDate: batchStartDate.toISOString().split('T')[0],
@@ -137,7 +137,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             existingPlanId: mealPlanId,
             weekNumber: batch + 1,
             customMealTimes: filteredMealTimes,
-            enabledMeals: enabledMeals
+            mealTypes: enabledMeals,
+            optionsPerMeal: 1 // Gerar 1 opção por refeição (como o plano fazia antes)
           }
         });
 

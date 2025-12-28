@@ -1,5 +1,11 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { 
+  CALORIE_TABLE, 
+  normalizeForCalorieTable, 
+  findCaloriesPerGram, 
+  calculateFoodCalories 
+} from "../_shared/calorieTable.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -37,134 +43,6 @@ interface SimpleDayPlan {
   meals: SimpleMeal[];
   total_calories: number;
 }
-
-// ============= TABELA DE REFERÊNCIA CALÓRICA (kcal por 100g) =============
-const CALORIE_TABLE: Record<string, number> = {
-  // PROTEÍNAS
-  'ovo': 155,
-  'ovos': 155,
-  'ovo mexido': 155,
-  'ovos mexidos': 155,
-  'ovo cozido': 155,
-  'omelete': 180,
-  'frango': 165,
-  'frango grelhado': 165,
-  'peito de frango': 165,
-  'frango desfiado': 165,
-  'carne': 180,
-  'carne moida': 180,
-  'carne bovina': 180,
-  'bife': 180,
-  'bife grelhado': 180,
-  'carne assada': 180,
-  'peixe': 120,
-  'peixe grelhado': 120,
-  'tilapia': 120,
-  'salmao': 200,
-  'atum': 130,
-  'sardinha': 180,
-  'presunto': 150,
-  'peito de peru': 100,
-  'tofu': 80,
-  'queijo': 350,
-  'queijo mussarela': 320,
-  'queijo branco': 250,
-  'requeijao': 250,
-  
-  // CARBOIDRATOS
-  'arroz': 130,
-  'arroz branco': 130,
-  'arroz cozido': 130,
-  'arroz integral': 120,
-  'feijao': 95,
-  'feijao preto': 95,
-  'feijao carioca': 95,
-  'macarrao': 130,
-  'macarrao cozido': 130,
-  'espaguete': 130,
-  'pao': 280,
-  'pao frances': 280,
-  'pao de forma': 265,
-  'pao integral': 250,
-  'torrada': 380,
-  'tapioca': 130,
-  'batata': 85,
-  'batata cozida': 85,
-  'batata doce': 90,
-  'pure de batata': 100,
-  'mandioca': 125,
-  'milho': 100,
-  'aveia': 370,
-  'granola': 450,
-  'cereal': 380,
-  
-  // FRUTAS
-  'banana': 90,
-  'maca': 55,
-  'laranja': 45,
-  'mamao': 40,
-  'manga': 60,
-  'abacaxi': 50,
-  'melancia': 30,
-  'melao': 35,
-  'morango': 32,
-  'uva': 70,
-  'abacate': 160,
-  'acai': 60,
-  
-  // LATICÍNIOS/ALTERNATIVAS
-  'leite': 60,
-  'leite integral': 65,
-  'leite desnatado': 35,
-  'leite vegetal': 45,
-  'leite de aveia': 45,
-  'leite de amendoas': 25,
-  'iogurte': 60,
-  'iogurte natural': 60,
-  'iogurte grego': 100,
-  'iogurte vegetal': 70,
-  
-  // VEGETAIS
-  'salada': 15,
-  'alface': 15,
-  'tomate': 20,
-  'pepino': 15,
-  'cenoura': 40,
-  'brocolis': 35,
-  'couve': 30,
-  'abobrinha': 20,
-  'chuchu': 20,
-  'berinjela': 25,
-  'espinafre': 25,
-  'legumes': 30,
-  'legumes refogados': 50,
-  'verduras': 20,
-  
-  // GORDURAS/OLEAGINOSAS
-  'azeite': 900,
-  'manteiga': 720,
-  'castanha': 600,
-  'castanhas': 600,
-  'nozes': 650,
-  'amendoim': 570,
-  'pasta de amendoim': 590,
-  
-  // BEBIDAS
-  'cafe': 2,
-  'cafe puro': 2,
-  'cafe com leite': 35,
-  'cafe com leite vegetal': 25,
-  'suco': 45,
-  'suco de laranja': 45,
-  'suco natural': 45,
-  'cha': 1,
-  
-  // OUTROS
-  'mel': 320,
-  'acucar': 400,
-  'sopa': 50,
-  'caldo': 30,
-};
 
 // ============= CONFIGURAÇÃO REGIONAL =============
 interface RegionalConfig {
@@ -1250,54 +1128,10 @@ function validateFood(
   return { isValid: true };
 }
 
-// ============= CÁLCULO DE CALORIAS POR SCRIPT =============
-function normalizeForCalorieTable(foodName: string): string {
-  return foodName
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\s+/g, ' ')
-    .trim();
-}
-
-function findCaloriesPerGram(foodName: string): number | null {
-  const normalized = normalizeForCalorieTable(foodName);
-  
-  // Busca exata primeiro
-  if (CALORIE_TABLE[normalized]) {
-    return CALORIE_TABLE[normalized] / 100;
-  }
-  
-  // Busca parcial - tenta encontrar match em qualquer parte
-  for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
-      return kcalPer100g / 100;
-    }
-  }
-  
-  return null;
-}
-
-function calculateFoodCalories(food: FoodItem): { calories: number; source: 'table' | 'estimate' } {
-  const kcalPerGram = findCaloriesPerGram(food.name);
-  
-  if (kcalPerGram !== null) {
-    return {
-      calories: Math.round(food.grams * kcalPerGram),
-      source: 'table',
-    };
-  }
-  
-  // Fallback: estima ~1.5 kcal/g como média genérica
-  return {
-    calories: Math.round(food.grams * 1.5),
-    source: 'estimate',
-  };
-}
-
+// ============= CÁLCULO DE CALORIAS (usa tabela compartilhada) =============
 function calculateOptionCalories(foods: FoodItem[]): number {
   return foods.reduce((total, food) => {
-    const result = calculateFoodCalories(food);
+    const result = calculateFoodCalories(food.name, food.grams);
     return total + result.calories;
   }, 0);
 }

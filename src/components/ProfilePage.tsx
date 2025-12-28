@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import RecipeList from "./RecipeList";
 import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptions";
-import { CustomMealTimesEditor, type CustomMealTimesWithExtras } from "@/components/CustomMealTimesEditor";
+import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import { Json } from "@/integrations/supabase/types";
 
 type UserProfile = {

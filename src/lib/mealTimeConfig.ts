@@ -21,13 +21,14 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 export const MEAL_DELAY_TOLERANCE_HOURS = 1;
 
 // Standard meal types - single source of truth
-export const STANDARD_MEAL_TYPES = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"] as const;
+export const STANDARD_MEAL_TYPES = ["cafe_manha", "lanche_manha", "almoco", "lanche", "jantar", "ceia"] as const;
 export type StandardMealType = typeof STANDARD_MEAL_TYPES[number];
 
 // Valores padrão (fallback se o banco falhar)
 const DEFAULT_TIME_RANGES: MealTimeRanges = {
   cafe_manha: { start: 6, end: 10 },
-  almoco: { start: 10, end: 14 },
+  lanche_manha: { start: 10, end: 12 },
+  almoco: { start: 12, end: 14 },
   lanche: { start: 14, end: 17 },
   jantar: { start: 17, end: 21 },
   ceia: { start: 21, end: 24 },
@@ -35,13 +36,14 @@ const DEFAULT_TIME_RANGES: MealTimeRanges = {
 
 const DEFAULT_LABELS: MealLabels = {
   cafe_manha: "Café da Manhã",
+  lanche_manha: "Lanche da Manhã",
   almoco: "Almoço",
-  lanche: "Lanche",
+  lanche: "Lanche da Tarde",
   jantar: "Jantar",
   ceia: "Ceia",
 };
 
-const DEFAULT_MEAL_ORDER = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+const DEFAULT_MEAL_ORDER = ["cafe_manha", "lanche_manha", "almoco", "lanche", "jantar", "ceia"];
 
 // Load from localStorage on module init
 function loadFromStorage(): boolean {

@@ -459,7 +459,7 @@ async function getMealsFromPool(
       dietaryPreference: profile.dietary_preference || undefined,
       intolerances: profile.intolerances || [],
       excludedIngredients: profile.excluded_ingredients || [],
-      limit: 30 // Fetch more to have options after filtering
+      limit: 8 // OTIMIZADO: limite reduzido para economizar CPU
     });
 
     if (poolRecipes.length > 0) {

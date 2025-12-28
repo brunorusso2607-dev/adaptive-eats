@@ -77,3 +77,6 @@ verify_jwt = false
 
 [functions.lookup-ingredient]
 verify_jwt = false
+
+[functions.import-bam-foods]
+verify_jwt = false

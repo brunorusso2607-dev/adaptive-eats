@@ -29,27 +29,16 @@ interface MealPlan {
   end_date: string;
   is_active: boolean;
   status?: string;
-  custom_meal_times?: CustomMealTimesWithExtras | null;
+  custom_meal_times?: CustomMealTimes | null;
 }
 
-// Type guard for custom meal times with extras support
-const isCustomMealTimesWithExtras = (value: unknown): value is CustomMealTimesWithExtras | null => {
+// Type guard for custom meal times
+const isCustomMealTimes = (value: unknown): value is CustomMealTimes | null => {
   if (value === null || value === undefined) return true;
   if (typeof value !== 'object') return false;
   if (Array.isArray(value)) return false;
   const obj = value as Record<string, unknown>;
-  
-  // Verifica cada propriedade - pode ser string ou array (extras)
-  return Object.entries(obj).every(([key, v]) => {
-    if (key === 'extras') {
-      // extras deve ser array de objetos com id, name, time
-      return Array.isArray(v) && v.every(item => 
-        typeof item === 'object' && item !== null &&
-        'id' in item && 'name' in item && 'time' in item
-      );
-    }
-    return typeof v === 'string';
-  });
+  return Object.values(obj).every(v => typeof v === 'string');
 };
 
 interface MealPlanEditorProps {
@@ -70,7 +59,7 @@ export default function MealPlanEditor({
   const [isDeleting, setIsDeleting] = useState(false);
   const [plan, setPlan] = useState<MealPlan | null>(null);
   const [planName, setPlanName] = useState("");
-  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimesWithExtras | null>(null);
+  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
   const [hasChanges, setHasChanges] = useState(false);
 
   // Fetch plan data
@@ -86,8 +75,8 @@ export default function MealPlanEditor({
 
         if (error) throw error;
 
-        const customTimes = isCustomMealTimesWithExtras(data.custom_meal_times) 
-          ? data.custom_meal_times as CustomMealTimesWithExtras
+        const customTimes = isCustomMealTimes(data.custom_meal_times) 
+          ? data.custom_meal_times as CustomMealTimes
           : null;
 
         console.log("[MealPlanEditor] Loaded plan with custom_meal_times:", customTimes);

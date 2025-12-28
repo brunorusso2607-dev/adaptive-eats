@@ -48,14 +48,21 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
     fetchProfile();
   }, []);
 
-  // Calculate remaining days in the current month
+  // Calculate remaining days and determine if we should use next month
   const { remainingDays, monthName, defaultPlanName } = useMemo(() => {
     const today = new Date();
     const lastDayOfMonth = endOfMonth(today);
     const daysLeft = differenceInDays(lastDayOfMonth, today) + 1; // +1 to include today
-    const month = format(today, "MMMM", { locale: ptBR });
+    
+    // Se restam 5 dias ou menos, o plano é para o próximo mês
+    const DAYS_BEFORE_UNLOCK = 5;
+    const targetDate = daysLeft <= DAYS_BEFORE_UNLOCK 
+      ? new Date(today.getFullYear(), today.getMonth() + 1, 1) // Primeiro dia do próximo mês
+      : today;
+    
+    const month = format(targetDate, "MMMM", { locale: ptBR });
     const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
-    const year = format(today, "yyyy");
+    const year = format(targetDate, "yyyy");
     
     return {
       remainingDays: daysLeft,

@@ -61,13 +61,6 @@ type SubMenuItem = {
 
 const mainMenuItems: SubMenuItem[] = [
   {
-    label: "Conteúdo",
-    icon: ChefHat,
-    subItems: [
-      { path: "/admin/bulk-recipes", label: "Gerador de Receitas", icon: ChefHat },
-    ],
-  },
-  {
     label: "Relatórios",
     icon: BarChart3,
     subItems: [

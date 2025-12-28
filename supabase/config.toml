@@ -66,12 +66,6 @@ verify_jwt = false
 [functions.analyze-food-intolerances]
 verify_jwt = false
 
-[functions.generate-simple-meals]
-verify_jwt = false
-
-[functions.bulk-generate-meals]
-verify_jwt = false
-
 [functions.validate-food-ai]
 verify_jwt = false
 

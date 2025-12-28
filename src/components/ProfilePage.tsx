@@ -33,6 +33,7 @@ type UserProfile = {
   intolerances: string[] | null;
   excluded_ingredients: string[] | null;
   default_meal_times: CustomMealTimes | null;
+  enabled_meals: string[] | null;
 };
 
 type SubscriptionInfo = {
@@ -179,7 +180,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times")
+        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times, enabled_meals")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -187,6 +188,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
         const profileData: UserProfile = {
           ...data,
           default_meal_times: data.default_meal_times as CustomMealTimes | null,
+          enabled_meals: data.enabled_meals,
         };
         setProfile(profileData);
         setEditedProfile(profileData);
@@ -250,17 +252,20 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
     return getOptionLabel(onboardingOptions, category, value);
   };
 
-  const handleSaveDefaultMealTimes = async (times: CustomMealTimes | null): Promise<boolean> => {
+  const handleSaveDefaultMealTimes = async (times: CustomMealTimes | null, enabledMeals?: string[] | null): Promise<boolean> => {
     if (!user) return false;
     try {
       const { error } = await supabase
         .from("profiles")
-        .update({ default_meal_times: times as Json })
+        .update({ 
+          default_meal_times: times as Json,
+          enabled_meals: enabledMeals ?? null
+        })
         .eq("id", user.id);
 
       if (error) throw error;
 
-      setProfile(prev => prev ? { ...prev, default_meal_times: times } : prev);
+      setProfile(prev => prev ? { ...prev, default_meal_times: times, enabled_meals: enabledMeals ?? null } : prev);
       toast.success("Horários padrão salvos!");
       return true;
     } catch (err) {
@@ -592,8 +597,10 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
           </p>
           <CustomMealTimesEditor
             customTimes={profile.default_meal_times}
+            enabledMeals={profile.enabled_meals}
             onSave={handleSaveDefaultMealTimes}
             compact
+            showEnableToggle
           />
         </div>
 

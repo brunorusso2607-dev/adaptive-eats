@@ -76,14 +76,23 @@ export function CustomMealTimesEditor({
   const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
+  const [initialCustomTimes, setInitialCustomTimes] = useState<CustomMealTimesWithExtras | null>(null);
 
-  // Inicializar horários locais e extras
+  // Capturar customTimes inicial apenas uma vez
+  useEffect(() => {
+    if (!isInitialized && customTimes !== undefined) {
+      setInitialCustomTimes(customTimes);
+    }
+  }, [customTimes, isInitialized]);
+
+  // Inicializar horários locais e extras - apenas uma vez quando globalSettings estiver pronto
   useEffect(() => {
     if (globalSettings.length === 0) return;
+    if (isInitialized) return; // Não re-inicializar
 
     const initialTimes: Record<string, string> = {};
     globalSettings.forEach(setting => {
-      const customValue = customTimes?.[setting.meal_type];
+      const customValue = initialCustomTimes?.[setting.meal_type];
       if (typeof customValue === 'string') {
         initialTimes[setting.meal_type] = customValue;
       } else {
@@ -92,29 +101,26 @@ export function CustomMealTimesEditor({
     });
     setLocalTimes(initialTimes);
     
-    // Carregar extras se existirem - sempre sincronizar quando customTimes muda
-    const extras = customTimes?.extras;
+    // Carregar extras se existirem no template inicial
+    const extras = initialCustomTimes?.extras;
     if (Array.isArray(extras) && extras.length > 0) {
-      // Garantir que extras carregados do template não tenham isNew: true
+      // Extras carregados do perfil são considerados "salvos" (isNew: false)
       const cleanedExtras = extras.map(extra => ({
         ...extra,
         isNew: false
       }));
       setExtraMeals(cleanedExtras);
-      console.log("[CustomMealTimesEditor] Loaded extras from template:", cleanedExtras);
-    } else if (customTimes !== null && customTimes !== undefined) {
-      // Se customTimes existe mas sem extras, resetar extras
-      // Não usa isInitialized para garantir sincronização
-      setExtraMeals([]);
+      console.log("[CustomMealTimesEditor] Loaded extras from profile:", cleanedExtras);
     }
-    // Marcar como inicializado após processar
+    
     setIsInitialized(true);
-  }, [globalSettings, customTimes]);
+  }, [globalSettings, initialCustomTimes, isInitialized]);
 
   // Emitir dados sempre que houver mudanças (sem depender de toggle)
   useEffect(() => {
     if (!onChange || globalSettings.length === 0) return;
     if (Object.keys(localTimes).length === 0) return;
+    if (!isInitialized) return; // Não emitir antes de inicializar
     
     const dataToEmit: CustomMealTimesWithExtras = { ...localTimes };
     if (extraMeals.length > 0) {
@@ -122,7 +128,7 @@ export function CustomMealTimesEditor({
     }
     
     onChange(dataToEmit);
-  }, [localTimes, extraMeals, globalSettings.length, onChange]);
+  }, [localTimes, extraMeals, globalSettings.length, onChange, isInitialized]);
 
   // Combina refeições padrão + extras, ordenadas por horário
   const allMealsSorted = useMemo(() => {

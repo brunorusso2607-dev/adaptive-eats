@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -21,11 +22,9 @@ serve(async (req) => {
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const lovableApiKey = Deno.env.get('LOVABLE_API_KEY');
-
-    if (!lovableApiKey) {
-      throw new Error('LOVABLE_API_KEY not configured');
-    }
+    
+    // Buscar API key do Gemini do banco de dados
+    const geminiApiKey = await getGeminiApiKey();
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
@@ -78,8 +77,8 @@ serve(async (req) => {
         logStep(`Analyzing: "${firstItem.ingredient}" for ${firstItem.intolerance_or_diet}`);
 
         // Chama a IA para analisar
-        const analysisResult = await analyzeIngredientWithAI(
-          lovableApiKey,
+        const analysisResult = await analyzeIngredientWithGemini(
+          geminiApiKey,
           firstItem.ingredient,
           firstItem.intolerance_or_diet,
           firstItem.recipe_context,
@@ -179,9 +178,9 @@ serve(async (req) => {
 });
 
 /**
- * Analisa um ingrediente bloqueado usando IA
+ * Analisa um ingrediente bloqueado usando Gemini
  */
-async function analyzeIngredientWithAI(
+async function analyzeIngredientWithGemini(
   apiKey: string,
   ingredient: string,
   intoleranceOrDiet: string,
@@ -189,7 +188,7 @@ async function analyzeIngredientWithAI(
   blockedReason: string
 ): Promise<{ decision: 'false_positive' | 'true_block'; reason: string; confidence: string }> {
   
-  const systemPrompt = `Você é um especialista em nutrição e alergias alimentares. Sua tarefa é analisar se um ingrediente foi CORRETAMENTE bloqueado para uma dieta/intolerância específica.
+  const prompt = `Você é um especialista em nutrição e alergias alimentares. Sua tarefa é analisar se um ingrediente foi CORRETAMENTE bloqueado para uma dieta/intolerância específica.
 
 REGRAS IMPORTANTES:
 1. Analise o NOME COMPLETO do ingrediente, não apenas palavras isoladas
@@ -203,6 +202,15 @@ REGRAS IMPORTANTES:
 3. Produtos rotulados como "vegano/vegetal/plant-based" geralmente NÃO contêm derivados animais
 4. Verifique se o contexto da receita ajuda a entender o ingrediente
 
+Analise este ingrediente bloqueado:
+
+INGREDIENTE: "${ingredient}"
+DIETA/INTOLERÂNCIA: ${intoleranceOrDiet}
+MOTIVO DO BLOQUEIO: ${blockedReason}
+CONTEXTO DA RECEITA: ${recipeContext || 'Não disponível'}
+
+Este ingrediente foi CORRETAMENTE bloqueado ou é um FALSO POSITIVO?
+
 RESPONDA APENAS no formato JSON:
 {
   "decision": "false_positive" ou "true_block",
@@ -210,38 +218,32 @@ RESPONDA APENAS no formato JSON:
   "confidence": "high", "medium" ou "low"
 }`;
 
-  const userPrompt = `Analise este ingrediente bloqueado:
-
-INGREDIENTE: "${ingredient}"
-DIETA/INTOLERÂNCIA: ${intoleranceOrDiet}
-MOTIVO DO BLOQUEIO: ${blockedReason}
-CONTEXTO DA RECEITA: ${recipeContext || 'Não disponível'}
-
-Este ingrediente foi CORRETAMENTE bloqueado ou é um FALSO POSITIVO?`;
-
-  const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+  const response = await fetch('https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=' + apiKey, {
     method: 'POST',
     headers: {
-      'Authorization': `Bearer ${apiKey}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
-      model: 'google/gemini-2.5-flash',
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
+      contents: [
+        {
+          role: 'user',
+          parts: [{ text: prompt }]
+        }
       ],
-      temperature: 0.3
+      generationConfig: {
+        temperature: 0.3,
+        maxOutputTokens: 1024,
+      }
     }),
   });
 
   if (!response.ok) {
     const errorText = await response.text();
-    throw new Error(`AI API error: ${response.status} - ${errorText}`);
+    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content || '';
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
   // Extrai JSON da resposta
   const jsonMatch = content.match(/\{[\s\S]*\}/);

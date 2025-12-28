@@ -602,6 +602,12 @@ ${mealsDescription}
 RESTRICOES OBRIGATORIAS:
 ${restrictionText}
 
+COMPLIANCE DE RESTRICOES (CRITICO):
+- Se houver intolerancia declarada, TODOS os alimentos devem respeitar ESTRITAMENTE
+- NAO inclua NENHUM alimento que contenha ou derive do ingrediente restrito
+- Intolerancia a lactose = ZERO leite, queijo, iogurte, manteiga ou derivados lacteos
+- Em caso de duvida, substitua por alternativa segura
+
 CONTEXTO CULTURAL:
 ${regional.typicalMeals}
 
@@ -623,7 +629,7 @@ GUIA DE REFEICOES POR TIPO (OBRIGATORIO):
 - JANTAR: prato de comida real - refeicao quente e completa semelhante ao almoco OU omelete substancial OU prato unico completo
 - CEIA: lanche leve noturno (opcional)
 
-REGRA CRITICA JANTAR: O jantar deve ser SEMPRE uma REFEICAO COMPLETA E SUBSTANCIAL. Nunca gere jantares frageis ou incompletos. Inclua sempre proteina clara e acompanhamentos reais.
+REGRA CRITICA JANTAR: O jantar deve ser SEMPRE uma REFEICAO COMPLETA E SUBSTANCIAL. Nunca gere jantares frageis ou incompletos. Inclua sempre proteina clara e acompanhamentos reais. Jantar NUNCA pode ser sopa isolada ou salada isolada - deve conter prato quente com base solida.
 
 REGRAS DE ALIMENTOS COMPLETOS (OBRIGATORIO):
 - TAPIOCA: sempre recheada e com recheio descrito (ex: "1 tapioca com queijo e tomate")

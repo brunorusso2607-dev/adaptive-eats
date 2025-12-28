@@ -620,6 +620,13 @@ PADRAO DE QUALIDADE:
 - Variar fontes de proteina, carboidrato e gordura
 - Manter coerencia alimentar (nao usar comida de almoco no cafe da manha)
 
+REGRAS DE ALIMENTOS COMPLETOS (OBRIGATORIO):
+- TAPIOCA: sempre com recheio (ex: "1 tapioca com queijo e tomate", "1 tapioca com ovo e frango desfiado")
+- OMELETE: sempre mencionar ingredientes (ex: "1 omelete com queijo e tomate", nao apenas "1 omelete")
+- SANDUICHE: sempre descrever recheio (ex: "1 sanduiche de frango com alface")
+- SALADA: sempre listar ingredientes principais
+- SOPA: sempre mencionar tipo e ingredientes principais
+
 RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
 {
   "day": ${dayNumber},

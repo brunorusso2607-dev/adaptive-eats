@@ -23,12 +23,16 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [progress, setProgress] = useState(0);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimesWithExtras | null>(null);
+  const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
   // Fetch user profile to get excluded ingredients and default meal times
   useEffect(() => {
     const fetchProfileAndTemplate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      if (!session) return;
+      if (!session) {
+        setIsProfileLoaded(true);
+        return;
+      }
       
       const { data: profile } = await supabase
         .from("profiles")
@@ -57,6 +61,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           setCustomMealTimes(lastPlan.custom_meal_times as CustomMealTimesWithExtras);
         }
       }
+      
+      setIsProfileLoaded(true);
     };
     
     fetchProfileAndTemplate();
@@ -206,12 +212,15 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           </div>
 
           {/* Custom Meal Times Editor - pass loaded template */}
-          <CustomMealTimesEditor
-            customTimes={customMealTimes}
-            onChange={setCustomMealTimes}
-            disabled={isGenerating}
-            compact
-          />
+          {/* Custom Meal Times Editor - só renderiza depois de carregar o perfil */}
+          {isProfileLoaded && (
+            <CustomMealTimesEditor
+              customTimes={customMealTimes}
+              onChange={setCustomMealTimes}
+              disabled={isGenerating}
+              compact
+            />
+          )}
 
           {/* Dynamic Info Message */}
           <div className="text-center space-y-1">

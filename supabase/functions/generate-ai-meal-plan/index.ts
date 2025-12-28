@@ -574,6 +574,8 @@ function buildSimpleNutritionistPrompt(params: {
 
 Voce cria refeicoes como um profissional humano criaria para si mesmo, sua familia ou seus pacientes reais.
 
+REGRA DE OURO: Priorize NATURALIDADE ALIMENTAR acima de otimizacao nutricional. Comida com alma, nao formula.
+
 IDIOMA: Responda INTEIRAMENTE em ${regional.languageName}
 PAIS/REGIAO: Gere refeicoes tipicas, comuns e culturalmente apropriadas para esta regiao
 
@@ -612,10 +614,10 @@ CADA OPCAO deve ter:
 - Calorias aproximadas
 
 GUIA DE REFEICOES POR TIPO (OBRIGATORIO):
-- CAFE DA MANHA: paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe, leite, sucos
-- LANCHE MANHA/TARDE: frutas, iogurte, castanhas, barra de cereais, sanduiche leve
-- ALMOCO: refeicao quente, completa e substancial (proteina + carboidrato + legumes ou salada)
-- JANTAR: refeicao quente e completa semelhante ao almoco OU omelete substancial OU prato unico completo
+- CAFE DA MANHA: deve ser agradavel, nao "funcional" - paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe, leite, sucos
+- LANCHE MANHA/TARDE: pratico e reconhecivel - frutas, iogurte, castanhas, barra de cereais, sanduiche leve
+- ALMOCO: prato de comida, nao formula - refeicao quente, completa e substancial (proteina + carboidrato + legumes ou salada)
+- JANTAR: prato de comida real - refeicao quente e completa semelhante ao almoco OU omelete substancial OU prato unico completo
 - CEIA: lanche leve noturno (opcional)
 
 REGRA CRITICA JANTAR: O jantar deve ser SEMPRE uma REFEICAO COMPLETA E SUBSTANCIAL. Nunca gere jantares frageis ou incompletos. Inclua sempre proteina clara e acompanhamentos reais.
@@ -627,12 +629,16 @@ REGRAS DE ALIMENTOS COMPLETOS (OBRIGATORIO):
 - SALADA: sempre listar ingredientes principais
 - SOPA: sempre indicar tipo e ingredientes principais
 
-PADRAO DE QUALIDADE HUMANA (VALIDACAO OBRIGATORIA):
-- Pergunte mentalmente: "Uma pessoa comum comeria isso?"
-- Pergunte mentalmente: "Isso parece comida de casa, padaria ou restaurante simples?"
-- Se a resposta for NAO, descarte a opcao e gere outra
-- Nao repetir mesmas refeicoes entre opcoes
-- Variar fontes de proteina, carboidrato e gordura
+CONTROLE ANTI-REPETICAO (OBRIGATORIO):
+- NAO repita estruturas similares entre opcoes (ex: nao use "mingau + castanhas" em multiplas opcoes)
+- Varie os tipos de preparacao (grelhado, cozido, refogado, assado)
+- Varie as fontes de proteina, carboidrato e gordura entre opcoes
+- Cada opcao deve ser genuinamente diferente, nao apenas variacao minima
+
+PADRAO DE QUALIDADE HUMANA (VALIDACAO FINAL):
+- "Uma pessoa comum pediria isso num restaurante ou faria em casa?"
+- "Parece comida ou parece dieta?"
+- Se parecer dieta ou formula → descarte e gere outra
 
 RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
 {

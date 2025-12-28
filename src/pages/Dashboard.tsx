@@ -36,7 +36,7 @@ import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Link } from "react-router-dom";
 import { useActivityLog } from "@/hooks/useActivityLog";
-import { usePendingMeals, getMealStatus } from "@/hooks/usePendingMeals";
+import { usePendingMeals } from "@/hooks/usePendingMeals";
 import { useGamification } from "@/hooks/useGamification";
 import HealthProgressStrip from "@/components/HealthProgressStrip";
 import PlanDetailsSheet from "@/components/PlanDetailsSheet";
@@ -148,9 +148,9 @@ export default function Dashboard() {
   const { isEnabled: isKidsModeEnabled } = useFeatureFlag("kids_mode");
   
   // Pending meals hook for badge
-  const { pendingMeals, hasMealPlan: hasActiveMealPlan, refetch: refetchPendingMeals } = usePendingMeals();
+  const { pendingMeals, hasMealPlan: hasActiveMealPlan, refetch: refetchPendingMeals, getMealStatusForMeal } = usePendingMeals();
   const nextMealStatus = pendingMeals.length > 0 
-    ? getMealStatus(pendingMeals[0].meal_type, pendingMeals[0].actual_date, pendingMeals[0].completed_at)
+    ? getMealStatusForMeal(pendingMeals[0].meal_type, pendingMeals[0].actual_date, pendingMeals[0].completed_at)
     : "on_time";
   
   // User gamification hook

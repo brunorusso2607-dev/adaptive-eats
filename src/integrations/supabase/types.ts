@@ -1064,7 +1064,6 @@ export type Database = {
       meal_time_settings: {
         Row: {
           created_at: string
-          end_hour: number
           id: string
           label: string
           meal_type: string
@@ -1074,7 +1073,6 @@ export type Database = {
         }
         Insert: {
           created_at?: string
-          end_hour: number
           id?: string
           label: string
           meal_type: string
@@ -1084,7 +1082,6 @@ export type Database = {
         }
         Update: {
           created_at?: string
-          end_hour?: number
           id?: string
           label?: string
           meal_type?: string

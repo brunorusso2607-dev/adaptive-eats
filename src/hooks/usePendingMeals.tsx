@@ -6,7 +6,8 @@ import {
   getMealOrderSync,
   getMealTimeRanges,
   formatMealTime as formatTime,
-  MealTimeRanges
+  MealTimeRanges,
+  MEAL_DELAY_TOLERANCE_HOURS
 } from "@/lib/mealTimeConfig";
 
 type Ingredient = { item: string; quantity: string; unit: string };
@@ -165,15 +166,14 @@ export function getMealStatus(mealType: string, actualDate: Date | undefined, co
   const range = timeRanges[mealType];
   if (!range) return "on_time";
   
-  const endTimeInMinutes = range.end * 60;
-  const delayedThreshold = endTimeInMinutes + 30;
-  const criticalThreshold = endTimeInMinutes + 60;
+  // Nova lógica: atraso baseado em start_hour + tolerância
+  const startTimeInMinutes = range.start * 60;
+  const delayedThreshold = startTimeInMinutes + (MEAL_DELAY_TOLERANCE_HOURS * 60); // 1 hora após início
+  const criticalThreshold = startTimeInMinutes + (MEAL_DELAY_TOLERANCE_HOURS * 60 * 2); // 2 horas após início
   
   if (currentTimeInMinutes >= criticalThreshold) {
     return "critical";
   } else if (currentTimeInMinutes >= delayedThreshold) {
-    return "delayed";
-  } else if (currentTimeInMinutes >= endTimeInMinutes) {
     return "delayed";
   }
   
@@ -199,10 +199,11 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
       const range = timeRanges[mealType];
       if (!range) return 0;
       
-      const endTimeInMinutes = range.end * 60;
+      // Atraso começa após start_hour + tolerância
+      const delayStartInMinutes = (range.start * 60) + (MEAL_DELAY_TOLERANCE_HOURS * 60);
       
-      if (currentTimeInMinutes > endTimeInMinutes) {
-        return currentTimeInMinutes - endTimeInMinutes;
+      if (currentTimeInMinutes > delayStartInMinutes) {
+        return currentTimeInMinutes - delayStartInMinutes;
       }
     }
     return 0;
@@ -217,9 +218,9 @@ export function getMinutesOverdue(mealType: string, actualDate: Date | undefined
   const hour = now.getHours();
   const minutes = now.getMinutes();
   const currentTimeInMinutes = hour * 60 + minutes;
-  const endTimeInMinutes = range.end * 60;
+  const delayStartInMinutes = (range.start * 60) + (MEAL_DELAY_TOLERANCE_HOURS * 60);
   
-  return (daysDiff * 24 * 60) + currentTimeInMinutes - endTimeInMinutes;
+  return (daysDiff * 24 * 60) + currentTimeInMinutes - delayStartInMinutes;
 }
 
 export function usePendingMeals() {

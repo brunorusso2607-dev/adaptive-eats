@@ -244,7 +244,7 @@ export function MealReminderSettings({ open, onOpenChange }: MealReminderSetting
                     >
                       {meal.label}
                       <span className="ml-2 text-xs text-muted-foreground">
-                        {meal.start_hour}h - {meal.end_hour}h
+                        às {meal.start_hour}h
                       </span>
                     </Label>
                   </div>

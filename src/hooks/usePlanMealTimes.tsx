@@ -1,12 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { useMealTimeSettings, MealTimeSetting } from "./useMealTimeSettings";
+import { useMealTimeSettings, MealTimeSetting, MEAL_DELAY_TOLERANCE_HOURS } from "./useMealTimeSettings";
 
 export type MealTimeConfig = {
   meal_type: string;
   label: string;
   start_hour: number;
-  end_hour: number;
   sort_order: number;
   isCustom: boolean; // Indica se é horário personalizado do plano
   isExtra?: boolean; // Indica se é uma refeição extra
@@ -38,7 +37,8 @@ interface UsePlanMealTimesOptions {
  * 
  * Prioridade:
  * 1. custom_meal_times do plano ativo (se disponível)
- * 2. Configurações globais de meal_time_settings
+ * 2. default_meal_times do perfil do usuário
+ * 3. Configurações globais de meal_time_settings
  */
 export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   const { planId, userId } = options;
@@ -179,7 +179,6 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
           meal_type: setting.meal_type,
           label: setting.label,
           start_hour: customHour,
-          end_hour: customHour + (setting.end_hour - setting.start_hour), // Manter mesma duração
           sort_order: setting.sort_order,
           isCustom: true,
           isExtra: false,
@@ -190,7 +189,6 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
         meal_type: setting.meal_type,
         label: setting.label,
         start_hour: setting.start_hour,
-        end_hour: setting.end_hour,
         sort_order: setting.sort_order,
         isCustom: false,
         isExtra: false,
@@ -206,7 +204,6 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
           meal_type: extra.id,
           label: extra.name,
           start_hour: hour,
-          end_hour: hour + 2, // Duração padrão de 2 horas para extras
           sort_order: 100 + index, // Colocar no final por padrão
           isCustom: true,
           isExtra: true,
@@ -221,10 +218,16 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
   }, [globalSettings, customTimes, profileTimes, parseTimeToHour, extraMeals]);
 
   // Converter para formato Record
+  // O "end" é calculado como o início da próxima refeição
   const getTimeRanges = useCallback((): Record<string, { start: number; end: number; isCustom: boolean; isExtra?: boolean }> => {
     const ranges: Record<string, { start: number; end: number; isCustom: boolean; isExtra?: boolean }> = {};
-    mergedSettings.forEach(s => {
-      ranges[s.meal_type] = { start: s.start_hour, end: s.end_hour, isCustom: s.isCustom, isExtra: s.isExtra };
+    const sortedSettings = [...mergedSettings].sort((a, b) => a.start_hour - b.start_hour);
+    
+    sortedSettings.forEach((s, index) => {
+      const nextSetting = sortedSettings[index + 1];
+      // O fim é o início da próxima refeição ou start + tolerância
+      const end = nextSetting ? nextSetting.start_hour : s.start_hour + MEAL_DELAY_TOLERANCE_HOURS;
+      ranges[s.meal_type] = { start: s.start_hour, end, isCustom: s.isCustom, isExtra: s.isExtra };
     });
     return ranges;
   }, [mergedSettings]);

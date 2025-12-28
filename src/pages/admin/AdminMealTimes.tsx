@@ -24,7 +24,6 @@ export default function AdminMealTimes() {
     setEditForm({
       label: setting.label,
       start_hour: setting.start_hour,
-      end_hour: setting.end_hour,
       sort_order: setting.sort_order,
     });
   };
@@ -75,7 +74,7 @@ export default function AdminMealTimes() {
           Horário das Refeições
         </h1>
         <p className="text-muted-foreground">
-          Configure os horários de cada refeição do dia
+          Configure o horário de início de cada refeição do dia
         </p>
       </div>
 
@@ -83,7 +82,7 @@ export default function AdminMealTimes() {
         <CardHeader>
           <CardTitle>Refeições Configuradas</CardTitle>
           <CardDescription>
-            Clique em editar para modificar os horários. As alterações são refletidas imediatamente para os usuários.
+            Clique em editar para modificar os horários. A refeição é considerada atrasada 1 hora após o início.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -93,8 +92,7 @@ export default function AdminMealTimes() {
                 <TableHead>Ordem</TableHead>
                 <TableHead>Identificador</TableHead>
                 <TableHead>Nome</TableHead>
-                <TableHead>Início</TableHead>
-                <TableHead>Fim</TableHead>
+                <TableHead>Horário de Início</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
@@ -141,21 +139,6 @@ export default function AdminMealTimes() {
                       formatHour(setting.start_hour)
                     )}
                   </TableCell>
-                  <TableCell>
-                    {editingId === setting.id ? (
-                      <Input
-                        type="number"
-                        min={0}
-                        max={24}
-                        step={0.5}
-                        className="w-20"
-                        value={editForm.end_hour ?? setting.end_hour}
-                        onChange={(e) => setEditForm({ ...editForm, end_hour: parseFloat(e.target.value) })}
-                      />
-                    ) : (
-                      formatHour(setting.end_hour)
-                    )}
-                  </TableCell>
                   <TableCell className="text-right">
                     {editingId === setting.id ? (
                       <div className="flex items-center justify-end gap-2">
@@ -193,12 +176,12 @@ export default function AdminMealTimes() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Dicas</CardTitle>
+          <CardTitle>Como funciona</CardTitle>
         </CardHeader>
         <CardContent className="text-sm text-muted-foreground space-y-2">
-          <p>• O <strong>identificador</strong> é usado internamente pelo sistema</p>
-          <p>• O <strong>nome</strong> é o que aparece para os usuários</p>
-          <p>• Use valores decimais para horários com minutos (ex: 17.5 = 17:30)</p>
+          <p>• Configure apenas o <strong>horário de início</strong> de cada refeição</p>
+          <p>• A refeição é considerada <strong>atrasada após 1 hora</strong> do início, se não for completada</p>
+          <p>• Use valores decimais para horários com minutos (ex: 12.5 = 12:30)</p>
           <p>• A <strong>ordem</strong> define a sequência das refeições no dia</p>
           <p>• Alterações são aplicadas imediatamente para novos acessos</p>
         </CardContent>

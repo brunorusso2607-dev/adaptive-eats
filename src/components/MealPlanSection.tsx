@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import MealPlanModeSelector, { MealPlanMode } from "./MealPlanModeSelector";
 import MealPlanGenerator from "./MealPlanGenerator";
-import SimpleMealsPlanGenerator from "./SimpleMealsPlanGenerator";
+
 import CustomMealPlanBuilder from "./CustomMealPlanBuilder";
 import MealPlanCalendar from "./MealPlanCalendar";
 import MealRecipeDetail from "./MealRecipeDetail";
@@ -117,7 +117,7 @@ type UserProfile = {
 };
 
 export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
-  const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-simple" | "create-custom" | "calendar" | "recipe" | "shopping" | "edit">("list");
+  const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-custom" | "calendar" | "recipe" | "shopping" | "edit">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
@@ -361,7 +361,6 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
 
   const handleModeSelect = (mode: MealPlanMode) => {
     if (mode === "ai") setView("create-ai");
-    else if (mode === "simple") setView("create-simple");
     else if (mode === "custom") setView("create-custom");
   };
 
@@ -387,17 +386,6 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     );
   }
 
-  if (view === "create-simple") {
-    return (
-      <SimpleMealsPlanGenerator
-        onClose={() => setView("list")}
-        onPlanGenerated={() => {
-          fetchMealPlans();
-          setView("list");
-        }}
-      />
-    );
-  }
 
   if (view === "create-custom") {
     return (

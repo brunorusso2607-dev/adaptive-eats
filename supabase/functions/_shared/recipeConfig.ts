@@ -1773,7 +1773,10 @@ Responda APENAS com JSON.`;
 /**
  * Normaliza texto para comparação (remove acentos, lowercase)
  */
-function normalizeText(text: string): string {
+function normalizeText(text: string | undefined | null): string {
+  if (!text || typeof text !== 'string') {
+    return "";
+  }
   return text
     .toLowerCase()
     .normalize("NFD")
@@ -1847,10 +1850,17 @@ export function validateRecipe(
   
   // Verifica cada ingrediente da receita
   for (const ingredient of recipe.recipe_ingredients) {
-    const { isValid, matchedForbidden } = validateIngredient(ingredient.item, forbiddenIngredients);
+    // Handle both object format { item: string } and string format
+    const ingredientName = typeof ingredient === 'string' 
+      ? ingredient 
+      : ((ingredient as any)?.item || (ingredient as any)?.name || '');
+    
+    if (!ingredientName) continue; // Skip empty ingredients
+    
+    const { isValid, matchedForbidden } = validateIngredient(ingredientName, forbiddenIngredients);
     
     if (!isValid && matchedForbidden) {
-      invalidIngredients.push(`${ingredient.item} (contém: ${matchedForbidden})`);
+      invalidIngredients.push(`${ingredientName} (contém: ${matchedForbidden})`);
     }
   }
   

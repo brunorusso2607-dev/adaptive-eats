@@ -62,25 +62,39 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   }, []);
 
   // Calculate remaining days and determine if we should use next month
-  const { remainingDays, monthName, defaultPlanName } = useMemo(() => {
+  const { remainingDays, monthName, defaultPlanName, targetStartDate, isNextMonth } = useMemo(() => {
     const today = new Date();
     const lastDayOfMonth = endOfMonth(today);
-    const daysLeft = differenceInDays(lastDayOfMonth, today) + 1; // +1 to include today
+    const daysLeftCurrentMonth = differenceInDays(lastDayOfMonth, today) + 1; // +1 to include today
     
     // Se restam 5 dias ou menos, o plano é para o próximo mês
     const DAYS_BEFORE_UNLOCK = 5;
-    const targetDate = daysLeft <= DAYS_BEFORE_UNLOCK 
-      ? new Date(today.getFullYear(), today.getMonth() + 1, 1) // Primeiro dia do próximo mês
-      : today;
+    const useNextMonth = daysLeftCurrentMonth <= DAYS_BEFORE_UNLOCK;
+    
+    let targetDate: Date;
+    let daysToGenerate: number;
+    
+    if (useNextMonth) {
+      // Primeiro dia do próximo mês
+      targetDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      // Total de dias do próximo mês
+      const lastDayOfNextMonth = endOfMonth(targetDate);
+      daysToGenerate = lastDayOfNextMonth.getDate();
+    } else {
+      targetDate = today;
+      daysToGenerate = daysLeftCurrentMonth;
+    }
     
     const month = format(targetDate, "MMMM", { locale: ptBR });
     const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
     const year = format(targetDate, "yyyy");
     
     return {
-      remainingDays: daysLeft,
+      remainingDays: daysToGenerate,
       monthName: capitalizedMonth,
-      defaultPlanName: `${capitalizedMonth} ${year}`
+      defaultPlanName: `${capitalizedMonth} ${year}`,
+      targetStartDate: targetDate,
+      isNextMonth: useNextMonth
     };
   }, []);
 
@@ -120,9 +134,9 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
 
       for (let batch = 0; batch < totalBatches; batch++) {
         const daysInThisBatch = Math.min(batchSize, remainingDays - currentDayOffset);
-        const today = new Date();
-        const batchStartDate = new Date(today);
-        batchStartDate.setDate(today.getDate() + currentDayOffset);
+        // Usar targetStartDate (primeiro dia do próximo mês se isNextMonth, ou hoje)
+        const batchStartDate = new Date(targetStartDate);
+        batchStartDate.setDate(targetStartDate.getDate() + currentDayOffset);
 
         setProgress(Math.round((batch / totalBatches) * 100));
 

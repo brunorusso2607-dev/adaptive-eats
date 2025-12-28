@@ -10,6 +10,7 @@ import { format, endOfMonth, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
 import { CustomMealTimesEditor, CustomMealTimesWithExtras } from "@/components/CustomMealTimesEditor";
+import type { Json } from "@/integrations/supabase/types";
 
 type MealPlanGeneratorProps = {
   onClose: () => void;
@@ -163,6 +164,19 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       }
 
       setProgress(100);
+      
+      // Save customMealTimes as default template in user profile
+      if (processedMealTimes) {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          await supabase
+            .from("profiles")
+            .update({ default_meal_times: processedMealTimes as Json })
+            .eq("id", session.user.id);
+          console.log("[MealPlanGenerator] Saved meal times template to profile");
+        }
+      }
+      
       toast.success(
         <div className="flex items-center gap-2">
           <CheckCircle2 className="w-5 h-5 text-emerald-500" />
@@ -210,8 +224,9 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             />
           </div>
 
-          {/* Custom Meal Times Editor */}
+          {/* Custom Meal Times Editor - pass loaded template */}
           <CustomMealTimesEditor
+            customTimes={customMealTimes}
             onChange={setCustomMealTimes}
             disabled={isGenerating}
             compact

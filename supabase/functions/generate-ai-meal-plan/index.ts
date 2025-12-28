@@ -6,6 +6,11 @@ import {
   findCaloriesPerGram, 
   calculateFoodCalories 
 } from "../_shared/calorieTable.ts";
+import {
+  getGlobalNutritionPrompt,
+  getNutritionalSource,
+  getPortionFormat
+} from "../_shared/nutritionPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -555,10 +560,21 @@ function buildSimpleNutritionistPrompt(params: {
   dayNumber: number;
   dayName: string;
   regional: RegionalConfig;
+  countryCode: string;
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional } = params;
+  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode } = params;
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
+  
+  // Obter prompt nutricional global para o país do usuário
+  const globalNutritionPrompt = getGlobalNutritionPrompt(countryCode, {
+    includePortionGuidelines: true,
+    includeSourceHierarchy: true,
+    includeConversionRules: true
+  });
+  
+  const portionFormat = getPortionFormat(countryCode);
+  const nutritionalSource = getNutritionalSource(countryCode);
 
   const mealsDescription = meals.map(m => 
     `- ${m.label}: ${m.targetCalories} kcal`
@@ -584,12 +600,15 @@ function buildSimpleNutritionistPrompt(params: {
 
   return `Voce e um NUTRICIONISTA CLINICO de nivel mundial, com mais de 20 anos de experiencia pratica atendendo pessoas comuns em consultorio, hospitais e clinicas.
 
+${globalNutritionPrompt}
+
 Voce cria refeicoes como um profissional humano criaria para si mesmo, sua familia ou seus pacientes reais.
 
 REGRA DE OURO: Priorize NATURALIDADE ALIMENTAR acima de otimizacao nutricional. Comida com alma, nao formula.
 
 IDIOMA: Responda INTEIRAMENTE em ${regional.languageName}
-PAIS/REGIAO: Gere refeicoes tipicas, comuns e culturalmente apropriadas para esta regiao
+PAIS/REGIAO: ${nutritionalSource.flag} ${nutritionalSource.country} - Gere refeicoes tipicas, comuns e culturalmente apropriadas
+FONTE NUTRICIONAL: ${nutritionalSource.sourceName} (${nutritionalSource.sourceKey})
 
 FUNCAO: Gerar REFEICOES COMPLETAS, REALISTAS E NATURAIS para ${dayName} (Dia ${dayNumber})
 
@@ -1300,6 +1319,7 @@ serve(async (req) => {
         dayNumber: dayIndex + 1,
         dayName,
         regional,
+        countryCode: userCountry,
       });
 
       // Call Google AI API directly

@@ -12,6 +12,11 @@ import {
   extractGramsFromPortion,
   CALORIE_TABLE
 } from "../_shared/calorieTable.ts";
+import {
+  getGlobalNutritionPrompt,
+  getNutritionalSource,
+  getPortionFormat
+} from "../_shared/nutritionPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",

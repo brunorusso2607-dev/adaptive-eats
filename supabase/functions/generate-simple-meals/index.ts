@@ -12,6 +12,149 @@ import {
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
 
+// ============================================
+// VALIDAÇÃO DE RECEITAS PARA POOL CENTRAL
+// ============================================
+
+/**
+ * Normaliza texto para comparação (remove acentos, lowercase)
+ */
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+/**
+ * Valida uma receita do pool contra as restrições da categoria
+ * Retorna se a receita é válida para aquela categoria dietética
+ */
+function validateRecipeForCategory(
+  recipe: { name: string; ingredients: any[] },
+  categoryKey: string
+): { isValid: boolean; invalidIngredients: string[] } {
+  const invalidIngredients: string[] = [];
+  
+  // Obter ingredientes proibidos para a categoria
+  const forbiddenForCategory = DIETARY_FORBIDDEN_INGREDIENTS[categoryKey] || [];
+  
+  // Se a categoria não tem restrições específicas, é válida
+  if (forbiddenForCategory.length === 0) {
+    return { isValid: true, invalidIngredients: [] };
+  }
+  
+  // Exceções para ingredientes que são substitutos seguros
+  const safeExceptions = [
+    "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+    "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+    "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
+    "creme de leite de coco", "iogurte de coco", "manteiga de coco",
+    "castanha de caju", "castanha do para", "amendoas", "nozes"
+  ];
+  
+  // Verifica cada ingrediente
+  for (const ingredient of recipe.ingredients) {
+    const ingredientName = typeof ingredient === 'string' 
+      ? ingredient 
+      : ingredient.name || ingredient.item || '';
+    
+    if (!ingredientName) continue;
+    
+    const normalizedIngredient = normalizeText(ingredientName);
+    
+    // Primeiro verifica se é uma exceção segura
+    const isSafeException = safeExceptions.some(safe => 
+      normalizedIngredient.includes(normalizeText(safe))
+    );
+    
+    if (isSafeException) continue;
+    
+    // Verifica se contém ingrediente proibido
+    for (const forbidden of forbiddenForCategory) {
+      const normalizedForbidden = normalizeText(forbidden);
+      
+      if (normalizedIngredient.includes(normalizedForbidden)) {
+        invalidIngredients.push(`${ingredientName} (contém: ${forbidden})`);
+        break;
+      }
+    }
+  }
+  
+  return {
+    isValid: invalidIngredients.length === 0,
+    invalidIngredients
+  };
+}
+
+/**
+ * Valida receita contra intolerâncias específicas
+ */
+function validateRecipeForIntolerances(
+  recipe: { name: string; ingredients: any[] },
+  intolerances: string[]
+): { isValid: boolean; invalidIngredients: string[] } {
+  const invalidIngredients: string[] = [];
+  
+  if (!intolerances || intolerances.length === 0) {
+    return { isValid: true, invalidIngredients: [] };
+  }
+  
+  // Construir lista completa de ingredientes proibidos
+  const allForbidden: string[] = [];
+  for (const intolerance of intolerances) {
+    const forbidden = FORBIDDEN_INGREDIENTS[intolerance.toLowerCase()];
+    if (forbidden) {
+      allForbidden.push(...forbidden);
+    }
+  }
+  
+  if (allForbidden.length === 0) {
+    return { isValid: true, invalidIngredients: [] };
+  }
+  
+  // Exceções seguras
+  const safeExceptions = [
+    "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+    "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+    "farinha de arroz", "farinha de mandioca", "polvilho", "tapioca",
+    "farinha de amendoas", "farinha de coco"
+  ];
+  
+  for (const ingredient of recipe.ingredients) {
+    const ingredientName = typeof ingredient === 'string' 
+      ? ingredient 
+      : ingredient.name || ingredient.item || '';
+    
+    if (!ingredientName) continue;
+    
+    const normalizedIngredient = normalizeText(ingredientName);
+    
+    // Verifica exceções
+    const isSafeException = safeExceptions.some(safe => 
+      normalizedIngredient.includes(normalizeText(safe))
+    );
+    
+    if (isSafeException) continue;
+    
+    // Verifica proibidos
+    for (const forbidden of allForbidden) {
+      const normalizedForbidden = normalizeText(forbidden);
+      
+      if (normalizedIngredient.includes(normalizedForbidden)) {
+        invalidIngredients.push(`${ingredientName} (contém: ${forbidden})`);
+        break;
+      }
+    }
+  }
+  
+  return {
+    isValid: invalidIngredients.length === 0,
+    invalidIngredients
+  };
+}
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -1381,10 +1524,63 @@ GERE AS ${quantity} RECEITAS AGORA:`;
       throw new Error("Nenhuma receita gerada");
     }
 
-    // Prepare data for insertion
+    // ============================================
+    // FILTRO 1: VALIDAÇÃO PÓS-GERAÇÃO COM TOLERÂNCIA ZERO
+    // ============================================
     const categoryKey = typeof selectedCategory === 'object' ? selectedCategory.key : selectedCategory;
-    const mealsToInsert = recipes
-      .filter(r => r.name && !existingNames.includes(r.name.toLowerCase()))
+    
+    // Estatísticas de validação
+    let validRecipes = 0;
+    let invalidRecipes = 0;
+    const rejectedRecipes: { name: string; reason: string }[] = [];
+    
+    // Filtra receitas: remove duplicatas E invalida receitas com ingredientes proibidos
+    const validatedMeals = recipes
+      .filter(r => {
+        // Verifica se tem nome e não é duplicata
+        if (!r.name || existingNames.includes(r.name.toLowerCase())) {
+          return false;
+        }
+        
+        // VALIDAÇÃO 1: Verificar contra a categoria dietética
+        const categoryValidation = validateRecipeForCategory(
+          { name: r.name, ingredients: r.ingredients || [] },
+          categoryKey
+        );
+        
+        if (!categoryValidation.isValid) {
+          invalidRecipes++;
+          rejectedRecipes.push({
+            name: r.name,
+            reason: `Categoria ${categoryKey}: ${categoryValidation.invalidIngredients.join(', ')}`
+          });
+          console.log(`[generate-simple-meals] ❌ REJEITADA: "${r.name}" - Violação de categoria: ${categoryValidation.invalidIngredients.join(', ')}`);
+          return false;
+        }
+        
+        // VALIDAÇÃO 2: Se foram passadas intolerâncias, validar também
+        if (intolerances && intolerances.length > 0) {
+          const intoleranceValidation = validateRecipeForIntolerances(
+            { name: r.name, ingredients: r.ingredients || [] },
+            intolerances
+          );
+          
+          if (!intoleranceValidation.isValid) {
+            invalidRecipes++;
+            rejectedRecipes.push({
+              name: r.name,
+              reason: `Intolerância: ${intoleranceValidation.invalidIngredients.join(', ')}`
+            });
+            console.log(`[generate-simple-meals] ❌ REJEITADA: "${r.name}" - Violação de intolerância: ${intoleranceValidation.invalidIngredients.join(', ')}`);
+            return false;
+          }
+        }
+        
+        // Passou em todas as validações
+        validRecipes++;
+        console.log(`[generate-simple-meals] ✅ VALIDADA: "${r.name}"`);
+        return true;
+      })
       .map((recipe, index) => ({
         name: recipe.name,
         description: recipe.description || null,
@@ -1394,7 +1590,7 @@ GERE AS ${quantity} RECEITAS AGORA:`;
         fat: Math.round(recipe.fat) || 10,
         prep_time: recipe.prep_time || 15,
         ingredients: recipe.ingredients || [],
-        instructions: recipe.instructions || [], // Instruções detalhadas passo-a-passo
+        instructions: recipe.instructions || [],
         meal_type: selectedMealType.key,
         compatible_meal_times: recipe.compatible_meal_times || [selectedMealType.key],
         country_code: countryCode,
@@ -1403,16 +1599,26 @@ GERE AS ${quantity} RECEITAS AGORA:`;
         ai_generated: true,
         component_type: categoryKey,
         sort_order: index,
-        source_module: "plano_simples", // Pool central
+        source_module: "plano_simples",
         usage_count: 0,
         last_used_at: null,
       }));
 
-    if (mealsToInsert.length === 0) {
+    console.log(`[generate-simple-meals] 📊 Validação: ${validRecipes} válidas, ${invalidRecipes} rejeitadas de ${recipes.length} geradas`);
+    
+    if (rejectedRecipes.length > 0) {
+      console.log(`[generate-simple-meals] 🚨 Receitas rejeitadas:`, JSON.stringify(rejectedRecipes, null, 2));
+    }
+
+    if (validatedMeals.length === 0) {
       return new Response(JSON.stringify({ 
         success: true, 
-        message: "Todas as receitas geradas já existem no banco",
-        inserted: 0 
+        message: invalidRecipes > 0 
+          ? `Todas as ${invalidRecipes} receitas geradas foram rejeitadas por conter ingredientes proibidos para a categoria ${categoryKey}`
+          : "Todas as receitas geradas já existem no banco",
+        inserted: 0,
+        rejected: invalidRecipes,
+        rejectedRecipes: rejectedRecipes.slice(0, 5) // Mostra até 5 exemplos
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -1421,7 +1627,7 @@ GERE AS ${quantity} RECEITAS AGORA:`;
     // Insert into database
     const { data: insertedData, error: insertError } = await supabase
       .from('simple_meals')
-      .insert(mealsToInsert)
+      .insert(validatedMeals)
       .select('id, name');
 
     if (insertError) {
@@ -1461,10 +1667,12 @@ GERE AS ${quantity} RECEITAS AGORA:`;
     return new Response(JSON.stringify({
       success: true,
       inserted: insertedData?.length || 0,
+      rejected: invalidRecipes,
       mealType: selectedMealType.label,
       category: categoryLabel,
       country: countryConfig.name,
       recipes: insertedData?.map(r => r.name) || [],
+      rejectedRecipes: rejectedRecipes.slice(0, 5),
       usage: {
         prompt_tokens: promptTokens,
         completion_tokens: completionTokens,

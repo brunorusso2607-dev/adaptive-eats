@@ -37,6 +37,7 @@ import AdminFoodCorrections from "./pages/admin/AdminFoodCorrections";
 import AdminIngredientValidations from "./pages/admin/AdminIngredientValidations";
 import AdminBulkRecipes from "./pages/admin/AdminBulkRecipes";
 import AdminAIUsage from "./pages/admin/AdminAIUsage";
+import AdminBlockedIngredients from "./pages/admin/AdminBlockedIngredients";
 const queryClient = new QueryClient();
 
 function AppContent() {
@@ -85,6 +86,7 @@ function AppContent() {
           <Route path="ingredient-validations" element={<AdminIngredientValidations />} />
           <Route path="bulk-recipes" element={<AdminBulkRecipes />} />
           <Route path="ai-usage" element={<AdminAIUsage />} />
+          <Route path="blocked-ingredients" element={<AdminBlockedIngredients />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

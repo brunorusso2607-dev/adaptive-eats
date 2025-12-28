@@ -78,6 +78,7 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/analysis-feedback", label: "Feedbacks de Análise", icon: MessageSquare },
       { path: "/admin/food-corrections", label: "Correções de Alimentos", icon: Wrench },
       { path: "/admin/ingredient-validations", label: "Validações Ingredientes", icon: Sparkles },
+      { path: "/admin/blocked-ingredients", label: "Revisão de Bloqueios", icon: Shield },
     ],
   },
   {

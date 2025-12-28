@@ -32,7 +32,7 @@ type UserProfile = {
   activity_level: string | null;
   intolerances: string[] | null;
   excluded_ingredients: string[] | null;
-  default_meal_times: CustomMealTimesWithExtras | null;
+  default_meal_times: CustomMealTimes | null;
 };
 
 type SubscriptionInfo = {
@@ -186,7 +186,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
       if (!error && data) {
         const profileData: UserProfile = {
           ...data,
-          default_meal_times: data.default_meal_times as CustomMealTimesWithExtras | null,
+          default_meal_times: data.default_meal_times as CustomMealTimes | null,
         };
         setProfile(profileData);
         setEditedProfile(profileData);
@@ -250,7 +250,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
     return getOptionLabel(onboardingOptions, category, value);
   };
 
-  const handleSaveDefaultMealTimes = async (times: CustomMealTimesWithExtras | null): Promise<boolean> => {
+  const handleSaveDefaultMealTimes = async (times: CustomMealTimes | null): Promise<boolean> => {
     if (!user) return false;
     try {
       const { error } = await supabase

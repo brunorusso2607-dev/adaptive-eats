@@ -22,7 +22,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [isGenerating, setIsGenerating] = useState(false);
   const [progress, setProgress] = useState(0);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
-  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimesWithExtras | null>(null);
+  const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
   // Fetch user profile to get excluded ingredients and default meal times
@@ -46,7 +46,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       
       // Usar horários padrão do perfil como template
       if (profile?.default_meal_times) {
-        setCustomMealTimes(profile.default_meal_times as CustomMealTimesWithExtras);
+        setCustomMealTimes(profile.default_meal_times as CustomMealTimes);
       } else {
         // Se não há template no perfil, buscar do último plano criado
         const { data: lastPlan } = await supabase
@@ -58,7 +58,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           .single();
         
         if (lastPlan?.custom_meal_times) {
-          setCustomMealTimes(lastPlan.custom_meal_times as CustomMealTimesWithExtras);
+          setCustomMealTimes(lastPlan.custom_meal_times as CustomMealTimes);
         }
       }
       
@@ -94,21 +94,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       return;
     }
 
-    // Processar customMealTimes para garantir que extras não tenham isNew: true
-    // Isso garante que refeições extras não confirmadas individualmente sejam salvas corretamente
-    let processedMealTimes = customMealTimes;
-    if (customMealTimes?.extras && Array.isArray(customMealTimes.extras)) {
-      processedMealTimes = {
-        ...customMealTimes,
-        extras: customMealTimes.extras.map(extra => ({
-          ...extra,
-          isNew: false, // Remove flag isNew para garantir que sejam processadas
-        })),
-      };
-    }
-    
     // Log para debug
-    console.log("[MealPlanGenerator] Gerando plano com customMealTimes:", processedMealTimes);
+    console.log("[MealPlanGenerator] Gerando plano com customMealTimes:", customMealTimes);
 
     setIsGenerating(true);
     setProgress(0);
@@ -135,7 +122,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             daysCount: daysInThisBatch,
             existingPlanId: mealPlanId,
             weekNumber: batch + 1,
-            customMealTimes: processedMealTimes
+            customMealTimes: customMealTimes
           }
         });
 
@@ -153,12 +140,12 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       setProgress(100);
       
       // Save customMealTimes as default template in user profile
-      if (processedMealTimes) {
+      if (customMealTimes) {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
           await supabase
             .from("profiles")
-            .update({ default_meal_times: processedMealTimes as Json })
+            .update({ default_meal_times: customMealTimes as Json })
             .eq("id", session.user.id);
           console.log("[MealPlanGenerator] Saved meal times template to profile");
         }

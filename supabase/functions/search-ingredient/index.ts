@@ -59,12 +59,12 @@ const ALLOWED_INGREDIENT_CATEGORIES = [
 const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
   'BR': ['TBCA', 'taco', 'curated', 'BAM', 'usda'],
   'MX': ['BAM', 'TBCA', 'curated', 'taco', 'usda'],
-  'AR': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
-  'CL': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
-  'CO': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
-  'PE': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
+  'AR': ['usda', 'curated', 'TBCA', 'BAM', 'taco'], // Argentina - USDA como fallback (sem fonte nativa)
+  'CL': ['usda', 'curated', 'TBCA', 'BAM', 'taco'], // Chile - USDA como fallback
+  'CO': ['usda', 'curated', 'TBCA', 'BAM', 'taco'], // Colômbia - USDA como fallback
+  'PE': ['usda', 'curated', 'TBCA', 'BAM', 'taco'], // Peru - USDA como fallback
   'US': ['usda', 'curated', 'TBCA', 'BAM', 'taco'],
-  'DEFAULT': ['curated', 'TBCA', 'taco', 'BAM', 'usda'],
+  'DEFAULT': ['usda', 'curated', 'TBCA', 'taco', 'BAM'], // USDA como fallback universal
 };
 
 // Mapeamento de país para cuisine_origin prioritário

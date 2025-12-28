@@ -614,6 +614,8 @@ CADA OPCAO deve ter:
 - Lista de alimentos prontos com quantidades intuitivas
 - Calorias aproximadas
 
+Descreva refeicoes como as pessoas falam no dia a dia, nao como lista de ingredientes.
+
 GUIA DE REFEICOES POR TIPO (OBRIGATORIO):
 - CAFE DA MANHA: agradavel e familiar; evite combinacoes incomuns ou excessivamente saudaveis - paes, tapioca recheada, ovos, frutas, iogurte, cereais, cafe, leite, sucos
 - LANCHE MANHA/TARDE: pratico e reconhecivel - frutas, iogurte, castanhas, barra de cereais, sanduiche leve
@@ -629,6 +631,15 @@ REGRAS DE ALIMENTOS COMPLETOS (OBRIGATORIO):
 - SANDUICHE: sempre com recheio descrito (ex: "1 sanduiche de frango com alface")
 - SALADA: sempre listar ingredientes principais
 - SOPA: sempre indicar tipo e ingredientes principais
+
+BLOQUEIOS EXPLICITOS (OBRIGATORIO):
+- NAO utilize medidas como "colher de sopa de tapioca" ou quantidades abstratas para pratos prontos
+- Tapioca deve ser descrita sempre como "1 tapioca media recheada com [recheio]"
+- Evite mingau, vitaminas ou preparacoes liquidas como escolha principal recorrente
+- Cafe da manha deve priorizar comidas mastigaveis e familiares
+- Leite vegetal NAO deve ser padrao; use leite comum quando culturalmente esperado
+- Evite combinar vitamina + granola + pao na mesma opcao
+- Evite construcoes que parecam pensadas para bater macro, nao para prazer alimentar
 
 CONTROLE ANTI-REPETICAO (OBRIGATORIO):
 - NAO repita estruturas similares entre opcoes (ex: nao use "mingau + castanhas" em multiplas opcoes)

@@ -1,14 +1,15 @@
 import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Loader2, Sparkles, PenLine, AlertTriangle, Flame } from "lucide-react";
+import { Search, Plus, Loader2, Sparkles, PenLine, AlertTriangle, Flame, Database, Globe, Link2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
+import { useLookupIngredient } from "@/hooks/useLookupIngredient";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
+import { Badge } from "@/components/ui/badge";
 
 interface AISuggestion {
   name: string;
@@ -19,6 +20,23 @@ interface AISuggestion {
   carbs: number;
   fat: number;
   confidence: "alta" | "média" | "baixa";
+}
+
+interface LookupFood {
+  id: string;
+  name: string;
+  name_normalized: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  fiber_per_100g: number;
+  sodium_per_100g: number;
+  category: string | null;
+  source: string;
+  is_verified: boolean;
+  default_serving_size: number;
+  serving_unit: string;
 }
 
 export interface SelectedFoodItem {
@@ -38,6 +56,26 @@ interface FoodSearchPanelProps {
   className?: string;
 }
 
+const SourceBadge = ({ source }: { source: string }) => {
+  const config = {
+    local: { icon: Database, label: "Local", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+    alias: { icon: Link2, label: "Alias", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+    usda: { icon: Globe, label: "USDA", className: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  }[source] || { icon: Database, label: source, className: "bg-muted text-muted-foreground" };
+
+  const Icon = config.icon;
+  
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full border",
+      config.className
+    )}>
+      <Icon className="w-2.5 h-2.5" />
+      {config.label}
+    </span>
+  );
+};
+
 export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchPanelProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
@@ -46,7 +84,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
   const [isAnalyzingIntolerance, setIsAnalyzingIntolerance] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
 
-  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
+  const { lookup, reset, results, source, isLoading } = useLookupIngredient();
   const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
 
   const checkFoodConflicts = useCallback((foodName: string) => {
@@ -61,15 +99,19 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
     return null;
   }, [checkFood]);
 
-  // Debounced search
+  // Debounced search using lookup-ingredient
   useEffect(() => {
     const timer = setTimeout(() => {
-      searchFoods(searchQuery);
+      if (searchQuery.length >= 2) {
+        lookup(searchQuery, 10);
+      } else {
+        reset();
+      }
     }, 300);
     return () => clearTimeout(timer);
-  }, [searchQuery, searchFoods]);
+  }, [searchQuery, lookup, reset]);
 
-  // Fetch AI suggestions
+  // Fetch AI suggestions only when lookup returns no results
   const fetchAISuggestions = useCallback(async (query: string) => {
     if (!query || query.length < 2) return;
     
@@ -96,17 +138,18 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
     }
   }, []);
 
+  // Only fetch AI suggestions if lookup returns no results
   useEffect(() => {
-    if (!isLoading && searchQuery.length >= 2) {
+    if (!isLoading && searchQuery.length >= 2 && results.length === 0 && source === 'none') {
       const timer = setTimeout(() => {
         fetchAISuggestions(searchQuery);
       }, 600);
       return () => clearTimeout(timer);
-    } else if (searchQuery.length < 2) {
+    } else if (searchQuery.length < 2 || results.length > 0) {
       setShowAISuggestions(false);
       setAiSuggestions([]);
     }
-  }, [foods, isLoading, searchQuery, fetchAISuggestions]);
+  }, [results, isLoading, searchQuery, source, fetchAISuggestions]);
 
   const analyzeWithAI = useCallback(async (foodName: string) => {
     if (!hasIntolerances || intolerances.length === 0) return null;
@@ -132,8 +175,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
     }
   }, [hasIntolerances, intolerances]);
 
-  const convertFoodToMealSlot = (food: Food): SelectedFoodItem => {
-    // Calculate macros for default serving (use 100g as base for a meal)
+  const convertFoodToMealSlot = (food: LookupFood): SelectedFoodItem => {
     const servingSize = food.default_serving_size || 100;
     const multiplier = servingSize / 100;
     
@@ -144,13 +186,13 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
       protein: Math.round(food.protein_per_100g * multiplier * 10) / 10,
       carbs: Math.round(food.carbs_per_100g * multiplier * 10) / 10,
       fat: Math.round(food.fat_per_100g * multiplier * 10) / 10,
-      prep_time: 5, // Default prep time for single foods
+      prep_time: 5,
       ingredients: [{ name: food.name, quantity: `${servingSize}${food.serving_unit || 'g'}` }],
       instructions: ["Preparar conforme preferência"],
     };
   };
 
-  const handleAddFood = useCallback(async (food: Food) => {
+  const handleAddFood = useCallback(async (food: LookupFood) => {
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
@@ -171,10 +213,10 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
 
     onSelectFood(convertFoodToMealSlot(food));
     setSearchQuery("");
-    clearFoods();
+    reset();
     setAiSuggestions([]);
     setShowAISuggestions(false);
-  }, [checkFoodConflicts, hasIntolerances, analyzeWithAI, onSelectFood, clearFoods]);
+  }, [checkFoodConflicts, hasIntolerances, analyzeWithAI, onSelectFood, reset]);
 
   const handleAddAISuggestion = async (suggestion: AISuggestion) => {
     const conflict = checkFoodConflicts(suggestion.name);
@@ -191,14 +233,16 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
         .eq("name_normalized", normalizedName)
         .maybeSingle();
 
-      let food: Food;
+      let food: LookupFood;
 
       if (existing) {
         food = {
           ...existing,
           serving_unit: existing.serving_unit || 'g',
           default_serving_size: existing.default_serving_size || 100,
-        } as Food;
+          fiber_per_100g: existing.fiber_per_100g || 0,
+          sodium_per_100g: existing.sodium_per_100g || 0,
+        } as LookupFood;
       } else {
         const multiplier = 100 / suggestion.portion_grams;
         const servingSuggestion = suggestServingByName(suggestion.name);
@@ -228,7 +272,9 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
           ...newFood,
           serving_unit: newFood.serving_unit || 'un',
           default_serving_size: newFood.default_serving_size || suggestion.portion_grams,
-        } as Food;
+          fiber_per_100g: 0,
+          sodium_per_100g: 0,
+        } as LookupFood;
         toast.success(`${suggestion.name} adicionado ao banco de dados!`);
       }
 
@@ -241,7 +287,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
 
       onSelectFood(convertFoodToMealSlot(food));
       setSearchQuery("");
-      clearFoods();
+      reset();
       setAiSuggestions([]);
       setShowAISuggestions(false);
     } catch (error) {
@@ -251,18 +297,20 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
   };
 
   const handleManualFoodCreated = (food: { id: string; name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number }) => {
-    const fullFood: Food = {
+    const fullFood: LookupFood = {
       ...food,
       name_normalized: food.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-      fiber_per_100g: null,
-      sodium_per_100g: null,
+      fiber_per_100g: 0,
+      sodium_per_100g: 0,
       category: null,
       serving_unit: 'g',
       default_serving_size: 100,
+      source: 'manual',
+      is_verified: false,
     };
     onSelectFood(convertFoodToMealSlot(fullFood));
     setSearchQuery("");
-    clearFoods();
+    reset();
   };
 
   return (
@@ -283,7 +331,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
         <ScrollArea className="h-[calc(100vh-340px)]">
           <div className="space-y-2 pr-4">
             {/* Loading state */}
-            {isLoading && searchQuery.length >= 2 && foods.length === 0 && (
+            {isLoading && searchQuery.length >= 2 && results.length === 0 && (
               <div className="text-center py-8 text-muted-foreground">
                 <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                 <p className="text-sm">Buscando alimentos...</p>
@@ -295,12 +343,21 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
               <div className="text-center py-8 text-muted-foreground">
                 <Search className="w-10 h-10 mx-auto mb-2 opacity-50" />
                 <p>Digite para buscar alimentos</p>
-                <p className="text-xs">Busca inteligente com IA</p>
+                <p className="text-xs">Busca local + USDA + IA</p>
               </div>
             )}
 
-            {/* Database results */}
-            {foods.map((food) => {
+            {/* Source indicator when results found */}
+            {results.length > 0 && source && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2">
+                <span>Fonte:</span>
+                <SourceBadge source={source} />
+                <span className="text-muted-foreground/60">({results.length} resultado{results.length > 1 ? 's' : ''})</span>
+              </div>
+            )}
+
+            {/* Lookup results */}
+            {results.map((food) => {
               const conflict = checkFoodConflicts(food.name);
               return (
                 <button
@@ -320,12 +377,18 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
                         <Plus className="w-4 h-4 text-primary flex-shrink-0" />
                       )}
                       <span className="text-sm font-medium truncate">{food.name}</span>
+                      {food.is_verified && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                          ✓
+                        </span>
+                      )}
                     </div>
                     <div className="flex items-center gap-2 ml-6 mt-1 text-xs text-muted-foreground">
                       <span className="flex items-center gap-1">
                         <Flame className="w-3 h-3 text-orange-500" />
                         {food.calories_per_100g} kcal/100g
                       </span>
+                      <SourceBadge source={food.source} />
                     </div>
                     {conflict && (
                       <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
@@ -338,15 +401,15 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
               );
             })}
 
-            {/* AI suggestions */}
-            {showAISuggestions && searchQuery.length >= 2 && (
+            {/* AI suggestions - only show when lookup returns nothing */}
+            {showAISuggestions && searchQuery.length >= 2 && results.length === 0 && (
               <>
                 {isLoadingAI ? (
                   <div className="p-4 text-center text-muted-foreground text-sm border-t mt-2 pt-4">
                     <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
                     <span className="flex items-center justify-center gap-1">
                       <Sparkles className="w-3 h-3" />
-                      Buscando mais opções com IA...
+                      Buscando com IA...
                     </span>
                   </div>
                 ) : aiSuggestions.length > 0 ? (
@@ -392,7 +455,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
             )}
 
             {/* No results - manual entry option */}
-            {searchQuery.length >= 2 && !isLoading && foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
+            {searchQuery.length >= 2 && !isLoading && results.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
               <div className="text-center py-8">
                 <p className="text-sm text-muted-foreground mb-3">
                   Nenhum alimento encontrado

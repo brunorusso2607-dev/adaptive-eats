@@ -12,10 +12,16 @@ const logStep = (step: string, details?: any) => {
 };
 
 // ============= TIPOS - FORMATO SIMPLIFICADO =============
+interface FoodItem {
+  name: string;
+  grams: number;
+}
+
 interface SimpleMealOption {
   title: string;
-  foods: string[];
+  foods: FoodItem[];
   calories_kcal: number;
+  calculated_calories?: number; // Calculado pelo script
 }
 
 interface SimpleMeal {
@@ -31,6 +37,134 @@ interface SimpleDayPlan {
   meals: SimpleMeal[];
   total_calories: number;
 }
+
+// ============= TABELA DE REFERÊNCIA CALÓRICA (kcal por 100g) =============
+const CALORIE_TABLE: Record<string, number> = {
+  // PROTEÍNAS
+  'ovo': 155,
+  'ovos': 155,
+  'ovo mexido': 155,
+  'ovos mexidos': 155,
+  'ovo cozido': 155,
+  'omelete': 180,
+  'frango': 165,
+  'frango grelhado': 165,
+  'peito de frango': 165,
+  'frango desfiado': 165,
+  'carne': 180,
+  'carne moida': 180,
+  'carne bovina': 180,
+  'bife': 180,
+  'bife grelhado': 180,
+  'carne assada': 180,
+  'peixe': 120,
+  'peixe grelhado': 120,
+  'tilapia': 120,
+  'salmao': 200,
+  'atum': 130,
+  'sardinha': 180,
+  'presunto': 150,
+  'peito de peru': 100,
+  'tofu': 80,
+  'queijo': 350,
+  'queijo mussarela': 320,
+  'queijo branco': 250,
+  'requeijao': 250,
+  
+  // CARBOIDRATOS
+  'arroz': 130,
+  'arroz branco': 130,
+  'arroz cozido': 130,
+  'arroz integral': 120,
+  'feijao': 95,
+  'feijao preto': 95,
+  'feijao carioca': 95,
+  'macarrao': 130,
+  'macarrao cozido': 130,
+  'espaguete': 130,
+  'pao': 280,
+  'pao frances': 280,
+  'pao de forma': 265,
+  'pao integral': 250,
+  'torrada': 380,
+  'tapioca': 130,
+  'batata': 85,
+  'batata cozida': 85,
+  'batata doce': 90,
+  'pure de batata': 100,
+  'mandioca': 125,
+  'milho': 100,
+  'aveia': 370,
+  'granola': 450,
+  'cereal': 380,
+  
+  // FRUTAS
+  'banana': 90,
+  'maca': 55,
+  'laranja': 45,
+  'mamao': 40,
+  'manga': 60,
+  'abacaxi': 50,
+  'melancia': 30,
+  'melao': 35,
+  'morango': 32,
+  'uva': 70,
+  'abacate': 160,
+  'acai': 60,
+  
+  // LATICÍNIOS/ALTERNATIVAS
+  'leite': 60,
+  'leite integral': 65,
+  'leite desnatado': 35,
+  'leite vegetal': 45,
+  'leite de aveia': 45,
+  'leite de amendoas': 25,
+  'iogurte': 60,
+  'iogurte natural': 60,
+  'iogurte grego': 100,
+  'iogurte vegetal': 70,
+  
+  // VEGETAIS
+  'salada': 15,
+  'alface': 15,
+  'tomate': 20,
+  'pepino': 15,
+  'cenoura': 40,
+  'brocolis': 35,
+  'couve': 30,
+  'abobrinha': 20,
+  'chuchu': 20,
+  'berinjela': 25,
+  'espinafre': 25,
+  'legumes': 30,
+  'legumes refogados': 50,
+  'verduras': 20,
+  
+  // GORDURAS/OLEAGINOSAS
+  'azeite': 900,
+  'manteiga': 720,
+  'castanha': 600,
+  'castanhas': 600,
+  'nozes': 650,
+  'amendoim': 570,
+  'pasta de amendoim': 590,
+  
+  // BEBIDAS
+  'cafe': 2,
+  'cafe puro': 2,
+  'cafe com leite': 35,
+  'cafe com leite vegetal': 25,
+  'suco': 45,
+  'suco de laranja': 45,
+  'suco natural': 45,
+  'cha': 1,
+  
+  // OUTROS
+  'mel': 320,
+  'acucar': 400,
+  'sopa': 50,
+  'caldo': 30,
+};
 
 // ============= CONFIGURAÇÃO REGIONAL =============
 interface RegionalConfig {
@@ -561,12 +695,11 @@ function buildSimpleNutritionistPrompt(params: {
         {
           "title": "Nome claro da refeicao",
           "foods": [
-            "2 ovos mexidos",
-            "2 fatias de pao",
-            "1 xicara de cafe"
+            {"name": "ovos mexidos", "grams": 100},
+            {"name": "pao frances", "grams": 50},
+            {"name": "cafe com leite", "grams": 200}
           ],
-          "calculo_detalhado": "2 ovos(140) + 2 paes(300) + cafe(5) = 445",
-          "calories_kcal": 445
+          "calories_kcal": ${m.targetCalories}
         }
       ]
     }`).join(',');
@@ -735,43 +868,39 @@ CALCULO OBRIGATORIO:
 - Se nao bater, ajuste quantidades ou substitua ingredientes
 
 --------------------------------------------------
-REGRA DE CALCULO MANDATORIA (CRITICO):
+FORMATO DE SAIDA DOS ALIMENTOS (CRITICO):
 --------------------------------------------------
-Voce NAO PODE inventar o valor de 'calories_kcal'. Siga OBRIGATORIAMENTE este processo:
+CADA alimento DEVE ser um objeto com:
+- "name": nome do alimento (ex: "arroz cozido", "frango grelhado")
+- "grams": quantidade em gramas (numero inteiro)
 
-1. LISTE os alimentos da opcao
-2. ATRIBUA um valor calorico REAL a cada um usando a tabela acima
-   Exemplo: Ovo=70kcal, Pao frances=150kcal, Cafe com leite vegetal=40kcal
-3. SOME os valores individualmente
-4. O RESULTADO da soma DEVE ser o 'calories_kcal'
-
-EXEMPLO CORRETO:
-- 2 ovos mexidos: 2 x 70 = 140 kcal
-- 1 pao frances: 150 kcal
-- 1 cafe com leite vegetal: 40 kcal
-- TOTAL: 140 + 150 + 40 = 330 kcal
-- calories_kcal: 330
-
-EXEMPLO ERRADO (PROIBIDO):
-- Declarar 396 kcal sem mostrar como chegou nesse numero
-
---------------------------------------------------
-PROIBICAO ABSOLUTA:
---------------------------------------------------
-- NAO invente calorias para "fechar numero"
-- As calorias devem refletir o VOLUME REAL DE COMIDA
-- Se 2 paes + 2 ovos + cafe = 480 kcal, NAO declare 396 kcal
-- SEMPRE inclua o campo "calculo_detalhado" para validar a soma
+REGRAS DE GRAMAGEM:
+- SEMPRE especifique a quantidade em gramas
+- Use valores realistas baseados em porcoes comuns
+- Porcoes de referencia:
+  * 1 ovo = 50g
+  * 1 pao frances = 50g
+  * 1 fatia pao = 30g
+  * 1 xicara cafe = 50ml (use 50g)
+  * 1 copo leite = 200ml (use 200g)
+  * 1 prato arroz = 150g
+  * 1 concha feijao = 80g
+  * 1 file frango = 120g
+  * 1 bife = 120g
+  * 1 banana = 100g
+  * 1 maca = 150g
+  * 1 pote iogurte = 170g
+  * 1 colher sopa = 15g
+  * 1 fatia mamao = 100g
 
 --------------------------------------------------
 ESTRUTURA DE GERACAO:
 --------------------------------------------------
 Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES GENUINAMENTE DIFERENTES.
 CADA OPCAO deve ter:
-- Nome claro e simples da refeicao
-- Lista de alimentos prontos com quantidades intuitivas
-- Campo "calculo_detalhado": string mostrando a soma (ex: "2 ovos(140) + 1 pao(150) + cafe(40) = 330")
-- Campo "calories_kcal": numero IGUAL ao resultado do calculo_detalhado
+- "title": Nome claro e simples da refeicao
+- "foods": Array de objetos com "name" e "grams"
+- "calories_kcal": Estimativa de calorias (sera recalculado pelo sistema)
 
 Descreva refeicoes como as pessoas falam no dia a dia, nao como lista de ingredientes.
 
@@ -890,17 +1019,21 @@ RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
   "total_calories": ${dailyCalories}
 }
 
-IMPORTANTE:
-- Cada opcao DEVE conter o campo "calculo_detalhado" mostrando a soma
-- Cada opcao deve conter uma lista "foods" com strings simples
-- O "calories_kcal" DEVE ser igual ao resultado do "calculo_detalhado"
+IMPORTANTE - FORMATO DOS ALIMENTOS:
+- Cada alimento DEVE ser um objeto com "name" (string) e "grams" (numero)
+- NAO use strings simples para alimentos
 - Exemplo correto:
   {
     "title": "Cafe da manha completo",
-    "foods": ["2 ovos mexidos", "1 pao frances", "1 xicara de cafe com leite vegetal"],
-    "calculo_detalhado": "2 ovos(140) + 1 pao frances(150) + cafe c/ leite vegetal(40) = 330",
-    "calories_kcal": 330
+    "foods": [
+      {"name": "ovos mexidos", "grams": 100},
+      {"name": "pao frances", "grams": 50},
+      {"name": "cafe com leite vegetal", "grams": 200}
+    ],
+    "calories_kcal": 350
   }
+- Exemplo ERRADO (nao use):
+  "foods": ["2 ovos mexidos", "1 pao frances"]
 
 GERE AGORA o cardapio completo com ${optionsPerMeal} OPCOES DIFERENTES para cada refeicao.`;
 }
@@ -1117,6 +1250,58 @@ function validateFood(
   return { isValid: true };
 }
 
+// ============= CÁLCULO DE CALORIAS POR SCRIPT =============
+function normalizeForCalorieTable(foodName: string): string {
+  return foodName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function findCaloriesPerGram(foodName: string): number | null {
+  const normalized = normalizeForCalorieTable(foodName);
+  
+  // Busca exata primeiro
+  if (CALORIE_TABLE[normalized]) {
+    return CALORIE_TABLE[normalized] / 100;
+  }
+  
+  // Busca parcial - tenta encontrar match em qualquer parte
+  for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
+    if (normalized.includes(key) || key.includes(normalized)) {
+      return kcalPer100g / 100;
+    }
+  }
+  
+  return null;
+}
+
+function calculateFoodCalories(food: FoodItem): { calories: number; source: 'table' | 'estimate' } {
+  const kcalPerGram = findCaloriesPerGram(food.name);
+  
+  if (kcalPerGram !== null) {
+    return {
+      calories: Math.round(food.grams * kcalPerGram),
+      source: 'table',
+    };
+  }
+  
+  // Fallback: estima ~1.5 kcal/g como média genérica
+  return {
+    calories: Math.round(food.grams * 1.5),
+    source: 'estimate',
+  };
+}
+
+function calculateOptionCalories(foods: FoodItem[]): number {
+  return foods.reduce((total, food) => {
+    const result = calculateFoodCalories(food);
+    return total + result.calories;
+  }, 0);
+}
+
 function validateMealPlan(
   dayPlan: SimpleDayPlan,
   restrictions: {
@@ -1134,27 +1319,32 @@ function validateMealPlan(
   
   const validatedMeals = dayPlan.meals.map(meal => {
     const validatedOptions = meal.options.map(option => {
-      const cleanedFoods: string[] = [];
+      const cleanedFoods: FoodItem[] = [];
       
       for (const food of option.foods) {
-        const validation = validateFood(food, restrictions, dbMappings, dbSafeKeywords);
+        const foodName = typeof food === 'string' ? food : food.name;
+        const validation = validateFood(foodName, restrictions, dbMappings, dbSafeKeywords);
         
         if (validation.isValid) {
           cleanedFoods.push(food);
         } else {
           violations.push({
             meal: meal.label,
-            food,
+            food: foodName,
             reason: validation.reason || 'Restrição violada',
             restriction: validation.restriction || 'unknown',
           });
-          // Não adiciona o alimento violador
         }
       }
       
+      // Calcular calorias baseado na tabela
+      const calculatedCalories = calculateOptionCalories(cleanedFoods);
+      
       return {
         ...option,
-        foods: cleanedFoods.length > 0 ? cleanedFoods : ['Opção removida por restrição'],
+        foods: cleanedFoods.length > 0 ? cleanedFoods : [{ name: 'Opção removida por restrição', grams: 0 }],
+        calculated_calories: calculatedCalories,
+        calories_kcal: calculatedCalories, // Substitui o valor da IA pelo calculado
       };
     });
     

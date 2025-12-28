@@ -92,7 +92,7 @@ export default function DuplicatePlanDialog({
           start_date: nextMonthDates.start.toISOString().split('T')[0],
           end_date: nextMonthDates.end.toISOString().split('T')[0],
           is_active: true,
-          status: 'scheduled',
+          status: 'active', // Usar 'active' - o bloqueio é controlado por unlocks_at
           unlocks_at: nextMonthDates.unlocks.toISOString(),
           source_plan_id: plan.id,
         })

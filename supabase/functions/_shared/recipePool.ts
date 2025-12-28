@@ -83,17 +83,47 @@ function normalizeTextForPool(text: string): string {
 }
 
 /**
- * Exceções de ingredientes que são substitutos seguros
+ * Exceções de ingredientes que são substitutos seguros ou vegetais com nomes confusos
  */
 const SAFE_INGREDIENT_EXCEPTIONS = [
+  // Leites vegetais
   "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+  "leite de soja", "leite de arroz", "leite de castanha",
+  // Substitutos veganos
   "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
-  "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
-  "creme de leite de coco", "iogurte de coco", "manteiga de coco",
+  "nata vegetal", "cream cheese vegano", "creme de leite de coco", 
+  "iogurte de coco", "manteiga de coco",
+  // Farinhas sem glúten
   "farinha de arroz", "farinha de mandioca", "polvilho", "tapioca",
-  "farinha de amendoas", "farinha de coco", "castanha de caju", 
-  "castanha do para", "amendoas", "nozes"
+  "farinha de amendoas", "farinha de coco", "farinha de milho",
+  // Oleaginosas
+  "castanha de caju", "castanha do para", "amendoas", "nozes",
+  // VEGETAIS com nomes confusos (não são derivados animais!)
+  "couve manteiga", "couve-manteiga", "alface manteiga", "abobora manteiga",
+  "abóbora manteiga", "batata manteiga", "feijao manteiga", "feijão manteiga",
+  // TEMPEROS com nomes confusos (não são embutidos!)
+  "pimenta calabresa", "pimenta-calabresa", "flocos de pimenta calabresa",
+  "pimenta calabresa em flocos", "calabresa em flocos",
+  // Outros termos seguros
+  "ovo vegano", "maionese vegana", "bacon vegano", "linguica vegana",
+  "linguiça vegana", "presunto vegano", "salsicha vegana"
 ];
+
+/**
+ * Verifica se o ingrediente contém a palavra proibida como palavra completa
+ * Evita falsos positivos como "vermelho" contendo "mel"
+ */
+function containsForbiddenWord(ingredient: string, forbidden: string): boolean {
+  // Cria regex para match de palavra completa (word boundary)
+  const escapedForbidden = forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(^|\\s|,|;|\\(|\\)|/)${escapedForbidden}($|\\s|,|;|\\(|\\)|/)`, 'i');
+  
+  // Verifica se começa ou termina com a palavra proibida
+  const startsWithForbidden = ingredient.startsWith(forbidden + ' ') || ingredient === forbidden;
+  const endsWithForbidden = ingredient.endsWith(' ' + forbidden);
+  
+  return regex.test(ingredient) || startsWithForbidden || endsWithForbidden;
+}
 
 /**
  * Verifica se um ingrediente específico é proibido para o perfil
@@ -113,10 +143,10 @@ function isIngredientForbidden(
     return { isForbidden: false, matchedForbidden: null };
   }
   
-  // Verifica contra lista de proibidos
+  // Verifica contra lista de proibidos usando word boundary
   for (const forbidden of forbiddenList) {
     const normalizedForbidden = normalizeTextForPool(forbidden);
-    if (normalized.includes(normalizedForbidden)) {
+    if (containsForbiddenWord(normalized, normalizedForbidden)) {
       return { isForbidden: true, matchedForbidden: forbidden };
     }
   }

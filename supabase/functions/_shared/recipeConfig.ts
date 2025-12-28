@@ -1532,8 +1532,10 @@ export function buildSingleDayPrompt(
   }).join("\n");
 
   const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Nomes criativos e divertidos, sabores suaves, apresentação atraente." : "";
+  
+  // CRITICAL: Show more previous recipes to ensure real variation (up to 30)
   const avoidRecipes = previousRecipes.length > 0 
-    ? `\n⚠️ NÃO REPETIR: ${previousRecipes.slice(0, 8).join(", ")}` 
+    ? `\n⚠️ PROIBIDO REPETIR ESTAS RECEITAS (crie algo DIFERENTE):\n${previousRecipes.slice(0, 30).join("\n")}` 
     : "";
 
   const excludedConstraint = excludedIngredientsStr 

@@ -523,8 +523,40 @@ async function saveMealsToPool(
   }
 }
 
-// Generate a single day's meals with pool fallback
-// CRITICAL: Now receives previousRecipes to ensure variation and avoid repetition
+// MINIMUM pool recipes needed per meal type to consider pool as primary source
+const MIN_POOL_RECIPES_FOR_VARIATION = 5;
+
+// Check if pool has enough varied recipes for a meal type
+async function checkPoolSufficiency(
+  supabase: any,
+  profile: UserProfile,
+  mealType: string,
+  usedRecipes: string[]
+): Promise<{ sufficient: boolean; availableCount: number }> {
+  const poolRecipes = await searchRecipePool(supabase, {
+    mealType,
+    countryCode: profile.country || "BR",
+    dietaryPreference: profile.dietary_preference || undefined,
+    intolerances: profile.intolerances || [],
+    excludedIngredients: profile.excluded_ingredients || [],
+    limit: 50 // Fetch more to check availability
+  });
+  
+  const usedRecipesLower = usedRecipes.map(r => r.toLowerCase().trim());
+  const availableRecipes = poolRecipes.filter(recipe => 
+    !usedRecipesLower.includes(recipe.name.toLowerCase().trim())
+  );
+  
+  return {
+    sufficient: availableRecipes.length >= MIN_POOL_RECIPES_FOR_VARIATION,
+    availableCount: availableRecipes.length
+  };
+}
+
+// Generate a single day's meals with SMART STRATEGY:
+// 1. Pool FIRST when we have enough varied recipes
+// 2. AI as FALLBACK when pool insufficient
+// CRITICAL: Ensures real variation and uses common ingredients
 async function generateSingleDay(
   profile: UserProfile,
   dayIndex: number,
@@ -542,8 +574,6 @@ async function generateSingleDay(
   // Calculate calories dynamically
   const caloriesPerMeal = calculateCaloriesPerMeal(macros.dailyCalories, targetMealTypes);
   
-  // STRATEGY CHANGE: Prioritize AI generation for variation
-  // Only use pool as FALLBACK when AI fails, and ONLY for recipes not already used
   const standardTypes = ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
   const extraMealTypes = targetMealTypes.filter(t => !standardTypes.includes(t));
   
@@ -552,159 +582,169 @@ async function generateSingleDay(
     sample: previousRecipes.slice(0, 5)
   });
   
-  // IMPORTANT: For variation, we ALWAYS try AI first, pool is only for fallback
-  // Pool is no longer used as primary source to ensure unique recipes each day
-  let poolMeals = new Map<string, any>();
+  const finalMeals: any[] = [];
+  const mealsFromPool: string[] = [];
+  const mealsNeedingAI: string[] = [];
   
-  // Precisa gerar via IA para as refeições faltantes
-  const prompt = buildSingleDayPrompt(profile, dayIndex, dayName, macros as any, previousRecipes);
-  
-  try {
-    const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: {
-            temperature: 0.7,
-            topP: 0.9,
-            maxOutputTokens: 8192,
-          }
-        }),
-      },
-      5, // max retries
-      3000 // base delay 3s for full day generation
-    );
-
-    if (!response.ok) {
-      logStep(`Day ${dayIndex} API error`, { status: response.status });
-      // FALLBACK: Try pool only when AI fails, passing previousRecipes to avoid used ones
-      if (supabase) {
-        const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
-        poolMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch, previousRecipes);
-        if (poolMeals.size > 0) {
-          return {
-            day_index: dayIndex,
-            day_name: dayName,
-            meals: Array.from(poolMeals.values())
-          };
-        }
-      }
-      return null;
-    }
-
-    const aiData = await response.json();
-    
-    // Log AI usage for full day generation
-    const dayUsage = extractUsageFromGeminiResponse(aiData);
-    await logAIUsage({
-      functionName: "generate-meal-plan",
-      model: "gemini-2.5-flash-lite",
-      ...dayUsage,
-      userId,
-      metadata: { type: "full_day", dayIndex, mealTypesCount: targetMealTypes.length }
-    });
-    
-    const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!textContent) {
-      // FALLBACK: Try pool when AI returns empty
-      if (supabase) {
-        const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
-        poolMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch, previousRecipes);
-        if (poolMeals.size > 0) {
-          return {
-            day_index: dayIndex,
-            day_name: dayName,
-            meals: Array.from(poolMeals.values())
-          };
-        }
-      }
-      return null;
-    }
-
-    let cleanedJson = textContent.trim();
-    if (cleanedJson.startsWith("```json")) cleanedJson = cleanedJson.slice(7);
-    else if (cleanedJson.startsWith("```")) cleanedJson = cleanedJson.slice(3);
-    if (cleanedJson.endsWith("```")) cleanedJson = cleanedJson.slice(0, -3);
-    cleanedJson = cleanedJson.trim();
-
-    const dayData = JSON.parse(cleanedJson);
-    
-    // PRIORITY: Use AI-generated meals directly (no pool mixing for variation)
-    const aiMeals = dayData.meals || [];
-    const finalMeals: any[] = [];
-    
-    // Track which meal types AI successfully generated
-    const aiGeneratedTypes = new Set<string>();
-    
-    for (const mealType of targetMealTypes) {
-      // Find AI-generated meal for this type
-      const aiMeal = aiMeals.find((m: any) => 
-        m.meal_type === mealType || 
-        m.meal_type === mealType.replace("_", " ") ||
-        normalizeMealType(m.meal_type) === mealType
+  // ========================================
+  // STEP 1: CHECK POOL SUFFICIENCY FOR EACH MEAL TYPE
+  // ========================================
+  if (supabase) {
+    for (const mealType of targetMealTypes.filter(t => standardTypes.includes(t))) {
+      const { sufficient, availableCount } = await checkPoolSufficiency(
+        supabase, 
+        profile, 
+        mealType, 
+        previousRecipes
       );
       
-      if (aiMeal) {
-        finalMeals.push({ ...aiMeal, meal_type: mealType, from_pool: false });
-        aiGeneratedTypes.add(mealType);
+      if (sufficient) {
+        mealsFromPool.push(mealType);
+        logStep(`Pool SUFFICIENT for ${mealType}`, { availableCount, threshold: MIN_POOL_RECIPES_FOR_VARIATION });
+      } else {
+        mealsNeedingAI.push(mealType);
+        logStep(`Pool INSUFFICIENT for ${mealType} - will use AI`, { availableCount, threshold: MIN_POOL_RECIPES_FOR_VARIATION });
       }
     }
     
-    // FALLBACK: Only use pool for meal types that AI didn't generate
-    const missingMealTypes = targetMealTypes.filter(t => !aiGeneratedTypes.has(t));
-    if (missingMealTypes.length > 0 && supabase) {
-      const standardMissing = missingMealTypes.filter(t => standardTypes.includes(t));
-      if (standardMissing.length > 0) {
-        // Pass previousRecipes + already generated recipes to avoid duplicates
-        const allUsed = [...previousRecipes, ...finalMeals.map(m => m.recipe_name)];
-        const fallbackMeals = await getMealsFromPool(supabase, profile, standardMissing, allUsed);
-        fallbackMeals.forEach((meal, mealType) => {
-          finalMeals.push(meal);
-          logStep(`Fallback from pool for missing ${mealType}`, { recipeName: meal.recipe_name });
-        });
-      }
-    }
-    
-    // Save AI-generated meals to pool for future use (only standard types)
-    if (supabase) {
-      const newMeals = finalMeals.filter(m => !m.from_pool && standardTypes.includes(m.meal_type));
-      if (newMeals.length > 0) {
-        await saveMealsToPool(supabase, newMeals, profile);
-        logStep(`Saved ${newMeals.length} new AI meals to pool`);
-      }
-    }
-    
-    logStep(`Day ${dayIndex} generated with VARIATION`, { 
-      fromAI: aiGeneratedTypes.size,
-      fromPool: finalMeals.length - aiGeneratedTypes.size,
-      total: finalMeals.length,
-      mealTypes: targetMealTypes,
-      recipesGenerated: finalMeals.map(m => m.recipe_name)
+    // Extra meals always need AI (they're custom)
+    mealsNeedingAI.push(...extraMealTypes);
+  } else {
+    // No supabase client, all meals need AI
+    mealsNeedingAI.push(...targetMealTypes);
+  }
+  
+  // ========================================
+  // STEP 2: GET MEALS FROM POOL (when sufficient)
+  // ========================================
+  if (supabase && mealsFromPool.length > 0) {
+    const poolMeals = await getMealsFromPool(supabase, profile, mealsFromPool, previousRecipes);
+    poolMeals.forEach((meal, mealType) => {
+      finalMeals.push(meal);
+      logStep(`Got ${mealType} from pool`, { recipeName: meal.recipe_name });
     });
     
-    return {
-      ...dayData,
-      meals: finalMeals
-    };
-  } catch (error) {
-    logStep(`Day ${dayIndex} error`, { error: String(error) });
-    // FALLBACK: Try pool when there's an exception, passing previousRecipes
-    if (supabase) {
-      const standardMealsToFetch = targetMealTypes.filter(t => standardTypes.includes(t));
-      const fallbackMeals = await getMealsFromPool(supabase, profile, standardMealsToFetch, previousRecipes);
-      if (fallbackMeals.size > 0) {
-        return {
-          day_index: dayIndex,
-          day_name: dayName,
-          meals: Array.from(fallbackMeals.values())
-        };
+    // Check if any pool meals failed - add them to AI list
+    for (const mealType of mealsFromPool) {
+      if (!poolMeals.has(mealType)) {
+        mealsNeedingAI.push(mealType);
+        logStep(`Pool failed for ${mealType}, adding to AI queue`);
       }
     }
+  }
+  
+  // ========================================
+  // STEP 3: GENERATE VIA AI (for meals pool couldn't provide)
+  // ========================================
+  if (mealsNeedingAI.length > 0) {
+    // Build list of recipes to avoid (previous + just got from pool)
+    const allUsedRecipes = [
+      ...previousRecipes,
+      ...finalMeals.map(m => m.recipe_name)
+    ];
+    
+    const prompt = buildSingleDayPrompt(profile, dayIndex, dayName, macros as any, allUsedRecipes);
+    
+    try {
+      const response = await fetchWithRetry(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${apiKey}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [{ parts: [{ text: prompt }] }],
+            generationConfig: {
+              temperature: 0.8, // Slightly higher for more variation
+              topP: 0.95,
+              maxOutputTokens: 8192,
+            }
+          }),
+        },
+        5,
+        3000
+      );
+
+      if (response.ok) {
+        const aiData = await response.json();
+        
+        // Log AI usage
+        const dayUsage = extractUsageFromGeminiResponse(aiData);
+        await logAIUsage({
+          functionName: "generate-meal-plan",
+          model: "gemini-2.5-flash-lite",
+          ...dayUsage,
+          userId,
+          metadata: { type: "full_day", dayIndex, mealTypesCount: mealsNeedingAI.length }
+        });
+        
+        const textContent = aiData.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (textContent) {
+          let cleanedJson = textContent.trim();
+          if (cleanedJson.startsWith("```json")) cleanedJson = cleanedJson.slice(7);
+          else if (cleanedJson.startsWith("```")) cleanedJson = cleanedJson.slice(3);
+          if (cleanedJson.endsWith("```")) cleanedJson = cleanedJson.slice(0, -3);
+          cleanedJson = cleanedJson.trim();
+
+          const dayData = JSON.parse(cleanedJson);
+          const aiMeals = dayData.meals || [];
+          
+          // Only add meals we actually needed from AI
+          for (const mealType of mealsNeedingAI) {
+            const aiMeal = aiMeals.find((m: any) => 
+              m.meal_type === mealType || 
+              normalizeMealType(m.meal_type) === mealType
+            );
+            
+            if (aiMeal) {
+              // Check it's not a duplicate of something we already have
+              const isDuplicate = finalMeals.some(m => 
+                m.recipe_name.toLowerCase().trim() === aiMeal.recipe_name?.toLowerCase().trim()
+              );
+              
+              if (!isDuplicate) {
+                finalMeals.push({ ...aiMeal, meal_type: mealType, from_pool: false });
+                logStep(`AI generated ${mealType}`, { recipeName: aiMeal.recipe_name });
+              } else {
+                logStep(`AI returned duplicate for ${mealType}, skipping`, { recipeName: aiMeal.recipe_name });
+              }
+            }
+          }
+          
+          // Save new AI-generated meals to pool for future users
+          const newMeals = finalMeals.filter(m => !m.from_pool && standardTypes.includes(m.meal_type));
+          if (newMeals.length > 0 && supabase) {
+            await saveMealsToPool(supabase, newMeals, profile);
+            logStep(`Saved ${newMeals.length} new AI meals to pool for future users`);
+          }
+        }
+      } else {
+        logStep(`AI API error for day ${dayIndex}`, { status: response.status });
+      }
+    } catch (error) {
+      logStep(`AI generation error for day ${dayIndex}`, { error: String(error) });
+    }
+  }
+  
+  // ========================================
+  // STEP 4: FINAL VALIDATION
+  // ========================================
+  logStep(`Day ${dayIndex} complete`, { 
+    totalMeals: finalMeals.length,
+    fromPool: finalMeals.filter(m => m.from_pool).length,
+    fromAI: finalMeals.filter(m => !m.from_pool).length,
+    recipes: finalMeals.map(m => `${m.meal_type}: ${m.recipe_name}`)
+  });
+  
+  if (finalMeals.length === 0) {
+    logStep(`Day ${dayIndex} has no meals - returning null`);
     return null;
   }
+  
+  return {
+    day_index: dayIndex,
+    day_name: dayName,
+    meals: finalMeals
+  };
 }
 
 serve(async (req) => {

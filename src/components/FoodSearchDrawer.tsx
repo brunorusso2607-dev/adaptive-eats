@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
+import { useUserCountry } from "@/hooks/useUserCountry";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
@@ -79,7 +80,8 @@ export default function FoodSearchDrawer({
   // Removing animation state
   const [removingFoodIds, setRemovingFoodIds] = useState<Set<string>>(new Set());
 
-  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch();
+  const { country: userCountry } = useUserCountry();
+  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch(userCountry);
   const { saveConsumption } = useMealConsumption();
   const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
 

@@ -55,6 +55,69 @@ const ALLOWED_INGREDIENT_CATEGORIES = [
   'molhos',
 ];
 
+// Mapeamento de país para fontes prioritárias
+const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
+  'BR': ['TBCA', 'taco', 'curated', 'BAM', 'usda'],
+  'MX': ['BAM', 'TBCA', 'curated', 'taco', 'usda'],
+  'AR': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
+  'CL': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
+  'CO': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
+  'PE': ['TBCA', 'BAM', 'curated', 'taco', 'usda'],
+  'US': ['usda', 'curated', 'TBCA', 'BAM', 'taco'],
+  'DEFAULT': ['curated', 'TBCA', 'taco', 'BAM', 'usda'],
+};
+
+// Mapeamento de país para cuisine_origin prioritário
+const COUNTRY_CUISINE_PRIORITY: Record<string, string[]> = {
+  'BR': ['brasileira', 'latina'],
+  'MX': ['mexicana', 'latina'],
+  'AR': ['argentina', 'latina'],
+  'CL': ['chilena', 'latina'],
+  'CO': ['colombiana', 'latina'],
+  'PE': ['peruana', 'latina'],
+  'US': ['americana', 'international'],
+  'DEFAULT': ['international'],
+};
+
+// Função para ordenar resultados por prioridade de país
+function sortByCountryPriority(results: any[], userCountry: string): any[] {
+  const sourcePriority = COUNTRY_SOURCE_PRIORITY[userCountry] || COUNTRY_SOURCE_PRIORITY['DEFAULT'];
+  const cuisinePriority = COUNTRY_CUISINE_PRIORITY[userCountry] || COUNTRY_CUISINE_PRIORITY['DEFAULT'];
+
+  return results.sort((a, b) => {
+    // 1. Prioridade por source
+    const sourceIndexA = sourcePriority.indexOf(a.source || '');
+    const sourceIndexB = sourcePriority.indexOf(b.source || '');
+    const sourcePriorityA = sourceIndexA === -1 ? 999 : sourceIndexA;
+    const sourcePriorityB = sourceIndexB === -1 ? 999 : sourceIndexB;
+
+    if (sourcePriorityA !== sourcePriorityB) {
+      return sourcePriorityA - sourcePriorityB;
+    }
+
+    // 2. Prioridade por cuisine_origin
+    const cuisineIndexA = cuisinePriority.findIndex(c => 
+      a.cuisine_origin?.toLowerCase().includes(c)
+    );
+    const cuisineIndexB = cuisinePriority.findIndex(c => 
+      b.cuisine_origin?.toLowerCase().includes(c)
+    );
+    const cuisinePriorityA = cuisineIndexA === -1 ? 999 : cuisineIndexA;
+    const cuisinePriorityB = cuisineIndexB === -1 ? 999 : cuisineIndexB;
+
+    if (cuisinePriorityA !== cuisinePriorityB) {
+      return cuisinePriorityA - cuisinePriorityB;
+    }
+
+    // 3. Por verificação
+    if (a.verified !== b.verified) {
+      return a.verified ? -1 : 1;
+    }
+
+    return 0;
+  });
+}
+
 const logStep = (step: string, details?: any) => {
   console.log(`[SEARCH-INGREDIENT] ${step}`, details ? JSON.stringify(details) : '');
 };
@@ -282,7 +345,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, context, limit = 5 } = await req.json();
+    const { query, context, limit = 5, userCountry = 'DEFAULT' } = await req.json();
     
     if (!query || typeof query !== 'string') {
       return new Response(
@@ -291,7 +354,7 @@ serve(async (req) => {
       );
     }
 
-    logStep('Search started', { query, context, limit });
+    logStep('Search started', { query, context, limit, userCountry });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
@@ -333,8 +396,9 @@ serve(async (req) => {
         .update({ search_count: (exactMatches[0].search_count || 0) + 1 })
         .eq('id', exactMatches[0].id);
 
-      // Sort by similarity
-      exactMatches.sort((a, b) => {
+      // Sort by country priority first, then by similarity
+      let sortedMatches = sortByCountryPriority(exactMatches, userCountry);
+      sortedMatches.sort((a, b) => {
         const simA = calculateSimilarity(query, a.name);
         const simB = calculateSimilarity(query, b.name);
         return simB - simA;
@@ -343,7 +407,7 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           source: 'database',
-          results: exactMatches.map(food => ({
+          results: sortedMatches.map(food => ({
             id: food.id,
             name: food.name,
             calories_per_100g: food.calories_per_100g,
@@ -352,6 +416,7 @@ serve(async (req) => {
             fat_per_100g: food.fat_per_100g,
             fiber_per_100g: food.fiber_per_100g,
             cuisine_origin: food.cuisine_origin,
+            source: food.source,
             confidence: food.confidence || 1,
             verified: food.verified,
           })),

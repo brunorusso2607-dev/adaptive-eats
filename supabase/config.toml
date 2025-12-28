@@ -3,6 +3,9 @@ project_id = "upnqkxrvtimtlqsuuvci"
 [functions.upload-ciqual-file]
 verify_jwt = false
 
+[functions.analyze-excel-structure]
+verify_jwt = false
+
 [functions.send-meal-reminder]
 verify_jwt = false
 

@@ -722,23 +722,30 @@ serve(async (req) => {
         regional,
       });
 
-      // Call Lovable AI Gateway
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+      // Call Google AI API directly
+      const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
+      if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
 
-      const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${LOVABLE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "google/gemini-2.5-flash-lite",
-          messages: [
-            { role: "user", content: prompt }
-          ],
-        }),
-      });
+      const aiResponse = await fetch(
+        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            contents: [
+              {
+                parts: [{ text: prompt }]
+              }
+            ],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 8192,
+            }
+          }),
+        }
+      );
 
       if (!aiResponse.ok) {
         const errorText = await aiResponse.text();
@@ -747,14 +754,11 @@ serve(async (req) => {
         if (aiResponse.status === 429) {
           throw new Error("Rate limit exceeded. Please try again in a few minutes.");
         }
-        if (aiResponse.status === 402) {
-          throw new Error("AI credits exhausted. Please add credits to continue.");
-        }
-        throw new Error(`AI API error: ${aiResponse.status}`);
+        throw new Error(`AI API error: ${aiResponse.status} - ${errorText}`);
       }
 
       const aiData = await aiResponse.json();
-      let content = aiData.choices?.[0]?.message?.content || "";
+      let content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
       
       logStep("AI response received", { contentLength: content.length });
 

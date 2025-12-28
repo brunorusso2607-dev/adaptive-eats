@@ -565,7 +565,8 @@ function buildSimpleNutritionistPrompt(params: {
             "2 fatias de pao",
             "1 xicara de cafe"
           ],
-          "calories_kcal": ${m.targetCalories}
+          "calculo_detalhado": "2 ovos(140) + 2 paes(300) + cafe(5) = 445",
+          "calories_kcal": 445
         }
       ]
     }`).join(',');
@@ -734,13 +735,25 @@ CALCULO OBRIGATORIO:
 - Se nao bater, ajuste quantidades ou substitua ingredientes
 
 --------------------------------------------------
-REGRA DE VALIDACAO CALORICA (OBRIGATORIA):
+REGRA DE CALCULO MANDATORIA (CRITICO):
 --------------------------------------------------
-- Antes de finalizar cada opcao, estime mentalmente as calorias de CADA alimento
-- Ajuste quantidades para que o TOTAL fique dentro de ±5% da meta da refeicao
-- Nunca subestime paes, granola, tapioca ou oleos
-- Se a refeicao parecer volumosa demais para as calorias declaradas, corrija
-- Se nao for possivel ajustar, gere outra opcao
+Voce NAO PODE inventar o valor de 'calories_kcal'. Siga OBRIGATORIAMENTE este processo:
+
+1. LISTE os alimentos da opcao
+2. ATRIBUA um valor calorico REAL a cada um usando a tabela acima
+   Exemplo: Ovo=70kcal, Pao frances=150kcal, Cafe com leite vegetal=40kcal
+3. SOME os valores individualmente
+4. O RESULTADO da soma DEVE ser o 'calories_kcal'
+
+EXEMPLO CORRETO:
+- 2 ovos mexidos: 2 x 70 = 140 kcal
+- 1 pao frances: 150 kcal
+- 1 cafe com leite vegetal: 40 kcal
+- TOTAL: 140 + 150 + 40 = 330 kcal
+- calories_kcal: 330
+
+EXEMPLO ERRADO (PROIBIDO):
+- Declarar 396 kcal sem mostrar como chegou nesse numero
 
 --------------------------------------------------
 PROIBICAO ABSOLUTA:
@@ -748,6 +761,7 @@ PROIBICAO ABSOLUTA:
 - NAO invente calorias para "fechar numero"
 - As calorias devem refletir o VOLUME REAL DE COMIDA
 - Se 2 paes + 2 ovos + cafe = 480 kcal, NAO declare 396 kcal
+- SEMPRE inclua o campo "calculo_detalhado" para validar a soma
 
 --------------------------------------------------
 ESTRUTURA DE GERACAO:
@@ -756,7 +770,8 @@ Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES GENUINAMENTE DIFERE
 CADA OPCAO deve ter:
 - Nome claro e simples da refeicao
 - Lista de alimentos prontos com quantidades intuitivas
-- Calorias CALCULADAS somando cada ingrediente (NAO estimar)
+- Campo "calculo_detalhado": string mostrando a soma (ex: "2 ovos(140) + 1 pao(150) + cafe(40) = 330")
+- Campo "calories_kcal": numero IGUAL ao resultado do calculo_detalhado
 
 Descreva refeicoes como as pessoas falam no dia a dia, nao como lista de ingredientes.
 
@@ -876,8 +891,16 @@ RESPONDA EXCLUSIVAMENTE EM JSON VALIDO:
 }
 
 IMPORTANTE:
+- Cada opcao DEVE conter o campo "calculo_detalhado" mostrando a soma
 - Cada opcao deve conter uma lista "foods" com strings simples
-- Exemplo correto: ["2 ovos mexidos", "1 pao frances", "1 xicara de cafe"]
+- O "calories_kcal" DEVE ser igual ao resultado do "calculo_detalhado"
+- Exemplo correto:
+  {
+    "title": "Cafe da manha completo",
+    "foods": ["2 ovos mexidos", "1 pao frances", "1 xicara de cafe com leite vegetal"],
+    "calculo_detalhado": "2 ovos(140) + 1 pao frances(150) + cafe c/ leite vegetal(40) = 330",
+    "calories_kcal": 330
+  }
 
 GERE AGORA o cardapio completo com ${optionsPerMeal} OPCOES DIFERENTES para cada refeicao.`;
 }

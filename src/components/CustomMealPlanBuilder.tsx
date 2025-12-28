@@ -76,6 +76,8 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   const [dayPlan, setDayPlan] = useState<DayPlan>({});
   const [activeSlot, setActiveSlot] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("search");
+  const [enabledMeals, setEnabledMeals] = useState<string[] | null>(null);
+  const [isEnabledMealsLoaded, setIsEnabledMealsLoaded] = useState(false);
 
   // Buscar configurações de refeições dinamicamente
   const { settings: mealTimeSettings, isLoading: isLoadingMealTimes } = useMealTimeSettings();
@@ -90,11 +92,35 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
   const { checkMeal, hasIntolerances } = useIntoleranceWarning();
   const { recipeStyle, isLoading: isLoadingProfile } = useUserProfileContext();
 
-  // Converter meal_time_settings para MEAL_SLOTS dinâmico
+  // Fetch enabled_meals from profile
+  useEffect(() => {
+    const fetchEnabledMeals = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        setIsEnabledMealsLoaded(true);
+        return;
+      }
+      
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("enabled_meals")
+        .eq("id", session.user.id)
+        .single();
+      
+      if (profile?.enabled_meals) {
+        setEnabledMeals(profile.enabled_meals);
+      }
+      setIsEnabledMealsLoaded(true);
+    };
+    
+    fetchEnabledMeals();
+  }, []);
+
+  // Converter meal_time_settings para MEAL_SLOTS dinâmico, filtrando por enabled_meals
   const mealSlots = useMemo((): MealSlotConfig[] => {
     if (!mealTimeSettings || mealTimeSettings.length === 0) {
       // Fallback se não tiver configurações
-      return [
+      const defaultSlots = [
         { key: "cafe_manha", label: "Café da Manhã", icon: "☕", mealType: "cafe_manha" },
         { key: "lanche_manha", label: "Lanche da Manhã", icon: "🥐", mealType: "lanche_manha" },
         { key: "almoco", label: "Almoço", icon: "🍽️", mealType: "almoco" },
@@ -102,9 +128,24 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         { key: "jantar", label: "Jantar", icon: "🌙", mealType: "jantar" },
         { key: "ceia", label: "Ceia", icon: "🍵", mealType: "ceia" }
       ];
+      
+      // Filtrar por enabled_meals se existir
+      if (enabledMeals && enabledMeals.length > 0) {
+        return defaultSlots.filter(slot => enabledMeals.includes(slot.key));
+      }
+      return defaultSlots;
     }
 
-    return mealTimeSettings
+    let filteredSettings = mealTimeSettings;
+    
+    // Filtrar por enabled_meals do perfil se existir
+    if (enabledMeals && enabledMeals.length > 0) {
+      filteredSettings = mealTimeSettings.filter(setting => 
+        enabledMeals.includes(setting.meal_type)
+      );
+    }
+
+    return filteredSettings
       .sort((a, b) => a.sort_order - b.sort_order)
       .map(setting => ({
         key: setting.meal_type,
@@ -112,7 +153,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         icon: MEAL_ICONS[setting.meal_type] || "🍽️",
         mealType: setting.meal_type
       }));
-  }, [mealTimeSettings]);
+  }, [mealTimeSettings, enabledMeals]);
 
   // Inicializar dayPlan quando mealSlots mudar
   useEffect(() => {
@@ -329,7 +370,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     }
   };
 
-  if (isLoadingFavorites || isLoadingProfile || isLoadingMealTimes) {
+  if (isLoadingFavorites || isLoadingProfile || isLoadingMealTimes || !isEnabledMealsLoaded) {
     return (
       <div className="flex items-center justify-center py-12">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />

@@ -63,10 +63,16 @@ const MEAL_TYPES = [
   { value: "jantar", label: "Jantar" },
 ];
 
+interface FoodItem {
+  name: string;
+  grams: number;
+}
+
 interface MealOption {
   title: string;
-  foods: string[];
+  foods: FoodItem[] | string[];
   calories_kcal: number;
+  calculated_calories?: number;
 }
 
 interface Meal {
@@ -447,11 +453,17 @@ export default function AdminAIMealPlanTest() {
                                         Opcao {optIndex + 1}: {option.title}
                                       </p>
                                       <ul className="mt-1 space-y-0.5">
-                                        {option.foods.map((food, foodIndex) => (
-                                          <li key={foodIndex} className="text-xs text-muted-foreground">
-                                            - {food}
-                                          </li>
-                                        ))}
+                                        {option.foods.map((food, foodIndex) => {
+                                          // Handle both string and object formats
+                                          const foodText = typeof food === 'string' 
+                                            ? food 
+                                            : `${food.name} (${food.grams}g)`;
+                                          return (
+                                            <li key={foodIndex} className="text-xs text-muted-foreground">
+                                              - {foodText}
+                                            </li>
+                                          );
+                                        })}
                                       </ul>
                                     </div>
                                     <Badge variant="outline" className="text-xs shrink-0">

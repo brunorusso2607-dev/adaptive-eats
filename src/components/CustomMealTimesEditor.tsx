@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -30,12 +31,15 @@ export type CustomMealTimes = Record<string, string>;
 
 interface CustomMealTimesEditorProps {
   customTimes?: CustomMealTimes | null;
+  enabledMeals?: string[] | null;
   onSave?: (customTimes: CustomMealTimes | null) => Promise<boolean>;
   onChange?: (customTimes: CustomMealTimes | null) => void;
+  onEnabledMealsChange?: (enabledMeals: string[]) => void;
   isLoading?: boolean;
   compact?: boolean;
   disabled?: boolean;
   className?: string;
+  showEnableToggle?: boolean;
 }
 
 // Converte horário HH:MM para minutos para ordenação
@@ -46,27 +50,34 @@ const timeToMinutes = (time: string): number => {
 
 export function CustomMealTimesEditor({
   customTimes,
+  enabledMeals,
   onSave,
   onChange,
+  onEnabledMealsChange,
   isLoading = false,
   compact = false,
   disabled = false,
   className,
+  showEnableToggle = true,
 }: CustomMealTimesEditorProps) {
   const { settings: globalSettings, isLoading: globalLoading } = useMealTimeSettings();
   const [isOpen, setIsOpen] = useState(!compact);
   const [localTimes, setLocalTimes] = useState<Record<string, string>>({});
+  const [localEnabledMeals, setLocalEnabledMeals] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [hasChanges, setHasChanges] = useState(false);
   const [openAccordion, setOpenAccordion] = useState<string | undefined>(undefined);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Sincronizar com customTimes do prop (perfil) sempre que mudar
+  // Sincronizar com customTimes e enabledMeals do prop
   useEffect(() => {
     if (globalSettings.length === 0) return;
     
     const newTimes: Record<string, string> = {};
+    const allMealTypes: string[] = [];
+    
     globalSettings.forEach(setting => {
+      allMealTypes.push(setting.meal_type);
       const customValue = customTimes?.[setting.meal_type];
       if (typeof customValue === 'string') {
         newTimes[setting.meal_type] = customValue;
@@ -81,8 +92,15 @@ export function CustomMealTimesEditor({
       setLocalTimes(newTimes);
     }
     
+    // Inicializar enabledMeals - se null/undefined, todos estão habilitados
+    if (enabledMeals === undefined || enabledMeals === null) {
+      setLocalEnabledMeals(allMealTypes);
+    } else {
+      setLocalEnabledMeals(enabledMeals);
+    }
+    
     setIsInitialized(true);
-  }, [globalSettings, customTimes]);
+  }, [globalSettings, customTimes, enabledMeals]);
 
   // Emitir dados sempre que houver mudanças
   useEffect(() => {
@@ -93,14 +111,21 @@ export function CustomMealTimesEditor({
     onChange(localTimes);
   }, [localTimes, globalSettings.length, onChange, isInitialized]);
 
+  // Emitir enabledMeals sempre que mudar
+  useEffect(() => {
+    if (!onEnabledMealsChange || !isInitialized) return;
+    onEnabledMealsChange(localEnabledMeals);
+  }, [localEnabledMeals, onEnabledMealsChange, isInitialized]);
+
   // Lista de refeições ordenadas por horário
   const allMealsSorted = useMemo(() => {
     return globalSettings.map(setting => ({
       id: setting.meal_type,
       name: setting.label,
       time: localTimes[setting.meal_type] || `${setting.start_hour.toString().padStart(2, '0')}:00`,
+      enabled: localEnabledMeals.includes(setting.meal_type),
     })).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
-  }, [globalSettings, localTimes]);
+  }, [globalSettings, localTimes, localEnabledMeals]);
 
   // Gera dados para salvar
   const getDataToSave = useCallback((): CustomMealTimes => {
@@ -130,6 +155,33 @@ export function CustomMealTimesEditor({
     }
   }, []);
 
+  // Salvar enabledMeals no perfil do usuário
+  const saveEnabledMealsToProfile = useCallback(async (meals: string[]) => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return false;
+
+      // Se todos estão habilitados, salvar null (default)
+      const allMealTypes = globalSettings.map(s => s.meal_type);
+      const isAllEnabled = allMealTypes.every(m => meals.includes(m));
+      
+      const { error } = await supabase
+        .from("profiles")
+        .update({ enabled_meals: isAllEnabled ? null : meals })
+        .eq("id", session.user.id);
+
+      if (error) {
+        console.error("[CustomMealTimesEditor] Error saving enabled_meals:", error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error("[CustomMealTimesEditor] Exception saving enabled_meals:", error);
+      return false;
+    }
+  }, [globalSettings]);
+
   const handleTimeChange = async (mealId: string, value: string) => {
     setHasChanges(true);
     
@@ -143,17 +195,45 @@ export function CustomMealTimesEditor({
     }
   };
 
+  const handleToggleMeal = async (mealId: string, enabled: boolean) => {
+    let newEnabledMeals: string[];
+    
+    if (enabled) {
+      newEnabledMeals = [...localEnabledMeals, mealId];
+    } else {
+      // Não permitir desabilitar todas as refeições
+      if (localEnabledMeals.length <= 1) {
+        toast.error("Você deve ter pelo menos uma refeição ativa");
+        return;
+      }
+      newEnabledMeals = localEnabledMeals.filter(m => m !== mealId);
+    }
+    
+    setLocalEnabledMeals(newEnabledMeals);
+    setHasChanges(true);
+    
+    // Salvar automaticamente no perfil
+    const saved = await saveEnabledMealsToProfile(newEnabledMeals);
+    if (saved) {
+      toast.success(enabled ? "Refeição ativada" : "Refeição desativada", { duration: 1500 });
+    }
+  };
+
   const handleResetToGlobal = async () => {
     const resetTimes: Record<string, string> = {};
+    const allMealTypes: string[] = [];
     globalSettings.forEach(setting => {
       resetTimes[setting.meal_type] = `${setting.start_hour.toString().padStart(2, '0')}:00`;
+      allMealTypes.push(setting.meal_type);
     });
     setLocalTimes(resetTimes);
+    setLocalEnabledMeals(allMealTypes);
     setHasChanges(true);
 
     // Salvar reset no perfil
     await saveTemplateToProfile(resetTimes);
-    toast.success("Horários restaurados ao padrão");
+    await saveEnabledMealsToProfile(allMealTypes);
+    toast.success("Horários e refeições restaurados ao padrão");
   };
 
   const handleSave = async () => {
@@ -178,6 +258,10 @@ export function CustomMealTimesEditor({
     }
   };
 
+  // Contagem de refeições ativas
+  const activeCount = localEnabledMeals.length;
+  const totalCount = globalSettings.length;
+
   if (globalLoading) {
     return (
       <Card className={cn("animate-pulse", className)}>
@@ -197,19 +281,45 @@ export function CustomMealTimesEditor({
 
   const content = (
     <div className="space-y-4">
+      {/* Badge com contagem de refeições ativas */}
+      {showEnableToggle && (
+        <div className="flex items-center justify-between text-sm text-muted-foreground pb-2 border-b border-border/50">
+          <span>Refeições ativas</span>
+          <span className="font-medium text-foreground">{activeCount} de {totalCount}</span>
+        </div>
+      )}
+
       {/* Lista de horários em Accordion - ordenada por horário */}
       <Accordion type="single" collapsible className="space-y-2" value={openAccordion} onValueChange={setOpenAccordion}>
         {allMealsSorted.map(meal => (
           <AccordionItem 
             key={meal.id} 
             value={meal.id}
-            className="border border-border/50 rounded-lg px-4 data-[state=open]:bg-muted/50 bg-muted/30"
+            className={cn(
+              "border border-border/50 rounded-lg px-4 data-[state=open]:bg-muted/50",
+              meal.enabled ? "bg-muted/30" : "bg-muted/10 opacity-60"
+            )}
           >
             <AccordionTrigger className="py-3 hover:no-underline">
               <div className="flex items-center justify-between w-full pr-2">
                 <div className="flex items-center gap-3">
+                  {showEnableToggle && (
+                    <Switch
+                      checked={meal.enabled}
+                      onCheckedChange={(checked) => {
+                        // Prevent accordion toggle
+                        handleToggleMeal(meal.id, checked);
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                      disabled={isLoading || isSaving || disabled}
+                      className="data-[state=checked]:bg-primary"
+                    />
+                  )}
                   <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{meal.name}</span>
+                  <span className={cn(
+                    "text-sm font-medium",
+                    !meal.enabled && "text-muted-foreground"
+                  )}>{meal.name}</span>
                 </div>
                 <span className="text-sm text-muted-foreground font-mono">
                   {meal.time || "--:--"}
@@ -225,7 +335,7 @@ export function CustomMealTimesEditor({
                   <Select
                     value={meal.time || ""}
                     onValueChange={(value) => handleTimeChange(meal.id, value)}
-                    disabled={isLoading || isSaving || disabled}
+                    disabled={isLoading || isSaving || disabled || !meal.enabled}
                   >
                     <SelectTrigger className="w-32">
                       <SelectValue placeholder="Selecionar" />
@@ -288,6 +398,9 @@ export function CustomMealTimesEditor({
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4 text-primary" />
                   <CardTitle className="text-sm font-medium">Horários das Refeições</CardTitle>
+                  {showEnableToggle && (
+                    <span className="text-xs text-muted-foreground">({activeCount} ativas)</span>
+                  )}
                 </div>
                 {isOpen ? (
                   <ChevronUp className="h-4 w-4 text-muted-foreground" />
@@ -313,9 +426,12 @@ export function CustomMealTimesEditor({
         <div className="flex items-center gap-2">
           <Clock className="h-5 w-5 text-primary" />
           <CardTitle className="text-base">Horários das Refeições</CardTitle>
+          {showEnableToggle && (
+            <span className="text-xs text-muted-foreground">({activeCount} ativas)</span>
+          )}
         </div>
         <CardDescription>
-          Configure os horários das suas refeições.
+          Configure os horários e ative/desative as refeições que deseja incluir no seu plano.
         </CardDescription>
       </CardHeader>
       <CardContent>

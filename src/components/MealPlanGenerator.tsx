@@ -23,9 +23,10 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   const [progress, setProgress] = useState(0);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [customMealTimes, setCustomMealTimes] = useState<CustomMealTimes | null>(null);
+  const [enabledMeals, setEnabledMeals] = useState<string[] | null>(null);
   const [isProfileLoaded, setIsProfileLoaded] = useState(false);
 
-  // Fetch user profile to get excluded ingredients and default meal times
+  // Fetch user profile to get excluded ingredients, default meal times, and enabled meals
   useEffect(() => {
     const fetchProfileAndTemplate = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -36,12 +37,17 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
       
       const { data: profile } = await supabase
         .from("profiles")
-        .select("excluded_ingredients, default_meal_times")
+        .select("excluded_ingredients, default_meal_times, enabled_meals")
         .eq("id", session.user.id)
         .single();
       
       if (profile?.excluded_ingredients) {
         setExcludedIngredients(profile.excluded_ingredients);
+      }
+      
+      // Usar refeições ativas do perfil
+      if (profile?.enabled_meals) {
+        setEnabledMeals(profile.enabled_meals);
       }
       
       // Usar horários padrão do perfil como template
@@ -115,6 +121,14 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
 
         setProgress(Math.round((batch / totalBatches) * 100));
 
+        // Filtrar customMealTimes para incluir apenas refeições ativas
+        const filteredMealTimes = customMealTimes ? 
+          Object.fromEntries(
+            Object.entries(customMealTimes).filter(([key]) => 
+              !enabledMeals || enabledMeals.includes(key)
+            )
+          ) : null;
+
         const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
           body: {
             planName: finalPlanName,
@@ -122,7 +136,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             daysCount: daysInThisBatch,
             existingPlanId: mealPlanId,
             weekNumber: batch + 1,
-            customMealTimes: customMealTimes
+            customMealTimes: filteredMealTimes,
+            enabledMeals: enabledMeals
           }
         });
 
@@ -198,14 +213,16 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             />
           </div>
 
-          {/* Custom Meal Times Editor - pass loaded template */}
-          {/* Custom Meal Times Editor - só renderiza depois de carregar o perfil */}
+          {/* Custom Meal Times Editor - pass loaded template and enabled meals */}
           {isProfileLoaded && (
             <CustomMealTimesEditor
               customTimes={customMealTimes}
+              enabledMeals={enabledMeals}
               onChange={setCustomMealTimes}
+              onEnabledMealsChange={setEnabledMeals}
               disabled={isGenerating}
               compact
+              showEnableToggle
             />
           )}
 

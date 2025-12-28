@@ -121,9 +121,15 @@ function normalizeMealType(mealType: string): string {
   return normalizations[normalized] || normalized;
 }
 
-function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimes | null): string[] {
+function getMealTypesFromCustomTimes(customMealTimes?: CustomMealTimes | null, enabledMeals?: string[] | null): string[] {
   // Default now includes lanche_manha
   const defaultMealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+  
+  // If enabledMeals is provided, use it directly (highest priority)
+  if (enabledMeals && Array.isArray(enabledMeals) && enabledMeals.length > 0) {
+    logStep("Using enabledMeals from request", { enabledMeals });
+    return enabledMeals;
+  }
   
   if (!customMealTimes || typeof customMealTimes !== 'object') {
     return defaultMealTypes;
@@ -382,8 +388,8 @@ serve(async (req) => {
     // Parse request
     const requestBody = await req.json();
     const daysCount = Math.min(requestBody.daysCount || 7, 7);
-    let { planName, startDate, existingPlanId, weekNumber, customMealTimes } = requestBody;
-    logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber });
+    let { planName, startDate, existingPlanId, weekNumber, customMealTimes, enabledMeals } = requestBody;
+    logStep("Request received", { planName, startDate, daysCount, existingPlanId, weekNumber, enabledMeals });
 
     // Fetch nutritionist foods from database
     const { data: allFoods, error: foodsError } = await supabaseClient
@@ -491,8 +497,8 @@ serve(async (req) => {
     const macros = calculateMacroTargets(profile as UserProfile);
     logStep("Macros calculated", macros);
 
-    // Extract meal types
-    const mealTypesToGenerate = getMealTypesFromCustomTimes(customMealTimes as CustomMealTimes | null);
+    // Extract meal types - use enabledMeals if provided, otherwise extract from customMealTimes
+    const mealTypesToGenerate = getMealTypesFromCustomTimes(customMealTimes as CustomMealTimes | null, enabledMeals as string[] | null);
     logStep("Meal types to generate", { mealTypes: mealTypesToGenerate });
 
     // Generate days

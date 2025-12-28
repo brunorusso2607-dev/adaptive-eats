@@ -374,7 +374,8 @@ export function usePendingMeals() {
         return mealEndTime >= planCreatedAt;
       };
 
-      // Verificar se uma refeição já passou (horário de FIM ultrapassado)
+      // Verificar se uma refeição já passou (start_hour + tolerância ultrapassado)
+      // Agora usamos: passou = current > start + 1h (quando começa atraso)
       const isMealPast = (mealType: string, actualDate: Date): boolean => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -390,7 +391,8 @@ export function usePendingMeals() {
           return false;
         }
         
-        // Se é hoje, verificar se o horário de FIM já passou
+        // Se é hoje, verificar se o horário de início + tolerância já passou
+        // Uma refeição é considerada "passada" quando está atrasada (start + 1h)
         const hour = now.getHours();
         const minutes = now.getMinutes();
         const currentTimeInMinutes = hour * 60 + minutes;
@@ -398,11 +400,12 @@ export function usePendingMeals() {
         const range = currentRanges[mealType];
         if (!range) return false;
         
-        const endTimeInMinutes = range.end * 60;
-        return currentTimeInMinutes >= endTimeInMinutes;
+        // Passou = ultrapassou start_hour + tolerância (1 hora)
+        const pastThresholdMinutes = (range.start * 60) + (MEAL_DELAY_TOLERANCE_HOURS * 60);
+        return currentTimeInMinutes >= pastThresholdMinutes;
       };
 
-      // Verificar se uma refeição é a atual (já começou mas ainda não terminou)
+      // Verificar se uma refeição é a atual (já começou mas ainda não passou da tolerância)
       const isMealCurrent = (mealType: string, actualDate: Date): boolean => {
         const now = new Date();
         const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -421,10 +424,10 @@ export function usePendingMeals() {
         if (!range) return false;
         
         const startTimeInMinutes = range.start * 60;
-        const endTimeInMinutes = range.end * 60;
+        // "Atual" = entre start e start + tolerância (1 hora) - período on_time
+        const onTimeEndMinutes = startTimeInMinutes + (MEAL_DELAY_TOLERANCE_HOURS * 60);
         
-        // Atual = já começou E ainda não terminou
-        return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < endTimeInMinutes;
+        return currentTimeInMinutes >= startTimeInMinutes && currentTimeInMinutes < onTimeEndMinutes;
       };
 
       // Converter para o formato esperado com data calculada

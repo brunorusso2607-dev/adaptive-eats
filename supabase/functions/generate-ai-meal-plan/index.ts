@@ -734,6 +734,22 @@ CALCULO OBRIGATORIO:
 - Se nao bater, ajuste quantidades ou substitua ingredientes
 
 --------------------------------------------------
+REGRA DE VALIDACAO CALORICA (OBRIGATORIA):
+--------------------------------------------------
+- Antes de finalizar cada opcao, estime mentalmente as calorias de CADA alimento
+- Ajuste quantidades para que o TOTAL fique dentro de ±5% da meta da refeicao
+- Nunca subestime paes, granola, tapioca ou oleos
+- Se a refeicao parecer volumosa demais para as calorias declaradas, corrija
+- Se nao for possivel ajustar, gere outra opcao
+
+--------------------------------------------------
+PROIBICAO ABSOLUTA:
+--------------------------------------------------
+- NAO invente calorias para "fechar numero"
+- As calorias devem refletir o VOLUME REAL DE COMIDA
+- Se 2 paes + 2 ovos + cafe = 480 kcal, NAO declare 396 kcal
+
+--------------------------------------------------
 ESTRUTURA DE GERACAO:
 --------------------------------------------------
 Para CADA refeicao, gere EXATAMENTE ${optionsPerMeal} OPCOES GENUINAMENTE DIFERENTES.

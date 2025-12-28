@@ -77,7 +77,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     supper: null
   });
   const [activeSlot, setActiveSlot] = useState<keyof DayPlan | null>(null);
-  const [activeTab, setActiveTab] = useState("favorites");
+  const [activeTab, setActiveTab] = useState("search");
 
   // Week/Day selection
   const today = new Date();
@@ -316,13 +316,13 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
         <Tabs value={activeTab} onValueChange={setActiveTab}>
           <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="favorites" className="gap-2">
-              <Heart className="w-4 h-4" />
-              Favoritos
-            </TabsTrigger>
             <TabsTrigger value="search" className="gap-2">
               <Search className="w-4 h-4" />
               Buscar Alimentos
+            </TabsTrigger>
+            <TabsTrigger value="favorites" className="gap-2">
+              <Heart className="w-4 h-4" />
+              Favoritos
             </TabsTrigger>
           </TabsList>
 

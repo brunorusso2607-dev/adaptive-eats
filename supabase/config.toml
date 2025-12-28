@@ -1,5 +1,8 @@
 project_id = "upnqkxrvtimtlqsuuvci"
 
+[functions.convert-mccance-excel]
+verify_jwt = false
+
 [functions.upload-ciqual-file]
 verify_jwt = false
 

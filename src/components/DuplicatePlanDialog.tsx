@@ -77,63 +77,64 @@ export default function DuplicatePlanDialog({
   const daysUntilUnlock = Math.ceil((nextMonthDates.start.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
 
   // Calculate EXACT number of recipes that will be copied vs generated
+  // Now using DATE-based matching instead of day_of_week
   const getRecipeStats = () => {
-    // Step 1: Count how many recipes exist per day_of_week in the original plan
-    const recipesPerDayOfWeek = new Map<number, number>();
-    const mealTypesPerDayOfWeek = new Map<number, Set<string>>();
+    // Parse original plan date range
+    const originalStart = new Date(plan.start_date);
+    const originalEnd = new Date(plan.end_date);
     
+    // Get unique meal types from original plan
+    const allMealTypes = [...new Set(plan.items.map(item => item.meal_type))];
+    const mealsPerDay = allMealTypes.length || 5;
+    
+    // Build a map of date -> recipes from original plan
+    const recipesByDate = new Map<string, MealPlanItem[]>();
     plan.items.forEach(item => {
-      // Count unique recipes per day_of_week
-      const currentCount = recipesPerDayOfWeek.get(item.day_of_week) || 0;
-      recipesPerDayOfWeek.set(item.day_of_week, currentCount + 1);
+      // Calculate the actual date from day_of_week and week_number
+      const dayOffset = (item.week_number - 1) * 7 + item.day_of_week;
+      const itemDate = new Date(originalStart);
+      itemDate.setDate(originalStart.getDate() + dayOffset);
+      const dateKey = itemDate.toISOString().split('T')[0];
       
-      // Track meal types per day
-      if (!mealTypesPerDayOfWeek.has(item.day_of_week)) {
-        mealTypesPerDayOfWeek.set(item.day_of_week, new Set());
+      if (!recipesByDate.has(dateKey)) {
+        recipesByDate.set(dateKey, []);
       }
-      mealTypesPerDayOfWeek.get(item.day_of_week)!.add(item.meal_type);
+      recipesByDate.get(dateKey)!.push(item);
     });
-
-    // Get unique meal types from original plan to know how many meals per day we need
-    const allMealTypes = new Set(plan.items.map(item => item.meal_type));
-    const mealsPerDay = allMealTypes.size || 5; // fallback to 5 if empty
-
-    // Step 2: Count how many times each day_of_week appears in the target month
-    const dayOfWeekCounts = new Map<number, number>();
-    for (let i = 0; i < 7; i++) {
-      dayOfWeekCounts.set(i, 0);
-    }
     
-    for (let day = 1; day <= totalDaysNextMonth; day++) {
-      const date = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
-      const dayOfWeek = date.getDay();
-      dayOfWeekCounts.set(dayOfWeek, (dayOfWeekCounts.get(dayOfWeek) || 0) + 1);
-    }
-
-    // Step 3: Calculate exact numbers
+    // Calculate offset between original start and new start (in days)
+    const daysDiff = Math.floor((nextMonthDates.start.getTime() - originalStart.getTime()) / (1000 * 60 * 60 * 24));
+    
+    // For each day in the new month, check if there's a corresponding date in the original plan
     let totalRecipesToCopy = 0;
     let totalRecipesToGenerate = 0;
     let daysWithTemplate = 0;
     let daysWithoutTemplate = 0;
-
-    dayOfWeekCounts.forEach((occurrences, dayOfWeek) => {
-      const recipesForThisDay = mealTypesPerDayOfWeek.get(dayOfWeek)?.size || 0;
+    
+    for (let day = 1; day <= totalDaysNextMonth; day++) {
+      // Calculate the corresponding date in the original plan (if it exists)
+      const newDate = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
       
-      if (recipesForThisDay > 0) {
-        // This day_of_week has recipes in the template
-        // Each occurrence in the month will copy these recipes
-        totalRecipesToCopy += recipesForThisDay * occurrences;
+      // Find matching date in original plan by calculating the equivalent day
+      // We use the day of the month as a simple mapping
+      const originalDay = day;
+      const originalDate = new Date(originalStart.getFullYear(), originalStart.getMonth(), originalDay);
+      const originalDateKey = originalDate.toISOString().split('T')[0];
+      
+      const recipesForThisDate = recipesByDate.get(originalDateKey);
+      
+      if (recipesForThisDate && recipesForThisDate.length > 0) {
+        totalRecipesToCopy += recipesForThisDate.length;
         daysWithTemplate++;
       } else {
-        // This day_of_week has no recipes - need to generate
-        // Each occurrence needs all meal types generated
-        totalRecipesToGenerate += mealsPerDay * occurrences;
+        // No recipes for this day - need AI generation
+        totalRecipesToGenerate += mealsPerDay;
         daysWithoutTemplate++;
       }
-    });
-
+    }
+    
     const totalMealsNeeded = totalRecipesToCopy + totalRecipesToGenerate;
-
+    
     return {
       totalMealsNeeded,
       recipesToCopy: totalRecipesToCopy,
@@ -180,43 +181,56 @@ export default function DuplicatePlanDialog({
 
       setProgress(10);
 
-      // Group original items by day_of_week and meal_type
-      const itemsByDayAndType = new Map<string, MealPlanItem>();
+      // Parse original plan dates
+      const originalStart = new Date(plan.start_date);
+      
+      // Build a map of date -> recipes from original plan
+      const recipesByDate = new Map<string, MealPlanItem[]>();
       plan.items.forEach(item => {
-        const key = `${item.day_of_week}-${item.meal_type}`;
-        if (!itemsByDayAndType.has(key)) {
-          itemsByDayAndType.set(key, item);
+        // Calculate the actual date from day_of_week and week_number
+        const dayOffset = (item.week_number - 1) * 7 + item.day_of_week;
+        const itemDate = new Date(originalStart);
+        itemDate.setDate(originalStart.getDate() + dayOffset);
+        const dateKey = itemDate.toISOString().split('T')[0];
+        
+        if (!recipesByDate.has(dateKey)) {
+          recipesByDate.set(dateKey, []);
         }
+        recipesByDate.get(dateKey)!.push(item);
       });
 
-      console.log("[DuplicatePlan] Original plan items by day/type:", 
-        Array.from(itemsByDayAndType.keys()));
+      console.log("[DuplicatePlan] Original plan recipes by date:", 
+        Array.from(recipesByDate.keys()).length, "unique dates");
 
-      // Map items to new plan - for each day in the new month
+      // Map items to new plan - using DATE-based matching
       const newItems: any[] = [];
-      const missingDays = new Set<number>(); // Days of week that need AI generation
+      const daysNeedingGeneration: number[] = []; // Day numbers that need AI generation
 
-      // Extract all unique meal_types from the original plan (including custom ones like "refeicao_extra")
+      // Get unique meal types from original plan
       const allMealTypes = [...new Set(plan.items.map(item => item.meal_type))];
       console.log("[DuplicatePlan] All meal types from original plan:", allMealTypes);
 
       for (let day = 1; day <= totalDaysNextMonth; day++) {
-        const date = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
-        const dayOfWeek = date.getDay(); // 0 = Sunday, 6 = Saturday
-        const weekNumber = Math.ceil(day / 7);
-
-        // Find meals for this day of week in the original plan (using dynamic meal types)
-        allMealTypes.forEach(mealType => {
-          const key = `${dayOfWeek}-${mealType}`;
-          const originalItem = itemsByDayAndType.get(key);
-          
-          if (originalItem) {
-            // Copy the recipe
+        const newDate = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
+        const newDayOfWeek = newDate.getDay();
+        const newWeekNumber = Math.ceil(day / 7);
+        
+        // Find matching date in original plan by day of month
+        // This copies day 1 -> day 1, day 15 -> day 15, etc.
+        const originalDay = day;
+        const originalDate = new Date(originalStart.getFullYear(), originalStart.getMonth(), originalDay);
+        const originalDateKey = originalDate.toISOString().split('T')[0];
+        
+        const recipesForThisDate = recipesByDate.get(originalDateKey);
+        
+        if (recipesForThisDate && recipesForThisDate.length > 0) {
+          // Copy all recipes from this date
+          recipesForThisDate.forEach(originalItem => {
             newItems.push({
               meal_plan_id: newPlan.id,
-              day_of_week: dayOfWeek,
-              week_number: weekNumber,
-              meal_type: mealType,
+              day_of_week: newDayOfWeek,
+              week_number: newWeekNumber,
+              meal_type: originalItem.meal_type,
               recipe_name: originalItem.recipe_name,
               recipe_calories: originalItem.recipe_calories,
               recipe_protein: originalItem.recipe_protein,
@@ -227,30 +241,24 @@ export default function DuplicatePlanDialog({
               recipe_instructions: originalItem.recipe_instructions,
               is_favorite: false,
             });
-          } else {
-            // Mark this day of week as needing generation
-            missingDays.add(dayOfWeek);
-          }
-        });
+          });
+          
+          console.log(`[DuplicatePlan] Day ${day}: Copied ${recipesForThisDate.length} recipes from ${originalDateKey}`);
+        } else {
+          // Mark this day as needing AI generation
+          daysNeedingGeneration.push(day);
+          console.log(`[DuplicatePlan] Day ${day}: No template, will generate via AI`);
+        }
       }
 
-      // Remove duplicates (same day_of_week + week_number + meal_type)
-      const uniqueItems = newItems.filter((item, index, self) => 
-        index === self.findIndex(t => 
-          t.day_of_week === item.day_of_week && 
-          t.week_number === item.week_number && 
-          t.meal_type === item.meal_type
-        )
-      );
-
-      console.log("[DuplicatePlan] Copied items:", uniqueItems.length);
-      console.log("[DuplicatePlan] Missing days of week:", Array.from(missingDays));
+      console.log("[DuplicatePlan] Total copied items:", newItems.length);
+      console.log("[DuplicatePlan] Days needing AI generation:", daysNeedingGeneration.length);
 
       // Insert copied items
-      if (uniqueItems.length > 0) {
+      if (newItems.length > 0) {
         const { error: itemsError } = await supabase
           .from("meal_plan_items")
-          .insert(uniqueItems);
+          .insert(newItems);
 
         if (itemsError) throw itemsError;
       }
@@ -258,20 +266,10 @@ export default function DuplicatePlanDialog({
       setProgress(30);
 
       // Now generate missing meals using the edge function
-      if (missingDays.size > 0) {
+      if (daysNeedingGeneration.length > 0) {
         setStage("generating");
-        
-        // Calculate how many days need generation
-        const daysNeedingGeneration: number[] = [];
-        for (let day = 1; day <= totalDaysNextMonth; day++) {
-          const date = new Date(nextMonthDates.start.getFullYear(), nextMonthDates.start.getMonth(), day);
-          const dayOfWeek = date.getDay();
-          if (missingDays.has(dayOfWeek)) {
-            daysNeedingGeneration.push(day);
-          }
-        }
 
-        console.log("[DuplicatePlan] Days needing generation:", daysNeedingGeneration.length);
+        console.log("[DuplicatePlan] Days needing generation:", daysNeedingGeneration);
 
         // Generate in batches of 7 days
         const batchSize = 7;

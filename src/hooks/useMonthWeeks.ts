@@ -34,16 +34,6 @@ export function useMonthWeeks(referenceDate: Date = new Date()) {
   return useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
-    // Calcular se devemos usar o próximo mês para o nome do plano
-    const DAYS_BEFORE_UNLOCK = 5;
-    const lastDayOfCurrentMonth = endOfMonth(today);
-    const daysLeftInMonth = Math.ceil((lastDayOfCurrentMonth.getTime() - today.getTime()) / (1000 * 60 * 60 * 24)) + 1;
-    
-    // Se restam poucos dias, o plano é para o próximo mês
-    const planTargetDate = daysLeftInMonth <= DAYS_BEFORE_UNLOCK
-      ? new Date(today.getFullYear(), today.getMonth() + 1, 1)
-      : today;
 
     const monthStart = startOfMonth(referenceDate);
     const monthEnd = endOfMonth(referenceDate);
@@ -112,9 +102,9 @@ export function useMonthWeeks(referenceDate: Date = new Date()) {
       currentWeek,
       todayWeek,
       todayDayIndex,
-      // Para o nome do plano, usar a data alvo (próximo mês se estamos no final do mês atual)
-      monthName: planTargetDate.toLocaleDateString("pt-BR", { month: "long" }),
-      year: planTargetDate.getFullYear(),
+      // Usar a referenceDate para nome do mês (mês real do plano, não o próximo mês)
+      monthName: referenceDate.toLocaleDateString("pt-BR", { month: "long" }),
+      year: referenceDate.getFullYear(),
     };
   }, [referenceDate]);
 }

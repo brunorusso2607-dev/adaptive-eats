@@ -1,3 +1,4 @@
+// v2 - Dynamic meal slots from meal_time_settings
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";

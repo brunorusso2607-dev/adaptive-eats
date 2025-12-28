@@ -31,7 +31,8 @@ import {
   X,
   Clock,
   ToggleLeft,
-  ChefHat
+  ChefHat,
+  Apple
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -72,6 +73,7 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/food-corrections", label: "Correções de Alimentos", icon: Wrench },
       { path: "/admin/ingredient-validations", label: "Validações Ingredientes", icon: Sparkles },
       { path: "/admin/blocked-ingredients", label: "Revisão de Bloqueios", icon: Shield },
+      { path: "/admin/foods", label: "Base de Alimentos", icon: Apple },
     ],
   },
   {

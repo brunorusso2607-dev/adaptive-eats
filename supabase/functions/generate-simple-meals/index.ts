@@ -45,14 +45,49 @@ function validateRecipeForCategory(
     return { isValid: true, invalidIngredients: [] };
   }
   
-  // Exceções para ingredientes que são substitutos seguros
+  // Exceções para ingredientes que são substitutos seguros ou termos com nomes confusos
   const safeExceptions = [
+    // Leites vegetais
     "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+    "leite de soja", "leite de arroz", "leite de castanha",
+    // Substitutos veganos
     "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
-    "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
-    "creme de leite de coco", "iogurte de coco", "manteiga de coco",
-    "castanha de caju", "castanha do para", "amendoas", "nozes"
+    "nata vegetal", "cream cheese vegano", "creme de leite de coco", 
+    "iogurte de coco", "manteiga de coco",
+    // Oleaginosas
+    "castanha de caju", "castanha do para", "amendoas", "nozes",
+    // VEGETAIS com nomes confusos (não são derivados animais!)
+    "couve manteiga", "couve-manteiga", "alface manteiga", "abobora manteiga",
+    "abóbora manteiga", "batata manteiga", "feijao manteiga", "feijão manteiga",
+    // TEMPEROS com nomes confusos (não são embutidos!)
+    "pimenta calabresa", "pimenta-calabresa", "flocos de pimenta calabresa",
+    "pimenta calabresa em flocos", "calabresa em flocos",
+    // Outros termos seguros
+    "ovo vegano", "maionese vegana", "bacon vegano", "linguica vegana",
+    "linguiça vegana", "presunto vegano", "salsicha vegana"
   ];
+  
+  /**
+   * Verifica se o ingrediente contém a palavra proibida como palavra completa
+   * Evita falsos positivos como "vermelho" contendo "mel"
+   */
+  function containsForbiddenWord(ingredient: string, forbidden: string): boolean {
+    // Cria regex para match de palavra completa (word boundary)
+    // Escapa caracteres especiais de regex
+    const escapedForbidden = forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // Usa \b para word boundary, mas em português também consideramos espaços e início/fim
+    const regex = new RegExp(`(^|\\s|,|;|\\(|\\)|/)${escapedForbidden}($|\\s|,|;|\\(|\\)|/)`, 'i');
+    
+    // Também verifica se o ingrediente começa com a palavra proibida seguida de espaço
+    // Ex: "mel de abelha" deve ser bloqueado
+    const startsWithForbidden = ingredient.startsWith(forbidden + ' ') || ingredient === forbidden;
+    
+    // Ou termina com a palavra proibida precedida de espaço
+    // Ex: "pão com mel" deve ser bloqueado  
+    const endsWithForbidden = ingredient.endsWith(' ' + forbidden);
+    
+    return regex.test(ingredient) || startsWithForbidden || endsWithForbidden;
+  }
   
   // Verifica cada ingrediente
   for (const ingredient of recipe.ingredients) {
@@ -71,11 +106,11 @@ function validateRecipeForCategory(
     
     if (isSafeException) continue;
     
-    // Verifica se contém ingrediente proibido
+    // Verifica se contém ingrediente proibido como palavra completa
     for (const forbidden of forbiddenForCategory) {
       const normalizedForbidden = normalizeText(forbidden);
       
-      if (normalizedIngredient.includes(normalizedForbidden)) {
+      if (containsForbiddenWord(normalizedIngredient, normalizedForbidden)) {
         invalidIngredients.push(`${ingredientName} (contém: ${forbidden})`);
         break;
       }
@@ -114,13 +149,33 @@ function validateRecipeForIntolerances(
     return { isValid: true, invalidIngredients: [] };
   }
   
-  // Exceções seguras
+  // Exceções seguras (vegetais e substitutos com nomes confusos)
   const safeExceptions = [
+    // Leites e substitutos vegetais
     "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
+    "leite de soja", "leite de arroz", "leite de castanha",
     "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
+    // Farinhas sem glúten
     "farinha de arroz", "farinha de mandioca", "polvilho", "tapioca",
-    "farinha de amendoas", "farinha de coco"
+    "farinha de amendoas", "farinha de coco", "farinha de milho",
+    // VEGETAIS com nomes confusos
+    "couve manteiga", "couve-manteiga", "alface manteiga", "abobora manteiga",
+    "abóbora manteiga", "batata manteiga", "feijao manteiga", "feijão manteiga",
+    // TEMPEROS com nomes confusos
+    "pimenta calabresa", "pimenta-calabresa", "flocos de pimenta calabresa",
+    "pimenta calabresa em flocos", "calabresa em flocos"
   ];
+  
+  /**
+   * Verifica se o ingrediente contém a palavra proibida como palavra completa
+   */
+  function containsForbiddenWord(ingredient: string, forbidden: string): boolean {
+    const escapedForbidden = forbidden.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const regex = new RegExp(`(^|\\s|,|;|\\(|\\)|/)${escapedForbidden}($|\\s|,|;|\\(|\\)|/)`, 'i');
+    const startsWithForbidden = ingredient.startsWith(forbidden + ' ') || ingredient === forbidden;
+    const endsWithForbidden = ingredient.endsWith(' ' + forbidden);
+    return regex.test(ingredient) || startsWithForbidden || endsWithForbidden;
+  }
   
   for (const ingredient of recipe.ingredients) {
     const ingredientName = typeof ingredient === 'string' 
@@ -138,11 +193,11 @@ function validateRecipeForIntolerances(
     
     if (isSafeException) continue;
     
-    // Verifica proibidos
+    // Verifica proibidos com word boundary
     for (const forbidden of allForbidden) {
       const normalizedForbidden = normalizeText(forbidden);
       
-      if (normalizedIngredient.includes(normalizedForbidden)) {
+      if (containsForbiddenWord(normalizedIngredient, normalizedForbidden)) {
         invalidIngredients.push(`${ingredientName} (contém: ${forbidden})`);
         break;
       }

@@ -215,24 +215,26 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
         onSubstitute={handleSubstitute}
       />
 
-      {/* Instructions */}
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-            👨‍🍳 Modo de Preparo
-          </h3>
-          <ol className="space-y-4">
-            {meal.recipe_instructions.map((instruction, index) => (
-              <li key={index} className="flex gap-4">
-                <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
-                  {index + 1}
-                </div>
-                <p className="flex-1 pt-1">{instruction}</p>
-              </li>
-            ))}
-          </ol>
-        </CardContent>
-      </Card>
+      {/* Instructions - só mostra se houver instruções */}
+      {meal.recipe_instructions && meal.recipe_instructions.length > 0 && meal.recipe_instructions[0] !== "" && (
+        <Card className="glass-card">
+          <CardContent className="p-4">
+            <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
+              👨‍🍳 Modo de Preparo
+            </h3>
+            <ol className="space-y-4">
+              {meal.recipe_instructions.map((instruction, index) => (
+                <li key={index} className="flex gap-4">
+                  <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
+                    {index + 1}
+                  </div>
+                  <p className="flex-1 pt-1">{instruction}</p>
+                </li>
+              ))}
+            </ol>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

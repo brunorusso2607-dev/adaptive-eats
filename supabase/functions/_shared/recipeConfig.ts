@@ -1520,19 +1520,7 @@ export function buildRecipeUserPrompt(options: RecipePromptOptions): string {
 
 /**
  * Constrói prompt para geração de UM DIA do plano alimentar
- * 
- * 🥗 DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA COM FORMAÇÃO INTERNACIONAL
- * 
- * Credenciais:
- * - Graduação em Nutrição pela USP (Brasil)
- * - Mestrado em Clinical Nutrition pela Columbia University (EUA)
- * - Especialização em Sports Nutrition pelo Australian Institute of Sport
- * - Certificação em Plant-Based Nutrition pela Cornell University
- * - Fellow da Academy of Nutrition and Dietetics (AND)
- * - Membro da European Society for Clinical Nutrition and Metabolism (ESPEN)
- * 
- * Este prompt gera PLANOS ALIMENTARES (não receitas elaboradas).
- * Para RECEITAS elaboradas, use buildRecipeSystemPrompt (módulo Surpreenda-me).
+ * 🥗 NUTRICIONISTA PROFISSIONAL - Prompt otimizado para Flash-Lite
  */
 export function buildSingleDayPrompt(
   profile: UserProfile,
@@ -1546,27 +1534,19 @@ export function buildSingleDayPrompt(
   const forbiddenList = buildForbiddenIngredientsListWithDiet(profile);
   const dietaryBlock = buildDietaryRestrictionBlock(profile);
   const isKidsMode = profile.context === "modo_kids";
-
-  // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
-  const ingredientPriority = getIngredientPriority(profile.country);
   
-  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS: Alimentos que crianças gostam, porções adequadas para idade." : "";
-  
-  // Evitar repetições
+  const kidsNote = isKidsMode ? " 🧒 MODO KIDS." : "";
   const avoidMeals = previousRecipes.length > 0 
-    ? `\n⚠️ EVITE REPETIR ESTAS REFEIÇÕES (últimos dias):\n${previousRecipes.slice(0, 20).join("\n")}` 
+    ? `\nEVITE: ${previousRecipes.slice(0, 10).join(", ")}` 
     : "";
 
   const excludedConstraint = excludedIngredientsStr 
-    ? `\n\n🚫 ALIMENTOS QUE O USUÁRIO NÃO CONSOME (JAMAIS INCLUIR):\n${excludedIngredientsStr}`
-    : "";
-
+    ? `\n❌ Excluídos: ${excludedIngredientsStr}` : "";
   const forbiddenBlock = forbiddenList 
-    ? `\n\n🚨 LISTA NEGRA - INGREDIENTES 100% PROIBIDOS:\n${forbiddenList}`
-    : "";
+    ? `\n🚫 Proibidos: ${forbiddenList}` : "";
 
-  // Distribuição calórica por refeição (6 refeições)
+  // Distribuição calórica
   const breakfastCal = Math.round(macros.dailyCalories * 0.22);
   const morningSnackCal = Math.round(macros.dailyCalories * 0.08);
   const lunchCal = Math.round(macros.dailyCalories * 0.30);
@@ -1574,153 +1554,39 @@ export function buildSingleDayPrompt(
   const dinnerCal = Math.round(macros.dailyCalories * 0.23);
   const dessertCal = Math.round(macros.dailyCalories * 0.05);
 
-  // Adaptação cultural por país
-  const countryAdaptation = buildCountryAdaptation(profile.country || undefined);
-
-  return `═══════════════════════════════════════════════════════════════════════════════════════════════
-🥗 DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-Você é a Dra. ReceitAI, uma NUTRICIONISTA CLÍNICA E ESPORTIVA com formação internacional:
-• Graduação em Nutrição pela USP (Brasil)
-• Mestrado em Clinical Nutrition pela Columbia University (EUA)
-• Especialização em Sports Nutrition pelo Australian Institute of Sport
-• Certificação em Plant-Based Nutrition pela Cornell University
-• Fellow da Academy of Nutrition and Dietetics (AND)
-• Membro da European Society for Clinical Nutrition and Metabolism (ESPEN)
-
-🌍 EXPERTISE GLOBAL: Você domina a ciência nutricional aplicada às culinárias de TODOS os continentes.
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-🚨 PROTOCOLO DE SEGURANÇA ALIMENTAR NÍVEL MÁXIMO 🚨
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-⛔ INGREDIENTES 100% PROIBIDOS - TOLERÂNCIA ZERO:
-${intolerancesStr}${excludedConstraint}${forbiddenBlock}
-
-🔒 REGRAS INVIOLÁVEIS:
-1. NUNCA inclua NENHUM ingrediente da lista de exclusão, mesmo em quantidades mínimas
-2. NUNCA sugira "versões sem" de ingredientes proibidos (ex: "queijo sem lactose" para intolerante)
-3. NUNCA inclua derivados ocultos (manteiga=lactose, shoyu=glúten, maionese=ovo)
-4. SE HOUVER QUALQUER DÚVIDA → NÃO INCLUA O INGREDIENTE → defina is_safe: false
+  return `🥗 NUTRICIONISTA RECEITAI - Plano Alimentar
+📅 ${dayName} | 🌍 ${countryConfig.name} | 🎯 ${macros.dailyCalories}kcal
 
 ${dietaryBlock}
 
-═══════════════════════════════════════════════════════════════════════════════════════════════
-🎯 PERFIL NUTRICIONAL DO PACIENTE
-═══════════════════════════════════════════════════════════════════════════════════════════════
+⛔ INGREDIENTES PROIBIDOS (NUNCA INCLUA):
+${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
-📅 DIA: ${dayName}
-🌍 PAÍS/REGIÃO: ${countryConfig.name}
-👤 DIETA: ${DIETARY_LABELS[profile.dietary_preference || "comum"]}
-🎯 OBJETIVO: ${GOAL_LABELS[profile.goal || "manter"]}
-📊 META CALÓRICA DIÁRIA: ${macros.dailyCalories} kcal
-💪 MACROS: ${macros.dailyProtein}g proteína | Carboidratos e gorduras balanceados
-${kidsNote}${avoidMeals}
+🔒 REGRA: Se dúvida sobre ingrediente → is_safe: false${kidsNote}${avoidMeals}
 
-═══════════════════════════════════════════════════════════════════════════════════════════════
-📋 ESTRUTURA DO PLANO ALIMENTAR (6 REFEIÇÕES)
-═══════════════════════════════════════════════════════════════════════════════════════════════
+📊 PERFIL: ${DIETARY_LABELS[profile.dietary_preference || "comum"]} | ${GOAL_LABELS[profile.goal || "manter"]} | ${macros.dailyProtein}g proteína
 
-🌅 CAFÉ DA MANHÃ (~${breakfastCal} kcal)
-   ├─ 🍎 OBRIGATÓRIO: Incluir 1 FRUTA
-   ├─ Foco: Energia sustentada, carboidratos complexos + proteína
-   └─ Composição ideal: Cereal/pão + proteína (ovo/queijo) + fruta + bebida
+📋 6 REFEIÇÕES:
+• cafe_manha (~${breakfastCal}kcal) - 🍎 OBRIGATÓRIO: 1 FRUTA
+• lanche_manha (~${morningSnackCal}kcal) - Leve
+• almoco (~${lunchCal}kcal) - Principal: proteína+carb+vegetais
+• lanche_tarde (~${afternoonSnackCal}kcal) - 🍎 OBRIGATÓRIO: 1 FRUTA
+• jantar (~${dinnerCal}kcal) - Leve: proteína+vegetais
+• sobremesa (~${dessertCal}kcal) - SAUDÁVEL: frutas/iogurte/chocolate70%
 
-☕ LANCHE DA MANHÃ (~${morningSnackCal} kcal)
-   ├─ Foco: Manutenção glicêmica, praticidade
-   └─ Composição: Fruta OU oleaginosas OU iogurte
+📐 PORÇÕES: Use medidas caseiras + gramas: "2 col. sopa arroz (90g)"
 
-🍽️ ALMOÇO (~${lunchCal} kcal) - REFEIÇÃO PRINCIPAL
-   ├─ Foco: Proteína + carboidrato complexo + vegetais variados
-   └─ Composição: Base (arroz/massa/batata) + proteína + leguminosas + salada/legumes
-
-🍊 LANCHE DA TARDE (~${afternoonSnackCal} kcal)
-   ├─ 🍎 OBRIGATÓRIO: Incluir 1 FRUTA
-   ├─ Foco: Recuperação, evitar fome excessiva no jantar
-   └─ Composição: Fruta + fonte de proteína/gordura boa (iogurte, pasta de amendoim, queijo)
-
-🍲 JANTAR (~${dinnerCal} kcal)
-   ├─ Foco: Mais leve que almoço, proteína + vegetais, menos carboidrato
-   └─ Composição: Proteína + vegetais abundantes + carboidrato moderado
-
-🍨 SOBREMESA/CEIA (~${dessertCal} kcal)
-   ├─ ⚠️ APENAS OPÇÕES SAUDÁVEIS:
-   │   ✅ Frutas (naturais, assadas, com canela/cacau)
-   │   ✅ Iogurte natural com mel ou frutas
-   │   ✅ Chocolate 70%+ (1-2 quadradinhos)
-   │   ✅ Banana congelada batida (nice cream)
-   │   ✅ Gelatina sem açúcar com frutas
-   └─ ❌ PROIBIDO: Sobremesas industrializadas, açúcar refinado excessivo
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-🌍 ADAPTAÇÃO CULTURAL - ${countryConfig.name.toUpperCase()}
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-${countryAdaptation}
-
-${ingredientPriority}
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-📐 FORMATO DE PORÇÕES - USE MEDIDAS CASEIRAS
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-SEMPRE inclua a equivalência em gramas entre parênteses:
-• "2 colheres de sopa de arroz (90g)"
-• "1 concha média de feijão (80g)"
-• "1 filé médio de frango (120g)"
-• "1 fatia de pão integral (30g)"
-• "1 banana média (100g)"
-• "1 xícara de café com leite (200ml)"
-• "1 pote de iogurte natural (170g)"
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-🔧 FORMATO JSON OBRIGATÓRIO
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
+🔧 JSON:
 {"day_index":${dayIndex},"day_name":"${dayName}","meals":[
-  {
-    "meal_type":"cafe_manha",
-    "recipe_name":"Café da Manhã Nutritivo com Frutas",
-    "is_safe":true,
-    "recipe_calories":${breakfastCal},
-    "recipe_protein":18,
-    "recipe_carbs":45,
-    "recipe_fat":12,
-    "recipe_prep_time":10,
-    "recipe_ingredients":[
-      {"item":"Pão integral","quantity":"2","unit":"fatias (60g)"},
-      {"item":"Ovo mexido","quantity":"1","unit":"unidade (50g)"},
-      {"item":"Queijo branco","quantity":"1","unit":"fatia (30g)"},
-      {"item":"Banana","quantity":"1","unit":"unidade média (100g)"},
-      {"item":"Café com leite","quantity":"1","unit":"xícara (200ml)"}
-    ],
-    "recipe_instructions":["Monte o prato conforme sua preferência"],
-    "fruit_included":"Banana",
-    "nutrition_tip":"O ovo fornece proteína de alto valor biológico para começar o dia"
-  },
+  {"meal_type":"cafe_manha","recipe_name":"...",is_safe":true,"recipe_calories":${breakfastCal},"recipe_protein":18,"recipe_carbs":45,"recipe_fat":12,"recipe_prep_time":10,"recipe_ingredients":[{"item":"Pão integral","quantity":"2","unit":"fatias (60g)"}],"recipe_instructions":["Monte conforme preferência"],"fruit_included":"Banana","nutrition_tip":"..."},
   {"meal_type":"lanche_manha",...},
   {"meal_type":"almoco",...},
-  {"meal_type":"lanche_tarde","fruit_included":"[NOME DA FRUTA]",...},
+  {"meal_type":"lanche_tarde","fruit_included":"...",...},
   {"meal_type":"jantar",...},
   {"meal_type":"sobremesa","healthy_dessert":true,...}
 ]}
 
-═══════════════════════════════════════════════════════════════════════════════════════════════
-✅ CHECKLIST FINAL - VERIFIQUE ANTES DE RETORNAR
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-□ Todas as 6 refeições estão presentes (cafe_manha, lanche_manha, almoco, lanche_tarde, jantar, sobremesa)?
-□ Café da manhã inclui FRUTA?
-□ Lanche da tarde inclui FRUTA?
-□ Sobremesa é SAUDÁVEL (sem açúcar refinado)?
-□ NENHUM ingrediente proibido foi incluído?
-□ Porções estão em MEDIDAS CASEIRAS com gramas entre parênteses?
-□ Calorias somam aproximadamente ${macros.dailyCalories} kcal?
-□ Refeições respeitam a culinária de ${countryConfig.name}?
-
-🚨 SE QUALQUER DÚVIDA SOBRE INGREDIENTE → is_safe: false
-Refeições com is_safe: false serão descartadas e regeneradas automaticamente.
+✅ CHECKLIST: 6 refeições | Frutas no café+lanche_tarde | Sobremesa saudável | Sem proibidos | ~${macros.dailyCalories}kcal
 
 Responda APENAS com JSON válido.`;
 }
@@ -1845,12 +1711,8 @@ export function buildMealPlanPrompt(
 }
 
 /**
-/**
  * Constrói prompt para regeneração de refeição individual
- * 
- * 👩‍⚕️ DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA
- * Usado para regenerar uma refeição específica dentro do plano alimentar
- * Mantém a persona de nutricionista profissional com formação internacional
+ * 🥗 NUTRICIONISTA - Prompt otimizado para Flash-Lite
  */
 export function buildRegenerateMealPrompt(
   profile: UserProfile,
@@ -1862,149 +1724,48 @@ export function buildRegenerateMealPrompt(
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
   const forbiddenList = buildForbiddenIngredientsListWithDiet(profile);
   const dietaryBlock = buildDietaryRestrictionBlock(profile);
-  
-  // Regionalização por país
   const countryConfig = getCountryConfig(profile.country);
   const mealLabel = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
-  const countryAdaptation = buildCountryAdaptation(profile.country || undefined);
   
   const isKidsMode = profile.context === "modo_kids";
-  const kidsNote = isKidsMode ? "\n🧒 MODO KIDS ATIVO: Priorize apresentação divertida e alimentos que crianças gostam." : "";
-  const ingredientsNote = ingredients ? `\n\n🥘 ALIMENTOS OBRIGATÓRIOS NA REFEIÇÃO:\n${ingredients}` : "";
+  const kidsNote = isKidsMode ? " 🧒 KIDS." : "";
+  const ingredientsNote = ingredients ? `\n🥘 INCLUIR: ${ingredients}` : "";
   
   const excludedConstraint = excludedIngredientsStr 
-    ? `\n❌ Alimentos excluídos pelo usuário: ${excludedIngredientsStr}`
-    : "";
-
+    ? `\n❌ Excluídos: ${excludedIngredientsStr}` : "";
   const forbiddenBlock = forbiddenList 
-    ? `\n${forbiddenList}`
-    : "";
+    ? `\n🚫 ${forbiddenList}` : "";
 
-  // Regras específicas por tipo de refeição
-  const mealSpecificRules: Record<string, string> = {
-    cafe_manha: `
-🍳 REGRAS PARA CAFÉ DA MANHÃ:
-• OBRIGATÓRIO incluir 1 FRUTA (banana, maçã, mamão, morango, etc.)
-• Foco em carboidratos complexos + proteína para energia matinal
-• Exemplo: 2 fatias pão integral (60g) + 1 ovo mexido (50g) + 1 banana (100g) + café com leite (200ml)`,
-    
-    lanche_manha: `
-🍎 REGRAS PARA LANCHE DA MANHÃ:
-• Lanche leve para manter energia até o almoço
-• Priorize frutas, oleaginosas, iogurte
-• Exemplo: 1 maçã (150g) + 5 castanhas (15g)`,
-    
-    almoco: `
-🍽️ REGRAS PARA ALMOÇO:
-• Refeição principal do dia com proteína + carboidrato + vegetais
-• Base brasileira: arroz + feijão + proteína + salada
-• Exemplo: 4 col. arroz (120g) + 2 col. feijão (86g) + 120g frango grelhado + salada variada`,
-    
-    lanche_tarde: `
-🍌 REGRAS PARA LANCHE DA TARDE:
-• OBRIGATÓRIO incluir 1 FRUTA
-• Lanche nutritivo para evitar fome excessiva no jantar
-• Exemplo: 1 banana (100g) + 2 col. pasta de amendoim (30g) + 1 copo de leite (200ml)`,
-    
-    jantar: `
-🥗 REGRAS PARA JANTAR:
-• Refeição mais leve que o almoço
-• Boa quantidade de proteína + vegetais, carboidrato moderado
-• Exemplo: Omelete de 2 ovos (100g) + salada verde + 2 fatias pão integral (60g)`,
-    
-    sobremesa: `
-🍨 REGRAS PARA SOBREMESA/CEIA:
-• DEVE SER SAUDÁVEL - SEM açúcar refinado excessivo
-• Opções: frutas, iogurte natural com mel, gelatina diet, chocolate 70%
-• Exemplo: 1 iogurte natural (170g) + 1 col. mel (20g) + morangos (100g)
-• ❌ PROIBIDO: sorvetes industriais, tortas, bolos, doces processados`
+  // Regras compactas por tipo
+  const mealRules: Record<string, string> = {
+    cafe_manha: "🍎 OBRIGATÓRIO: 1 FRUTA | Carb+proteína",
+    lanche_manha: "Leve: fruta/oleaginosas/iogurte",
+    almoco: "Principal: proteína+carb+vegetais",
+    lanche_tarde: "🍎 OBRIGATÓRIO: 1 FRUTA | Nutritivo",
+    jantar: "Leve: proteína+vegetais",
+    sobremesa: "SAUDÁVEL: frutas/iogurte/chocolate70% | ❌ industrializados"
   };
 
-  const mealRules = mealSpecificRules[mealType] || "";
+  const fruitField = (mealType === 'cafe_manha' || mealType === 'lanche_tarde') 
+    ? ',"fruit_included":"..."' : '';
+  const dessertField = mealType === 'sobremesa' ? ',"healthy_dessert":true' : '';
 
-  return `╔══════════════════════════════════════════════════════════════════════════════════════════════╗
-║  👩‍⚕️ DRA. RECEITAI - NUTRICIONISTA CLÍNICA E ESPORTIVA COM FORMAÇÃO INTERNACIONAL            ║
-║  Universidade de São Paulo (USP) • Columbia University • Australian Institute of Sport       ║
-║  Especialização: Nutrição Clínica, Esportiva e Comportamental                                ║
-║  Certificações: AND (Academy of Nutrition and Dietetics) • ESPEN                             ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════╝
-
-🔄 REGENERANDO: ${mealLabel.toUpperCase()}
-🌍 PAÍS/REGIÃO: ${countryConfig.name}
-🎯 META CALÓRICA: ~${targetCalories} kcal
+  return `🥗 NUTRICIONISTA - Regenerar ${mealLabel}
+🌍 ${countryConfig.name} | 🎯 ~${targetCalories}kcal${kidsNote}
 
 ${dietaryBlock}
 
-╔══════════════════════════════════════════════════════════════════════════════════════════════╗
-║  🚨 PROTOCOLO DE SEGURANÇA ALIMENTAR - TOLERÂNCIA ZERO                                       ║
-╚══════════════════════════════════════════════════════════════════════════════════════════════╝
-
-⛔ INGREDIENTES 100% PROIBIDOS - JAMAIS INCLUIR:
+⛔ PROIBIDOS (NUNCA):
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
-🛑 REGRA ABSOLUTA DE SEGURANÇA:
-→ Se houver QUALQUER dúvida sobre um ingrediente → NÃO INCLUA
-→ Se não tiver 100% de certeza que é seguro → NÃO INCLUA
-→ Use APENAS alimentos comuns e seguros
-→ Marque "is_safe": false se tiver qualquer incerteza
-${kidsNote}${ingredientsNote}
+🔒 Dúvida sobre ingrediente → is_safe: false${ingredientsNote}
 
-═══════════════════════════════════════════════════════════════════════════════════════════════
-🎯 VOCÊ ESTÁ GERANDO UMA COMPOSIÇÃO DE REFEIÇÃO, NÃO UMA RECEITA ELABORADA
-═══════════════════════════════════════════════════════════════════════════════════════════════
+📋 ${mealLabel}: ${mealRules[mealType] || "Balanceado"}
 
-Como nutricionista, você monta um PRATO BALANCEADO - uma lista de alimentos com porções.
-Não é uma receita gourmet com técnicas de preparo. É uma orientação nutricional prática.
+📐 PORÇÕES: medidas caseiras + gramas: "2 col. sopa (90g)"
 
-${mealRules}
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-📍 ADAPTAÇÃO CULTURAL - ${countryConfig.name}
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-${countryAdaptation}
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-📐 FORMATO DE SAÍDA - JSON OBRIGATÓRIO
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-{
-  "recipe_name": "${mealLabel} Equilibrado",
-  "is_safe": true,
-  "recipe_calories": ${targetCalories},
-  "recipe_protein": 25,
-  "recipe_carbs": 35,
-  "recipe_fat": 12,
-  "recipe_prep_time": ${isKidsMode ? 10 : 15},
-  "recipe_ingredients": [
-    {"item": "Nome do alimento", "quantity": "2", "unit": "colheres de sopa (60g)"},
-    {"item": "Outro alimento", "quantity": "1", "unit": "unidade média (100g)"}
-  ],
-  "recipe_instructions": ["Monte o prato conforme sua preferência"],
-  ${mealType === 'cafe_manha' || mealType === 'lanche_tarde' ? '"fruit_included": "Nome da fruta incluída",' : ''}
-  ${mealType === 'sobremesa' ? '"healthy_dessert": true,' : ''}
-  "nutrition_tip": "Dica nutricional breve sobre os benefícios desta refeição"
-}
-
-📝 REGRAS DO JSON:
-• "recipe_ingredients" = LISTA DE ALIMENTOS para comer (não é receita de preparo)
-• "unit" = SEMPRE em medida caseira COM gramas entre parênteses: "2 fatias (60g)", "1 xícara (200ml)"
-• "recipe_instructions" = Apenas 1-2 dicas práticas OU deixar simples
-• "recipe_prep_time" = Estimativa em minutos
-
-═══════════════════════════════════════════════════════════════════════════════════════════════
-✅ CHECKLIST ANTES DE RESPONDER
-═══════════════════════════════════════════════════════════════════════════════════════════════
-
-□ NENHUM ingrediente proibido foi incluído?
-□ Porções estão em MEDIDAS CASEIRAS + gramas?
-□ Calorias somam aproximadamente ${targetCalories} kcal?
-□ Refeição respeita a culinária de ${countryConfig.name}?
-${mealType === 'cafe_manha' || mealType === 'lanche_tarde' ? '□ Inclui pelo menos 1 FRUTA?' : ''}
-${mealType === 'sobremesa' ? '□ Sobremesa é SAUDÁVEL (sem açúcar refinado excessivo)?' : ''}
-
-🚨 SE QUALQUER DÚVIDA SOBRE INGREDIENTE → is_safe: false
-Refeições com is_safe: false serão descartadas e regeneradas automaticamente.
+🔧 JSON:
+{"recipe_name":"${mealLabel} Nutritivo","is_safe":true,"recipe_calories":${targetCalories},"recipe_protein":25,"recipe_carbs":35,"recipe_fat":12,"recipe_prep_time":${isKidsMode ? 10 : 15},"recipe_ingredients":[{"item":"...","quantity":"2","unit":"col. sopa (60g)"}],"recipe_instructions":["Monte conforme preferência"]${fruitField}${dessertField},"nutrition_tip":"..."}
 
 Responda APENAS com JSON válido.`;
 }

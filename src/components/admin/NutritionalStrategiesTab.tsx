@@ -38,6 +38,7 @@ import {
   Utensils,
   Sparkles,
   Target,
+  AlertTriangle,
   type LucideIcon,
 } from "lucide-react";
 
@@ -78,7 +79,7 @@ const ICON_OPTIONS = [
   { value: "target", label: "Target" },
 ];
 
-export default function AdminNutritionalStrategies() {
+export default function NutritionalStrategiesTab() {
   const queryClient = useQueryClient();
   const [editingStrategy, setEditingStrategy] = useState<NutritionalStrategy | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
@@ -98,7 +99,6 @@ export default function AdminNutritionalStrategies() {
     sort_order: 0,
   });
 
-  // Fetch all strategies
   const { data: strategies, isLoading } = useQuery({
     queryKey: ["nutritional-strategies-admin"],
     queryFn: async () => {
@@ -112,7 +112,6 @@ export default function AdminNutritionalStrategies() {
     },
   });
 
-  // Create mutation
   const createMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
       const { error } = await supabase
@@ -144,7 +143,6 @@ export default function AdminNutritionalStrategies() {
     },
   });
 
-  // Update mutation
   const updateMutation = useMutation({
     mutationFn: async (data: { id: string } & typeof formData) => {
       const { error } = await supabase
@@ -176,7 +174,6 @@ export default function AdminNutritionalStrategies() {
     },
   });
 
-  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       const { error } = await supabase
@@ -196,7 +193,6 @@ export default function AdminNutritionalStrategies() {
     },
   });
 
-  // Toggle active mutation
   const toggleActiveMutation = useMutation({
     mutationFn: async ({ id, is_active }: { id: string; is_active: boolean }) => {
       const { error } = await supabase
@@ -280,113 +276,110 @@ export default function AdminNutritionalStrategies() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-up max-w-5xl">
-      <div>
-        <h1 className="text-2xl font-semibold text-foreground tracking-tight">
-          Estratégias Nutricionais
-        </h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Gerencie as estratégias nutricionais disponíveis no onboarding e perfil
-        </p>
-      </div>
-
-      <Card className="bg-card border border-border/60 shadow-none">
-        <CardHeader className="flex flex-row items-center justify-between py-4">
+    <>
+      <Card className="border-border/50">
+        <CardHeader className="flex flex-row items-center justify-between">
           <div>
-            <CardTitle className="text-base font-medium">Estratégias</CardTitle>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {strategies?.length || 0} estratégias cadastradas
+            <CardTitle className="flex items-center gap-2">
+              <Target className="w-5 h-5 text-muted-foreground" />
+              Estratégias Nutricionais
+            </CardTitle>
+            <p className="text-sm text-muted-foreground mt-1">
+              Objetivos nutricionais para cálculo de macros
             </p>
           </div>
-          <Button 
-            onClick={openCreateDialog}
-            size="sm"
-            className="bg-foreground text-background hover:bg-foreground/90"
-          >
-            <Plus className="w-4 h-4 mr-1.5" />
+          <Button onClick={openCreateDialog} className="gap-2 bg-foreground text-background hover:bg-foreground/90">
+            <Plus className="w-4 h-4" />
             Nova Estratégia
           </Button>
         </CardHeader>
-        <CardContent className="pt-0">
-          <div className="space-y-2">
-            {strategies?.map((strategy) => {
-              const IconComponent = getIcon(strategy.icon);
-              return (
-                <div
-                  key={strategy.id}
-                  className="flex items-center justify-between p-3 rounded-lg border border-border/50 hover:border-border transition-colors bg-background"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="flex items-center gap-2 text-muted-foreground/50">
-                      <GripVertical className="w-4 h-4" />
+        <CardContent>
+          {(!strategies || strategies.length === 0) ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhuma estratégia cadastrada</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {strategies.map((strategy) => {
+                const IconComponent = getIcon(strategy.icon);
+                return (
+                  <div
+                    key={strategy.id}
+                    className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+                  >
+                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
+                    
+                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
+                      <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
                     </div>
-                    <div className="w-9 h-9 rounded-lg bg-muted/50 flex items-center justify-center">
-                      <IconComponent className="w-4 h-4 text-foreground" />
-                    </div>
-                    <div>
+                    
+                    <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{strategy.label}</span>
-                        <Badge variant="outline" className="text-[10px] font-mono">
+                        <span className="font-medium">{strategy.label}</span>
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
                           {strategy.key}
-                        </Badge>
+                        </span>
                         {strategy.is_flexible && (
-                          <Badge variant="secondary" className="text-[10px]">
+                          <Badge variant="secondary" className="text-xs">
                             Flexível
                           </Badge>
                         )}
+                        {!strategy.is_active && (
+                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
+                            Inativo
+                          </span>
+                        )}
                       </div>
-                      <p className="text-xs text-muted-foreground line-clamp-1">
-                        {strategy.description || "Sem descrição"}
-                      </p>
-                      <div className="flex items-center gap-3 mt-1 text-[10px] text-muted-foreground">
-                        <span>Cal: {strategy.calorie_modifier > 0 ? "+" : ""}{strategy.calorie_modifier}</span>
-                        <span>Prot: {strategy.protein_per_kg}g/kg</span>
+                      {strategy.description && (
+                        <p className="text-sm text-muted-foreground truncate">
+                          {strategy.description}
+                        </p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>Cal: {strategy.calorie_modifier && strategy.calorie_modifier > 0 ? "+" : ""}{strategy.calorie_modifier || 0}</span>
+                        <span>Prot: {strategy.protein_per_kg || 0}g/kg</span>
                         <span>Carb: {((strategy.carb_ratio || 0) * 100).toFixed(0)}%</span>
                         <span>Fat: {((strategy.fat_ratio || 0) * 100).toFixed(0)}%</span>
                       </div>
                     </div>
-                  </div>
-                  <div className="flex items-center gap-2">
+
                     <Switch
                       checked={strategy.is_active}
                       onCheckedChange={(checked) =>
                         toggleActiveMutation.mutate({ id: strategy.id, is_active: checked })
                       }
+                      className="data-[state=checked]:bg-foreground"
                     />
+
                     <Button
                       variant="ghost"
                       size="icon"
                       onClick={() => openEditDialog(strategy)}
-                      className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                      className="text-muted-foreground hover:text-foreground hover:bg-muted"
                     >
-                      <Pencil className="w-3.5 h-3.5" />
+                      <Pencil className="w-4 h-4" />
                     </Button>
+
                     <Button
                       variant="ghost"
                       size="icon"
+                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                       onClick={() => setDeleteStrategy(strategy)}
-                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </Button>
                   </div>
-                </div>
-              );
-            })}
-
-            {(!strategies || strategies.length === 0) && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Target className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Nenhuma estratégia cadastrada</p>
-              </div>
-            )}
-          </div>
+                );
+              })}
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -420,7 +413,6 @@ export default function AdminNutritionalStrategies() {
                   onChange={(e) => setFormData({ ...formData, key: e.target.value })}
                   placeholder="ex: cutting"
                   disabled={!!editingStrategy}
-                  className="h-9"
                 />
               </div>
               <div className="space-y-1.5">
@@ -432,7 +424,6 @@ export default function AdminNutritionalStrategies() {
                   value={formData.label}
                   onChange={(e) => setFormData({ ...formData, label: e.target.value })}
                   placeholder="ex: Cutting"
-                  className="h-9"
                 />
               </div>
             </div>
@@ -446,7 +437,6 @@ export default function AdminNutritionalStrategies() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="Descrição curta da estratégia"
-                className="h-9"
               />
             </div>
 
@@ -482,7 +472,6 @@ export default function AdminNutritionalStrategies() {
                   type="number"
                   value={formData.calorie_modifier}
                   onChange={(e) => setFormData({ ...formData, calorie_modifier: parseInt(e.target.value) || 0 })}
-                  className="h-9"
                 />
               </div>
               <div className="space-y-1.5">
@@ -495,7 +484,6 @@ export default function AdminNutritionalStrategies() {
                   step="0.1"
                   value={formData.protein_per_kg}
                   onChange={(e) => setFormData({ ...formData, protein_per_kg: parseFloat(e.target.value) || 1.6 })}
-                  className="h-9"
                 />
               </div>
             </div>
@@ -513,7 +501,6 @@ export default function AdminNutritionalStrategies() {
                   max="1"
                   value={formData.carb_ratio}
                   onChange={(e) => setFormData({ ...formData, carb_ratio: parseFloat(e.target.value) || 0.5 })}
-                  className="h-9"
                 />
               </div>
               <div className="space-y-1.5">
@@ -528,7 +515,6 @@ export default function AdminNutritionalStrategies() {
                   max="1"
                   value={formData.fat_ratio}
                   onChange={(e) => setFormData({ ...formData, fat_ratio: parseFloat(e.target.value) || 0.25 })}
-                  className="h-9"
                 />
               </div>
             </div>
@@ -543,7 +529,6 @@ export default function AdminNutritionalStrategies() {
                   type="number"
                   value={formData.sort_order}
                   onChange={(e) => setFormData({ ...formData, sort_order: parseInt(e.target.value) || 0 })}
-                  className="h-9"
                 />
               </div>
               <div className="flex items-center gap-3 pt-5">
@@ -551,6 +536,7 @@ export default function AdminNutritionalStrategies() {
                   id="is_flexible"
                   checked={formData.is_flexible}
                   onCheckedChange={(checked) => setFormData({ ...formData, is_flexible: checked })}
+                  className="data-[state=checked]:bg-foreground"
                 />
                 <Label htmlFor="is_flexible" className="text-xs">
                   Dieta Flexível
@@ -563,6 +549,7 @@ export default function AdminNutritionalStrategies() {
                 id="is_active"
                 checked={formData.is_active}
                 onCheckedChange={(checked) => setFormData({ ...formData, is_active: checked })}
+                className="data-[state=checked]:bg-foreground"
               />
               <Label htmlFor="is_active" className="text-xs">
                 Ativo
@@ -617,6 +604,6 @@ export default function AdminNutritionalStrategies() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </>
   );
 }

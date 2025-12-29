@@ -882,8 +882,10 @@ function validateMealPlan(
 ): {
   validatedPlan: SimpleDayPlan;
   violations: Array<{ meal: string; food: string; reason: string; restriction: string }>;
+  needsRegeneration: boolean;
 } {
   const violations: Array<{ meal: string; food: string; reason: string; restriction: string }> = [];
+  let needsRegeneration = false;
   
   const validatedMeals = dayPlan.meals.map(meal => {
     const validatedOptions = meal.options.map(option => {
@@ -908,11 +910,21 @@ function validateMealPlan(
       // Calcular calorias baseado na tabela
       const calculatedCalories = calculateOptionCalories(cleanedFoods);
       
+      // CRITICAL: Se todos os alimentos foram removidos, marca para regeneração
+      // NÃO coloca placeholder - isso cria receitas inválidas
+      if (cleanedFoods.length === 0) {
+        needsRegeneration = true;
+        logStep(`❌ CRITICAL: Option "${option.title}" has all foods removed by restrictions - needs regeneration`);
+      }
+      
       return {
         ...option,
-        foods: cleanedFoods.length > 0 ? cleanedFoods : [{ name: 'Opção removida por restrição', grams: 0 }],
-        calculated_calories: calculatedCalories,
-        calories_kcal: calculatedCalories, // Substitui o valor da IA pelo calculado
+        // Manter os alimentos originais se cleanedFoods estiver vazio para permitir regeneração
+        // O sistema deve regenerar essa refeição, não exibir um placeholder
+        foods: cleanedFoods.length > 0 ? cleanedFoods : option.foods,
+        calculated_calories: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
+        calories_kcal: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
+        _needsRegeneration: cleanedFoods.length === 0, // Flag interna para marcar opções problemáticas
       };
     });
     
@@ -928,6 +940,7 @@ function validateMealPlan(
       meals: validatedMeals,
     },
     violations,
+    needsRegeneration,
   };
 }
 
@@ -1229,55 +1242,101 @@ serve(async (req) => {
       logStep("AI response received", { contentLength: content.length });
 
       // Parse JSON from response
-      try {
-        // Remove markdown code blocks if present
-        content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-        
-        const dayPlan: SimpleDayPlan = JSON.parse(content);
-        
-        // ============= VALIDAÇÃO PÓS-GERAÇÃO =============
-        logStep(`Validating day ${dayIndex + 1} against restrictions`);
-        
-        const validationResult = validateMealPlan(
-          dayPlan,
-          {
-            intolerances: restrictions.intolerances,
-            dietaryPreference: restrictions.dietaryPreference,
-            excludedIngredients: restrictions.excludedIngredients,
-          },
-          dbMappings,
-          dbSafeKeywords
-        );
-        
-        // Registrar violações encontradas
-        if (validationResult.violations.length > 0) {
-          logStep(`⚠️ VIOLATIONS FOUND on day ${dayIndex + 1}`, {
-            count: validationResult.violations.length,
-            violations: validationResult.violations,
-          });
+      let dayPlanValidated: SimpleDayPlan | null = null;
+      let retryCount = 0;
+      const MAX_RETRIES = 2; // Máximo de tentativas para regenerar se houver violações críticas
+      
+      while (!dayPlanValidated && retryCount <= MAX_RETRIES) {
+        try {
+          // Remove markdown code blocks if present
+          content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           
-          // Adicionar ao array de todas as violações
-          validationResult.violations.forEach(v => {
-            allViolations.push({
-              day: dayIndex + 1,
-              ...v,
+          const dayPlan: SimpleDayPlan = JSON.parse(content);
+          
+          // ============= VALIDAÇÃO PÓS-GERAÇÃO =============
+          logStep(`Validating day ${dayIndex + 1} against restrictions (attempt ${retryCount + 1})`);
+          
+          const validationResult = validateMealPlan(
+            dayPlan,
+            {
+              intolerances: restrictions.intolerances,
+              dietaryPreference: restrictions.dietaryPreference,
+              excludedIngredients: restrictions.excludedIngredients,
+            },
+            dbMappings,
+            dbSafeKeywords
+          );
+          
+          // Registrar violações encontradas
+          if (validationResult.violations.length > 0) {
+            logStep(`⚠️ VIOLATIONS FOUND on day ${dayIndex + 1}`, {
+              count: validationResult.violations.length,
+              violations: validationResult.violations,
+              needsRegeneration: validationResult.needsRegeneration,
             });
+            
+            // Adicionar ao array de todas as violações
+            validationResult.violations.forEach(v => {
+              allViolations.push({
+                day: dayIndex + 1,
+                ...v,
+              });
+            });
+            
+            // Se precisa regenerar e ainda tem tentativas, tenta de novo
+            if (validationResult.needsRegeneration && retryCount < MAX_RETRIES) {
+              logStep(`🔄 Regenerating day ${dayIndex + 1} due to critical violations...`);
+              retryCount++;
+              
+              // Fazer nova chamada à API com temperatura um pouco maior
+              const retryResponse = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${aiPromptData?.model || 'gemini-2.0-flash-lite'}:generateContent?key=${GOOGLE_AI_API_KEY}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    contents: [{ parts: [{ text: prompt + `\n\nIMPORTANTE: O plano anterior continha alimentos proibidos. Gere um plano COMPLETAMENTE novo com APENAS alimentos seguros para as restrições do usuário.` }] }],
+                    generationConfig: {
+                      temperature: 0.7 + (retryCount * 0.1), // Aumenta temperatura a cada retry
+                      maxOutputTokens: 8192,
+                    }
+                  }),
+                }
+              );
+              
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                content = retryData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                logStep(`Retry ${retryCount} response received`, { contentLength: content.length });
+                continue; // Tenta validar novamente
+              }
+            }
+          } else {
+            logStep(`✓ Day ${dayIndex + 1} passed validation - no violations`);
+          }
+          
+          // Usar o plano validado
+          dayPlanValidated = validationResult.validatedPlan;
+          
+          logStep(`Day ${dayIndex + 1} generated and validated`, { 
+            mealsCount: validationResult.validatedPlan.meals?.length,
+            totalCalories: validationResult.validatedPlan.total_calories,
+            violationsRemoved: validationResult.violations.length,
+            retries: retryCount,
           });
-        } else {
-          logStep(`✓ Day ${dayIndex + 1} passed validation - no violations`);
+        } catch (parseError) {
+          logStep("JSON parse error", { error: parseError, content: content.substring(0, 500) });
+          retryCount++;
+          if (retryCount > MAX_RETRIES) {
+            throw new Error(`Failed to parse AI response for day ${dayIndex + 1}`);
+          }
         }
-        
-        // Usar o plano validado (com alimentos problemáticos removidos)
-        generatedDays.push(validationResult.validatedPlan);
-        
-        logStep(`Day ${dayIndex + 1} generated and validated`, { 
-          mealsCount: validationResult.validatedPlan.meals?.length,
-          totalCalories: validationResult.validatedPlan.total_calories,
-          violationsRemoved: validationResult.violations.length,
-        });
-      } catch (parseError) {
-        logStep("JSON parse error", { error: parseError, content: content.substring(0, 500) });
-        throw new Error(`Failed to parse AI response for day ${dayIndex + 1}`);
+      }
+      
+      if (dayPlanValidated) {
+        generatedDays.push(dayPlanValidated);
+      } else {
+        throw new Error(`Failed to generate valid plan for day ${dayIndex + 1} after ${MAX_RETRIES} retries`);
       }
     }
 
@@ -1381,6 +1440,12 @@ serve(async (req) => {
           // Pegar a primeira opção de cada refeição (optionsPerMeal = 1)
           const firstOption = meal.options?.[0];
           if (!firstOption) continue;
+          
+          // CRITICAL: Não salvar opções que foram marcadas para regeneração
+          if ((firstOption as any)._needsRegeneration) {
+            logStep(`⚠️ Skipping meal "${firstOption.title}" - marked for regeneration due to restriction violations`);
+            continue;
+          }
           
           // Preparar foods para cálculo de macros reais
           const foodsForCalculation: RealMacrosFoodItem[] = (firstOption.foods || []).map((food: any) => {

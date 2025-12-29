@@ -279,6 +279,10 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
 
       setProfile(prev => prev ? { ...prev, default_meal_times: times, enabled_meals: enabledMeals ?? null } : prev);
       toast.success("Horários padrão salvos!");
+      
+      // Notificar o Dashboard para atualizar seus estados
+      onProfileUpdated?.();
+      
       return true;
     } catch (err) {
       console.error("Error saving default meal times:", err);

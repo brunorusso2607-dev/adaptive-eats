@@ -585,99 +585,53 @@ function buildSimpleNutritionistPrompt(params: {
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
   
-  // Obter prompt nutricional global para o país do usuário
-  const globalNutritionPrompt = getGlobalNutritionPrompt(countryCode, {
-    includePortionGuidelines: true,
-    includeSourceHierarchy: true,
-    includeConversionRules: true
-  });
-  
-  const portionFormat = getPortionFormat(countryCode);
-  const nutritionalSource = getNutritionalSource(countryCode);
-
+  // Descrição das refeições para o dia
   const mealsDescription = meals.map(m => 
     `- ${m.label}: ${m.targetCalories} kcal`
   ).join('\n');
 
-  // Template com exemplos mais humanos e realistas (conforme prompt do banco)
+  // Template JSON MÍNIMO - apenas estrutura, sem exemplos que possam conflitar com o prompt do banco
   const mealsJsonTemplate = meals.map(m => `
     {
       "meal_type": "${m.type}",
       "label": "${m.label}",
       "target_calories": ${m.targetCalories},
-      "options": [
-        {
-          "title": "Cafe da manha completo",
-          "foods": [
-            {"name": "2 ovos mexidos", "grams": 100},
-            {"name": "2 fatias de pao frances", "grams": 60},
-            {"name": "1 xicara de cafe com leite vegetal", "grams": 200}
-          ],
-          "calories_kcal": ${m.targetCalories}
-        }
-      ]
+      "options": []
     }`).join(',');
 
-  // Usar o prompt do banco como fonte única de verdade
-  // Se não houver prompt no banco, usa um fallback mínimo
+  // Usar o prompt do banco como FONTE ÚNICA DE VERDADE
+  // Não adicionamos instruções que possam conflitar com as regras do prompt
   const systemPromptBase = baseSystemPrompt || `You are a world-class CLINICAL NUTRITIONIST with over 20 years of practical experience.
 You create meals like a human professional would create for themselves, their family, or their real patients.
 GOLDEN RULE: Prioritize FOOD NATURALNESS over nutritional optimization. Food with soul, not formula.`;
 
-  // Contexto nutricional enriquecido (calculado dinamicamente)
-  const enrichedNutritionalContext = nutritionalContext ? `
---------------------------------------------------
-CALCULATED NUTRITIONAL PROFILE (SCIENTIFIC PRECISION):
---------------------------------------------------
-${nutritionalContext}
-` : '';
+  // APENAS dados dinâmicos que o prompt do banco precisa saber
+  // NÃO incluímos instruções de formato - essas vêm do banco
+  const dynamicData = `
+==========================================================
+DYNAMIC DATA FOR THIS GENERATION:
+==========================================================
 
-  // Elementos dinâmicos que complementam o prompt do banco
-  const dynamicContext = `
---------------------------------------------------
-LANGUAGE & REGION:
---------------------------------------------------
-LANGUAGE: Respond ENTIRELY in ${regional.languageName}
-COUNTRY/REGION: ${nutritionalSource.flag} ${nutritionalSource.country} - Generate typical, common and culturally appropriate meals
-NUTRITIONAL SOURCE: ${nutritionalSource.sourceName} (${nutritionalSource.sourceKey})
-DOMESTIC UNITS: ${regional.domesticUnits}
+IDIOMA: ${regional.languageName}
+PAÍS: ${countryCode}
 
---------------------------------------------------
-CULTURAL CONTEXT:
---------------------------------------------------
-${regional.typicalMeals}
+CALORIAS DIÁRIAS: ${dailyCalories} kcal
 
-${regional.culturalNotes}
-
---------------------------------------------------
-DAILY CALORIC TARGET: ${dailyCalories} kcal
---------------------------------------------------
-MEALS FOR THE DAY:
+REFEIÇÕES DO DIA:
 ${mealsDescription}
 
 --------------------------------------------------
-MANDATORY RESTRICTIONS:
+RESTRIÇÕES OBRIGATÓRIAS:
 --------------------------------------------------
 ${restrictionText}
 
-RESTRICTION COMPLIANCE (CRITICAL):
-- If there is a declared intolerance, ALL foods must STRICTLY respect it
-- DO NOT include ANY food that contains or derives from the restricted ingredient
-- If in doubt, substitute with a safe alternative
+--------------------------------------------------
+TAREFA:
+--------------------------------------------------
+Gerar cardápio para ${dayName} (Dia ${dayNumber}) com ${optionsPerMeal} OPÇÕES por refeição.
 
 --------------------------------------------------
-GENERATION STRUCTURE:
---------------------------------------------------
-TASK: Generate COMPLETE, REALISTIC AND NATURAL MEALS for ${dayName} (Day ${dayNumber})
-
-For EACH meal, generate EXACTLY ${optionsPerMeal} GENUINELY DIFFERENT OPTIONS.
-EACH OPTION must have:
-- "title": Clear and simple meal name
-- "foods": Array of objects with "name" and "grams"
-- "calories_kcal": Calorie estimate (will be recalculated by system)
-
---------------------------------------------------
-RESPOND EXCLUSIVELY IN VALID JSON:
+RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
 --------------------------------------------------
 {
   "day": ${dayNumber},
@@ -687,41 +641,13 @@ RESPOND EXCLUSIVELY IN VALID JSON:
   "total_calories": ${dailyCalories}
 }
 
-IMPORTANT - FOOD FORMAT:
-- Each food MUST be an object with "name" (string with quantity description) and "grams" (number)
-- The "name" field should include human-readable quantity (e.g., "2 ovos mexidos", "1 fatia de pao", "1 banana media")
-- DO NOT use simple strings for foods
-- Correct example:
-  {
-    "title": "Cafe da manha equilibrado",
-    "foods": [
-      {"name": "2 ovos mexidos", "grams": 100},
-      {"name": "2 fatias de pao integral", "grams": 60},
-      {"name": "1 xicara de cafe com leite vegetal", "grams": 200}
-    ],
-    "calories_kcal": 380
-  }
-- Another example with fruit:
-  {
-    "title": "Lanche com frutas",
-    "foods": [
-      {"name": "1 banana media", "grams": 90},
-      {"name": "1 pote de iogurte natural", "grams": 170},
-      {"name": "2 colheres de granola", "grams": 30}
-    ],
-    "calories_kcal": 290
-  }
-- WRONG example (do not use):
-  "foods": ["2 scrambled eggs", "1 french bread"]
+Cada opção deve ter: "title", "foods" (array de {"name", "grams"}), "calories_kcal"`;
 
-GENERATE NOW the complete menu with ${optionsPerMeal} DIFFERENT OPTIONS for each meal.`;
-
-  // Combinar: prompt do banco + contexto nutricional global + contexto dinâmico
+  // PROMPT LIMPO: apenas prompt do banco + dados dinâmicos
+  // Removido: globalNutritionPrompt, enrichedNutritionalContext, exemplos conflitantes
   return `${systemPromptBase}
 
-${globalNutritionPrompt}
-${enrichedNutritionalContext}
-${dynamicContext}`;
+${dynamicData}`;
 }
 
 // ============= DISTRIBUICAO CALORICA =============

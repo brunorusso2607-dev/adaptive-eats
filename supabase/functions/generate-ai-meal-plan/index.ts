@@ -628,7 +628,7 @@ ${restrictionText}
 --------------------------------------------------
 TAREFA:
 --------------------------------------------------
-Gerar cardápio para ${dayName} (Dia ${dayNumber}) com ${optionsPerMeal} OPÇÕES por refeição.
+Gerar cardápio para ${dayName} (Dia ${dayNumber})${optionsPerMeal > 1 ? ` com ${optionsPerMeal} variações por refeição` : ''}.
 
 --------------------------------------------------
 RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
@@ -641,7 +641,10 @@ RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
   "total_calories": ${dailyCalories}
 }
 
-Cada opção deve ter: "title", "foods" (array de {"name", "grams"}), "calories_kcal"`;
+IMPORTANTE: O campo "title" de cada opção DEVE ser o NOME DESCRITIVO DA REFEIÇÃO (ex: "Omelete de queijo com torradas", "Salada Caesar com frango grelhado", "Arroz integral com feijão e bife acebolado").
+NUNCA use nomes genéricos como "Opção 1", "Opção 2", "Refeição 1", etc.
+
+Cada opção deve ter: "title" (nome descritivo da refeição), "foods" (array de {"name", "grams"}), "calories_kcal"`;
 
   // PROMPT LIMPO: apenas prompt do banco + dados dinâmicos
   // Removido: globalNutritionPrompt, enrichedNutritionalContext, exemplos conflitantes

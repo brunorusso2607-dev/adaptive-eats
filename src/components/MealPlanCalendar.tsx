@@ -140,7 +140,11 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     const order = getMealOrder();
     const orderedList = order.length > 0 ? order : [...STANDARD_MEAL_TYPES];
     
-    return orderedList.filter(mealType => planMealTypes.has(mealType));
+    const result = orderedList.filter(mealType => planMealTypes.has(mealType));
+    
+    console.log(`[DEBUG] orderedMealTypes: planMealTypes=${JSON.stringify([...planMealTypes])}, order=${JSON.stringify(order)}, result=${JSON.stringify(result)}`);
+    
+    return result;
   }, [getMealOrder, mealPlan.items]);
 
   // Labels dinâmicas para refeições (inclui extras)

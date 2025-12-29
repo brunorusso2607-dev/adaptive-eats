@@ -16,7 +16,7 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[${timestamp}] [regenerate-ai-meal-alternatives] ${step}`, details ? JSON.stringify(details) : "");
 };
 
-// ============= REGIONAL CONFIG (simplified) =============
+// ============= REGIONAL CONFIG =============
 interface RegionalConfig {
   language: string;
   languageName: string;
@@ -68,13 +68,194 @@ function getRegionalConfig(countryCode: string): RegionalConfig {
   return REGIONAL_CONFIGS[countryCode?.toUpperCase()] || DEFAULT_CONFIG;
 }
 
-// ============= RESTRICTION TEXT BUILDER =============
+// ============= INTOLERANCE MAPPINGS FROM DB =============
+interface IntoleranceMapping {
+  ingredient: string;
+  intolerance_key: string;
+}
+
+interface SafeKeyword {
+  keyword: string;
+  intolerance_key: string;
+}
+
+// deno-lint-ignore no-explicit-any
+async function fetchIntoleranceMappings(supabaseClient: any): Promise<{
+  mappings: IntoleranceMapping[];
+  safeKeywords: SafeKeyword[];
+}> {
+  const [mappingsResult, safeKeywordsResult] = await Promise.all([
+    supabaseClient.from('intolerance_mappings').select('ingredient, intolerance_key'),
+    supabaseClient.from('intolerance_safe_keywords').select('keyword, intolerance_key'),
+  ]);
+
+  return {
+    mappings: mappingsResult.data || [],
+    safeKeywords: safeKeywordsResult.data || [],
+  };
+}
+
+// ============= FORBIDDEN INGREDIENTS (SAME AS generate-ai-meal-plan) =============
+const FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
+  // Intolerâncias básicas
+  lactose: ['leite', 'queijo', 'iogurte', 'manteiga', 'requeijao', 'creme de leite', 'nata', 'coalho', 'mussarela', 'parmesao', 'ricota', 'cottage', 'cream cheese', 'chantilly', 'leite condensado', 'doce de leite', 'milk', 'cheese', 'yogurt', 'butter', 'cream'],
+  gluten: ['trigo', 'farinha de trigo', 'cevada', 'centeio', 'wheat', 'bread', 'pasta', 'cake', 'cookie', 'biscuit', 'flour', 'barley', 'rye'],
+  amendoim: ['amendoim', 'pasta de amendoim', 'peanut', 'cacahuete', 'mani'],
+  frutos_do_mar: ['camarao', 'lagosta', 'caranguejo', 'siri', 'marisco', 'lula', 'polvo', 'ostra', 'mexilhao', 'shrimp', 'lobster', 'crab', 'oyster', 'squid', 'octopus'],
+  peixe: ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'robalo', 'fish', 'salmon', 'tuna', 'cod', 'sardine'],
+  ovos: ['ovo', 'ovos', 'gema', 'clara de ovo', 'omelete', 'egg', 'eggs', 'omelette'],
+  soja: ['soja', 'tofu', 'edamame', 'leite de soja', 'molho de soja', 'shoyu', 'soy', 'soya'],
+  cafeina: ['cafe ', ' cafe', 'coffee', 'cha preto', 'cha verde', 'cha mate', 'green tea', 'black tea', 'guarana', 'chocolate', 'cacau'],
+  milho: ['milho', 'fuba', 'polenta', 'pipoca', 'corn', 'maize', 'popcorn'],
+  leguminosas: ['feijao', 'lentilha', 'grao de bico', 'ervilha seca', 'fava', 'beans', 'lentils', 'chickpeas'],
+  // Intolerâncias adicionais (17 padronizadas)
+  sulfitos: ['vinho', 'vinagre', 'frutas secas', 'conservas', 'wine', 'vinegar', 'dried fruits'],
+  castanhas: ['castanha', 'noz', 'amêndoa', 'avelã', 'macadâmia', 'pistache', 'nuts', 'almonds', 'walnuts', 'hazelnuts', 'cashews'],
+  sesamo: ['gergelim', 'tahine', 'sesame', 'tahini'],
+  tremoco: ['tremoço', 'lupin', 'lupine'],
+  mostarda: ['mostarda', 'mustard'],
+  aipo: ['aipo', 'salsao', 'celery'],
+  moluscos: ['ostra', 'mexilhao', 'vieira', 'lula', 'polvo', 'oyster', 'mussel', 'clam', 'squid', 'octopus'],
+  fodmap: ['cebola', 'alho', 'maca', 'pera', 'mel', 'trigo', 'onion', 'garlic', 'apple', 'pear', 'honey', 'wheat'],
+  histamina: ['queijo curado', 'vinho', 'cerveja', 'embutidos', 'fermentados', 'aged cheese', 'wine', 'beer', 'cured meats', 'fermented'],
+  salicilatos: ['tomate', 'pimentao', 'berinjela', 'curry', 'tomato', 'pepper', 'eggplant'],
+  niquel: ['chocolate', 'cacau', 'aveia', 'lentilha', 'soja', 'cocoa', 'oats', 'lentils', 'soy'],
+  // Açúcar (3 variantes)
+  acucar: ['acucar', 'mel', 'xarope', 'rapadura', 'melado', 'sugar', 'honey', 'syrup', 'molasses'],
+  acucar_diabetes: ['acucar', 'mel', 'xarope', 'rapadura', 'melado', 'sugar', 'honey', 'syrup', 'molasses'],
+  acucar_insulina: ['acucar', 'mel', 'xarope', 'rapadura', 'melado', 'sugar', 'honey', 'syrup', 'molasses'],
+};
+
+// Ingredientes de origem animal
+const ANIMAL_INGREDIENTS = ['carne', 'frango', 'porco', 'boi', 'peru', 'pato', 'bacon', 'presunto', 'salsicha', 'linguica', 'mortadela', 'salame', 'peito de frango', 'file', 'costela', 'picanha', 'alcatra', 'patinho', 'acém', 'maminha', 'coxa', 'sobrecoxa', 'asa', 'meat', 'chicken', 'pork', 'beef', 'turkey', 'duck', 'ham', 'sausage'];
+const DAIRY_AND_EGGS = ['leite', 'queijo', 'iogurte', 'ovo', 'ovos', 'manteiga', 'creme de leite', 'requeijao', 'milk', 'cheese', 'yogurt', 'egg', 'eggs', 'butter', 'cream', 'mel', 'honey'];
+const FISH_INGREDIENTS = ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'fish', 'salmon', 'tuna', 'cod', 'sardine'];
+
+// ============= VALIDATION FUNCTIONS =============
+function normalizeText(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim();
+}
+
+function validateFood(
+  food: string,
+  restrictions: {
+    intolerances: string[];
+    dietaryPreference: string;
+    excludedIngredients: string[];
+  },
+  dbMappings: IntoleranceMapping[],
+  dbSafeKeywords: SafeKeyword[]
+): { isValid: boolean; reason?: string; restriction?: string } {
+  const normalizedFood = normalizeText(food);
+  
+  // 1. Verificar ingredientes excluídos pelo usuário
+  for (const excluded of restrictions.excludedIngredients) {
+    if (normalizedFood.includes(normalizeText(excluded))) {
+      return {
+        isValid: false,
+        reason: `Contém ingrediente excluído: ${excluded}`,
+        restriction: 'excluded_ingredient',
+      };
+    }
+  }
+  
+  // 2. Verificar intolerâncias
+  for (const intolerance of restrictions.intolerances) {
+    // Safe keywords para esta intolerância
+    const safeForIntolerance = dbSafeKeywords
+      .filter(sk => sk.intolerance_key === intolerance)
+      .map(sk => sk.keyword);
+    
+    // Primeiro verifica se é seguro
+    let isSafe = false;
+    for (const safe of safeForIntolerance) {
+      if (normalizedFood.includes(normalizeText(safe))) {
+        isSafe = true;
+        break;
+      }
+    }
+    
+    if (!isSafe) {
+      // Verifica mapeamentos do banco
+      const dbForbidden = dbMappings
+        .filter(m => m.intolerance_key === intolerance)
+        .map(m => m.ingredient);
+      
+      for (const forbidden of dbForbidden) {
+        if (normalizedFood.includes(normalizeText(forbidden))) {
+          return {
+            isValid: false,
+            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
+            restriction: `intolerance_${intolerance}`,
+          };
+        }
+      }
+      
+      // Verifica lista hardcoded
+      const hardcodedForbidden = FORBIDDEN_INGREDIENTS[intolerance] || [];
+      for (const forbidden of hardcodedForbidden) {
+        if (normalizedFood.includes(normalizeText(forbidden))) {
+          return {
+            isValid: false,
+            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
+            restriction: `intolerance_${intolerance}`,
+          };
+        }
+      }
+    }
+  }
+  
+  // 3. Verificar preferência dietética
+  const diet = restrictions.dietaryPreference;
+  
+  if (diet === 'vegana') {
+    const allAnimal = [...ANIMAL_INGREDIENTS, ...DAIRY_AND_EGGS, ...FISH_INGREDIENTS];
+    for (const animal of allAnimal) {
+      if (normalizedFood.includes(normalizeText(animal))) {
+        return {
+          isValid: false,
+          reason: `Contém ingrediente animal: ${animal}`,
+          restriction: 'dietary_vegan',
+        };
+      }
+    }
+  } else if (diet === 'vegetariana') {
+    const meatAndFish = [...ANIMAL_INGREDIENTS, ...FISH_INGREDIENTS];
+    for (const item of meatAndFish) {
+      if (normalizedFood.includes(normalizeText(item))) {
+        return {
+          isValid: false,
+          reason: `Contém carne/peixe: ${item}`,
+          restriction: 'dietary_vegetarian',
+        };
+      }
+    }
+  } else if (diet === 'pescetariana') {
+    for (const meat of ANIMAL_INGREDIENTS) {
+      if (normalizedFood.includes(normalizeText(meat))) {
+        return {
+          isValid: false,
+          reason: `Contém carne: ${meat}`,
+          restriction: 'dietary_pescatarian',
+        };
+      }
+    }
+  }
+  
+  return { isValid: true };
+}
+
+// ============= RESTRICTION TEXT BUILDER (EXPANDED 17 INTOLERANCES) =============
 function getRestrictionText(restrictions: {
   intolerances: string[];
   dietaryPreference: string;
   excludedIngredients: string[];
   goal: string;
-}): string {
+}, shouldAddSugarQualifier: boolean): string {
   const parts: string[] = [];
 
   // Dietary preference
@@ -97,39 +278,60 @@ function getRestrictionText(restrictions: {
   };
   parts.push(goalMap[restrictions.goal] || goalMap['manter']);
 
-  // Intolerances
+  // Intolerances - Lista completa de 17
   const intoleranceMap: Record<string, string> = {
-    'lactose': 'SEM laticínios',
-    'gluten': 'SEM glúten (trigo, massa, pão)',
-    'amendoim': 'SEM amendoim',
-    'frutos_do_mar': 'SEM frutos do mar',
+    'lactose': 'SEM laticínios (leite, queijo, iogurte, manteiga)',
+    'gluten': 'SEM glúten (trigo, massa, pão, cevada, centeio)',
+    'amendoim': 'SEM amendoim e derivados',
+    'frutos_do_mar': 'SEM frutos do mar (camarão, lagosta, caranguejo)',
     'peixe': 'SEM peixe',
     'ovos': 'SEM ovos',
-    'soja': 'SEM soja',
+    'soja': 'SEM soja (tofu, shoyu, leite de soja)',
+    'sulfitos': 'SEM sulfitos (vinho, vinagre, frutas secas)',
+    'castanhas': 'SEM castanhas e nozes (amêndoa, noz, avelã, castanha)',
+    'sesamo': 'SEM gergelim/sésamo',
+    'tremoco': 'SEM tremoço',
+    'mostarda': 'SEM mostarda',
+    'aipo': 'SEM aipo/salsão',
+    'moluscos': 'SEM moluscos (ostra, mexilhão, lula, polvo)',
+    'fodmap': 'SEM FODMAP (cebola, alho, maçã, trigo, mel)',
+    'histamina': 'SEM histamina (queijo curado, vinho, embutidos)',
+    'salicilatos': 'SEM salicilatos (tomate, pimentão, curry)',
+    'niquel': 'SEM níquel (chocolate, aveia, lentilha)',
+    // Açúcar - 3 variantes
+    'acucar': 'SEM açúcar (açúcar, mel, xarope, rapadura)',
+    'acucar_diabetes': 'SEM açúcar (diabetes - controle glicêmico)',
+    'acucar_insulina': 'SEM açúcar (resistência à insulina)',
+    // Legados
     'cafeina': 'SEM cafeína',
     'milho': 'SEM milho',
-    'leguminosas': 'SEM leguminosas',
-    'acucar': 'SEM açúcar',
-    'acucar_diabetes': 'SEM açúcar (diabetes)',
-    'acucar_insulina': 'SEM açúcar (resistência insulina)',
+    'leguminosas': 'SEM leguminosas (feijão, lentilha, grão de bico)',
   };
 
   if (restrictions.intolerances.length > 0) {
     const intoleranceTexts = restrictions.intolerances
       .map(i => intoleranceMap[i] || `SEM ${i}`)
-      .join(', ');
+      .join('\n');
     parts.push(intoleranceTexts);
   }
 
   // Excluded ingredients
   if (restrictions.excludedIngredients.length > 0) {
-    parts.push(`Evitar: ${restrictions.excludedIngredients.join(', ')}`);
+    parts.push(`EVITAR (preferência pessoal): ${restrictions.excludedIngredients.join(', ')}`);
+  }
+
+  // Regra de qualificadores de bebidas
+  if (shouldAddSugarQualifier) {
+    parts.push(`
+⚠️ REGRA DE QUALIFICADORES DE BEBIDAS:
+- Adicionar "(sem açúcar)" a chás, cafés e sucos quando aplicável
+- Exemplo: "1 copo de suco de laranja (sem açúcar)", "1 xícara de chá verde (sem açúcar)"`);
   }
 
   return parts.join('\n');
 }
 
-// ============= PROMPT BUILDER (SAME FORMAT AS generate-ai-meal-plan) =============
+// ============= PROMPT BUILDER =============
 function buildAlternativesPrompt(params: {
   mealType: string;
   mealLabel: string;
@@ -146,10 +348,11 @@ function buildAlternativesPrompt(params: {
   regional: RegionalConfig;
   countryCode: string;
   optionsCount: number;
+  shouldAddSugarQualifier: boolean;
 }): string {
-  const { mealType, mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, regional, countryCode, optionsCount } = params;
+  const { mealType, mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, regional, countryCode, optionsCount, shouldAddSugarQualifier } = params;
 
-  const restrictionText = getRestrictionText(restrictions);
+  const restrictionText = getRestrictionText(restrictions, shouldAddSugarQualifier);
 
   // Macro targets description
   let macroDescription = `${targetCalories} kcal`;
@@ -171,9 +374,21 @@ PAÍS: ${countryCode}
 META NUTRICIONAL: ${macroDescription}
 
 --------------------------------------------------
-RESTRIÇÕES OBRIGATÓRIAS:
+RESTRIÇÕES OBRIGATÓRIAS (VETO LAYER - CRÍTICO):
 --------------------------------------------------
 ${restrictionText}
+
+⚠️ SEGURANÇA: Verifique TODAS as restrições acima ANTES de gerar qualquer opção.
+Se um ingrediente viola qualquer restrição, NÃO o inclua.
+
+--------------------------------------------------
+REGRA DE COMPLETUDE CULINÁRIA:
+--------------------------------------------------
+Gere refeições PRONTAS e COMPLETAS, não ingredientes isolados.
+- ERRADO: "3 claras de ovo" (ingrediente cru) ❌
+- CERTO: "Omelete de claras com ervas" ✓
+- ERRADO: "2 fatias de pão" (incompleto) ❌
+- CERTO: "Sanduíche de pão integral com queijo e tomate" ✓
 
 --------------------------------------------------
 INSTRUÇÕES CRÍTICAS:
@@ -290,7 +505,12 @@ serve(async (req) => {
       intolerances: profile.intolerances?.length || 0,
       excluded: profile.excluded_ingredients?.length || 0,
       country: profile.country,
+      strategyId: profile.strategy_id,
     });
+
+    // Fetch intolerance mappings from database (SAME AS generate-ai-meal-plan)
+    const { mappings: dbMappings, safeKeywords: dbSafeKeywords } = await fetchIntoleranceMappings(supabaseClient);
+    logStep("Intolerance mappings loaded", { mappingsCount: dbMappings.length, safeKeywordsCount: dbSafeKeywords.length });
 
     // Get regional config
     const userCountry = profile.country || 'BR';
@@ -311,6 +531,7 @@ serve(async (req) => {
     let targetProtein: number | undefined;
     let targetCarbs: number | undefined;
     let targetFat: number | undefined;
+    let strategyKey: string | undefined;
 
     // Get dynamic targets based on meal type and strategy
     if (profile.strategy_id) {
@@ -321,6 +542,7 @@ serve(async (req) => {
         .single();
 
       if (strategy) {
+        strategyKey = strategy.key;
         const targets = calculateNutritionalTargets(physicalData, {
           calorieModifier: strategy.calorie_modifier || 0,
           proteinPerKg: strategy.protein_per_kg || 1.6,
@@ -340,7 +562,15 @@ serve(async (req) => {
       }
     }
 
-    logStep("Target calculated", { targetCalories, targetProtein, targetCarbs, targetFat, mealType });
+    logStep("Target calculated", { targetCalories, targetProtein, targetCarbs, targetFat, mealType, strategyKey });
+
+    // Determine if should add sugar qualifiers to beverages
+    const hasSugarRestriction = (profile.intolerances || []).some((i: string) => 
+      i.includes('acucar') || i === 'acucar_diabetes' || i === 'acucar_insulina'
+    );
+    const hasWeightLossStrategy = strategyKey === 'emagrecimento' || strategyKey === 'cutting';
+    const hasKetoStrategy = profile.dietary_preference === 'cetogenica';
+    const shouldAddSugarQualifier = hasSugarRestriction || hasWeightLossStrategy || hasKetoStrategy;
 
     // Build restrictions
     const restrictions = {
@@ -362,9 +592,10 @@ serve(async (req) => {
       regional,
       countryCode: userCountry,
       optionsCount,
+      shouldAddSugarQualifier,
     });
 
-    logStep("Prompt built", { length: prompt.length });
+    logStep("Prompt built", { length: prompt.length, shouldAddSugarQualifier });
 
     // Call Gemini API
     const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
@@ -413,38 +644,106 @@ serve(async (req) => {
       throw new Error("Failed to parse AI response");
     }
 
-    // Transform to expected format for frontend
+    // Transform and VALIDATE alternatives (POST-GENERATION VALIDATION)
     const rawAlternatives = parsed.alternatives || parsed || [];
     
-    const alternatives = rawAlternatives.map((alt: {
-      title?: string;
-      foods?: Array<{ name: string; grams: number }>;
-      calories_kcal?: number;
-      protein_g?: number;
-      carbs_g?: number;
-      fat_g?: number;
-    }) => ({
-      recipe_name: alt.title || "Refeição",
-      recipe_calories: alt.calories_kcal || targetCalories,
-      recipe_protein: alt.protein_g || targetProtein || 25,
-      recipe_carbs: alt.carbs_g || targetCarbs || 35,
-      recipe_fat: alt.fat_g || targetFat || 12,
-      recipe_prep_time: 15,
-      // Transform foods to ingredient format expected by meal_plan_items
-      recipe_ingredients: (alt.foods || []).map((food: { name: string; grams: number }) => ({
-        item: food.name,
-        quantity: String(food.grams),
-        unit: "g",
-      })),
-      recipe_instructions: [], // Simple meals don't have detailed instructions
-      is_safe: true,
-    }));
+    const validatedAlternatives: Array<{
+      recipe_name: string;
+      recipe_calories: number;
+      recipe_protein: number;
+      recipe_carbs: number;
+      recipe_fat: number;
+      recipe_prep_time: number;
+      recipe_ingredients: Array<{ item: string; quantity: string; unit: string }>;
+      recipe_instructions: never[];
+      is_safe: boolean;
+    }> = [];
 
-    if (alternatives.length === 0) {
-      throw new Error("No alternatives generated");
+    for (const alt of rawAlternatives) {
+      const foods = alt.foods || [];
+      let hasViolation = false;
+      const validatedFoods: Array<{ item: string; quantity: string; unit: string }> = [];
+
+      for (const food of foods) {
+        const validation = validateFood(
+          food.name,
+          restrictions,
+          dbMappings,
+          dbSafeKeywords
+        );
+
+        if (!validation.isValid) {
+          logStep("Food violation detected", { food: food.name, reason: validation.reason });
+          hasViolation = true;
+          break;
+        }
+
+        validatedFoods.push({
+          item: food.name,
+          quantity: String(food.grams),
+          unit: "g",
+        });
+      }
+
+      // Only include alternatives that pass ALL validations
+      if (!hasViolation && validatedFoods.length > 0) {
+        validatedAlternatives.push({
+          recipe_name: alt.title || "Refeição",
+          recipe_calories: alt.calories_kcal || targetCalories,
+          recipe_protein: alt.protein_g || targetProtein || 25,
+          recipe_carbs: alt.carbs_g || targetCarbs || 35,
+          recipe_fat: alt.fat_g || targetFat || 12,
+          recipe_prep_time: 15,
+          recipe_ingredients: validatedFoods,
+          recipe_instructions: [],
+          is_safe: true,
+        });
+      }
     }
 
-    logStep("Alternatives generated and transformed", { count: alternatives.length });
+    if (validatedAlternatives.length === 0) {
+      logStep("All alternatives failed validation, returning raw with warning");
+      // Fallback: return raw alternatives with is_safe = false
+      const fallbackAlternatives = rawAlternatives.slice(0, optionsCount).map((alt: {
+        title?: string;
+        foods?: Array<{ name: string; grams: number }>;
+        calories_kcal?: number;
+        protein_g?: number;
+        carbs_g?: number;
+        fat_g?: number;
+      }) => ({
+        recipe_name: alt.title || "Refeição",
+        recipe_calories: alt.calories_kcal || targetCalories,
+        recipe_protein: alt.protein_g || targetProtein || 25,
+        recipe_carbs: alt.carbs_g || targetCarbs || 35,
+        recipe_fat: alt.fat_g || targetFat || 12,
+        recipe_prep_time: 15,
+        recipe_ingredients: (alt.foods || []).map((food: { name: string; grams: number }) => ({
+          item: food.name,
+          quantity: String(food.grams),
+          unit: "g",
+        })),
+        recipe_instructions: [],
+        is_safe: false,
+      }));
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          alternatives: fallbackAlternatives,
+          mealType,
+          mealLabel,
+          targetCalories,
+          validationWarning: "Some alternatives may contain restricted ingredients",
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    logStep("Alternatives generated and validated", { 
+      rawCount: rawAlternatives.length, 
+      validatedCount: validatedAlternatives.length 
+    });
 
     // Log AI usage
     const promptTokens = Math.ceil(prompt.length / 4);
@@ -456,14 +755,14 @@ serve(async (req) => {
       completionTokens,
       totalTokens: promptTokens + completionTokens,
       userId,
-      itemsGenerated: alternatives.length,
+      itemsGenerated: validatedAlternatives.length,
       metadata: { mealType, targetCalories, executionTimeMs: Date.now() - startTime },
     });
 
     return new Response(
       JSON.stringify({
         success: true,
-        alternatives,
+        alternatives: validatedAlternatives,
         mealType,
         mealLabel,
         targetCalories,

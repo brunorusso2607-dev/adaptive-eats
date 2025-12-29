@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
 import { getOnboardingIcon } from "@/lib/iconUtils";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
-import { useNutritionalStrategies, getStrategiesForGoal, type NutritionalStrategy } from "@/hooks/useNutritionalStrategies";
+import { useNutritionalStrategies, deriveGoalFromStrategy, type NutritionalStrategy } from "@/hooks/useNutritionalStrategies";
 
 const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
@@ -22,9 +22,8 @@ const STEPS = [
   { id: 2, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
   { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?" },
   { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
-  { id: 5, title: "Objetivo", description: "Qual seu objetivo?" },
-  { id: 6, title: "Estratégia", description: "Como você quer alcançar seu objetivo?" },
-  { id: 7, title: "Notificações", description: "Receba lembretes importantes" },
+  { id: 5, title: "Objetivo", description: "Qual sua estratégia nutricional?" },
+  { id: 6, title: "Notificações", description: "Receba lembretes importantes" },
 ];
 
 const COUNTRIES = [
@@ -121,7 +120,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 7) {
+    if (currentStep < 6) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -416,42 +415,6 @@ export default function Onboarding() {
         );
 
       case 5:
-        return (
-          <div className="space-y-3">
-            {options.goals.map((item) => {
-              const IconComponent = getOnboardingIcon(item);
-              return (
-                <button
-                  key={item.option_id}
-                  onClick={() => setProfile({ ...profile, goal: item.option_id })}
-                  className={cn(
-                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                    profile.goal === item.option_id
-                      ? "border-primary bg-primary/5"
-                      : "border-border/80 hover:border-primary/50 bg-card"
-                  )}
-                >
-                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
-                    {IconComponent ? (
-                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
-                    ) : (
-                      <span className="text-xl">{item.emoji || "•"}</span>
-                    )}
-                  </div>
-                  <div>
-                    <span className="font-medium block">{item.label}</span>
-                    {item.description && (
-                      <span className="text-sm text-muted-foreground">{item.description}</span>
-                    )}
-                  </div>
-                </button>
-              );
-            })}
-          </div>
-        );
-
-      case 6:
-        const strategyGroups = getStrategiesForGoal(profile.goal, strategies || []);
         const getStrategyIcon = (key: string) => {
           switch (key) {
             case "emagrecer": return TrendingDown;
@@ -472,92 +435,58 @@ export default function Onboarding() {
           );
         }
 
+        const handleStrategySelect = (strategy: NutritionalStrategy) => {
+          const derivedGoal = deriveGoalFromStrategy(strategy.key);
+          setProfile({ 
+            ...profile, 
+            strategy_id: strategy.id,
+            goal: derivedGoal
+          });
+        };
+
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Escolha a estratégia que melhor se adapta ao seu estilo de vida
+          <div className="space-y-3">
+            <p className="text-sm text-muted-foreground text-center mb-4">
+              Escolha a estratégia que melhor se adapta ao seu objetivo
             </p>
-
-            {/* Recomendadas */}
-            {strategyGroups.recommended.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-primary flex items-center gap-1">
-                  <Sparkles className="w-3 h-3" />
-                  Recomendadas para você
-                </p>
-                <div className="space-y-2">
-                  {strategyGroups.recommended.map((strategy) => {
-                    const IconComponent = getStrategyIcon(strategy.key);
-                    return (
-                      <button
-                        key={strategy.id}
-                        onClick={() => setProfile({ ...profile, strategy_id: strategy.id })}
-                        className={cn(
-                          "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                          profile.strategy_id === strategy.id
-                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                            : "border-border/80 hover:border-primary/50 bg-card"
-                        )}
-                      >
-                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-primary/10">
-                          <IconComponent className="w-5 h-5 text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <span className="font-medium block">{strategy.label}</span>
-                          {strategy.description && (
-                            <span className="text-sm text-muted-foreground line-clamp-2">{strategy.description}</span>
-                          )}
-                        </div>
-                        {profile.strategy_id === strategy.id && (
-                          <Check className="w-5 h-5 text-primary shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Outras */}
-            {strategyGroups.others.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs font-medium text-muted-foreground">Outras opções</p>
-                <div className="space-y-2">
-                  {strategyGroups.others.map((strategy) => {
-                    const IconComponent = getStrategyIcon(strategy.key);
-                    return (
-                      <button
-                        key={strategy.id}
-                        onClick={() => setProfile({ ...profile, strategy_id: strategy.id })}
-                        className={cn(
-                          "w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3",
-                          profile.strategy_id === strategy.id
-                            ? "border-primary bg-primary/5"
-                            : "border-border/80 hover:border-primary/50 bg-card"
-                        )}
-                      >
-                        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50">
-                          <IconComponent className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <div className="flex-1">
-                          <span className="font-medium text-sm block">{strategy.label}</span>
-                          {strategy.description && (
-                            <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
-                          )}
-                        </div>
-                        {profile.strategy_id === strategy.id && (
-                          <Check className="w-4 h-4 text-primary shrink-0" />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
+            {strategies.map((strategy) => {
+              const IconComponent = getStrategyIcon(strategy.key);
+              return (
+                <button
+                  key={strategy.id}
+                  onClick={() => handleStrategySelect(strategy)}
+                  className={cn(
+                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
+                    profile.strategy_id === strategy.id
+                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                      : "border-border/80 hover:border-primary/50 bg-card"
+                  )}
+                >
+                  <div className={cn(
+                    "w-10 h-10 flex items-center justify-center rounded-lg",
+                    profile.strategy_id === strategy.id ? "bg-primary/10" : "bg-muted/50"
+                  )}>
+                    <IconComponent className={cn(
+                      "w-5 h-5",
+                      profile.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground"
+                    )} />
+                  </div>
+                  <div className="flex-1">
+                    <span className="font-medium block">{strategy.label}</span>
+                    {strategy.description && (
+                      <span className="text-sm text-muted-foreground line-clamp-2">{strategy.description}</span>
+                    )}
+                  </div>
+                  {profile.strategy_id === strategy.id && (
+                    <Check className="w-5 h-5 text-primary shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         );
 
-      case 7:
+      case 6:
         return (
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -700,11 +629,11 @@ export default function Onboarding() {
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === 7 ? (
+          ) : currentStep === 6 ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === 7 ? "Concluir" : "Próximo"}
-          {currentStep < 7 && <ArrowRight className="w-4 h-4 ml-2" />}
+          {currentStep === 6 ? "Concluir" : "Próximo"}
+          {currentStep < 6 && <ArrowRight className="w-4 h-4 ml-2" />}
         </Button>
       </footer>
     </div>

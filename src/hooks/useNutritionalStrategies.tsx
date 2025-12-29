@@ -50,6 +50,22 @@ export function getRecommendedStrategy(
   return strategies.find(s => s.key === strategyKey) || null;
 }
 
+// Deriva o goal automaticamente a partir da estratégia selecionada
+export function deriveGoalFromStrategy(strategyKey: string): "emagrecer" | "manter" | "ganhar_peso" {
+  switch (strategyKey) {
+    case "emagrecer":
+    case "cutting":
+      return "emagrecer";
+    case "ganhar_peso":
+      return "ganhar_peso";
+    case "manter":
+    case "fitness":
+    case "dieta_flexivel":
+    default:
+      return "manter";
+  }
+}
+
 // Agrupa strategies por compatibilidade com goal
 export function getStrategiesForGoal(
   goal: string | null,

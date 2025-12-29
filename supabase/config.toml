@@ -134,3 +134,9 @@ verify_jwt = false
 
 [functions.regenerate-ai-meal-alternatives]
 verify_jwt = false
+
+[functions.test-security-validation]
+verify_jwt = false
+
+[functions.suggest-meal-alternatives]
+verify_jwt = false

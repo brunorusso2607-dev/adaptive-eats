@@ -18,6 +18,7 @@ import {
   getPortionFormat,
   getLocaleFromCountry
 } from "../_shared/nutritionPrompt.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -740,48 +741,75 @@ If any alert exists, set health_bonus to null.
       analysis.alertas_intolerancia = [];
     }
 
-    // ========== RECÁLCULO DE CALORIAS COM TABELA COMPARTILHADA ==========
-    // Garante consistência com o módulo de plano alimentar
-    let caloriasRecalculadas = 0;
-    const detalhesRecalculo: Array<{ item: string; original: number; recalculado: number; source: string; note: string }> = [];
+    // ========== HYBRID MACRO CALCULATION: Use real data from foods table ==========
+    let macrosFromDatabase = 0;
+    let macrosFromAI = 0;
+    const detalhesRecalculo: Array<{ item: string; original: number; recalculado: number; source: string }> = [];
     
     if (analysis.alimentos && Array.isArray(analysis.alimentos)) {
-      for (let i = 0; i < analysis.alimentos.length; i++) {
-        const food = analysis.alimentos[i];
-        const originalCalories = food.calorias || 0;
-        
-        // Usa a função compartilhada para recalcular
-        const result = recalculateWithTable(
-          food.item || "",
-          food.porcao_estimada || "",
-          originalCalories
-        );
-        
-        // Atualiza as calorias se foi recalculado com sucesso pela tabela
-        if (result.source === 'table') {
-          analysis.alimentos[i].calorias = result.calories;
-          analysis.alimentos[i].calculo_fonte = 'tabela_referencia';
-          analysis.alimentos[i].gramas_extraidas = result.grams;
-          caloriasRecalculadas++;
+      try {
+        // Prepare foods for calculation
+        const foodsForCalculation = analysis.alimentos.map((food: any) => {
+          const name = food.item || '';
+          let grams = 100;
           
-          detalhesRecalculo.push({
-            item: food.item,
-            original: originalCalories,
-            recalculado: result.calories,
-            source: result.source,
-            note: result.note
-          });
-        } else {
-          // Mantém o valor da IA mas marca a fonte
-          analysis.alimentos[i].calculo_fonte = result.source;
-          if (result.grams) {
-            analysis.alimentos[i].gramas_extraidas = result.grams;
+          // Try to extract grams from portion description
+          if (food.porcao_estimada) {
+            const extracted = extractGramsFromPortion(food.porcao_estimada);
+            if (extracted !== null && extracted > 0) grams = extracted;
+          }
+          
+          return {
+            name,
+            grams,
+            // Pass AI estimates as fallback
+            estimated_calories: food.calorias || 0,
+            estimated_protein: food.macros?.proteinas || 0,
+            estimated_carbs: food.macros?.carboidratos || 0,
+            estimated_fat: food.macros?.gorduras || 0,
+          };
+        });
+        
+        // Calculate real macros from database
+        const macroResult = await calculateRealMacrosForFoods(supabaseClient, foodsForCalculation);
+        const calculatedItems = macroResult.items;
+        
+        // Update each food with real macros
+        for (let i = 0; i < analysis.alimentos.length; i++) {
+          const calc = calculatedItems[i];
+          if (calc) {
+            const originalCalorias = analysis.alimentos[i].calorias || 0;
+            
+            analysis.alimentos[i].calorias = Math.round(calc.calories);
+            analysis.alimentos[i].macros = {
+              proteinas: Math.round(calc.protein * 10) / 10,
+              carboidratos: Math.round(calc.carbs * 10) / 10,
+              gorduras: Math.round(calc.fat * 10) / 10,
+            };
+            analysis.alimentos[i].calculo_fonte = calc.source === 'database' ? 'tabela_foods' : 'estimativa_ia';
+            analysis.alimentos[i].gramas_usadas = calc.grams;
+            if (calc.food_id) {
+              analysis.alimentos[i].food_id = calc.food_id;
+            }
+            if (calc.matched_name) {
+              analysis.alimentos[i].alimento_encontrado = calc.matched_name;
+            }
+            
+            if (calc.source === 'database') {
+              macrosFromDatabase++;
+              detalhesRecalculo.push({
+                item: analysis.alimentos[i].item,
+                original: originalCalorias,
+                recalculado: calc.calories,
+                source: 'database'
+              });
+            } else {
+              macrosFromAI++;
+            }
           }
         }
-      }
-      
-      // Recalcular totais se houve recálculos
-      if (caloriasRecalculadas > 0) {
+        
+        // Recalculate totals
         let totalCalorias = 0;
         let totalProteinas = 0;
         let totalCarboidratos = 0;
@@ -801,11 +829,19 @@ If any alert exists, set health_bonus to null.
           gorduras_totais: Math.round(totalGorduras * 10) / 10
         };
         
-        logStep("Calorias recalculadas com tabela compartilhada", { 
-          itensRecalculados: caloriasRecalculadas,
-          detalhes: detalhesRecalculo,
+        // Add match rate to response
+        analysis.macro_match_rate = macroResult.matchRate;
+        analysis.macros_from_database = macrosFromDatabase;
+        analysis.macros_from_ai = macrosFromAI;
+        
+        logStep("✅ Real macros calculated from database", { 
+          fromDatabase: macrosFromDatabase,
+          fromAI: macrosFromAI,
+          matchRate: `${macroResult.matchRate}%`,
           novosTotais: analysis.total_geral 
         });
+      } catch (macroError) {
+        logStep("⚠️ Error calculating real macros, keeping AI estimates", { error: String(macroError) });
       }
     }
 

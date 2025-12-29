@@ -19,6 +19,7 @@ import {
   buildNutritionalContextForPrompt,
   type UserPhysicalData,
 } from "../_shared/nutritionalCalculations.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -343,19 +344,77 @@ serve(async (req) => {
           // Recipe passed all validations!
           recipeData = parsedRecipe;
           
-          // Recalcular calorias usando tabela compartilhada
+          // ========== HYBRID MACRO CALCULATION: Use real data from foods table ==========
           if (recipeData.recipe_ingredients && Array.isArray(recipeData.recipe_ingredients)) {
-            const recalcResult = recalculateRecipeCalories(
-              recipeData.recipe_ingredients,
-              Number(recipeData.recipe_calories) || targetCalories
-            );
-            if (recalcResult.recalculated) {
-              recipeData.recipe_calories = recalcResult.totalCalories;
-              logStep("Recipe calories recalculated", { 
-                original: parsedRecipe.recipe_calories,
-                recalculated: recalcResult.totalCalories,
-                sources: recalcResult.sources
+            try {
+              // Prepare ingredients for real macro calculation
+              const foodsForCalculation = recipeData.recipe_ingredients.map((ing: any) => {
+                const name = typeof ing === 'string' ? ing : (ing.item || ing.name || '');
+                let grams = 100;
+                
+                if (typeof ing === 'object') {
+                  if (ing.grams) grams = ing.grams;
+                  else if (ing.quantity) {
+                    const numMatch = String(ing.quantity).match(/(\d+)/);
+                    grams = numMatch ? parseInt(numMatch[1]) : 100;
+                  }
+                }
+                
+                return {
+                  name,
+                  grams,
+                  aiEstimate: {
+                    calories: ing.calories || 0,
+                    protein: ing.protein || 0,
+                    carbs: ing.carbs || 0,
+                    fat: ing.fat || 0,
+                  }
+                };
               });
+              
+              // Calculate real macros from database
+              const macroResult = await calculateRealMacrosForFoods(supabaseClient, foodsForCalculation);
+              const calculatedItems = macroResult.items;
+              
+              // Aggregate totals
+              let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
+              
+              const enrichedIngredients = recipeData.recipe_ingredients.map((ing: any, idx: number) => {
+                const calc = calculatedItems[idx];
+                if (calc) {
+                  totalCalories += calc.calories;
+                  totalProtein += calc.protein;
+                  totalCarbs += calc.carbs;
+                  totalFat += calc.fat;
+                  
+                  return {
+                    ...ing,
+                    calculated_calories: Math.round(calc.calories),
+                    calculated_protein: Math.round(calc.protein * 10) / 10,
+                    calculated_carbs: Math.round(calc.carbs * 10) / 10,
+                    calculated_fat: Math.round(calc.fat * 10) / 10,
+                    macro_source: calc.source,
+                    food_id: calc.food_id || null,
+                  };
+                }
+                return ing;
+              });
+              
+              // Update recipe with real macros
+              recipeData.recipe_calories = Math.round(totalCalories);
+              recipeData.recipe_protein = Math.round(totalProtein * 10) / 10;
+              recipeData.recipe_carbs = Math.round(totalCarbs * 10) / 10;
+              recipeData.recipe_fat = Math.round(totalFat * 10) / 10;
+              recipeData.recipe_ingredients = enrichedIngredients;
+              
+              logStep("✅ Real macros calculated from database", {
+                totalCalories: recipeData.recipe_calories,
+                fromDatabase: macroResult.fromDb,
+                fromAI: macroResult.fromAi,
+                matchRate: `${macroResult.matchRate}%`
+              });
+            } catch (macroError) {
+              logStep("⚠️ Error calculating real macros, using AI estimates", { error: String(macroError) });
             }
           }
           

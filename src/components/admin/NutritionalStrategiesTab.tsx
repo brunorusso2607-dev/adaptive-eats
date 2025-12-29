@@ -284,7 +284,7 @@ export default function NutritionalStrategiesTab() {
   return (
     <>
       <Card className="border-border/50">
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <CardTitle className="flex items-center gap-2">
               <Target className="w-5 h-5 text-muted-foreground" />
@@ -294,7 +294,7 @@ export default function NutritionalStrategiesTab() {
               Objetivos nutricionais para cálculo de macros
             </p>
           </div>
-          <Button onClick={openCreateDialog} className="gap-2 bg-foreground text-background hover:bg-foreground/90">
+          <Button onClick={openCreateDialog} className="gap-2 bg-foreground text-background hover:bg-foreground/90 w-full sm:w-auto">
             <Plus className="w-4 h-4" />
             Nova Estratégia
           </Button>
@@ -312,69 +312,73 @@ export default function NutritionalStrategiesTab() {
                 return (
                   <div
                     key={strategy.id}
-                    className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+                    className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
                   >
-                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                    
-                    <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
-                      <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{strategy.label}</span>
-                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
-                          {strategy.key}
-                        </span>
-                        {strategy.is_flexible && (
-                          <Badge variant="secondary" className="text-xs">
-                            Flexível
-                          </Badge>
-                        )}
-                        {!strategy.is_active && (
-                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
-                            Inativo
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab hidden sm:block" />
+                      
+                      <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-muted/50">
+                        <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                      </div>
+                      
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-medium">{strategy.label}</span>
+                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
+                            {strategy.key}
                           </span>
+                          {strategy.is_flexible && (
+                            <Badge variant="secondary" className="text-xs">
+                              Flexível
+                            </Badge>
+                          )}
+                          {!strategy.is_active && (
+                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
+                              Inativo
+                            </span>
+                          )}
+                        </div>
+                        {strategy.description && (
+                          <p className="text-sm text-muted-foreground line-clamp-2 sm:truncate">
+                            {strategy.description}
+                          </p>
                         )}
-                      </div>
-                      {strategy.description && (
-                        <p className="text-sm text-muted-foreground truncate">
-                          {strategy.description}
-                        </p>
-                      )}
-                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                        <span>Cal: {strategy.calorie_modifier && strategy.calorie_modifier > 0 ? "+" : ""}{strategy.calorie_modifier || 0}</span>
-                        <span>Prot: {strategy.protein_per_kg || 0}g/kg</span>
-                        <span>Carb: {((strategy.carb_ratio || 0) * 100).toFixed(0)}%</span>
-                        <span>Fat: {((strategy.fat_ratio || 0) * 100).toFixed(0)}%</span>
+                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs text-muted-foreground">
+                          <span>Cal: {strategy.calorie_modifier && strategy.calorie_modifier > 0 ? "+" : ""}{strategy.calorie_modifier || 0}</span>
+                          <span>Prot: {strategy.protein_per_kg || 0}g/kg</span>
+                          <span>Carb: {((strategy.carb_ratio || 0) * 100).toFixed(0)}%</span>
+                          <span>Fat: {((strategy.fat_ratio || 0) * 100).toFixed(0)}%</span>
+                        </div>
                       </div>
                     </div>
 
-                    <Switch
-                      checked={strategy.is_active}
-                      onCheckedChange={(checked) =>
-                        toggleActiveMutation.mutate({ id: strategy.id, is_active: checked })
-                      }
-                      className="data-[state=checked]:bg-foreground"
-                    />
+                    <div className="flex items-center justify-end gap-2 sm:gap-1 ml-auto sm:ml-0 flex-shrink-0">
+                      <Switch
+                        checked={strategy.is_active}
+                        onCheckedChange={(checked) =>
+                          toggleActiveMutation.mutate({ id: strategy.id, is_active: checked })
+                        }
+                        className="data-[state=checked]:bg-foreground"
+                      />
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => openEditDialog(strategy)}
-                      className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                    >
-                      <Pencil className="w-4 h-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => openEditDialog(strategy)}
+                        className="text-muted-foreground hover:text-foreground hover:bg-muted"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
 
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                      onClick={() => setDeleteStrategy(strategy)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => setDeleteStrategy(strategy)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   </div>
                 );
               })}

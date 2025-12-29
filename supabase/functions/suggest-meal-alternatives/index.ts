@@ -2,14 +2,17 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
-  buildIntolerancesString,
-  buildExcludedIngredientsString,
-  buildForbiddenIngredientsListWithDiet,
-  buildDietaryRestrictionBlock,
-  MEAL_TYPE_LABELS,
-  getCountryConfig,
-  type UserProfile,
-} from "../_shared/recipeConfig.ts";
+  getRegionalConfig,
+  validateFood,
+  fetchIntoleranceMappings,
+  getRestrictionText,
+  getMealPromptRules,
+  shouldAddSugarQualifier,
+  FORBIDDEN_INGREDIENTS,
+  ANIMAL_INGREDIENTS,
+  DAIRY_AND_EGGS,
+  FISH_INGREDIENTS,
+} from "../_shared/mealGenerationConfig.ts";
 import { logAIUsage } from "../_shared/logAIUsage.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import {
@@ -78,7 +81,39 @@ serve(async (req) => {
       dietary: profile.dietary_preference,
       intolerances: profile.intolerances?.length || 0,
       excluded: profile.excluded_ingredients?.length || 0,
+      strategy_id: profile.strategy_id,
     });
+
+    // Fetch intolerance mappings from database (CRITICAL FIX)
+    const { mappings: dbMappings, safeKeywords: dbSafeKeywords } = await fetchIntoleranceMappings(supabaseClient);
+    logStep("Intolerance mappings fetched", { 
+      mappingsCount: dbMappings.length, 
+      safeKeywordsCount: dbSafeKeywords.length 
+    });
+
+    // Get strategy from database if available
+    let strategyKey: string | undefined;
+    let calorieModifier = 0;
+    let proteinPerKg = 1.6;
+    let carbRatio = 0.5;
+    let fatRatio = 0.3;
+
+    if (profile.strategy_id) {
+      const { data: strategy } = await supabaseClient
+        .from("nutritional_strategies")
+        .select("*")
+        .eq("id", profile.strategy_id)
+        .single();
+
+      if (strategy) {
+        strategyKey = strategy.key;
+        calorieModifier = strategy.calorie_modifier || 0;
+        proteinPerKg = strategy.protein_per_kg || 1.6;
+        carbRatio = strategy.carb_ratio || 0.5;
+        fatRatio = strategy.fat_ratio || 0.3;
+        logStep("Strategy loaded", { key: strategy.key, calorieModifier });
+      }
+    }
 
     // Calculate nutritional targets
     const physicalData = {
@@ -92,50 +127,56 @@ serve(async (req) => {
 
     let targetCalories = currentCalories || 400;
 
-    // Get dynamic targets based on meal type if possible
-    if (profile.strategy_id) {
-      const { data: strategy } = await supabaseClient
-        .from("nutritional_strategies")
-        .select("*")
-        .eq("id", profile.strategy_id)
-        .single();
+    const targets = calculateNutritionalTargets(physicalData, {
+      calorieModifier,
+      proteinPerKg,
+      carbRatio,
+      fatRatio,
+    });
 
-      if (strategy) {
-        const targets = calculateNutritionalTargets(physicalData, {
-          calorieModifier: strategy.calorie_modifier || 0,
-          proteinPerKg: strategy.protein_per_kg || 1.6,
-          carbRatio: strategy.carb_ratio || 0.5,
-          fatRatio: strategy.fat_ratio || 0.3,
-        });
-
-        if (targets) {
-          const mealTarget = getMealTarget(targets, mealType, profile.enabled_meals || undefined);
-          if (mealTarget) {
-            targetCalories = Math.round(mealTarget.calories);
-          }
-        }
+    if (targets) {
+      const mealTarget = getMealTarget(targets, mealType, profile.enabled_meals || undefined);
+      if (mealTarget) {
+        targetCalories = Math.round(mealTarget.calories);
       }
     }
 
     logStep("Target calculated", { targetCalories, mealType });
 
-    // Build user profile for prompt functions
-    const userProfileForPrompt: UserProfile = {
-      id: userId,
-      dietary_preference: profile.dietary_preference,
-      intolerances: profile.intolerances,
-      excluded_ingredients: profile.excluded_ingredients,
-      goal: profile.goal,
-      country: profile.country,
-      kids_mode: profile.kids_mode,
-    };
+    // Get regional config
+    const regional = getRegionalConfig(profile.country || 'BR');
+    const mealLabel = regional.mealLabels[mealType] || mealType;
+
+    // Build restriction text using unified function
+    const addSugarQualifier = shouldAddSugarQualifier(
+      profile.intolerances || [],
+      strategyKey,
+      profile.dietary_preference
+    );
+
+    const restrictionText = getRestrictionText(
+      {
+        intolerances: profile.intolerances || [],
+        dietaryPreference: profile.dietary_preference || 'comum',
+        excludedIngredients: profile.excluded_ingredients || [],
+        goal: profile.goal || 'manter',
+      },
+      regional.language,
+      addSugarQualifier
+    );
+
+    // Get format rules from shared config
+    const formatRules = getMealPromptRules(regional.language);
 
     // Build prompt for alternatives
     const prompt = buildAlternativesPrompt(
-      userProfileForPrompt,
-      mealType,
+      mealLabel,
       targetCalories,
-      5 // number of alternatives
+      5,
+      restrictionText,
+      formatRules,
+      profile.kids_mode === true,
+      regional.language
     );
 
     // Call Gemini
@@ -181,16 +222,58 @@ serve(async (req) => {
       throw new Error("Failed to parse AI response");
     }
 
-    // Validate alternatives
-    const validAlternatives = (alternatives.alternatives || alternatives || [])
-      .filter((alt: { is_safe?: boolean }) => alt.is_safe !== false)
-      .slice(0, 5);
+    // CRITICAL: Validate alternatives using validateFood()
+    const rawAlternatives = alternatives.alternatives || alternatives || [];
+    const validAlternatives: typeof rawAlternatives = [];
+    
+    for (const alt of rawAlternatives) {
+      // First check AI's is_safe flag
+      if (alt.is_safe === false) {
+        logStep("Alternative flagged unsafe by AI", { name: alt.recipe_name });
+        continue;
+      }
+      
+      // Then validate each ingredient
+      let allIngredientsValid = true;
+      const ingredients = alt.recipe_ingredients || [];
+      
+      for (const ing of ingredients) {
+        const ingName = typeof ing === 'string' ? ing : (ing.item || ing.name || '');
+        const validation = validateFood(
+          ingName,
+          {
+            intolerances: profile.intolerances || [],
+            dietaryPreference: profile.dietary_preference || 'comum',
+            excludedIngredients: profile.excluded_ingredients || [],
+          },
+          dbMappings,
+          dbSafeKeywords
+        );
+        
+        if (!validation.isValid) {
+          logStep("Alternative ingredient invalid", { 
+            name: alt.recipe_name, 
+            ingredient: ingName,
+            reason: validation.reason 
+          });
+          allIngredientsValid = false;
+          break;
+        }
+      }
+      
+      if (allIngredientsValid) {
+        validAlternatives.push(alt);
+      }
+    }
+
+    logStep("Alternatives validated", { 
+      raw: rawAlternatives.length, 
+      valid: validAlternatives.length 
+    });
 
     if (validAlternatives.length === 0) {
       throw new Error("No valid alternatives generated");
     }
-
-    logStep("Alternatives generated", { count: validAlternatives.length });
 
     // Log AI usage
     const promptTokens = Math.ceil(prompt.length / 4);
@@ -209,7 +292,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        alternatives: validAlternatives,
+        alternatives: validAlternatives.slice(0, 5),
         mealType,
         targetCalories,
       }),
@@ -231,38 +314,34 @@ serve(async (req) => {
 });
 
 /**
- * Builds prompt for generating meal alternatives
+ * Builds prompt for generating meal alternatives using shared format rules
  */
 function buildAlternativesPrompt(
-  profile: UserProfile,
-  mealType: string,
+  mealLabel: string,
   targetCalories: number,
-  count: number
+  count: number,
+  restrictionText: string,
+  formatRules: string,
+  isKidsMode: boolean,
+  language: string
 ): string {
-  const intolerancesStr = buildIntolerancesString(profile);
-  const excludedStr = buildExcludedIngredientsString(profile);
-  const forbiddenList = buildForbiddenIngredientsListWithDiet(profile);
-  const dietaryBlock = buildDietaryRestrictionBlock(profile);
-  const countryConfig = getCountryConfig(profile.country);
-  const mealLabel = countryConfig.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
+  const isPortuguese = language.startsWith('pt');
+  const isSpanish = language.startsWith('es');
   
-  const isKidsMode = profile.kids_mode === true;
-  const kidsNote = isKidsMode ? " 🧒 Alimentos kid-friendly." : "";
-
-  const excludedConstraint = excludedStr ? `\n❌ Excluídos: ${excludedStr}` : "";
-  const forbiddenBlock = forbiddenList ? `\n🚫 Proibidos: ${forbiddenList}` : "";
+  const kidsNote = isKidsMode 
+    ? (isPortuguese ? " 🧒 Alimentos kid-friendly." : isSpanish ? " 🧒 Alimentos para niños." : " 🧒 Kid-friendly foods.")
+    : "";
 
   // Calorie range (±15%)
   const minCal = Math.round(targetCalories * 0.85);
   const maxCal = Math.round(targetCalories * 1.15);
 
-  return `🥗 NUTRICIONISTA - Gerar ${count} OPÇÕES de ${mealLabel}
-🌍 ${countryConfig.name} | 🎯 Meta: ${minCal}-${maxCal} kcal${kidsNote}
+  if (isPortuguese) {
+    return `🥗 NUTRICIONISTA - Gerar ${count} OPÇÕES de ${mealLabel}
+🎯 Meta: ${minCal}-${maxCal} kcal${kidsNote}
 
-${dietaryBlock}
-
-⛔ RESTRIÇÕES (NUNCA incluir):
-${intolerancesStr}${excludedConstraint}${forbiddenBlock}
+⛔ RESTRIÇÕES ALIMENTARES (NUNCA incluir):
+${restrictionText}
 
 🔒 Dúvida sobre ingrediente → is_safe: false
 
@@ -272,21 +351,7 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 • Todas respeitando as mesmas restrições
 • Calorias entre ${minCal} e ${maxCal} kcal
 
-📐 FORMATO DOS INGREDIENTES (OBRIGATÓRIO):
-Cada item: {"item": "QUANTIDADE + ALIMENTO", "quantity": "NÚMERO", "unit": "g"}
-- O campo "item" DEVE incluir medida caseira (1 fatia de pão, 2 colheres de arroz)
-- NUNCA inclua números de gramas no campo "item"
-- O campo "quantity" DEVE ser o valor numérico em gramas
-- O campo "unit" DEVE ser sempre "g"
-
-Exemplos CORRETOS:
-• {"item": "2 colheres de sopa de arroz integral", "quantity": "100", "unit": "g"}
-• {"item": "1 filé médio de frango grelhado", "quantity": "120", "unit": "g"}
-• {"item": "1 banana média", "quantity": "90", "unit": "g"}
-• {"item": "2 fatias de pão integral", "quantity": "50", "unit": "g"}
-
-🔴 REGRA DE CONSISTÊNCIA NOME-INGREDIENTES:
-O nome da refeição DEVE refletir EXATAMENTE os ingredientes listados.
+${formatRules}
 
 🔧 JSON (responda APENAS isto):
 {
@@ -310,4 +375,36 @@ O nome da refeição DEVE refletir EXATAMENTE os ingredientes listados.
 }
 
 Responda APENAS JSON válido com ${count} opções.`;
+  }
+
+  if (isSpanish) {
+    return `🥗 NUTRICIONISTA - Generar ${count} OPCIONES de ${mealLabel}
+🎯 Meta: ${minCal}-${maxCal} kcal${kidsNote}
+
+⛔ RESTRICCIONES ALIMENTARIAS (NUNCA incluir):
+${restrictionText}
+
+🔒 Duda sobre ingrediente → is_safe: false
+
+📋 GENERAR ${count} OPCIONES DIFERENTES de ${mealLabel}
+
+${formatRules}
+
+Responda SOLO JSON válido con ${count} opciones.`;
+  }
+
+  // English default
+  return `🥗 NUTRITIONIST - Generate ${count} OPTIONS for ${mealLabel}
+🎯 Target: ${minCal}-${maxCal} kcal${kidsNote}
+
+⛔ DIETARY RESTRICTIONS (NEVER include):
+${restrictionText}
+
+🔒 Doubt about ingredient → is_safe: false
+
+📋 GENERATE ${count} DIFFERENT OPTIONS for ${mealLabel}
+
+${formatRules}
+
+Reply with ONLY valid JSON with ${count} options.`;
 }

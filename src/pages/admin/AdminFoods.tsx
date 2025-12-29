@@ -58,59 +58,67 @@ export default function AdminFoods() {
         .from("foods")
         .select("*", { count: "exact", head: true });
 
-      // By source
-      const { data: sourceData } = await supabase
-        .from("foods")
-        .select("source");
+      // Usar RPC ou query direta para obter contagens por source
+      // Como não temos RPC, vamos buscar todos os sources únicos e contar
+      const allSources: Record<string, number> = {};
+      const allOrigins: Record<string, number> = {};
+      let verifiedCount = 0;
+      let unverifiedCount = 0;
 
-      const sourceCounts: Record<string, number> = {};
-      sourceData?.forEach((item) => {
-        const source = item.source || "unknown";
-        sourceCounts[source] = (sourceCounts[source] || 0) + 1;
-      });
+      // Paginar para obter todos os registros
+      const pageSize = 1000;
+      let page = 0;
+      let hasMore = true;
 
-      const bySource = Object.entries(sourceCounts)
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("foods")
+          .select("source, cuisine_origin, is_verified")
+          .range(page * pageSize, (page + 1) * pageSize - 1);
+
+        if (error) throw error;
+
+        if (!data || data.length < pageSize) {
+          hasMore = false;
+        }
+
+        data?.forEach((item) => {
+          // Count sources
+          const source = item.source || "unknown";
+          allSources[source] = (allSources[source] || 0) + 1;
+
+          // Count origins
+          const origin = item.cuisine_origin || "unknown";
+          allOrigins[origin] = (allOrigins[origin] || 0) + 1;
+
+          // Count verified
+          if (item.is_verified) {
+            verifiedCount++;
+          } else {
+            unverifiedCount++;
+          }
+        });
+
+        page++;
+      }
+
+      const bySource = Object.entries(allSources)
         .map(([source, count]) => {
-          const config = SOURCE_CONFIG[source] || { country: "Outro", flag: "❓", name: source };
+          const config = SOURCE_CONFIG[source] || SOURCE_CONFIG[source.toLowerCase()] || { country: "Outro", flag: "❓", name: source };
           return { source, count, country: config.country, flag: config.flag };
         })
         .sort((a, b) => b.count - a.count);
 
-      // By cuisine origin
-      const { data: originData } = await supabase
-        .from("foods")
-        .select("cuisine_origin");
-
-      const originCounts: Record<string, number> = {};
-      originData?.forEach((item) => {
-        const origin = item.cuisine_origin || "unknown";
-        originCounts[origin] = (originCounts[origin] || 0) + 1;
-      });
-
-      const origins = Object.entries(originCounts)
+      const origins = Object.entries(allOrigins)
         .map(([origin, count]) => ({ origin, count }))
         .sort((a, b) => b.count - a.count);
-
-      // By verified
-      const { data: verifiedData } = await supabase
-        .from("foods")
-        .select("is_verified");
-
-      const verifiedCounts = { verified: 0, unverified: 0 };
-      verifiedData?.forEach((item) => {
-        if (item.is_verified) {
-          verifiedCounts.verified++;
-        } else {
-          verifiedCounts.unverified++;
-        }
-      });
 
       setStats({
         total: total || 0,
         bySource,
         byVerified: [
-          { verified: true, count: verifiedCounts.verified },
-          { verified: false, count: verifiedCounts.unverified },
+          { verified: true, count: verifiedCount },
+          { verified: false, count: unverifiedCount },
         ],
       });
       setOriginStats(origins);

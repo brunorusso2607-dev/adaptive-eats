@@ -1172,10 +1172,11 @@ serve(async (req) => {
       logStep("AI Prompt loaded from database", { 
         functionId: aiPromptData.function_id,
         model: aiPromptData.model,
-        promptLength: aiPromptData.system_prompt.length 
+        promptLength: aiPromptData.system_prompt.length,
+        promptPreview: aiPromptData.system_prompt.substring(0, 200) + '...'
       });
     } catch (promptError) {
-      logStep("Warning: Could not load AI prompt from database, using fallback", { 
+      logStep("❌ CRITICAL: Could not load AI prompt from database, using fallback", { 
         error: promptError instanceof Error ? promptError.message : 'Unknown error' 
       });
     }

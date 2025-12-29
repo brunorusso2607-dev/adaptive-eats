@@ -247,6 +247,41 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - FRUTAS: usar "unidade" + tamanho (ex: "1 banana média", "1 maçã pequena")
 - GORDURAS/ÓLEOS: usar "colher de sopa", "colher de chá"
 
+==========================================================
+🍽️ REGRAS DE COERÊNCIA CULINÁRIA (CRÍTICO):
+==========================================================
+
+1️⃣ HARMONIZAÇÃO DO PRATO PRINCIPAL:
+- Se a refeição contém SOPA ou CALDO QUENTE → NÃO incluir salada fria crua OU arroz/grãos separados
+- Sopas são COMPLETAS: ingredientes como arroz, legumes, macarrão devem estar DENTRO da sopa
+- ERRADO: Sopa de legumes + Arroz branco + Salada de alface ❌
+- CERTO: Sopa de legumes com macarrão integral + Torrada integral ✓
+
+2️⃣ BEBIDAS POR TIPO DE REFEIÇÃO:
+- CAFÉ DA MANHÃ: café, chá, leite, suco natural, vitamina
+- ALMOÇO: suco natural, água com limão, água de coco (bebidas refrescantes)
+- LANCHE DA TARDE: chá, café, suco natural, água de coco
+- JANTAR: suco natural, água com limão, água de coco (bebidas refrescantes)
+- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão), leite morno
+- NUNCA incluir chás calmantes (camomila, erva-cidreira) no almoço ou jantar
+
+3️⃣ CONVERSÃO INTELIGENTE DE FRUTAS:
+- No ALMOÇO e JANTAR: frutas cítricas (laranja, limão, abacaxi) devem ser apresentadas como SUCO NATURAL
+- ERRADO no jantar: "1 laranja média" como sobremesa ❌
+- CERTO no jantar: "1 copo de suco de laranja natural" ✓
+- Frutas não-cítricas (banana, maçã, mamão) podem ser servidas inteiras em qualquer refeição
+
+4️⃣ COERÊNCIA DE TEMPERATURA:
+- Refeições QUENTES (sopas, caldos, pratos cozidos): acompanhamentos neutros ou quentes
+- ERRADO: Sopa quente + Salada crua gelada ❌
+- CERTO: Sopa quente + Torrada ou Pão integral ✓
+- Pratos grelhados/assados: podem ter saladas e vegetais crus como acompanhamento
+
+5️⃣ LÓGICA DE ACOMPANHAMENTOS:
+- Arroz/grãos: servir COM proteínas grelhadas/assadas, NUNCA junto com sopas
+- Saladas cruas: combinar com pratos secos (grelhados, assados), NUNCA com caldos/sopas
+- Pães/torradas: funcionam como acompanhamento universal neutro
+
 Exemplos CORRETOS:
 {"name": "Omelete de claras com espinafre e tomate", "grams": 310}
 {"name": "Frango grelhado com legumes salteados", "grams": 280}
@@ -254,12 +289,18 @@ Exemplos CORRETOS:
 {"name": "1 banana média", "grams": 120}
 {"name": "1 xícara de chá verde (sem açúcar)", "grams": 200}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
+{"name": "1 copo de suco de laranja natural", "grams": 250}
+{"name": "1 copo de água com limão", "grams": 250}
 
 Exemplos INCORRETOS (NÃO FAZER):
 {"name": "3 claras de ovo mexidas", "grams": 150} + {"name": "1 xícara de espinafre", "grams": 80} ❌ (preparados juntos!)
 {"name": "100g de atum em conserva", "grams": 100} ❌ (gramagem duplicada)
 {"name": "1 wrap integral", "grams": 50} ❌ (wrap sem recheio)
 {"name": "1 xícara de brócolis", "grams": 100} ❌ (brócolis é sólido)
+{"name": "Sopa de legumes", "grams": 300} + {"name": "Arroz branco", "grams": 150} ❌ (arroz deveria estar NA sopa)
+{"name": "Sopa quente", "grams": 300} + {"name": "Salada de alface", "grams": 100} ❌ (incoerência de temperatura)
+{"name": "1 laranja média", "grams": 150} no jantar ❌ (deveria ser suco)
+{"name": "Chá de camomila", "grams": 200} no almoço ❌ (camomila é para ceia)
 
 Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;
 

@@ -4,6 +4,45 @@
 // Este arquivo é a RAIZ ÚNICA para todos os geradores de receitas.
 // Qualquer alteração aqui afeta: generate-recipe, generate-meal-plan, regenerate-meal
 
+// Importar cálculos nutricionais centralizados
+import {
+  calculateBMR,
+  calculateTDEE,
+  calculateNutritionalTargets,
+  calculateMealDistribution,
+  getMealTarget,
+  evaluateMealCompatibility,
+  evaluateDayCompatibility,
+  buildNutritionalContextForPrompt,
+  buildMealDistributionForPrompt,
+  estimateWeeklyWeightChange,
+  estimateTimeToGoal,
+  validateTargetsHealth,
+  type UserPhysicalData,
+  type NutritionalTargets,
+  type MealDistribution as MealDistributionType,
+  type CompatibilityResult,
+} from "./nutritionalCalculations.ts";
+
+// Re-export for consumers of recipeConfig
+export {
+  calculateBMR,
+  calculateTDEE,
+  calculateNutritionalTargets,
+  calculateMealDistribution,
+  getMealTarget,
+  evaluateMealCompatibility,
+  evaluateDayCompatibility,
+  buildNutritionalContextForPrompt,
+  buildMealDistributionForPrompt,
+  estimateWeeklyWeightChange,
+  estimateTimeToGoal,
+  validateTargetsHealth,
+  type NutritionalTargets,
+  type MealDistributionType,
+  type CompatibilityResult,
+};
+
 // ============================================
 // TIPOS
 // ============================================
@@ -1219,69 +1258,94 @@ export function buildForbiddenIngredientsList(profile: UserProfile): string {
 
 /**
  * Calcula TMB (Taxa Metabólica Basal) e GET (Gasto Energético Total)
- * Usando a fórmula de Mifflin-St Jeor
- * ATUALIZADO: Agora usa goalIntensity para ajustar calorias e proteínas
+ * REFATORADO: Agora usa os cálculos centralizados de nutritionalCalculations.ts
+ * Mantém interface MacroTargets para compatibilidade com código existente
  */
 export function calculateMacroTargets(profile: UserProfile): MacroTargets {
-  const ACTIVITY_FACTORS: Record<string, number> = {
-    sedentary: 1.2,
-    light: 1.375,
-    moderate: 1.55,
-    active: 1.725,
-    very_active: 1.9,
-  };
-
   // Valores padrão se dados incompletos
   let dailyCalories = 2000;
   let dailyProtein = 60;
   let mode: "lose" | "gain" | "maintain" = "maintain";
 
   if (profile.weight_current && profile.height && profile.age && profile.sex) {
-    let tmb: number;
-    
-    // Fórmula de Mifflin-St Jeor
-    if (profile.sex === "male") {
-      tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) + 5;
-    } else {
-      tmb = (10 * profile.weight_current) + (6.25 * profile.height) - (5 * profile.age) - 161;
-    }
+    // Converter perfil para UserPhysicalData
+    const physicalData: UserPhysicalData = {
+      sex: profile.sex ?? null,
+      age: profile.age ?? null,
+      height: profile.height ?? null,
+      weight_current: profile.weight_current ?? null,
+      weight_goal: profile.weight_goal ?? null,
+      activity_level: profile.activity_level ?? null,
+    };
 
-    const factor = ACTIVITY_FACTORS[profile.activity_level || "moderate"] || 1.55;
-    const tdee = Math.round(tmb * factor);
-
-    // Obter contexto do objetivo para ajustes personalizados
+    // Obter contexto do objetivo para determinar parâmetros da estratégia
     const goalContext = getGoalContext(profile);
 
-    if (profile.goal === "emagrecer" || profile.goal === "cutting") {
-      // Estratégias de déficit: emagrecer e cutting
+    // Determinar parâmetros da estratégia baseado no objetivo
+    const strategyParams = {
+      calorieModifier: goalContext.calorieAdjustment,
+      proteinPerKg: goalContext.proteinMultiplier,
+      carbRatio: profile.goal === "cetogenica" ? 0.10 : 
+                 profile.goal === "low_carb" ? 0.25 : 0.45,
+      fatRatio: profile.goal === "cetogenica" ? 0.70 : 
+                profile.goal === "low_carb" ? 0.40 : 0.30,
+    };
+
+    // Usar cálculos centralizados
+    const targets = calculateNutritionalTargets(physicalData, strategyParams);
+
+    if (targets) {
+      dailyCalories = targets.targetCalories;
+      dailyProtein = targets.protein;
+
+      // Aplicar mínimos de segurança
       const minCalories = profile.sex === "male" ? 1500 : 1200;
-      dailyCalories = Math.max(tdee + goalContext.calorieAdjustment, minCalories);
-      dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * goalContext.proteinMultiplier);
+      dailyCalories = Math.max(dailyCalories, minCalories);
+    }
+
+    // Determinar modo baseado no objetivo
+    if (profile.goal === "emagrecer" || profile.goal === "cutting") {
       mode = "lose";
     } else if (profile.goal === "ganhar_peso") {
-      // Estratégia de superávit
-      dailyCalories = tdee + goalContext.calorieAdjustment;
-      dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * goalContext.proteinMultiplier);
       mode = "gain";
-    } else if (profile.goal === "fitness") {
-      // Fitness: manutenção com proteína elevada
-      dailyCalories = tdee;
-      dailyProtein = Math.round(profile.weight_current * goalContext.proteinMultiplier);
-      mode = "maintain";
-    } else if (profile.goal === "dieta_flexivel") {
-      // Dieta flexível: valores base, usuário pode ajustar
-      dailyCalories = tdee;
-      dailyProtein = Math.round(profile.weight_current * 1.6);
-      mode = "maintain";
     } else {
-      // Manter (default)
-      dailyCalories = tdee;
-      dailyProtein = Math.round(profile.weight_current * 1.6);
       mode = "maintain";
     }
   }
 
   return { dailyCalories, dailyProtein, mode };
+}
+
+/**
+ * Versão estendida que retorna NutritionalTargets completo
+ * Para uso em funções que precisam de todos os macros
+ */
+export function calculateFullNutritionalTargets(profile: UserProfile): NutritionalTargets | null {
+  if (!profile.weight_current || !profile.height || !profile.age || !profile.sex) {
+    return null;
+  }
+
+  const physicalData: UserPhysicalData = {
+    sex: profile.sex ?? null,
+    age: profile.age ?? null,
+    height: profile.height ?? null,
+    weight_current: profile.weight_current ?? null,
+    weight_goal: profile.weight_goal ?? null,
+    activity_level: profile.activity_level ?? null,
+  };
+
+  const goalContext = getGoalContext(profile);
+
+  const strategyParams = {
+    calorieModifier: goalContext.calorieAdjustment,
+    proteinPerKg: goalContext.proteinMultiplier,
+    carbRatio: profile.goal === "cetogenica" ? 0.10 : 
+               profile.goal === "low_carb" ? 0.25 : 0.45,
+    fatRatio: profile.goal === "cetogenica" ? 0.70 : 
+              profile.goal === "low_carb" ? 0.40 : 0.30,
+  };
+
+  return calculateNutritionalTargets(physicalData, strategyParams);
 }
 
 /**

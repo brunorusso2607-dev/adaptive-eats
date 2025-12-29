@@ -583,7 +583,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       const startDate = new Date();
       const planName = `Plano ${format(startDate, "MMMM yyyy", { locale: ptBR })}`;
       
-      const { data: planData, error: planError } = await supabase.functions.invoke("generate-meal-plan", {
+      const { data: planData, error: planError } = await supabase.functions.invoke("generate-ai-meal-plan", {
         body: {
           planName,
           startDate: startDate.toISOString().split('T')[0],

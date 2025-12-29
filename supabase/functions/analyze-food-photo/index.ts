@@ -8,9 +8,7 @@ import {
   INTOLERANCE_LABELS 
 } from "../_shared/getIntoleranceMappings.ts";
 import { 
-  recalculateWithTable,
-  extractGramsFromPortion,
-  CALORIE_TABLE
+  extractGramsFromPortion
 } from "../_shared/calorieTable.ts";
 import {
   getGlobalNutritionPrompt,

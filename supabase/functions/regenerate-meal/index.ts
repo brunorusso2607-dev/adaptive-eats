@@ -2,7 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
   buildRegenerateMealPrompt,
-  calculateMacroTargets,
   validateRecipe,
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
@@ -13,6 +12,13 @@ import {
   markRecipeAsUsed,
 } from "../_shared/recipePool.ts";
 import { recalculateRecipeCalories } from "../_shared/calorieTable.ts";
+import {
+  calculateNutritionalTargets,
+  calculateMealDistribution,
+  getMealTarget,
+  buildNutritionalContextForPrompt,
+  type UserPhysicalData,
+} from "../_shared/nutritionalCalculations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -126,24 +132,71 @@ serve(async (req) => {
       intolerances: profile.intolerances,
       dietary: profile.dietary_preference,
       goal: profile.goal,
-      context: profile.context,
       country: profile.country || "BR"
     });
 
-    // Calculate target calories for this meal type using centralized function
-    const calorieDistribution: Record<string, number> = {
-      cafe_manha: 0.20,
-      almoco: 0.30,
-      lanche: 0.10,
-      jantar: 0.30,
-      ceia: 0.10,
+    // Build physical data for centralized calculations
+    const physicalData: UserPhysicalData = {
+      sex: profile.sex || "masculino",
+      age: profile.age || 30,
+      height: profile.height || 170,
+      weight_current: profile.weight_current || 70,
+      weight_goal: profile.weight_goal,
+      activity_level: profile.activity_level || "moderado",
     };
 
-    const macros = calculateMacroTargets(profile as UserProfile);
-    const mealType = mealItem.meal_type;
-    const targetCalories = Math.round(macros.dailyCalories * (calorieDistribution[mealType] || 0.20));
+    // Determine calorie modifier based on goal
+    const getCalorieModifier = (goal: string): number => {
+      switch (goal) {
+        case "emagrecer": return -500;
+        case "ganhar_peso": return 400;
+        default: return 0;
+      }
+    };
 
-    logStep("Target calories calculated", { mealType, targetCalories, dailyCalories: macros.dailyCalories });
+    // Calculate nutritional targets using centralized module
+    const enabledMeals = profile.enabled_meals || ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+    const nutritionalTargets = calculateNutritionalTargets(physicalData, {
+      calorieModifier: getCalorieModifier(profile.goal || "manter"),
+      proteinPerKg: 1.6,
+      carbRatio: 0.5,
+      fatRatio: 0.25,
+    });
+
+    const mealType = mealItem.meal_type;
+    let targetCalories: number;
+    let mealTarget: any = null;
+
+    if (nutritionalTargets) {
+      mealTarget = getMealTarget(nutritionalTargets, mealType, enabledMeals);
+      targetCalories = mealTarget?.calories || Math.round(nutritionalTargets.targetCalories * 0.2);
+      
+      logStep("Nutritional targets calculated (centralized)", {
+        bmr: nutritionalTargets.bmr,
+        tdee: nutritionalTargets.tdee,
+        dailyCalories: nutritionalTargets.targetCalories,
+        mealType,
+        mealCalories: targetCalories,
+        mealProtein: mealTarget?.protein,
+      });
+    } else {
+      // Fallback to simple calculation
+      const fallbackDailyCalories = 2000;
+      const calorieDistribution: Record<string, number> = {
+        cafe_manha: 0.20,
+        almoco: 0.30,
+        lanche: 0.10,
+        jantar: 0.30,
+        ceia: 0.10,
+      };
+      targetCalories = Math.round(fallbackDailyCalories * (calorieDistribution[mealType] || 0.20));
+      logStep("Using fallback calorie calculation", { mealType, targetCalories });
+    }
+
+    // Build nutritional context for AI prompt enrichment
+    const nutritionalContext = nutritionalTargets 
+      ? buildNutritionalContextForPrompt(nutritionalTargets, mealType, enabledMeals)
+      : "";
 
     let recipeData: any = null;
     let recipeFromPool = false;
@@ -218,13 +271,14 @@ serve(async (req) => {
       
       const GOOGLE_AI_API_KEY = await getGeminiApiKey();
       
-      // Build prompt using centralized config
+      // Build prompt using centralized config with nutritional context
       const ingredientsToUse = mode === "with_ingredients" ? ingredients : undefined;
       const prompt = buildRegenerateMealPrompt(
         profile as UserProfile,
         mealType,
         targetCalories,
-        ingredientsToUse
+        ingredientsToUse,
+        nutritionalContext
       );
 
       logStep("Calling Google Gemini API with retry logic");

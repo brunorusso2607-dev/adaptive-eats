@@ -12,6 +12,17 @@ import {
   getPortionFormat
 } from "../_shared/nutritionPrompt.ts";
 import { getAIPrompt, type AIPromptData } from "../_shared/getAIPrompt.ts";
+// Importar cálculos nutricionais centralizados
+import {
+  calculateNutritionalTargets,
+  calculateMealDistribution,
+  buildNutritionalContextForPrompt,
+  buildMealDistributionForPrompt,
+  estimateTimeToGoal,
+  validateTargetsHealth,
+  type UserPhysicalData,
+  type NutritionalTargets,
+} from "../_shared/nutritionalCalculations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -550,7 +561,7 @@ function getRestrictionText(restrictions: {
 // ============= PROMPT DO NUTRICIONISTA HIBRIDO (SIMPLES + INTELIGENTE) =============
 function buildSimpleNutritionistPrompt(params: {
   dailyCalories: number;
-  meals: { type: string; label: string; targetCalories: number }[];
+  meals: { type: string; label: string; targetCalories: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }[];
   optionsPerMeal: number;
   restrictions: {
     intolerances: string[];
@@ -563,8 +574,9 @@ function buildSimpleNutritionistPrompt(params: {
   regional: RegionalConfig;
   countryCode: string;
   baseSystemPrompt?: string; // Prompt base do banco de dados
+  nutritionalContext?: string; // Contexto nutricional enriquecido
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt } = params;
+  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext } = params;
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
   
@@ -607,10 +619,18 @@ Voce cria refeicoes como um profissional humano criaria para si mesmo, sua famil
 
 REGRA DE OURO: Priorize NATURALIDADE ALIMENTAR acima de otimizacao nutricional. Comida com alma, nao formula.`;
 
+  // Adicionar contexto nutricional enriquecido se disponível
+  const enrichedNutritionalContext = nutritionalContext ? `
+--------------------------------------------------
+PERFIL NUTRICIONAL CALCULADO (PRECISAO CIENTIFICA):
+--------------------------------------------------
+${nutritionalContext}
+` : '';
+
   return `${systemPromptBase}
 
 ${globalNutritionPrompt}
-
+${enrichedNutritionalContext}
 IDIOMA: Responda INTEIRAMENTE em ${regional.languageName}
 PAIS/REGIAO: ${nutritionalSource.flag} ${nutritionalSource.country} - Gere refeicoes tipicas, comuns e culturalmente apropriadas
 FONTE NUTRICIONAL: ${nutritionalSource.sourceName} (${nutritionalSource.sourceKey})
@@ -1250,7 +1270,7 @@ serve(async (req) => {
     // Parse request
     const requestBody = await req.json();
     const {
-      dailyCalories = 2000,
+      dailyCalories: requestedCalories, // Pode ser undefined, será calculado
       daysCount = 1,
       optionsPerMeal = 3,
       mealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"],
@@ -1266,7 +1286,7 @@ serve(async (req) => {
     // Detectar automaticamente se deve salvar no banco
     const shouldSaveToDatabase = saveToDatabase || planName || startDate;
 
-    logStep("Request params", { dailyCalories, daysCount, optionsPerMeal, mealTypes, shouldSaveToDatabase });
+    logStep("Request params", { requestedCalories, daysCount, optionsPerMeal, mealTypes, shouldSaveToDatabase });
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
@@ -1292,6 +1312,99 @@ serve(async (req) => {
 
     logStep("User restrictions", restrictions);
 
+    // ============= CÁLCULOS NUTRICIONAIS CENTRALIZADOS =============
+    // Calcular targets nutricionais baseados no perfil do usuário
+    let nutritionalTargets: NutritionalTargets | null = null;
+    let dailyCalories = requestedCalories || 2000; // Fallback padrão
+    let nutritionalContext = ""; // Contexto para enriquecer o prompt
+    
+    if (profile.weight_current && profile.height && profile.age && profile.sex) {
+      const physicalData: UserPhysicalData = {
+        sex: profile.sex ?? null,
+        age: profile.age ?? null,
+        height: profile.height ?? null,
+        weight_current: profile.weight_current ?? null,
+        weight_goal: profile.weight_goal ?? null,
+        activity_level: profile.activity_level ?? null,
+      };
+
+      // Determinar parâmetros de estratégia baseado no objetivo
+      const goal = profile.goal || 'manter';
+      const dietaryPreference = profile.dietary_preference || 'comum';
+      
+      let calorieModifier = 0;
+      let proteinPerKg = 1.6;
+      let carbRatio = 0.45;
+      let fatRatio = 0.30;
+
+      // Ajustes por objetivo
+      if (goal === 'emagrecer') {
+        calorieModifier = -500;
+        proteinPerKg = 2.0;
+      } else if (goal === 'ganhar_peso') {
+        calorieModifier = 400;
+        proteinPerKg = 2.2;
+      }
+
+      // Ajustes por dieta
+      if (dietaryPreference === 'cetogenica') {
+        carbRatio = 0.10;
+        fatRatio = 0.70;
+      } else if (dietaryPreference === 'low_carb') {
+        carbRatio = 0.25;
+        fatRatio = 0.40;
+      }
+
+      const strategyParams = {
+        calorieModifier,
+        proteinPerKg,
+        carbRatio,
+        fatRatio,
+      };
+
+      nutritionalTargets = calculateNutritionalTargets(physicalData, strategyParams);
+      
+      if (nutritionalTargets) {
+        // Se não foi passado dailyCalories na request, usar o calculado
+        if (!requestedCalories) {
+          dailyCalories = nutritionalTargets.targetCalories;
+        }
+        
+        // Gerar contexto nutricional para o prompt
+        nutritionalContext = buildNutritionalContextForPrompt(nutritionalTargets);
+        nutritionalContext += "\n" + buildMealDistributionForPrompt(nutritionalTargets, mealTypes);
+        
+        // Validar saúde dos targets
+        const healthCheck = validateTargetsHealth(nutritionalTargets);
+        if (!healthCheck.isHealthy) {
+          logStep("⚠️ Health warnings", { warnings: healthCheck.warnings });
+        }
+        
+        // Estimar tempo para atingir meta (se aplicável)
+        if (profile.weight_goal && calorieModifier !== 0) {
+          const timeEstimate = estimateTimeToGoal(
+            profile.weight_current,
+            profile.weight_goal,
+            calorieModifier
+          );
+          if (timeEstimate) {
+            logStep("Goal time estimate", { weeks: timeEstimate.weeks, months: timeEstimate.months });
+          }
+        }
+        
+        logStep("Nutritional targets calculated", {
+          bmr: nutritionalTargets.bmr,
+          tdee: nutritionalTargets.tdee,
+          targetCalories: nutritionalTargets.targetCalories,
+          protein: nutritionalTargets.protein,
+          carbs: nutritionalTargets.carbs,
+          fat: nutritionalTargets.fat,
+        });
+      }
+    } else {
+      logStep("Incomplete profile data, using default calories", { dailyCalories });
+    }
+
     // Fetch intolerance mappings from database for validation
     logStep("Fetching intolerance mappings from database");
     const { mappings: dbMappings, safeKeywords: dbSafeKeywords } = await fetchIntoleranceMappings(supabaseClient);
@@ -1316,11 +1429,28 @@ serve(async (req) => {
     }
 
     // Build meals with target calories and regional labels
-    const meals = mealTypes.map((type: string) => ({
-      type,
-      label: regional.mealLabels[type] || type,
-      targetCalories: Math.round(dailyCalories * (CALORIE_DISTRIBUTION[type] || 0.10)),
-    }));
+    // Usar distribuição centralizada se temos targets calculados
+    let meals;
+    if (nutritionalTargets) {
+      const mealDistribution = calculateMealDistribution(nutritionalTargets, mealTypes);
+      meals = mealDistribution.map((dist) => ({
+        type: dist.mealType,
+        label: regional.mealLabels[dist.mealType] || dist.label,
+        targetCalories: dist.calories,
+        targetProtein: dist.protein,
+        targetCarbs: dist.carbs,
+        targetFat: dist.fat,
+      }));
+      logStep("Meal distribution calculated from nutritional targets", { 
+        meals: meals.map(m => ({ type: m.type, cal: m.targetCalories, prot: m.targetProtein })) 
+      });
+    } else {
+      meals = mealTypes.map((type: string) => ({
+        type,
+        label: regional.mealLabels[type] || type,
+        targetCalories: Math.round(dailyCalories * (CALORIE_DISTRIBUTION[type] || 0.10)),
+      }));
+    }
 
     // Generate plan for each day
     const generatedDays: SimpleDayPlan[] = [];
@@ -1341,6 +1471,7 @@ serve(async (req) => {
         regional,
         countryCode: userCountry,
         baseSystemPrompt: aiPromptData?.system_prompt, // Passa o prompt do banco
+        nutritionalContext, // Contexto nutricional enriquecido
       });
 
       // Call Google AI API directly

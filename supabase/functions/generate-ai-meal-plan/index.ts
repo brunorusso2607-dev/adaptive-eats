@@ -1007,11 +1007,18 @@ serve(async (req) => {
     // Prioridade: 1) requestedMealTypes (da request), 2) enabled_meals (do perfil), 3) default 5 refeições
     const DEFAULT_MEAL_TYPES = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"];
     
+    logStep("🔍 DEBUG: Checking mealTypes sources", { 
+      requestedMealTypes, 
+      profileEnabledMeals: profile.enabled_meals,
+      hasRequestedTypes: !!(requestedMealTypes && Array.isArray(requestedMealTypes) && requestedMealTypes.length > 0),
+      hasProfileTypes: !!(profile.enabled_meals && Array.isArray(profile.enabled_meals) && profile.enabled_meals.length > 0)
+    });
+    
     let mealTypes: string[];
     if (requestedMealTypes && Array.isArray(requestedMealTypes) && requestedMealTypes.length > 0) {
       // Usar os tipos passados na request
       mealTypes = requestedMealTypes;
-      logStep("Using mealTypes from request", { mealTypes });
+      logStep("✅ Using mealTypes from REQUEST", { mealTypes, count: mealTypes.length });
     } else if (profile.enabled_meals && Array.isArray(profile.enabled_meals) && profile.enabled_meals.length > 0) {
       // Usar os tipos do perfil do usuário
       // Normalizar nomes: "lanche" -> "lanche_tarde" para manter consistência
@@ -1019,12 +1026,14 @@ serve(async (req) => {
         if (meal === "lanche") return "lanche_tarde";
         return meal;
       });
-      logStep("Using mealTypes from user profile (enabled_meals)", { mealTypes, original: profile.enabled_meals });
+      logStep("✅ Using mealTypes from PROFILE (enabled_meals)", { mealTypes, count: mealTypes.length, original: profile.enabled_meals });
     } else {
       // Fallback para default
       mealTypes = DEFAULT_MEAL_TYPES;
-      logStep("Using default mealTypes", { mealTypes });
+      logStep("⚠️ Using DEFAULT mealTypes (no source found)", { mealTypes, count: mealTypes.length });
     }
+    
+    logStep("📋 FINAL mealTypes to generate", { mealTypes, count: mealTypes.length });
     
     // Get regional configuration based on user's country
     const userCountry = profile.country || 'BR';

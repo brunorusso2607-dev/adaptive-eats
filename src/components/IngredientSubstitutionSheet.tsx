@@ -1,17 +1,24 @@
 import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, ArrowRight, Flame, Beef, Wheat, Loader2, TrendingUp, TrendingDown, Minus, Check, CheckCircle, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, Flame, Beef, Wheat, Loader2, Check, CheckCircle, Sparkles, Scale } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useIngredientSubstitution, IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
-import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
-import { useSafeIngredientSuggestions } from "@/hooks/useSafeIngredientSuggestions";
+import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { supabase } from "@/integrations/supabase/client";
 import { useQuery } from "@tanstack/react-query";
+
+interface SmartSubstitute {
+  name: string;
+  grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  reason: string;
+}
 
 interface IngredientSubstitutionSheetProps {
   open: boolean;
@@ -24,38 +31,15 @@ interface IngredientSubstitutionSheetProps {
   ) => void;
 }
 
-function useDebounceValue<T>(value: T, delay: number): T {
-  const [debouncedValue, setDebouncedValue] = useState(value);
-
-  useEffect(() => {
-    const timer = setTimeout(() => setDebouncedValue(value), delay);
-    return () => clearTimeout(timer);
-  }, [value, delay]);
-
-  return debouncedValue;
-}
-
-function MacroDiffBadge({ value, unit, label }: { value: number; unit: string; label: string }) {
-  if (value === 0) {
-    return (
-      <div className="flex items-center gap-1 text-muted-foreground text-xs">
-        <Minus className="w-3 h-3" />
-        <span>{label}</span>
-      </div>
-    );
-  }
-
-  const isPositive = value > 0;
-  return (
-    <div className={cn(
-      "flex items-center gap-1 text-xs font-medium",
-      isPositive ? "text-red-500" : "text-green-500"
-    )}>
-      {isPositive ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-      <span>{isPositive ? "+" : ""}{value}{unit} {label}</span>
-    </div>
-  );
-}
+const MACRO_CATEGORY_LABELS: Record<string, { label: string; icon: string; color: string }> = {
+  proteina: { label: 'Proteína', icon: '🥩', color: 'text-red-500' },
+  carboidrato: { label: 'Carboidrato', icon: '🍞', color: 'text-amber-500' },
+  gordura: { label: 'Gordura', icon: '🥑', color: 'text-yellow-500' },
+  vegetal: { label: 'Vegetal', icon: '🥬', color: 'text-green-500' },
+  fruta: { label: 'Fruta', icon: '🍎', color: 'text-pink-500' },
+  bebida: { label: 'Bebida', icon: '🥤', color: 'text-blue-500' },
+  outro: { label: 'Outro', icon: '🍽️', color: 'text-muted-foreground' },
+};
 
 export default function IngredientSubstitutionSheet({
   open,
@@ -63,23 +47,19 @@ export default function IngredientSubstitutionSheet({
   originalIngredient,
   onSubstitute,
 }: IngredientSubstitutionSheetProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedIngredient, setSelectedIngredient] = useState<IngredientResult | null>(null);
+  const [selectedSubstitute, setSelectedSubstitute] = useState<SmartSubstitute | null>(null);
   const [isSaving, setIsSaving] = useState(false);
-  const debouncedQuery = useDebounceValue(searchQuery, 300);
   
-  const { results, isLoading, searchIngredient, calculateMacrosDiff, clearResults } = useIngredientSubstitution();
-
-  // Fetch user profile for conflict checking
+  // Fetch user profile for restrictions
   const { data: profile } = useQuery({
-    queryKey: ["profile-for-conflicts"],
+    queryKey: ["profile-for-substitution"],
     queryFn: async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return null;
       
       const { data } = await supabase
         .from("profiles")
-        .select("intolerances, dietary_preference")
+        .select("intolerances, dietary_preference, excluded_ingredients")
         .eq("id", user.id)
         .single();
       
@@ -87,93 +67,73 @@ export default function IngredientSubstitutionSheet({
     },
   });
 
-  const { checkConflict } = useIntoleranceWarning();
-  const { 
-    getSuggestions, 
-    getUserRestrictionLabels, 
-    fetchAISuggestions, 
-    isLoadingAISuggestions 
-  } = useSafeIngredientSuggestions(profile);
+  // Build restrictions array
+  const restrictions = [
+    ...(profile?.intolerances || []),
+    ...(profile?.dietary_preference && profile.dietary_preference !== 'comum' ? [profile.dietary_preference] : []),
+    ...(profile?.excluded_ingredients || [])
+  ];
 
-  // Safe suggestions based on original ingredient + user restrictions
-  const [safeSuggestions, setSafeSuggestions] = useState<string[]>([]);
-  const [isAIFallback, setIsAIFallback] = useState(false);
-  
-  // Original ingredient data for comparison
-  const [originalData, setOriginalData] = useState<IngredientResult | null>(null);
+  // Parse grams from original ingredient
+  const parseGrams = (quantity: string): number => {
+    const match = quantity?.match(/(\d+)/);
+    return match ? parseInt(match[1]) : 100;
+  };
 
-  // Reset state and fetch suggestions when dialog opens
+  // Fetch smart substitutes from edge function
+  const { data: smartData, isLoading, refetch } = useQuery({
+    queryKey: ["smart-substitutes", originalIngredient?.item],
+    queryFn: async () => {
+      if (!originalIngredient) return null;
+      
+      const grams = parseGrams(originalIngredient.quantity);
+      
+      const { data, error } = await supabase.functions.invoke('suggest-smart-substitutes', {
+        body: {
+          ingredientName: originalIngredient.item,
+          ingredientGrams: grams,
+          ingredientProtein: 0, // Will be detected by AI based on name
+          ingredientCarbs: 0,
+          ingredientFat: 0,
+          ingredientCalories: 0,
+          restrictions
+        }
+      });
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: open && !!originalIngredient,
+    staleTime: 0,
+  });
+
+  // Reset state when dialog opens/closes
   useEffect(() => {
     if (open) {
-      // Reset all state first
-      setSearchQuery("");
-      setSelectedIngredient(null);
-      setOriginalData(null);
-      setSafeSuggestions([]);
-      setIsAIFallback(false);
-      clearResults();
-      
-      // Then fetch original data if ingredient exists
-      if (originalIngredient) {
-        searchIngredient(originalIngredient.item).then((results) => {
-          if (results.length > 0) {
-            setOriginalData(results[0]);
-          }
-        });
-        
-        // Get suggestions based on original ingredient + user restrictions
-        const staticSuggestions = getSuggestions(originalIngredient.item);
-        
-        if (staticSuggestions.length > 0) {
-          // Found static suggestions
-          setSafeSuggestions(staticSuggestions);
-          setIsAIFallback(false);
-        } else {
-          // No static suggestions, use AI fallback
-          setIsAIFallback(true);
-          fetchAISuggestions(originalIngredient.item).then((aiSuggestions) => {
-            setSafeSuggestions(aiSuggestions);
-          });
-        }
-      }
-    } else {
-      // Clean up when closing
-      setSearchQuery("");
-      setSelectedIngredient(null);
-      setOriginalData(null);
-      setSafeSuggestions([]);
-      setIsAIFallback(false);
-      clearResults();
+      setSelectedSubstitute(null);
     }
-  }, [open, originalIngredient?.item, getSuggestions, fetchAISuggestions]);
+  }, [open, originalIngredient?.item]);
 
-  // Clear selection when search query changes
-  useEffect(() => {
-    // Clear selection when query is too short (user deleted text)
-    if (searchQuery.length < 2) {
-      setSelectedIngredient(null);
-    }
-  }, [searchQuery]);
-
-  // Execute search when query is long enough
-  useEffect(() => {
-    if (debouncedQuery.length >= 2) {
-      // Clear selection when searching for something new
-      setSelectedIngredient(null);
-      searchIngredient(debouncedQuery, originalIngredient?.item);
-    }
-  }, [debouncedQuery, searchIngredient, originalIngredient]);
-
-  const handleSelect = (ingredient: IngredientResult) => {
-    setSelectedIngredient(ingredient);
+  const handleSelect = (substitute: SmartSubstitute) => {
+    setSelectedSubstitute(substitute);
   };
 
   const handleConfirmSubstitution = async () => {
-    if (!originalIngredient || !selectedIngredient) return;
+    if (!originalIngredient || !selectedSubstitute) return;
     
     setIsSaving(true);
     try {
-      await onSubstitute(selectedIngredient, originalIngredient.item, originalData);
+      // Convert SmartSubstitute to IngredientResult format
+      const newIngredient: IngredientResult = {
+        id: `smart-${Date.now()}`,
+        name: selectedSubstitute.name,
+        calories_per_100g: Math.round((selectedSubstitute.calories / selectedSubstitute.grams) * 100),
+        protein_per_100g: Math.round((selectedSubstitute.protein / selectedSubstitute.grams) * 100 * 10) / 10,
+        carbs_per_100g: Math.round((selectedSubstitute.carbs / selectedSubstitute.grams) * 100 * 10) / 10,
+        fat_per_100g: Math.round((selectedSubstitute.fat / selectedSubstitute.grams) * 100 * 10) / 10,
+      };
+      
+      await onSubstitute(newIngredient, originalIngredient.item, null);
       onOpenChange(false);
     } finally {
       setIsSaving(false);
@@ -182,215 +142,166 @@ export default function IngredientSubstitutionSheet({
 
   if (!originalIngredient) return null;
 
+  const suggestions: SmartSubstitute[] = smartData?.suggestions || [];
+  const originalCategory = smartData?.originalCategory;
+  const mainMacro = smartData?.mainMacro;
+  const categoryInfo = MACRO_CATEGORY_LABELS[originalCategory] || MACRO_CATEGORY_LABELS.outro;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md mx-auto h-[85vh] max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
         <DialogHeader className="p-6 pb-4 shrink-0">
-          <DialogTitle>Substituir Ingrediente</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Sparkles className="w-5 h-5 text-primary" />
+            Substituir Ingrediente
+          </DialogTitle>
           <DialogDescription asChild>
             <span className="flex items-center gap-2 flex-wrap">
-              <Badge variant="secondary">{originalIngredient.quantity} {originalIngredient.unit}</Badge>
+              <Badge variant="secondary" className="bg-primary/10 text-primary">
+                {originalIngredient.quantity}
+              </Badge>
               <span className="font-medium">{originalIngredient.item}</span>
-              <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <span className="text-muted-foreground">novo ingrediente</span>
             </span>
           </DialogDescription>
         </DialogHeader>
 
-        {/* Safe Suggestions based on original ingredient */}
-        {(safeSuggestions.length > 0 || isLoadingAISuggestions) && searchQuery.length < 2 && (
-          <div className="px-6 pb-4 shrink-0">
-            <div className="flex items-center gap-2 mb-2">
-              <ShieldCheck className="w-4 h-4 text-green-500" />
-              <span className="text-sm font-medium text-green-700 dark:text-green-400">
-                Substitutos para {originalIngredient?.item}
+        {/* Category Info */}
+        {!isLoading && originalCategory && (
+          <div className="px-6 pb-3 shrink-0">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-lg">{categoryInfo.icon}</span>
+              <span className={cn("font-medium", categoryInfo.color)}>
+                Categoria: {categoryInfo.label}
               </span>
-              {isAIFallback && !isLoadingAISuggestions && (
-                <Badge variant="outline" className="text-xs h-5">
-                  <Sparkles className="w-3 h-3 mr-1" />
-                  IA
+              {mainMacro && (
+                <Badge variant="outline" className="text-xs">
+                  <Scale className="w-3 h-3 mr-1" />
+                  Igualando {mainMacro}
                 </Badge>
               )}
             </div>
-            {getUserRestrictionLabels().length > 0 && (
-              <p className="text-xs text-muted-foreground mb-3">
-                Filtrado para suas restrições: {getUserRestrictionLabels().join(", ")}
-              </p>
-            )}
-            {isLoadingAISuggestions ? (
-              <div className="flex items-center gap-2 py-2">
-                <Loader2 className="w-4 h-4 animate-spin text-primary" />
-                <span className="text-sm text-muted-foreground">Buscando sugestões inteligentes...</span>
-              </div>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {safeSuggestions.map((suggestion) => (
-                  <Button
-                    key={suggestion}
-                    variant="outline"
-                    size="sm"
-                    className="h-8 border-green-200 bg-green-50 hover:bg-green-100 text-green-700 dark:border-green-800 dark:bg-green-950 dark:hover:bg-green-900 dark:text-green-300"
-                    onClick={() => setSearchQuery(suggestion)}
-                  >
-                    <Sparkles className="w-3 h-3 mr-1" />
-                    {suggestion}
-                  </Button>
-                ))}
-              </div>
-            )}
+            <p className="text-xs text-muted-foreground mt-1">
+              Sugestões com gramagem ajustada para manter seus macros
+            </p>
           </div>
         )}
 
-        {/* Search Input */}
-        <div className="relative px-6 pb-4 shrink-0">
-          <Search className="absolute left-9 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar ingrediente substituto..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10"
-            autoFocus
-          />
-        </div>
-
-        {/* Results - with proper scroll */}
+        {/* Results */}
         <div className="flex-1 min-h-0 overflow-hidden">
           <ScrollArea className="h-full px-6">
-          <div className="space-y-2 pb-6">
-            {isLoading && (
-              <div className="flex items-center justify-center py-6">
-                <Loader2 className="w-5 h-5 animate-spin text-primary" />
-                <span className="ml-2 text-sm text-muted-foreground">Buscando...</span>
-              </div>
-            )}
+            <div className="space-y-3 pb-6">
+              {isLoading && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary mb-3" />
+                  <span className="text-sm text-muted-foreground">Calculando substitutos inteligentes...</span>
+                  <span className="text-xs text-muted-foreground mt-1">Ajustando gramagens para igualar macros</span>
+                </div>
+              )}
 
-            {!isLoading && searchQuery.length >= 2 && results.length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">
-                <p className="text-sm">Nenhum ingrediente encontrado</p>
-              </div>
-            )}
+              {!isLoading && suggestions.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <p className="text-sm">Nenhum substituto encontrado</p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="mt-3"
+                    onClick={() => refetch()}
+                  >
+                    Tentar novamente
+                  </Button>
+                </div>
+              )}
 
-            {!isLoading && searchQuery.length >= 2 && results.map((ingredient) => {
-              const diff = calculateMacrosDiff(originalData, ingredient);
-              const isSelected = selectedIngredient?.id === ingredient.id;
-              const conflict = checkConflict(ingredient.name);
-              
-              return (
-                <Card 
-                  key={ingredient.id} 
-                  className={cn(
-                    "cursor-pointer transition-all",
-                    isSelected 
-                      ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
-                      : conflict
-                        ? "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-900/10"
+              {!isLoading && suggestions.map((substitute, index) => {
+                const isSelected = selectedSubstitute?.name === substitute.name;
+                
+                return (
+                  <Card 
+                    key={index} 
+                    className={cn(
+                      "cursor-pointer transition-all",
+                      isSelected 
+                        ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
                         : "hover:border-primary/50"
-                  )}
-                  onClick={() => handleSelect(ingredient)}
-                >
-                  <CardContent className="p-3">
-                    {/* Conflict Alert - Compacto */}
-                    {conflict && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-2 py-1.5 rounded mb-2">
-                        Contém {conflict.restrictionLabel?.toLowerCase()}
-                      </p>
                     )}
+                    onClick={() => handleSelect(substitute)}
+                  >
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between mb-3">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm flex items-center gap-1.5">
+                            {substitute.name}
+                            {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
+                          </h4>
+                          <Badge variant="secondary" className="mt-1 text-xs">
+                            <Scale className="w-3 h-3 mr-1" />
+                            {substitute.grams}g
+                          </Badge>
+                        </div>
+                        <Badge 
+                          variant={isSelected ? "default" : "outline"} 
+                          className="shrink-0"
+                        >
+                          {isSelected ? "✓ Selecionado" : "Selecionar"}
+                        </Badge>
+                      </div>
 
-                    <div className="flex items-center justify-between mb-2">
-                      <h4 className="font-medium text-sm flex items-center gap-1.5">
-                        {ingredient.name}
-                        {isSelected && <CheckCircle className="w-3.5 h-3.5 text-primary" />}
-                      </h4>
-                      <Badge 
-                        variant={isSelected ? "default" : "secondary"} 
-                        className="shrink-0 text-xs h-6"
-                      >
-                        {isSelected ? "✓" : "Selecionar"}
-                      </Badge>
-                    </div>
+                      {/* Macros Grid */}
+                      <div className="grid grid-cols-4 gap-2 text-center mb-3">
+                        <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-1 text-orange-500">
+                            <Flame className="w-3 h-3" />
+                            <span className="font-semibold text-sm">{substitute.calories}</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">kcal</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-1 text-red-500">
+                            <Beef className="w-3 h-3" />
+                            <span className="font-semibold text-sm">{substitute.protein}g</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">prot</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-1 text-amber-500">
+                            <Wheat className="w-3 h-3" />
+                            <span className="font-semibold text-sm">{substitute.carbs}g</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">carb</span>
+                        </div>
+                        <div className="flex flex-col items-center p-2 bg-muted/50 rounded-lg">
+                          <div className="flex items-center gap-1 text-yellow-500">
+                            <span className="text-xs">🧈</span>
+                            <span className="font-semibold text-sm">{substitute.fat}g</span>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground">gord</span>
+                        </div>
+                      </div>
 
-                    {/* Macros - Layout compacto */}
-                    <div className="grid grid-cols-4 gap-1 text-center">
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-0.5 text-orange-500">
-                          <Flame className="w-3 h-3" />
-                          <span className="font-semibold text-xs">{ingredient.calories_per_100g}</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">kcal</span>
-                        {diff.calories !== 0 && (
-                          <span className={cn("text-[10px] font-medium", diff.calories > 0 ? "text-red-500" : "text-green-500")}>
-                            {diff.calories > 0 ? "+" : ""}{diff.calories}
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-0.5 text-red-500">
-                          <Beef className="w-3 h-3" />
-                          <span className="font-semibold text-xs">{ingredient.protein_per_100g}g</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">prot</span>
-                        {diff.protein !== 0 && (
-                          <span className={cn("text-[10px] font-medium", diff.protein > 0 ? "text-red-500" : "text-green-500")}>
-                            {diff.protein > 0 ? "+" : ""}{diff.protein}g
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-0.5 text-amber-500">
-                          <Wheat className="w-3 h-3" />
-                          <span className="font-semibold text-xs">{ingredient.carbs_per_100g}g</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">carb</span>
-                        {diff.carbs !== 0 && (
-                          <span className={cn("text-[10px] font-medium", diff.carbs > 0 ? "text-red-500" : "text-green-500")}>
-                            {diff.carbs > 0 ? "+" : ""}{diff.carbs}g
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex flex-col items-center">
-                        <div className="flex items-center gap-0.5 text-yellow-500">
-                          <span className="text-[10px]">🧈</span>
-                          <span className="font-semibold text-xs">{ingredient.fat_per_100g}g</span>
-                        </div>
-                        <span className="text-[10px] text-muted-foreground">gord</span>
-                        {diff.fat !== 0 && (
-                          <span className={cn("text-[10px] font-medium", diff.fat > 0 ? "text-red-500" : "text-green-500")}>
-                            {diff.fat > 0 ? "+" : ""}{diff.fat}g
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })}
-
-            {!isLoading && searchQuery.length < 2 && (
-              <div className="text-center py-6 text-muted-foreground">
-                <Search className="w-6 h-6 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">Digite pelo menos 2 caracteres</p>
-              </div>
-            )}
-          </div>
+                      {/* Reason */}
+                      {substitute.reason && (
+                        <p className="text-xs text-muted-foreground bg-muted/30 p-2 rounded">
+                          💡 {substitute.reason}
+                        </p>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
           </ScrollArea>
         </div>
 
-        {/* Confirm Button - Fixed at bottom */}
-        {selectedIngredient && (
+        {/* Confirm Button */}
+        {selectedSubstitute && (
           <div className="p-6 pt-4 border-t shrink-0 bg-background">
-            {/* Warning if selected ingredient has conflict - Design sutil */}
-            {checkConflict(selectedIngredient.name) && (
-              <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md mb-3">
-                Contém {checkConflict(selectedIngredient.name)?.restrictionLabel?.toLowerCase()} - tem certeza que deseja continuar?
-              </p>
-            )}
-            
             <div className="flex items-center gap-3 mb-3 text-sm">
               <span className="text-muted-foreground">Substituindo:</span>
               <Badge variant="outline">{originalIngredient.item}</Badge>
               <ArrowRight className="w-4 h-4 text-muted-foreground" />
-              <Badge variant="default">
-                {selectedIngredient.name}
+              <Badge variant="default" className="flex items-center gap-1">
+                {selectedSubstitute.name}
+                <span className="opacity-70">({selectedSubstitute.grams}g)</span>
               </Badge>
             </div>
             <Button 

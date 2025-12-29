@@ -6,12 +6,11 @@ import {
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, Check, SkipForward, Loader2, X } from "lucide-react";
+import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, Check, Loader2, X } from "lucide-react";
 import type { NextMealData } from "@/hooks/useNextMeal";
 import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
 import RecipeRenameDialog from "@/components/RecipeRenameDialog";
 import MealConfirmDialog from "@/components/MealConfirmDialog";
-import FoodSearchDrawer from "@/components/FoodSearchDrawer";
 import { DietaryCompatibilityBadge } from "@/components/DietaryCompatibilityBadge";
 import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
@@ -98,7 +97,6 @@ export default function MealDetailSheet({
 
   // State for action dialogs
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
-  const [showFoodDrawer, setShowFoodDrawer] = useState(false);
   const [isMarking, setIsMarking] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
@@ -271,7 +269,7 @@ export default function MealDetailSheet({
 
   const handleConfirmDifferent = () => {
     setShowConfirmDialog(false);
-    setShowFoodDrawer(true);
+    toast.info("Use o módulo 'Registrar refeição' para adicionar o que você comeu");
   };
 
   const handleSkip = async () => {
@@ -297,10 +295,6 @@ export default function MealDetailSheet({
     onOpenChange(false);
     onRefetch?.();
     onStreakRefresh?.();
-  };
-
-  const handleTrocarClick = () => {
-    setShowFoodDrawer(true);
   };
 
   return (
@@ -493,20 +487,6 @@ export default function MealDetailSheet({
             )}
           >
             <div className="flex items-center gap-3">
-              {/* Trocar - só se canSwap (não mostra para refeições passadas) */}
-              {canSwap && !isPastMeal && (
-                <button
-                  onClick={handleTrocarClick}
-                  disabled={isMarking || isSkipping}
-                  className={cn(
-                    "flex items-center justify-center gap-2 py-3 px-4 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-medium transition-colors disabled:opacity-50",
-                    isFutureMeal ? "flex-1" : "flex-1"
-                  )}
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Trocar
-                </button>
-              )}
 
               {/* Feita - esconde se for refeição futura */}
               {!isFutureMeal && (
@@ -573,14 +553,6 @@ export default function MealDetailSheet({
         onConfirmDifferent={handleConfirmDifferent}
       />
 
-      {/* Food Search Drawer */}
-      <FoodSearchDrawer
-        open={showFoodDrawer}
-        onOpenChange={setShowFoodDrawer}
-        mealPlanItemId={meal.id}
-        mealType={meal.meal_type}
-        onSuccess={handleFoodDrawerSuccess}
-      />
     </>
   );
 }

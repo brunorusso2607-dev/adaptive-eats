@@ -140,3 +140,6 @@ verify_jwt = false
 
 [functions.suggest-meal-alternatives]
 verify_jwt = false
+
+[functions.suggest-smart-substitutes]
+verify_jwt = false

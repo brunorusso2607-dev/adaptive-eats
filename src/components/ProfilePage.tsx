@@ -20,7 +20,7 @@ import RecipeList from "./RecipeList";
 import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptions";
 import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import { Json } from "@/integrations/supabase/types";
-import { useNutritionalStrategies } from "@/hooks/useNutritionalStrategies";
+import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 
 type UserProfile = {
   dietary_preference: string | null;
@@ -311,41 +311,11 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
           />
         </div>
 
-        {/* Objetivo */}
+        {/* Objetivo (Estratégia Nutricional) */}
         <div className="space-y-3">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" />
-            Objetivo
-          </h3>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: "emagrecer", label: "Emagrecer", icon: TrendingDown, color: "green" },
-              { id: "manter", label: "Manter", icon: null, color: "amber" },
-              { id: "ganhar_peso", label: "Ganhar", icon: TrendingUp, color: "blue" },
-            ].map((opt) => (
-              <button
-                type="button"
-                key={opt.id}
-                onClick={() => setEditedProfile({ ...editedProfile, goal: opt.id })}
-                className={cn(
-                  "p-2 rounded-lg border-2 text-center transition-all text-xs touch-manipulation",
-                  editedProfile.goal === opt.id 
-                    ? `border-${opt.color}-500 bg-${opt.color}-50 dark:bg-${opt.color}-950/30` 
-                    : "border-border hover:border-primary/50"
-                )}
-              >
-                {opt.icon && <opt.icon className={cn("w-4 h-4 mx-auto mb-1", editedProfile.goal === opt.id ? `text-${opt.color}-600` : "text-muted-foreground")} />}
-                {opt.label}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Estratégia Nutricional */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-sm flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-primary" />
-            Estratégia Nutricional
+            Objetivo (Estratégia Nutricional)
           </h3>
           <div className="grid grid-cols-1 gap-2">
             {strategies?.map((strategy) => {
@@ -365,7 +335,14 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
                 <button
                   type="button"
                   key={strategy.id}
-                  onClick={() => setEditedProfile({ ...editedProfile, strategy_id: strategy.id })}
+                  onClick={() => {
+                    const derivedGoal = deriveGoalFromStrategy(strategy.key);
+                    setEditedProfile({ 
+                      ...editedProfile, 
+                      strategy_id: strategy.id,
+                      goal: derivedGoal
+                    });
+                  }}
                   className={cn(
                     "p-3 rounded-lg border text-left transition-all touch-manipulation flex items-center gap-3",
                     editedProfile.strategy_id === strategy.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"

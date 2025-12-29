@@ -439,13 +439,68 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
           onChange={(ingredients) => setEditedProfile({ ...editedProfile, excluded_ingredients: ingredients })}
         />
 
+        {/* Validação de conflito de peso */}
+        {(() => {
+          const selectedStrategy = strategies?.find(s => s.id === editedProfile.strategy_id);
+          const strategyKey = selectedStrategy?.key;
+          const currentWeight = editedProfile.weight_current;
+          const goalWeight = editedProfile.weight_goal;
+          
+          // Verifica conflitos apenas se temos pesos definidos
+          if (currentWeight && goalWeight && strategyKey) {
+            const isLossGoal = strategyKey === "emagrecer" || strategyKey === "cutting";
+            const isGainGoal = strategyKey === "ganhar_peso" || strategyKey === "fitness";
+            
+            const hasConflict = 
+              (isLossGoal && goalWeight >= currentWeight) ||
+              (isGainGoal && goalWeight <= currentWeight);
+            
+            if (hasConflict) {
+              return (
+                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle className="w-4 h-4 shrink-0" />
+                    <span className="font-medium">Objetivo contraditório</span>
+                  </div>
+                  <p className="mt-1 text-xs opacity-90">
+                    {isLossGoal 
+                      ? "Para emagrecer, o peso meta deve ser menor que o peso atual."
+                      : "Para ganhar peso, o peso meta deve ser maior que o peso atual."}
+                  </p>
+                </div>
+              );
+            }
+          }
+          return null;
+        })()}
+
         {/* Botões de ação */}
         <div className="flex gap-2 pt-4">
           <Button variant="outline" className="flex-1 h-12" onClick={handleCancel} disabled={isSaving}>
             <X className="w-4 h-4 mr-2" />
             Cancelar
           </Button>
-          <Button className="flex-1 h-12" onClick={handleSave} disabled={isSaving}>
+          <Button 
+            className="flex-1 h-12" 
+            onClick={handleSave} 
+            disabled={(() => {
+              if (isSaving) return true;
+              
+              const selectedStrategy = strategies?.find(s => s.id === editedProfile.strategy_id);
+              const strategyKey = selectedStrategy?.key;
+              const currentWeight = editedProfile.weight_current;
+              const goalWeight = editedProfile.weight_goal;
+              
+              if (currentWeight && goalWeight && strategyKey) {
+                const isLossGoal = strategyKey === "emagrecer" || strategyKey === "cutting";
+                const isGainGoal = strategyKey === "ganhar_peso" || strategyKey === "fitness";
+                
+                return (isLossGoal && goalWeight >= currentWeight) ||
+                       (isGainGoal && goalWeight <= currentWeight);
+              }
+              return false;
+            })()}
+          >
             {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
             Salvar
           </Button>

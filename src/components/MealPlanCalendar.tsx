@@ -27,6 +27,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
 import { useMonthWeeks, formatWeekRange, type WeekInfo, type DayInfo } from "@/hooks/useMonthWeeks";
 import IngredientTagInput from "@/components/IngredientTagInput";
+import { useQueryClient } from "@tanstack/react-query";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -97,6 +98,7 @@ const DEFAULT_MEAL_TIME_RANGES: Record<string, { start: number; end: number }> =
 };
 
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, onEditPlan, userProfile }: MealPlanCalendarProps) {
+  const queryClient = useQueryClient();
   const [regenerateDialog, setRegenerateDialog] = useState<{ open: boolean; meal: MealPlanItem | null; mealType: string }>({
     open: false,
     meal: null,
@@ -339,6 +341,11 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         if (onMealUpdated) {
           onMealUpdated(response.data.meal);
         }
+
+        // Invalidar caches do React Query para atualizar outros componentes
+        queryClient.invalidateQueries({ queryKey: ["meal-plan-items"] });
+        queryClient.invalidateQueries({ queryKey: ["next-meal"] });
+        queryClient.invalidateQueries({ queryKey: ["pending-meals"] });
 
         setRegenerateDialog({ open: false, meal: null, mealType: "" });
         setIngredientTags([]);

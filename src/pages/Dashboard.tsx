@@ -233,15 +233,38 @@ export default function Dashboard() {
     
     const { data } = await supabase
       .from("profiles")
-      .select("intolerances, excluded_ingredients, dietary_preference")
+      .select("intolerances, excluded_ingredients, dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, strategy_id")
       .eq("id", currentUser.id)
       .maybeSingle();
     
     if (data) {
+      // Atualizar userProfile para validação de ingredientes
       setUserProfile({
         intolerances: data.intolerances,
         excluded_ingredients: data.excluded_ingredients,
         dietary_preference: data.dietary_preference,
+      });
+      
+      // Atualizar userGoal
+      setUserGoal(data.goal || "manter");
+      
+      // Atualizar weightData
+      const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
+        if (goal === "emagrecer") return "lose";
+        if (goal === "ganhar_peso") return "gain";
+        if (goal === "manter") return "maintain";
+        return null;
+      };
+      
+      setWeightData({
+        weight_current: data.weight_current,
+        weight_goal: data.weight_goal,
+        height: data.height,
+        age: data.age,
+        sex: data.sex as "male" | "female" | null,
+        activity_level: (data.activity_level as any) || "moderate",
+        goal_mode: goalToMode(data.goal || "manter"),
+        strategy_id: data.strategy_id,
       });
     }
   };
@@ -805,6 +828,7 @@ export default function Dashboard() {
                 subscription={subscription}
                 onLogout={handleLogout}
                 onBack={() => setShowProfileSheet(false)}
+                onProfileUpdated={refetchUserProfile}
               />
             ) : mobileActiveTab === "history" ? (
               <MealHistoryPage onBack={() => handleMobileTabChange("home")} />

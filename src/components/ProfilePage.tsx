@@ -7,7 +7,7 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart, Clock
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart, Clock, Dumbbell, Sparkles
 } from "lucide-react";
 import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Link } from "react-router-dom";
@@ -20,10 +20,12 @@ import RecipeList from "./RecipeList";
 import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptions";
 import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import { Json } from "@/integrations/supabase/types";
+import { useNutritionalStrategies } from "@/hooks/useNutritionalStrategies";
 
 type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
+  strategy_id: string | null;
   weight_current: number | null;
   weight_goal: number | null;
   height: number | null;
@@ -167,6 +169,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
   };
 
   const { data: onboardingOptions } = useOnboardingOptions();
+  const { data: strategies } = useNutritionalStrategies();
 
   useEffect(() => {
     if (user) {
@@ -180,13 +183,14 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times, enabled_meals")
+        .select("dietary_preference, goal, strategy_id, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times, enabled_meals")
         .eq("id", user.id)
         .maybeSingle();
 
       if (!error && data) {
         const profileData: UserProfile = {
           ...data,
+          strategy_id: data.strategy_id,
           default_meal_times: data.default_meal_times as CustomMealTimes | null,
           enabled_meals: data.enabled_meals,
         };
@@ -209,6 +213,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
         .update({
           dietary_preference: editedProfile.dietary_preference as any,
           goal: editedProfile.goal as any,
+          strategy_id: editedProfile.strategy_id,
           weight_current: editedProfile.weight_current ? Number(editedProfile.weight_current) : null,
           weight_goal: editedProfile.weight_goal ? Number(editedProfile.weight_goal) : null,
           height: editedProfile.height ? Number(editedProfile.height) : null,
@@ -333,6 +338,52 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
                 {opt.label}
               </button>
             ))}
+          </div>
+        </div>
+
+        {/* Estratégia Nutricional */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-primary" />
+            Estratégia Nutricional
+          </h3>
+          <div className="grid grid-cols-1 gap-2">
+            {strategies?.map((strategy) => {
+              const getIcon = (key: string) => {
+                switch (key) {
+                  case "emagrecer": return TrendingDown;
+                  case "cutting": return Dumbbell;
+                  case "manter": return Scale;
+                  case "fitness": return Dumbbell;
+                  case "ganhar_peso": return TrendingUp;
+                  case "dieta_flexivel": return Utensils;
+                  default: return Sparkles;
+                }
+              };
+              const IconComponent = getIcon(strategy.key);
+              return (
+                <button
+                  type="button"
+                  key={strategy.id}
+                  onClick={() => setEditedProfile({ ...editedProfile, strategy_id: strategy.id })}
+                  className={cn(
+                    "p-3 rounded-lg border text-left transition-all touch-manipulation flex items-center gap-3",
+                    editedProfile.strategy_id === strategy.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <IconComponent className={cn("w-4 h-4", editedProfile.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground")} />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm block">{strategy.label}</span>
+                    {strategy.description && (
+                      <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
+                    )}
+                  </div>
+                  {editedProfile.strategy_id === strategy.id && (
+                    <Check className="w-4 h-4 text-primary shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

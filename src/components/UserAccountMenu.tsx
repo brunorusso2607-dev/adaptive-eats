@@ -9,17 +9,19 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, Dumbbell, Sparkles
 } from "lucide-react";
 import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 
 type UserProfile = {
   dietary_preference: string | null;
   goal: string | null;
+  strategy_id: string | null;
   weight_current: number | null;
   weight_goal: number | null;
   height: number | null;
@@ -175,6 +177,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
   const [isSaving, setIsSaving] = useState(false);
   const [internalOpen, setInternalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
+  const { data: strategies } = useNutritionalStrategies();
 
   // Use external control if provided, otherwise use internal state
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -205,7 +208,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients")
+        .select("dietary_preference, goal, strategy_id, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -229,6 +232,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
         .update({
           dietary_preference: editedProfile.dietary_preference as any,
           goal: editedProfile.goal as any,
+          strategy_id: editedProfile.strategy_id,
           weight_current: editedProfile.weight_current ? Number(editedProfile.weight_current) : null,
           weight_goal: editedProfile.weight_goal ? Number(editedProfile.weight_goal) : null,
           height: editedProfile.height ? Number(editedProfile.height) : null,
@@ -303,33 +307,56 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           />
         </div>
 
-        {/* Objetivo */}
+        {/* Objetivo (Estratégia Nutricional) */}
         <div className="space-y-3">
           <h3 className="font-semibold text-sm flex items-center gap-2">
             <Target className="w-4 h-4 text-primary" />
-            Objetivo
+            Objetivo (Estratégia Nutricional)
           </h3>
-          <div className="grid grid-cols-3 gap-2">
-            {[
-              { id: "emagrecer", label: "Emagrecer", icon: TrendingDown, color: "green" },
-              { id: "manter", label: "Manter", icon: null, color: "amber" },
-              { id: "ganhar_peso", label: "Ganhar", icon: TrendingUp, color: "blue" },
-            ].map((opt) => (
-              <button
-                type="button"
-                key={opt.id}
-                onClick={() => setEditedProfile({ ...editedProfile, goal: opt.id })}
-                className={cn(
-                  "p-2 rounded-lg border-2 text-center transition-all text-xs touch-manipulation",
-                  editedProfile.goal === opt.id 
-                    ? `border-${opt.color}-500 bg-${opt.color}-50 dark:bg-${opt.color}-950/30` 
-                    : "border-border hover:border-primary/50"
-                )}
-              >
-                {opt.icon && <opt.icon className={cn("w-4 h-4 mx-auto mb-1", editedProfile.goal === opt.id ? `text-${opt.color}-600` : "text-muted-foreground")} />}
-                {opt.label}
-              </button>
-            ))}
+          <div className="grid grid-cols-1 gap-2">
+            {strategies?.map((strategy) => {
+              const getIcon = (key: string) => {
+                switch (key) {
+                  case "emagrecer": return TrendingDown;
+                  case "cutting": return Dumbbell;
+                  case "manter": return Scale;
+                  case "fitness": return Dumbbell;
+                  case "ganhar_peso": return TrendingUp;
+                  case "dieta_flexivel": return Utensils;
+                  default: return Sparkles;
+                }
+              };
+              const IconComponent = getIcon(strategy.key);
+              return (
+                <button
+                  type="button"
+                  key={strategy.id}
+                  onClick={() => {
+                    const derivedGoal = deriveGoalFromStrategy(strategy.key);
+                    setEditedProfile({ 
+                      ...editedProfile, 
+                      strategy_id: strategy.id,
+                      goal: derivedGoal
+                    });
+                  }}
+                  className={cn(
+                    "p-3 rounded-lg border text-left transition-all touch-manipulation flex items-center gap-3",
+                    editedProfile.strategy_id === strategy.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                  )}
+                >
+                  <IconComponent className={cn("w-4 h-4", editedProfile.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground")} />
+                  <div className="flex-1 min-w-0">
+                    <span className="font-medium text-sm block">{strategy.label}</span>
+                    {strategy.description && (
+                      <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
+                    )}
+                  </div>
+                  {editedProfile.strategy_id === strategy.id && (
+                    <Check className="w-4 h-4 text-primary shrink-0" />
+                  )}
+                </button>
+              );
+            })}
           </div>
         </div>
 

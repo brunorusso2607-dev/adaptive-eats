@@ -273,8 +273,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   const getDayMeals = (dayInfo: DayInfo) => {
     if (!dayInfo || !dayInfo.isInMonth) return [];
 
-    // Calculate the day_of_week based on days since plan start
-    const planStartDate = new Date(mealPlan.start_date);
+    // Parse plan start date safely (avoid timezone issues by using local date parts)
+    const [startYear, startMonth, startDay] = mealPlan.start_date.split('-').map(Number);
+    const planStartDate = new Date(startYear, startMonth - 1, startDay);
     planStartDate.setHours(0, 0, 0, 0);
     
     const dayDate = new Date(dayInfo.date);
@@ -283,12 +284,19 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     // Check if day is before plan start
     if (dayDate < planStartDate) return [];
 
-    const diffTime = dayDate.getTime() - planStartDate.getTime();
-    const daysSinceStart = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    // Calculate days since start using date components to avoid timezone issues
+    const dayDateYear = dayDate.getFullYear();
+    const dayDateMonth = dayDate.getMonth();
+    const dayDateDay = dayDate.getDate();
+    
+    const msPerDay = 1000 * 60 * 60 * 24;
+    const daysSinceStart = Math.round((dayDate.getTime() - planStartDate.getTime()) / msPerDay);
 
     // Calculate which plan week and day this corresponds to
     const planWeekNumber = Math.floor(daysSinceStart / 7) + 1;
     const planDayOfWeek = daysSinceStart % 7;
+
+    console.log(`[DEBUG] getDayMeals: date=${dayDateDay}/${dayDateMonth + 1}/${dayDateYear}, daysSinceStart=${daysSinceStart}, planWeek=${planWeekNumber}, planDayOfWeek=${planDayOfWeek}, items found=${mealPlan.items.filter(item => (item.week_number || 1) === planWeekNumber && item.day_of_week === planDayOfWeek).length}`);
 
     return mealPlan.items.filter(item => 
       (item.week_number || 1) === planWeekNumber && 

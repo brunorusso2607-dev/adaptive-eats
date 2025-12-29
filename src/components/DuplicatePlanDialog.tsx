@@ -298,7 +298,7 @@ export default function DuplicatePlanDialog({
           });
 
           try {
-            const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
+            const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
               body: {
                 planName: newPlanName,
                 startDate: batchStartDate.toISOString().split('T')[0],

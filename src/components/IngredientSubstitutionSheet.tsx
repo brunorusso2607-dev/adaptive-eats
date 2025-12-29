@@ -174,7 +174,7 @@ export default function IngredientSubstitutionSheet({
         <DialogHeader className="p-6 pb-4 shrink-0">
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Substituir Ingrediente
+            Substituir Alimento
           </DialogTitle>
           <DialogDescription asChild>
             <span className="flex items-center gap-2 flex-wrap">

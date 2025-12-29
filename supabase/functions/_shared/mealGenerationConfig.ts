@@ -2213,14 +2213,14 @@ export function getStrategyPromptRules(strategyKey: string, language: string = '
   const persona = getStrategyPersona(strategyKey);
   const isPortuguese = language.startsWith('pt');
   
-  // Obter exemplos dinâmicos do pool
+  // Obter exemplos dinâmicos do pool (6 exemplos para melhor contexto da IA)
   const poolExamples = {
-    cafe_manha: getMealsFromPool(strategyKey, 'cafe_manha', 3),
-    lanche_manha: getMealsFromPool(strategyKey, 'lanche_manha', 3),
-    almoco: getMealsFromPool(strategyKey, 'almoco', 3),
-    lanche_tarde: getMealsFromPool(strategyKey, 'lanche_tarde', 3),
-    jantar: getMealsFromPool(strategyKey, 'jantar', 3),
-    ceia: getMealsFromPool(strategyKey, 'ceia', 3),
+    cafe_manha: getMealsFromPool(strategyKey, 'cafe_manha', 6),
+    lanche_manha: getMealsFromPool(strategyKey, 'lanche_manha', 6),
+    almoco: getMealsFromPool(strategyKey, 'almoco', 6),
+    lanche_tarde: getMealsFromPool(strategyKey, 'lanche_tarde', 6),
+    jantar: getMealsFromPool(strategyKey, 'jantar', 6),
+    ceia: getMealsFromPool(strategyKey, 'ceia', 6),
   };
   
   if (isPortuguese) {

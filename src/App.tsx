@@ -39,7 +39,6 @@ import AdminAIUsage from "./pages/admin/AdminAIUsage";
 import AdminBlockedIngredients from "./pages/admin/AdminBlockedIngredients";
 import AdminAIMealPlanTest from "./pages/admin/AdminAIMealPlanTest";
 import AdminFoods from "./pages/admin/AdminFoods";
-import AdminNutritionalStrategies from "./pages/admin/AdminNutritionalStrategies";
 const queryClient = new QueryClient();
 
 function AppContent() {
@@ -90,7 +89,6 @@ function AppContent() {
           <Route path="blocked-ingredients" element={<AdminBlockedIngredients />} />
           <Route path="ai-meal-plan-test" element={<AdminAIMealPlanTest />} />
           <Route path="foods" element={<AdminFoods />} />
-          <Route path="nutritional-strategies" element={<AdminNutritionalStrategies />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

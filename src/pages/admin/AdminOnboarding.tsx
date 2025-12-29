@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
+import NutritionalStrategiesTab from "@/components/admin/NutritionalStrategiesTab";
 import {
   Dialog,
   DialogContent,
@@ -247,6 +248,7 @@ const CATEGORIES: CategoryInfo[] = [
   { key: "intolerances", label: "Intolerâncias", icon: Wheat, description: "Restrições alimentares dos usuários" },
   { key: "excluded_ingredients", label: "Alimentos Excluídos", icon: Ban, description: "Sugestões de alimentos que usuários podem não consumir" },
   { key: "dietary_preferences", label: "Preferências Alimentares", icon: Utensils, description: "Tipos de dieta" },
+  { key: "nutritional_strategies", label: "Estratégias Nutricionais", icon: Target, description: "Objetivos nutricionais para cálculo de macros" },
 ];
 
 export default function AdminOnboarding() {
@@ -515,7 +517,9 @@ export default function AdminOnboarding() {
         <TabsList className="flex-wrap h-auto gap-2 bg-transparent p-0">
           {CATEGORIES.map((cat) => {
             const Icon = cat.icon;
-            const count = options?.filter(o => o.category === cat.key).length || 0;
+            const count = cat.key === "nutritional_strategies" 
+              ? undefined 
+              : options?.filter(o => o.category === cat.key).length || 0;
             return (
               <TabsTrigger
                 key={cat.key}
@@ -524,15 +528,23 @@ export default function AdminOnboarding() {
               >
                 <Icon className="w-4 h-4" />
                 <span className="hidden sm:inline">{cat.label}</span>
-                <span className="ml-1 text-xs bg-background/20 data-[state=active]:bg-background/30 px-1.5 py-0.5 rounded-md font-medium">
-                  {count}
-                </span>
+                {count !== undefined && (
+                  <span className="ml-1 text-xs bg-background/20 data-[state=active]:bg-background/30 px-1.5 py-0.5 rounded-md font-medium">
+                    {count}
+                  </span>
+                )}
               </TabsTrigger>
             );
           })}
         </TabsList>
 
-        {CATEGORIES.map((cat) => (
+        {/* Nutritional Strategies Tab - uses separate component */}
+        <TabsContent value="nutritional_strategies" className="mt-6">
+          <NutritionalStrategiesTab />
+        </TabsContent>
+
+        {/* Other categories - use onboarding_options table */}
+        {CATEGORIES.filter(cat => cat.key !== "nutritional_strategies").map((cat) => (
           <TabsContent key={cat.key} value={cat.key} className="mt-6">
             <Card className="border-border/50">
               <CardHeader className="flex flex-row items-center justify-between">

@@ -32,7 +32,8 @@ import {
   Clock,
   ToggleLeft,
   ChefHat,
-  Apple
+  Apple,
+  Target
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -90,6 +91,7 @@ const mainMenuItems: SubMenuItem[] = [
           icon: FileText,
           subItems: [
             { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
+            { path: "/admin/nutritional-strategies", label: "Estratégias Nutricionais", icon: Target },
             { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
             { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
           ],

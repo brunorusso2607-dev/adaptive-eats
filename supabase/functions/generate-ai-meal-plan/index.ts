@@ -979,7 +979,7 @@ serve(async (req) => {
       dailyCalories: requestedCalories, // Pode ser undefined, será calculado
       daysCount = 1,
       optionsPerMeal = 3,
-      mealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"],
+      mealTypes: requestedMealTypes, // Pode ser undefined, será buscado do perfil
       // Novos parâmetros para salvar no banco (vindos do MealPlanGenerator)
       planName,
       startDate,
@@ -992,7 +992,7 @@ serve(async (req) => {
     // Detectar automaticamente se deve salvar no banco
     const shouldSaveToDatabase = saveToDatabase || planName || startDate;
 
-    logStep("Request params", { requestedCalories, daysCount, optionsPerMeal, mealTypes, shouldSaveToDatabase });
+    logStep("Request params", { requestedCalories, daysCount, optionsPerMeal, requestedMealTypes, shouldSaveToDatabase });
 
     // Fetch user profile
     const { data: profile, error: profileError } = await supabaseClient
@@ -1002,6 +1002,29 @@ serve(async (req) => {
       .single();
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
+    
+    // ============= DETERMINAR MEAL TYPES BASEADO NO PERFIL =============
+    // Prioridade: 1) requestedMealTypes (da request), 2) enabled_meals (do perfil), 3) default 5 refeições
+    const DEFAULT_MEAL_TYPES = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"];
+    
+    let mealTypes: string[];
+    if (requestedMealTypes && Array.isArray(requestedMealTypes) && requestedMealTypes.length > 0) {
+      // Usar os tipos passados na request
+      mealTypes = requestedMealTypes;
+      logStep("Using mealTypes from request", { mealTypes });
+    } else if (profile.enabled_meals && Array.isArray(profile.enabled_meals) && profile.enabled_meals.length > 0) {
+      // Usar os tipos do perfil do usuário
+      // Normalizar nomes: "lanche" -> "lanche_tarde" para manter consistência
+      mealTypes = profile.enabled_meals.map((meal: string) => {
+        if (meal === "lanche") return "lanche_tarde";
+        return meal;
+      });
+      logStep("Using mealTypes from user profile (enabled_meals)", { mealTypes, original: profile.enabled_meals });
+    } else {
+      // Fallback para default
+      mealTypes = DEFAULT_MEAL_TYPES;
+      logStep("Using default mealTypes", { mealTypes });
+    }
     
     // Get regional configuration based on user's country
     const userCountry = profile.country || 'BR';

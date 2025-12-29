@@ -6,8 +6,9 @@ import { Label } from "@/components/ui/label";
 import { 
   Scale, Ruler, Calendar, User, Activity, Target, 
   TrendingDown, TrendingUp, Minus, Flame, Beef, Wheat, Loader2, Check, X, Sparkles,
-  AlertTriangle, Info
+  AlertTriangle, Info, Dumbbell, Utensils
 } from "lucide-react";
+import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -27,6 +28,7 @@ type WeightGoalData = {
   sex: "male" | "female" | null;
   activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
   goal_mode: GoalMode | null;
+  strategy_id?: string | null;
 };
 
 type WeightGoalSetupProps = {
@@ -375,7 +377,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     sex: initialData?.sex || null,
     activity_level: initialData?.activity_level || "moderate",
     goal_mode: initialData?.goal_mode || null,
+    strategy_id: initialData?.strategy_id || null,
   });
+  
+  // Hook para carregar estratégias nutricionais do banco
+  const { data: strategies, isLoading: isLoadingStrategies } = useNutritionalStrategies();
   
   // Hook compartilhado para validação de inputs físicos
   const {
@@ -388,7 +394,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
 
   const calculations = calculateMacros(data);
   const healthRisks = calculateHealthRisks(data);
-  const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex && data.goal_mode;
+  const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex && data.goal_mode && data.strategy_id;
   const hasDangerRisk = healthRisks.some(r => r.level === "danger");
 
   const scrollToErrorAndShake = () => {
@@ -460,6 +466,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       sex: data.sex,
       activity_level: data.activity_level,
       goal: goalMap[calculations!.mode],
+      strategy_id: data.strategy_id,
     };
 
     console.log("Saving data:", updateData);
@@ -641,57 +648,72 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
 
       {/* Form */}
       <div className="grid gap-4">
-        {/* Goal Mode Selection */}
+        {/* Goal Mode Selection - 6 Estratégias Nutricionais */}
         <div className="space-y-2">
           <Label className="flex items-center gap-2">
             <Target className="w-4 h-4 text-muted-foreground" />
-            Qual é o seu objetivo?
+            Objetivo (Estratégia Nutricional)
           </Label>
-          <div className="grid grid-cols-3 gap-3">
-            <button
-              type="button"
-              onClick={() => setData({ ...data, goal_mode: "lose" })}
-              className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
-                data.goal_mode === "lose"
-                  ? "border-green-500 bg-green-50 dark:bg-green-950/30"
-                  : "border-border hover:border-green-400/50"
-              )}
-            >
-              <TrendingDown className={cn("w-6 h-6 mx-auto mb-2", data.goal_mode === "lose" ? "text-green-600" : "text-muted-foreground")} />
-              <span className="font-medium text-sm">Emagrecer</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setData({ 
-                ...data, 
-                goal_mode: "maintain",
-                weight_goal: data.weight_current // Sync weight_goal with current weight
+          {isLoadingStrategies ? (
+            <div className="flex items-center justify-center p-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 gap-2">
+              {strategies?.map((strategy) => {
+                const getIcon = (key: string) => {
+                  switch (key) {
+                    case "emagrecer": return TrendingDown;
+                    case "cutting": return Dumbbell;
+                    case "manter": return Scale;
+                    case "fitness": return Dumbbell;
+                    case "ganhar_peso": return TrendingUp;
+                    case "dieta_flexivel": return Utensils;
+                    default: return Sparkles;
+                  }
+                };
+                const IconComponent = getIcon(strategy.key);
+                const derivedGoalMode = deriveGoalFromStrategy(strategy.key);
+                const goalModeMap: Record<string, GoalMode> = {
+                  emagrecer: "lose",
+                  manter: "maintain",
+                  ganhar_peso: "gain",
+                };
+                const goalMode = goalModeMap[derivedGoalMode] || "maintain";
+                
+                return (
+                  <button
+                    type="button"
+                    key={strategy.id}
+                    onClick={() => {
+                      setData({ 
+                        ...data, 
+                        strategy_id: strategy.id,
+                        goal_mode: goalMode,
+                        // When maintaining, sync weight_goal with weight_current
+                        weight_goal: goalMode === "maintain" ? data.weight_current : data.weight_goal
+                      });
+                    }}
+                    className={cn(
+                      "p-3 rounded-lg border text-left transition-all touch-manipulation flex items-center gap-3",
+                      data.strategy_id === strategy.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
+                    )}
+                  >
+                    <IconComponent className={cn("w-4 h-4", data.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground")} />
+                    <div className="flex-1 min-w-0">
+                      <span className="font-medium text-sm block">{strategy.label}</span>
+                      {strategy.description && (
+                        <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
+                      )}
+                    </div>
+                    {data.strategy_id === strategy.id && (
+                      <Check className="w-4 h-4 text-primary shrink-0" />
+                    )}
+                  </button>
+                );
               })}
-              className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
-                data.goal_mode === "maintain"
-                  ? "border-amber-500 bg-amber-50 dark:bg-amber-950/30"
-                  : "border-border hover:border-amber-400/50"
-              )}
-            >
-              <Minus className={cn("w-6 h-6 mx-auto mb-2", data.goal_mode === "maintain" ? "text-amber-600" : "text-muted-foreground")} />
-              <span className="font-medium text-sm">Manter</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setData({ ...data, goal_mode: "gain" })}
-              className={cn(
-                "p-4 rounded-xl border-2 text-center transition-all touch-manipulation",
-                data.goal_mode === "gain"
-                  ? "border-blue-500 bg-blue-50 dark:bg-blue-950/30"
-                  : "border-border hover:border-blue-400/50"
-              )}
-            >
-              <TrendingUp className={cn("w-6 h-6 mx-auto mb-2", data.goal_mode === "gain" ? "text-blue-600" : "text-muted-foreground")} />
-              <span className="font-medium text-sm">Ganhar Peso</span>
-            </button>
-          </div>
+            </div>
+          )}
         </div>
 
         {/* Weight Row */}

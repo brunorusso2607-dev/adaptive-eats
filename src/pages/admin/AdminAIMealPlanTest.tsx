@@ -8,10 +8,44 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Utensils, Globe, Target, AlertCircle, Scale, Ruler, User } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Loader2, Utensils, Globe, Target, AlertCircle, Scale, Ruler, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
+
+// Validação de peso baseada na estratégia
+function validateWeightGoal(
+  strategyKey: string | undefined,
+  weightCurrent: number,
+  weightGoal: number
+): { isValid: boolean; error: string | null } {
+  if (!strategyKey || !weightCurrent || !weightGoal) {
+    return { isValid: true, error: null };
+  }
+
+  // Estratégias de emagrecimento: meta deve ser MENOR que atual
+  if (strategyKey === "emagrecer" || strategyKey === "cutting") {
+    if (weightGoal >= weightCurrent) {
+      return {
+        isValid: false,
+        error: `Para ${strategyKey === "emagrecer" ? "Emagrecimento" : "Cutting"}, a meta de peso deve ser menor que o peso atual.`
+      };
+    }
+  }
+
+  // Estratégias de ganho de peso: meta deve ser MAIOR que atual
+  if (strategyKey === "ganhar_peso") {
+    if (weightGoal <= weightCurrent) {
+      return {
+        isValid: false,
+        error: "Para Ganhar Peso (Bulk), a meta de peso deve ser maior que o peso atual."
+      };
+    }
+  }
+
+  return { isValid: true, error: null };
+}
 
 const COUNTRIES = [
   { code: "BR", name: "Brasil", flag: "🇧🇷" },
@@ -171,11 +205,27 @@ export default function AdminAIMealPlanTest() {
     return calculateEstimatedCalories(weightCurrent, height, age, sex, activityLevel, calorieModifier);
   }, [weightCurrent, height, age, sex, activityLevel, selectedStrategy]);
 
+  // Validação de peso
+  const weightValidation = useMemo(() => {
+    return validateWeightGoal(selectedStrategy?.key, weightCurrent, weightGoal);
+  }, [selectedStrategy?.key, weightCurrent, weightGoal]);
+
   // Intolerâncias do banco de dados
   const intoleranceOptions = useMemo(() => {
     if (!onboardingOptions) return [];
     return onboardingOptions.intolerances.filter(i => i.option_id !== "none");
   }, [onboardingOptions]);
+
+  // Verificar se pode gerar
+  const canGenerate = useMemo(() => {
+    return selectedStrategyId && 
+           selectedMealTypes.length > 0 && 
+           weightValidation.isValid &&
+           weightCurrent > 0 &&
+           weightGoal > 0 &&
+           height > 0 &&
+           age > 0;
+  }, [selectedStrategyId, selectedMealTypes.length, weightValidation.isValid, weightCurrent, weightGoal, height, age]);
 
   const handleIntoleranceToggle = (intolerance: string) => {
     setSelectedIntolerances(prev => 
@@ -194,13 +244,12 @@ export default function AdminAIMealPlanTest() {
   };
 
   const handleGenerate = async () => {
-    if (selectedMealTypes.length === 0) {
-      toast.error("Selecione pelo menos uma refeicao");
-      return;
-    }
-
-    if (!selectedStrategyId) {
-      toast.error("Selecione uma estrategia nutricional");
+    if (!canGenerate) {
+      if (!weightValidation.isValid) {
+        toast.error("Corrija o conflito de peso antes de gerar");
+      } else {
+        toast.error("Preencha todos os campos obrigatórios");
+      }
       return;
     }
 
@@ -344,9 +393,19 @@ export default function AdminAIMealPlanTest() {
                       onChange={e => setWeightGoal(Number(e.target.value))}
                       min={30}
                       max={300}
+                      className={!weightValidation.isValid ? "border-destructive" : ""}
                     />
                   </div>
                 </div>
+
+                {/* Weight Validation Alert */}
+                {!weightValidation.isValid && weightValidation.error && (
+                  <Alert variant="destructive" className="mt-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    <AlertTitle>Objetivo Contraditório</AlertTitle>
+                    <AlertDescription>{weightValidation.error}</AlertDescription>
+                  </Alert>
+                )}
 
                 <div className="grid grid-cols-2 gap-4">
                   {/* Height */}
@@ -547,7 +606,7 @@ export default function AdminAIMealPlanTest() {
               {/* Generate Button */}
               <Button
                 onClick={handleGenerate}
-                disabled={isLoading || !selectedStrategyId}
+                disabled={isLoading || !canGenerate}
                 className="w-full"
                 size="lg"
               >

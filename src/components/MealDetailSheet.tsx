@@ -156,10 +156,19 @@ export default function MealDetailSheet({
 
   const handleOpenSubstitution = (ingredient: Ingredient, e: React.MouseEvent) => {
     e.stopPropagation();
+    // Parse grams from quantity string (e.g., "120g" -> 120)
+    const gramsMatch = ingredient.quantity?.match(/(\d+)/);
+    const grams = gramsMatch ? parseInt(gramsMatch[1]) : 100;
+    
     setSelectedIngredient({
       item: ingredient.item,
       quantity: ingredient.quantity,
-      unit: ingredient.unit || ''
+      unit: ingredient.unit || '',
+      calories: ingredient.calories,
+      protein: ingredient.protein,
+      carbs: ingredient.carbs,
+      fat: ingredient.fat,
+      grams: grams
     });
     setSubstitutionOpen(true);
   };

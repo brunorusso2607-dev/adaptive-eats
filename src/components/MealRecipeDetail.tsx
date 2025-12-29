@@ -9,7 +9,15 @@ import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubst
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
 
-type Ingredient = { item: string; quantity: string; unit: string };
+type Ingredient = { 
+  item: string; 
+  quantity: string; 
+  unit: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+};
 
 type MealPlanItem = {
   id: string;
@@ -54,7 +62,20 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
 
   const handleOpenSubstitution = (ingredient: Ingredient) => {
-    setSelectedIngredient(ingredient);
+    // Parse grams from quantity string (e.g., "120g" -> 120)
+    const gramsMatch = ingredient.quantity?.match(/(\d+)/);
+    const grams = gramsMatch ? parseInt(gramsMatch[1]) : 100;
+    
+    setSelectedIngredient({
+      item: ingredient.item,
+      quantity: ingredient.quantity,
+      unit: ingredient.unit || '',
+      calories: ingredient.calories,
+      protein: ingredient.protein,
+      carbs: ingredient.carbs,
+      fat: ingredient.fat,
+      grams: grams
+    });
     setSubstitutionOpen(true);
   };
 

@@ -24,6 +24,11 @@ export interface OriginalIngredient {
   item: string;
   quantity: string;
   unit: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+  grams?: number;
 }
 
 export function useIngredientSubstitution() {

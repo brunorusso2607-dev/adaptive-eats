@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,8 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Utensils, Globe, Target, Flame, AlertCircle } from "lucide-react";
+import { Loader2, Utensils, Globe, Target, AlertCircle, Scale, Ruler, User } from "lucide-react";
 import { toast } from "sonner";
+import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
+import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
 
 const COUNTRIES = [
   { code: "BR", name: "Brasil", flag: "🇧🇷" },
@@ -26,12 +28,6 @@ const COUNTRIES = [
   { code: "CO", name: "Colombia", flag: "🇨🇴" },
 ];
 
-const GOALS = [
-  { value: "emagrecer", label: "Emagrecer / Weight Loss", icon: "📉" },
-  { value: "manter", label: "Manter / Maintenance", icon: "⚖️" },
-  { value: "ganhar_peso", label: "Ganhar Peso / Weight Gain", icon: "📈" },
-];
-
 const DIETARY_PREFERENCES = [
   { value: "comum", label: "Comum / Omnivore" },
   { value: "vegetariana", label: "Vegetariana" },
@@ -42,26 +38,26 @@ const DIETARY_PREFERENCES = [
   { value: "flexitariana", label: "Flexitariana" },
 ];
 
-const INTOLERANCES = [
-  { value: "lactose", label: "Lactose" },
-  { value: "gluten", label: "Gluten" },
-  { value: "amendoim", label: "Amendoim / Peanuts" },
-  { value: "frutos_do_mar", label: "Frutos do Mar / Shellfish" },
-  { value: "peixe", label: "Peixe / Fish" },
-  { value: "ovos", label: "Ovos / Eggs" },
-  { value: "soja", label: "Soja / Soy" },
-  { value: "cafeina", label: "Cafeina / Caffeine" },
-  { value: "milho", label: "Milho / Corn" },
-  { value: "leguminosas", label: "Leguminosas / Legumes" },
-];
-
 const MEAL_TYPES = [
   { value: "cafe_manha", label: "Cafe da Manha" },
   { value: "lanche_manha", label: "Lanche da Manhã" },
   { value: "almoco", label: "Almoço" },
-  { value: "lanche", label: "Lanche da Tarde" },
+  { value: "lanche_tarde", label: "Lanche da Tarde" },
   { value: "jantar", label: "Jantar" },
   { value: "ceia", label: "Ceia" },
+];
+
+const ACTIVITY_LEVELS = [
+  { value: "sedentary", label: "Sedentário", description: "Pouco ou nenhum exercício" },
+  { value: "light", label: "Leve", description: "Exercício 1-3 dias/semana" },
+  { value: "moderate", label: "Moderado", description: "Exercício 3-5 dias/semana" },
+  { value: "active", label: "Ativo", description: "Exercício 6-7 dias/semana" },
+  { value: "very_active", label: "Muito Ativo", description: "Atleta, trabalho físico" },
+];
+
+const SEX_OPTIONS = [
+  { value: "masculino", label: "Masculino" },
+  { value: "feminino", label: "Feminino" },
 ];
 
 interface FoodItem {
@@ -107,11 +103,54 @@ interface GeneratedPlan {
   days: DayPlan[];
 }
 
+// Cálculo de calorias (simplificado para exibição - o cálculo real é feito na edge function)
+function calculateEstimatedCalories(
+  weight: number,
+  height: number,
+  age: number,
+  sex: string,
+  activityLevel: string,
+  calorieModifier: number
+): number | null {
+  if (!weight || !height || !age) return null;
+
+  const isMale = sex === "masculino" || sex === "male";
+  
+  // Mifflin-St Jeor
+  const bmr = isMale
+    ? (10 * weight) + (6.25 * height) - (5 * age) + 5
+    : (10 * weight) + (6.25 * height) - (5 * age) - 161;
+
+  const multipliers: Record<string, number> = {
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    very_active: 1.9,
+  };
+
+  const tdee = bmr * (multipliers[activityLevel] || 1.55);
+  return Math.max(1200, Math.round(tdee + calorieModifier));
+}
+
 export default function AdminAIMealPlanTest() {
+  const { data: strategies, isLoading: isLoadingStrategies } = useNutritionalStrategies();
+  const { data: onboardingOptions, isLoading: isLoadingOptions } = useOnboardingOptions();
+  
   const [isLoading, setIsLoading] = useState(false);
   const [country, setCountry] = useState("BR");
-  const [dailyCalories, setDailyCalories] = useState(1800);
-  const [goal, setGoal] = useState("emagrecer");
+  
+  // Dados físicos
+  const [weightCurrent, setWeightCurrent] = useState(70);
+  const [weightGoal, setWeightGoal] = useState(65);
+  const [height, setHeight] = useState(170);
+  const [age, setAge] = useState(30);
+  const [sex, setSex] = useState("masculino");
+  const [activityLevel, setActivityLevel] = useState("moderate");
+  
+  // Estratégia nutricional
+  const [selectedStrategyId, setSelectedStrategyId] = useState<string>("");
+  
   const [dietaryPreference, setDietaryPreference] = useState("comum");
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
   const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>(["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"]);
@@ -120,6 +159,23 @@ export default function AdminAIMealPlanTest() {
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [executionTime, setExecutionTime] = useState<number | null>(null);
+
+  // Obter estratégia selecionada e calcular calorias
+  const selectedStrategy = useMemo(() => {
+    if (!strategies || !selectedStrategyId) return null;
+    return strategies.find(s => s.id === selectedStrategyId) || null;
+  }, [strategies, selectedStrategyId]);
+
+  const estimatedCalories = useMemo(() => {
+    const calorieModifier = selectedStrategy?.calorie_modifier || 0;
+    return calculateEstimatedCalories(weightCurrent, height, age, sex, activityLevel, calorieModifier);
+  }, [weightCurrent, height, age, sex, activityLevel, selectedStrategy]);
+
+  // Intolerâncias do banco de dados
+  const intoleranceOptions = useMemo(() => {
+    if (!onboardingOptions) return [];
+    return onboardingOptions.intolerances.filter(i => i.option_id !== "none");
+  }, [onboardingOptions]);
 
   const handleIntoleranceToggle = (intolerance: string) => {
     setSelectedIntolerances(prev => 
@@ -143,31 +199,46 @@ export default function AdminAIMealPlanTest() {
       return;
     }
 
+    if (!selectedStrategyId) {
+      toast.error("Selecione uma estrategia nutricional");
+      return;
+    }
+
     setIsLoading(true);
     setError(null);
     setGeneratedPlan(null);
     const startTime = Date.now();
 
     try {
-      // First update the user profile with test settings
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Usuario nao autenticado");
+
+      // Deriva o goal a partir da estratégia
+      const derivedGoal = selectedStrategy 
+        ? deriveGoalFromStrategy(selectedStrategy.key)
+        : "manter";
 
       // Update profile with test settings
       await supabase
         .from("profiles")
         .update({
           country,
-          goal: goal as "emagrecer" | "manter" | "ganhar_peso",
+          goal: derivedGoal,
           dietary_preference: dietaryPreference as "comum" | "vegetariana" | "vegana" | "low_carb" | "pescetariana" | "cetogenica" | "flexitariana",
           intolerances: selectedIntolerances,
+          weight_current: weightCurrent,
+          weight_goal: weightGoal,
+          height,
+          age,
+          sex,
+          activity_level: activityLevel,
+          strategy_id: selectedStrategyId,
         })
         .eq("id", user.id);
 
-      // Call the AI meal plan generator
+      // Call the AI meal plan generator (calorias são calculadas automaticamente na edge function)
       const { data, error: fnError } = await supabase.functions.invoke("generate-ai-meal-plan", {
         body: {
-          dailyCalories,
           daysCount,
           optionsPerMeal,
           mealTypes: selectedMealTypes,
@@ -194,6 +265,8 @@ export default function AdminAIMealPlanTest() {
     }
   };
 
+  const isLoadingData = isLoadingStrategies || isLoadingOptions;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-3">
@@ -204,301 +277,416 @@ export default function AdminAIMealPlanTest() {
         </div>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Configuration Panel */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              Configuracoes
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            {/* Country */}
-            <div className="space-y-2">
-              <Label>Pais / Country</Label>
-              <Select value={country} onValueChange={setCountry}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {COUNTRIES.map(c => (
-                    <SelectItem key={c.code} value={c.code}>
-                      {c.flag} {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Calories */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Flame className="h-4 w-4" />
-                Calorias Diarias
-              </Label>
-              <Input
-                type="number"
-                value={dailyCalories}
-                onChange={e => setDailyCalories(Number(e.target.value))}
-                min={1200}
-                max={4000}
-              />
-              <p className="text-xs text-muted-foreground">1200 - 4000 kcal</p>
-            </div>
-
-            {/* Goal */}
-            <div className="space-y-2">
-              <Label className="flex items-center gap-2">
-                <Target className="h-4 w-4" />
-                Objetivo
-              </Label>
-              <Select value={goal} onValueChange={setGoal}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {GOALS.map(g => (
-                    <SelectItem key={g.value} value={g.value}>
-                      {g.icon} {g.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Dietary Preference */}
-            <div className="space-y-2">
-              <Label>Preferencia Alimentar</Label>
-              <Select value={dietaryPreference} onValueChange={setDietaryPreference}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {DIETARY_PREFERENCES.map(p => (
-                    <SelectItem key={p.value} value={p.value}>
-                      {p.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            {/* Intolerances */}
-            <div className="space-y-2">
-              <Label>Intolerancias</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {INTOLERANCES.map(i => (
-                  <div key={i.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={i.value}
-                      checked={selectedIntolerances.includes(i.value)}
-                      onCheckedChange={() => handleIntoleranceToggle(i.value)}
-                    />
-                    <label htmlFor={i.value} className="text-sm cursor-pointer">
-                      {i.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Meal Types */}
-            <div className="space-y-2">
-              <Label>Refeicoes</Label>
-              <div className="flex flex-wrap gap-2">
-                {MEAL_TYPES.map(m => (
-                  <div key={m.value} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={m.value}
-                      checked={selectedMealTypes.includes(m.value)}
-                      onCheckedChange={() => handleMealTypeToggle(m.value)}
-                    />
-                    <label htmlFor={m.value} className="text-sm cursor-pointer">
-                      {m.label}
-                    </label>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Options per meal */}
-            <div className="grid grid-cols-2 gap-4">
+      {isLoadingData ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
+          {/* Configuration Panel */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                Configuracoes
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {/* Country */}
               <div className="space-y-2">
-                <Label>Opcoes por Refeicao</Label>
-                <Select value={String(optionsPerMeal)} onValueChange={v => setOptionsPerMeal(Number(v))}>
+                <Label>Pais / Country</Label>
+                <Select value={country} onValueChange={setCountry}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 opcao</SelectItem>
-                    <SelectItem value="2">2 opcoes</SelectItem>
-                    <SelectItem value="3">3 opcoes</SelectItem>
-                    <SelectItem value="4">4 opcoes</SelectItem>
-                    <SelectItem value="5">5 opcoes</SelectItem>
+                    {COUNTRIES.map(c => (
+                      <SelectItem key={c.code} value={c.code}>
+                        {c.flag} {c.name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
 
+              {/* Physical Data Section */}
+              <div className="space-y-4 rounded-lg border p-4">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <User className="h-4 w-4" />
+                  Dados Físicos
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Weight Current */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Scale className="h-4 w-4" />
+                      Peso Atual (kg)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={weightCurrent}
+                      onChange={e => setWeightCurrent(Number(e.target.value))}
+                      min={30}
+                      max={300}
+                    />
+                  </div>
+
+                  {/* Weight Goal */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      Meta de Peso (kg)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={weightGoal}
+                      onChange={e => setWeightGoal(Number(e.target.value))}
+                      min={30}
+                      max={300}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Height */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Ruler className="h-4 w-4" />
+                      Altura (cm)
+                    </Label>
+                    <Input
+                      type="number"
+                      value={height}
+                      onChange={e => setHeight(Number(e.target.value))}
+                      min={100}
+                      max={250}
+                    />
+                  </div>
+
+                  {/* Age */}
+                  <div className="space-y-2">
+                    <Label>Idade</Label>
+                    <Input
+                      type="number"
+                      value={age}
+                      onChange={e => setAge(Number(e.target.value))}
+                      min={10}
+                      max={120}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Sex */}
+                  <div className="space-y-2">
+                    <Label>Sexo</Label>
+                    <Select value={sex} onValueChange={setSex}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {SEX_OPTIONS.map(s => (
+                          <SelectItem key={s.value} value={s.value}>
+                            {s.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Activity Level */}
+                  <div className="space-y-2">
+                    <Label>Nível de Atividade</Label>
+                    <Select value={activityLevel} onValueChange={setActivityLevel}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ACTIVITY_LEVELS.map(a => (
+                          <SelectItem key={a.value} value={a.value}>
+                            {a.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Nutritional Strategy */}
               <div className="space-y-2">
-                <Label>Dias</Label>
-                <Select value={String(daysCount)} onValueChange={v => setDaysCount(Number(v))}>
+                <Label className="flex items-center gap-2">
+                  <Target className="h-4 w-4" />
+                  Estratégia Nutricional
+                </Label>
+                <Select value={selectedStrategyId} onValueChange={setSelectedStrategyId}>
                   <SelectTrigger>
-                    <SelectValue />
+                    <SelectValue placeholder="Selecione uma estrategia" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">1 dia</SelectItem>
-                    <SelectItem value="2">2 dias</SelectItem>
-                    <SelectItem value="3">3 dias</SelectItem>
-                    <SelectItem value="7">7 dias</SelectItem>
+                    {strategies?.map(s => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.icon} {s.label}
+                        {s.calorie_modifier !== null && (
+                          <span className="ml-2 text-xs text-muted-foreground">
+                            ({s.calorie_modifier > 0 ? "+" : ""}{s.calorie_modifier} kcal)
+                          </span>
+                        )}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {selectedStrategy && (
+                  <p className="text-xs text-muted-foreground">{selectedStrategy.description}</p>
+                )}
               </div>
-            </div>
 
-            {/* Generate Button */}
-            <Button
-              onClick={handleGenerate}
-              disabled={isLoading}
-              className="w-full"
-              size="lg"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Gerando cardapio...
-                </>
-              ) : (
-                <>
-                  <Utensils className="mr-2 h-4 w-4" />
-                  Gerar Cardapio
-                </>
+              {/* Estimated Calories */}
+              {estimatedCalories && (
+                <div className="rounded-lg bg-primary/10 p-3">
+                  <p className="text-sm font-medium text-primary">
+                    Calorias Estimadas: {estimatedCalories} kcal/dia
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Calculado com base nos dados físicos e estratégia
+                  </p>
+                </div>
               )}
-            </Button>
 
-            {executionTime && (
-              <p className="text-center text-sm text-muted-foreground">
-                Tempo de execucao: {(executionTime / 1000).toFixed(1)}s
-              </p>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Results Panel */}
-        <Card className="lg:row-span-2">
-          <CardHeader>
-            <CardTitle>Resultado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {error && (
-              <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-destructive">
-                <AlertCircle className="h-5 w-5" />
-                <p>{error}</p>
+              {/* Dietary Preference */}
+              <div className="space-y-2">
+                <Label>Preferencia Alimentar</Label>
+                <Select value={dietaryPreference} onValueChange={setDietaryPreference}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {DIETARY_PREFERENCES.map(p => (
+                      <SelectItem key={p.value} value={p.value}>
+                        {p.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
 
-            {!generatedPlan && !error && !isLoading && (
-              <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
-                <Utensils className="mb-4 h-12 w-12 opacity-20" />
-                <p>Configure os parametros e clique em Gerar Cardapio</p>
-              </div>
-            )}
-
-            {isLoading && (
-              <div className="flex flex-col items-center justify-center py-12">
-                <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
-                <p className="text-muted-foreground">Gerando cardapio com IA...</p>
-                <p className="text-xs text-muted-foreground mt-2">Isso pode levar alguns segundos</p>
-              </div>
-            )}
-
-            {generatedPlan && (
-              <ScrollArea className="h-[600px] pr-4">
-                <div className="space-y-6">
-                  {/* Plan Summary */}
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="outline">
-                      {generatedPlan.regional.country} - {generatedPlan.regional.language}
-                    </Badge>
-                    <Badge variant="outline">
-                      {generatedPlan.daily_calories} kcal/dia
-                    </Badge>
-                    <Badge variant="outline">
-                      {generatedPlan.options_per_meal} opcoes/refeicao
-                    </Badge>
-                  </div>
-
-                  {/* Days */}
-                  {generatedPlan.days.map((day, dayIndex) => (
-                    <div key={dayIndex} className="space-y-4">
-                      <h3 className="text-lg font-semibold border-b pb-2">
-                        {day.day_name} (Dia {day.day})
-                      </h3>
-
-                      {/* Meals */}
-                      {day.meals.map((meal, mealIndex) => (
-                        <div key={mealIndex} className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <h4 className="font-medium text-primary">{meal.label}</h4>
-                            <Badge variant="secondary">{meal.target_calories} kcal</Badge>
-                          </div>
-
-                          {/* Options */}
-                          <div className="space-y-2 pl-4">
-                            {meal.options.map((option, optIndex) => (
-                              <Card key={optIndex} className="bg-muted/30">
-                                <CardContent className="p-3">
-                                  <div className="flex items-start justify-between gap-2">
-                                    <div className="flex-1">
-                                      <p className="font-medium text-sm">
-                                        Opcao {optIndex + 1}: {option.title}
-                                      </p>
-                                      <ul className="mt-1 space-y-0.5">
-                                        {option.foods.map((food, foodIndex) => {
-                                          // Handle both string and object formats
-                                          const foodText = typeof food === 'string' 
-                                            ? food 
-                                            : `${food.name} (${food.grams}g)`;
-                                          return (
-                                            <li key={foodIndex} className="text-xs text-muted-foreground">
-                                              - {foodText}
-                                            </li>
-                                          );
-                                        })}
-                                      </ul>
-                                    </div>
-                                    <Badge variant="outline" className="text-xs shrink-0">
-                                      {option.calories_kcal} kcal
-                                    </Badge>
-                                  </div>
-                                </CardContent>
-                              </Card>
-                            ))}
-                          </div>
-                        </div>
-                      ))}
-
-                      <div className="text-right text-sm font-medium">
-                        Total do dia: {day.total_calories} kcal
-                      </div>
+              {/* Intolerances (from database) */}
+              <div className="space-y-2">
+                <Label>Intolerancias ({intoleranceOptions.length} opcoes)</Label>
+                <div className="grid grid-cols-2 gap-2 max-h-48 overflow-y-auto">
+                  {intoleranceOptions.map(i => (
+                    <div key={i.option_id} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={i.option_id}
+                        checked={selectedIntolerances.includes(i.option_id)}
+                        onCheckedChange={() => handleIntoleranceToggle(i.option_id)}
+                      />
+                      <label htmlFor={i.option_id} className="text-sm cursor-pointer flex items-center gap-1">
+                        {i.emoji && <span>{i.emoji}</span>}
+                        {i.label}
+                      </label>
                     </div>
                   ))}
-
-                  {/* Raw JSON */}
-                  <details className="mt-6">
-                    <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
-                      Ver JSON completo
-                    </summary>
-                    <pre className="mt-2 overflow-auto rounded-lg bg-muted p-4 text-xs">
-                      {JSON.stringify(generatedPlan, null, 2)}
-                    </pre>
-                  </details>
                 </div>
-              </ScrollArea>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+              </div>
+
+              {/* Meal Types */}
+              <div className="space-y-2">
+                <Label>Refeicoes</Label>
+                <div className="flex flex-wrap gap-2">
+                  {MEAL_TYPES.map(m => (
+                    <div key={m.value} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={m.value}
+                        checked={selectedMealTypes.includes(m.value)}
+                        onCheckedChange={() => handleMealTypeToggle(m.value)}
+                      />
+                      <label htmlFor={m.value} className="text-sm cursor-pointer">
+                        {m.label}
+                      </label>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Options per meal */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Opcoes por Refeicao</Label>
+                  <Select value={String(optionsPerMeal)} onValueChange={v => setOptionsPerMeal(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 opcao</SelectItem>
+                      <SelectItem value="2">2 opcoes</SelectItem>
+                      <SelectItem value="3">3 opcoes</SelectItem>
+                      <SelectItem value="4">4 opcoes</SelectItem>
+                      <SelectItem value="5">5 opcoes</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Dias</Label>
+                  <Select value={String(daysCount)} onValueChange={v => setDaysCount(Number(v))}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">1 dia</SelectItem>
+                      <SelectItem value="2">2 dias</SelectItem>
+                      <SelectItem value="3">3 dias</SelectItem>
+                      <SelectItem value="7">7 dias</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              {/* Generate Button */}
+              <Button
+                onClick={handleGenerate}
+                disabled={isLoading || !selectedStrategyId}
+                className="w-full"
+                size="lg"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Gerando cardapio...
+                  </>
+                ) : (
+                  <>
+                    <Utensils className="mr-2 h-4 w-4" />
+                    Gerar Cardapio
+                  </>
+                )}
+              </Button>
+
+              {executionTime && (
+                <p className="text-center text-sm text-muted-foreground">
+                  Tempo de execucao: {(executionTime / 1000).toFixed(1)}s
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Results Panel */}
+          <Card className="lg:row-span-2">
+            <CardHeader>
+              <CardTitle>Resultado</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {error && (
+                <div className="flex items-center gap-2 rounded-lg bg-destructive/10 p-4 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <p>{error}</p>
+                </div>
+              )}
+
+              {!generatedPlan && !error && !isLoading && (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+                  <Utensils className="mb-4 h-12 w-12 opacity-20" />
+                  <p>Configure os parametros e clique em Gerar Cardapio</p>
+                </div>
+              )}
+
+              {isLoading && (
+                <div className="flex flex-col items-center justify-center py-12">
+                  <Loader2 className="mb-4 h-12 w-12 animate-spin text-primary" />
+                  <p className="text-muted-foreground">Gerando cardapio com IA...</p>
+                  <p className="text-xs text-muted-foreground mt-2">Isso pode levar alguns segundos</p>
+                </div>
+              )}
+
+              {generatedPlan && (
+                <ScrollArea className="h-[600px] pr-4">
+                  <div className="space-y-6">
+                    {/* Plan Summary */}
+                    <div className="flex flex-wrap gap-2">
+                      <Badge variant="outline">
+                        {generatedPlan.regional.country} - {generatedPlan.regional.language}
+                      </Badge>
+                      <Badge variant="outline">
+                        {generatedPlan.daily_calories} kcal/dia
+                      </Badge>
+                      <Badge variant="outline">
+                        {generatedPlan.options_per_meal} opcoes/refeicao
+                      </Badge>
+                    </div>
+
+                    {/* Days */}
+                    {generatedPlan.days.map((day, dayIndex) => (
+                      <div key={dayIndex} className="space-y-4">
+                        <h3 className="text-lg font-semibold border-b pb-2">
+                          {day.day_name} (Dia {day.day})
+                        </h3>
+
+                        {/* Meals */}
+                        {day.meals.map((meal, mealIndex) => (
+                          <div key={mealIndex} className="space-y-3">
+                            <div className="flex items-center justify-between">
+                              <h4 className="font-medium text-primary">{meal.label}</h4>
+                              <Badge variant="secondary">{meal.target_calories} kcal</Badge>
+                            </div>
+
+                            {/* Options */}
+                            <div className="space-y-2 pl-4">
+                              {meal.options.map((option, optIndex) => (
+                                <Card key={optIndex} className="bg-muted/30">
+                                  <CardContent className="p-3">
+                                    <div className="flex items-start justify-between gap-2">
+                                      <div className="flex-1">
+                                        <p className="font-medium text-sm">
+                                          Opcao {optIndex + 1}: {option.title}
+                                        </p>
+                                        <ul className="mt-1 space-y-0.5">
+                                          {option.foods.map((food, foodIndex) => {
+                                            const foodText = typeof food === 'string' 
+                                              ? food 
+                                              : `${food.name} (${food.grams}g)`;
+                                            return (
+                                              <li key={foodIndex} className="text-xs text-muted-foreground">
+                                                - {foodText}
+                                              </li>
+                                            );
+                                          })}
+                                        </ul>
+                                      </div>
+                                      <Badge variant="outline" className="text-xs shrink-0">
+                                        {option.calories_kcal} kcal
+                                      </Badge>
+                                    </div>
+                                  </CardContent>
+                                </Card>
+                              ))}
+                            </div>
+                          </div>
+                        ))}
+
+                        <div className="text-right text-sm font-medium">
+                          Total do dia: {day.total_calories} kcal
+                        </div>
+                      </div>
+                    ))}
+
+                    {/* Raw JSON */}
+                    <details className="mt-6">
+                      <summary className="cursor-pointer text-sm text-muted-foreground hover:text-foreground">
+                        Ver JSON completo
+                      </summary>
+                      <pre className="mt-2 overflow-auto rounded-lg bg-muted p-4 text-xs">
+                        {JSON.stringify(generatedPlan, null, 2)}
+                      </pre>
+                    </details>
+                  </div>
+                </ScrollArea>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }

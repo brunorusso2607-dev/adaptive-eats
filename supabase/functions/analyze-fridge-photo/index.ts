@@ -2,6 +2,7 @@ import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -507,6 +508,94 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       }), {
         headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
+    }
+
+    // ========== PÓS-PROCESSAMENTO: CÁLCULO DE MACROS REAIS PARA RECEITAS SUGERIDAS ==========
+    // Usa a tabela foods para macros reais, com fallback para estimativas da IA
+    
+    if (analysis.receitas_sugeridas && Array.isArray(analysis.receitas_sugeridas)) {
+      logStep('Calculating real macros for suggested recipes', { count: analysis.receitas_sugeridas.length });
+      
+      // Create service client for database queries
+      const serviceClient = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      
+      for (const receita of analysis.receitas_sugeridas) {
+        // Build foods array from recipe ingredients
+        const ingredientesReceita = [
+          ...(receita.ingredientes_da_geladeira || []),
+          ...(receita.ingredientes_extras || [])
+        ];
+        
+        if (ingredientesReceita.length > 0) {
+        // Parse ingredients to extract names and estimate grams
+          const foodsForCalculation = ingredientesReceita.map((ing: string) => {
+            // Try to extract quantity from ingredient string (e.g., "200g de frango")
+            const gramsMatch = ing.match(/(\d+)\s*g(?:ramas)?/i);
+            const grams = gramsMatch ? parseInt(gramsMatch[1]) : 100; // Default to 100g if no quantity
+            
+            // Clean ingredient name
+            const name = ing
+              .replace(/\d+\s*g(?:ramas)?/gi, '')
+              .replace(/de\s+/gi, '')
+              .trim();
+            
+            return {
+              name,
+              grams,
+              // Keep AI estimates as fallback (use undefined instead of null)
+              estimated_calories: receita.calorias_estimadas ? Math.round(receita.calorias_estimadas / ingredientesReceita.length) : undefined,
+              estimated_protein: undefined,
+              estimated_carbs: undefined,
+              estimated_fat: undefined
+            };
+          });
+          
+          try {
+            const { items, matchRate, fromDb, fromAi } = await calculateRealMacrosForFoods(serviceClient, foodsForCalculation);
+            
+            // Calculate totals
+            const totalCalories = items.reduce((sum, item) => sum + item.calories, 0);
+            const totalProtein = items.reduce((sum, item) => sum + item.protein, 0);
+            const totalCarbs = items.reduce((sum, item) => sum + item.carbs, 0);
+            const totalFat = items.reduce((sum, item) => sum + item.fat, 0);
+            
+            // Update recipe with real macros
+            receita.calorias = Math.round(totalCalories);
+            receita.proteinas = Math.round(totalProtein);
+            receita.carboidratos = Math.round(totalCarbs);
+            receita.gorduras = Math.round(totalFat);
+            receita.calorias_estimadas = undefined; // Remove old field
+            
+            // Add macro calculation metadata
+            receita.macro_source = {
+              match_rate: Math.round(matchRate),
+              from_database: fromDb,
+              from_ai_estimate: fromAi
+            };
+            
+            // Add detailed ingredients with macros
+            receita.ingredientes_detalhados = items.map(item => ({
+              nome: item.name,
+              gramas: item.grams,
+              calorias: Math.round(item.calories),
+              proteinas: Math.round(item.protein),
+              carboidratos: Math.round(item.carbs),
+              gorduras: Math.round(item.fat),
+              fonte: item.source
+            }));
+            
+            logStep('Recipe macros calculated', { 
+              recipe: receita.nome, 
+              matchRate: Math.round(matchRate),
+              fromDb,
+              fromAi
+            });
+          } catch (calcError) {
+            logStep('Error calculating recipe macros', { recipe: receita.nome, error: String(calcError) });
+            // Keep original AI estimates if calculation fails
+          }
+        }
+      }
     }
 
     // ========== PÓS-PROCESSAMENTO: ENRIQUECIMENTO COM PRODUTOS_CONHECIDOS ==========

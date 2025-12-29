@@ -1,6 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { recalculateSuggestion } from "../_shared/calorieTable.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 import {
   getGlobalNutritionPrompt,
   getNutritionalSource,
@@ -302,13 +302,55 @@ O usuário digitou: "${query}". Identifique o alimento e sugira opções com val
       parsed = { suggestions: [] };
     }
 
-    // Recalcular calorias usando tabela compartilhada
+    // Recalcular macros usando tabela foods (fonte real de dados)
     if (parsed.suggestions && Array.isArray(parsed.suggestions)) {
-      parsed.suggestions = parsed.suggestions.map((s: any) => recalculateSuggestion(s));
-      logStep('Calories recalculated with shared table', { 
-        count: parsed.suggestions.length,
-        sources: parsed.suggestions.map((s: any) => s.calorie_source)
-      });
+      const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+      const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+      const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+      
+      // Convert suggestions to foods format for real macro calculation
+      const foodsForCalculation = parsed.suggestions.map((s: any) => ({
+        name: s.name || s.name_english || '',
+        grams: s.portion_grams || 100,
+        estimated_calories: s.calories,
+        estimated_protein: s.protein,
+        estimated_carbs: s.carbs,
+        estimated_fat: s.fat
+      }));
+      
+      try {
+        const { items, matchRate, fromDb, fromAi } = await calculateRealMacrosForFoods(serviceClient, foodsForCalculation);
+        
+        // Update suggestions with real macros
+        parsed.suggestions = parsed.suggestions.map((s: any, index: number) => {
+          const calculatedItem = items[index];
+          if (calculatedItem) {
+            return {
+              ...s,
+              calories: Math.round(calculatedItem.calories),
+              protein: Math.round(calculatedItem.protein),
+              carbs: Math.round(calculatedItem.carbs),
+              fat: Math.round(calculatedItem.fat),
+              fiber: calculatedItem.fiber ? Math.round(calculatedItem.fiber) : undefined,
+              macro_source: calculatedItem.source,
+              food_id: calculatedItem.food_id
+            };
+          }
+          return { ...s, macro_source: 'ai_estimate' };
+        });
+        
+        logStep('Macros recalculated with foods table', { 
+          count: parsed.suggestions.length,
+          matchRate: Math.round(matchRate),
+          fromDb,
+          fromAi,
+          sources: parsed.suggestions.map((s: any) => s.macro_source)
+        });
+      } catch (calcError) {
+        logStep('Error calculating real macros', { error: String(calcError) });
+        // Keep AI estimates if calculation fails
+        parsed.suggestions = parsed.suggestions.map((s: any) => ({ ...s, macro_source: 'ai_estimate' }));
+      }
     }
 
     return new Response(

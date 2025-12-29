@@ -121,6 +121,12 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
 
         setProgress(Math.round((batch / totalBatches) * 100));
 
+        // Normalizar nomes de refeições: "lanche" -> "lanche_tarde" para consistência
+        const normalizedMealTypes = enabledMeals?.map((meal: string) => {
+          if (meal === "lanche") return "lanche_tarde";
+          return meal;
+        }) || null;
+
         // Filtrar customMealTimes para incluir apenas refeições ativas
         const filteredMealTimes = customMealTimes ? 
           Object.fromEntries(
@@ -128,6 +134,12 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
               !enabledMeals || enabledMeals.includes(key)
             )
           ) : null;
+
+        console.log("[MealPlanGenerator] Enviando para API:", {
+          enabledMeals,
+          normalizedMealTypes,
+          filteredMealTimes
+        });
 
         const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
           body: {
@@ -137,7 +149,7 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
             existingPlanId: mealPlanId,
             weekNumber: batch + 1,
             customMealTimes: filteredMealTimes,
-            mealTypes: enabledMeals,
+            mealTypes: normalizedMealTypes,
             optionsPerMeal: 1 // Gerar 1 opção por refeição (como o plano fazia antes)
           }
         });

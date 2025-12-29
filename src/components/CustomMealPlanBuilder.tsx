@@ -241,7 +241,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-meal-plan", {
+      const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
         body: {
           planName: planName.trim() || defaultPlanName,
           startDate: format(new Date(), "yyyy-MM-dd"),

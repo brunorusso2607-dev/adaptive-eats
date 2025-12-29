@@ -80,11 +80,14 @@ const MEAL_PERCENTAGES: Record<string, { percentage: number; label: string }> = 
 };
 
 // Alternative 4-meal distribution (no morning/evening snacks)
+// IMPORTANTE: deve conter TODAS as refeições possíveis para que o filtro funcione
 const MEAL_PERCENTAGES_4: Record<string, { percentage: number; label: string }> = {
   cafe_manha: { percentage: 0.25, label: "Café da Manhã" },
+  lanche_manha: { percentage: 0.10, label: "Lanche da Manhã" },
   almoco: { percentage: 0.35, label: "Almoço" },
   lanche_tarde: { percentage: 0.15, label: "Lanche da Tarde" },
   jantar: { percentage: 0.25, label: "Jantar" },
+  ceia: { percentage: 0.10, label: "Ceia" },
 };
 
 // ============================================

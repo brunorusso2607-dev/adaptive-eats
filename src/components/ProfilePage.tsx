@@ -51,6 +51,7 @@ type ProfilePageProps = {
   subscription: SubscriptionInfo | null;
   onLogout: () => void;
   onBack?: () => void;
+  onProfileUpdated?: () => void;
 };
 
 const ACTIVITY_LABELS: Record<string, string> = {
@@ -146,7 +147,7 @@ function ExcludedIngredientsEditor({
   );
 }
 
-export default function ProfilePage({ user, subscription, onLogout, onBack }: ProfilePageProps) {
+export default function ProfilePage({ user, subscription, onLogout, onBack, onProfileUpdated }: ProfilePageProps) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [editedProfile, setEditedProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -233,6 +234,9 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
       setProfile(editedProfile);
       setIsEditing(false);
       toast.success("Dados atualizados com sucesso!");
+      
+      // Notificar o Dashboard para atualizar seus estados
+      onProfileUpdated?.();
     } catch (err) {
       console.error("Error saving profile:", err);
       toast.error("Erro ao salvar dados");

@@ -128,3 +128,6 @@ verify_jwt = false
 
 [functions.create-admin-user]
 verify_jwt = false
+
+[functions.import-usda-food]
+verify_jwt = false

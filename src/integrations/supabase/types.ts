@@ -1818,6 +1818,84 @@ export type Database = {
         }
         Relationships: []
       }
+      usda_import_logs: {
+        Row: {
+          batch_id: string
+          completed_at: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          items_failed: number
+          items_processed: number
+          items_success: number
+          started_at: string
+        }
+        Insert: {
+          batch_id: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          items_failed?: number
+          items_processed?: number
+          items_success?: number
+          started_at?: string
+        }
+        Update: {
+          batch_id?: string
+          completed_at?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          items_failed?: number
+          items_processed?: number
+          items_success?: number
+          started_at?: string
+        }
+        Relationships: []
+      }
+      usda_import_queue: {
+        Row: {
+          attempts: number
+          category: string
+          created_at: string
+          error_message: string | null
+          id: string
+          priority: number
+          processed_at: string | null
+          search_term: string
+          status: string
+          updated_at: string
+          usda_fdc_id: string | null
+        }
+        Insert: {
+          attempts?: number
+          category?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          priority?: number
+          processed_at?: string | null
+          search_term: string
+          status?: string
+          updated_at?: string
+          usda_fdc_id?: string | null
+        }
+        Update: {
+          attempts?: number
+          category?: string
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          priority?: number
+          processed_at?: string | null
+          search_term?: string
+          status?: string
+          updated_at?: string
+          usda_fdc_id?: string | null
+        }
+        Relationships: []
+      }
       user_achievements: {
         Row: {
           achievement_key: string

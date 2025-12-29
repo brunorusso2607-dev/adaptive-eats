@@ -282,6 +282,43 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - Saladas cruas: combinar com pratos secos (grelhados, assados), NUNCA com caldos/sopas
 - Pães/torradas: funcionam como acompanhamento universal neutro
 
+==========================================================
+📊 REGRA DE COMPLEXIDADE GRADUAL (CRÍTICO):
+==========================================================
+
+As opções devem seguir uma PROGRESSÃO de complexidade:
+
+🥇 OPÇÃO 1 (PRINCIPAL - SIMPLES):
+- Máximo 2-3 itens alimentares (excluindo bebida)
+- Formato: Proteína + Carboidrato + Vegetal/Salada (trio básico)
+- NUNCA combinar múltiplos grãos (ex: NÃO quinoa + grão-de-bico juntos)
+- Preparo rápido e ingredientes acessíveis
+- Exemplo: "Filé de frango grelhado + Arroz integral + Salada verde"
+
+🥈 OPÇÃO 2 (ALTERNATIVA - MODERADA):
+- 3-4 itens alimentares permitidos
+- Pode incluir um ingrediente extra (legume adicional, tempero especial)
+- Exemplo: "Salmão ao forno com batata-doce e brócolis"
+
+🥉 OPÇÃO 3 (ELABORADA - COMPLEXA):
+- 4-5 itens alimentares permitidos
+- Pode ser receita mais sofisticada com múltiplos componentes
+- Combinações gourmet ou saladas completas
+- Exemplo: "Salada completa com atum, grão-de-bico, rúcula, tomate e quinoa"
+
+⚠️ REGRA FUNDAMENTAL:
+- A OPÇÃO 1 deve ser SEMPRE a mais simples e acessível
+- O usuário vê primeiro a opção mais fácil de preparar
+- Opções mais elaboradas ficam disponíveis para quem quer variar
+
+ERRADO (Opção 1 complexa demais):
+Opção 1: "Salada com atum, grão-de-bico, rúcula, tomate e quinoa" ❌
+
+CERTO (Progressão correta):
+Opção 1: "Atum grelhado com arroz e salada verde" ✓
+Opção 2: "Atum em conserva com quinoa e legumes" ✓
+Opção 3: "Salada completa com atum, grão-de-bico, rúcula, tomate e quinoa" ✓
+
 Exemplos CORRETOS:
 {"name": "Omelete de claras com espinafre e tomate", "grams": 310}
 {"name": "Frango grelhado com legumes salteados", "grams": 280}

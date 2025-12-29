@@ -2,9 +2,10 @@
 // CÁLCULO HÍBRIDO DE MACROS - TABELA REAL + FALLBACK IA
 // ============================================
 // Este módulo calcula os macros reais baseados na tabela foods,
-// com fallback para estimativas da IA quando o ingrediente não existe.
+// com busca em cascata (país → global → fallback → IA) e sanity checks.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { applySanityCheck, getCategoryFallback, detectFoodCategory } from "./sanityCheckLimits.ts";
 
 export interface FoodItem {
   name: string;
@@ -24,9 +25,11 @@ export interface CalculatedFoodItem extends FoodItem {
   fat: number;
   fiber: number;
   // Metadados
-  source: 'database' | 'ai_estimate';
+  source: 'database' | 'database_global' | 'category_fallback' | 'ai_estimate';
+  confidence: number; // 0-100
   food_id?: string;
   matched_name?: string;
+  sanity_adjusted?: boolean;
 }
 
 export interface MealMacros {
@@ -50,6 +53,18 @@ export interface MacroCalculationResult {
 const logStep = (step: string, details?: any) => {
   const detailsStr = details ? ` - ${JSON.stringify(details)}` : '';
   console.log(`[REAL-MACROS] ${step}${detailsStr}`);
+};
+
+// Mapeamento de país para fontes prioritárias
+const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
+  'BR': ['TBCA', 'taco', 'curated'],
+  'US': ['usda', 'curated'],
+  'FR': ['CIQUAL', 'curated'],
+  'UK': ['McCance', 'curated'],
+  'MX': ['BAM', 'curated'],
+  'ES': ['AESAN Spain', 'curated'],
+  'DE': ['BLS Germany', 'curated'],
+  'IT': ['CREA', 'curated'],
 };
 
 /**
@@ -78,6 +93,7 @@ function extractBaseName(ingredientName: string): string[] {
     'em cubos', 'em fatias', 'em tiras', 'temperado', 'temperada',
     'grilled', 'baked', 'fried', 'boiled', 'steamed', 'raw', 'cooked',
     'hervido', 'asado', 'frito', 'cocido', 'crudo',
+    'sem acucar', 'sugar free', 'sin azucar', 'zero', 'diet',
   ];
   
   let cleaned = normalized;
@@ -104,18 +120,61 @@ function extractBaseName(ingredientName: string): string[] {
 }
 
 /**
- * Busca o alimento na tabela foods
+ * Busca o alimento na tabela foods com priorização por país
  */
 async function findFoodInDatabase(
   supabase: any,
-  ingredientName: string
-): Promise<{ food: any; matchType: string } | null> {
+  ingredientName: string,
+  userCountry?: string
+): Promise<{ food: any; matchType: string; source: 'database' | 'database_global' } | null> {
   const searchTerms = extractBaseName(ingredientName);
+  const prioritySources = userCountry ? COUNTRY_SOURCE_PRIORITY[userCountry] || [] : [];
   
-  logStep('Searching for ingredient', { ingredientName, searchTerms });
+  logStep('Searching for ingredient', { ingredientName, searchTerms, userCountry, prioritySources });
   
+  // ========================================
+  // FASE 1: Busca por fonte do país do usuário
+  // ========================================
+  if (prioritySources.length > 0) {
+    for (const term of searchTerms) {
+      // Busca exata com fonte prioritária
+      const { data: exactMatch } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('name_normalized', term)
+        .eq('is_recipe', false)
+        .in('source', prioritySources)
+        .limit(1)
+        .maybeSingle();
+      
+      if (exactMatch) {
+        logStep('Exact match found (country source)', { term, name: exactMatch.name, source: exactMatch.source });
+        return { food: exactMatch, matchType: 'exact_country', source: 'database' };
+      }
+      
+      // Busca parcial com fonte prioritária
+      const { data: partialMatches } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('is_recipe', false)
+        .in('source', prioritySources)
+        .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
+        .limit(5);
+      
+      if (partialMatches && partialMatches.length > 0) {
+        const verified = partialMatches.find((f: any) => f.is_verified);
+        const selected = verified || partialMatches[0];
+        logStep('Partial match found (country source)', { term, name: selected.name, source: selected.source });
+        return { food: selected, matchType: 'partial_country', source: 'database' };
+      }
+    }
+  }
+  
+  // ========================================
+  // FASE 2: Busca global (qualquer fonte)
+  // ========================================
   for (const term of searchTerms) {
-    // Busca exata primeiro
+    // Busca exata global
     const { data: exactMatch } = await supabase
       .from('foods')
       .select('*')
@@ -125,28 +184,30 @@ async function findFoodInDatabase(
       .maybeSingle();
     
     if (exactMatch) {
-      logStep('Exact match found', { term, name: exactMatch.name });
-      return { food: exactMatch, matchType: 'exact' };
+      logStep('Exact match found (global)', { term, name: exactMatch.name, source: exactMatch.source });
+      return { food: exactMatch, matchType: 'exact_global', source: 'database_global' };
     }
     
-    // Busca parcial
+    // Busca parcial global
     const { data: partialMatches } = await supabase
       .from('foods')
       .select('*')
       .eq('is_recipe', false)
       .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
+      .order('is_verified', { ascending: false })
+      .order('search_count', { ascending: false })
       .limit(5);
     
     if (partialMatches && partialMatches.length > 0) {
-      // Priorizar por fonte verificada
-      const verified = partialMatches.find((f: any) => f.is_verified);
-      const selected = verified || partialMatches[0];
-      logStep('Partial match found', { term, name: selected.name, source: selected.source });
-      return { food: selected, matchType: 'partial' };
+      const selected = partialMatches[0];
+      logStep('Partial match found (global)', { term, name: selected.name, source: selected.source });
+      return { food: selected, matchType: 'partial_global', source: 'database_global' };
     }
   }
   
-  // Busca em aliases
+  // ========================================
+  // FASE 3: Busca em aliases
+  // ========================================
   const { data: aliasResults } = await supabase
     .from('ingredient_aliases')
     .select('food_id, alias, foods!inner(*)')
@@ -157,18 +218,22 @@ async function findFoodInDatabase(
     const food = aliasResults[0].foods;
     if (food && !food.is_recipe) {
       logStep('Alias match found', { alias: aliasResults[0].alias, name: food.name });
-      return { food, matchType: 'alias' };
+      return { food, matchType: 'alias', source: 'database_global' };
     }
   }
   
-  logStep('No match found', { ingredientName });
+  logStep('No match found in database', { ingredientName });
   return null;
 }
 
 /**
  * Calcula macros de um ingrediente baseado na gramagem
  */
-function calculateMacrosForGrams(food: any, grams: number): Omit<CalculatedFoodItem, 'name' | 'grams' | 'estimated_calories' | 'estimated_protein' | 'estimated_carbs' | 'estimated_fat'> {
+function calculateMacrosForGrams(
+  food: any, 
+  grams: number,
+  source: 'database' | 'database_global'
+): Omit<CalculatedFoodItem, 'name' | 'grams' | 'estimated_calories' | 'estimated_protein' | 'estimated_carbs' | 'estimated_fat'> {
   const factor = grams / 100;
   
   return {
@@ -177,79 +242,103 @@ function calculateMacrosForGrams(food: any, grams: number): Omit<CalculatedFoodI
     carbs: Math.round(food.carbs_per_100g * factor * 10) / 10,
     fat: Math.round(food.fat_per_100g * factor * 10) / 10,
     fiber: Math.round((food.fiber_per_100g || 0) * factor * 10) / 10,
-    source: 'database',
+    source,
+    confidence: source === 'database' ? 100 : 95,
     food_id: food.id,
     matched_name: food.name,
   };
 }
 
 /**
- * Estima macros quando não encontra na tabela (fallback para valores da IA)
+ * Fallback por categoria quando não encontra na tabela
+ */
+function getCategoryFallbackMacros(item: FoodItem): Omit<CalculatedFoodItem, 'name' | 'grams' | 'estimated_calories' | 'estimated_protein' | 'estimated_carbs' | 'estimated_fat'> {
+  const category = detectFoodCategory(item.name);
+  const calories = getCategoryFallback(item.name, item.grams);
+  
+  // Estimativas de macros por categoria
+  const categoryMacroRatios: Record<string, { proteinRatio: number; carbRatio: number; fatRatio: number }> = {
+    'cha': { proteinRatio: 0, carbRatio: 0, fatRatio: 0 },
+    'cafe': { proteinRatio: 0.1, carbRatio: 0, fatRatio: 0 },
+    'agua': { proteinRatio: 0, carbRatio: 0, fatRatio: 0 },
+    'leite_vegetal': { proteinRatio: 0.04, carbRatio: 0.12, fatRatio: 0.08 },
+    'leite': { proteinRatio: 0.08, carbRatio: 0.12, fatRatio: 0.08 },
+    'suco': { proteinRatio: 0.01, carbRatio: 0.25, fatRatio: 0 },
+    'fruta': { proteinRatio: 0.02, carbRatio: 0.22, fatRatio: 0.005 },
+    'vegetal': { proteinRatio: 0.03, carbRatio: 0.08, fatRatio: 0.005 },
+    'folhoso': { proteinRatio: 0.02, carbRatio: 0.03, fatRatio: 0.003 },
+    'carne': { proteinRatio: 0.26, carbRatio: 0, fatRatio: 0.15 },
+    'frango': { proteinRatio: 0.31, carbRatio: 0, fatRatio: 0.04 },
+    'peixe': { proteinRatio: 0.25, carbRatio: 0, fatRatio: 0.05 },
+    'ovo': { proteinRatio: 0.13, carbRatio: 0.01, fatRatio: 0.11 },
+    'queijo': { proteinRatio: 0.25, carbRatio: 0.02, fatRatio: 0.28 },
+    'arroz': { proteinRatio: 0.027, carbRatio: 0.28, fatRatio: 0.003 },
+    'pao': { proteinRatio: 0.09, carbRatio: 0.49, fatRatio: 0.03 },
+    'iogurte': { proteinRatio: 0.10, carbRatio: 0.04, fatRatio: 0.005 },
+    'gelatina': { proteinRatio: 0.02, carbRatio: 0.15, fatRatio: 0 },
+    'gelatina_diet': { proteinRatio: 0.02, carbRatio: 0.01, fatRatio: 0 },
+    'default': { proteinRatio: 0.05, carbRatio: 0.15, fatRatio: 0.03 },
+  };
+  
+  const ratios = categoryMacroRatios[category] || categoryMacroRatios['default'];
+  const factor = item.grams / 100;
+  
+  logStep('Using category fallback', { category, calories, grams: item.grams });
+  
+  return {
+    calories,
+    protein: Math.round(ratios.proteinRatio * 100 * factor * 10) / 10,
+    carbs: Math.round(ratios.carbRatio * 100 * factor * 10) / 10,
+    fat: Math.round(ratios.fatRatio * 100 * factor * 10) / 10,
+    fiber: 0,
+    source: 'category_fallback',
+    confidence: 85,
+  };
+}
+
+/**
+ * Estima macros quando não encontra na tabela (último recurso - IA com sanity check)
  */
 function estimateMacrosFromAI(item: FoodItem): Omit<CalculatedFoodItem, 'name' | 'grams' | 'estimated_calories' | 'estimated_protein' | 'estimated_carbs' | 'estimated_fat'> {
-  // Se a IA passou estimativas, usa elas
-  if (item.estimated_calories !== undefined) {
+  // Se a IA não passou estimativas, usar fallback de categoria
+  if (item.estimated_calories === undefined) {
+    return getCategoryFallbackMacros(item);
+  }
+  
+  // Aplicar sanity check nas estimativas da IA
+  const sanityResult = applySanityCheck(item.name, item.estimated_calories, item.grams);
+  
+  if (sanityResult.wasAdjusted) {
+    logStep('AI estimate rejected by sanity check', { 
+      original: item.estimated_calories, 
+      corrected: sanityResult.calories,
+      reason: sanityResult.reason 
+    });
+    
+    // Recalcular proteína/carbs/gordura proporcionalmente
+    const ratio = sanityResult.calories / item.estimated_calories;
+    
     return {
-      calories: item.estimated_calories,
-      protein: item.estimated_protein || 0,
-      carbs: item.estimated_carbs || 0,
-      fat: item.estimated_fat || 0,
+      calories: sanityResult.calories,
+      protein: Math.round((item.estimated_protein || 0) * ratio * 10) / 10,
+      carbs: Math.round((item.estimated_carbs || 0) * ratio * 10) / 10,
+      fat: Math.round((item.estimated_fat || 0) * ratio * 10) / 10,
       fiber: 0,
       source: 'ai_estimate',
+      confidence: 70, // Menor confiança porque foi ajustado
+      sanity_adjusted: true,
     };
   }
   
-  // Fallback genérico baseado em tipo de alimento (último recurso)
-  const name = item.name.toLowerCase();
-  const grams = item.grams;
-  const factor = grams / 100;
-  
-  // Estimativas genéricas por categoria
-  if (name.includes('frango') || name.includes('chicken') || name.includes('pollo')) {
-    return { calories: Math.round(165 * factor), protein: Math.round(31 * factor * 10) / 10, carbs: 0, fat: Math.round(3.6 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('carne') || name.includes('beef') || name.includes('bife') || name.includes('steak')) {
-    return { calories: Math.round(250 * factor), protein: Math.round(26 * factor * 10) / 10, carbs: 0, fat: Math.round(15 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('peixe') || name.includes('fish') || name.includes('pescado') || name.includes('salmão') || name.includes('tilapia')) {
-    return { calories: Math.round(140 * factor), protein: Math.round(25 * factor * 10) / 10, carbs: 0, fat: Math.round(4 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('ovo') || name.includes('egg') || name.includes('huevo')) {
-    return { calories: Math.round(155 * factor), protein: Math.round(13 * factor * 10) / 10, carbs: Math.round(1.1 * factor * 10) / 10, fat: Math.round(11 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('arroz') || name.includes('rice') || name.includes('arroz')) {
-    return { calories: Math.round(130 * factor), protein: Math.round(2.7 * factor * 10) / 10, carbs: Math.round(28 * factor * 10) / 10, fat: Math.round(0.3 * factor * 10) / 10, fiber: Math.round(0.4 * factor * 10) / 10, source: 'ai_estimate' };
-  }
-  if (name.includes('feijão') || name.includes('beans') || name.includes('frijoles')) {
-    return { calories: Math.round(127 * factor), protein: Math.round(8.7 * factor * 10) / 10, carbs: Math.round(22 * factor * 10) / 10, fat: Math.round(0.5 * factor * 10) / 10, fiber: Math.round(7.5 * factor * 10) / 10, source: 'ai_estimate' };
-  }
-  if (name.includes('pão') || name.includes('bread') || name.includes('pan')) {
-    return { calories: Math.round(265 * factor), protein: Math.round(9 * factor * 10) / 10, carbs: Math.round(49 * factor * 10) / 10, fat: Math.round(3 * factor * 10) / 10, fiber: Math.round(2.7 * factor * 10) / 10, source: 'ai_estimate' };
-  }
-  if (name.includes('batata') || name.includes('potato') || name.includes('papa')) {
-    return { calories: Math.round(77 * factor), protein: Math.round(2 * factor * 10) / 10, carbs: Math.round(17 * factor * 10) / 10, fat: Math.round(0.1 * factor * 10) / 10, fiber: Math.round(2.2 * factor * 10) / 10, source: 'ai_estimate' };
-  }
-  if (name.includes('salada') || name.includes('salad') || name.includes('ensalada') || name.includes('alface') || name.includes('lettuce')) {
-    return { calories: Math.round(15 * factor), protein: Math.round(1.5 * factor * 10) / 10, carbs: Math.round(2 * factor * 10) / 10, fat: Math.round(0.2 * factor * 10) / 10, fiber: Math.round(1.5 * factor * 10) / 10, source: 'ai_estimate' };
-  }
-  if (name.includes('fruta') || name.includes('fruit') || name.includes('banana') || name.includes('maçã') || name.includes('apple')) {
-    return { calories: Math.round(60 * factor), protein: Math.round(0.8 * factor * 10) / 10, carbs: Math.round(15 * factor * 10) / 10, fat: Math.round(0.2 * factor * 10) / 10, fiber: Math.round(2 * factor * 10) / 10, source: 'ai_estimate' };
-  }
-  if (name.includes('iogurte') || name.includes('yogurt') || name.includes('yogur')) {
-    return { calories: Math.round(60 * factor), protein: Math.round(10 * factor * 10) / 10, carbs: Math.round(4 * factor * 10) / 10, fat: Math.round(0.5 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('leite') || name.includes('milk') || name.includes('leche')) {
-    return { calories: Math.round(42 * factor), protein: Math.round(3.4 * factor * 10) / 10, carbs: Math.round(5 * factor * 10) / 10, fat: Math.round(1 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('café') || name.includes('coffee') || name.includes('cafe')) {
-    return { calories: Math.round(2 * factor), protein: Math.round(0.3 * factor * 10) / 10, carbs: 0, fat: 0, fiber: 0, source: 'ai_estimate' };
-  }
-  if (name.includes('tapioca')) {
-    return { calories: Math.round(130 * factor), protein: Math.round(0.2 * factor * 10) / 10, carbs: Math.round(31 * factor * 10) / 10, fat: Math.round(0 * factor * 10) / 10, fiber: 0, source: 'ai_estimate' };
-  }
-  
-  // Fallback genérico
-  return { calories: Math.round(100 * factor), protein: Math.round(5 * factor * 10) / 10, carbs: Math.round(15 * factor * 10) / 10, fat: Math.round(3 * factor * 10) / 10, fiber: Math.round(1 * factor * 10) / 10, source: 'ai_estimate' };
+  return {
+    calories: item.estimated_calories,
+    protein: item.estimated_protein || 0,
+    carbs: item.estimated_carbs || 0,
+    fat: item.estimated_fat || 0,
+    fiber: 0,
+    source: 'ai_estimate',
+    confidence: 75,
+  };
 }
 
 /**
@@ -257,17 +346,20 @@ function estimateMacrosFromAI(item: FoodItem): Omit<CalculatedFoodItem, 'name' |
  */
 export async function calculateRealMacrosForFoods(
   supabase: any,
-  foods: FoodItem[]
+  foods: FoodItem[],
+  userCountry?: string
 ): Promise<{ items: CalculatedFoodItem[]; matchRate: number; fromDb: number; fromAi: number }> {
   const calculatedItems: CalculatedFoodItem[] = [];
   let fromDatabase = 0;
   let fromAI = 0;
   
   for (const item of foods) {
-    const match = await findFoodInDatabase(supabase, item.name);
+    // Busca em cascata: país → global → fallback → IA
+    const match = await findFoodInDatabase(supabase, item.name, userCountry);
     
     if (match) {
-      const macros = calculateMacrosForGrams(match.food, item.grams);
+      // ✅ Encontrou no banco de dados
+      const macros = calculateMacrosForGrams(match.food, item.grams, match.source);
       calculatedItems.push({
         name: item.name,
         grams: item.grams,
@@ -275,6 +367,7 @@ export async function calculateRealMacrosForFoods(
       });
       fromDatabase++;
     } else {
+      // ❌ Não encontrou - usar fallback de categoria ou IA com sanity check
       const estimated = estimateMacrosFromAI(item);
       calculatedItems.push({
         name: item.name,
@@ -301,9 +394,10 @@ export async function calculateRealMacrosForFoods(
 export async function calculateMealMacros(
   supabase: any,
   title: string,
-  foods: FoodItem[]
+  foods: FoodItem[],
+  userCountry?: string
 ): Promise<MealMacros> {
-  const { items, matchRate } = await calculateRealMacrosForFoods(supabase, foods);
+  const { items, matchRate } = await calculateRealMacrosForFoods(supabase, foods, userCountry);
   
   const totals = items.reduce(
     (acc, item) => ({
@@ -333,14 +427,15 @@ export async function calculateMealMacros(
  */
 export async function processFullDayMacros(
   supabase: any,
-  meals: Array<{ title: string; foods: FoodItem[] }>
+  meals: Array<{ title: string; foods: FoodItem[] }>,
+  userCountry?: string
 ): Promise<MacroCalculationResult> {
   const processedMeals: MealMacros[] = [];
   let totalFromDb = 0;
   let totalFromAi = 0;
   
   for (const meal of meals) {
-    const { items, fromDb, fromAi } = await calculateRealMacrosForFoods(supabase, meal.foods);
+    const { items, fromDb, fromAi } = await calculateRealMacrosForFoods(supabase, meal.foods, userCountry);
     
     totalFromDb += fromDb;
     totalFromAi += fromAi;

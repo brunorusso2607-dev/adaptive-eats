@@ -591,12 +591,24 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - ERRADO: "Ovos cozidos" (ingrediente isolado) ❌
 - CERTO: "Salada com ovos cozidos e vegetais" ✓
 
-🌙 REGRA DE ADEQUAÇÃO POR TIPO DE REFEIÇÃO:
-**CEIA (lanche noturno):**
-- Deve ser leve e de fácil digestão
-- Priorizar: chás, iogurtes, queijos leves, frutas, sanduíches leves, mingaus
-- NUNCA gerar ingredientes isolados (ex: "Ovos cozidos" sozinho)
-- Exemplos CORRETOS: "Chá de camomila com torradas integrais", "Iogurte natural com mel e castanhas", "Mingau de aveia com canela"
+🌙 REGRA DE ADEQUAÇÃO POR TIPO DE REFEIÇÃO (CRÍTICO):
+**CEIA (lanche noturno) - REGRAS ESTRITAS:**
+- Deve ser ULTRA-LEVE e de fácil digestão
+- ALIMENTOS PROIBIDOS PARA CEIA:
+  * Ovos em qualquer forma (cozidos, mexidos, omelete, etc.)
+  * Carnes (frango, carne bovina, peixe, etc.)
+  * Frituras ou alimentos gordurosos
+  * Refeições pesadas ou completas
+- ALIMENTOS PERMITIDOS PARA CEIA:
+  * Chás (camomila, erva-doce, hortelã)
+  * Iogurtes naturais ou light
+  * Frutas leves (maçã, pera, banana)
+  * Torradas ou biscoitos integrais
+  * Mingaus leves (aveia, tapioca)
+  * Queijos leves em pequena quantidade
+  * Leite morno ou bebidas vegetais
+- Exemplos CORRETOS: "Chá de camomila com 2 torradas integrais", "Iogurte natural com mel", "Mingau de aveia com canela", "Maçã com canela"
+- Exemplos ERRADOS: "Ovos cozidos" ❌, "Omelete" ❌, "Ovos de codorna" ❌, "Frango desfiado" ❌
 **LANCHES (manhã/tarde):**
 - Opções práticas e nutritivas
 - Exemplos: "Mix de castanhas com frutas secas", "Iogurte com granola", "Sanduíche natural de atum"

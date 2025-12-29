@@ -421,9 +421,9 @@ export default function MealDetailSheet({
                         {/* Bullet point */}
                         <span className="text-primary mt-1.5">•</span>
                         
-                        {/* Formato nutricionista: "170g de Iogurte vegetal (102 kcal)" */}
+                        {/* Formato nutricionista: "1 banana média" - gramas internas, invisíveis ao usuário */}
                         <span className="flex-1 text-foreground">
-                          {ingredient.quantity}{ingredient.quantity && ' de '}{ingredient.item}
+                          {ingredient.item}
                           {ingredient.calories !== undefined && (
                             <span className="text-muted-foreground text-sm ml-1">
                               ({ingredient.calories} kcal)

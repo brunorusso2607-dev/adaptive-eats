@@ -328,7 +328,7 @@ export default function NextMealCard({ userProfile }: NextMealCardProps) {
                   {(nextMeal.recipe_ingredients as Array<{item?: string; quantity?: string}>).slice(0, 3).map((ing, idx) => (
                     <div key={idx} className="flex items-start gap-1">
                       <span className="text-primary/60">•</span>
-                      <span>{ing.quantity}{ing.quantity && ' de '}{ing.item}</span>
+                      <span>{ing.item}</span>
                     </div>
                   ))}
                   {nextMeal.recipe_ingredients.length > 3 && (

@@ -198,9 +198,9 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
                 {/* Bullet point */}
                 <span className="text-primary mt-0.5">•</span>
                 
-                {/* Formato nutricionista: "1 fatia de pão integral" */}
+                {/* Formato nutricionista: "1 banana média" - gramas internas para cálculos */}
                 <span className="flex-1 text-foreground">
-                  {ingredient.quantity}{ingredient.quantity && ' de '}{ingredient.item}
+                  {ingredient.item}
                 </span>
                 
                 <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

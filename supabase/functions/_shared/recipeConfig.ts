@@ -1916,7 +1916,8 @@ export function buildRegenerateMealPrompt(
   profile: UserProfile,
   mealType: string,
   targetCalories: number,
-  ingredients?: string
+  ingredients?: string,
+  nutritionalContext?: string
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
@@ -1943,9 +1944,14 @@ export function buildRegenerateMealPrompt(
     ceia: "Muito leve: chá, fruta, iogurte ou leite"
   };
 
+  // Include nutritional context if available
+  const nutritionalBlock = nutritionalContext 
+    ? `\n${nutritionalContext}\n` 
+    : "";
+
   return `🥗 NUTRICIONISTA - Gerar ${mealLabel}
 🌍 ${countryConfig.name} | 🎯 Meta: ~${targetCalories} kcal${kidsNote}
-
+${nutritionalBlock}
 ${dietaryBlock}
 
 ⛔ RESTRIÇÕES (NUNCA incluir):

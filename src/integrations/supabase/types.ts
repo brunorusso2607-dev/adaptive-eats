@@ -1127,6 +1127,57 @@ export type Database = {
         }
         Relationships: []
       }
+      nutritional_strategies: {
+        Row: {
+          calorie_modifier: number | null
+          carb_ratio: number | null
+          created_at: string
+          description: string | null
+          fat_ratio: number | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_flexible: boolean
+          key: string
+          label: string
+          protein_per_kg: number | null
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          calorie_modifier?: number | null
+          carb_ratio?: number | null
+          created_at?: string
+          description?: string | null
+          fat_ratio?: number | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_flexible?: boolean
+          key: string
+          label: string
+          protein_per_kg?: number | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          calorie_modifier?: number | null
+          carb_ratio?: number | null
+          created_at?: string
+          description?: string | null
+          fat_ratio?: number | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_flexible?: boolean
+          key?: string
+          label?: string
+          protein_per_kg?: number | null
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       nutritionist_foods: {
         Row: {
           calories_per_100g: number
@@ -1251,6 +1302,7 @@ export type Database = {
           last_name: string | null
           onboarding_completed: boolean | null
           sex: string | null
+          strategy_id: string | null
           timezone: string | null
           updated_at: string | null
           weight_current: number | null
@@ -1277,6 +1329,7 @@ export type Database = {
           last_name?: string | null
           onboarding_completed?: boolean | null
           sex?: string | null
+          strategy_id?: string | null
           timezone?: string | null
           updated_at?: string | null
           weight_current?: number | null
@@ -1303,12 +1356,21 @@ export type Database = {
           last_name?: string | null
           onboarding_completed?: boolean | null
           sex?: string | null
+          strategy_id?: string | null
           timezone?: string | null
           updated_at?: string | null
           weight_current?: number | null
           weight_goal?: number | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_strategy_id_fkey"
+            columns: ["strategy_id"]
+            isOneToOne: false
+            referencedRelation: "nutritional_strategies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       push_subscriptions: {
         Row: {

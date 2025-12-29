@@ -6,13 +6,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe, Dumbbell, TrendingDown, TrendingUp, Scale, Utensils, Sparkles
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
 import { getOnboardingIcon } from "@/lib/iconUtils";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
+import { useNutritionalStrategies, getStrategiesForGoal, type NutritionalStrategy } from "@/hooks/useNutritionalStrategies";
 
 const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
@@ -22,7 +23,8 @@ const STEPS = [
   { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?" },
   { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
   { id: 5, title: "Objetivo", description: "Qual seu objetivo?" },
-  { id: 6, title: "Notificações", description: "Receba lembretes importantes" },
+  { id: 6, title: "Estratégia", description: "Como você quer alcançar seu objetivo?" },
+  { id: 7, title: "Notificações", description: "Receba lembretes importantes" },
 ];
 
 const COUNTRIES = [
@@ -54,6 +56,7 @@ type ProfileData = {
   dietary_preference: string;
   excluded_ingredients: string[];
   goal: string;
+  strategy_id: string | null;
 };
 
 export default function Onboarding() {
@@ -66,10 +69,12 @@ export default function Onboarding() {
     dietary_preference: "comum",
     excluded_ingredients: [],
     goal: "manter",
+    strategy_id: null,
   });
   const [ingredientInput, setIngredientInput] = useState("");
 
   const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
+  const { data: strategies, isLoading: isLoadingStrategies } = useNutritionalStrategies();
   const { 
     isSupported: isPushSupported, 
     isSubscribed: isPushSubscribed, 
@@ -116,7 +121,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 6) {
+    if (currentStep < 7) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -151,6 +156,7 @@ export default function Onboarding() {
           dietary_preference: profile.dietary_preference as any,
           excluded_ingredients: profile.excluded_ingredients,
           goal: profile.goal as any,
+          strategy_id: profile.strategy_id,
           timezone: detectedTimezone,
           onboarding_completed: true,
         })
@@ -445,6 +451,113 @@ export default function Onboarding() {
         );
 
       case 6:
+        const strategyGroups = getStrategiesForGoal(profile.goal, strategies || []);
+        const getStrategyIcon = (key: string) => {
+          switch (key) {
+            case "emagrecer": return TrendingDown;
+            case "cutting": return Dumbbell;
+            case "manter": return Scale;
+            case "fitness": return Dumbbell;
+            case "ganhar_peso": return TrendingUp;
+            case "dieta_flexivel": return Utensils;
+            default: return Sparkles;
+          }
+        };
+        
+        if (isLoadingStrategies || !strategies) {
+          return (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-6 h-6 animate-spin text-primary" />
+            </div>
+          );
+        }
+
+        return (
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Escolha a estratégia que melhor se adapta ao seu estilo de vida
+            </p>
+
+            {/* Recomendadas */}
+            {strategyGroups.recommended.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-primary flex items-center gap-1">
+                  <Sparkles className="w-3 h-3" />
+                  Recomendadas para você
+                </p>
+                <div className="space-y-2">
+                  {strategyGroups.recommended.map((strategy) => {
+                    const IconComponent = getStrategyIcon(strategy.key);
+                    return (
+                      <button
+                        key={strategy.id}
+                        onClick={() => setProfile({ ...profile, strategy_id: strategy.id })}
+                        className={cn(
+                          "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
+                          profile.strategy_id === strategy.id
+                            ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                            : "border-border/80 hover:border-primary/50 bg-card"
+                        )}
+                      >
+                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-primary/10">
+                          <IconComponent className="w-5 h-5 text-primary" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium block">{strategy.label}</span>
+                          {strategy.description && (
+                            <span className="text-sm text-muted-foreground line-clamp-2">{strategy.description}</span>
+                          )}
+                        </div>
+                        {profile.strategy_id === strategy.id && (
+                          <Check className="w-5 h-5 text-primary shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Outras */}
+            {strategyGroups.others.length > 0 && (
+              <div className="space-y-2">
+                <p className="text-xs font-medium text-muted-foreground">Outras opções</p>
+                <div className="space-y-2">
+                  {strategyGroups.others.map((strategy) => {
+                    const IconComponent = getStrategyIcon(strategy.key);
+                    return (
+                      <button
+                        key={strategy.id}
+                        onClick={() => setProfile({ ...profile, strategy_id: strategy.id })}
+                        className={cn(
+                          "w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3",
+                          profile.strategy_id === strategy.id
+                            ? "border-primary bg-primary/5"
+                            : "border-border/80 hover:border-primary/50 bg-card"
+                        )}
+                      >
+                        <div className="w-8 h-8 flex items-center justify-center rounded-lg bg-muted/50">
+                          <IconComponent className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                        <div className="flex-1">
+                          <span className="font-medium text-sm block">{strategy.label}</span>
+                          {strategy.description && (
+                            <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
+                          )}
+                        </div>
+                        {profile.strategy_id === strategy.id && (
+                          <Check className="w-4 h-4 text-primary shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        );
+
+      case 7:
         return (
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -587,11 +700,11 @@ export default function Onboarding() {
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === 6 ? (
+          ) : currentStep === 7 ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === 6 ? "Concluir" : "Próximo"}
-          {currentStep < 6 && <ArrowRight className="w-4 h-4 ml-2" />}
+          {currentStep === 7 ? "Concluir" : "Próximo"}
+          {currentStep < 7 && <ArrowRight className="w-4 h-4 ml-2" />}
         </Button>
       </footer>
     </div>

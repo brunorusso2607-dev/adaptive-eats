@@ -301,7 +301,8 @@ serve(async (req) => {
         mealType,
         targetCalories,
         ingredientsToUse,
-        nutritionalContext
+        nutritionalContext,
+        strategyKey // Passa a estratégia nutricional para aplicar persona culinária
       );
 
       logStep("Calling Google Gemini API with retry logic");

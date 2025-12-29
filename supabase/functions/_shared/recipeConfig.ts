@@ -24,6 +24,12 @@ import {
   type CompatibilityResult,
 } from "./nutritionalCalculations.ts";
 
+// Importar personas culinárias por estratégia
+import {
+  getStrategyPromptRules,
+  getStrategyPersona,
+} from "./mealGenerationConfig.ts";
+
 // Re-export for consumers of recipeConfig
 export {
   calculateBMR,
@@ -1926,7 +1932,8 @@ export function buildRegenerateMealPrompt(
   mealType: string,
   targetCalories: number,
   ingredients?: string,
-  nutritionalContext?: string
+  nutritionalContext?: string,
+  strategyKey?: string
 ): string {
   const intolerancesStr = buildIntolerancesString(profile);
   const excludedIngredientsStr = buildExcludedIngredientsString(profile);
@@ -1958,11 +1965,20 @@ export function buildRegenerateMealPrompt(
     ? `\n${nutritionalContext}\n` 
     : "";
 
+  // Strategy-specific persona rules
+  const strategyRulesText = strategyKey ? getStrategyPromptRules(strategyKey, profile.country === 'US' ? 'en-US' : 'pt-BR') : '';
+  const strategyBlock = strategyRulesText ? `
+==========================================================
+🎯 ESTRATÉGIA NUTRICIONAL DO USUÁRIO (CRÍTICO):
+==========================================================
+${strategyRulesText}
+` : '';
+
   return `🥗 NUTRICIONISTA - Gerar ${mealLabel}
 🌍 ${countryConfig.name} | 🎯 Meta: ~${targetCalories} kcal${kidsNote}
 ${nutritionalBlock}
 ${dietaryBlock}
-
+${strategyBlock}
 ⛔ RESTRIÇÕES (NUNCA incluir):
 ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 

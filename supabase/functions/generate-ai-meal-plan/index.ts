@@ -11,6 +11,7 @@ import {
   getNutritionalSource,
   getPortionFormat
 } from "../_shared/nutritionPrompt.ts";
+import { getAIPrompt, type AIPromptData } from "../_shared/getAIPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -561,8 +562,9 @@ function buildSimpleNutritionistPrompt(params: {
   dayName: string;
   regional: RegionalConfig;
   countryCode: string;
+  baseSystemPrompt?: string; // Prompt base do banco de dados
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode } = params;
+  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt } = params;
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
   
@@ -598,13 +600,16 @@ function buildSimpleNutritionistPrompt(params: {
       ]
     }`).join(',');
 
-  return `Voce e um NUTRICIONISTA CLINICO de nivel mundial, com mais de 20 anos de experiencia pratica atendendo pessoas comuns em consultorio, hospitais e clinicas.
-
-${globalNutritionPrompt}
+  // Usa o prompt do banco se disponível, senão usa o fallback hardcoded
+  const systemPromptBase = baseSystemPrompt || `Voce e um NUTRICIONISTA CLINICO de nivel mundial, com mais de 20 anos de experiencia pratica atendendo pessoas comuns em consultorio, hospitais e clinicas.
 
 Voce cria refeicoes como um profissional humano criaria para si mesmo, sua familia ou seus pacientes reais.
 
-REGRA DE OURO: Priorize NATURALIDADE ALIMENTAR acima de otimizacao nutricional. Comida com alma, nao formula.
+REGRA DE OURO: Priorize NATURALIDADE ALIMENTAR acima de otimizacao nutricional. Comida com alma, nao formula.`;
+
+  return `${systemPromptBase}
+
+${globalNutritionPrompt}
 
 IDIOMA: Responda INTEIRAMENTE em ${regional.languageName}
 PAIS/REGIAO: ${nutritionalSource.flag} ${nutritionalSource.country} - Gere refeicoes tipicas, comuns e culturalmente apropriadas
@@ -1295,6 +1300,21 @@ serve(async (req) => {
       safeKeywordsCount: dbSafeKeywords.length 
     });
 
+    // Buscar prompt do banco de dados
+    let aiPromptData: AIPromptData | null = null;
+    try {
+      aiPromptData = await getAIPrompt('generate-ai-meal-plan');
+      logStep("AI Prompt loaded from database", { 
+        functionId: aiPromptData.function_id,
+        model: aiPromptData.model,
+        promptLength: aiPromptData.system_prompt.length 
+      });
+    } catch (promptError) {
+      logStep("Warning: Could not load AI prompt from database, using fallback", { 
+        error: promptError instanceof Error ? promptError.message : 'Unknown error' 
+      });
+    }
+
     // Build meals with target calories and regional labels
     const meals = mealTypes.map((type: string) => ({
       type,
@@ -1320,14 +1340,19 @@ serve(async (req) => {
         dayName,
         regional,
         countryCode: userCountry,
+        baseSystemPrompt: aiPromptData?.system_prompt, // Passa o prompt do banco
       });
 
       // Call Google AI API directly
       const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
       if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
 
+      // Usar modelo do banco ou fallback para gemini-2.0-flash-lite
+      const modelName = aiPromptData?.model || 'gemini-2.0-flash-lite';
+      logStep(`Using AI model: ${modelName}`);
+
       const aiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
         {
           method: "POST",
           headers: {

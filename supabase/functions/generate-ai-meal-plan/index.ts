@@ -1511,6 +1511,19 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({
           success: true,
+          plan: {
+            id: mealPlanIdToUse,
+            daily_calories: dailyCalories,
+            options_per_meal: optionsPerMeal,
+            restrictions,
+            regional: {
+              country: userCountry,
+              language: regional.language,
+              measurement_system: regional.measurementSystem,
+            },
+            days: generatedDays,
+            items: items
+          },
           mealPlan: {
             id: mealPlanIdToUse,
             ...mealPlan,

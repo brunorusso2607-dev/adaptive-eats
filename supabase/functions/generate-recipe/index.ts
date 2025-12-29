@@ -12,7 +12,7 @@ import {
   saveRecipeToPool,
   markRecipeAsUsed,
 } from "../_shared/recipePool.ts";
-import { recalculateRecipeCalories } from "../_shared/calorieTable.ts";
+
 import {
   getGlobalNutritionPrompt,
   getNutritionalSource

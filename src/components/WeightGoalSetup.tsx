@@ -994,7 +994,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
 
       {/* Actions */}
       <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={handleSaveOnly} disabled={!isComplete || isSaving} className="h-12">
+        <Button variant="outline" onClick={handleSaveOnly} disabled={!isComplete || isSaving || hasDangerRisk} className="h-12">
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
           ) : null}
@@ -1002,7 +1002,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
         </Button>
         <Button
           onClick={handleGeneratePlanClick}
-          disabled={!isComplete || isSaving}
+          disabled={!isComplete || isSaving || hasDangerRisk}
           className={cn(
             "h-12 border-0",
             modeInfo 

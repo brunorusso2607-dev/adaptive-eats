@@ -233,6 +233,7 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
         open={substitutionOpen}
         onOpenChange={setSubstitutionOpen}
         originalIngredient={selectedIngredient}
+        mealType={meal.meal_type}
         onSubstitute={handleSubstitute}
       />
 

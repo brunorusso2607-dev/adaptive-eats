@@ -73,6 +73,57 @@ function detectPreparationStyle(name: string): string[] {
   return styles;
 }
 
+// Mapeamento de tipos de refeição para alimentos adequados
+const MEAL_TYPE_FOODS: Record<string, { 
+  allowed: string[]; 
+  forbidden: string[]; 
+  examples: string[];
+  label: string;
+}> = {
+  cafe_manha: {
+    label: 'Café da Manhã',
+    allowed: ['pão', 'tapioca', 'ovo', 'queijo', 'iogurte', 'fruta', 'aveia', 'granola', 'leite', 'café', 'suco', 'vitamina', 'panqueca', 'crepioca', 'torrada', 'manteiga', 'mel', 'geleia', 'cereal', 'mingau'],
+    forbidden: ['arroz', 'feijão', 'carne vermelha', 'frango grelhado', 'salada de almoço', 'macarrão', 'lasanha', 'estrogonofe'],
+    examples: ['Tapioca com queijo', 'Pão integral com ovo', 'Iogurte com granola', 'Vitamina de banana', 'Crepioca', 'Panqueca de aveia', 'Torrada com manteiga']
+  },
+  lanche_manha: {
+    label: 'Lanche da Manhã',
+    allowed: ['fruta', 'iogurte', 'castanha', 'barrinha', 'queijo', 'biscoito', 'suco', 'shake', 'sanduíche leve'],
+    forbidden: ['arroz', 'feijão', 'carne de almoço', 'pratos pesados'],
+    examples: ['Maçã com pasta de amendoim', 'Iogurte natural', 'Mix de castanhas', 'Banana', 'Queijo cottage']
+  },
+  almoco: {
+    label: 'Almoço',
+    allowed: ['arroz', 'feijão', 'carne', 'frango', 'peixe', 'salada', 'legumes', 'batata', 'macarrão', 'ovo', 'grão de bico', 'lentilha', 'quinoa'],
+    forbidden: ['cereal matinal', 'panqueca doce', 'granola com leite'],
+    examples: ['Arroz integral', 'Feijão preto', 'Filé de frango grelhado', 'Batata doce', 'Salada verde', 'Bife grelhado', 'Tilápia assada']
+  },
+  lanche_tarde: {
+    label: 'Lanche da Tarde',
+    allowed: ['fruta', 'iogurte', 'sanduíche', 'tapioca', 'pão', 'queijo', 'castanha', 'shake', 'suco', 'barrinha', 'torrada'],
+    forbidden: ['arroz com feijão', 'pratos de almoço completo', 'refeições pesadas'],
+    examples: ['Sanduíche natural', 'Tapioca', 'Frutas com iogurte', 'Shake proteico', 'Torrada com queijo']
+  },
+  lanche: {
+    label: 'Lanche da Tarde',
+    allowed: ['fruta', 'iogurte', 'sanduíche', 'tapioca', 'pão', 'queijo', 'castanha', 'shake', 'suco', 'barrinha', 'torrada'],
+    forbidden: ['arroz com feijão', 'pratos de almoço completo', 'refeições pesadas'],
+    examples: ['Sanduíche natural', 'Tapioca', 'Frutas com iogurte', 'Shake proteico', 'Torrada com queijo']
+  },
+  jantar: {
+    label: 'Jantar',
+    allowed: ['sopa', 'salada', 'omelete', 'peixe', 'frango', 'legumes', 'ovo', 'arroz', 'batata', 'carne leve', 'wrap', 'sanduíche'],
+    forbidden: ['cereal matinal', 'granola', 'café da manhã típico'],
+    examples: ['Sopa de legumes', 'Omelete', 'Salada com frango', 'Peixe grelhado', 'Wrap integral']
+  },
+  ceia: {
+    label: 'Ceia',
+    allowed: ['chá', 'fruta', 'iogurte', 'castanha', 'leite', 'queijo cottage', 'aveia'],
+    forbidden: ['carne pesada', 'fritura', 'refeição completa', 'arroz com feijão'],
+    examples: ['Chá de camomila', 'Iogurte natural', 'Maçã', 'Leite morno', 'Queijo cottage']
+  }
+};
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -86,6 +137,7 @@ serve(async (req) => {
       ingredientCarbs,
       ingredientFat,
       ingredientCalories,
+      mealType,
       restrictions 
     } = await req.json();
 
@@ -99,6 +151,7 @@ serve(async (req) => {
     logStep('Processing request', { 
       ingredientName, 
       ingredientGrams,
+      mealType,
       macros: { protein: ingredientProtein, carbs: ingredientCarbs, fat: ingredientFat, calories: ingredientCalories }
     });
 
@@ -118,11 +171,15 @@ serve(async (req) => {
     // Detectar estilo de preparo
     const prepStyles = detectPreparationStyle(ingredientName);
     
-    logStep('Detected categories', { macroCategory, prepStyles });
+    // Obter regras do tipo de refeição
+    const mealTypeInfo = MEAL_TYPE_FOODS[mealType] || MEAL_TYPE_FOODS['almoco'];
+    
+    logStep('Detected categories', { macroCategory, prepStyles, mealType, mealTypeLabel: mealTypeInfo.label });
 
     // Calcular o macro principal a igualar
     let mainMacro = 'proteína';
     let mainMacroValue = ingredientProtein || 0;
+    let mainMacroPer100g = 0;
     
     if (macroCategory === 'carboidrato') {
       mainMacro = 'carboidratos';
@@ -132,63 +189,88 @@ serve(async (req) => {
       mainMacroValue = ingredientFat || 0;
     }
 
+    // Calcular macro por 100g do original (para a fórmula)
+    const originalGrams = ingredientGrams || 100;
+    if (originalGrams > 0) {
+      mainMacroPer100g = (mainMacroValue / originalGrams) * 100;
+    }
+
+    // Calcular o total de macro que precisa ser igualado
+    const totalMacroToMatch = mainMacroValue;
+
     const restrictionsText = restrictions && restrictions.length > 0 
       ? `RESTRIÇÕES DO USUÁRIO (CRÍTICO - NÃO VIOLAR): ${restrictions.join(', ')}`
       : '';
 
-    const prompt = `Você é um nutricionista especializado em substituições alimentares precisas.
+    const prompt = `Você é um nutricionista especializado em substituições alimentares PRECISAS e EQUILIBRADAS.
 
-TAREFA: Sugerir 5 substitutos para "${ingredientName}" (${ingredientGrams}g)
+TAREFA: Sugerir 5 substitutos para "${ingredientName}" (${ingredientGrams}g) no contexto de ${mealTypeInfo.label}
 
 DADOS DO ALIMENTO ORIGINAL:
-- Calorias: ${ingredientCalories} kcal
-- Proteína: ${ingredientProtein}g
-- Carboidratos: ${ingredientCarbs}g
-- Gordura: ${ingredientFat}g
+- Gramagem: ${ingredientGrams}g
+- Calorias totais: ${ingredientCalories} kcal
+- Proteína total: ${ingredientProtein}g
+- Carboidratos totais: ${ingredientCarbs}g
+- Gordura total: ${ingredientFat}g
 - Categoria detectada: ${macroCategory.toUpperCase()}
 - Estilo de preparo: ${prepStyles.join(', ')}
 
+TIPO DE REFEIÇÃO: ${mealTypeInfo.label.toUpperCase()}
+- Alimentos PERMITIDOS para esta refeição: ${mealTypeInfo.allowed.join(', ')}
+- Alimentos PROIBIDOS para esta refeição: ${mealTypeInfo.forbidden.join(', ')}
+- Exemplos típicos: ${mealTypeInfo.examples.join(', ')}
+
 ${restrictionsText}
 
-REGRAS CRÍTICAS:
-1. MACRO EQUIVALENTE: Cada substituto deve ter gramagem calculada para igualar o macro principal (${mainMacro}: ${mainMacroValue}g)
-2. COERÊNCIA CULINÁRIA: Se o original é grelhado, sugerir alimentos que podem ser grelhados
-3. ACESSIBILIDADE: Priorizar alimentos de custo e disponibilidade similar (não trocar frango por salmão)
-4. CATEGORIA SIMILAR: ${macroCategory === 'proteina' ? 'Sugerir outras proteínas animais ou vegetais de alto teor proteico' : 
-   macroCategory === 'carboidrato' ? 'Sugerir outros carboidratos complexos' :
-   macroCategory === 'gordura' ? 'Sugerir outras fontes de gordura saudável' :
-   macroCategory === 'vegetal' ? 'Sugerir outros vegetais' :
-   macroCategory === 'fruta' ? 'Sugerir outras frutas' :
-   'Sugerir alimentos da mesma categoria'}
+===== REGRAS CRÍTICAS =====
 
-FÓRMULA PARA GRAMAGEM:
-nova_gramagem = (${mainMacroValue}g × ${ingredientGrams}g) / macro_do_substituto_por_100g
+1. GRAMAGEM POR MACRONUTRIENTE (MAIS IMPORTANTE):
+   O macro principal é ${mainMacro.toUpperCase()} = ${totalMacroToMatch}g
+   
+   FÓRMULA OBRIGATÓRIA:
+   nova_gramagem = (${totalMacroToMatch} / macro_do_substituto_por_100g) × 100
+   
+   EXEMPLO:
+   - Original: Panqueca 100g com 5g proteína
+   - Substituto: Pão integral (10g prot/100g)
+   - Cálculo: (5 / 10) × 100 = 50g de pão integral
+   
+   ⚠️ A gramagem NUNCA deve ser igual (100g) para todos. Deve variar conforme o teor de macro de cada substituto!
 
-FORMATO DE RESPOSTA (JSON puro, sem markdown):
+2. ADEQUAÇÃO POR REFEIÇÃO:
+   Esta é uma refeição de ${mealTypeInfo.label}.
+   - SÓ sugerir alimentos típicos desta refeição
+   - NÃO sugerir: ${mealTypeInfo.forbidden.join(', ')}
+
+3. COERÊNCIA CULINÁRIA:
+   - Se o original é ${prepStyles[0]}, sugerir alimentos com preparo similar
+   - Manter mesma categoria: ${macroCategory === 'proteina' ? 'outras proteínas' : macroCategory === 'carboidrato' ? 'outros carboidratos' : 'mesma categoria'}
+   - Acessibilidade similar (não trocar frango por salmão caro)
+
+===== FORMATO DE RESPOSTA (JSON puro, sem markdown) =====
 [
   {
-    "name": "Nome do substituto com preparo",
-    "grams": 120,
-    "calories": 165,
-    "protein": 31,
-    "carbs": 0,
-    "fat": 3.6,
-    "reason": "Breve justificativa"
+    "name": "Nome do substituto com preparo adequado à refeição",
+    "grams": NÚMERO_CALCULADO_PELA_FÓRMULA,
+    "calories": calorias_proporcionais_à_gramagem,
+    "protein": proteína_proporcional_à_gramagem,
+    "carbs": carboidratos_proporcionais_à_gramagem,
+    "fat": gordura_proporcional_à_gramagem,
+    "reason": "Substituto de ${mealTypeInfo.label}, igualando ${mainMacro}. Gramagem calculada: X / Y × 100 = Zg"
   }
 ]
 
-EXEMPLOS DE SUBSTITUIÇÕES COERENTES:
-- Frango grelhado → Bife grelhado, Filé de tilápia grelhado, Sobrecoxa grelhada
-- Arroz branco → Arroz integral, Quinoa, Batata doce cozida
-- Azeite → Óleo de coco, Manteiga, Abacate
-- Banana → Maçã, Pêra, Mamão
+===== VERIFICAÇÃO ANTES DE RETORNAR =====
+Para CADA substituto, verifique:
+□ A gramagem foi calculada pela fórmula? (NÃO é 100g para todos)
+□ O ${mainMacro} está próximo de ${totalMacroToMatch}g?
+□ É apropriado para ${mealTypeInfo.label}?
+□ Respeita o estilo de preparo (${prepStyles[0]})?
+□ É acessível (custo/disponibilidade similar)?
 
-NÃO SUGERIR:
-- Alimentos de preparo incompatível (frango grelhado → atum em lata)
-- Alimentos muito mais caros (frango → salmão, camarão)
-- Alimentos de categoria diferente (proteína → carboidrato)
+Retorne APENAS o array JSON com 5 substitutos que passem em TODAS as verificações.`;
 
-Retorne APENAS o array JSON com 5 substitutos.`;
+    logStep('Sending prompt to AI', { totalMacroToMatch, mainMacro, mealType });
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
@@ -206,8 +288,8 @@ Retorne APENAS o array JSON com 5 substitutos.`;
             }
           ],
           generationConfig: {
-            temperature: 0.3,
-            maxOutputTokens: 1024,
+            temperature: 0.2,
+            maxOutputTokens: 2048,
           }
         }),
       }
@@ -222,7 +304,7 @@ Retorne APENAS o array JSON com 5 substitutos.`;
     const data = await response.json();
     const content = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
     
-    logStep('AI Response', { content });
+    logStep('AI Response received', { contentLength: content.length });
     
     // Parse JSON from response
     let suggestions: any[] = [];
@@ -260,14 +342,18 @@ Retorne APENAS o array JSON com 5 substitutos.`;
       suggestions = [];
     }
 
-    logStep('Returning suggestions', { count: suggestions.length, suggestions });
+    logStep('Returning suggestions', { 
+      count: suggestions.length, 
+      suggestions: suggestions.map(s => ({ name: s.name, grams: s.grams, [mainMacro]: macroCategory === 'proteina' ? s.protein : macroCategory === 'carboidrato' ? s.carbs : s.fat }))
+    });
 
     return new Response(
       JSON.stringify({ 
         suggestions,
         originalCategory: macroCategory,
         mainMacro,
-        mainMacroValue
+        mainMacroValue: totalMacroToMatch,
+        mealType: mealTypeInfo.label
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

@@ -529,6 +529,7 @@ export default function MealDetailSheet({
         open={substitutionOpen}
         onOpenChange={setSubstitutionOpen}
         originalIngredient={selectedIngredient}
+        mealType={meal?.meal_type}
         onSubstitute={handleSubstitute}
       />
 

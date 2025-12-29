@@ -1182,10 +1182,29 @@ serve(async (req) => {
     }
 
     // Build meals with target calories and regional labels
-    // Usar distribuição centralizada se temos targets calculados
+    // IMPORTANTE: Se o usuário passou dailyCalories explicitamente, devemos respeitar essa preferência
+    // mesmo que tenhamos nutritionalTargets calculados do perfil
     let meals;
     if (nutritionalTargets) {
-      const mealDistribution = calculateMealDistribution(nutritionalTargets, mealTypes);
+      // Se o usuário passou calorias explicitamente, ajustar os targets para respeitar
+      const effectiveTargets = requestedCalories 
+        ? {
+            ...nutritionalTargets,
+            targetCalories: dailyCalories, // Usar as calorias solicitadas pelo usuário
+            // Recalcular macros proporcionalmente
+            protein: Math.round(nutritionalTargets.protein * (dailyCalories / nutritionalTargets.targetCalories)),
+            carbs: Math.round(nutritionalTargets.carbs * (dailyCalories / nutritionalTargets.targetCalories)),
+            fat: Math.round(nutritionalTargets.fat * (dailyCalories / nutritionalTargets.targetCalories)),
+          }
+        : nutritionalTargets;
+      
+      logStep("Using effective calorie target", { 
+        requested: requestedCalories, 
+        calculated: nutritionalTargets.targetCalories, 
+        effective: effectiveTargets.targetCalories 
+      });
+      
+      const mealDistribution = calculateMealDistribution(effectiveTargets, mealTypes);
       meals = mealDistribution.map((dist) => ({
         type: dist.mealType,
         label: regional.mealLabels[dist.mealType] || dist.label,

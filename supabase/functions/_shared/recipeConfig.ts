@@ -1786,6 +1786,15 @@ Exemplos CORRETOS:
 5. recipe_protein, recipe_carbs, recipe_fat = totais calculados pela soma dos ingredientes
 6. Se is_safe: false, a refeição será regenerada
 
+🔴 REGRA DE CONSISTÊNCIA NOME-INGREDIENTES (CRÍTICA):
+O nome da refeição DEVE refletir EXATAMENTE os ingredientes listados.
+• Se o nome diz "com sementes" → ingredientes DEVEM incluir sementes
+• Se o nome diz "com frutas" → ingredientes DEVEM incluir frutas
+• Se o nome diz "com mel" → ingredientes DEVEM incluir mel
+• NUNCA prometa algo no nome que não está na lista de ingredientes!
+Exemplo ERRADO: Nome "Iogurte com sementes" mas só tem iogurte → PROIBIDO
+Exemplo CERTO: Nome "Iogurte natural" com ingrediente iogurte → OK
+
 Responda APENAS com JSON válido.`;
 }
 

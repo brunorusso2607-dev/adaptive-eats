@@ -114,6 +114,8 @@ const hasPlanForNextMonth = (plans: MealPlan[]) => {
 type UserProfile = {
   intolerances?: string[] | null;
   dietary_preference?: string | null;
+  strategy_id?: string | null;
+  excluded_ingredients?: string[] | null;
 };
 
 export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
@@ -231,7 +233,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
 
       const { data: profile, error } = await supabase
         .from("profiles")
-        .select("intolerances, dietary_preference")
+        .select("intolerances, dietary_preference, strategy_id, excluded_ingredients")
         .eq("id", session.user.id)
         .single();
 

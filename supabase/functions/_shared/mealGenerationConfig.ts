@@ -582,12 +582,27 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - ERRADO: "100g de atum em conserva" ❌
 - CERTO: "1 porção de atum em conserva" ✓
 
-🍳 REGRA DE COMPLETUDE CULINÁRIA:
+🍳 REGRA DE COMPLETUDE CULINÁRIA (CRÍTICO):
 - Gere refeições PRONTAS e COMPLETAS, não ingredientes isolados
 - ERRADO: "3 claras de ovo" (ingrediente cru) ❌
 - CERTO: "Omelete de claras com ervas" ✓
 - ERRADO: "2 fatias de pão" (incompleto) ❌
 - CERTO: "Sanduíche de pão integral com queijo e tomate" ✓
+- ERRADO: "Ovos cozidos" (ingrediente isolado) ❌
+- CERTO: "Salada com ovos cozidos e vegetais" ✓
+
+🌙 REGRA DE ADEQUAÇÃO POR TIPO DE REFEIÇÃO:
+**CEIA (lanche noturno):**
+- Deve ser leve e de fácil digestão
+- Priorizar: chás, iogurtes, queijos leves, frutas, sanduíches leves, mingaus
+- NUNCA gerar ingredientes isolados (ex: "Ovos cozidos" sozinho)
+- Exemplos CORRETOS: "Chá de camomila com torradas integrais", "Iogurte natural com mel e castanhas", "Mingau de aveia com canela"
+**LANCHES (manhã/tarde):**
+- Opções práticas e nutritivas
+- Exemplos: "Mix de castanhas com frutas secas", "Iogurte com granola", "Sanduíche natural de atum"
+**REFEIÇÕES PRINCIPAIS (café, almoço, jantar):**
+- Refeições completas e equilibradas
+- Incluir proteína + carboidrato + vegetais quando apropriado
 
 🥪 REGRA DE ALIMENTOS-VEÍCULO (wraps, pães, tortillas):
 - Wraps, pães e tortillas são "veículos" que PRECISAM de recheio
@@ -601,7 +616,7 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - OVOS: usar "unidade" (ex: "2 ovos cozidos")
 - GRÃOS/ARROZ/MASSAS: usar "colher de sopa", "colher de servir", "porção"
 - VEGETAIS SÓLIDOS: usar "porção", "folhas", "floretes" (NUNCA "xícara")
-- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média")
+- FRUTAS: usar "unidade" + tamaho (ex: "1 banana média")
 
 Exemplos CORRETOS:
 {"name": "1 filé médio de frango grelhado", "grams": 120}
@@ -609,6 +624,7 @@ Exemplos CORRETOS:
 {"name": "1 porção de brócolis cozido", "grams": 100}
 {"name": "1 banana média", "grams": 120}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
+{"name": "Chá de camomila com 2 torradas integrais", "grams": 250}
 
 🔴 REGRA DE CONSISTÊNCIA NOME-INGREDIENTES:
 O campo "title" DEVE ser um nome descritivo que reflete os ingredientes (ex: "Frango grelhado com arroz e salada")

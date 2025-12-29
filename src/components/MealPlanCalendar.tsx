@@ -140,11 +140,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     const order = getMealOrder();
     const orderedList = order.length > 0 ? order : [...STANDARD_MEAL_TYPES];
     
-    const result = orderedList.filter(mealType => planMealTypes.has(mealType));
-    
-    console.log(`[DEBUG] orderedMealTypes: planMealTypes=${JSON.stringify([...planMealTypes])}, order=${JSON.stringify(order)}, result=${JSON.stringify(result)}`);
-    
-    return result;
+    return orderedList.filter(mealType => planMealTypes.has(mealType));
   }, [getMealOrder, mealPlan.items]);
 
   // Labels dinâmicas para refeições (inclui extras)
@@ -288,19 +284,13 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     // Check if day is before plan start
     if (dayDate < planStartDate) return [];
 
-    // Calculate days since start using date components to avoid timezone issues
-    const dayDateYear = dayDate.getFullYear();
-    const dayDateMonth = dayDate.getMonth();
-    const dayDateDay = dayDate.getDate();
-    
+    // Calculate days since start using milliseconds to avoid timezone issues
     const msPerDay = 1000 * 60 * 60 * 24;
     const daysSinceStart = Math.round((dayDate.getTime() - planStartDate.getTime()) / msPerDay);
 
     // Calculate which plan week and day this corresponds to
     const planWeekNumber = Math.floor(daysSinceStart / 7) + 1;
     const planDayOfWeek = daysSinceStart % 7;
-
-    console.log(`[DEBUG] getDayMeals: date=${dayDateDay}/${dayDateMonth + 1}/${dayDateYear}, daysSinceStart=${daysSinceStart}, planWeek=${planWeekNumber}, planDayOfWeek=${planDayOfWeek}, items found=${mealPlan.items.filter(item => (item.week_number || 1) === planWeekNumber && item.day_of_week === planDayOfWeek).length}`);
 
     return mealPlan.items.filter(item => 
       (item.week_number || 1) === planWeekNumber && 

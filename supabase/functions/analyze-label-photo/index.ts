@@ -8,6 +8,7 @@ import {
   getMappingsStats,
   INTOLERANCE_LABELS 
 } from "../_shared/getIntoleranceMappings.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -743,6 +744,70 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
         if (status === "evitar") status = "contem";
         return { ...ing, status };
       });
+    }
+
+    // ========== PÓS-PROCESSAMENTO: ENRIQUECIMENTO DE MACROS COM TABELA FOODS ==========
+    // Se o rótulo foi analisado, enriquecer ingredientes com macros reais da tabela foods
+    
+    if (analysis.ingredientes_analisados && analysis.ingredientes_analisados.length > 0) {
+      logStep("Enriching label ingredients with real macros from foods table");
+      
+      // Prepare ingredients for macro lookup
+      const ingredientsForLookup = analysis.ingredientes_analisados.map((ing: any) => ({
+        name: ing.nome || ing.nome_traduzido || '',
+        grams: 100, // Labels typically don't specify exact grams per ingredient, use 100g as reference
+        estimated_calories: undefined,
+        estimated_protein: undefined,
+        estimated_carbs: undefined,
+        estimated_fat: undefined
+      })).filter((ing: any) => ing.name);
+      
+      if (ingredientsForLookup.length > 0) {
+        try {
+          const { items, matchRate, fromDb, fromAi } = await calculateRealMacrosForFoods(supabaseClient, ingredientsForLookup);
+          
+          // Enrich original analysis with macro data
+          analysis.ingredientes_analisados = analysis.ingredientes_analisados.map((ing: any, index: number) => {
+            const matchedItem = items.find(item => 
+              item.name.toLowerCase().includes(ing.nome?.toLowerCase() || '') ||
+              (ing.nome?.toLowerCase() || '').includes(item.name.toLowerCase())
+            );
+            
+            if (matchedItem) {
+              return {
+                ...ing,
+                macros_per_100g: {
+                  calorias: Math.round(matchedItem.calories),
+                  proteinas: Math.round(matchedItem.protein),
+                  carboidratos: Math.round(matchedItem.carbs),
+                  gorduras: Math.round(matchedItem.fat),
+                  fibras: matchedItem.fiber ? Math.round(matchedItem.fiber) : undefined
+                },
+                macro_source: matchedItem.source,
+                food_id: matchedItem.food_id
+              };
+            }
+            return ing;
+          });
+          
+          // Add macro enrichment stats to analysis
+          analysis.macro_enrichment = {
+            match_rate: Math.round(matchRate),
+            from_database: fromDb,
+            from_ai_estimate: fromAi,
+            total_ingredients: ingredientsForLookup.length
+          };
+          
+          logStep("Label ingredients enriched with real macros", { 
+            matchRate: Math.round(matchRate), 
+            fromDb, 
+            fromAi 
+          });
+        } catch (macroError) {
+          logStep("Error enriching label macros", { error: String(macroError) });
+          // Continue without macro enrichment
+        }
+      }
     }
 
     // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========

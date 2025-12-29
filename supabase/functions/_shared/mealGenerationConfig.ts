@@ -699,3 +699,314 @@ export function shouldAddSugarQualifier(
   
   return hasSugarRestriction || hasWeightLossStrategy || hasKetoStrategy;
 }
+
+// ============= STRATEGY CULINARY PERSONAS =============
+// Define distinct "culinary personas" for each nutritional strategy
+
+export interface StrategyPersona {
+  key: string;
+  label: string;
+  philosophy: string;
+  foodStyle: string;
+  recommendedFoods: string[];
+  avoidFoods: string[];
+  mealExamples: Record<string, string[]>;
+  portionStyle: string;
+  specialNotes: string;
+}
+
+export const STRATEGY_PERSONAS: Record<string, StrategyPersona> = {
+  // ============= EMAGRECIMENTO =============
+  'emagrecer': {
+    key: 'emagrecer',
+    label: 'Emagrecimento',
+    philosophy: 'Déficit calórico moderado com foco em saciedade e nutrientes',
+    foodStyle: 'Pratos leves, magros, alto volume, baixa caloria',
+    recommendedFoods: [
+      'Peito de frango grelhado',
+      'Peixe assado ou grelhado (tilápia, pescada)',
+      'Saladas volumosas com folhas verdes',
+      'Vegetais cozidos no vapor',
+      'Frutas de baixo índice glicêmico (morango, maçã)',
+      'Ovos (moderado)',
+      'Iogurte natural desnatado',
+      'Arroz integral (porções pequenas)',
+      'Sopas de legumes',
+      'Wrap integral com recheio leve',
+    ],
+    avoidFoods: [
+      'Frituras',
+      'Fast food',
+      'Doces e sobremesas',
+      'Massas cremosas',
+      'Pães brancos',
+      'Refrigerantes',
+      'Alimentos ultraprocessados',
+    ],
+    mealExamples: {
+      cafe_manha: ['Omelete de claras com espinafre', 'Iogurte natural com frutas vermelhas', 'Tapioca com queijo cottage'],
+      lanche_manha: ['1 maçã', 'Mix de castanhas (30g)', 'Iogurte natural'],
+      almoco: ['Frango grelhado com salada volumosa e arroz integral', 'Peixe assado com legumes e quinoa', 'Salada de atum com folhas verdes'],
+      lanche_tarde: ['Frutas frescas', 'Cenoura baby com hummus', 'Iogurte com chia'],
+      jantar: ['Salmão com brócolis', 'Sopa de legumes com frango desfiado', 'Omelete com salada'],
+      ceia: ['Chá de camomila', 'Iogurte light', 'Maçã com canela'],
+    },
+    portionStyle: 'Porções controladas, pratos volumosos mas baixa caloria',
+    specialNotes: 'Foco em proteínas magras e vegetais. Evitar carboidratos refinados.',
+  },
+
+  // ============= CUTTING =============
+  'cutting': {
+    key: 'cutting',
+    label: 'Cutting',
+    philosophy: 'Déficit agressivo com proteína muito alta para preservar massa muscular',
+    foodStyle: 'Estilo bodybuilding, pratos funcionais e repetitivos, "comida limpa"',
+    recommendedFoods: [
+      'Peito de frango (MUITO)',
+      'Claras de ovo',
+      'Tilápia',
+      'Brócolis',
+      'Espinafre',
+      'Arroz integral (apenas pré/pós treino)',
+      'Batata doce (pré treino)',
+      'Whey protein',
+      'Atum em água',
+      'Peito de peru',
+    ],
+    avoidFoods: [
+      'Qualquer fritura',
+      'Doces',
+      'Fast food',
+      'Carboidratos fora das janelas de treino',
+      'Gorduras em excesso',
+      'Alimentos processados',
+      'Frutas muito doces',
+    ],
+    mealExamples: {
+      cafe_manha: ['Omelete de 6 claras com espinafre', 'Aveia com whey', 'Peito de frango com ovo'],
+      lanche_manha: ['Shake de whey', 'Peito de peru com pepino', 'Claras de ovo cozidas'],
+      almoco: ['Peito de frango grelhado com brócolis e arroz integral', 'Tilápia grelhada com espinafre e batata doce', 'Carne magra com salada verde'],
+      lanche_tarde: ['Whey protein', 'Peito de frango fatiado', 'Atum em lata'],
+      jantar: ['Tilápia com legumes verdes', 'Peito de frango com salada', 'Claras mexidas com vegetais'],
+      ceia: ['Caseína ou queijo cottage', 'Iogurte grego natural', 'Shake leve de caseína'],
+    },
+    portionStyle: 'Proteína abundante, carboidratos mínimos, gordura muito baixa',
+    specialNotes: 'Pratos podem parecer monótonos mas são funcionais. Foco absoluto em proteína.',
+  },
+
+  // ============= MANUTENÇÃO =============
+  'manter': {
+    key: 'manter',
+    label: 'Manutenção',
+    philosophy: 'Equilíbrio e variedade, sustentabilidade a longo prazo',
+    foodStyle: 'Comida caseira tradicional, equilibrada, todos os grupos alimentares',
+    recommendedFoods: [
+      'Todos os grupos alimentares em equilíbrio',
+      'Arroz e feijão (clássico brasileiro)',
+      'Carnes variadas (frango, carne, peixe)',
+      'Vegetais diversos',
+      'Frutas variadas',
+      'Pães integrais',
+      'Massas (moderado)',
+      'Laticínios',
+      'Ovos',
+    ],
+    avoidFoods: [
+      'Excessos de qualquer tipo',
+      'Ultraprocessados em excesso',
+    ],
+    mealExamples: {
+      cafe_manha: ['Pão integral com queijo e presunto', 'Tapioca com queijo e presunto', 'Ovos mexidos com pão integral'],
+      lanche_manha: ['Frutas frescas', 'Iogurte com granola', 'Pão de queijo'],
+      almoco: ['Arroz, feijão, frango grelhado e salada', 'Macarrão com carne moída e salada', 'Peixe com purê e legumes'],
+      lanche_tarde: ['Sanduíche natural', 'Frutas com iogurte', 'Bolo caseiro'],
+      jantar: ['Sopa de legumes com carne', 'Omelete com salada', 'Arroz com frango e vegetais'],
+      ceia: ['Chá com biscoitos', 'Leite com aveia', 'Frutas leves'],
+    },
+    portionStyle: 'Porções normais, equilibradas, sem exageros nem restrições',
+    specialNotes: 'Variedade é chave. Pode incluir comfort foods ocasionais.',
+  },
+
+  // ============= FITNESS =============
+  'fitness': {
+    key: 'fitness',
+    label: 'Fitness',
+    philosophy: 'Performance, energia e recuperação muscular',
+    foodStyle: 'Atlético, funcional, timing nutricional estratégico',
+    recommendedFoods: [
+      'Frango e carnes magras',
+      'Ovos inteiros',
+      'Arroz e batata doce',
+      'Aveia',
+      'Banana (pré/pós treino)',
+      'Whey protein',
+      'Vegetais coloridos',
+      'Frutas energéticas',
+      'Pasta de amendoim',
+      'Castanhas',
+    ],
+    avoidFoods: [
+      'Ultraprocessados',
+      'Açúcar refinado em excesso',
+      'Frituras pesadas',
+      'Álcool em excesso',
+    ],
+    mealExamples: {
+      cafe_manha: ['Panqueca de banana com aveia e whey', 'Ovos mexidos com pão integral e abacate', 'Smoothie proteico com frutas'],
+      lanche_manha: ['Banana com pasta de amendoim', 'Shake proteico', 'Mix de castanhas'],
+      almoco: ['Frango grelhado com batata doce e legumes', 'Carne com arroz integral e salada colorida', 'Bowl de quinoa com frango e vegetais'],
+      lanche_tarde: ['Shake pós-treino', 'Sanduíche proteico', 'Iogurte grego com frutas'],
+      jantar: ['Salmão com vegetais assados', 'Frango com arroz e brócolis', 'Omelete com vegetais'],
+      ceia: ['Iogurte grego', 'Queijo cottage', 'Shake de caseína'],
+    },
+    portionStyle: 'Proteína adequada, carboidratos estratégicos, gorduras saudáveis',
+    specialNotes: 'Foco em timing nutricional. Carboidratos concentrados no pré/pós treino.',
+  },
+
+  // ============= BULK (GANHAR PESO) =============
+  'ganhar_peso': {
+    key: 'ganhar_peso',
+    label: 'Ganhar Peso (Bulk)',
+    philosophy: 'Superávit calórico para ganho de massa muscular',
+    foodStyle: 'Porções GRANDES, alimentos calóricos densos, carboidratos abundantes',
+    recommendedFoods: [
+      'Arroz branco ou integral (porções generosas)',
+      'Massas',
+      'Batata doce (grandes porções)',
+      'Pão (várias fatias)',
+      'Carne vermelha',
+      'Frango com pele',
+      'Ovos inteiros (múltiplos)',
+      'Pasta de amendoim',
+      'Abacate',
+      'Banana',
+      'Granola',
+      'Leite integral',
+      'Queijos',
+      'Shakes calóricos',
+      'Panquecas proteicas',
+      'Hambúrgueres caseiros proteicos',
+    ],
+    avoidFoods: [
+      'Alimentos sem valor nutricional (junk food vazio)',
+    ],
+    mealExamples: {
+      cafe_manha: ['Panquecas proteicas com banana e mel', '4 ovos mexidos com pão e queijo', 'Vitamina de banana com aveia e pasta de amendoim'],
+      lanche_manha: ['Shake calórico (leite + banana + aveia + whey)', 'Sanduíche de pasta de amendoim', 'Mix de castanhas com frutas secas'],
+      almoco: ['Arroz generoso com feijão, carne moída e salada', 'Macarronada com frango e queijo', 'Hambúrguer caseiro com batata'],
+      lanche_tarde: ['Shake com frutas e whey', 'Pão com pasta de amendoim e banana', 'Iogurte com granola e mel'],
+      jantar: ['Massa com carne e molho', 'Arroz com frango e purê', 'Steak com batatas e vegetais'],
+      ceia: ['Vitamina de banana com aveia', 'Iogurte integral com granola', 'Sanduíche proteico'],
+    },
+    portionStyle: 'Porções GENEROSAS, múltiplas refeições, nunca pular refeições',
+    specialNotes: 'Foco em quantidade. Hambúrgueres e massas são bem-vindos. Shakes calóricos ajudam.',
+  },
+
+  // ============= DIETA FLEXÍVEL (IIFYM) =============
+  'dieta_flexivel': {
+    key: 'dieta_flexivel',
+    label: 'Dieta Flexível',
+    philosophy: 'If It Fits Your Macros (IIFYM) - Nenhum alimento é proibido se couber nos macros',
+    foodStyle: '80% alimentos nutritivos, 20% comfort foods. VARIEDADE máxima, inclui hambúrgueres, pizzas, doces',
+    recommendedFoods: [
+      // Comfort foods OBRIGATÓRIOS para diferenciar
+      'Hambúrguer artesanal/caseiro',
+      'Pizza caseira ou artesanal',
+      'Sobremesas (brownie, bolo, sorvete)',
+      'Tacos e burritos',
+      'Waffles e panquecas doces',
+      'Sanduíches gourmet',
+      'Massas variadas',
+      'Chocolate (porção controlada)',
+      'Sorvete (porção controlada)',
+      // Base saudável (80%)
+      'Proteínas variadas',
+      'Carboidratos diversos',
+      'Vegetais coloridos',
+      'Frutas variadas',
+    ],
+    avoidFoods: [
+      'Nenhum alimento é estritamente proibido',
+      'Apenas controle de macros',
+    ],
+    mealExamples: {
+      cafe_manha: ['Waffles com frutas e mel', 'Panqueca americana com bacon', 'Ovos com torradas e abacate', 'Açaí bowl'],
+      lanche_manha: ['Barra de chocolate (30g)', 'Frutas com iogurte', 'Cookie proteico'],
+      almoco: ['Hambúrguer artesanal com salada', 'Pizza caseira com vegetais', 'Burrito bowl', 'Wrap recheado especial'],
+      lanche_tarde: ['Brownie caseiro', 'Milkshake proteico', 'Sanduíche gourmet'],
+      jantar: ['Pizza caseira', 'Tacos mexicanos', 'Hambúrguer com batata assada', 'Massa carbonara'],
+      ceia: ['Sorvete (1 bola)', 'Chocolate quente', 'Biscoitos com leite'],
+    },
+    portionStyle: 'Macros são o guia, não tipos de alimentos. Caber nos macros = pode comer.',
+    specialNotes: 'OBRIGATÓRIO incluir comfort foods! Hambúrgueres, pizzas, sobremesas fazem parte da estratégia. Diferenciar claramente de dietas restritivas.',
+  },
+};
+
+// Função para obter persona por strategy_key (do banco) ou goal (legado)
+export function getStrategyPersona(strategyKey?: string, goal?: string): StrategyPersona {
+  // Primeiro tenta pelo strategy_key
+  if (strategyKey && STRATEGY_PERSONAS[strategyKey]) {
+    return STRATEGY_PERSONAS[strategyKey];
+  }
+  
+  // Fallback para goal legado
+  if (goal && STRATEGY_PERSONAS[goal]) {
+    return STRATEGY_PERSONAS[goal];
+  }
+  
+  // Default para manutenção
+  return STRATEGY_PERSONAS['manter'];
+}
+
+// ============= STRATEGY-SPECIFIC PROMPT RULES =============
+export function getStrategyPromptRules(strategyKey: string, language: string = 'pt-BR'): string {
+  const persona = getStrategyPersona(strategyKey);
+  const isPortuguese = language.startsWith('pt');
+  
+  if (isPortuguese) {
+    return `
+🎯 PERSONA CULINÁRIA: ${persona.label.toUpperCase()}
+📖 Filosofia: ${persona.philosophy}
+🍽️ Estilo de pratos: ${persona.foodStyle}
+
+✅ ALIMENTOS RECOMENDADOS PARA ESTE PERFIL:
+${persona.recommendedFoods.map(f => `- ${f}`).join('\n')}
+
+❌ ALIMENTOS A EVITAR NESTE PERFIL:
+${persona.avoidFoods.map(f => `- ${f}`).join('\n')}
+
+📏 ESTILO DE PORÇÕES:
+${persona.portionStyle}
+
+💡 NOTAS ESPECIAIS:
+${persona.specialNotes}
+
+📋 EXEMPLOS DE REFEIÇÕES PARA ${persona.label.toUpperCase()}:
+- CAFÉ DA MANHÃ: ${persona.mealExamples.cafe_manha.join(', ')}
+- LANCHE MANHÃ: ${persona.mealExamples.lanche_manha.join(', ')}
+- ALMOÇO: ${persona.mealExamples.almoco.join(', ')}
+- LANCHE TARDE: ${persona.mealExamples.lanche_tarde.join(', ')}
+- JANTAR: ${persona.mealExamples.jantar.join(', ')}
+- CEIA: ${persona.mealExamples.ceia.join(', ')}
+
+⚠️ REGRA CRÍTICA: Os pratos gerados DEVEM refletir a persona "${persona.label}". 
+${strategyKey === 'dieta_flexivel' ? '🍔🍕🍰 OBRIGATÓRIO: Inclua comfort foods como hambúrgueres, pizzas, sobremesas!' : ''}
+${strategyKey === 'cutting' ? '💪 Priorizar pratos com ALTA proteína e estilo bodybuilding.' : ''}
+${strategyKey === 'ganhar_peso' ? '📈 Priorizar porções GENEROSAS e alimentos calóricos densos.' : ''}
+`;
+  }
+  
+  // English fallback
+  return `
+🎯 CULINARY PERSONA: ${persona.label.toUpperCase()}
+📖 Philosophy: ${persona.philosophy}
+🍽️ Dish Style: ${persona.foodStyle}
+
+✅ RECOMMENDED FOODS FOR THIS PROFILE:
+${persona.recommendedFoods.map(f => `- ${f}`).join('\n')}
+
+📏 PORTION STYLE: ${persona.portionStyle}
+
+💡 SPECIAL NOTES: ${persona.specialNotes}
+`;
+}

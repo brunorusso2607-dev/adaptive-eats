@@ -41,6 +41,8 @@ import {
   validateFood,
   fetchIntoleranceMappings,
   getRestrictionText,
+  getStrategyPromptRules,
+  getStrategyPersona,
   type RegionalConfig,
   type IntoleranceMapping,
   type SafeKeyword,
@@ -101,8 +103,9 @@ function buildSimpleNutritionistPrompt(params: {
   countryCode: string;
   baseSystemPrompt?: string; // Prompt base do banco de dados
   nutritionalContext?: string; // Contexto nutricional enriquecido
+  strategyKey?: string; // Chave da estratégia nutricional (dieta_flexivel, cutting, etc.)
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext } = params;
+  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext, strategyKey } = params;
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
   
@@ -126,6 +129,9 @@ function buildSimpleNutritionistPrompt(params: {
 You create meals like a human professional would create for themselves, their family, or their real patients.
 GOLDEN RULE: Prioritize FOOD NATURALNESS over nutritional optimization. Food with soul, not formula.`;
 
+  // Obter regras específicas da estratégia nutricional
+  const strategyRules = strategyKey ? getStrategyPromptRules(strategyKey, regional.language) : '';
+
   // APENAS dados dinâmicos que o prompt do banco precisa saber
   // NÃO incluímos instruções de formato - essas vêm do banco
   const dynamicData = `
@@ -145,6 +151,13 @@ ${mealsDescription}
 RESTRIÇÕES OBRIGATÓRIAS:
 --------------------------------------------------
 ${restrictionText}
+
+${strategyRules ? `
+==========================================================
+🎯 ESTRATÉGIA NUTRICIONAL DO USUÁRIO (CRÍTICO):
+==========================================================
+${strategyRules}
+` : ''}
 
 --------------------------------------------------
 TAREFA:
@@ -441,6 +454,32 @@ serve(async (req) => {
 
     logStep("User restrictions", restrictions);
 
+    // ============= DETERMINAR STRATEGY KEY =============
+    // Buscar a chave da estratégia nutricional para aplicar persona culinária
+    let strategyKey: string | undefined = undefined;
+    
+    if (profile.strategy_id) {
+      // Buscar a key da estratégia do banco
+      const { data: strategyData } = await supabaseClient
+        .from("nutritional_strategies")
+        .select("key")
+        .eq("id", profile.strategy_id)
+        .single();
+      
+      if (strategyData?.key) {
+        strategyKey = strategyData.key;
+        logStep("Strategy key from database", { strategyId: profile.strategy_id, strategyKey });
+      }
+    }
+    
+    // Fallback: usar goal legado como strategyKey
+    if (!strategyKey) {
+      strategyKey = restrictions.goal;
+      logStep("Using goal as fallback strategy key", { strategyKey });
+    }
+
+    logStep("🎯 Final strategy key for culinary persona", { strategyKey });
+
     // ============= CÁLCULOS NUTRICIONAIS CENTRALIZADOS =============
     // Calcular targets nutricionais baseados no perfil do usuário
     let nutritionalTargets: NutritionalTargets | null = null;
@@ -619,8 +658,9 @@ serve(async (req) => {
         dayName,
         regional,
         countryCode: userCountry,
-        baseSystemPrompt: aiPromptData?.system_prompt, // Passa o prompt do banco
-        nutritionalContext, // Contexto nutricional enriquecido
+        baseSystemPrompt: aiPromptData?.system_prompt,
+        nutritionalContext,
+        strategyKey, // Passa a estratégia nutricional para aplicar persona culinária
       });
 
       // Call Google AI API directly

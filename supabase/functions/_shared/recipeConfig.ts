@@ -41,6 +41,7 @@ export interface UserProfile {
   excluded_ingredients?: string[] | null;
   country?: string | null; // ISO 3166-1 alpha-2 (BR, US, MX, etc.)
   kids_mode?: boolean | null;
+  strategy_id?: string | null; // FK para nutritional_strategies
 }
 
 // ============================================
@@ -49,7 +50,8 @@ export interface UserProfile {
 
 export type GoalIntensity = "light" | "moderate" | "aggressive";
 export type RecipeStyle = "fitness" | "regular" | "high_calorie";
-export type UserGoal = "emagrecer" | "manter" | "ganhar_peso";
+// Mantido para compatibilidade, mas novas estratégias são gerenciadas pela tabela nutritional_strategies
+export type UserGoal = "emagrecer" | "manter" | "ganhar_peso" | "cutting" | "fitness" | "dieta_flexivel";
 
 export interface GoalContext {
   goalIntensity: GoalIntensity;
@@ -78,29 +80,31 @@ export function calculateGoalIntensity(
 
   const difference = Math.abs(weightCurrent - weightGoal);
 
-  if (goal === "emagrecer") {
+  // Estratégias de déficit (emagrecer, cutting)
+  if (goal === "emagrecer" || goal === "cutting") {
     if (difference <= 5) return "light";
     if (difference <= 15) return "moderate";
     return "aggressive";
   }
 
+  // Estratégias de superávit (ganhar_peso)
   if (goal === "ganhar_peso") {
     if (difference <= 5) return "light";
     if (difference <= 10) return "moderate";
     return "aggressive";
   }
 
-  return "moderate"; // manter
+  return "moderate"; // manter, fitness, dieta_flexivel
 }
 
 /**
  * Determina o estilo de receita baseado no objetivo
  */
 export function calculateRecipeStyle(goal: string | null | undefined): RecipeStyle {
-  if (!goal || goal === "manter") {
+  if (!goal || goal === "manter" || goal === "dieta_flexivel") {
     return "regular";
   }
-  if (goal === "emagrecer") {
+  if (goal === "emagrecer" || goal === "cutting" || goal === "fitness") {
     return "fitness";
   }
   if (goal === "ganhar_peso") {
@@ -126,18 +130,28 @@ export function getGoalContext(profile: UserProfile): GoalContext {
     ? Math.abs(profile.weight_current - profile.weight_goal)
     : 0;
 
-  // Ajuste de calorias baseado na intensidade
+  // Ajuste de calorias baseado na intensidade e estratégia
   let calorieAdjustment = 0;
   if (profile.goal === "emagrecer") {
     calorieAdjustment = intensity === "light" ? -300 : intensity === "moderate" ? -500 : -700;
+  } else if (profile.goal === "cutting") {
+    // Cutting: déficit mais moderado, foco em preservar massa
+    calorieAdjustment = intensity === "light" ? -250 : intensity === "moderate" ? -400 : -550;
   } else if (profile.goal === "ganhar_peso") {
     calorieAdjustment = intensity === "light" ? 250 : intensity === "moderate" ? 400 : 600;
   }
+  // manter, fitness, dieta_flexivel: calorieAdjustment = 0
 
   // Multiplicador de proteína baseado no objetivo e intensidade
   let proteinMultiplier = 1.6; // default para manter
   if (profile.goal === "emagrecer") {
     proteinMultiplier = intensity === "aggressive" ? 2.2 : intensity === "moderate" ? 2.0 : 1.8;
+  } else if (profile.goal === "cutting") {
+    // Cutting: proteína mais alta para preservar massa muscular
+    proteinMultiplier = intensity === "aggressive" ? 2.5 : intensity === "moderate" ? 2.2 : 2.0;
+  } else if (profile.goal === "fitness") {
+    // Fitness: proteína elevada sem déficit calórico
+    proteinMultiplier = 2.0;
   } else if (profile.goal === "ganhar_peso") {
     proteinMultiplier = intensity === "aggressive" ? 2.4 : intensity === "moderate" ? 2.2 : 2.0;
   }
@@ -183,6 +197,36 @@ export function buildGoalContextInstructions(profile: UserProfile): string {
 - ESTILO: RECEITAS FITNESS - baixa caloria, alto valor nutricional`;
   }
 
+  if (profile.goal === "cutting") {
+    const intensityLabel = {
+      light: "LEVE (até 5kg)",
+      moderate: "MODERADO (5-10kg)", 
+      aggressive: "INTENSIVO (mais de 10kg)"
+    }[context.goalIntensity];
+
+    return `
+🔪 OBJETIVO: CUTTING - ${intensityLabel}
+- Meta de definição: ${context.weightDifference}kg
+- Déficit calórico: ${Math.abs(context.calorieAdjustment)} kcal/dia
+- Proteína: ${context.proteinMultiplier}g por kg de peso (ALTA para preservar massa)
+- PRIORIZAR: Proteínas de alta qualidade, vegetais fibrosos, baixa caloria
+- EVITAR: Carboidratos refinados, açúcares, gorduras saturadas
+- PREFERIR: Carnes magras, peixes, ovos, vegetais verdes
+- ESTILO: RECEITAS CUTTING - máxima proteína, mínima caloria`;
+  }
+
+  if (profile.goal === "fitness") {
+    return `
+💪 OBJETIVO: FITNESS / RECOMPOSIÇÃO
+- Foco em massa magra sem alterar peso
+- Calorias equilibradas (manutenção)
+- Proteína: ${context.proteinMultiplier}g por kg de peso (ELEVADA)
+- PRIORIZAR: Proteínas magras, carboidratos complexos, gorduras saudáveis
+- INCLUIR: Alimentos funcionais, alto valor proteico
+- PREFERIR: Refeições balanceadas e nutritivas
+- ESTILO: RECEITAS FITNESS - foco em qualidade e proteína`;
+  }
+
   if (profile.goal === "ganhar_peso") {
     const intensityLabel = {
       light: "LEVE (até 5kg)",
@@ -191,7 +235,7 @@ export function buildGoalContextInstructions(profile: UserProfile): string {
     }[context.goalIntensity];
 
     return `
-💪 OBJETIVO: GANHO DE MASSA - ${intensityLabel}
+📈 OBJETIVO: GANHO DE MASSA - ${intensityLabel}
 - Meta de ganho: ${context.weightDifference}kg
 - Superávit calórico: +${context.calorieAdjustment} kcal/dia
 - Proteína: ${context.proteinMultiplier}g por kg de peso
@@ -201,8 +245,18 @@ export function buildGoalContextInstructions(profile: UserProfile): string {
 - ESTILO: RECEITAS ALTA CALORIA - densidade nutricional, calorias adequadas`;
   }
 
+  if (profile.goal === "dieta_flexivel") {
+    return `
+🎯 OBJETIVO: DIETA FLEXÍVEL
+- Usuário define suas próprias metas calóricas
+- Flexibilidade nas escolhas alimentares
+- Respeitar as restrições e intolerâncias
+- ESTILO: RECEITAS VARIADAS - foco na variedade e prazer`;
+  }
+
   return "";
 }
+
 
 // ============================================
 // CONFIGURAÇÃO DE CULINÁRIA POR PAÍS
@@ -1198,17 +1252,29 @@ export function calculateMacroTargets(profile: UserProfile): MacroTargets {
     // Obter contexto do objetivo para ajustes personalizados
     const goalContext = getGoalContext(profile);
 
-    if (profile.goal === "emagrecer") {
-      // Usar ajuste de calorias baseado na intensidade
+    if (profile.goal === "emagrecer" || profile.goal === "cutting") {
+      // Estratégias de déficit: emagrecer e cutting
       const minCalories = profile.sex === "male" ? 1500 : 1200;
       dailyCalories = Math.max(tdee + goalContext.calorieAdjustment, minCalories);
       dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * goalContext.proteinMultiplier);
       mode = "lose";
     } else if (profile.goal === "ganhar_peso") {
+      // Estratégia de superávit
       dailyCalories = tdee + goalContext.calorieAdjustment;
       dailyProtein = Math.round((profile.weight_goal || profile.weight_current) * goalContext.proteinMultiplier);
       mode = "gain";
+    } else if (profile.goal === "fitness") {
+      // Fitness: manutenção com proteína elevada
+      dailyCalories = tdee;
+      dailyProtein = Math.round(profile.weight_current * goalContext.proteinMultiplier);
+      mode = "maintain";
+    } else if (profile.goal === "dieta_flexivel") {
+      // Dieta flexível: valores base, usuário pode ajustar
+      dailyCalories = tdee;
+      dailyProtein = Math.round(profile.weight_current * 1.6);
+      mode = "maintain";
     } else {
+      // Manter (default)
       dailyCalories = tdee;
       dailyProtein = Math.round(profile.weight_current * 1.6);
       mode = "maintain";

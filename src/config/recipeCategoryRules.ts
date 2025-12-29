@@ -5,7 +5,7 @@
  * Para adicionar novas regras, basta adicionar entradas neste arquivo.
  * 
  * Regras:
- * - compatibleGoals: objetivos compatíveis (emagrecer, manter, ganhar_peso)
+ * - compatibleGoals: objetivos compatíveis (emagrecer, manter, ganhar_peso, cutting, fitness, dieta_flexivel)
  * - incompatibleGoals: objetivos incompatíveis
  * - requiredDietaryPreference: requer preferência alimentar específica
  * - incompatibleDietaryPreference: incompatível com preferência alimentar
@@ -15,9 +15,28 @@
 
 import type { Database } from "@/integrations/supabase/types";
 
-type UserGoal = Database["public"]["Enums"]["user_goal"];
+// Tipo expandido para incluir novas estratégias nutricionais
+// Mantemos compatibilidade com o ENUM antigo (emagrecer, manter, ganhar_peso)
+// e adicionamos as novas estratégias (cutting, fitness, dieta_flexivel)
+type BaseUserGoal = Database["public"]["Enums"]["user_goal"];
+type ExtendedUserGoal = BaseUserGoal | "cutting" | "fitness" | "dieta_flexivel";
+type UserGoal = ExtendedUserGoal;
+
 type DietaryPreference = Database["public"]["Enums"]["dietary_preference"];
 type UserContext = Database["public"]["Enums"]["user_context"];
+
+/**
+ * Mapeia estratégias novas para goals compatíveis (para filtros de categoria)
+ * Isso permite que categorias definidas com goals antigos funcionem com novas estratégias
+ */
+export const STRATEGY_TO_COMPATIBLE_GOALS: Record<string, BaseUserGoal[]> = {
+  emagrecer: ["emagrecer"],
+  cutting: ["emagrecer"], // Cutting é compatível com categorias de emagrecer
+  manter: ["manter"],
+  fitness: ["manter"], // Fitness é compatível com categorias de manter
+  ganhar_peso: ["ganhar_peso"],
+  dieta_flexivel: ["emagrecer", "manter", "ganhar_peso"], // Flexível é compatível com todas
+};
 
 export interface SubcategoryRule {
   name: string;

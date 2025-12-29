@@ -742,6 +742,8 @@ export default function Dashboard() {
                   setHasMealPlan(true);
                   setMealPlanKey(prev => prev + 1); // Força remontagem do MealPlanSection
                   setShowMealPlan(true);
+                  // Navigate to "Plano" tab on mobile
+                  setMobileActiveTab("meal-plan");
                 }}
                 initialData={weightData || undefined}
                 hasExistingPlan={hasMealPlan || hasActiveMealPlan}

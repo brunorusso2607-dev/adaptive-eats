@@ -84,9 +84,9 @@ export default function MealAlternativesSheet({
     setAlternatives([]);
     
     try {
-      // Use the new regenerate-meal-alternatives function which generates
-      // simple meal alternatives in the same format as the meal plan generator
-      const response = await supabase.functions.invoke("regenerate-meal-alternatives", {
+      // Use regenerate-ai-meal-alternatives which generates
+      // simple meal alternatives in the same format as generate-ai-meal-plan
+      const response = await supabase.functions.invoke("regenerate-ai-meal-alternatives", {
         body: {
           mealType,
           currentCalories: meal.recipe_calories,

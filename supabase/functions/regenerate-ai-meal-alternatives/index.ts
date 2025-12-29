@@ -13,7 +13,7 @@ const corsHeaders = {
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
   const timestamp = new Date().toISOString();
-  console.log(`[${timestamp}] [regenerate-meal-alternatives] ${step}`, details ? JSON.stringify(details) : "");
+  console.log(`[${timestamp}] [regenerate-ai-meal-alternatives] ${step}`, details ? JSON.stringify(details) : "");
 };
 
 // ============= REGIONAL CONFIG (simplified) =============
@@ -450,7 +450,7 @@ serve(async (req) => {
     const promptTokens = Math.ceil(prompt.length / 4);
     const completionTokens = Math.ceil(responseText.length / 4);
     await logAIUsage({
-      functionName: "regenerate-meal-alternatives",
+      functionName: "regenerate-ai-meal-alternatives",
       model: "gemini-2.5-flash-lite",
       promptTokens,
       completionTokens,

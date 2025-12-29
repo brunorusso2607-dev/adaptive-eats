@@ -485,32 +485,42 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
         </Button>
 
         {/* Meta de Peso */}
-        {profile.goal && profile.goal !== "manter" && (
+        {(profile.strategy_id || (profile.goal && profile.goal !== "manter")) && (
           <div className="space-y-2">
             <h3 className="font-semibold text-sm flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" />
               Meta de Peso
             </h3>
-            <div className={cn(
-              "p-3 rounded-xl border",
-              profile.goal === "emagrecer" 
-                ? "border-green-400/50 bg-green-50/50 dark:bg-green-950/20"
-                : "border-blue-400/50 bg-blue-50/50 dark:bg-blue-950/20"
-            )}>
-              <div className="flex items-center gap-2 mb-2">
-                {profile.goal === "emagrecer" ? (
-                  <TrendingDown className="w-4 h-4 text-green-600" />
-                ) : (
-                  <TrendingUp className="w-4 h-4 text-blue-600" />
-                )}
-                <span className="font-medium text-sm">{getProfileLabel("goals", profile.goal)}</span>
-              </div>
-              {profile.weight_current && profile.weight_goal && (
-                <p className="text-xs text-muted-foreground">
-                  {profile.weight_current}kg → {profile.weight_goal}kg
-                </p>
-              )}
-            </div>
+            {(() => {
+              const selectedStrategy = strategies?.find(s => s.id === profile.strategy_id);
+              const derivedGoal = selectedStrategy ? deriveGoalFromStrategy(selectedStrategy.key) : profile.goal;
+              const isLossGoal = derivedGoal === "emagrecer";
+              
+              return (
+                <div className={cn(
+                  "p-3 rounded-xl border",
+                  isLossGoal 
+                    ? "border-green-400/50 bg-green-50/50 dark:bg-green-950/20"
+                    : "border-blue-400/50 bg-blue-50/50 dark:bg-blue-950/20"
+                )}>
+                  <div className="flex items-center gap-2 mb-2">
+                    {isLossGoal ? (
+                      <TrendingDown className="w-4 h-4 text-green-600" />
+                    ) : (
+                      <TrendingUp className="w-4 h-4 text-blue-600" />
+                    )}
+                    <span className="font-medium text-sm">
+                      {selectedStrategy?.label || getProfileLabel("goals", profile.goal)}
+                    </span>
+                  </div>
+                  {profile.weight_current && profile.weight_goal && (
+                    <p className="text-xs text-muted-foreground">
+                      {profile.weight_current}kg → {profile.weight_goal}kg
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
           </div>
         )}
 

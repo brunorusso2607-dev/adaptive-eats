@@ -212,6 +212,32 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - CERTO: "1 wrap integral recheado com atum e alface" ✓
 - CERTO: "1 sanduíche de pão integral com frango e tomate" ✓
 
+🍳 REGRA DE AGRUPAMENTO DE PREPARAÇÕES (CRÍTICO):
+- Quando ingredientes formam UMA ÚNICA PREPARAÇÃO culinária, AGRUPE em UM ÚNICO ITEM
+- A gramagem total deve ser a SOMA dos componentes
+- Isso se aplica a: ovos + vegetais refogados, proteínas + molhos, grãos + legumes cozidos juntos
+
+ERRADO (confuso para o usuário):
+{"name": "3 claras de ovo mexidas", "grams": 150}
+{"name": "1 xícara de espinafre refogado", "grams": 80}
+{"name": "1 tomate pequeno picado", "grams": 80}
+❌ O usuário não sabe que são preparados juntos!
+
+CERTO (claro e prático):
+{"name": "Claras mexidas com espinafre e tomate", "grams": 310}
+✓ Indica claramente que é UMA ÚNICA preparação
+
+REGRA: Se ingredientes são COZIDOS/PREPARADOS JUNTOS → UM ITEM COMPOSTO
+- Ovos + vegetais refogados = "Omelete/Mexido com [vegetais]"
+- Frango + molho + arroz = "Frango ao [molho] com arroz"
+- Feijão + arroz servidos juntos = "Arroz com feijão"
+
+ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
+- Pães/torradas (acompanhamento sólido)
+- Frutas inteiras (sobremesa/lanche)
+- Bebidas (café, chá, suco)
+- Iogurtes (consumidos à parte)
+
 ⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
 - LÍQUIDOS (água, sucos, chás, leite, caldos, sopas): usar "xícara", "copo", "ml"
 - PROTEÍNAS (carnes, peixes, frango): usar "filé", "pedaço", "porção"
@@ -222,20 +248,18 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - GORDURAS/ÓLEOS: usar "colher de sopa", "colher de chá"
 
 Exemplos CORRETOS:
+{"name": "Omelete de claras com espinafre e tomate", "grams": 310}
+{"name": "Frango grelhado com legumes salteados", "grams": 280}
 {"name": "1 filé médio de salmão grelhado", "grams": 120}
-{"name": "2 colheres de sopa de arroz integral", "grams": 150}
-{"name": "1 porção de brócolis cozido", "grams": 100}
 {"name": "1 banana média", "grams": 120}
-{"name": "1 xícara de chá verde", "grams": 200}
+{"name": "1 xícara de chá verde (sem açúcar)", "grams": 200}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
-{"name": "1 porção de atum em conserva", "grams": 100}
 
 Exemplos INCORRETOS (NÃO FAZER):
+{"name": "3 claras de ovo mexidas", "grams": 150} + {"name": "1 xícara de espinafre", "grams": 80} ❌ (preparados juntos!)
 {"name": "100g de atum em conserva", "grams": 100} ❌ (gramagem duplicada)
 {"name": "1 wrap integral", "grams": 50} ❌ (wrap sem recheio)
 {"name": "1 xícara de brócolis", "grams": 100} ❌ (brócolis é sólido)
-{"name": "Salmão", "grams": "120g"} ❌ (sem medida caseira)
-{"name": "Arroz", "grams": 150} ❌ (sem medida caseira)
 
 Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;
 

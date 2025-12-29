@@ -143,3 +143,6 @@ verify_jwt = false
 
 [functions.suggest-smart-substitutes]
 verify_jwt = false
+
+[functions.populate-usda-queue]
+verify_jwt = false

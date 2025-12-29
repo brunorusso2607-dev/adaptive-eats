@@ -647,16 +647,27 @@ IMPORTANTE:
 
 📐 FORMATO DOS ALIMENTOS (foods):
 Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
-- O campo "name" DEVE incluir a quantidade humanizada: "1 filé médio de salmão", "2 colheres de sopa de arroz", "1 banana média"
+- O campo "name" DEVE incluir a quantidade humanizada
 - O campo "grams" DEVE ser um NÚMERO PURO (sem "g"): 120, 150, 100
+
+⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
+- LÍQUIDOS (água, sucos, chás, leite, caldos, sopas): usar "xícara", "copo", "ml"
+- PROTEÍNAS (carnes, peixes, frango): usar "filé", "pedaço", "porção"
+- OVOS: usar "unidade" (ex: "2 ovos cozidos")
+- GRÃOS/ARROZ/MASSAS: usar "colher de sopa", "colher de servir", "porção"
+- VEGETAIS SÓLIDOS (brócolis, cenoura, alface): usar "porção", "folhas", "floretes", "ramos" (NUNCA "xícara")
+- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média", "1 maçã pequena")
+- GORDURAS/ÓLEOS: usar "colher de sopa", "colher de chá"
 
 Exemplos CORRETOS:
 {"name": "1 filé médio de salmão grelhado", "grams": 120}
 {"name": "2 colheres de sopa de arroz integral", "grams": 150}
-{"name": "1 xícara de brócolis cozido", "grams": 100}
+{"name": "1 porção de brócolis cozido", "grams": 100}
 {"name": "1 banana média", "grams": 120}
+{"name": "1 xícara de chá verde", "grams": 200}
 
 Exemplos INCORRETOS (NÃO FAZER):
+{"name": "1 xícara de brócolis", "grams": 100} ❌ (brócolis é sólido, usar "porção")
 {"name": "Salmão", "grams": "120g"} ❌
 {"name": "Arroz", "grams": 150} ❌
 

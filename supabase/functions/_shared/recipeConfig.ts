@@ -1963,15 +1963,24 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 📐 FORMATO DOS INGREDIENTES:
 Cada item: {"item": "QUANTIDADE + ALIMENTO", "quantity": "NÚMERO", "unit": "g"}
-- O campo "item" DEVE incluir a quantidade humanizada: "1 filé médio de frango", "2 col. sopa de arroz"
+- O campo "item" DEVE incluir a quantidade humanizada
 - O campo "quantity" DEVE ser o valor numérico em gramas (ex: "120")
 - O campo "unit" DEVE ser sempre "g"
+
+⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
+- LÍQUIDOS (água, sucos, chás, leite, caldos): usar "xícara", "copo", "ml"
+- PROTEÍNAS (carnes, peixes, frango): usar "filé", "pedaço", "porção"
+- OVOS: usar "unidade" (ex: "2 ovos cozidos")
+- GRÃOS/ARROZ/MASSAS: usar "colher de sopa", "colher de servir"
+- VEGETAIS SÓLIDOS (brócolis, cenoura, alface): usar "porção", "folhas", "floretes" (NUNCA "xícara")
+- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média")
+- GORDURAS/ÓLEOS: usar "colher de sopa", "colher de chá"
 
 Exemplos CORRETOS:
 • {"item": "2 colheres de sopa de arroz integral", "quantity": "100", "unit": "g"}
 • {"item": "1 filé médio de frango grelhado", "quantity": "120", "unit": "g"}
-• {"item": "1 banana média", "quantity": "120", "unit": "g"}
-• {"item": "1 xícara de brócolis cozido", "quantity": "100", "unit": "g"}
+• {"item": "1 porção de brócolis cozido", "quantity": "100", "unit": "g"}
+• {"item": "1 xícara de chá verde", "quantity": "200", "unit": "g"}
 
 🔧 JSON (SEM recipe_instructions):
 {

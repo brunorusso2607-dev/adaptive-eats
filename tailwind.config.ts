@@ -117,6 +117,11 @@ export default {
           "75%": { transform: "scale(1.15)" },
           "100%": { transform: "scale(1)" },
         },
+        "pulse-alert": {
+          "0%": { opacity: "1", transform: "scale(1)" },
+          "50%": { opacity: "0.5", transform: "scale(1.02)" },
+          "100%": { opacity: "1", transform: "scale(1)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
@@ -127,6 +132,7 @@ export default {
         "slide-in-right": "slide-in-right 0.4s ease-out forwards",
         "shake": "shake 0.5s ease-in-out",
         "heart-pulse": "heart-pulse 0.4s ease-out",
+        "pulse-alert": "pulse-alert 0.3s ease-in-out",
       },
     },
   },

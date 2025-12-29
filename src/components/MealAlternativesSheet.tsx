@@ -75,7 +75,8 @@ export default function MealAlternativesSheet({
     }
   }, [open, meal?.id, mealType]);
 
-  // Load alternatives
+  // Load alternatives using the new regenerate-meal-alternatives function
+  // This uses the SAME format as generate-ai-meal-plan for consistency
   const loadAlternatives = async () => {
     if (!meal || !mealType) return;
     
@@ -83,10 +84,13 @@ export default function MealAlternativesSheet({
     setAlternatives([]);
     
     try {
-      const response = await supabase.functions.invoke("suggest-meal-alternatives", {
+      // Use the new regenerate-meal-alternatives function which generates
+      // simple meal alternatives in the same format as the meal plan generator
+      const response = await supabase.functions.invoke("regenerate-meal-alternatives", {
         body: {
           mealType,
           currentCalories: meal.recipe_calories,
+          optionsCount: 5,
         },
       });
 

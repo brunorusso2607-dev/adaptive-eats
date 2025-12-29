@@ -131,3 +131,6 @@ verify_jwt = false
 
 [functions.import-usda-food]
 verify_jwt = false
+
+[functions.regenerate-meal-alternatives]
+verify_jwt = false

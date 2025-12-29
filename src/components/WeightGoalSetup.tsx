@@ -136,7 +136,47 @@ function getHealthyWeightRange(heightCm: number): { min: number; max: number } {
   };
 }
 
-function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
+/**
+ * Validate if a nutritional strategy is compatible with activity level
+ * Based on scientific evidence for muscle preservation and body composition
+ */
+type StrategyActivityWarning = {
+  strategyKey: string;
+  incompatibleLevels: string[];
+  level: "warning" | "danger";
+  title: string;
+  message: string;
+  suggestion: string;
+};
+
+const STRATEGY_ACTIVITY_VALIDATIONS: StrategyActivityWarning[] = [
+  {
+    strategyKey: "cutting",
+    incompatibleLevels: ["sedentary", "light"],
+    level: "danger",
+    title: "Cutting requer treino de força",
+    message: "Cutting sem exercício resulta em perda de músculo, não de gordura. Estudos mostram que déficit calórico sem treino de resistência causa perda de 25-50% de massa magra.",
+    suggestion: "Aumente para pelo menos 'Moderado' (3-5x/semana com treino de força) ou escolha 'Emagrecimento' que é mais flexível.",
+  },
+  {
+    strategyKey: "fitness",
+    incompatibleLevels: ["sedentary", "light"],
+    level: "danger",
+    title: "Recomposição corporal requer treino de força",
+    message: "A estratégia Fitness (recomposição) só funciona com estímulo muscular adequado. Sem treino, não há como ganhar músculo enquanto perde gordura.",
+    suggestion: "Aumente para pelo menos 'Moderado' (3-5x/semana com foco em musculação) ou escolha 'Manutenção'.",
+  },
+  {
+    strategyKey: "ganhar_peso",
+    incompatibleLevels: ["sedentary", "light"],
+    level: "warning",
+    title: "Risco de ganho de gordura",
+    message: "Sem exercício, o excedente calórico de +400kcal será convertido majoritariamente em gordura, não músculo. Pesquisas indicam que apenas 30-40% do ganho será massa magra sem treino.",
+    suggestion: "Inicie treino de força 3-5x/semana para que o ganho seja principalmente muscular, ou reduza o superávit.",
+  },
+];
+
+function calculateHealthRisks(data: WeightGoalData, strategyKey?: string): HealthRisk[] {
   const risks: HealthRisk[] = [];
   
   if (!data.weight_current || !data.weight_goal || !data.height || !data.goal_mode) {
@@ -158,6 +198,26 @@ function calculateHealthRisks(data: WeightGoalData): HealthRisk[] {
   const healthyRange = getHealthyWeightRange(data.height);
   const sexLabel = data.sex === "female" ? "uma mulher" : data.sex === "male" ? "um homem" : "uma pessoa";
   const isHighlyActive = data.activity_level === "active" || data.activity_level === "very_active";
+
+  // ============================================================
+  // VALIDAÇÃO DE ESTRATÉGIA vs NÍVEL DE ATIVIDADE (CIENTÍFICO)
+  // ============================================================
+  if (strategyKey) {
+    const validation = STRATEGY_ACTIVITY_VALIDATIONS.find(v => v.strategyKey === strategyKey);
+    if (validation && validation.incompatibleLevels.includes(data.activity_level)) {
+      risks.push({
+        level: validation.level,
+        title: validation.title,
+        message: validation.message,
+        suggestion: validation.suggestion,
+      });
+      
+      // Se for danger, retorna imediatamente (bloqueia)
+      if (validation.level === "danger") {
+        return risks;
+      }
+    }
+  }
 
   // CRITICAL: Check for contradictory goal vs weight combination FIRST
   
@@ -394,7 +454,12 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
   } = usePhysicalInputHandlers(initialData?.height || null);
 
   const calculations = calculateMacros(data);
-  const healthRisks = calculateHealthRisks(data);
+  
+  // Encontra a chave da estratégia selecionada para validações científicas
+  const selectedStrategy = strategies?.find(s => s.id === data.strategy_id);
+  const strategyKey = selectedStrategy?.key;
+  
+  const healthRisks = calculateHealthRisks(data, strategyKey);
   const isComplete = data.weight_current && data.weight_goal && data.height && data.age && data.sex && data.goal_mode && data.strategy_id;
   const hasDangerRisk = healthRisks.some(r => r.level === "danger");
 

@@ -23,6 +23,11 @@ import {
   type UserPhysicalData,
   type NutritionalTargets,
 } from "../_shared/nutritionalCalculations.ts";
+// Importar cálculo de macros reais da tabela foods
+import {
+  calculateRealMacrosForFoods,
+  type FoodItem as RealMacrosFoodItem,
+} from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1658,9 +1663,11 @@ serve(async (req) => {
           .neq("id", mealPlanIdToUse);
       }
 
-      // Converter os dias gerados para meal_plan_items
+      // Converter os dias gerados para meal_plan_items COM MACROS REAIS
       const items: any[] = [];
       const targetWeekNum = weekNumber || 1;
+      let totalFromDb = 0;
+      let totalFromAi = 0;
       
       for (let dayIndex = 0; dayIndex < generatedDays.length; dayIndex++) {
         const day = generatedDays[dayIndex];
@@ -1670,27 +1677,63 @@ serve(async (req) => {
           const firstOption = meal.options?.[0];
           if (!firstOption) continue;
           
-          // Converter foods para o formato recipe_ingredients
-          const recipeIngredients = (firstOption.foods || []).map((food: any) => {
+          // Preparar foods para cálculo de macros reais
+          const foodsForCalculation: RealMacrosFoodItem[] = (firstOption.foods || []).map((food: any) => {
             if (typeof food === 'string') {
-              return { item: food, quantity: "", unit: "" };
+              return { name: food, grams: 100 }; // Estimativa padrão
             }
             return {
-              item: food.name || food.item || "",
-              quantity: food.grams ? `${food.grams}g` : (food.quantity || ""),
-              unit: food.unit || ""
+              name: food.name || food.item || "",
+              grams: food.grams || 100,
             };
           });
+          
+          // CALCULAR MACROS REAIS usando a tabela foods
+          logStep(`Calculating real macros for meal: ${firstOption.title}`, { 
+            ingredients: foodsForCalculation.length 
+          });
+          
+          const macroResult = await calculateRealMacrosForFoods(
+            supabaseClient,
+            foodsForCalculation
+          );
+          
+          totalFromDb += macroResult.fromDb;
+          totalFromAi += macroResult.fromAi;
+          
+          // Calcular totais dos macros
+          const totalMacros = macroResult.items.reduce(
+            (acc, item) => ({
+              calories: acc.calories + item.calories,
+              protein: acc.protein + item.protein,
+              carbs: acc.carbs + item.carbs,
+              fat: acc.fat + item.fat,
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 }
+          );
+          
+          // Converter foods para o formato recipe_ingredients (com macros individuais)
+          const recipeIngredients = macroResult.items.map((item) => ({
+            item: item.name,
+            quantity: `${item.grams}g`,
+            unit: "",
+            calories: item.calories,
+            protein: item.protein,
+            carbs: item.carbs,
+            fat: item.fat,
+            source: item.source,
+            food_id: item.food_id,
+          }));
           
           items.push({
             meal_plan_id: mealPlanIdToUse,
             day_of_week: dayIndex,
             meal_type: meal.meal_type,
             recipe_name: firstOption.title || meal.label,
-            recipe_calories: firstOption.calculated_calories || firstOption.calories_kcal || meal.target_calories,
-            recipe_protein: 0, // A IA não retorna macros detalhados neste formato
-            recipe_carbs: 0,
-            recipe_fat: 0,
+            recipe_calories: Math.round(totalMacros.calories),
+            recipe_protein: Math.round(totalMacros.protein * 10) / 10,
+            recipe_carbs: Math.round(totalMacros.carbs * 10) / 10,
+            recipe_fat: Math.round(totalMacros.fat * 10) / 10,
             recipe_prep_time: 15,
             recipe_ingredients: recipeIngredients,
             recipe_instructions: [],
@@ -1699,7 +1742,16 @@ serve(async (req) => {
         }
       }
 
-      logStep("Inserting meal items", { count: items.length });
+      const totalIngredients = totalFromDb + totalFromAi;
+      const matchRate = totalIngredients > 0 ? Math.round((totalFromDb / totalIngredients) * 100) : 0;
+      
+      logStep("Real macros calculation complete", { 
+        matchRate: `${matchRate}%`,
+        fromDatabase: totalFromDb,
+        fromAI: totalFromAi,
+      });
+
+      logStep("Inserting meal items with real macros", { count: items.length });
 
       const { error: itemsError } = await supabaseClient
         .from("meal_plan_items")
@@ -1719,6 +1771,9 @@ serve(async (req) => {
           stats: {
             daysGenerated: generatedDays.length,
             totalMeals: items.length,
+            macrosFromDatabase: totalFromDb,
+            macrosFromAI: totalFromAi,
+            databaseMatchRate: matchRate,
           }
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }

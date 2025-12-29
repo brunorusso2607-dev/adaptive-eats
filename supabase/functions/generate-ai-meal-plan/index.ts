@@ -104,8 +104,9 @@ function buildSimpleNutritionistPrompt(params: {
   baseSystemPrompt?: string; // Prompt base do banco de dados
   nutritionalContext?: string; // Contexto nutricional enriquecido
   strategyKey?: string; // Chave da estratégia nutricional (dieta_flexivel, cutting, etc.)
+  previousDaysMeals?: string[]; // Receitas dos dias anteriores para evitar repetição
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext, strategyKey } = params;
+  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext, strategyKey, previousDaysMeals = [] } = params;
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
   
@@ -157,6 +158,21 @@ ${strategyRules ? `
 🎯 ESTRATÉGIA NUTRICIONAL DO USUÁRIO (CRÍTICO):
 ==========================================================
 ${strategyRules}
+` : ''}
+
+${previousDaysMeals.length > 0 ? `
+==========================================================
+🚫 REGRA ANTI-REPETIÇÃO (CRÍTICO - VARIEDADE OBRIGATÓRIA):
+==========================================================
+As seguintes receitas JÁ FORAM USADAS nos dias anteriores deste plano.
+NÃO REPITA nenhuma delas. Crie receitas DIFERENTES e VARIADAS:
+
+${previousDaysMeals.map(m => `- ❌ ${m}`).join('\n')}
+
+IMPORTANTE: 
+- Evite não só os nomes idênticos, mas também variações do mesmo prato
+- Ex: Se "Wrap de frango" foi usado, NÃO use "Wrap integral com frango", "Wrap recheado com frango", etc.
+- Priorize VARIEDADE de proteínas, preparos e combinações a cada dia
 ` : ''}
 
 --------------------------------------------------
@@ -643,11 +659,18 @@ serve(async (req) => {
     // Generate plan for each day
     const generatedDays: SimpleDayPlan[] = [];
     const allViolations: Array<{ day: number; meal: string; food: string; reason: string; restriction: string }> = [];
+    
+    // Coletar receitas já geradas para evitar repetição entre dias
+    const previousDaysMeals: string[] = [];
 
     for (let dayIndex = 0; dayIndex < daysCount; dayIndex++) {
       const dayName = regional.dayNames?.[dayIndex % 7] || `Day ${dayIndex + 1}`;
       
-      logStep(`Generating day ${dayIndex + 1}`, { dayName, language: regional.language });
+      logStep(`Generating day ${dayIndex + 1}`, { 
+        dayName, 
+        language: regional.language,
+        previousMealsCount: previousDaysMeals.length 
+      });
 
       const prompt = buildSimpleNutritionistPrompt({
         dailyCalories,
@@ -660,7 +683,8 @@ serve(async (req) => {
         countryCode: userCountry,
         baseSystemPrompt: aiPromptData?.system_prompt,
         nutritionalContext,
-        strategyKey, // Passa a estratégia nutricional para aplicar persona culinária
+        strategyKey,
+        previousDaysMeals, // Passa receitas anteriores para evitar repetição
       });
 
       // Call Google AI API directly
@@ -801,6 +825,19 @@ serve(async (req) => {
       
       if (dayPlanValidated) {
         generatedDays.push(dayPlanValidated);
+        
+        // Coletar todas as receitas (títulos) geradas neste dia para evitar repetição
+        // nos próximos dias
+        for (const meal of dayPlanValidated.meals) {
+          for (const option of meal.options) {
+            if (option.title) {
+              previousDaysMeals.push(option.title);
+            }
+          }
+        }
+        logStep(`📋 Collected ${previousDaysMeals.length} recipes for anti-repetition`, { 
+          latestRecipes: previousDaysMeals.slice(-6) // Mostrar as 6 últimas
+        });
       } else {
         throw new Error(`Failed to generate valid plan for day ${dayIndex + 1} after ${MAX_RETRIES} retries`);
       }

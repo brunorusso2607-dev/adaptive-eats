@@ -190,12 +190,13 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
           </h3>
           <ul className="space-y-1">
             {localIngredients.map((ingredient, index) => {
-              // Formata quantidade em gramas: "Salmão assado (150g)"
-              const quantityDisplay = ingredient.quantity && ingredient.unit
-                ? `(${ingredient.quantity}${ingredient.unit})`
-                : ingredient.quantity 
-                  ? `(${ingredient.quantity}g)` 
-                  : "";
+              // Limpa valor de quantity (remove "g" se já vier incluído para evitar "gg")
+              const cleanQuantity = ingredient.quantity?.toString().replace(/g$/i, '').trim() || '';
+              
+              // Formata quantidade em gramas: "1 filé de salmão (150g)"
+              const quantityDisplay = cleanQuantity 
+                ? `(${cleanQuantity}g)` 
+                : "";
               
               return (
                 <li 

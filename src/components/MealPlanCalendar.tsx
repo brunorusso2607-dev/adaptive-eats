@@ -253,6 +253,23 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return currentHour >= range.end;
   }, [MEAL_TIME_RANGES]);
 
+  // Verifica se uma refeição está ativa (dentro do horário) no momento atual
+  const isMealActive = useCallback((mealType: string, selectedDay: DayInfo | undefined): boolean => {
+    if (!selectedDay) return false;
+    
+    // Só pode estar ativa se é hoje
+    if (!selectedDay.isToday) return false;
+    
+    const now = new Date();
+    const currentHour = now.getHours() + now.getMinutes() / 60;
+    const range = MEAL_TIME_RANGES[mealType];
+    
+    if (!range) return false;
+    
+    // A refeição está ativa se a hora atual está dentro do range
+    return currentHour >= range.start && currentHour < range.end;
+  }, [MEAL_TIME_RANGES]);
+
   // Dietary compatibility hook - ANÁLISE DINÂMICA baseada em ingredientes
   const { getMealCompatibility, hasRestrictions, isLoading: isLoadingCompatibility, hasProfile } = useDynamicDietaryCompatibility();
 
@@ -626,11 +643,12 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
 
       {/* Meals List */}
       <div className="space-y-3 sm:space-y-4">
-        {orderedMealTypes.map((mealType) => {
+      {orderedMealTypes.map((mealType) => {
           const meal = currentDayMeals.find(m => m.meal_type === mealType);
           const config = getDynamicMealConfig(mealType);
           const Icon = config.icon;
           const isPastMeal = isMealPastTime(mealType, selectedDay);
+          const isActiveMeal = isMealActive(mealType, selectedDay);
 
           return (
             <Card 
@@ -640,7 +658,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                 isPastMeal 
                   ? "opacity-50 cursor-not-allowed border-muted bg-muted/20" 
                   : "hover:border-primary/30 cursor-pointer group",
-                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30"
+                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30",
+                // Highlight active meal
+                isActiveMeal && meal && "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary shadow-[0_0_16px_rgba(var(--primary),0.3)]"
               )}
               onClick={() => !isPastMeal && meal && onSelectMeal(meal)}
             >
@@ -664,6 +684,11 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                             </span>
                             {hasCustomTimes && (
                               <span className="text-[8px] text-primary/60">•</span>
+                            )}
+                            {isActiveMeal && (
+                              <Badge className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-primary text-primary-foreground uppercase animate-pulse">
+                                Agora
+                              </Badge>
                             )}
                             {isPastMeal && (
                               <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
@@ -724,19 +749,24 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
                     </div>
                   ) : (
                     <div className="flex-1">
-                      <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
-                        {config.label}
-                        <span className="normal-case font-normal text-muted-foreground/70">
-                          {getMealTime(mealType)}
-                        </span>
-                        {hasCustomTimes && (
-                          <span className="text-[8px] text-primary/60">•</span>
-                        )}
-                        {isPastMeal && (
-                          <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
-                            Passou
-                          </Badge>
-                        )}
+                          <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+                            {config.label}
+                            <span className="normal-case font-normal text-muted-foreground/70">
+                              {getMealTime(mealType)}
+                            </span>
+                            {hasCustomTimes && (
+                              <span className="text-[8px] text-primary/60">•</span>
+                            )}
+                            {isActiveMeal && (
+                              <Badge className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-primary text-primary-foreground uppercase animate-pulse">
+                                Agora
+                              </Badge>
+                            )}
+                            {isPastMeal && (
+                              <Badge variant="outline" className="text-[8px] sm:text-[10px] px-1.5 py-0 bg-muted text-muted-foreground border-muted-foreground/30 uppercase">
+                                Passou
+                              </Badge>
+                            )}
                       </p>
                       <p className="text-sm text-muted-foreground italic">Nenhuma receita definida</p>
                     </div>

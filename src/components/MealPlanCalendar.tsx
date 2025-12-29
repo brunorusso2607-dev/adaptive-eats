@@ -147,24 +147,39 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
       items.push({ icon: strategyIcon, label: currentStrategy.label, key: 'strategy' });
     }
     
-    // Intolerances (show first 2 max)
-    if (userProfile?.intolerances && userProfile.intolerances.length > 0) {
+    // Intolerances (show first 2 max, excluding "nenhuma")
+    const validIntolerances = (userProfile?.intolerances || []).filter(i => i && i !== 'nenhuma');
+    if (validIntolerances.length > 0) {
       const intoleranceLabels: Record<string, string> = {
         lactose: 'Lactose',
         gluten: 'Glúten',
+        acucar: 'Açúcar',
         amendoim: 'Amendoim',
         frutos_do_mar: 'Frutos do Mar',
+        frutos_mar: 'Frutos do Mar',
         ovos: 'Ovos',
+        ovo: 'Ovo',
         soja: 'Soja',
         castanhas: 'Castanhas',
         peixe: 'Peixe',
+        cafeina: 'Cafeína',
+        sulfitos: 'Sulfitos',
+        sesamo: 'Sésamo',
+        mostarda: 'Mostarda',
+        aipo: 'Aipo',
+        moluscos: 'Moluscos',
+        tremoco: 'Tremoço',
+        fodmap: 'FODMAP',
+        histamina: 'Histamina',
+        niquel: 'Níquel',
+        salicilatos: 'Salicilatos',
       };
-      const displayIntolerances = userProfile.intolerances
+      const displayIntolerances = validIntolerances
         .slice(0, 2)
         .map(i => intoleranceLabels[i] || i)
         .join(', ');
-      const extraCount = userProfile.intolerances.length > 2 ? ` +${userProfile.intolerances.length - 2}` : '';
-      items.push({ icon: Ban, label: `${displayIntolerances}${extraCount}`, key: 'intolerances' });
+      const extraCount = validIntolerances.length > 2 ? ` +${validIntolerances.length - 2}` : '';
+      items.push({ icon: Ban, label: `Sem ${displayIntolerances}${extraCount}`, key: 'intolerances' });
     }
     
     // Dietary preference

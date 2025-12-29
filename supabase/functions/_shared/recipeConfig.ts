@@ -1963,9 +1963,20 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 
 📐 FORMATO DOS INGREDIENTES:
 Cada item: {"item": "QUANTIDADE + ALIMENTO", "quantity": "NÚMERO", "unit": "g"}
-- O campo "item" DEVE incluir a quantidade humanizada
+- O campo "item" DEVE incluir APENAS medida caseira qualitativa (NUNCA números de gramas)
 - O campo "quantity" DEVE ser o valor numérico em gramas (ex: "120")
 - O campo "unit" DEVE ser sempre "g"
+
+🚫 REGRA ANTI-DUPLICAÇÃO DE GRAMAGEM (CRÍTICO):
+- NUNCA inclua números de gramas no campo "item" - a gramagem já aparece no campo "quantity"
+- ERRADO: "100g de atum em conserva" ❌
+- CERTO: "1 porção de atum em conserva" ✓
+
+🥪 REGRA DE ALIMENTOS-VEÍCULO (wraps, pães, tortillas):
+- Wraps, pães e tortillas são "veículos" que PRECISAM de recheio
+- SEMPRE apresentar como item COMPOSTO incluindo o recheio principal
+- ERRADO: listar "1 wrap integral" separado do recheio ❌
+- CERTO: "1 wrap integral recheado com atum e alface" ✓
 
 ⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
 - LÍQUIDOS (água, sucos, chás, leite, caldos): usar "xícara", "copo", "ml"
@@ -1981,6 +1992,12 @@ Exemplos CORRETOS:
 • {"item": "1 filé médio de frango grelhado", "quantity": "120", "unit": "g"}
 • {"item": "1 porção de brócolis cozido", "quantity": "100", "unit": "g"}
 • {"item": "1 xícara de chá verde", "quantity": "200", "unit": "g"}
+• {"item": "1 wrap integral recheado com frango e alface", "quantity": "180", "unit": "g"}
+• {"item": "1 porção de atum em conserva", "quantity": "100", "unit": "g"}
+
+Exemplos INCORRETOS (NÃO FAZER):
+• {"item": "100g de atum em conserva", "quantity": "100", "unit": "g"} ❌ (gramagem duplicada)
+• {"item": "1 wrap integral", "quantity": "50", "unit": "g"} ❌ (wrap sem recheio)
 
 🔧 JSON (SEM recipe_instructions):
 {

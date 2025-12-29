@@ -312,47 +312,45 @@ export default function NutritionalStrategiesTab() {
                 return (
                   <div
                     key={strategy.id}
-                    className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+                    className="flex items-start sm:items-center gap-3 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors overflow-hidden"
                   >
-                    <div className="flex items-center gap-3 sm:gap-4">
-                      <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab hidden sm:block" />
-                      
-                      <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-muted/50">
-                        <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <span className="font-medium">{strategy.label}</span>
-                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
-                            {strategy.key}
-                          </span>
-                          {strategy.is_flexible && (
-                            <Badge variant="secondary" className="text-xs">
-                              Flexível
-                            </Badge>
-                          )}
-                          {!strategy.is_active && (
-                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
-                              Inativo
-                            </span>
-                          )}
-                        </div>
-                        {strategy.description && (
-                          <p className="text-sm text-muted-foreground line-clamp-2 sm:truncate">
-                            {strategy.description}
-                          </p>
+                    <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab hidden sm:block flex-shrink-0 mt-3 sm:mt-0" />
+                    
+                    <div className="w-10 h-10 flex-shrink-0 flex items-center justify-center rounded-lg bg-muted/50">
+                      <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0 overflow-hidden">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-medium">{strategy.label}</span>
+                        <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
+                          {strategy.key}
+                        </span>
+                        {strategy.is_flexible && (
+                          <Badge variant="secondary" className="text-xs">
+                            Flexível
+                          </Badge>
                         )}
-                        <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs text-muted-foreground">
-                          <span>Cal: {strategy.calorie_modifier && strategy.calorie_modifier > 0 ? "+" : ""}{strategy.calorie_modifier || 0}</span>
-                          <span>Prot: {strategy.protein_per_kg || 0}g/kg</span>
-                          <span>Carb: {((strategy.carb_ratio || 0) * 100).toFixed(0)}%</span>
-                          <span>Fat: {((strategy.fat_ratio || 0) * 100).toFixed(0)}%</span>
-                        </div>
+                        {!strategy.is_active && (
+                          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
+                            Inativo
+                          </span>
+                        )}
+                      </div>
+                      {strategy.description && (
+                        <p className="text-sm text-muted-foreground truncate max-w-full">
+                          {strategy.description}
+                        </p>
+                      )}
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs text-muted-foreground">
+                        <span>Cal: {strategy.calorie_modifier && strategy.calorie_modifier > 0 ? "+" : ""}{strategy.calorie_modifier || 0}</span>
+                        <span>Prot: {strategy.protein_per_kg || 0}g/kg</span>
+                        <span>Carb: {((strategy.carb_ratio || 0) * 100).toFixed(0)}%</span>
+                        <span>Fat: {((strategy.fat_ratio || 0) * 100).toFixed(0)}%</span>
                       </div>
                     </div>
 
-                    <div className="flex items-center justify-end gap-2 sm:gap-1 ml-auto sm:ml-0 flex-shrink-0">
+                    <div className="flex items-center gap-1 flex-shrink-0">
                       <Switch
                         checked={strategy.is_active}
                         onCheckedChange={(checked) =>

@@ -189,23 +189,32 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
             </span>
           </h3>
           <ul className="space-y-1">
-            {localIngredients.map((ingredient, index) => (
-              <li 
-                key={index} 
-                className="flex items-start gap-2 py-1.5 hover:bg-muted/30 rounded px-1 transition-colors cursor-pointer group"
-                onClick={() => handleOpenSubstitution(ingredient)}
-              >
-                {/* Bullet point */}
-                <span className="text-primary mt-0.5">•</span>
-                
-                {/* Formato nutricionista: "1 banana média" - gramas internas para cálculos */}
-                <span className="flex-1 text-foreground">
-                  {ingredient.item}
-                </span>
-                
-                <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-              </li>
-            ))}
+            {localIngredients.map((ingredient, index) => {
+              // Formata quantidade em gramas: "Salmão assado (150g)"
+              const quantityDisplay = ingredient.quantity && ingredient.unit
+                ? `(${ingredient.quantity}${ingredient.unit})`
+                : ingredient.quantity 
+                  ? `(${ingredient.quantity}g)` 
+                  : "";
+              
+              return (
+                <li 
+                  key={index} 
+                  className="flex items-start gap-2 py-1.5 hover:bg-muted/30 rounded px-1 transition-colors cursor-pointer group"
+                  onClick={() => handleOpenSubstitution(ingredient)}
+                >
+                  {/* Bullet point */}
+                  <span className="text-primary mt-0.5">•</span>
+                  
+                  {/* Formato com gramas: "Salmão assado (150g)" */}
+                  <span className="flex-1 text-foreground">
+                    {ingredient.item} {quantityDisplay && <span className="text-muted-foreground">{quantityDisplay}</span>}
+                  </span>
+                  
+                  <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                </li>
+              );
+            })}
           </ul>
           
           {/* Badge de segurança */}

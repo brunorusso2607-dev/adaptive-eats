@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2, Settings2, Lock, CalendarClock } from "lucide-react";
+import { Coffee, UtensilsCrossed, Cookie, Moon, Soup, Flame, Beef, Wheat, X, RefreshCw, Zap, Sparkles, Loader2, Settings2, Lock, CalendarClock, TrendingDown, Activity, TrendingUp, Ban, Leaf, Fish, Utensils, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { FavoriteButton } from "./FavoriteButton";
 import { DietaryCompatibilityBadge } from "./DietaryCompatibilityBadge";
@@ -10,6 +10,7 @@ import { DietaryCompatibilitySummary } from "./DietaryCompatibilitySummary";
 import { useDynamicDietaryCompatibility } from "@/hooks/useDynamicDietaryCompatibility";
 import { useReplaceIncompatibleMeals } from "@/hooks/useReplaceIncompatibleMeals";
 import { usePlanMealTimes } from "@/hooks/usePlanMealTimes";
+import { useNutritionalStrategies } from "@/hooks/useNutritionalStrategies";
 import {
   Select,
   SelectContent,
@@ -60,6 +61,8 @@ type MealPlan = {
 type UserProfile = {
   intolerances?: string[] | null;
   dietary_preference?: string | null;
+  strategy_id?: string | null;
+  excluded_ingredients?: string[] | null;
 };
 
 type MealPlanCalendarProps = {
@@ -120,6 +123,70 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     const now = new Date();
     return Math.ceil((unlocksAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
   }, [mealPlan.unlocks_at]);
+
+  // Fetch nutritional strategies to display in profile banner
+  const { data: strategies } = useNutritionalStrategies();
+  
+  // Get current strategy label from user profile
+  const currentStrategy = useMemo(() => {
+    if (!userProfile?.strategy_id || !strategies) return null;
+    return strategies.find(s => s.id === userProfile.strategy_id);
+  }, [userProfile?.strategy_id, strategies]);
+
+  // Profile summary for banner - only show if we have meaningful data
+  const profileSummary = useMemo(() => {
+    const items: { icon: typeof TrendingDown; label: string; key: string }[] = [];
+    
+    // Strategy
+    if (currentStrategy) {
+      const strategyIcon = currentStrategy.key === 'emagrecer' || currentStrategy.key === 'cutting' 
+        ? TrendingDown 
+        : currentStrategy.key === 'ganhar_peso' 
+          ? TrendingUp 
+          : Activity;
+      items.push({ icon: strategyIcon, label: currentStrategy.label, key: 'strategy' });
+    }
+    
+    // Intolerances (show first 2 max)
+    if (userProfile?.intolerances && userProfile.intolerances.length > 0) {
+      const intoleranceLabels: Record<string, string> = {
+        lactose: 'Lactose',
+        gluten: 'Glúten',
+        amendoim: 'Amendoim',
+        frutos_do_mar: 'Frutos do Mar',
+        ovos: 'Ovos',
+        soja: 'Soja',
+        castanhas: 'Castanhas',
+        peixe: 'Peixe',
+      };
+      const displayIntolerances = userProfile.intolerances
+        .slice(0, 2)
+        .map(i => intoleranceLabels[i] || i)
+        .join(', ');
+      const extraCount = userProfile.intolerances.length > 2 ? ` +${userProfile.intolerances.length - 2}` : '';
+      items.push({ icon: Ban, label: `${displayIntolerances}${extraCount}`, key: 'intolerances' });
+    }
+    
+    // Dietary preference
+    if (userProfile?.dietary_preference && userProfile.dietary_preference !== 'comum') {
+      const dietLabels: Record<string, string> = {
+        vegetariana: 'Vegetariana',
+        vegana: 'Vegana',
+        pescetariana: 'Pescetariana',
+        cetogenica: 'Cetogênica',
+        flexitariana: 'Flexitariana',
+        low_carb: 'Low Carb',
+      };
+      const dietIcon = userProfile.dietary_preference === 'vegana' || userProfile.dietary_preference === 'vegetariana' 
+        ? Leaf 
+        : userProfile.dietary_preference === 'pescetariana' 
+          ? Fish 
+          : Utensils;
+      items.push({ icon: dietIcon, label: dietLabels[userProfile.dietary_preference] || userProfile.dietary_preference, key: 'diet' });
+    }
+    
+    return items;
+  }, [currentStrategy, userProfile]);
 
   // Busca horários personalizados do plano
   const { getTimeRanges, getMealTime, hasCustomTimes, getMealOrder, getLabels, settings: mealTimeSettings, isLoading: isLoadingMealTimes } = usePlanMealTimes({ planId: mealPlan.id });
@@ -404,6 +471,24 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
           </Button>
         </div>
       </div>
+
+      {/* Profile Personalization Banner */}
+      {profileSummary.length > 0 && (
+        <div className="flex items-center gap-2 flex-wrap text-xs text-muted-foreground bg-muted/30 rounded-lg px-3 py-2 border border-border/50">
+          <Info className="w-3.5 h-3.5 shrink-0" />
+          <span className="font-medium text-foreground/70">Personalizado:</span>
+          {profileSummary.map((item, index) => {
+            const IconComponent = item.icon;
+            return (
+              <span key={item.key} className="inline-flex items-center gap-1">
+                <IconComponent className="w-3 h-3" />
+                <span>{item.label}</span>
+                {index < profileSummary.length - 1 && <span className="text-border">•</span>}
+              </span>
+            );
+          })}
+        </div>
+      )}
 
       {/* Scheduled Plan Banner */}
       {isScheduledPlan && (

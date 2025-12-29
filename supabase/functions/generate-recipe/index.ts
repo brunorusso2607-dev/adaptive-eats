@@ -93,19 +93,42 @@ serve(async (req) => {
       activity_level: profile.activity_level || "moderate",
     };
 
-    const getCalorieModifier = (goal: string | null): number => {
-      switch (goal) {
-        case "emagrecer": return -500;
-        case "ganhar_peso": return 300;
-        default: return 0;
+    // Get calorie modifier from strategy or fallback to goal-based
+    let calorieModifier = 0;
+    let proteinPerKg = 1.6;
+    let carbRatio = 0.45;
+    let fatRatio = 0.30;
+    let strategyKey: string | undefined;
+
+    if (profile.strategy_id) {
+      const { data: strategy } = await supabaseClient
+        .from("nutritional_strategies")
+        .select("*")
+        .eq("id", profile.strategy_id)
+        .single();
+
+      if (strategy) {
+        strategyKey = strategy.key;
+        calorieModifier = strategy.calorie_modifier || 0;
+        proteinPerKg = strategy.protein_per_kg || 1.6;
+        carbRatio = strategy.carb_ratio || 0.45;
+        fatRatio = strategy.fat_ratio || 0.30;
+        logStep("Strategy loaded from database", { key: strategy.key, calorieModifier });
       }
-    };
+    } else {
+      // Fallback to goal-based modifiers
+      switch (profile.goal) {
+        case "emagrecer": calorieModifier = -500; break;
+        case "ganhar_peso": calorieModifier = 300; break;
+        default: calorieModifier = 0;
+      }
+    }
 
     const nutritionalTargets = calculateNutritionalTargets(physicalData, {
-      calorieModifier: getCalorieModifier(profile.goal),
-      proteinPerKg: 1.6,
-      carbRatio: 0.45,
-      fatRatio: 0.30,
+      calorieModifier,
+      proteinPerKg,
+      carbRatio,
+      fatRatio,
     });
 
     const nutritionalContext = nutritionalTargets
@@ -116,6 +139,7 @@ serve(async (req) => {
       tdee: nutritionalTargets?.tdee,
       targetCalories: nutritionalTargets?.targetCalories,
       hasContext: !!nutritionalContext,
+      strategyKey: strategyKey || 'fallback',
     });
 
     let recipe: any = null;

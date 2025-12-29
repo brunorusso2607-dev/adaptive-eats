@@ -84,20 +84,36 @@ export default function IngredientSubstitutionSheet({
 
   // Fetch smart substitutes from edge function
   const { data: smartData, isLoading, refetch } = useQuery({
-    queryKey: ["smart-substitutes", originalIngredient?.item, mealType],
+    queryKey: ["smart-substitutes", originalIngredient?.item, mealType, originalIngredient?.protein, originalIngredient?.grams],
     queryFn: async () => {
       if (!originalIngredient) return null;
       
-      const grams = parseGrams(originalIngredient.quantity);
+      const grams = originalIngredient.grams || parseGrams(originalIngredient.quantity);
+      
+      // Use the macros from the original ingredient if available
+      const ingredientProtein = originalIngredient.protein || 0;
+      const ingredientCarbs = originalIngredient.carbs || 0;
+      const ingredientFat = originalIngredient.fat || 0;
+      const ingredientCalories = originalIngredient.calories || 0;
+      
+      console.log('[IngredientSubstitutionSheet] Calling smart-substitutes with:', {
+        ingredientName: originalIngredient.item,
+        ingredientGrams: grams,
+        ingredientProtein,
+        ingredientCarbs,
+        ingredientFat,
+        ingredientCalories,
+        mealType
+      });
       
       const { data, error } = await supabase.functions.invoke('suggest-smart-substitutes', {
         body: {
           ingredientName: originalIngredient.item,
           ingredientGrams: grams,
-          ingredientProtein: 0, // Will be detected by AI based on name
-          ingredientCarbs: 0,
-          ingredientFat: 0,
-          ingredientCalories: 0,
+          ingredientProtein,
+          ingredientCarbs,
+          ingredientFat,
+          ingredientCalories,
           mealType: mealType || 'almoco',
           restrictions
         }

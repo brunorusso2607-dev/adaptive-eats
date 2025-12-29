@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Sheet,
   SheetContent,
@@ -63,9 +63,19 @@ export default function MealAlternativesSheet({
   const [alternatives, setAlternatives] = useState<MealAlternative[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState<number | null>(null);
-  const [hasLoaded, setHasLoaded] = useState(false);
 
-  // Load alternatives when sheet opens
+  // Auto-load alternatives when sheet opens
+  useEffect(() => {
+    if (open && meal && mealType) {
+      loadAlternatives();
+    } else if (!open) {
+      // Reset state when sheet closes
+      setAlternatives([]);
+      setIsLoading(false);
+    }
+  }, [open, meal?.id, mealType]);
+
+  // Load alternatives
   const loadAlternatives = async () => {
     if (!meal || !mealType) return;
     
@@ -86,7 +96,6 @@ export default function MealAlternativesSheet({
 
       if (response.data?.success && response.data?.alternatives) {
         setAlternatives(response.data.alternatives);
-        setHasLoaded(true);
       } else {
         throw new Error(response.data?.error || "Nenhuma alternativa encontrada");
       }
@@ -161,20 +170,8 @@ export default function MealAlternativesSheet({
     }
   };
 
-  // Handle sheet open
-  const handleOpenChange = (newOpen: boolean) => {
-    if (newOpen && !hasLoaded) {
-      loadAlternatives();
-    }
-    if (!newOpen) {
-      setHasLoaded(false);
-      setAlternatives([]);
-    }
-    onOpenChange(newOpen);
-  };
-
   return (
-    <Sheet open={open} onOpenChange={handleOpenChange}>
+    <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
         <SheetHeader className="pb-4 border-b border-border">
           <SheetTitle className="font-display text-lg text-left">

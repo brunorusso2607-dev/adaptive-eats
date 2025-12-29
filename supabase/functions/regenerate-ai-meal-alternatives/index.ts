@@ -13,6 +13,7 @@ import {
   getRestrictionText,
   getMealPromptRules,
   shouldAddSugarQualifier,
+  getStrategyPromptRules,
 } from "../_shared/mealGenerationConfig.ts";
 
 const corsHeaders = {
@@ -43,11 +44,13 @@ function buildAlternativesPrompt(params: {
   countryCode: string;
   optionsCount: number;
   addSugarQualifier: boolean;
+  strategyKey?: string;
 }): string {
-  const { mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, language, countryCode, optionsCount, addSugarQualifier } = params;
+  const { mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, language, countryCode, optionsCount, addSugarQualifier, strategyKey } = params;
 
   const restrictionText = getRestrictionText(restrictions, language, addSugarQualifier);
   const promptRules = getMealPromptRules(language);
+  const strategyRules = strategyKey ? getStrategyPromptRules(strategyKey, language) : '';
 
   let macroDescription = `${targetCalories} kcal`;
   if (targetProtein && targetCarbs && targetFat) {
@@ -70,6 +73,13 @@ RESTRIÇÕES OBRIGATÓRIAS (VETO LAYER - CRÍTICO):
 ${restrictionText}
 
 ⚠️ SEGURANÇA: Verifique TODAS as restrições acima ANTES de gerar qualquer opção.
+
+${strategyRules ? `
+==========================================================
+🎯 ESTRATÉGIA NUTRICIONAL DO USUÁRIO (CRÍTICO):
+==========================================================
+${strategyRules}
+` : ''}
 
 --------------------------------------------------
 INSTRUÇÕES CRÍTICAS:
@@ -212,6 +222,7 @@ serve(async (req) => {
       countryCode: userCountry,
       optionsCount,
       addSugarQualifier,
+      strategyKey, // Passa a estratégia nutricional para aplicar persona culinária
     });
 
     logStep("Prompt built", { length: prompt.length });

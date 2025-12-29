@@ -647,8 +647,20 @@ IMPORTANTE:
 
 📐 FORMATO DOS ALIMENTOS (foods):
 Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
-- O campo "name" DEVE incluir a quantidade humanizada
+- O campo "name" DEVE incluir APENAS medida caseira qualitativa (NUNCA números de gramas)
 - O campo "grams" DEVE ser um NÚMERO PURO (sem "g"): 120, 150, 100
+
+🚫 REGRA ANTI-DUPLICAÇÃO DE GRAMAGEM (CRÍTICO):
+- NUNCA inclua números de gramas no campo "name" - a gramagem já aparece no campo "grams"
+- ERRADO: "100g de atum em conserva" ❌
+- CERTO: "1 porção de atum em conserva" ✓
+
+🥪 REGRA DE ALIMENTOS-VEÍCULO (wraps, pães, tortillas):
+- Wraps, pães e tortillas são "veículos" que PRECISAM de recheio
+- SEMPRE apresentar como item COMPOSTO incluindo o recheio principal
+- ERRADO: listar "1 wrap integral" separado do recheio ❌
+- CERTO: "1 wrap integral recheado com atum e alface" ✓
+- CERTO: "1 sanduíche de pão integral com frango e tomate" ✓
 
 ⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
 - LÍQUIDOS (água, sucos, chás, leite, caldos, sopas): usar "xícara", "copo", "ml"
@@ -665,11 +677,15 @@ Exemplos CORRETOS:
 {"name": "1 porção de brócolis cozido", "grams": 100}
 {"name": "1 banana média", "grams": 120}
 {"name": "1 xícara de chá verde", "grams": 200}
+{"name": "1 wrap integral recheado com atum e alface", "grams": 200}
+{"name": "1 porção de atum em conserva", "grams": 100}
 
 Exemplos INCORRETOS (NÃO FAZER):
-{"name": "1 xícara de brócolis", "grams": 100} ❌ (brócolis é sólido, usar "porção")
-{"name": "Salmão", "grams": "120g"} ❌
-{"name": "Arroz", "grams": 150} ❌
+{"name": "100g de atum em conserva", "grams": 100} ❌ (gramagem duplicada)
+{"name": "1 wrap integral", "grams": 50} ❌ (wrap sem recheio)
+{"name": "1 xícara de brócolis", "grams": 100} ❌ (brócolis é sólido)
+{"name": "Salmão", "grams": "120g"} ❌ (sem medida caseira)
+{"name": "Arroz", "grams": 150} ❌ (sem medida caseira)
 
 Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;
 

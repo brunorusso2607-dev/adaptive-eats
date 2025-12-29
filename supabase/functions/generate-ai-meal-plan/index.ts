@@ -661,18 +661,21 @@ const CALORIE_DISTRIBUTION: Record<string, number> = {
 };
 
 // ============= INGREDIENTES PROIBIDOS POR RESTRICAO =============
+// IMPORTANTE: Usar termos específicos para evitar falsos positivos
+// Ex: "te" é muito curto e faz match com "tomate", "azeite", etc.
 const FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
   // Intolerâncias
   lactose: ['leite', 'queijo', 'iogurte', 'manteiga', 'requeijao', 'creme de leite', 'nata', 'coalho', 'mussarela', 'parmesao', 'ricota', 'cottage', 'cream cheese', 'chantilly', 'leite condensado', 'doce de leite', 'milk', 'cheese', 'yogurt', 'butter', 'cream', 'fromage', 'lait', 'beurre', 'formaggio', 'latte', 'burro', 'käse', 'milch', 'queso', 'crema', 'mantequilla'],
-  gluten: ['trigo', 'pao', 'massa', 'macarrao', 'pizza', 'bolo', 'biscoito', 'bolacha', 'torrada', 'farinha de trigo', 'cevada', 'centeio', 'aveia', 'wheat', 'bread', 'pasta', 'cake', 'cookie', 'biscuit', 'flour', 'barley', 'rye', 'oat', 'pain', 'gateau', 'farine', 'pane', 'torta', 'farina', 'brot', 'kuchen', 'mehl', 'pan', 'harina', 'galleta'],
+  gluten: ['trigo', 'farinha de trigo', 'cevada', 'centeio', 'wheat', 'bread', 'pasta', 'cake', 'cookie', 'biscuit', 'flour', 'barley', 'rye', 'pain', 'gateau', 'farine', 'pane', 'farina', 'brot', 'kuchen', 'mehl', 'harina', 'galleta'],
   amendoim: ['amendoim', 'pasta de amendoim', 'peanut', 'cacahuete', 'mani', 'arachide', 'erdnuss'],
   frutos_do_mar: ['camarao', 'lagosta', 'caranguejo', 'siri', 'marisco', 'lula', 'polvo', 'ostra', 'mexilhao', 'shrimp', 'lobster', 'crab', 'oyster', 'squid', 'octopus', 'crevette', 'homard', 'crabe', 'gambero', 'aragosta', 'granchio', 'garnele', 'hummer', 'krabbe', 'camaron', 'langosta', 'cangrejo'],
   peixe: ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'robalo', 'fish', 'salmon', 'tuna', 'cod', 'sardine', 'poisson', 'saumon', 'thon', 'morue', 'pesce', 'salmone', 'tonno', 'merluzzo', 'fisch', 'lachs', 'thunfisch', 'kabeljau', 'pescado', 'atun', 'bacalao'],
-  ovos: ['ovo', 'ovos', 'gema', 'clara', 'omelete', 'egg', 'eggs', 'omelette', 'oeuf', 'omelette', 'uovo', 'uova', 'frittata', 'ei', 'eier', 'omelett', 'huevo', 'huevos', 'tortilla'],
+  ovos: ['ovo', 'ovos', 'gema', 'clara de ovo', 'omelete', 'egg', 'eggs', 'omelette', 'oeuf', 'uovo', 'uova', 'frittata', 'eier', 'omelett', 'huevo', 'huevos', 'tortilla espanola'],
   soja: ['soja', 'tofu', 'edamame', 'leite de soja', 'molho de soja', 'shoyu', 'soy', 'soya', 'sojamilch', 'sojasauce'],
-  cafeina: ['cafe', 'cha preto', 'cha verde', 'guarana', 'chocolate', 'coffee', 'tea', 'cafe', 'the', 'caffe', 'te', 'kaffee', 'tee', 'schokolade'],
-  milho: ['milho', 'fuba', 'polenta', 'pipoca', 'corn', 'maize', 'mais', 'polenta', 'popcorn', 'granoturco', 'maiz', 'palomitas'],
-  leguminosas: ['feijao', 'lentilha', 'grao de bico', 'ervilha', 'fava', 'beans', 'lentils', 'chickpeas', 'peas', 'haricots', 'lentilles', 'pois chiches', 'petits pois', 'fagioli', 'lenticchie', 'ceci', 'piselli', 'bohnen', 'linsen', 'kichererbsen', 'erbsen', 'frijoles', 'lentejas', 'garbanzos', 'guisantes'],
+  // CAFEINA: Termos específicos para evitar match com "tomate", "azeite", "iogurte"
+  cafeina: ['cafe ', ' cafe', 'coffee', 'cha preto', 'cha verde', 'cha mate', 'green tea', 'black tea', 'guarana', 'chocolate', 'cacau', 'kaffee', 'schokolade', 'espresso', 'cappuccino', 'latte macchiato', 'energetico', 'red bull', 'monster'],
+  milho: ['milho', 'fuba', 'polenta', 'pipoca', 'corn', 'maize', 'popcorn', 'granoturco', 'maiz', 'palomitas'],
+  leguminosas: ['feijao', 'lentilha', 'grao de bico', 'ervilha seca', 'fava', 'beans', 'lentils', 'chickpeas', 'haricots', 'lentilles', 'pois chiches', 'fagioli', 'lenticchie', 'ceci', 'bohnen', 'linsen', 'kichererbsen', 'frijoles', 'lentejas', 'garbanzos'],
 };
 
 // Ingredientes de origem animal (para vegano/vegetariano)

@@ -599,6 +599,7 @@ function buildSimpleNutritionistPrompt(params: {
     `- ${m.label}: ${m.targetCalories} kcal`
   ).join('\n');
 
+  // Template com exemplos mais humanos e realistas (conforme prompt do banco)
   const mealsJsonTemplate = meals.map(m => `
     {
       "meal_type": "${m.type}",
@@ -606,11 +607,11 @@ function buildSimpleNutritionistPrompt(params: {
       "target_calories": ${m.targetCalories},
       "options": [
         {
-          "title": "Nome claro da refeicao",
+          "title": "Cafe da manha completo",
           "foods": [
-            {"name": "ovos mexidos", "grams": 100},
-            {"name": "pao frances", "grams": 50},
-            {"name": "cafe com leite", "grams": 200}
+            {"name": "2 ovos mexidos", "grams": 100},
+            {"name": "2 fatias de pao frances", "grams": 60},
+            {"name": "1 xicara de cafe com leite vegetal", "grams": 200}
           ],
           "calories_kcal": ${m.targetCalories}
         }
@@ -687,17 +688,28 @@ RESPOND EXCLUSIVELY IN VALID JSON:
 }
 
 IMPORTANT - FOOD FORMAT:
-- Each food MUST be an object with "name" (string) and "grams" (number)
+- Each food MUST be an object with "name" (string with quantity description) and "grams" (number)
+- The "name" field should include human-readable quantity (e.g., "2 ovos mexidos", "1 fatia de pao", "1 banana media")
 - DO NOT use simple strings for foods
 - Correct example:
   {
-    "title": "Complete breakfast",
+    "title": "Cafe da manha equilibrado",
     "foods": [
-      {"name": "scrambled eggs", "grams": 100},
-      {"name": "french bread", "grams": 50},
-      {"name": "coffee with plant milk", "grams": 200}
+      {"name": "2 ovos mexidos", "grams": 100},
+      {"name": "2 fatias de pao integral", "grams": 60},
+      {"name": "1 xicara de cafe com leite vegetal", "grams": 200}
     ],
-    "calories_kcal": 350
+    "calories_kcal": 380
+  }
+- Another example with fruit:
+  {
+    "title": "Lanche com frutas",
+    "foods": [
+      {"name": "1 banana media", "grams": 90},
+      {"name": "1 pote de iogurte natural", "grams": 170},
+      {"name": "2 colheres de granola", "grams": 30}
+    ],
+    "calories_kcal": 290
   }
 - WRONG example (do not use):
   "foods": ["2 scrambled eggs", "1 french bread"]

@@ -116,23 +116,71 @@ export function CustomMealTimesEditor({
     onEnabledMealsChange(localEnabledMeals);
   }, [localEnabledMeals, onEnabledMealsChange, isInitialized]);
 
-  // Lista de refeições ordenadas por horário
+  // Lista de refeições ordenadas por sort_order (ordem lógica do dia)
   const allMealsSorted = useMemo(() => {
-    return globalSettings.map(setting => ({
+    // globalSettings já vem ordenado por sort_order do banco
+    return globalSettings.map((setting, index) => ({
       id: setting.meal_type,
       name: setting.label,
       time: localTimes[setting.meal_type] || `${setting.start_hour.toString().padStart(2, '0')}:00`,
       enabled: localEnabledMeals.includes(setting.meal_type),
-    })).sort((a, b) => timeToMinutes(a.time) - timeToMinutes(b.time));
+      sortOrder: setting.sort_order,
+      index, // posição na lista ordenada
+    }));
   }, [globalSettings, localTimes, localEnabledMeals]);
+
+  // Validação: verifica se o horário proposto não inverte a ordem lógica
+  const validateTimeChange = useCallback((mealId: string, newTime: string): { valid: boolean; message?: string } => {
+    const mealIndex = allMealsSorted.findIndex(m => m.id === mealId);
+    if (mealIndex === -1) return { valid: true };
+
+    const newMinutes = timeToMinutes(newTime);
+    
+    // Verificar refeição anterior (se existir e estiver habilitada)
+    for (let i = mealIndex - 1; i >= 0; i--) {
+      const prevMeal = allMealsSorted[i];
+      if (prevMeal.enabled) {
+        const prevMinutes = timeToMinutes(prevMeal.time);
+        if (newMinutes <= prevMinutes) {
+          return { 
+            valid: false, 
+            message: `O horário deve ser depois de ${prevMeal.name} (${prevMeal.time})` 
+          };
+        }
+        break; // só precisa verificar a refeição habilitada mais próxima
+      }
+    }
+
+    // Verificar próxima refeição (se existir e estiver habilitada)
+    for (let i = mealIndex + 1; i < allMealsSorted.length; i++) {
+      const nextMeal = allMealsSorted[i];
+      if (nextMeal.enabled) {
+        const nextMinutes = timeToMinutes(nextMeal.time);
+        if (newMinutes >= nextMinutes) {
+          return { 
+            valid: false, 
+            message: `O horário deve ser antes de ${nextMeal.name} (${nextMeal.time})` 
+          };
+        }
+        break; // só precisa verificar a refeição habilitada mais próxima
+      }
+    }
+
+    return { valid: true };
+  }, [allMealsSorted]);
 
   // Gera dados para salvar (não usado mais, mas mantido para compatibilidade)
   const getDataToSave = useCallback((): CustomMealTimes => {
     return { ...localTimes };
   }, [localTimes]);
 
-  // Apenas atualiza estado local - salva só quando clicar em "Salvar Alterações"
+  // Atualiza estado local com validação de ordem lógica
   const handleTimeChange = (mealId: string, value: string) => {
+    const validation = validateTimeChange(mealId, value);
+    if (!validation.valid) {
+      toast.error(validation.message || "Horário inválido");
+      return;
+    }
     const newTimes = { ...localTimes, [mealId]: value };
     setLocalTimes(newTimes);
   };

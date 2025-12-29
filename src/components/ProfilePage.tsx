@@ -294,21 +294,31 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
             <Activity className="w-4 h-4 text-primary" />
             Dados Físicos
           </h3>
-          <PhysicalDataInputs
-            data={{
-              weight_current: editedProfile.weight_current,
-              weight_goal: editedProfile.weight_goal,
-              height: editedProfile.height,
-              age: editedProfile.age,
-              sex: editedProfile.sex,
-              activity_level: editedProfile.activity_level,
-            }}
-            onChange={(newData) => setEditedProfile({
-              ...editedProfile,
-              ...newData,
-            })}
-            showWeightGoal={true}
-          />
+          {(() => {
+            // Verifica se a estratégia selecionada é "manter" para esconder o campo de peso meta
+            const selectedStrategy = strategies?.find(s => s.id === editedProfile.strategy_id);
+            const isMaintenance = selectedStrategy?.key === "manter";
+            
+            return (
+              <PhysicalDataInputs
+                data={{
+                  weight_current: editedProfile.weight_current,
+                  weight_goal: isMaintenance ? editedProfile.weight_current : editedProfile.weight_goal,
+                  height: editedProfile.height,
+                  age: editedProfile.age,
+                  sex: editedProfile.sex,
+                  activity_level: editedProfile.activity_level,
+                }}
+                onChange={(newData) => setEditedProfile({
+                  ...editedProfile,
+                  ...newData,
+                  // Se for manutenção, peso meta = peso atual
+                  weight_goal: isMaintenance ? newData.weight_current : newData.weight_goal,
+                })}
+                showWeightGoal={!isMaintenance}
+              />
+            );
+          })()}
         </div>
 
         {/* Objetivo (Estratégia Nutricional) */}

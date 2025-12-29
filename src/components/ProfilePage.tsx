@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -153,6 +153,8 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
   const [isEditing, setIsEditing] = useState(false);
   const [isSendingTestNotification, setIsSendingTestNotification] = useState(false);
   const [showFavorites, setShowFavorites] = useState(false);
+  const [conflictPulse, setConflictPulse] = useState(false);
+  const conflictAlertRef = useRef<HTMLDivElement>(null);
 
   const sendTestNotification = async () => {
     setIsSendingTestNotification(true);
@@ -457,7 +459,13 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
             
             if (hasConflict) {
               return (
-                <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                <div 
+                  ref={conflictAlertRef}
+                  className={cn(
+                    "p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm transition-all",
+                    conflictPulse && "animate-[pulse-alert_0.3s_ease-in-out_2]"
+                  )}
+                >
                   <div className="flex items-center gap-2">
                     <AlertCircle className="w-4 h-4 shrink-0" />
                     <span className="font-medium">Objetivo contraditório</span>
@@ -482,10 +490,8 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
           </Button>
           <Button 
             className="flex-1 h-12" 
-            onClick={handleSave} 
-            disabled={(() => {
-              if (isSaving) return true;
-              
+            onClick={() => {
+              // Verifica se há conflito
               const selectedStrategy = strategies?.find(s => s.id === editedProfile.strategy_id);
               const strategyKey = selectedStrategy?.key;
               const currentWeight = editedProfile.weight_current;
@@ -495,11 +501,22 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
                 const isLossGoal = strategyKey === "emagrecer" || strategyKey === "cutting";
                 const isGainGoal = strategyKey === "ganhar_peso" || strategyKey === "fitness";
                 
-                return (isLossGoal && goalWeight >= currentWeight) ||
-                       (isGainGoal && goalWeight <= currentWeight);
+                const hasConflict = 
+                  (isLossGoal && goalWeight >= currentWeight) ||
+                  (isGainGoal && goalWeight <= currentWeight);
+                
+                if (hasConflict) {
+                  // Scroll até o alerta e piscar
+                  conflictAlertRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  setConflictPulse(true);
+                  setTimeout(() => setConflictPulse(false), 600);
+                  return;
+                }
               }
-              return false;
-            })()}
+              
+              handleSave();
+            }} 
+            disabled={isSaving}
           >
             {isSaving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Check className="w-4 h-4 mr-2" />}
             Salvar

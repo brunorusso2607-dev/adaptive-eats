@@ -21,6 +21,7 @@ import { useOnboardingOptions, getOptionLabel } from "@/hooks/useOnboardingOptio
 import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/CustomMealTimesEditor";
 import { Json } from "@/integrations/supabase/types";
 import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
+import { StrategyAccordion } from "@/components/StrategyAccordion";
 
 type UserProfile = {
   dietary_preference: string | null;
@@ -329,51 +330,18 @@ export default function ProfilePage({ user, subscription, onLogout, onBack }: Pr
             <Target className="w-4 h-4 text-primary" />
             Objetivo (Estratégia Nutricional)
           </h3>
-          <div className="grid grid-cols-1 gap-2">
-            {strategies?.map((strategy) => {
-              const getIcon = (key: string) => {
-                switch (key) {
-                  case "emagrecer": return TrendingDown;
-                  case "cutting": return Dumbbell;
-                  case "manter": return Scale;
-                  case "fitness": return Dumbbell;
-                  case "ganhar_peso": return TrendingUp;
-                  case "dieta_flexivel": return Utensils;
-                  default: return Sparkles;
-                }
-              };
-              const IconComponent = getIcon(strategy.key);
-              return (
-                <button
-                  type="button"
-                  key={strategy.id}
-                  onClick={() => {
-                    const derivedGoal = deriveGoalFromStrategy(strategy.key);
-                    setEditedProfile({ 
-                      ...editedProfile, 
-                      strategy_id: strategy.id,
-                      goal: derivedGoal
-                    });
-                  }}
-                  className={cn(
-                    "p-3 rounded-lg border text-left transition-all touch-manipulation flex items-center gap-3",
-                    editedProfile.strategy_id === strategy.id ? "border-primary bg-primary/10" : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <IconComponent className={cn("w-4 h-4", editedProfile.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground")} />
-                  <div className="flex-1 min-w-0">
-                    <span className="font-medium text-sm block">{strategy.label}</span>
-                    {strategy.description && (
-                      <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
-                    )}
-                  </div>
-                  {editedProfile.strategy_id === strategy.id && (
-                    <Check className="w-4 h-4 text-primary shrink-0" />
-                  )}
-                </button>
-              );
-            })}
-          </div>
+          <StrategyAccordion
+            strategies={strategies || []}
+            selectedStrategyId={editedProfile.strategy_id}
+            onSelectStrategy={(strategy) => {
+              const derivedGoal = deriveGoalFromStrategy(strategy.key);
+              setEditedProfile({ 
+                ...editedProfile, 
+                strategy_id: strategy.id,
+                goal: derivedGoal
+              });
+            }}
+          />
         </div>
 
         {/* Preferências Alimentares */}

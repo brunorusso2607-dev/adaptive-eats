@@ -112,6 +112,7 @@ export default function Dashboard() {
     sex: "male" | "female" | null;
     activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
     goal_mode: "lose" | "gain" | "maintain" | null;
+    strategy_id?: string | null;
   } | null>(null);
   
   // Recipe generation state
@@ -186,7 +187,7 @@ export default function Dashboard() {
   const checkOnboarding = async (userId: string) => {
     const { data } = await supabase
       .from("profiles")
-      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, dietary_preference, kids_mode")
+      .select("onboarding_completed, goal, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, dietary_preference, kids_mode, strategy_id")
       .eq("id", userId)
       .maybeSingle();
     
@@ -220,6 +221,7 @@ export default function Dashboard() {
           sex: data.sex as "male" | "female" | null,
           activity_level: (data.activity_level as any) || "moderate",
           goal_mode: goalToMode(data.goal || "manter"),
+          strategy_id: data.strategy_id,
         });
       }
     }
@@ -708,6 +710,7 @@ export default function Dashboard() {
                     sex: data.sex,
                     activity_level: data.activity_level,
                     goal_mode: data.calculations.mode,
+                    strategy_id: data.strategy_id,
                   });
                   // Goal is set based on user selection
                   if (data.calculations.mode === "lose") {
@@ -728,6 +731,7 @@ export default function Dashboard() {
                     sex: data.sex,
                     activity_level: data.activity_level,
                     goal_mode: data.calculations.mode,
+                    strategy_id: data.strategy_id,
                   });
                   // Goal is set based on user selection
                   if (data.calculations.mode === "lose") {

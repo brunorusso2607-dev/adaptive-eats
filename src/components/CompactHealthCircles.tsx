@@ -128,6 +128,7 @@ interface WeightData {
   sex: "male" | "female" | null;
   activity_level: "sedentary" | "light" | "moderate" | "active" | "very_active";
   goal_mode: "lose" | "gain" | "maintain" | null;
+  strategy_id?: string | null;
 }
 
 interface DailyConsumption {

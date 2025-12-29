@@ -17,6 +17,11 @@ import {
   getGlobalNutritionPrompt,
   getNutritionalSource
 } from "../_shared/nutritionPrompt.ts";
+import {
+  calculateNutritionalTargets,
+  buildNutritionalContextForPrompt,
+  type UserPhysicalData,
+} from "../_shared/nutritionalCalculations.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -77,6 +82,40 @@ serve(async (req) => {
     const isKidsMode = profile.context === "modo_kids";
     const isWeightLossMode = profile.goal === "emagrecer";
     const isWeightGainMode = profile.goal === "ganhar_peso";
+
+    // Calculate nutritional targets using centralized calculations
+    const physicalData: UserPhysicalData = {
+      sex: profile.sex || "masculino",
+      age: profile.age || 30,
+      height: profile.height || 170,
+      weight_current: profile.weight_current || 70,
+      activity_level: profile.activity_level || "moderate",
+    };
+
+    const getCalorieModifier = (goal: string | null): number => {
+      switch (goal) {
+        case "emagrecer": return -500;
+        case "ganhar_peso": return 300;
+        default: return 0;
+      }
+    };
+
+    const nutritionalTargets = calculateNutritionalTargets(physicalData, {
+      calorieModifier: getCalorieModifier(profile.goal),
+      proteinPerKg: 1.6,
+      carbRatio: 0.45,
+      fatRatio: 0.30,
+    });
+
+    const nutritionalContext = nutritionalTargets
+      ? buildNutritionalContextForPrompt(nutritionalTargets)
+      : null;
+
+    logStep("Nutritional targets calculated", {
+      tdee: nutritionalTargets?.tdee,
+      targetCalories: nutritionalTargets?.targetCalories,
+      hasContext: !!nutritionalContext,
+    });
 
     let recipe: any = null;
     let recipeFromPool = false;
@@ -164,7 +203,14 @@ serve(async (req) => {
       const nutritionalSource = getNutritionalSource(userCountry);
 
       const baseSystemPrompt = buildRecipeSystemPrompt(promptOptions);
-      const systemPrompt = `${globalNutritionPrompt}\n\nUSE ${nutritionalSource.sourceName} AS PRIMARY NUTRITIONAL SOURCE.\n\n${baseSystemPrompt}`;
+      
+      // Build enriched prompt with nutritional context
+      let systemPrompt = `${globalNutritionPrompt}\n\nUSE ${nutritionalSource.sourceName} AS PRIMARY NUTRITIONAL SOURCE.\n\n${baseSystemPrompt}`;
+      
+      if (nutritionalContext) {
+        systemPrompt += `\n\n${nutritionalContext}\n\n⚠️ IMPORTANTE: A receita gerada deve estar ALINHADA com as metas nutricionais do usuário listadas acima.`;
+      }
+      
       const userPrompt = buildRecipeUserPrompt(promptOptions);
 
       logStep("Prompts built", { 

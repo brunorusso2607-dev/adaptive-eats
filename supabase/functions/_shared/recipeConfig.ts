@@ -1962,10 +1962,16 @@ ${intolerancesStr}${excludedConstraint}${forbiddenBlock}
 📋 ${mealLabel}: ${mealGuidelines[mealType] || "Refeição equilibrada"}
 
 📐 FORMATO DOS INGREDIENTES:
-Cada item: {"item": "Alimento", "quantity": "X", "unit": "medida (Xg)"}
-Exemplos:
-• {"item": "Arroz integral", "quantity": "4", "unit": "col. sopa (100g)"}
-• {"item": "Frango grelhado", "quantity": "1", "unit": "filé (120g)"}
+Cada item: {"item": "QUANTIDADE + ALIMENTO", "quantity": "NÚMERO", "unit": "g"}
+- O campo "item" DEVE incluir a quantidade humanizada: "1 filé médio de frango", "2 col. sopa de arroz"
+- O campo "quantity" DEVE ser o valor numérico em gramas (ex: "120")
+- O campo "unit" DEVE ser sempre "g"
+
+Exemplos CORRETOS:
+• {"item": "2 colheres de sopa de arroz integral", "quantity": "100", "unit": "g"}
+• {"item": "1 filé médio de frango grelhado", "quantity": "120", "unit": "g"}
+• {"item": "1 banana média", "quantity": "120", "unit": "g"}
+• {"item": "1 xícara de brócolis cozido", "quantity": "100", "unit": "g"}
 
 🔧 JSON (SEM recipe_instructions):
 {
@@ -1977,7 +1983,8 @@ Exemplos:
   "recipe_fat": 12,
   "recipe_prep_time": ${isKidsMode ? 10 : 15},
   "recipe_ingredients": [
-    {"item": "...", "quantity": "...", "unit": "... (Xg)"}
+    {"item": "1 filé médio de frango grelhado", "quantity": "120", "unit": "g"},
+    {"item": "2 colheres de sopa de arroz integral", "quantity": "100", "unit": "g"}
   ],
   "recipe_instructions": []
 }

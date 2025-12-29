@@ -410,26 +410,31 @@ export default function MealDetailSheet({
                     )}
                   </h3>
                   <ul className="space-y-1">
-                    {ingredients.map((ingredient, index) => (
-                      <li 
-                        key={index} 
-                        className={cn(
-                          "flex items-start gap-2 py-1.5 group",
-                          isPastMeal && "opacity-70"
-                        )}
-                      >
-                        {/* Bullet point */}
-                        <span className="text-primary mt-1.5">•</span>
-                        
-                        {/* Formato nutricionista: "1 banana média" - gramas internas, invisíveis ao usuário */}
-                        <span className="flex-1 text-foreground">
-                          {ingredient.item}
-                          {ingredient.calories !== undefined && (
-                            <span className="text-muted-foreground text-sm ml-1">
-                              ({ingredient.calories} kcal)
-                            </span>
+                    {ingredients.map((ingredient, index) => {
+                      // Limpa valor de quantity (remove "g" se já vier incluído para evitar "gg")
+                      const cleanQuantity = ingredient.quantity?.toString().replace(/g$/i, '').trim() || '';
+                      const quantityDisplay = cleanQuantity ? `(${cleanQuantity}g)` : "";
+                      
+                      return (
+                        <li 
+                          key={index} 
+                          className={cn(
+                            "flex items-start gap-2 py-1.5 group",
+                            isPastMeal && "opacity-70"
                           )}
-                        </span>
+                        >
+                          {/* Bullet point */}
+                          <span className="text-primary mt-1.5">•</span>
+                          
+                          {/* Formato nutricionista: "1 banana média (120g)" */}
+                          <span className="flex-1 text-foreground">
+                            {ingredient.item}
+                            {quantityDisplay && (
+                              <span className="text-muted-foreground text-sm ml-1">
+                                {quantityDisplay}
+                              </span>
+                            )}
+                          </span>
                         
                         {!isPastMeal && (
                           <button
@@ -440,8 +445,9 @@ export default function MealDetailSheet({
                             <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
                           </button>
                         )}
-                      </li>
-                    ))}
+                        </li>
+                      );
+                    })}
                   </ul>
                   
                   {/* Badge de segurança */}

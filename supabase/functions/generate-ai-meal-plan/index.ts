@@ -641,10 +641,26 @@ RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
   "total_calories": ${dailyCalories}
 }
 
-IMPORTANTE: O campo "title" de cada opção DEVE ser o NOME DESCRITIVO DA REFEIÇÃO (ex: "Omelete de queijo com torradas", "Salada Caesar com frango grelhado", "Arroz integral com feijão e bife acebolado").
-NUNCA use nomes genéricos como "Opção 1", "Opção 2", "Refeição 1", etc.
+IMPORTANTE: 
+- O campo "title" DEVE ser o NOME DESCRITIVO DA REFEIÇÃO (ex: "Omelete de queijo com torradas", "Salada Caesar com frango grelhado").
+- NUNCA use nomes genéricos como "Opção 1", "Opção 2", "Refeição 1", etc.
 
-Cada opção deve ter: "title" (nome descritivo da refeição), "foods" (array de {"name", "grams"}), "calories_kcal"`;
+📐 FORMATO DOS ALIMENTOS (foods):
+Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
+- O campo "name" DEVE incluir a quantidade humanizada: "1 filé médio de salmão", "2 colheres de sopa de arroz", "1 banana média"
+- O campo "grams" DEVE ser um NÚMERO PURO (sem "g"): 120, 150, 100
+
+Exemplos CORRETOS:
+{"name": "1 filé médio de salmão grelhado", "grams": 120}
+{"name": "2 colheres de sopa de arroz integral", "grams": 150}
+{"name": "1 xícara de brócolis cozido", "grams": 100}
+{"name": "1 banana média", "grams": 120}
+
+Exemplos INCORRETOS (NÃO FAZER):
+{"name": "Salmão", "grams": "120g"} ❌
+{"name": "Arroz", "grams": 150} ❌
+
+Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;
 
   // PROMPT LIMPO: apenas prompt do banco + dados dinâmicos
   // Removido: globalNutritionPrompt, enrichedNutritionalContext, exemplos conflitantes

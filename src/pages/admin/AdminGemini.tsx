@@ -70,6 +70,8 @@ const getIconForFunction = (functionId: string) => {
       return <ChefHat className="w-5 h-5" />;
     case "generate-meal-plan":
       return <CalendarDays className="w-5 h-5" />;
+    case "generate-ai-meal-plan":
+      return <CalendarDays className="w-5 h-5" />;
     case "regenerate-meal":
       return <RefreshCw className="w-5 h-5" />;
     default:

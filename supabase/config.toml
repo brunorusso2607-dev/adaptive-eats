@@ -18,9 +18,6 @@ verify_jwt = false
 [functions.activate-account]
 verify_jwt = false
 
-[functions.generate-meal-plan]
-verify_jwt = false
-
 [functions.regenerate-meal]
 verify_jwt = false
 
@@ -109,4 +106,25 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.import-crea-foods]
+verify_jwt = false
+
+[functions.suggest-ingredient-substitutes]
+verify_jwt = false
+
+[functions.suggest-food-ai]
+verify_jwt = false
+
+[functions.generate-recipe]
+verify_jwt = false
+
+[functions.get-vapid-key]
+verify_jwt = false
+
+[functions.send-test-notification]
+verify_jwt = false
+
+[functions.check-subscription]
+verify_jwt = false
+
+[functions.create-admin-user]
 verify_jwt = false

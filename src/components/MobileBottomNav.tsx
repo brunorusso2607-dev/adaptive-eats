@@ -24,11 +24,13 @@ export default function MobileBottomNav({
   hasPendingMeal = false,
 }: MobileBottomNavProps) {
   return (
-    <nav className={cn(
-      "fixed left-0 right-0 z-50 md:hidden safe-area-bottom",
-      "bg-white/95 dark:bg-card/95 backdrop-blur-xl border-t border-border",
-      "bottom-[env(safe-area-inset-bottom,40px)]" // Fica acima do badge Lovable
-    )}>
+    <nav 
+      className={cn(
+        "fixed left-0 right-0 z-50 md:hidden",
+        "bg-white/95 dark:bg-card/95 backdrop-blur-xl border-t border-border"
+      )}
+      style={{ bottom: "calc(env(safe-area-inset-bottom, 0px) + 48px)" }}
+    >
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;

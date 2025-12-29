@@ -338,8 +338,10 @@ export default function NutritionalStrategiesTab() {
                         )}
                       </div>
                       {strategy.description && (
-                        <p className="text-sm text-muted-foreground truncate max-w-full">
-                          {strategy.description}
+                        <p className="text-sm text-muted-foreground line-clamp-1 break-all">
+                          {strategy.description.length > 50 
+                            ? `${strategy.description.slice(0, 50)}...` 
+                            : strategy.description}
                         </p>
                       )}
                       <div className="flex flex-wrap items-center gap-2 sm:gap-3 mt-1 text-xs text-muted-foreground">

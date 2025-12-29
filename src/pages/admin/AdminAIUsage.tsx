@@ -55,7 +55,7 @@ const MODULE_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   "analyze-label-photo": { label: "Código de Barras", icon: ScanLine, color: "#3b82f6" },
   "analyze-fridge-photo": { label: "Geladeira", icon: RefreshCw, color: "#8b5cf6" },
   "chat-assistant": { label: "Chat Assistente", icon: MessageSquare, color: "#f59e0b" },
-  "suggest-ingredient-substitutes": { label: "Substituir Ingredientes", icon: RefreshCw, color: "#ec4899" },
+  "suggest-ingredient-substitutes": { label: "Substituir Alimentos", icon: RefreshCw, color: "#ec4899" },
   "validate-ingredients": { label: "Validar Ingredientes", icon: Sparkles, color: "#14b8a6" },
   "generate-recipe": { label: "Gerar Receita", icon: ChefHat, color: "#f97316" },
   "regenerate-meal": { label: "Regenerar Refeição", icon: RefreshCw, color: "#6366f1" },

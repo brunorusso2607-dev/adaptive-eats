@@ -24,6 +24,7 @@ interface IngredientSubstitutionSheetProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   originalIngredient: OriginalIngredient | null;
+  mealType?: string;
   onSubstitute: (
     newIngredient: IngredientResult, 
     originalItem: string, 
@@ -45,6 +46,7 @@ export default function IngredientSubstitutionSheet({
   open,
   onOpenChange,
   originalIngredient,
+  mealType = 'almoco',
   onSubstitute,
 }: IngredientSubstitutionSheetProps) {
   const [selectedSubstitute, setSelectedSubstitute] = useState<SmartSubstitute | null>(null);
@@ -82,7 +84,7 @@ export default function IngredientSubstitutionSheet({
 
   // Fetch smart substitutes from edge function
   const { data: smartData, isLoading, refetch } = useQuery({
-    queryKey: ["smart-substitutes", originalIngredient?.item],
+    queryKey: ["smart-substitutes", originalIngredient?.item, mealType],
     queryFn: async () => {
       if (!originalIngredient) return null;
       
@@ -96,6 +98,7 @@ export default function IngredientSubstitutionSheet({
           ingredientCarbs: 0,
           ingredientFat: 0,
           ingredientCalories: 0,
+          mealType: mealType || 'almoco',
           restrictions
         }
       });
@@ -145,6 +148,8 @@ export default function IngredientSubstitutionSheet({
   const suggestions: SmartSubstitute[] = smartData?.suggestions || [];
   const originalCategory = smartData?.originalCategory;
   const mainMacro = smartData?.mainMacro;
+  const mainMacroValue = smartData?.mainMacroValue;
+  const mealTypeLabel = smartData?.mealType;
   const categoryInfo = MACRO_CATEGORY_LABELS[originalCategory] || MACRO_CATEGORY_LABELS.outro;
 
   return (
@@ -167,21 +172,27 @@ export default function IngredientSubstitutionSheet({
 
         {/* Category Info */}
         {!isLoading && originalCategory && (
-          <div className="px-6 pb-3 shrink-0">
-            <div className="flex items-center gap-2 text-sm">
+          <div className="px-6 pb-3 shrink-0 space-y-2">
+            <div className="flex items-center gap-2 text-sm flex-wrap">
               <span className="text-lg">{categoryInfo.icon}</span>
               <span className={cn("font-medium", categoryInfo.color)}>
                 Categoria: {categoryInfo.label}
               </span>
-              {mainMacro && (
-                <Badge variant="outline" className="text-xs">
+              {mainMacro && mainMacroValue !== undefined && (
+                <Badge variant="outline" className="text-xs bg-primary/5">
                   <Scale className="w-3 h-3 mr-1" />
-                  Igualando {mainMacro}
+                  Igualando {mainMacroValue}g de {mainMacro}
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              Sugestões com gramagem ajustada para manter seus macros
+            {mealTypeLabel && (
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <span>🍽️</span>
+                <span>Sugestões adequadas para <strong className="text-foreground">{mealTypeLabel}</strong></span>
+              </div>
+            )}
+            <p className="text-xs text-muted-foreground">
+              Gramagem calculada para igualar seus macros originais
             </p>
           </div>
         )}

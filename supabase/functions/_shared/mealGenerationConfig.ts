@@ -2730,3 +2730,82 @@ export function sortMealIngredients(foods: FoodItemWithGrams[]): FoodItemWithGra
     return categoryA - categoryB;
   });
 }
+
+/**
+ * LIMPEZA PÓS-GERAÇÃO: Remove menções a frutas e bebidas das instruções de preparo
+ * Regra: Frutas e bebidas devem estar listadas em "foods" mas NUNCA nas instruções
+ * 
+ * Exemplos de frases problemáticas que serão limpas:
+ * - "Acompanhe com café sem açúcar e banana"
+ * - "Sirva com a laranja como sobremesa"
+ * - "Finalize com suco de laranja"
+ */
+export function cleanInstructionsFromFruitsAndBeverages(instructions: string[]): string[] {
+  if (!instructions || instructions.length === 0) {
+    return instructions;
+  }
+
+  // Padrões de frutas comuns
+  const FRUIT_PATTERNS = [
+    'banana', 'maça', 'maca', 'laranja', 'melao', 'melão', 'melancia', 
+    'mamao', 'mamão', 'abacaxi', 'morango', 'uva', 'pera', 'kiwi',
+    'manga', 'goiaba', 'tangerina', 'limao', 'limão', 'acerola',
+    'framboesa', 'mirtilo', 'ameixa', 'cereja', 'figo', 'caqui',
+    'maracuja', 'maracujá', 'graviola', 'pitaya', 'coco', 'abacate'
+  ];
+
+  // Padrões de bebidas
+  const BEVERAGE_PATTERNS = [
+    'cafe', 'café', 'cha ', 'chá', 'suco', 'leite', 'agua', 'água',
+    'refrigerante', 'vitamina', 'smoothie', 'batida', 'iogurte liquido',
+    'bebida', 'achocolatado', 'cappuccino', 'expresso'
+  ];
+
+  // Padrões de frases problemáticas a serem removidas completamente
+  const PROBLEMATIC_PHRASE_PATTERNS = [
+    /acompanhe\s+com\s+.*?(cafe|café|cha|chá|suco|banana|maça|laranja|fruta|leite|água|agua).*$/i,
+    /sirva\s+com\s+.*?(cafe|café|cha|chá|suco|banana|maça|laranja|fruta|sobremesa).*$/i,
+    /finalize\s+com\s+.*?(banana|maça|laranja|fruta|suco).*$/i,
+    /tome\s+o?\s*(cafe|café|cha|chá|suco|leite).*$/i,
+    /beba\s+o?\s*(suco|leite|agua|água|cha|chá).*$/i,
+    /\.\s*e\s+(banana|maça|laranja|fruta|suco|café|cafe|chá|cha)\s*\.?$/i,
+    /,?\s*e\s+(a\s+)?(banana|maça|laranja|fruta)\s*\.?$/i,
+  ];
+
+  return instructions
+    .map(instruction => {
+      let cleaned = instruction;
+      
+      // Tentar remover padrões problemáticos
+      for (const pattern of PROBLEMATIC_PHRASE_PATTERNS) {
+        cleaned = cleaned.replace(pattern, '.');
+      }
+      
+      // Limpar pontuações duplas e espaços extras
+      cleaned = cleaned
+        .replace(/\.\s*\./g, '.')
+        .replace(/,\s*\./g, '.')
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      return cleaned;
+    })
+    .filter(instruction => {
+      // Remover instruções que ficaram vazias ou muito curtas após limpeza
+      if (!instruction || instruction.length < 10) return false;
+      
+      // Remover instruções que são apenas sobre frutas/bebidas
+      const normalized = instruction.toLowerCase();
+      const isOnlyAboutFruit = FRUIT_PATTERNS.some(f => normalized.includes(f)) && 
+        !normalized.includes('cozin') && 
+        !normalized.includes('grelh') && 
+        !normalized.includes('refog') &&
+        !normalized.includes('prepar') &&
+        !normalized.includes('mistur');
+      
+      const isOnlyAboutBeverage = BEVERAGE_PATTERNS.some(b => normalized.includes(b)) &&
+        normalized.split(' ').length < 6; // Instrução curta sobre bebida
+      
+      return !isOnlyAboutFruit && !isOnlyAboutBeverage;
+    });
+}

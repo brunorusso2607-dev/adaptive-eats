@@ -46,6 +46,7 @@ import {
   groupSeparatedIngredients,
   updateMealTitleIfNeeded,
   sortMealIngredients,
+  cleanInstructionsFromFruitsAndBeverages,
   type RegionalConfig,
   type IntoleranceMapping,
   type SafeKeyword,
@@ -211,15 +212,30 @@ IMPORTANTE:
 - Foco na ação principal, sem detalhes óbvios
 - Exemplo: ["Grelhe o frango temperado por 4 min de cada lado.", "Cozinhe o arroz.", "Monte o prato com salada fresca."]
 
-🚫 REGRA CRÍTICA DE ESCOPO DAS INSTRUÇÕES:
-- As instruções devem cobrir APENAS itens que são PREPARADOS/COZINHADOS
-- NÃO mencione nas instruções:
-  • Frutas de sobremesa (são consumidas cruas, não precisam preparo)
-  • Bebidas (café, chá, suco - o usuário sabe preparar)
-  • Alimentos prontos para consumo (iogurte, pão, castanhas)
-- ERRADO: "Sirva com a laranja como sobremesa" ❌ (laranja é item separado, não entra no preparo)
-- CERTO: Instruções focam só no prato principal + acompanhamentos cozidos ✓
-- O campo "foods" lista TODOS os itens, mas "instructions" só cobre o que precisa preparo
+🚫🚫🚫 REGRA CRÍTICA - ESCOPO DAS INSTRUÇÕES (LEIA COM ATENÇÃO):
+========================================================================
+As instruções (campo "instructions") devem cobrir APENAS preparações que exigem cozimento/preparo ativo.
+
+❌ JAMAIS MENCIONE NAS INSTRUÇÕES:
+• Frutas (banana, maçã, laranja, etc.) - são itens separados consumidos in natura
+• Bebidas (café, chá, suco, leite) - o usuário sabe preparar
+• Itens prontos (iogurte, pão, castanhas, queijo fatiado)
+
+❌ FRASES PROIBIDAS (NUNCA USE):
+• "Acompanhe com..." + fruta ou bebida
+• "Sirva com..." + fruta ou bebida  
+• "Finalize com..." + fruta
+• "...e banana" / "...e maçã" / "...e laranja" (no final de qualquer instrução)
+• "Tome o café com..." 
+• "Beba o suco..."
+
+✓ CORRETO: Instruções focam APENAS no prato principal + acompanhamentos cozidos
+✓ O campo "foods" lista TODOS os itens, mas "instructions" só cobre o que precisa preparo
+
+EXEMPLO CORRETO para café da manhã com omelete, pão, café e banana:
+instructions: ["Bata as claras com tomate e orégano.", "Cozinhe a omelete em fogo baixo.", "Sirva com pão e queijo."]
+(NÃO menciona banana nem café - são itens separados listados em "foods")
+========================================================================
 
 📐 FORMATO DOS ALIMENTOS (foods):
 Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
@@ -1238,10 +1254,11 @@ serve(async (req) => {
             food_id: item.food_id,
           }));
           
-          // Extrair instruções se existirem
-          const instructions = Array.isArray((firstOption as any).instructions) 
+          // Extrair instruções se existirem e LIMPAR menções a frutas/bebidas
+          const rawInstructions = Array.isArray((firstOption as any).instructions) 
             ? (firstOption as any).instructions 
             : [];
+          const instructions = cleanInstructionsFromFruitsAndBeverages(rawInstructions);
           
           items.push({
             meal_plan_id: mealPlanIdToUse,

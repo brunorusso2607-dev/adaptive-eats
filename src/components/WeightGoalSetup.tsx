@@ -36,6 +36,7 @@ type WeightGoalSetupProps = {
   onClose: () => void;
   onSave: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   onGeneratePlan?: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
+  onOpenMealPlanGenerator?: (data: WeightGoalData & { calculations: MacroCalculations }) => void;
   onPlanRegenerated?: () => void;
   onRegenerateStart?: () => void;
   onRegenerateEnd?: () => void;
@@ -425,7 +426,7 @@ export function calculateMacros(data: WeightGoalData): MacroCalculations | null 
   };
 }
 
-export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPlanRegenerated, onRegenerateStart, onRegenerateEnd, initialData, hasExistingPlan }: WeightGoalSetupProps) {
+export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onOpenMealPlanGenerator, onPlanRegenerated, onRegenerateStart, onRegenerateEnd, initialData, hasExistingPlan }: WeightGoalSetupProps) {
   const [isSaving, setIsSaving] = useState(false);
   const [showRegenerateConfirm, setShowRegenerateConfirm] = useState(false);
   const [shakeError, setShakeError] = useState(false);
@@ -572,7 +573,7 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
     }
   };
 
-  const handleGeneratePlanClick = () => {
+  const handleGeneratePlanClick = async () => {
     if (!isComplete || !calculations) {
       toast.error("Preencha todos os campos");
       return;
@@ -583,13 +584,29 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       return;
     }
 
-    // Se já existe plano, mostra confirmação
+    // Se já existe plano, mostra confirmação para regenerar
     if (hasExistingPlan) {
       setShowRegenerateConfirm(true);
       return;
     }
 
-    // Se não existe, gera direto
+    // NOVO COMPORTAMENTO: Salvar dados e abrir MealPlanGenerator
+    // em vez de gerar diretamente
+    if (onOpenMealPlanGenerator) {
+      setIsSaving(true);
+      try {
+        await saveToDatabase();
+        onOpenMealPlanGenerator({ ...data, calculations });
+      } catch (error) {
+        console.error("Error saving before opening generator:", error);
+        toast.error("Erro ao salvar dados");
+      } finally {
+        setIsSaving(false);
+      }
+      return;
+    }
+
+    // Fallback: Se não tem onOpenMealPlanGenerator, gera direto (comportamento antigo)
     executeGeneratePlan();
   };
 

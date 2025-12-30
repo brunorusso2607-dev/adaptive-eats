@@ -18,6 +18,7 @@ import { useDailyConsumption } from "@/hooks/useDailyConsumption";
 import UserAccountMenu from "@/components/UserAccountMenu";
 import ProfilePage from "@/components/ProfilePage";
 import MealPlanSection from "@/components/MealPlanSection";
+import MealPlanGenerator from "@/components/MealPlanGenerator";
 import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
 
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
@@ -134,6 +135,7 @@ export default function Dashboard() {
   const [selectedPhotoMode, setSelectedPhotoMode] = useState<PhotoMode | null>(null);
   const [showPlanSheet, setShowPlanSheet] = useState(false);
   const [showFreeFormLogger, setShowFreeFormLogger] = useState(false);
+  const [showMealPlanGenerator, setShowMealPlanGenerator] = useState(false);
   // User profile for ingredient validation
   const [userProfile, setUserProfile] = useState<{
     intolerances?: string[] | null;
@@ -745,6 +747,28 @@ export default function Dashboard() {
                   }
                   setShowWeightLossSetup(false);
                 }}
+                onOpenMealPlanGenerator={(data) => {
+                  // Salvar dados de peso e abrir o MealPlanGenerator
+                  setWeightData({
+                    weight_current: data.weight_current,
+                    weight_goal: data.weight_goal,
+                    height: data.height,
+                    age: data.age,
+                    sex: data.sex,
+                    activity_level: data.activity_level,
+                    goal_mode: data.calculations.mode,
+                    strategy_id: data.strategy_id,
+                  });
+                  if (data.calculations.mode === "lose") {
+                    setUserGoal("emagrecer");
+                  } else if (data.calculations.mode === "gain") {
+                    setUserGoal("ganhar_peso");
+                  } else {
+                    setUserGoal("manter");
+                  }
+                  setShowWeightLossSetup(false);
+                  setShowMealPlanGenerator(true);
+                }}
                 onGeneratePlan={(data) => {
                   setWeightData({
                     weight_current: data.weight_current,
@@ -782,6 +806,18 @@ export default function Dashboard() {
                 }}
                 onRegenerateStart={() => setIsRegeneratingPlan(true)}
                 onRegenerateEnd={() => setIsRegeneratingPlan(false)}
+              />
+            ) : showMealPlanGenerator ? (
+              <MealPlanGenerator
+                onClose={() => setShowMealPlanGenerator(false)}
+                onPlanGenerated={() => {
+                  setShowMealPlanGenerator(false);
+                  setHasMealPlan(true);
+                  setMealPlanKey(prev => prev + 1);
+                  refetchPendingMeals();
+                  setShowMealPlan(true);
+                  setMobileActiveTab("meal-plan");
+                }}
               />
             ) : showRecipe && generatedRecipe ? (
               <RecipeResult

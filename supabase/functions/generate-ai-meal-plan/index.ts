@@ -165,6 +165,21 @@ RESTRIÇÕES OBRIGATÓRIAS:
 --------------------------------------------------
 ${restrictionText}
 
+==========================================================
+⚠️ REGRA FUNDAMENTAL - GERAÇÃO OBRIGATÓRIA (CRÍTICO):
+==========================================================
+VOCÊ DEVE GERAR REFEIÇÕES COMPLETAS PARA TODAS AS REFEIÇÕES SOLICITADAS.
+Mesmo com múltiplas restrições (vegano + sem glúten + sem lactose, etc.), 
+SEMPRE EXISTEM opções válidas. Use sua inteligência e conhecimento nutricional.
+
+Exemplos de soluções para perfis restritivos:
+- VEGANO + SEM GLÚTEN: tofu, tempeh, leguminosas, quinoa, arroz, batata-doce
+- SEM GLÚTEN + SEM LACTOSE: carnes, peixes, ovos, frutas, vegetais, tubérculos
+- VEGANO + FODMAP: proteínas de sementes, arroz, quinoa, vegetais tolerados
+
+NUNCA retorne refeições vazias. NUNCA retorne 0 calorias.
+Se não conseguir pensar em opções, use receitas simples e nutritivas.
+
 ${strategyRules ? `
 ==========================================================
 🎯 ESTRATÉGIA NUTRICIONAL DO USUÁRIO (CRÍTICO):

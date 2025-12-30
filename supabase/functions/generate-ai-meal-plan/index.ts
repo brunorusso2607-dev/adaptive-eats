@@ -118,13 +118,20 @@ function buildSimpleNutritionistPrompt(params: {
     `- ${m.label}: ${m.targetCalories} kcal`
   ).join('\n');
 
-  // Template JSON MÍNIMO - apenas estrutura, sem exemplos que possam conflitar com o prompt do banco
+  // Template JSON MÍNIMO - apenas estrutura, com exemplo de option incluindo instructions
   const mealsJsonTemplate = meals.map(m => `
     {
       "meal_type": "${m.type}",
       "label": "${m.label}",
       "target_calories": ${m.targetCalories},
-      "options": []
+      "options": [
+        {
+          "title": "Nome descritivo do prato",
+          "foods": [{"name": "descrição do alimento", "grams": 100}],
+          "calories_kcal": ${m.targetCalories},
+          "instructions": ["Passo 1 de preparo", "Passo 2 de preparo", "Passo 3 de preparo"]
+        }
+      ]
     }`).join(',');
 
   // Usar o prompt do banco como FONTE ÚNICA DE VERDADE

@@ -155,28 +155,61 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           filteredMealTimes
         });
 
-        const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
-          body: {
-            planName: finalPlanName,
-            startDate: batchStartDate.toISOString().split('T')[0],
-            daysCount: daysInThisBatch,
-            existingPlanId: mealPlanId,
-            weekNumber: batch + 1,
-            customMealTimes: filteredMealTimes,
-            mealTypes: normalizedMealTypes,
-            optionsPerMeal: 1 // Gerar 1 opção por refeição (como o plano fazia antes)
+        let batchSuccess = false;
+        
+        try {
+          const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
+            body: {
+              planName: finalPlanName,
+              startDate: batchStartDate.toISOString().split('T')[0],
+              daysCount: daysInThisBatch,
+              existingPlanId: mealPlanId,
+              weekNumber: batch + 1,
+              customMealTimes: filteredMealTimes,
+              mealTypes: normalizedMealTypes,
+              optionsPerMeal: 1 // Gerar 1 opção por refeição (como o plano fazia antes)
+            }
+          });
+
+          if (error) throw error;
+          if (data?.error) throw new Error(data.error);
+
+          // Save the plan ID for subsequent batches
+          if (data.mealPlan?.id && !mealPlanId) {
+            mealPlanId = data.mealPlan.id;
           }
-        });
-
-        if (error) throw error;
-        if (data.error) throw new Error(data.error);
-
-        // Save the plan ID for subsequent batches
-        if (data.mealPlan?.id && !mealPlanId) {
-          mealPlanId = data.mealPlan.id;
+          batchSuccess = true;
+        } catch (edgeFunctionError) {
+          console.warn("Edge function error, checking if plan was created anyway:", edgeFunctionError);
+          
+          // Check if plan was created despite connection error
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const { data: recentPlans } = await supabase
+              .from("meal_plans")
+              .select("id, name, created_at")
+              .eq("user_id", session.user.id)
+              .gte("created_at", new Date(Date.now() - 60000).toISOString())
+              .order("created_at", { ascending: false })
+              .limit(1);
+            
+            if (recentPlans && recentPlans.length > 0) {
+              console.log("Plan was created despite connection error:", recentPlans[0]);
+              if (!mealPlanId) {
+                mealPlanId = recentPlans[0].id;
+              }
+              batchSuccess = true;
+            } else {
+              throw edgeFunctionError;
+            }
+          } else {
+            throw edgeFunctionError;
+          }
         }
-
-        currentDayOffset += daysInThisBatch;
+        
+        if (batchSuccess) {
+          currentDayOffset += daysInThisBatch;
+        }
       }
 
       setProgress(100);

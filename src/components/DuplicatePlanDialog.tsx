@@ -311,6 +311,18 @@ export default function DuplicatePlanDialog({
 
             if (error) {
               console.error("[DuplicatePlan] Error generating batch:", error);
+              // Check if meals were created despite connection error
+              const { data: mealItems } = await supabase
+                .from("meal_plan_items")
+                .select("id")
+                .eq("meal_plan_id", newPlan.id)
+                .gte("created_at", new Date(Date.now() - 60000).toISOString())
+                .limit(1);
+              
+              if (mealItems && mealItems.length > 0) {
+                console.log("[DuplicatePlan] Meals were created despite connection error");
+                generatedCount += batch.length;
+              }
             } else if (data?.error) {
               console.error("[DuplicatePlan] API error:", data.error);
             } else {
@@ -318,6 +330,18 @@ export default function DuplicatePlanDialog({
             }
           } catch (err) {
             console.error("[DuplicatePlan] Exception generating batch:", err);
+            // Check if meals were created despite exception
+            const { data: mealItems } = await supabase
+              .from("meal_plan_items")
+              .select("id")
+              .eq("meal_plan_id", newPlan.id)
+              .gte("created_at", new Date(Date.now() - 60000).toISOString())
+              .limit(1);
+            
+            if (mealItems && mealItems.length > 0) {
+              console.log("[DuplicatePlan] Meals were created despite exception");
+              generatedCount += batch.length;
+            }
           }
         }
 

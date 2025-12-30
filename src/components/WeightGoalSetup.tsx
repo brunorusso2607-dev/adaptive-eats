@@ -656,28 +656,55 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       const startDate = new Date();
       const planName = `Plano ${format(startDate, "MMMM yyyy", { locale: ptBR })}`;
       
-      const { data: planData, error: planError } = await supabase.functions.invoke("generate-ai-meal-plan", {
-        body: {
-          planName,
-          startDate: startDate.toISOString().split('T')[0],
-          daysCount: 7,
-          existingPlanId: null,
-          weekNumber: 1
+      let planCreatedSuccessfully = false;
+      
+      try {
+        const { data: planData, error: planError } = await supabase.functions.invoke("generate-ai-meal-plan", {
+          body: {
+            planName,
+            startDate: startDate.toISOString().split('T')[0],
+            daysCount: 7,
+            existingPlanId: null,
+            weekNumber: 1
+          }
+        });
+        
+        if (planError) throw planError;
+        if (planData?.error) throw new Error(planData.error);
+        
+        planCreatedSuccessfully = true;
+      } catch (edgeFunctionError) {
+        console.warn("Edge function error, checking if plan was created anyway:", edgeFunctionError);
+        
+        // A edge function pode ter criado o plano mas a conexão foi fechada antes da resposta
+        // Verificar se o plano existe no banco de dados
+        const { data: recentPlans } = await supabase
+          .from("meal_plans")
+          .select("id, name, created_at")
+          .eq("user_id", session.user.id)
+          .gte("created_at", new Date(Date.now() - 60000).toISOString()) // Último minuto
+          .order("created_at", { ascending: false })
+          .limit(1);
+        
+        if (recentPlans && recentPlans.length > 0) {
+          console.log("Plan was created despite connection error:", recentPlans[0]);
+          planCreatedSuccessfully = true;
+        } else {
+          throw edgeFunctionError; // Re-throw se o plano realmente não foi criado
         }
-      });
-      
-      if (planError) throw planError;
-      if (planData.error) throw new Error(planData.error);
-      
-      toast.success("Plano alimentar criado com sucesso!");
-      
-      // Notifica o Dashboard para atualizar os dados
-      if (hasExistingPlan && onPlanRegenerated) {
-        onPlanRegenerated();
       }
       
-      if (onGeneratePlan) {
-        onGeneratePlan({ ...data, calculations: calculations! });
+      if (planCreatedSuccessfully) {
+        toast.success("Plano alimentar criado com sucesso!");
+        
+        // Notifica o Dashboard para atualizar os dados
+        if (hasExistingPlan && onPlanRegenerated) {
+          onPlanRegenerated();
+        }
+        
+        if (onGeneratePlan) {
+          onGeneratePlan({ ...data, calculations: calculations! });
+        }
       }
     } catch (error) {
       console.error("Error generating plan:", error);

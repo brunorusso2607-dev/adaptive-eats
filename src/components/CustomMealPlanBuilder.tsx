@@ -255,23 +255,32 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
 
     setIsGenerating(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
-        body: {
-          planName: planName.trim() || defaultPlanName,
-          startDate: format(new Date(), "yyyy-MM-dd"),
-          daysCount: 1,
-          fillSlots: Object.entries(dayPlan)
-            .filter(([_, meal]) => !meal)
-            .map(([slot]) => slot)
-        }
-      });
+      let aiMeals = null;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
+          body: {
+            planName: planName.trim() || defaultPlanName,
+            startDate: format(new Date(), "yyyy-MM-dd"),
+            daysCount: 1,
+            fillSlots: Object.entries(dayPlan)
+              .filter(([_, meal]) => !meal)
+              .map(([slot]) => slot)
+          }
+        });
 
-      if (error) throw error;
+        if (error) throw error;
+        aiMeals = data?.meals;
+      } catch (edgeFunctionError) {
+        console.warn("Edge function error for AI fill:", edgeFunctionError);
+        // This is for filling empty slots, if it fails just show error
+        throw edgeFunctionError;
+      }
 
-      if (data?.meals) {
+      if (aiMeals) {
         setDayPlan(prev => {
           const updated = { ...prev };
-          Object.entries(data.meals).forEach(([slot, meal]: [string, any]) => {
+          Object.entries(aiMeals).forEach(([slot, meal]: [string, any]) => {
             if (!updated[slot]) {
               updated[slot] = {
                 id: crypto.randomUUID(),

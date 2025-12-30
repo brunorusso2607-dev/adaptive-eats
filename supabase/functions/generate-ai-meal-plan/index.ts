@@ -898,8 +898,8 @@ serve(async (req) => {
               }
             ],
             generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: 8192,
+              temperature: 0.6,
+              maxOutputTokens: 16384, // Aumentado para evitar truncamento
             }
           }),
         }
@@ -918,19 +918,70 @@ serve(async (req) => {
       const aiData = await aiResponse.json();
       let content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
       
-      logStep("AI response received", { contentLength: content.length });
+      // Check for truncation - finishReason other than STOP indicates truncation
+      const finishReason = aiData.candidates?.[0]?.finishReason;
+      const isTruncated = finishReason && finishReason !== "STOP";
+      
+      logStep("AI response received", { contentLength: content.length, finishReason, isTruncated });
 
       // Parse JSON from response
       let dayPlanValidated: SimpleDayPlan | null = null;
       let retryCount = 0;
-      const MAX_RETRIES = 2; // Máximo de tentativas para regenerar se houver violações críticas
+      const MAX_RETRIES = 3; // Aumentado para lidar com truncamentos
       
       while (!dayPlanValidated && retryCount <= MAX_RETRIES) {
         try {
           // Remove markdown code blocks if present
           content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           
-          const dayPlan: SimpleDayPlan = JSON.parse(content);
+          // Try to detect and handle truncated JSON
+          let parsedContent: SimpleDayPlan;
+          try {
+            parsedContent = JSON.parse(content);
+          } catch (parseErr) {
+            // Log truncation for debugging
+            logStep("JSON parse error", { 
+              error: parseErr, 
+              content: content.substring(0, 500) 
+            });
+            
+            // If this is a truncation issue and we have retries left, regenerate
+            if (retryCount < MAX_RETRIES) {
+              logStep(`🔄 Retrying day ${dayIndex + 1} due to truncated/invalid JSON (attempt ${retryCount + 2})`);
+              retryCount++;
+              
+              // Retry with higher token limit and clearer instruction
+              const retryResponse = await fetch(
+                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
+                {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({
+                    contents: [{ 
+                      parts: [{ 
+                        text: prompt + `\n\nIMPORTANTE: Retorne um JSON COMPACTO e COMPLETO. Minimize espaços e descrições. Máximo 3 opções por refeição se houver mais de uma.` 
+                      }] 
+                    }],
+                    generationConfig: {
+                      temperature: 0.6, // Menor temperatura para respostas mais consistentes
+                      maxOutputTokens: 16384, // Dobrar limite de tokens
+                    }
+                  }),
+                }
+              );
+              
+              if (retryResponse.ok) {
+                const retryData = await retryResponse.json();
+                content = retryData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+                logStep(`Retry response received`, { contentLength: content.length });
+                continue; // Tentar parsear novamente
+              }
+            }
+            
+            throw parseErr; // Re-throw if no retries left
+          }
+          
+          const dayPlan: SimpleDayPlan = parsedContent;
           
           // ============= VALIDAÇÃO PÓS-GERAÇÃO =============
           logStep(`Validating day ${dayIndex + 1} against restrictions (attempt ${retryCount + 1})`);

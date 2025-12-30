@@ -35,6 +35,7 @@ import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSafetyLabels } from "@/hooks/useSafetyLabels";
+import { FALLBACK_INTOLERANCE_LABELS } from "@/lib/safetyFallbacks";
 
 type IntoleranceMapping = {
   id: string;
@@ -48,27 +49,6 @@ type SafeKeyword = {
   intolerance_key: string;
   keyword: string;
   created_at: string;
-};
-
-// Fallback labels (DB é fonte de verdade via useSafetyLabels)
-const FALLBACK_INTOLERANCE_LABELS: Record<string, string> = {
-  lactose: "Lactose",
-  gluten: "Glúten",
-  ovo: "Ovo",
-  soja: "Soja",
-  amendoim: "Amendoim",
-  castanhas: "Castanhas",
-  frutos_do_mar: "Frutos do Mar",
-  peixe: "Peixe",
-  frutose: "Frutose",
-  fodmap: "FODMAP",
-  histamina: "Histamina",
-  cafeina: "Cafeína",
-  sulfito: "Sulfito",
-  sorbitol: "Sorbitol",
-  salicilato: "Salicilato",
-  milho: "Milho",
-  niquel: "Níquel",
 };
 
 export default function AdminIntoleranceMappings() {

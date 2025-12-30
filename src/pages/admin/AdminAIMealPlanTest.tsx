@@ -14,6 +14,7 @@ import { toast } from "sonner";
 import { useAllNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
 import { useSafetyLabels } from "@/hooks/useSafetyLabels";
+import { FALLBACK_DIETARY_PREFERENCES } from "@/lib/safetyFallbacks";
 
 // Validação de peso baseada na estratégia
 function validateWeightGoal(
@@ -61,17 +62,6 @@ const COUNTRIES = [
   { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
   { code: "CL", name: "Chile", flag: "🇨🇱" },
   { code: "CO", name: "Colombia", flag: "🇨🇴" },
-];
-
-// Fallback - será substituído por dados do banco
-const FALLBACK_DIETARY_PREFERENCES = [
-  { value: "comum", label: "Comum / Omnivore" },
-  { value: "vegetariana", label: "Vegetariana" },
-  { value: "vegana", label: "Vegana" },
-  { value: "low_carb", label: "Low Carb" },
-  { value: "pescetariana", label: "Pescetariana" },
-  { value: "cetogenica", label: "Cetogênica / Keto" },
-  { value: "flexitariana", label: "Flexitariana" },
 ];
 
 const MEAL_TYPES = [

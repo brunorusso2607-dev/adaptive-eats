@@ -7,6 +7,7 @@ import { useIntoleranceWarning, ConflictType } from "@/hooks/useIntoleranceWarni
 import IngredientConflictDialog from "@/components/IngredientConflictDialog";
 import { useIngredientCombinationValidation, ValidationResult } from "@/hooks/useIngredientCombinationValidation";
 import { useSafetyLabels } from "@/hooks/useSafetyLabels";
+import { FALLBACK_RESTRICTION_LABELS } from "@/lib/safetyFallbacks";
 
 // Lista de ingredientes comuns para autocomplete - extensa e detalhada
 const COMMON_INGREDIENTS = [
@@ -467,17 +468,7 @@ const RESTRICTION_INGREDIENTS_MAP: Record<string, Set<string>> = {
   ovo: EGG_INGREDIENTS,
 };
 
-// Labels amigáveis para as restrições (fallback - DB é fonte de verdade via useSafetyLabels)
-const FALLBACK_RESTRICTION_LABELS: Record<string, string> = {
-  lactose: "lactose",
-  gluten: "glúten",
-  acucar: "açúcar",
-  amendoim: "amendoim",
-  frutos_mar: "frutos do mar",
-  ovo: "ovo",
-  vegana: "produto animal",
-  vegetariana: "carne",
-};
+// Labels amigáveis para as restrições são importados de @/lib/safetyFallbacks
 
 // Função para verificar se ingrediente é compatível com a dieta
 const isIngredientCompatible = (ingredient: string, dietaryPreference: string | null | undefined): boolean => {

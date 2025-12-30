@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSafetyLabels } from './useSafetyLabels';
+import { FALLBACK_DIETARY_LABELS_WITH_ARTICLE } from '@/lib/safetyFallbacks';
 
 // NOTA: checkUserIntoleranceConflict de intoleranceDetection.ts foi depreciado
 // Agora usamos dados do banco de dados diretamente
@@ -36,20 +37,13 @@ interface DietaryLabelItem {
   name: string;
 }
 
-// Labels para restrições alimentares (fallback, substituído por dados do DB)
-const FALLBACK_DIETARY_LABELS: Record<string, string> = {
-  vegana: "vegano(a)",
-  vegetariana: "vegetariano(a)",
-  low_carb: "low carb",
-};
-
 export function useIntoleranceWarning() {
   const [intolerances, setIntolerances] = useState<string[]>([]);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [dietaryPreference, setDietaryPreference] = useState<string | null>(null);
   const [mappings, setMappings] = useState<IntoleranceMappingItem[]>([]);
   const [forbiddenIngredients, setForbiddenIngredients] = useState<ForbiddenIngredientItem[]>([]);
-  const [dietaryLabels, setDietaryLabels] = useState<Record<string, string>>(FALLBACK_DIETARY_LABELS);
+  const [dietaryLabels, setDietaryLabels] = useState<Record<string, string>>(FALLBACK_DIETARY_LABELS_WITH_ARTICLE);
   const [isLoading, setIsLoading] = useState(true);
   
   // Hook para labels de segurança do banco de dados
@@ -144,7 +138,7 @@ export function useIntoleranceWarning() {
 
         // Set dietary labels from database
         if (dietaryProfilesResult.data) {
-          const labels: Record<string, string> = { ...FALLBACK_DIETARY_LABELS };
+          const labels: Record<string, string> = { ...FALLBACK_DIETARY_LABELS_WITH_ARTICLE };
           for (const profile of dietaryProfilesResult.data) {
             labels[profile.key] = profile.name;
           }

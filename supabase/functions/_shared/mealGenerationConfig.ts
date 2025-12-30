@@ -2351,11 +2351,20 @@ export function getStrategyPersona(strategyKey?: string, goal?: string): Strateg
 }
 
 // ============= STRATEGY-SPECIFIC PROMPT RULES =============
-export function getStrategyPromptRules(strategyKey: string, language: string = 'pt-BR'): string {
+export function getStrategyPromptRules(
+  strategyKey: string, 
+  language: string = 'pt-BR',
+  options?: {
+    dietaryPreference?: string;
+    intolerances?: string[];
+    previousMealsToday?: string[];
+  }
+): string {
   const persona = getStrategyPersona(strategyKey);
   const isPortuguese = language.startsWith('pt');
+  const isSpanish = language.startsWith('es');
   
-  // Obter exemplos dinâmicos do pool (6 exemplos para melhor contexto da IA)
+  // Obter exemplos dinâmicos do pool de estratégia (6 exemplos)
   const poolExamples = {
     cafe_manha: getMealsFromPool(strategyKey, 'cafe_manha', 6),
     lanche_manha: getMealsFromPool(strategyKey, 'lanche_manha', 6),
@@ -2364,6 +2373,146 @@ export function getStrategyPromptRules(strategyKey: string, language: string = '
     jantar: getMealsFromPool(strategyKey, 'jantar', 6),
     ceia: getMealsFromPool(strategyKey, 'ceia', 6),
   };
+  
+  // NOVO: Injetar exemplos do pool dietético se usuário for vegano/vegetariano
+  let dietaryPoolExamples = '';
+  const dietPref = options?.dietaryPreference;
+  if (dietPref && ['vegana', 'vegetariana', 'pescetariana'].includes(dietPref)) {
+    const dietPool = {
+      cafe_manha: getMealsFromDietaryPool(dietPref, 'cafe_manha', 4),
+      almoco: getMealsFromDietaryPool(dietPref, 'almoco', 4),
+      jantar: getMealsFromDietaryPool(dietPref, 'jantar', 4),
+    };
+    
+    if (isPortuguese) {
+      dietaryPoolExamples = `
+📋 EXEMPLOS ADICIONAIS PARA PERFIL ${dietPref.toUpperCase()} (USAR COMO INSPIRAÇÃO):
+- CAFÉ: ${dietPool.cafe_manha.join(' | ')}
+- ALMOÇO: ${dietPool.almoco.join(' | ')}
+- JANTAR: ${dietPool.jantar.join(' | ')}
+`;
+    } else if (isSpanish) {
+      dietaryPoolExamples = `
+📋 EJEMPLOS ADICIONALES PARA PERFIL ${dietPref.toUpperCase()} (USAR COMO INSPIRACIÓN):
+- DESAYUNO: ${dietPool.cafe_manha.join(' | ')}
+- ALMUERZO: ${dietPool.almoco.join(' | ')}
+- CENA: ${dietPool.jantar.join(' | ')}
+`;
+    } else {
+      dietaryPoolExamples = `
+📋 ADDITIONAL EXAMPLES FOR ${dietPref.toUpperCase()} PROFILE (USE AS INSPIRATION):
+- BREAKFAST: ${dietPool.cafe_manha.join(' | ')}
+- LUNCH: ${dietPool.almoco.join(' | ')}
+- DINNER: ${dietPool.jantar.join(' | ')}
+`;
+    }
+  }
+  
+  // NOVO: Gerar regra de diversidade intra-dia
+  let intraDayDiversityRule = '';
+  const previousMeals = options?.previousMealsToday || [];
+  if (previousMeals.length > 0) {
+    const previousProteins = previousMeals.join(', ');
+    if (isPortuguese) {
+      intraDayDiversityRule = `
+🔄 REGRA ANTI-REPETIÇÃO INTRA-DIA (CRÍTICO):
+Refeições já geradas HOJE: ${previousProteins}
+- NÃO repita a proteína principal dessas refeições nas próximas
+- Se já usou TOFU, use GRÃO-DE-BICO, LENTILHA, COGUMELOS, SEITAN, TEMPEH
+- Se já usou FRANGO, use PEIXE, CARNE, OVO, ou proteína vegetal
+- VARIE a fonte proteica em CADA refeição do dia
+`;
+    } else if (isSpanish) {
+      intraDayDiversityRule = `
+🔄 REGLA ANTI-REPETICIÓN INTRA-DÍA (CRÍTICO):
+Comidas ya generadas HOY: ${previousProteins}
+- NO repita la proteína principal de esas comidas
+- VARÍE la fuente proteica en CADA comida del día
+`;
+    } else {
+      intraDayDiversityRule = `
+🔄 INTRA-DAY ANTI-REPETITION RULE (CRITICAL):
+Meals already generated TODAY: ${previousProteins}
+- DO NOT repeat the main protein from those meals
+- VARY the protein source in EACH meal of the day
+`;
+    }
+  }
+  
+  // NOVO: Gerar regra de diversidade proteica para perfis com restrições
+  let proteinDiversityRule = '';
+  if (dietPref === 'vegana') {
+    if (isPortuguese) {
+      proteinDiversityRule = `
+🌱 REGRA DE DIVERSIDADE PROTEICA VEGANA (OBRIGATÓRIO):
+USE no mínimo 5 fontes proteicas DIFERENTES ao longo do dia:
+1. LEGUMINOSAS: grão-de-bico, lentilha, feijão preto, feijão branco, ervilha
+2. DERIVADOS DE SOJA: tofu, tempeh, edamame, proteína de soja texturizada
+3. SEITAN (proteína de trigo)
+4. COGUMELOS: shimeji, shitake, champignon, portobello
+5. OLEAGINOSAS: castanhas, amendoim, amêndoas, nozes
+6. SEMENTES: chia, linhaça, gergelim, girassol, abóbora
+7. PSEUDOCEREAIS: quinoa, amaranto, trigo sarraceno
+
+⚠️ NÃO USE a mesma proteína (ex: tofu) em mais de 2 refeições do dia!
+⚠️ DISTRIBUA as fontes: se usou tofu no café, use lentilha no almoço e grão-de-bico no jantar
+`;
+    } else if (isSpanish) {
+      proteinDiversityRule = `
+🌱 REGLA DE DIVERSIDAD PROTEICA VEGANA (OBLIGATORIO):
+USE mínimo 5 fuentes proteicas DIFERENTES a lo largo del día:
+1. LEGUMBRES: garbanzos, lentejas, frijoles negros, frijoles blancos
+2. DERIVADOS DE SOJA: tofu, tempeh, edamame
+3. SEITAN
+4. HONGOS: shiitake, champiñones, portobello
+5. FRUTOS SECOS: nueces, almendras, cacahuates
+6. SEMILLAS: chía, linaza, sésamo
+
+⚠️ NO USE la misma proteína en más de 2 comidas del día!
+`;
+    } else {
+      proteinDiversityRule = `
+🌱 VEGAN PROTEIN DIVERSITY RULE (MANDATORY):
+USE at least 5 DIFFERENT protein sources throughout the day:
+1. LEGUMES: chickpeas, lentils, black beans, white beans
+2. SOY PRODUCTS: tofu, tempeh, edamame
+3. SEITAN
+4. MUSHROOMS: shiitake, portobello, champignon
+5. NUTS: walnuts, almonds, peanuts
+6. SEEDS: chia, flax, sesame
+
+⚠️ DO NOT use the same protein in more than 2 meals per day!
+`;
+    }
+  } else if (dietPref === 'vegetariana') {
+    if (isPortuguese) {
+      proteinDiversityRule = `
+🥚 REGRA DE DIVERSIDADE PROTEICA VEGETARIANA (OBRIGATÓRIO):
+VARIE as fontes proteicas ao longo do dia:
+- OVOS (omelete, cozido, mexido)
+- LATICÍNIOS (queijo, iogurte, ricota, cottage)
+- LEGUMINOSAS (grão-de-bico, lentilha, feijão)
+- TOFU e TEMPEH
+- COGUMELOS
+- OLEAGINOSAS e SEMENTES
+
+⚠️ NÃO repita a mesma proteína (ex: ovo) em mais de 2 refeições!
+`;
+    } else {
+      proteinDiversityRule = `
+🥚 VEGETARIAN PROTEIN DIVERSITY RULE (MANDATORY):
+VARY protein sources throughout the day:
+- EGGS (omelet, boiled, scrambled)
+- DAIRY (cheese, yogurt, ricotta)
+- LEGUMES (chickpeas, lentils, beans)
+- TOFU and TEMPEH
+- MUSHROOMS
+- NUTS and SEEDS
+
+⚠️ DO NOT repeat the same protein in more than 2 meals!
+`;
+    }
+  }
   
   if (isPortuguese) {
     return `
@@ -2390,7 +2539,9 @@ ${persona.specialNotes}
 - LANCHE TARDE: ${poolExamples.lanche_tarde.join(' | ')}
 - JANTAR: ${poolExamples.jantar.join(' | ')}
 - CEIA: ${poolExamples.ceia.join(' | ')}
-
+${dietaryPoolExamples}
+${proteinDiversityRule}
+${intraDayDiversityRule}
 ⚠️ REGRA CRÍTICA: Os pratos gerados DEVEM refletir a persona "${persona.label}". 
 ${strategyKey === 'dieta_flexivel' ? '🍔🍕🍰 OBRIGATÓRIO: Inclua comfort foods como hambúrgueres, pizzas, sobremesas!' : ''}
 ${strategyKey === 'cutting' ? '💪 Priorizar pratos com ALTA proteína e estilo bodybuilding.' : ''}

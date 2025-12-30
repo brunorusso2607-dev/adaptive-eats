@@ -18,6 +18,7 @@ interface SmartSubstitute {
   carbs: number;
   fat: number;
   reason: string;
+  isFlexible?: boolean; // Flag para opções de "comfort food"
 }
 
 interface IngredientSubstitutionSheetProps {
@@ -52,7 +53,7 @@ export default function IngredientSubstitutionSheet({
   const [selectedSubstitute, setSelectedSubstitute] = useState<SmartSubstitute | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Fetch user profile for restrictions
+  // Fetch user profile for restrictions and strategy
   const { data: profile } = useQuery({
     queryKey: ["profile-for-substitution"],
     queryFn: async () => {
@@ -61,11 +62,22 @@ export default function IngredientSubstitutionSheet({
       
       const { data } = await supabase
         .from("profiles")
-        .select("intolerances, dietary_preference, excluded_ingredients")
+        .select("intolerances, dietary_preference, excluded_ingredients, strategy_id")
         .eq("id", user.id)
         .single();
       
-      return data;
+      // Se tem strategy_id, buscar a chave da estratégia
+      if (data?.strategy_id) {
+        const { data: strategy } = await supabase
+          .from("nutritional_strategies")
+          .select("key")
+          .eq("id", data.strategy_id)
+          .single();
+        
+        return { ...data, strategyKey: strategy?.key as string | undefined };
+      }
+      
+      return { ...data, strategyKey: undefined as string | undefined };
     },
   });
 
@@ -103,7 +115,8 @@ export default function IngredientSubstitutionSheet({
         ingredientCarbs,
         ingredientFat,
         ingredientCalories,
-        mealType
+        mealType,
+        strategyKey: profile?.strategyKey
       });
       
       const { data, error } = await supabase.functions.invoke('suggest-smart-substitutes', {
@@ -115,7 +128,8 @@ export default function IngredientSubstitutionSheet({
           ingredientFat,
           ingredientCalories,
           mealType: mealType || 'almoco',
-          restrictions
+          restrictions,
+          strategyKey: profile?.strategyKey // Passar estratégia para gerar opções flexíveis
         }
       });
       
@@ -241,6 +255,7 @@ export default function IngredientSubstitutionSheet({
 
               {!isLoading && suggestions.map((substitute, index) => {
                 const isSelected = selectedSubstitute?.name === substitute.name;
+                const isFlexible = substitute.isFlexible;
                 
                 return (
                   <Card 
@@ -249,7 +264,9 @@ export default function IngredientSubstitutionSheet({
                       "cursor-pointer transition-all",
                       isSelected 
                         ? "border-primary ring-2 ring-primary/20 bg-primary/5" 
-                        : "hover:border-primary/50"
+                        : isFlexible
+                          ? "border-orange-400 bg-orange-50/50 dark:bg-orange-950/20 hover:border-orange-500"
+                          : "hover:border-primary/50"
                     )}
                     onClick={() => handleSelect(substitute)}
                   >
@@ -257,13 +274,21 @@ export default function IngredientSubstitutionSheet({
                       <div className="flex items-start justify-between mb-3">
                         <div className="flex-1">
                           <h4 className="font-medium text-sm flex items-center gap-1.5">
+                            {isFlexible && <span className="text-base">🍕</span>}
                             {substitute.name}
                             {isSelected && <CheckCircle className="w-4 h-4 text-primary" />}
                           </h4>
-                          <Badge variant="secondary" className="mt-1 text-xs">
-                            <Scale className="w-3 h-3 mr-1" />
-                            {substitute.grams}g
-                          </Badge>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge variant="secondary" className="text-xs">
+                              <Scale className="w-3 h-3 mr-1" />
+                              {substitute.grams}g
+                            </Badge>
+                            {isFlexible && (
+                              <Badge className="text-xs bg-orange-500 hover:bg-orange-600 text-white">
+                                Comfort Food
+                              </Badge>
+                            )}
+                          </div>
                         </div>
                         <Badge 
                           variant={isSelected ? "default" : "outline"} 

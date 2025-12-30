@@ -49,12 +49,18 @@ export interface KeyNormalization {
   label: string;
 }
 
+export interface DietaryProfile {
+  key: string;
+  name: string;
+}
+
 export interface SafetyDatabase {
   intoleranceMappings: Map<string, string[]>;
   safeKeywords: Map<string, string[]>;
   dietaryForbidden: Map<string, string[]>;
   keyNormalization: Map<string, string>;
   keyLabels: Map<string, string>;
+  dietaryLabels: Map<string, string>;  // NEW: from dietary_profiles table
   allIntoleranceKeys: string[];
   allDietaryKeys: string[];
 }
@@ -169,7 +175,8 @@ export async function loadSafetyDatabase(
     mappingsResult,
     safeKeywordsResult,
     dietaryResult,
-    normalizationResult
+    normalizationResult,
+    dietaryProfilesResult
   ] = await Promise.all([
     supabaseClient
       .from("intolerance_mappings")
@@ -185,7 +192,11 @@ export async function loadSafetyDatabase(
       .limit(10000),
     supabaseClient
       .from("intolerance_key_normalization")
-      .select("onboarding_key, database_key, label")
+      .select("onboarding_key, database_key, label"),
+    supabaseClient
+      .from("dietary_profiles")
+      .select("key, name")
+      .eq("is_active", true)
   ]);
 
   // Processar erros
@@ -232,18 +243,25 @@ export async function loadSafetyDatabase(
     keyLabels.set(row.database_key, row.label);
   }
 
+  // Processar dietary labels do banco
+  const dietaryLabels = new Map<string, string>();
+  for (const row of (dietaryProfilesResult.data as DietaryProfile[]) || []) {
+    dietaryLabels.set(row.key, row.name);
+  }
+
   cachedDatabase = {
     intoleranceMappings,
     safeKeywords,
     dietaryForbidden,
     keyNormalization,
     keyLabels,
+    dietaryLabels,
     allIntoleranceKeys: Array.from(allIntoleranceKeys),
     allDietaryKeys: Array.from(allDietaryKeys)
   };
   cacheTimestamp = now;
 
-  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types, ${dietaryForbidden.size} dietary profiles, ${mappingsResult.data?.length || 0} ingredients, ${dietaryResult.data?.length || 0} dietary forbidden`);
+  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${mappingsResult.data?.length || 0} ingredients`);
 
   return cachedDatabase;
 }
@@ -279,8 +297,12 @@ export function getIntoleranceLabel(key: string, database: SafetyDatabase): stri
 
 /**
  * Obtém o label amigável para um perfil dietético
+ * Prioriza dados do banco (dietary_profiles.name)
  */
-export function getDietaryLabel(key: string): string {
+export function getDietaryLabel(key: string, database?: SafetyDatabase): string {
+  if (database?.dietaryLabels) {
+    return database.dietaryLabels.get(key) || DIETARY_LABELS[key] || key;
+  }
   return DIETARY_LABELS[key] || key;
 }
 

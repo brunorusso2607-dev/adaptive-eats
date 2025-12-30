@@ -146,7 +146,7 @@ serve(async (req) => {
       if (dietaryPreference && dietaryPreference !== "comum") {
         const dietaryForbidden = safetyDatabase.dietaryForbidden.get(dietaryPreference) || [];
         ingredientsToWatch.push(...dietaryForbidden);
-        intoleranceLabelsToUse.push(getDietaryLabel(dietaryPreference));
+        intoleranceLabelsToUse.push(getDietaryLabel(dietaryPreference, safetyDatabase));
       }
     }
 
@@ -848,7 +848,7 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
     
     // Adicionar verificação de preferência alimentar usando Global Safety Engine
     if (dietaryPreference && dietaryPreference !== "comum" && safetyDatabase) {
-      const dietLabel = getDietaryLabel(dietaryPreference);
+      const dietLabel = getDietaryLabel(dietaryPreference, safetyDatabase);
       // Obter ingredientes proibidos do banco de dados
       const ingredientsToCheck: string[] = safetyDatabase.dietaryForbidden.get(dietaryPreference) || [];
       

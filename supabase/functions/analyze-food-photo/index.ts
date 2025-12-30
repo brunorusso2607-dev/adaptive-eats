@@ -359,9 +359,9 @@ serve(async (req) => {
 IMPORTANTE - RESTRIÇÕES ALIMENTARES DO USUÁRIO:
 ${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${normalizedIntolerances.map((i: string) => getIntoleranceLabel(i, safetyDatabase)).join(", ")}` : ""}
 ${excludedIngredients.length > 0 ? `- Ingredientes Excluídos Manualmente: ${excludedIngredients.join(", ")}` : ""}
-${dietaryPreference === "vegetariana" ? `- Dieta: ${getDietaryLabel("vegetariana")}` : ""}
-${dietaryPreference === "vegana" ? `- Dieta: ${getDietaryLabel("vegana")}` : ""}
-${dietaryPreference === "pescetariana" ? `- Dieta: ${getDietaryLabel("pescetariana")}` : ""}
+${dietaryPreference === "vegetariana" ? `- Dieta: ${getDietaryLabel("vegetariana", safetyDatabase)}` : ""}
+${dietaryPreference === "vegana" ? `- Dieta: ${getDietaryLabel("vegana", safetyDatabase)}` : ""}
+${dietaryPreference === "pescetariana" ? `- Dieta: ${getDietaryLabel("pescetariana", safetyDatabase)}` : ""}
 
 ${dynamicIngredientsContext}
 
@@ -1048,7 +1048,7 @@ If any alert exists, set health_bonus to null.
     // Verificação de preferência alimentar JÁ é feita pelo globalSafetyEngine
     // mas mantemos fallback visual para clareza
     if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana" || dietaryPreference === "pescetariana") {
-      const dietLabel = getDietaryLabel(dietaryPreference);
+      const dietLabel = getDietaryLabel(dietaryPreference, safetyDatabase);
       
       // Verificar se há conflitos de dieta nos resultados
       const dietaryConflicts = validationResult?.conflicts?.filter((c: ConflictDetail) => c.type === "dietary") || [];

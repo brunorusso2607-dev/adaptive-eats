@@ -453,7 +453,7 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
         generationConfig: {
           temperature: 0.4, // Mais conservador para segurança
           topP: 0.95,
-          maxOutputTokens: 3000,
+          maxOutputTokens: 8192, // Increased to prevent JSON truncation
         }
       })
     });
@@ -477,7 +477,60 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       throw new Error('Invalid response format');
     }
 
-    const analysis = JSON.parse(jsonMatch[0]);
+    // Try to parse JSON, with recovery for truncated responses
+    let analysis;
+    try {
+      analysis = JSON.parse(jsonMatch[0]);
+    } catch (parseError) {
+      logStep('JSON parse error, attempting recovery', { error: String(parseError) });
+      
+      // Try to fix common truncation issues
+      let fixedJson = jsonMatch[0];
+      
+      // Count open and close braces/brackets
+      const openBraces = (fixedJson.match(/\{/g) || []).length;
+      const closeBraces = (fixedJson.match(/\}/g) || []).length;
+      const openBrackets = (fixedJson.match(/\[/g) || []).length;
+      const closeBrackets = (fixedJson.match(/\]/g) || []).length;
+      
+      // Add missing closing characters
+      const missingBrackets = openBrackets - closeBrackets;
+      const missingBraces = openBraces - closeBraces;
+      
+      // Remove trailing incomplete content and close properly
+      // Find the last complete property
+      const lastCompleteIndex = Math.max(
+        fixedJson.lastIndexOf('}'),
+        fixedJson.lastIndexOf(']'),
+        fixedJson.lastIndexOf('"')
+      );
+      
+      if (lastCompleteIndex > 0) {
+        fixedJson = fixedJson.substring(0, lastCompleteIndex + 1);
+        
+        // Try to close arrays and objects properly
+        for (let i = 0; i < missingBrackets; i++) {
+          fixedJson += ']';
+        }
+        for (let i = 0; i < missingBraces; i++) {
+          fixedJson += '}';
+        }
+      }
+      
+      try {
+        analysis = JSON.parse(fixedJson);
+        logStep('JSON recovered successfully');
+      } catch (secondError) {
+        // If still failing, return a minimal valid response
+        logStep('JSON recovery failed, returning minimal response');
+        analysis = {
+          ingredientes_identificados: [],
+          receitas_sugeridas: [],
+          alertas_gerais: ["Houve um problema ao processar a imagem. Por favor, tente novamente com uma foto mais clara."],
+          erro_processamento: true
+        };
+      }
+    }
     
     // Check for error response from AI (not fridge detected)
     if (analysis.erro) {

@@ -320,17 +320,17 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   const { weeks, totalWeeks, currentWeek, todayWeek, todayDayIndex, monthName, year } = useMonthWeeks(planStartDate);
 
   // Estado interno - inicializa com externo se disponível
+  const hasExternalState = externalSelectedWeek !== null && externalSelectedDayIndex !== null;
+  
   const [internalSelectedWeek, setInternalSelectedWeek] = useState(() => 
-    externalSelectedWeek !== null ? externalSelectedWeek : currentWeek
+    hasExternalState ? externalSelectedWeek : currentWeek
   );
   const [internalSelectedDayIndex, setInternalSelectedDayIndex] = useState(() => 
-    externalSelectedDayIndex !== null ? externalSelectedDayIndex : todayDayIndex
+    hasExternalState ? externalSelectedDayIndex : todayDayIndex
   );
   
   // Rastreia se o componente já foi inicializado com estado preservado
-  const [wasInitializedWithExternal] = useState(() => 
-    externalSelectedWeek !== null && externalSelectedDayIndex !== null
-  );
+  const wasInitializedWithExternalRef = useRef(hasExternalState);
   
   // Sempre usar estado interno
   const selectedWeek = internalSelectedWeek;
@@ -346,6 +346,18 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     setInternalSelectedDayIndex(dayIndex);
     onSelectedDayIndexChange?.(dayIndex);
   }, [onSelectedDayIndexChange]);
+  
+  // CRÍTICO: Notificar o parent do estado inicial ao montar
+  // Isso garante que quando o usuário seleciona uma refeição, o parent já tem os valores corretos
+  const hasNotifiedParentRef = useRef(false);
+  useEffect(() => {
+    if (!hasNotifiedParentRef.current) {
+      hasNotifiedParentRef.current = true;
+      // Notificar o parent com os valores atuais (iniciais)
+      onSelectedWeekChange?.(internalSelectedWeek);
+      onSelectedDayIndexChange?.(internalSelectedDayIndex);
+    }
+  }, []);
 
   // Get the currently selected week data
   const currentWeekData = useMemo(() => {
@@ -375,7 +387,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     }
     
     // Se foi inicializado com estado externo preservado, não auto-selecionar
-    if (wasInitializedWithExternal) return;
+    if (wasInitializedWithExternalRef.current) return;
     
     // Apenas auto-seleciona quando a semana muda manualmente
     if (visibleDays.length > 0) {

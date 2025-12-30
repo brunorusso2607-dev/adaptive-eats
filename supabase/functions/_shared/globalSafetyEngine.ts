@@ -332,6 +332,36 @@ function checkSafeKeywords(
 /**
  * Verifica se um ingrediente conflita com uma intolerância específica
  */
+/**
+ * Verifica se uma palavra está contida como palavra completa em outra string
+ * Evita falsos positivos como "maçã" matchando "macaron"
+ */
+function containsWholeWord(text: string, word: string): boolean {
+  if (!text || !word) return false;
+  
+  // Se são iguais, é match perfeito
+  if (text === word) return true;
+  
+  // Se a palavra é muito curta (< 4 chars), exigir match exato ou como palavra separada
+  if (word.length < 4) {
+    const regex = new RegExp(`(^|\\s|,|;)${word}($|\\s|,|;)`, 'i');
+    return regex.test(text);
+  }
+  
+  // Para palavras maiores, verificar se está contida como palavra ou parte significativa
+  // Criar regex com word boundaries
+  const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const regex = new RegExp(`(^|\\s|,|;)${escapedWord}|${escapedWord}($|\\s|,|;)`, 'i');
+  
+  // Também aceitar se o ingrediente DO USUÁRIO contém o proibido
+  // mas NÃO se o proibido contém o ingrediente (evita "maca" in "macaron")
+  if (text.includes(word) && text.length >= word.length) {
+    return true;
+  }
+  
+  return regex.test(text);
+}
+
 export function checkIngredientForIntolerance(
   ingredient: string,
   intoleranceKey: string,
@@ -349,8 +379,9 @@ export function checkIngredientForIntolerance(
   const forbiddenIngredients = database.intoleranceMappings.get(intoleranceKey) || [];
   
   for (const forbidden of forbiddenIngredients) {
-    // Verificar se o ingrediente contém a palavra proibida ou vice-versa
-    if (normalizedIngredient.includes(forbidden) || forbidden.includes(normalizedIngredient)) {
+    // Verificar se o ingrediente DO USUÁRIO contém a palavra proibida
+    // MAS NÃO o contrário (evita "maca" matchando com "macaron", "macadamia", etc.)
+    if (containsWholeWord(normalizedIngredient, forbidden)) {
       return {
         isValid: false,
         reason: `Contém ${forbidden} (intolerância: ${getIntoleranceLabel(intoleranceKey, database)})`,
@@ -379,7 +410,8 @@ export function checkIngredientForDietary(
   const forbiddenIngredients = database.dietaryForbidden.get(dietaryKey) || [];
   
   for (const forbidden of forbiddenIngredients) {
-    if (normalizedIngredient.includes(forbidden) || forbidden.includes(normalizedIngredient)) {
+    // Usar containsWholeWord para evitar falsos positivos
+    if (containsWholeWord(normalizedIngredient, forbidden)) {
       return {
         isValid: false,
         reason: `Contém ${forbidden} (incompatível com ${getDietaryLabel(dietaryKey)})`,
@@ -403,7 +435,8 @@ export function checkExcludedIngredient(
   
   for (const excluded of excludedIngredients) {
     const normalizedExcluded = normalizeText(excluded);
-    if (normalizedIngredient.includes(normalizedExcluded) || normalizedExcluded.includes(normalizedIngredient)) {
+    // Usar containsWholeWord para evitar falsos positivos
+    if (containsWholeWord(normalizedIngredient, normalizedExcluded)) {
       return {
         isValid: false,
         reason: `Contém ingrediente excluído: ${excluded}`,

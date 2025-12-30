@@ -155,3 +155,6 @@ verify_jwt = false
 
 [functions.run-module-tests]
 verify_jwt = false
+
+[functions.run-regression-tests]
+verify_jwt = false

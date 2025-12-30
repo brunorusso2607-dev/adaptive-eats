@@ -331,8 +331,17 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setCategoryError(null);
     
     try {
+      // Get current user session to ensure authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error("Sessão expirada. Por favor, faça login novamente.");
+      }
+      
       const { data, error } = await supabase.functions.invoke("analyze-food-photo", {
-        body: { imageBase64: base64Image },
+        body: { 
+          imageBase64: base64Image,
+          userId: session.user.id // Pass userId as fallback
+        },
       });
 
       if (error) throw error;
@@ -405,10 +414,17 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setCategoryError(null);
     
     try {
+      // Get current user session to ensure authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error("Sessão expirada. Por favor, faça login novamente.");
+      }
+      
       const { data, error } = await supabase.functions.invoke("analyze-label-photo", {
         body: { 
           imageBase64: base64Image,
-          step: step 
+          step: step,
+          userId: session.user.id // Pass userId as fallback
         },
       });
 
@@ -494,9 +510,18 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setCategoryError(null);
     
     try {
+      // Get current user session to ensure authentication
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) {
+        throw new Error("Sessão expirada. Por favor, faça login novamente.");
+      }
+      
       if (mode === "food") {
         const { data, error } = await supabase.functions.invoke("analyze-food-photo", {
-          body: { imageBase64: imagePreview },
+          body: { 
+            imageBase64: imagePreview,
+            userId: session.user.id // Pass userId as fallback
+          },
         });
 
         if (error) throw error;

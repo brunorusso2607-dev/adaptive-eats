@@ -83,13 +83,13 @@ APENAS a lista, um por linha:`;
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
+      model: "google/gemini-2.5-flash-lite",
       messages: [
         { role: "system", content: systemPrompt },
         { role: "user", content: userPrompt },
       ],
-      temperature: 0.8,
-      max_tokens: 8000,
+      temperature: 0.9,
+      max_tokens: 8192,
     }),
   });
 
@@ -141,35 +141,42 @@ APENAS a lista, um por linha:`;
   };
 }
 
-async function runExpansion(batchSize: number, languages: string[]) {
+async function runExpansion(batchSize: number, languages: string[], rounds: number) {
   const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
   
-  console.log(`[expand-all] Iniciando expansão para ${ALL_INTOLERANCES.length} intolerâncias em ${languages.length} idiomas...`);
+  console.log(`[expand-all] Iniciando ${rounds} rodadas de expansão para ${ALL_INTOLERANCES.length} intolerâncias em ${languages.length} idiomas...`);
 
   let totalInserted = 0;
 
-  for (const intolerance of ALL_INTOLERANCES) {
-    for (const lang of languages) {
-      console.log(`[expand-all] Processando ${intolerance.key} em ${lang}...`);
+  // Múltiplas rodadas para gerar mais variações
+  for (let round = 1; round <= rounds; round++) {
+    console.log(`[expand-all] ===== RODADA ${round}/${rounds} =====`);
+    
+    for (const intolerance of ALL_INTOLERANCES) {
+      for (const lang of languages) {
+        console.log(`[expand-all] R${round} - Processando ${intolerance.key} em ${lang}...`);
 
-      try {
-        const result = await expandSingleIntolerance(
-          supabase,
-          intolerance.key,
-          intolerance.context,
-          lang,
-          batchSize
-        );
+        try {
+          const result = await expandSingleIntolerance(
+            supabase,
+            intolerance.key,
+            intolerance.context,
+            lang,
+            batchSize
+          );
 
-        totalInserted += result.inserted;
-        console.log(`[expand-all] ${intolerance.key}/${lang}: +${result.inserted} novos`);
+          totalInserted += result.inserted;
+          console.log(`[expand-all] R${round} - ${intolerance.key}/${lang}: +${result.inserted} novos`);
 
-        // Pausa para não sobrecarregar a API
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      } catch (err) {
-        console.error(`[expand-all] Erro em ${intolerance.key}/${lang}: ${err}`);
+          // Pausa para não sobrecarregar a API
+          await new Promise((resolve) => setTimeout(resolve, 300));
+        } catch (err) {
+          console.error(`[expand-all] Erro em ${intolerance.key}/${lang}: ${err}`);
+        }
       }
     }
+    
+    console.log(`[expand-all] Rodada ${round} concluída. Total inseridos até agora: ${totalInserted}`);
   }
 
   const { count } = await supabase
@@ -185,7 +192,7 @@ serve(async (req) => {
   }
 
   try {
-    const { batch_size = 300, languages = ["pt", "en", "es"] } = await req.json().catch(() => ({}));
+    const { batch_size = 500, languages = ["pt", "en", "es"], rounds = 5 } = await req.json().catch(() => ({}));
 
     if (!LOVABLE_API_KEY) {
       return new Response(
@@ -196,24 +203,31 @@ serve(async (req) => {
 
     // Usar waitUntil para processar em background
     // @ts-ignore - EdgeRuntime is available in Supabase Edge Functions
-    (globalThis as any).EdgeRuntime?.waitUntil?.(runExpansion(batch_size, languages)) 
-      || runExpansion(batch_size, languages).catch(console.error);
+    (globalThis as any).EdgeRuntime?.waitUntil?.(runExpansion(batch_size, languages, rounds)) 
+      || runExpansion(batch_size, languages, rounds).catch(console.error);
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const { count: currentCount } = await supabase
       .from("intolerance_mappings")
       .select("*", { count: "exact", head: true });
 
+    // 18 intolerâncias × 3 idiomas × 5 rodadas × 500 ingredientes = 135.000 tentativas
+    // Com ~40% de duplicados esperados = ~50.000+ ingredientes únicos
+    const estimatedTotal = ALL_INTOLERANCES.length * languages.length * rounds * batch_size * 0.4;
+
     return new Response(
       JSON.stringify({
         success: true,
-        message: "Expansão iniciada em background",
+        message: "Expansão massiva iniciada em background com Gemini Flash Lite",
         info: {
           intolerances_to_process: ALL_INTOLERANCES.length,
           languages: languages,
+          rounds: rounds,
           batch_size_per_request: batch_size,
-          estimated_new_ingredients: ALL_INTOLERANCES.length * languages.length * batch_size * 0.7,
+          total_api_calls: ALL_INTOLERANCES.length * languages.length * rounds,
+          estimated_new_ingredients: Math.round(estimatedTotal),
           current_total: currentCount,
+          model: "google/gemini-2.5-flash-lite",
           note: "Acompanhe os logs da função para ver o progresso"
         },
       }),

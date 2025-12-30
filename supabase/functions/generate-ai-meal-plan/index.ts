@@ -258,24 +258,24 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - CERTO: Sopa de legumes com macarrão integral + Torrada integral ✓
 
 2️⃣ BEBIDAS POR TIPO DE REFEIÇÃO:
-- CAFÉ DA MANHÃ: café (sem açúcar), chá (sem açúcar), leite, vitamina
-- ALMOÇO: água, água com limão, água de coco (bebidas sem calorias ou baixas calorias)
-- LANCHE DA TARDE: chá (sem açúcar), café (sem açúcar), água de coco
-- JANTAR: água, água com limão, água de coco (bebidas sem calorias ou baixas calorias)
-- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão) sem açúcar, leite morno
+- CAFÉ DA MANHÃ: café, chá, leite, suco natural, vitamina
+- ALMOÇO: NÃO incluir bebidas calóricas - substituir por alimento real (fruta, salada extra)
+- LANCHE DA TARDE: chá, café, suco natural, água de coco
+- JANTAR: NÃO incluir bebidas calóricas - substituir por alimento real (fruta, salada extra)
+- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão), leite morno
 - NUNCA incluir chás calmantes (camomila, erva-cidreira) no almoço ou jantar
 
 ⚠️ REGRA DE BEBIDAS PARA REFEIÇÕES PRINCIPAIS (ALMOÇO/JANTAR):
-- EVITE sucos de frutas no almoço e jantar - são calóricos e não saciam
-- PREFIRA água, água com limão, água de coco (baixa caloria)
-- Se o usuário quer fruta, sirva a fruta INTEIRA (fibras + saciedade), não como suco
-- Sucos só são permitidos no café da manhã ou lanches, e sempre "(sem açúcar)"
+- NÃO incluir bebidas no cardápio do almoço e jantar
+- Substituir bebidas por ALIMENTO REAL (ex: fruta de sobremesa, porção extra de salada)
+- NOTA: Hidratação fica a critério do usuário (água, suco sem açúcar ou refrigerante zero)
+- A IA gera o PLANO ALIMENTAR, não impõe preferências de bebidas
 
-3️⃣ CONVERSÃO INTELIGENTE DE FRUTAS:
-- No ALMOÇO e JANTAR: frutas cítricas (laranja, limão, abacaxi) devem ser apresentadas como SUCO NATURAL
-- ERRADO no jantar: "1 laranja média" como sobremesa ❌
-- CERTO no jantar: "1 copo de suco de laranja natural" ✓
-- Frutas não-cítricas (banana, maçã, mamão) podem ser servidas inteiras em qualquer refeição
+3️⃣ APRESENTAÇÃO DE FRUTAS:
+- No ALMOÇO e JANTAR: servir frutas INTEIRAS como sobremesa (fibras + saciedade)
+- CERTO: "1 laranja média" como sobremesa ✓
+- CERTO: "1 fatia média de melancia" ✓
+- Frutas podem ser servidas inteiras em qualquer refeição
 
 4️⃣ COERÊNCIA DE TEMPERATURA:
 - Refeições QUENTES (sopas, caldos, pratos cozidos): acompanhamentos neutros ou quentes
@@ -342,7 +342,7 @@ Exemplos INCORRETOS (NÃO FAZER):
 {"name": "1 xícara de brócolis", "grams": 100} ❌ (brócolis é sólido)
 {"name": "Sopa de legumes", "grams": 300} + {"name": "Arroz branco", "grams": 150} ❌ (arroz deveria estar NA sopa)
 {"name": "Sopa quente", "grams": 300} + {"name": "Salada de alface", "grams": 100} ❌ (incoerência de temperatura)
-{"name": "1 laranja média", "grams": 150} no jantar ❌ (deveria ser suco)
+{"name": "1 copo de suco de laranja", "grams": 250} no almoço/jantar ❌ (bebida calórica - usar fruta inteira)
 {"name": "Chá de camomila", "grams": 200} no almoço ❌ (camomila é para ceia)
 
 Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;

@@ -258,12 +258,18 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - CERTO: Sopa de legumes com macarrão integral + Torrada integral ✓
 
 2️⃣ BEBIDAS POR TIPO DE REFEIÇÃO:
-- CAFÉ DA MANHÃ: café, chá, leite, suco natural, vitamina
-- ALMOÇO: suco natural, água com limão, água de coco (bebidas refrescantes)
-- LANCHE DA TARDE: chá, café, suco natural, água de coco
-- JANTAR: suco natural, água com limão, água de coco (bebidas refrescantes)
-- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão), leite morno
+- CAFÉ DA MANHÃ: café (sem açúcar), chá (sem açúcar), leite, vitamina
+- ALMOÇO: água, água com limão, água de coco (bebidas sem calorias ou baixas calorias)
+- LANCHE DA TARDE: chá (sem açúcar), café (sem açúcar), água de coco
+- JANTAR: água, água com limão, água de coco (bebidas sem calorias ou baixas calorias)
+- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão) sem açúcar, leite morno
 - NUNCA incluir chás calmantes (camomila, erva-cidreira) no almoço ou jantar
+
+⚠️ REGRA DE BEBIDAS PARA REFEIÇÕES PRINCIPAIS (ALMOÇO/JANTAR):
+- EVITE sucos de frutas no almoço e jantar - são calóricos e não saciam
+- PREFIRA água, água com limão, água de coco (baixa caloria)
+- Se o usuário quer fruta, sirva a fruta INTEIRA (fibras + saciedade), não como suco
+- Sucos só são permitidos no café da manhã ou lanches, e sempre "(sem açúcar)"
 
 3️⃣ CONVERSÃO INTELIGENTE DE FRUTAS:
 - No ALMOÇO e JANTAR: frutas cítricas (laranja, limão, abacaxi) devem ser apresentadas como SUCO NATURAL
@@ -326,8 +332,8 @@ Exemplos CORRETOS:
 {"name": "1 banana média", "grams": 120}
 {"name": "1 xícara de chá verde (sem açúcar)", "grams": 200}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
-{"name": "1 copo de suco de laranja natural", "grams": 250}
 {"name": "1 copo de água com limão", "grams": 250}
+{"name": "1 copo de água de coco", "grams": 250}
 
 Exemplos INCORRETOS (NÃO FAZER):
 {"name": "3 claras de ovo mexidas", "grams": 150} + {"name": "1 xícara de espinafre", "grams": 80} ❌ (preparados juntos!)

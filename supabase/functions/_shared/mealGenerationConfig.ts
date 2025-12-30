@@ -2488,61 +2488,214 @@ const INTOLERANCE_PROTEIN_ALTERNATIVES: Record<string, {
 };
 
 /**
- * Gera regras de diversidade proteica com base nas restrições do usuário
+ * Alternativas de CARBOIDRATOS para cada intolerância
+ */
+const INTOLERANCE_CARB_ALTERNATIVES: Record<string, {
+  blocked: string[];
+  alternatives: string[];
+}> = {
+  gluten: {
+    blocked: ['pão', 'macarrão', 'trigo', 'cevada', 'centeio', 'cuscuz', 'bread', 'pasta', 'wheat'],
+    alternatives: ['arroz', 'batata', 'batata-doce', 'mandioca', 'quinoa', 'milho', 'tapioca', 'inhame'],
+  },
+  fodmap: {
+    blocked: ['trigo', 'cevada', 'centeio', 'cebola', 'alho', 'maçã', 'pera', 'wheat', 'onion', 'garlic'],
+    alternatives: ['arroz', 'quinoa', 'batata', 'cenoura', 'abobrinha', 'banana verde', 'aveia sem glúten'],
+  },
+  nickel: {
+    blocked: ['aveia', 'trigo integral', 'centeio', 'oats', 'whole wheat'],
+    alternatives: ['arroz branco', 'batata', 'mandioca', 'milho', 'tapioca'],
+  },
+  sugar: {
+    blocked: ['açúcar', 'mel', 'xarope', 'frutas doces', 'sugar', 'honey', 'syrup'],
+    alternatives: ['batata-doce', 'arroz integral', 'quinoa', 'aveia', 'leguminosas', 'vegetais fibrosos'],
+  },
+};
+
+/**
+ * Alternativas de VEGETAIS para cada intolerância
+ */
+const INTOLERANCE_VEGGIE_ALTERNATIVES: Record<string, {
+  blocked: string[];
+  alternatives: string[];
+}> = {
+  fodmap: {
+    blocked: ['cebola', 'alho', 'couve-flor', 'aspargo', 'cogumelos', 'onion', 'garlic', 'cauliflower'],
+    alternatives: ['cenoura', 'abobrinha', 'pepino', 'alface', 'tomate', 'berinjela', 'pimentão', 'espinafre'],
+  },
+  salicylate: {
+    blocked: ['tomate', 'pimentão', 'berinjela', 'pepino', 'abobrinha', 'tomato', 'pepper', 'eggplant'],
+    alternatives: ['batata', 'cenoura', 'couve-flor', 'repolho', 'alface', 'couve', 'brócolis'],
+  },
+  histamine: {
+    blocked: ['tomate', 'espinafre', 'berinjela', 'abacate', 'tomato', 'spinach', 'eggplant', 'avocado'],
+    alternatives: ['cenoura', 'abobrinha', 'pepino', 'alface', 'couve-flor', 'brócolis', 'repolho'],
+  },
+  nickel: {
+    blocked: ['espinafre', 'brócolis', 'couve', 'aspargo', 'spinach', 'broccoli', 'kale'],
+    alternatives: ['cenoura', 'abobrinha', 'pepino', 'alface', 'tomate', 'pimentão', 'repolho'],
+  },
+  sulfite: {
+    blocked: ['frutas secas', 'conservas', 'vegetais enlatados', 'dried fruits', 'canned vegetables'],
+    alternatives: ['vegetais frescos', 'saladas frescas', 'legumes grelhados', 'vegetais no vapor'],
+  },
+};
+
+/**
+ * Regras de diversidade por OBJETIVO (emagrecer, manter, ganhar peso)
+ */
+const GOAL_DIVERSITY_RULES: Record<string, {
+  carb_focus_pt: string;
+  carb_focus_en: string;
+  veggie_focus_pt: string;
+  veggie_focus_en: string;
+  portion_note_pt: string;
+  portion_note_en: string;
+}> = {
+  emagrecer: {
+    carb_focus_pt: 'Priorize CARBOIDRATOS COMPLEXOS de baixo índice glicêmico: batata-doce, quinoa, aveia, leguminosas',
+    carb_focus_en: 'Prioritize LOW GI complex carbs: sweet potato, quinoa, oats, legumes',
+    veggie_focus_pt: 'AUMENTE vegetais fibrosos e folhosos: brócolis, espinafre, couve, alface, abobrinha',
+    veggie_focus_en: 'INCREASE fibrous and leafy vegetables: broccoli, spinach, kale, lettuce, zucchini',
+    portion_note_pt: '• Porções MODERADAS de carboidratos, GENEROSAS de vegetais, ADEQUADAS de proteínas',
+    portion_note_en: '• MODERATE carb portions, GENEROUS vegetable portions, ADEQUATE protein',
+  },
+  manter: {
+    carb_focus_pt: 'EQUILIBRE carboidratos: arroz, batata, massas integrais, pães integrais, frutas',
+    carb_focus_en: 'BALANCE carbohydrates: rice, potatoes, whole grain pasta, whole bread, fruits',
+    veggie_focus_pt: 'VARIE vegetais: inclua cores diferentes (verde, vermelho, laranja, roxo) em cada refeição',
+    veggie_focus_en: 'VARY vegetables: include different colors (green, red, orange, purple) in each meal',
+    portion_note_pt: '• Porções EQUILIBRADAS de todos os macros',
+    portion_note_en: '• BALANCED portions of all macros',
+  },
+  ganhar_peso: {
+    carb_focus_pt: 'AUMENTE carboidratos densos: arroz, batata, massas, pães, aveia, granola, frutas secas',
+    carb_focus_en: 'INCREASE dense carbs: rice, potatoes, pasta, bread, oats, granola, dried fruits',
+    veggie_focus_pt: 'Inclua vegetais com AMIDO: batata, mandioca, milho, ervilha, além dos fibrosos',
+    veggie_focus_en: 'Include STARCHY vegetables: potatoes, cassava, corn, peas, plus fibrous ones',
+    portion_note_pt: '• Porções GENEROSAS de carboidratos e proteínas, ADEQUADAS de vegetais',
+    portion_note_en: '• GENEROUS carb and protein portions, ADEQUATE vegetable portions',
+  },
+};
+
+/**
+ * Gera regras de diversidade COMPLETAS (proteínas, carboidratos, vegetais)
+ * para todas as 18 intolerâncias, perfis dietéticos e objetivos
  */
 function generateProteinDiversityRules(
   dietaryPreference: string | undefined,
   intolerances: string[],
   isPortuguese: boolean,
-  isSpanish: boolean
+  isSpanish: boolean,
+  goal?: string,
+  sex?: string
 ): string {
   const rules: string[] = [];
   
-  // 1. Regras para preferências dietéticas
+  // ============= HEADER =============
+  if (isPortuguese) {
+    rules.push(`
+═══════════════════════════════════════════════════════════════
+🎯 REGRAS DE DIVERSIDADE ALIMENTAR (OBRIGATÓRIO PARA TODOS)
+═══════════════════════════════════════════════════════════════`);
+  } else {
+    rules.push(`
+═══════════════════════════════════════════════════════════════
+🎯 FOOD DIVERSITY RULES (MANDATORY FOR ALL)
+═══════════════════════════════════════════════════════════════`);
+  }
+  
+  // ============= 1. REGRAS POR OBJETIVO =============
+  const userGoal = goal || 'manter';
+  const goalRules = GOAL_DIVERSITY_RULES[userGoal] || GOAL_DIVERSITY_RULES['manter'];
+  
+  if (isPortuguese) {
+    rules.push(`
+📈 REGRAS PARA OBJETIVO "${userGoal.toUpperCase()}":
+🍚 CARBOIDRATOS: ${goalRules.carb_focus_pt}
+🥦 VEGETAIS: ${goalRules.veggie_focus_pt}
+📏 PORÇÕES: ${goalRules.portion_note_pt}`);
+  } else {
+    rules.push(`
+📈 RULES FOR GOAL "${userGoal.toUpperCase()}":
+🍚 CARBS: ${goalRules.carb_focus_en}
+🥦 VEGETABLES: ${goalRules.veggie_focus_en}
+📏 PORTIONS: ${goalRules.portion_note_en}`);
+  }
+  
+  // ============= 2. REGRAS POR PREFERÊNCIA DIETÉTICA =============
   if (dietaryPreference === 'vegana') {
     if (isPortuguese) {
       rules.push(`
-🌱 DIVERSIDADE PROTEICA VEGANA (OBRIGATÓRIO):
-Use no mínimo 5 fontes proteicas DIFERENTES ao longo do dia:
-• LEGUMINOSAS: grão-de-bico, lentilha, feijão preto, feijão branco, ervilha
-• DERIVADOS DE SOJA: tofu, tempeh, edamame, proteína texturizada
-• SEITAN (proteína de trigo)
-• COGUMELOS: shimeji, shitake, champignon, portobello
-• OLEAGINOSAS: castanhas, amendoim, amêndoas, nozes
-• SEMENTES: chia, linhaça, gergelim, girassol, abóbora
-• PSEUDOCEREAIS: quinoa, amaranto, trigo sarraceno
-
-⚠️ LIMITE: Máximo 2 refeições/dia com a mesma proteína (ex: tofu)!`);
-    } else if (isSpanish) {
-      rules.push(`
-🌱 DIVERSIDAD PROTEICA VEGANA (OBLIGATORIO):
-Use mínimo 5 fuentes proteicas DIFERENTES: legumbres, tofu, tempeh, seitan, hongos, frutos secos, semillas.
-⚠️ LÍMITE: Máximo 2 comidas/día con la misma proteína!`);
+🌱 DIVERSIDADE VEGANA (PROTEÍNAS + CARBOIDRATOS + VEGETAIS):
+PROTEÍNAS (mín. 5 fontes/dia): leguminosas, tofu, tempeh, seitan, cogumelos, oleaginosas, sementes
+CARBOIDRATOS: arroz, quinoa, batata-doce, aveia, milho, mandioca, trigo sarraceno
+VEGETAIS: varie cores! Verde (espinafre, brócolis), Vermelho (tomate, pimentão), Laranja (cenoura, abóbora)
+⚠️ MÁXIMO 2 refeições/dia com a mesma proteína!`);
     } else {
       rules.push(`
-🌱 VEGAN PROTEIN DIVERSITY (MANDATORY):
-Use at least 5 DIFFERENT protein sources: legumes, tofu, tempeh, seitan, mushrooms, nuts, seeds.
-⚠️ LIMIT: Max 2 meals/day with the same protein!`);
+🌱 VEGAN DIVERSITY (PROTEINS + CARBS + VEGETABLES):
+PROTEINS (min 5 sources/day): legumes, tofu, tempeh, seitan, mushrooms, nuts, seeds
+CARBS: rice, quinoa, sweet potato, oats, corn, cassava, buckwheat
+VEGETABLES: vary colors! Green, Red, Orange, Purple
+⚠️ MAX 2 meals/day with the same protein!`);
     }
   } else if (dietaryPreference === 'vegetariana') {
     if (isPortuguese) {
       rules.push(`
-🥚 DIVERSIDADE PROTEICA VEGETARIANA (OBRIGATÓRIO):
-Varie as fontes proteicas: OVOS, LATICÍNIOS, LEGUMINOSAS, TOFU, COGUMELOS, OLEAGINOSAS.
-⚠️ LIMITE: Máximo 2 refeições/dia com a mesma proteína!`);
+🥚 DIVERSIDADE VEGETARIANA:
+PROTEÍNAS: ovos, laticínios, leguminosas, tofu, cogumelos, oleaginosas
+CARBOIDRATOS: arroz, massas, pães, batata, quinoa, aveia
+VEGETAIS: varie texturas (crus, cozidos, grelhados, refogados)
+⚠️ MÁXIMO 2 refeições/dia com a mesma proteína!`);
     } else {
       rules.push(`
-🥚 VEGETARIAN PROTEIN DIVERSITY: Vary sources: eggs, dairy, legumes, tofu, mushrooms, nuts.
-⚠️ LIMIT: Max 2 meals/day with the same protein!`);
+🥚 VEGETARIAN DIVERSITY:
+PROTEINS: eggs, dairy, legumes, tofu, mushrooms, nuts
+CARBS: rice, pasta, bread, potato, quinoa, oats
+VEGETABLES: vary textures (raw, cooked, grilled, sautéed)
+⚠️ MAX 2 meals/day with the same protein!`);
+    }
+  } else if (dietaryPreference === 'pescetariana') {
+    if (isPortuguese) {
+      rules.push(`
+🐟 DIVERSIDADE PESCETARIANA:
+PROTEÍNAS: peixes variados (salmão, tilápia, atum, sardinha), frutos do mar, ovos, laticínios, leguminosas
+CARBOIDRATOS: arroz, quinoa, batata, massas, pães integrais
+VEGETAIS: varie entre folhosos, crucíferos e coloridos
+⚠️ ALTERNE tipos de peixe ao longo da semana!`);
+    } else {
+      rules.push(`
+🐟 PESCATARIAN DIVERSITY:
+PROTEINS: varied fish (salmon, tilapia, tuna, sardines), seafood, eggs, dairy, legumes
+CARBS: rice, quinoa, potato, pasta, whole grain bread
+VEGETABLES: vary between leafy, cruciferous and colorful
+⚠️ ALTERNATE fish types throughout the week!`);
+    }
+  } else {
+    // Dieta comum/flexível
+    if (isPortuguese) {
+      rules.push(`
+🍖 DIVERSIDADE PROTEICA GERAL:
+PROTEÍNAS: alterne entre carnes (frango, bovina, suína, peixe), ovos, laticínios e leguminosas
+CARBOIDRATOS: varie entre arroz, batata, massas, pães, quinoa, mandioca
+VEGETAIS: inclua pelo menos 2 tipos diferentes por refeição principal
+⚠️ MÁXIMO 2 refeições/dia com a mesma proteína!`);
+    } else {
+      rules.push(`
+🍖 GENERAL PROTEIN DIVERSITY:
+PROTEINS: alternate between meats (chicken, beef, pork, fish), eggs, dairy and legumes
+CARBS: vary between rice, potato, pasta, bread, quinoa, cassava
+VEGETABLES: include at least 2 different types per main meal
+⚠️ MAX 2 meals/day with the same protein!`);
     }
   }
   
-  // 2. Regras para cada intolerância detectada
+  // ============= 3. REGRAS POR INTOLERÂNCIA =============
   const normalizedIntolerances = intolerances
     .filter(i => i && i !== 'none' && i !== 'nenhuma')
     .map(i => i.toLowerCase());
   
-  // Mapeamento de keys do onboarding para keys do sistema
   const KEY_NORMALIZATION: Record<string, string> = {
     'amendoim': 'peanut',
     'ovos': 'egg',
@@ -2569,54 +2722,80 @@ Varie as fontes proteicas: OVOS, LATICÍNIOS, LEGUMINOSAS, TOFU, COGUMELOS, OLEA
   
   const processedIntolerances: string[] = [];
   
-  for (const intolerance of normalizedIntolerances) {
-    const normalizedKey = KEY_NORMALIZATION[intolerance] || intolerance;
-    
-    // Evitar duplicatas
-    if (processedIntolerances.includes(normalizedKey)) continue;
-    processedIntolerances.push(normalizedKey);
-    
-    const altData = INTOLERANCE_PROTEIN_ALTERNATIVES[normalizedKey];
-    if (!altData) continue;
-    
+  if (normalizedIntolerances.length > 0) {
     if (isPortuguese) {
       rules.push(`
-🔄 ${altData.label_pt.toUpperCase()}:
-❌ EVITAR: ${altData.blocked.slice(0, 5).join(', ')}
-✅ USAR: ${altData.alternatives.join(', ')}`);
-    } else if (isSpanish) {
-      rules.push(`
-🔄 ${altData.label_en.toUpperCase()}:
-❌ EVITAR: ${altData.blocked.slice(0, 5).join(', ')}
-✅ USAR: ${altData.alternatives.join(', ')}`);
+🚫 ALTERNATIVAS POR INTOLERÂNCIA:`);
     } else {
       rules.push(`
-🔄 ${altData.label_en.toUpperCase()}:
-❌ AVOID: ${altData.blocked.slice(0, 5).join(', ')}
-✅ USE: ${altData.alternatives.join(', ')}`);
+🚫 ALTERNATIVES BY INTOLERANCE:`);
     }
   }
   
-  // 3. Regra geral de diversidade (sempre aplicada)
+  for (const intolerance of normalizedIntolerances) {
+    const normalizedKey = KEY_NORMALIZATION[intolerance] || intolerance;
+    
+    if (processedIntolerances.includes(normalizedKey)) continue;
+    processedIntolerances.push(normalizedKey);
+    
+    const proteinAlt = INTOLERANCE_PROTEIN_ALTERNATIVES[normalizedKey];
+    const carbAlt = INTOLERANCE_CARB_ALTERNATIVES[normalizedKey];
+    const veggieAlt = INTOLERANCE_VEGGIE_ALTERNATIVES[normalizedKey];
+    
+    if (!proteinAlt && !carbAlt && !veggieAlt) continue;
+    
+    if (isPortuguese) {
+      let rule = `\n🔄 ${proteinAlt?.label_pt || normalizedKey.toUpperCase()}:`;
+      if (proteinAlt) {
+        rule += `\n   🥩 Proteínas: ✅ ${proteinAlt.alternatives.slice(0, 5).join(', ')}`;
+      }
+      if (carbAlt) {
+        rule += `\n   🍚 Carboidratos: ✅ ${carbAlt.alternatives.slice(0, 5).join(', ')}`;
+      }
+      if (veggieAlt) {
+        rule += `\n   🥦 Vegetais: ✅ ${veggieAlt.alternatives.slice(0, 5).join(', ')}`;
+      }
+      rules.push(rule);
+    } else {
+      let rule = `\n🔄 ${proteinAlt?.label_en || normalizedKey.toUpperCase()}:`;
+      if (proteinAlt) {
+        rule += `\n   🥩 Proteins: ✅ ${proteinAlt.alternatives.slice(0, 5).join(', ')}`;
+      }
+      if (carbAlt) {
+        rule += `\n   🍚 Carbs: ✅ ${carbAlt.alternatives.slice(0, 5).join(', ')}`;
+      }
+      if (veggieAlt) {
+        rule += `\n   🥦 Vegetables: ✅ ${veggieAlt.alternatives.slice(0, 5).join(', ')}`;
+      }
+      rules.push(rule);
+    }
+  }
+  
+  // ============= 4. REGRA GERAL DE DIVERSIDADE =============
   if (isPortuguese) {
     rules.push(`
-📊 REGRA GERAL DE DIVERSIDADE (TODOS OS PERFIS):
-• VARIE a proteína principal em cada refeição do dia
-• NÃO repita o mesmo prato ou variação no mesmo dia
-• ALTERNE entre grupos: carnes, ovos, leguminosas, laticínios, vegetais proteicos
-• MÁXIMO 2 ocorrências da mesma fonte proteica por dia`);
-  } else if (isSpanish) {
-    rules.push(`
-📊 REGLA GENERAL DE DIVERSIDAD:
-• VARÍE la proteína principal en cada comida
-• NO repita el mismo plato en el mismo día
-• MÁXIMO 2 ocurrencias de la misma fuente proteica por día`);
+═══════════════════════════════════════════════════════════════
+📊 REGRAS GERAIS DE DIVERSIDADE (APLICAR A TODOS):
+═══════════════════════════════════════════════════════════════
+🥩 PROTEÍNAS: Máximo 2 refeições/dia com a mesma fonte
+🍚 CARBOIDRATOS: Alterne entre pelo menos 3 tipos/dia (ex: arroz, batata, pão)
+🥦 VEGETAIS: Mínimo 2 vegetais diferentes por refeição principal
+🍎 FRUTAS: Inclua pelo menos 2 frutas diferentes/dia
+🎨 CORES: Cada refeição deve ter pelo menos 3 cores diferentes
+🔄 REPETIÇÃO: NÃO repita o mesmo prato no mesmo dia
+⚠️ VARIEDADE É OBRIGATÓRIA - Monotonia alimentar não é aceitável!`);
   } else {
     rules.push(`
-📊 GENERAL DIVERSITY RULE:
-• VARY the main protein in each meal
-• DO NOT repeat the same dish on the same day
-• MAX 2 occurrences of the same protein source per day`);
+═══════════════════════════════════════════════════════════════
+📊 GENERAL DIVERSITY RULES (APPLY TO ALL):
+═══════════════════════════════════════════════════════════════
+🥩 PROTEINS: Max 2 meals/day with the same source
+🍚 CARBS: Alternate between at least 3 types/day
+🥦 VEGETABLES: Min 2 different vegetables per main meal
+🍎 FRUITS: Include at least 2 different fruits/day
+🎨 COLORS: Each meal should have at least 3 different colors
+🔄 REPETITION: DO NOT repeat the same dish on the same day
+⚠️ VARIETY IS MANDATORY - Food monotony is not acceptable!`);
   }
   
   return rules.join('\n');
@@ -2630,6 +2809,8 @@ export function getStrategyPromptRules(
     dietaryPreference?: string;
     intolerances?: string[];
     previousMealsToday?: string[];
+    goal?: string;
+    sex?: string;
   }
 ): string {
   const persona = getStrategyPersona(strategyKey);
@@ -2711,12 +2892,14 @@ Meals already generated TODAY: ${previousProteins}
     }
   }
   
-  // GERAR REGRAS DE DIVERSIDADE PROTEICA PARA TODOS OS PERFIS
+  // GERAR REGRAS DE DIVERSIDADE COMPLETAS (PROTEÍNAS, CARBOIDRATOS, VEGETAIS)
   const proteinDiversityRule = generateProteinDiversityRules(
     dietPref,
     options?.intolerances || [],
     isPortuguese,
-    isSpanish
+    isSpanish,
+    options?.goal || strategyKey, // Usar goal se disponível, senão strategyKey
+    options?.sex
   );
   
   if (isPortuguese) {

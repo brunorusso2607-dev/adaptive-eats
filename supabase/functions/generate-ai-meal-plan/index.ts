@@ -142,6 +142,7 @@ GOLDEN RULE: Prioritize FOOD NATURALNESS over nutritional optimization. Food wit
     dietaryPreference: restrictions.dietaryPreference,
     intolerances: restrictions.intolerances,
     previousMealsToday: [], // Na geração inicial, não há refeições anteriores no mesmo dia
+    goal: restrictions.goal, // Passar objetivo (emagrecer, manter, ganhar_peso)
   }) : '';
 
   // APENAS dados dinâmicos que o prompt do banco precisa saber

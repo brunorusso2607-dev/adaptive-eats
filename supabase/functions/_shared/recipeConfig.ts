@@ -1986,6 +1986,7 @@ export function buildRegenerateMealPrompt(
   const strategyRulesText = strategyKey ? getStrategyPromptRules(strategyKey, profile.country === 'US' ? 'en-US' : 'pt-BR', {
     dietaryPreference: profile.dietary_preference || undefined,
     intolerances: profile.intolerances || [],
+    goal: profile.goal || undefined, // Passar objetivo do perfil
   }) : '';
   const strategyBlock = strategyRulesText ? `
 ==========================================================

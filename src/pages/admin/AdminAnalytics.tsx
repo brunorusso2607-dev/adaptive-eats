@@ -12,6 +12,7 @@ import {
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from "recharts";
 import { format, subDays, startOfDay, eachDayOfInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 
 type DailyData = {
   date: string;
@@ -35,6 +36,9 @@ export default function AdminAnalytics() {
   const [goalDistribution, setGoalDistribution] = useState<GoalDistribution[]>([]);
   const [dietDistribution, setDietDistribution] = useState<DietDistribution[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Hook para labels do banco de dados
+  const { getDietaryLabel } = useSafetyLabels();
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -116,16 +120,9 @@ export default function AdminAnalytics() {
           dietCounts[diet] = (dietCounts[diet] || 0) + 1;
         });
 
-        const dietLabels: Record<string, string> = {
-          comum: "Comum",
-          vegetariana: "Vegetariana",
-          vegana: "Vegana",
-          low_carb: "Low Carb",
-        };
-
         setDietDistribution(
           Object.entries(dietCounts).map(([key, value]) => ({
-            name: dietLabels[key] || key,
+            name: getDietaryLabel(key),
             value,
           }))
         );

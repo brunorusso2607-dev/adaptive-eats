@@ -19,24 +19,54 @@ type CompatibilityMap = Map<string, { compatibility: 'good' | 'moderate' | 'inco
 export function useDietaryCompatibility(userDietaryPreference?: string | null) {
   const [compatibilityMap, setCompatibilityMap] = useState<CompatibilityMap>(new Map());
   const [profiles, setProfiles] = useState<DietaryProfile[]>([]);
+  const [profileKeyMap, setProfileKeyMap] = useState<Record<string, string>>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  // Map dietary_preference enum to dietary_profiles key
+  // Fetch profile key mapping from database
+  useEffect(() => {
+    const fetchProfileKeys = async () => {
+      const { data } = await supabase
+        .from('dietary_profiles')
+        .select('key')
+        .eq('is_active', true);
+      
+      if (data) {
+        // Build a map where each profile key maps to itself
+        const keyMap: Record<string, string> = {};
+        for (const profile of data) {
+          keyMap[profile.key] = profile.key;
+        }
+        // Add common aliases
+        keyMap['vegetariana'] = 'vegetariano';
+        keyMap['vegana'] = 'vegano';
+        setProfileKeyMap(keyMap);
+      }
+    };
+    fetchProfileKeys();
+  }, []);
+
+  // Map dietary_preference enum to dietary_profiles key using database
   const getProfileKey = useCallback((preference: string | null | undefined): string => {
     if (!preference) return 'comum';
     
-    const mapping: Record<string, string> = {
+    // First check direct mapping from database
+    if (profileKeyMap[preference]) {
+      return profileKeyMap[preference];
+    }
+    
+    // Fallback mappings for enum values that might differ from profile keys
+    const fallbackMapping: Record<string, string> = {
       'comum': 'comum',
       'vegetariana': 'vegetariano',
       'vegana': 'vegano',
       'low_carb': 'low_carb',
-      'pescetariana': 'comum', // fallback
+      'pescetariana': 'comum', // fallback if no specific profile exists
       'cetogenica': 'low_carb', // similar to low_carb
       'flexitariana': 'comum', // mostly common with some restrictions
     };
     
-    return mapping[preference] || 'comum';
-  }, []);
+    return fallbackMapping[preference] || 'comum';
+  }, [profileKeyMap]);
 
   useEffect(() => {
     const fetchCompatibility = async () => {

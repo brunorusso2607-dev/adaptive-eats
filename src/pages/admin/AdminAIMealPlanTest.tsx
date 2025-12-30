@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { Loader2, Utensils, Globe, Target, AlertCircle, Scale, Ruler, User, Aler
 import { toast } from "sonner";
 import { useAllNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 
 // Validação de peso baseada na estratégia
 function validateWeightGoal(
@@ -62,13 +63,14 @@ const COUNTRIES = [
   { code: "CO", name: "Colombia", flag: "🇨🇴" },
 ];
 
-const DIETARY_PREFERENCES = [
+// Fallback - será substituído por dados do banco
+const FALLBACK_DIETARY_PREFERENCES = [
   { value: "comum", label: "Comum / Omnivore" },
   { value: "vegetariana", label: "Vegetariana" },
   { value: "vegana", label: "Vegana" },
   { value: "low_carb", label: "Low Carb" },
   { value: "pescetariana", label: "Pescetariana" },
-  { value: "cetogenica", label: "Cetogenica / Keto" },
+  { value: "cetogenica", label: "Cetogênica / Keto" },
   { value: "flexitariana", label: "Flexitariana" },
 ];
 
@@ -526,7 +528,7 @@ export default function AdminAIMealPlanTest() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {DIETARY_PREFERENCES.map(p => (
+                    {FALLBACK_DIETARY_PREFERENCES.map(p => (
                       <SelectItem key={p.value} value={p.value}>
                         {p.label}
                       </SelectItem>

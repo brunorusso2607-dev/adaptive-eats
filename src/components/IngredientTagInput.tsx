@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import { useIntoleranceWarning, ConflictType } from "@/hooks/useIntoleranceWarning";
 import IngredientConflictDialog from "@/components/IngredientConflictDialog";
 import { useIngredientCombinationValidation, ValidationResult } from "@/hooks/useIngredientCombinationValidation";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 
 // Lista de ingredientes comuns para autocomplete - extensa e detalhada
 const COMMON_INGREDIENTS = [
@@ -466,8 +467,8 @@ const RESTRICTION_INGREDIENTS_MAP: Record<string, Set<string>> = {
   ovo: EGG_INGREDIENTS,
 };
 
-// Labels amigáveis para as restrições
-const RESTRICTION_LABELS: Record<string, string> = {
+// Labels amigáveis para as restrições (fallback - DB é fonte de verdade via useSafetyLabels)
+const FALLBACK_RESTRICTION_LABELS: Record<string, string> = {
   lactose: "lactose",
   gluten: "glúten",
   acucar: "açúcar",
@@ -614,7 +615,7 @@ export default function IngredientTagInput({
         name: ingredient,
         hasConflict: !!conflictType,
         conflictType,
-        conflictLabel: conflictType ? RESTRICTION_LABELS[conflictType] || conflictType : null,
+        conflictLabel: conflictType ? FALLBACK_RESTRICTION_LABELS[conflictType] || conflictType : null,
       };
     });
     

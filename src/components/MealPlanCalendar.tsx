@@ -11,6 +11,7 @@ import { useDynamicDietaryCompatibility } from "@/hooks/useDynamicDietaryCompati
 import { useReplaceIncompatibleMeals } from "@/hooks/useReplaceIncompatibleMeals";
 import { usePlanMealTimes } from "@/hooks/usePlanMealTimes";
 import { useNutritionalStrategies } from "@/hooks/useNutritionalStrategies";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import {
   Select,
   SelectContent,
@@ -130,6 +131,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return strategies.find(s => s.id === userProfile.strategy_id);
   }, [userProfile?.strategy_id, strategies]);
 
+  // Hook para labels do banco de dados
+  const { getIntoleranceLabel, getDietaryLabel } = useSafetyLabels();
+  
   // Profile summary for banner - only show if we have meaningful data
   const profileSummary = useMemo(() => {
     const items: { icon: typeof TrendingDown; label: string; key: string }[] = [];
@@ -147,33 +151,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     // Intolerances (show first 2 max, excluding "nenhuma")
     const validIntolerances = (userProfile?.intolerances || []).filter(i => i && i !== 'nenhuma');
     if (validIntolerances.length > 0) {
-      const intoleranceLabels: Record<string, string> = {
-        lactose: 'Lactose',
-        gluten: 'Glúten',
-        acucar: 'Açúcar',
-        amendoim: 'Amendoim',
-        frutos_do_mar: 'Frutos do Mar',
-        frutos_mar: 'Frutos do Mar',
-        ovos: 'Ovos',
-        ovo: 'Ovo',
-        soja: 'Soja',
-        castanhas: 'Castanhas',
-        peixe: 'Peixe',
-        cafeina: 'Cafeína',
-        sulfitos: 'Sulfitos',
-        sesamo: 'Sésamo',
-        mostarda: 'Mostarda',
-        aipo: 'Aipo',
-        moluscos: 'Moluscos',
-        tremoco: 'Tremoço',
-        fodmap: 'FODMAP',
-        histamina: 'Histamina',
-        niquel: 'Níquel',
-        salicilatos: 'Salicilatos',
-      };
       const displayIntolerances = validIntolerances
         .slice(0, 2)
-        .map(i => intoleranceLabels[i] || i)
+        .map(i => getIntoleranceLabel(i))
         .join(', ');
       const extraCount = validIntolerances.length > 2 ? ` +${validIntolerances.length - 2}` : '';
       items.push({ icon: Ban, label: `Sem ${displayIntolerances}${extraCount}`, key: 'intolerances' });
@@ -181,24 +161,16 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     
     // Dietary preference
     if (userProfile?.dietary_preference && userProfile.dietary_preference !== 'comum') {
-      const dietLabels: Record<string, string> = {
-        vegetariana: 'Vegetariana',
-        vegana: 'Vegana',
-        pescetariana: 'Pescetariana',
-        cetogenica: 'Cetogênica',
-        flexitariana: 'Flexitariana',
-        low_carb: 'Low Carb',
-      };
       const dietIcon = userProfile.dietary_preference === 'vegana' || userProfile.dietary_preference === 'vegetariana' 
         ? Leaf 
         : userProfile.dietary_preference === 'pescetariana' 
           ? Fish 
           : Utensils;
-      items.push({ icon: dietIcon, label: dietLabels[userProfile.dietary_preference] || userProfile.dietary_preference, key: 'diet' });
+      items.push({ icon: dietIcon, label: getDietaryLabel(userProfile.dietary_preference), key: 'diet' });
     }
     
     return items;
-  }, [currentStrategy, userProfile]);
+  }, [currentStrategy, userProfile, getIntoleranceLabel, getDietaryLabel]);
 
   // Busca horários personalizados do plano
   const { getTimeRanges, getMealTime, hasCustomTimes, getMealOrder, getLabels, settings: mealTimeSettings, isLoading: isLoadingMealTimes } = usePlanMealTimes({ planId: mealPlan.id });

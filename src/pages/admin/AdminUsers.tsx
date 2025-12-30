@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import { useActivityLog } from "@/hooks/useActivityLog";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -233,14 +234,12 @@ export default function AdminUsers() {
     }
   };
 
+  // Hook para labels do banco de dados
+  const { getDietaryLabel } = useSafetyLabels();
+  
   const getDietLabel = (diet: string | null) => {
-    switch (diet) {
-      case "comum": return "Comum";
-      case "vegetariana": return "Vegetariana";
-      case "vegana": return "Vegana";
-      case "low_carb": return "Low Carb";
-      default: return "N/A";
-    }
+    if (!diet) return "N/A";
+    return getDietaryLabel(diet);
   };
 
   const getActivityLabel = (activity: string | null) => {

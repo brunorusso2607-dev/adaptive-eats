@@ -2,8 +2,9 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw } from "lucide-react";
+import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
@@ -48,6 +49,34 @@ const MEAL_LABELS: Record<string, string> = {
   jantar: "Jantar",
   ceia: "Ceia"
 };
+
+// Componente de Instruções Resumidas colapsável
+function QuickInstructions({ instructions }: { instructions: string[] }) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen} className="mt-4 pt-3 border-t border-border/50">
+      <CollapsibleTrigger asChild>
+        <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors w-full">
+          {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+          <span className="font-medium">Ver instruções</span>
+        </button>
+      </CollapsibleTrigger>
+      <CollapsibleContent className="mt-3">
+        <ol className="space-y-2">
+          {instructions.map((instruction, index) => (
+            <li key={index} className="flex gap-3 text-sm">
+              <span className="w-5 h-5 rounded-full bg-primary/20 text-primary flex items-center justify-center shrink-0 text-xs font-bold">
+                {index + 1}
+              </span>
+              <p className="text-muted-foreground flex-1">{instruction}</p>
+            </li>
+          ))}
+        </ol>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+}
 
 export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: MealRecipeDetailProps) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
@@ -246,6 +275,11 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
               <span>Seguro para suas restrições</span>
             </div>
           </div>
+
+          {/* Instruções Resumidas - Estilo Fridge Scanner */}
+          {meal.recipe_instructions && meal.recipe_instructions.length > 0 && meal.recipe_instructions[0] !== "" && (
+            <QuickInstructions instructions={meal.recipe_instructions} />
+          )}
         </CardContent>
       </Card>
 
@@ -258,26 +292,6 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
         onSubstitute={handleSubstitute}
       />
 
-      {/* Instructions - só mostra se houver instruções */}
-      {meal.recipe_instructions && meal.recipe_instructions.length > 0 && meal.recipe_instructions[0] !== "" && (
-        <Card className="glass-card">
-          <CardContent className="p-4">
-            <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
-              👨‍🍳 Modo de Preparo
-            </h3>
-            <ol className="space-y-4">
-              {meal.recipe_instructions.map((instruction, index) => (
-                <li key={index} className="flex gap-4">
-                  <div className="w-8 h-8 rounded-full gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
-                    {index + 1}
-                  </div>
-                  <p className="flex-1 pt-1">{instruction}</p>
-                </li>
-              ))}
-            </ol>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

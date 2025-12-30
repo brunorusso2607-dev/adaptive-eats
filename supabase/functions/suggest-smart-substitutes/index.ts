@@ -138,7 +138,8 @@ serve(async (req) => {
       ingredientFat,
       ingredientCalories,
       mealType,
-      restrictions 
+      restrictions,
+      strategyKey // Nova prop para identificar dieta flexível
     } = await req.json();
 
     if (!ingredientName) {
@@ -148,10 +149,14 @@ serve(async (req) => {
       );
     }
 
+    const isFlexibleDiet = strategyKey === 'dieta_flexivel';
+    
     logStep('Processing request', { 
       ingredientName, 
       ingredientGrams,
       mealType,
+      strategyKey,
+      isFlexibleDiet,
       macros: { protein: ingredientProtein, carbs: ingredientCarbs, fat: ingredientFat, calories: ingredientCalories }
     });
 
@@ -202,9 +207,60 @@ serve(async (req) => {
       ? `RESTRIÇÕES DO USUÁRIO (CRÍTICO - NÃO VIOLAR): ${restrictions.join(', ')}`
       : '';
 
+    // Texto específico para dieta flexível
+    const flexibleDietText = isFlexibleDiet ? `
+===== DIETA FLEXÍVEL - OPÇÕES EXTRAS =====
+O usuário está na DIETA FLEXÍVEL. Você deve gerar:
+- 3 opções SAUDÁVEIS (normais)
+- 2 opções de "COMFORT FOOD" (mais indulgentes mas equilibradas)
+
+Para as opções de comfort food, marque com "isFlexible": true
+Exemplos de comfort food: hambúrguer artesanal, pizza fit, wrap recheado, sanduíche gourmet, panqueca americana, etc.
+As opções flexíveis devem respeitar as restrições do usuário mas podem ser mais calóricas.
+` : '';
+
+    const numberOfSubstitutes = isFlexibleDiet ? 5 : 5;
+    const formatInstructions = isFlexibleDiet 
+      ? `[
+  {
+    "name": "Nome do substituto saudável",
+    "grams": NÚMERO_CALCULADO_PELA_FÓRMULA,
+    "calories": calorias_proporcionais_à_gramagem,
+    "protein": proteína_proporcional_à_gramagem,
+    "carbs": carboidratos_proporcionais_à_gramagem,
+    "fat": gordura_proporcional_à_gramagem,
+    "reason": "Substituto de ${mealTypeInfo.label}, igualando ${mainMacro}. Gramagem calculada: X / Y × 100 = Zg",
+    "isFlexible": false
+  },
+  {
+    "name": "Nome do comfort food (ex: Hambúrguer fit, Pizza proteica)",
+    "grams": NÚMERO_CALCULADO,
+    "calories": calorias,
+    "protein": proteína,
+    "carbs": carboidratos,
+    "fat": gordura,
+    "reason": "Opção flexível/comfort food para Dieta Flexível",
+    "isFlexible": true
+  }
+]
+
+IMPORTANTE: As primeiras 3 opções devem ser saudáveis (isFlexible: false).
+As últimas 2 opções devem ser comfort foods (isFlexible: true).`
+      : `[
+  {
+    "name": "Nome do substituto com preparo adequado à refeição",
+    "grams": NÚMERO_CALCULADO_PELA_FÓRMULA,
+    "calories": calorias_proporcionais_à_gramagem,
+    "protein": proteína_proporcional_à_gramagem,
+    "carbs": carboidratos_proporcionais_à_gramagem,
+    "fat": gordura_proporcional_à_gramagem,
+    "reason": "Substituto de ${mealTypeInfo.label}, igualando ${mainMacro}. Gramagem calculada: X / Y × 100 = Zg"
+  }
+]`;
+
     const prompt = `Você é um nutricionista especializado em substituições alimentares PRECISAS e EQUILIBRADAS.
 
-TAREFA: Sugerir 5 substitutos para "${ingredientName}" (${ingredientGrams}g) no contexto de ${mealTypeInfo.label}
+TAREFA: Sugerir ${numberOfSubstitutes} substitutos para "${ingredientName}" (${ingredientGrams}g) no contexto de ${mealTypeInfo.label}
 
 DADOS DO ALIMENTO ORIGINAL:
 - Gramagem: ${ingredientGrams}g
@@ -221,6 +277,7 @@ TIPO DE REFEIÇÃO: ${mealTypeInfo.label.toUpperCase()}
 - Exemplos típicos: ${mealTypeInfo.examples.join(', ')}
 
 ${restrictionsText}
+${flexibleDietText}
 
 ===== REGRAS CRÍTICAS =====
 
@@ -248,17 +305,7 @@ ${restrictionsText}
    - Acessibilidade similar (não trocar frango por salmão caro)
 
 ===== FORMATO DE RESPOSTA (JSON puro, sem markdown) =====
-[
-  {
-    "name": "Nome do substituto com preparo adequado à refeição",
-    "grams": NÚMERO_CALCULADO_PELA_FÓRMULA,
-    "calories": calorias_proporcionais_à_gramagem,
-    "protein": proteína_proporcional_à_gramagem,
-    "carbs": carboidratos_proporcionais_à_gramagem,
-    "fat": gordura_proporcional_à_gramagem,
-    "reason": "Substituto de ${mealTypeInfo.label}, igualando ${mainMacro}. Gramagem calculada: X / Y × 100 = Zg"
-  }
-]
+${formatInstructions}
 
 ===== VERIFICAÇÃO ANTES DE RETORNAR =====
 Para CADA substituto, verifique:
@@ -268,7 +315,7 @@ Para CADA substituto, verifique:
 □ Respeita o estilo de preparo (${prepStyles[0]})?
 □ É acessível (custo/disponibilidade similar)?
 
-Retorne APENAS o array JSON com 5 substitutos que passem em TODAS as verificações.`;
+Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos que passem em TODAS as verificações.`;
 
     logStep('Sending prompt to AI', { totalMacroToMatch, mainMacro, mealType });
 
@@ -327,14 +374,16 @@ Retorne APENAS o array JSON com 5 substitutos que passem em TODAS as verificaç�
         suggestions = suggestions
           .filter(s => s && typeof s.name === 'string' && typeof s.grams === 'number')
           .slice(0, 5)
-          .map(s => ({
+          .map((s, index) => ({
             name: s.name,
             grams: Math.round(s.grams),
             calories: Math.round(s.calories || 0),
             protein: Math.round((s.protein || 0) * 10) / 10,
             carbs: Math.round((s.carbs || 0) * 10) / 10,
             fat: Math.round((s.fat || 0) * 10) / 10,
-            reason: s.reason || ''
+            reason: s.reason || '',
+            // Incluir isFlexible se presente na resposta (para dieta flexível)
+            isFlexible: s.isFlexible === true || (isFlexibleDiet && index >= 3) // Fallback: últimas 2 são flexíveis
           }));
       }
     } catch (parseError) {
@@ -343,8 +392,14 @@ Retorne APENAS o array JSON com 5 substitutos que passem em TODAS as verificaç�
     }
 
     logStep('Returning suggestions', { 
-      count: suggestions.length, 
-      suggestions: suggestions.map(s => ({ name: s.name, grams: s.grams, [mainMacro]: macroCategory === 'proteina' ? s.protein : macroCategory === 'carboidrato' ? s.carbs : s.fat }))
+      count: suggestions.length,
+      isFlexibleDiet,
+      suggestions: suggestions.map(s => ({ 
+        name: s.name, 
+        grams: s.grams, 
+        isFlexible: s.isFlexible,
+        [mainMacro]: macroCategory === 'proteina' ? s.protein : macroCategory === 'carboidrato' ? s.carbs : s.fat 
+      }))
     });
 
     return new Response(
@@ -353,7 +408,8 @@ Retorne APENAS o array JSON com 5 substitutos que passem em TODAS as verificaç�
         originalCategory: macroCategory,
         mainMacro,
         mainMacroValue: totalMacroToMatch,
-        mealType: mealTypeInfo.label
+        mealType: mealTypeInfo.label,
+        isFlexibleDiet
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

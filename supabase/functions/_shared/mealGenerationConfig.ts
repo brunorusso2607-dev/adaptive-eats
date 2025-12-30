@@ -213,12 +213,9 @@ export function validateFood(
     dietaryPreference: string;
     excludedIngredients: string[];
   },
-  // deno-lint-ignore no-unused-vars
   dbMappings: IntoleranceMapping[],
-  // deno-lint-ignore no-unused-vars
   dbSafeKeywords: SafeKeyword[]
 ): ValidationResult {
-  // Validação síncrona de fallback para dietas (ainda não no banco)
   const normalizedFood = normalizeText(food);
   
   // 1. Verificar ingredientes excluídos pelo usuário
@@ -265,6 +262,85 @@ export function validateFood(
           reason: `Contém carne: ${meat}`,
           restriction: 'dietary_pescatarian',
         };
+      }
+    }
+  }
+  
+  // 3. Verificar intolerâncias usando os mapeamentos do banco de dados
+  if (restrictions.intolerances.length > 0 && dbMappings.length > 0) {
+    // Mapeamento de keys do onboarding para keys do banco de dados
+    const KEY_NORMALIZATION: Record<string, string> = {
+      'amendoim': 'peanut',
+      'ovos': 'egg',
+      'soja': 'soy',
+      'acucar_diabetes': 'sugar',
+      'acucar': 'sugar',
+      'castanhas': 'tree_nuts',
+      'frutos_do_mar': 'seafood',
+      'peixe': 'fish',
+      'histamina': 'histamine',
+      'salicilatos': 'salicylate',
+      'sulfitos': 'sulfite',
+      'milho': 'corn',
+      'frutose': 'fructose',
+      'niquel': 'nickel',
+      // Keys que já estão corretas (inglês)
+      'lactose': 'lactose',
+      'gluten': 'gluten',
+      'peanut': 'peanut',
+      'seafood': 'seafood',
+      'fish': 'fish',
+      'egg': 'egg',
+      'eggs': 'egg',
+      'soy': 'soy',
+      'sugar': 'sugar',
+      'tree_nuts': 'tree_nuts',
+      'nuts': 'tree_nuts',
+      'histamine': 'histamine',
+      'salicylate': 'salicylate',
+      'nickel': 'nickel',
+      'fodmap': 'fodmap',
+      'sulfite': 'sulfite',
+      'fructose': 'fructose',
+      'corn': 'corn',
+      'caffeine': 'caffeine',
+      'sorbitol': 'sorbitol',
+    };
+    
+    // Normalizar as intolerâncias do usuário
+    const normalizedIntolerances = restrictions.intolerances
+      .filter(i => i && i !== 'none' && i !== 'nenhuma')
+      .map(i => KEY_NORMALIZATION[i.toLowerCase()] || i.toLowerCase());
+    
+    // Verificar se há safe keywords que isentam este alimento
+    for (const intolerance of normalizedIntolerances) {
+      const safeWords = dbSafeKeywords
+        .filter(sk => sk.intolerance_key === intolerance)
+        .map(sk => normalizeText(sk.keyword));
+      
+      let isSafe = false;
+      for (const safeWord of safeWords) {
+        if (normalizedFood.includes(safeWord)) {
+          isSafe = true;
+          break;
+        }
+      }
+      
+      if (isSafe) continue;
+      
+      // Verificar se o alimento contém ingredientes proibidos
+      const forbiddenIngredients = dbMappings
+        .filter(m => m.intolerance_key === intolerance)
+        .map(m => normalizeText(m.ingredient));
+      
+      for (const forbidden of forbiddenIngredients) {
+        if (normalizedFood.includes(forbidden) || forbidden.includes(normalizedFood)) {
+          return {
+            isValid: false,
+            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
+            restriction: `intolerance_${intolerance}`,
+          };
+        }
       }
     }
   }

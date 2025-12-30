@@ -402,7 +402,24 @@ serve(async (req) => {
     
     console.log(`[SECURITY-TEST] Running ${TEST_CASES.length} test cases...`);
     console.log(`[SECURITY-TEST] Loaded ${mappings.length} intolerance mappings, ${safeKeywords.length} safe keywords`);
-
+    
+    // Debug: verificar se amendoim está nos mappings para peanut
+    const peanutMappings = mappings.filter(m => m.intolerance_key === 'peanut');
+    console.log(`[SECURITY-TEST] Peanut mappings count: ${peanutMappings.length}`);
+    const hasAmendoim = peanutMappings.some(m => m.ingredient.includes('amendoim'));
+    console.log(`[SECURITY-TEST] Has 'amendoim' in peanut: ${hasAmendoim}`);
+    
+    // Debug: verificar fish mappings
+    const fishMappings = mappings.filter(m => m.intolerance_key === 'fish');
+    console.log(`[SECURITY-TEST] Fish mappings count: ${fishMappings.length}`);
+    const hasSalmao = fishMappings.some(m => m.ingredient.includes('salmao'));
+    console.log(`[SECURITY-TEST] Has 'salmao' in fish: ${hasSalmao}`);
+    
+    // Verificar seafood
+    const seafoodMappings = mappings.filter(m => m.intolerance_key === 'seafood');
+    console.log(`[SECURITY-TEST] Seafood mappings count: ${seafoodMappings.length}`);
+    const hasCamarao = seafoodMappings.some(m => m.ingredient.includes('camarao'));
+    console.log(`[SECURITY-TEST] Has 'camarao' in seafood: ${hasCamarao}`);
     const results: {
       passed: number;
       failed: number;

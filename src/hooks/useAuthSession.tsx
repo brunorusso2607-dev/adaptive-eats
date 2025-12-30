@@ -35,7 +35,7 @@ export function useAuthSession() {
               toast.info('Sessão encerrada', {
                 description: 'Por favor, faça login novamente.',
               });
-              navigate('/ativar');
+              navigate('/auth');
             }
             break;
 
@@ -64,7 +64,7 @@ export function useAuthSession() {
         toast.warning('Sessão expirada', {
           description: 'Faça login novamente para continuar.',
         });
-        navigate('/ativar');
+        navigate('/auth');
       }
     };
 

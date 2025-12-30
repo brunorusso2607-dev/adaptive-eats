@@ -1983,7 +1983,10 @@ export function buildRegenerateMealPrompt(
     : "";
 
   // Strategy-specific persona rules
-  const strategyRulesText = strategyKey ? getStrategyPromptRules(strategyKey, profile.country === 'US' ? 'en-US' : 'pt-BR') : '';
+  const strategyRulesText = strategyKey ? getStrategyPromptRules(strategyKey, profile.country === 'US' ? 'en-US' : 'pt-BR', {
+    dietaryPreference: profile.dietary_preference || undefined,
+    intolerances: profile.intolerances || [],
+  }) : '';
   const strategyBlock = strategyRulesText ? `
 ==========================================================
 🎯 ESTRATÉGIA NUTRICIONAL DO USUÁRIO (CRÍTICO):

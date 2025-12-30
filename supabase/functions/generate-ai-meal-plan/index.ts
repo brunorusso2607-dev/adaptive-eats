@@ -137,8 +137,12 @@ function buildSimpleNutritionistPrompt(params: {
 You create meals like a human professional would create for themselves, their family, or their real patients.
 GOLDEN RULE: Prioritize FOOD NATURALNESS over nutritional optimization. Food with soul, not formula.`;
 
-  // Obter regras específicas da estratégia nutricional
-  const strategyRules = strategyKey ? getStrategyPromptRules(strategyKey, regional.language) : '';
+  // Obter regras específicas da estratégia nutricional COM injeção de pools dietéticos
+  const strategyRules = strategyKey ? getStrategyPromptRules(strategyKey, regional.language, {
+    dietaryPreference: restrictions.dietaryPreference,
+    intolerances: restrictions.intolerances,
+    previousMealsToday: [], // Na geração inicial, não há refeições anteriores no mesmo dia
+  }) : '';
 
   // APENAS dados dinâmicos que o prompt do banco precisa saber
   // NÃO incluímos instruções de formato - essas vêm do banco

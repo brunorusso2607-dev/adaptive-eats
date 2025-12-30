@@ -55,7 +55,10 @@ function buildAlternativesPrompt(params: {
   // Para opções flexíveis, usar persona da dieta_flexivel
   // Para opções comuns, usar persona de emagrecer
   const effectiveStrategyKey = isFlexibleOption ? 'dieta_flexivel' : (strategyKey === 'dieta_flexivel' ? 'emagrecer' : strategyKey);
-  const strategyRules = effectiveStrategyKey ? getStrategyPromptRules(effectiveStrategyKey, language) : '';
+  const strategyRules = effectiveStrategyKey ? getStrategyPromptRules(effectiveStrategyKey, language, {
+    dietaryPreference: restrictions.dietaryPreference,
+    intolerances: restrictions.intolerances,
+  }) : '';
 
   let macroDescription = `${targetCalories} kcal`;
   if (targetProtein && targetCarbs && targetFat) {

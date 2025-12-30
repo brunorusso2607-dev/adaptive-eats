@@ -405,7 +405,11 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     );
   }
 
-  if (view === "calendar" && selectedPlan) {
+  // Renderiza o calendário se estamos na view calendar OU recipe (para preservar estado)
+  // Quando estamos em recipe, o calendário fica oculto mas montado
+  const showCalendar = (view === "calendar" || view === "recipe") && selectedPlan;
+  
+  if (showCalendar) {
     const handleMealUpdated = (updatedMeal: MealPlanItem) => {
       // Update the meal in the selected plan
       setSelectedPlan(prev => {
@@ -429,11 +433,47 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
       }));
     };
 
+    // Se estamos em recipe, mostra recipe por cima
+    if (view === "recipe" && selectedMeal) {
+      return (
+        <>
+          {/* Calendário oculto para preservar estado */}
+          <div className="hidden">
+            <MealPlanCalendar
+              mealPlan={selectedPlan}
+              onClose={() => {
+                setCalendarSelectedWeek(null);
+                setCalendarSelectedDayIndex(null);
+                setSelectedPlan(null);
+                setView("list");
+              }}
+              onSelectMeal={handleSelectMeal}
+              onToggleFavorite={handleToggleFavorite}
+              onMealUpdated={handleMealUpdated}
+              onEditPlan={() => {
+                setEditingPlanId(selectedPlan.id);
+                setView("edit");
+              }}
+              userProfile={userProfile}
+              externalSelectedWeek={calendarSelectedWeek}
+              externalSelectedDayIndex={calendarSelectedDayIndex}
+              onSelectedWeekChange={setCalendarSelectedWeek}
+              onSelectedDayIndexChange={setCalendarSelectedDayIndex}
+            />
+          </div>
+          <MealRecipeDetail
+            meal={selectedMeal}
+            onBack={() => setView("calendar")}
+            onToggleFavorite={() => handleToggleFavorite(selectedMeal.id)}
+          />
+        </>
+      );
+    }
+
     return (
       <MealPlanCalendar
         mealPlan={selectedPlan}
         onClose={() => {
-          // Reset calendar state when closing calendar completely
           setCalendarSelectedWeek(null);
           setCalendarSelectedDayIndex(null);
           setSelectedPlan(null);
@@ -447,21 +487,10 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
           setView("edit");
         }}
         userProfile={userProfile}
-        // Props elevados para preservar estado
         externalSelectedWeek={calendarSelectedWeek}
         externalSelectedDayIndex={calendarSelectedDayIndex}
         onSelectedWeekChange={setCalendarSelectedWeek}
         onSelectedDayIndexChange={setCalendarSelectedDayIndex}
-      />
-    );
-  }
-
-  if (view === "recipe" && selectedMeal && selectedPlan) {
-    return (
-      <MealRecipeDetail
-        meal={selectedMeal}
-        onBack={() => setView("calendar")}
-        onToggleFavorite={() => handleToggleFavorite(selectedMeal.id)}
       />
     );
   }

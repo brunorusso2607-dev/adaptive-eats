@@ -6,6 +6,16 @@ import {
   getNutritionalSource,
   getPortionFormat
 } from "../_shared/nutritionPrompt.ts";
+// ============= GLOBAL SAFETY ENGINE (CENTRALIZED) =============
+import {
+  loadSafetyDatabase,
+  normalizeUserIntolerances,
+  validateIngredient,
+  getIntoleranceLabel,
+  getDietaryLabel,
+  type UserRestrictions,
+  type SafetyDatabase,
+} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,14 +92,31 @@ serve(async (req) => {
       );
     }
 
-    // Try to get user's country from profile if not provided
+    // Try to get user's country and restrictions from profile
     let userCountry = requestCountry || "BR";
+    let userRestrictions: UserRestrictions = {
+      intolerances: [],
+      dietaryPreference: null,
+      excludedIngredients: [],
+    };
     
     const authHeader = req.headers.get('Authorization');
-    if (authHeader && !requestCountry) {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+    
+    // Load safety database for validation
+    let safetyDatabase: SafetyDatabase | null = null;
+    try {
+      safetyDatabase = await loadSafetyDatabase(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+      logStep('Safety database loaded', { 
+        intoleranceMappings: safetyDatabase.intoleranceMappings.size 
+      });
+    } catch (e) {
+      logStep('Error loading safety database', { error: e });
+    }
+    
+    if (authHeader) {
       try {
-        const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-        const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
         const supabase = createClient(supabaseUrl, supabaseAnonKey, {
           global: { headers: { Authorization: authHeader } }
         });
@@ -98,18 +125,31 @@ serve(async (req) => {
         if (user) {
           const { data: profile } = await supabase
             .from('profiles')
-            .select('country')
+            .select('country, intolerances, dietary_preference, excluded_ingredients')
             .eq('id', user.id)
             .maybeSingle();
           
-          if (profile?.country) {
-            userCountry = profile.country;
+          if (profile) {
+            if (profile.country) userCountry = profile.country;
+            
+            // Build user restrictions for safety validation
+            if (safetyDatabase) {
+              userRestrictions = {
+                intolerances: normalizeUserIntolerances(profile.intolerances || [], safetyDatabase),
+                dietaryPreference: profile.dietary_preference || null,
+                excludedIngredients: profile.excluded_ingredients || [],
+              };
+            }
           }
         }
       } catch (e) {
-        logStep('Error fetching user country', { error: e });
+        logStep('Error fetching user profile', { error: e });
       }
     }
+
+    const hasRestrictions = userRestrictions.intolerances.length > 0 || 
+                           (userRestrictions.dietaryPreference && userRestrictions.dietaryPreference !== 'comum') ||
+                           userRestrictions.excludedIngredients.length > 0;
 
     logStep('Processing query', { query, country: userCountry });
 
@@ -321,9 +361,28 @@ O usuário digitou: "${query}". Identifique o alimento e sugira opções com val
       try {
         const { items, matchRate, fromDb, fromAi } = await calculateRealMacrosForFoods(serviceClient, foodsForCalculation);
         
-        // Update suggestions with real macros
+        // Update suggestions with real macros AND safety validation
         parsed.suggestions = parsed.suggestions.map((s: any, index: number) => {
           const calculatedItem = items[index];
+          const foodName = s.name || s.name_english || '';
+          
+          // ============= SAFETY VALIDATION =============
+          let safetyConflict = null;
+          let hasConflict = false;
+          
+          if (safetyDatabase && hasRestrictions) {
+            const validation = validateIngredient(foodName, userRestrictions, safetyDatabase);
+            if (!validation.isValid) {
+              hasConflict = true;
+              safetyConflict = {
+                type: validation.restriction?.startsWith('intolerance_') ? 'intolerance' :
+                      validation.restriction?.startsWith('dietary_') ? 'dietary' : 'excluded',
+                label: validation.matchedIngredient || validation.reason || '',
+                restriction: validation.restriction || '',
+              };
+            }
+          }
+          
           if (calculatedItem) {
             return {
               ...s,
@@ -333,10 +392,18 @@ O usuário digitou: "${query}". Identifique o alimento e sugira opções com val
               fat: Math.round(calculatedItem.fat),
               fiber: calculatedItem.fiber ? Math.round(calculatedItem.fiber) : undefined,
               macro_source: calculatedItem.source,
-              food_id: calculatedItem.food_id
+              food_id: calculatedItem.food_id,
+              // Safety validation result
+              has_conflict: hasConflict,
+              conflict_info: safetyConflict,
             };
           }
-          return { ...s, macro_source: 'ai_estimate' };
+          return { 
+            ...s, 
+            macro_source: 'ai_estimate',
+            has_conflict: hasConflict,
+            conflict_info: safetyConflict,
+          };
         });
         
         logStep('Macros recalculated with foods table', { 
@@ -344,12 +411,37 @@ O usuário digitou: "${query}". Identifique o alimento e sugira opções com val
           matchRate: Math.round(matchRate),
           fromDb,
           fromAi,
-          sources: parsed.suggestions.map((s: any) => s.macro_source)
+          sources: parsed.suggestions.map((s: any) => s.macro_source),
+          conflicts: parsed.suggestions.filter((s: any) => s.has_conflict).length,
         });
       } catch (calcError) {
         logStep('Error calculating real macros', { error: String(calcError) });
-        // Keep AI estimates if calculation fails
-        parsed.suggestions = parsed.suggestions.map((s: any) => ({ ...s, macro_source: 'ai_estimate' }));
+        // Keep AI estimates if calculation fails, still apply safety validation
+        parsed.suggestions = parsed.suggestions.map((s: any) => {
+          const foodName = s.name || s.name_english || '';
+          let safetyConflict = null;
+          let hasConflict = false;
+          
+          if (safetyDatabase && hasRestrictions) {
+            const validation = validateIngredient(foodName, userRestrictions, safetyDatabase);
+            if (!validation.isValid) {
+              hasConflict = true;
+              safetyConflict = {
+                type: validation.restriction?.startsWith('intolerance_') ? 'intolerance' :
+                      validation.restriction?.startsWith('dietary_') ? 'dietary' : 'excluded',
+                label: validation.matchedIngredient || validation.reason || '',
+                restriction: validation.restriction || '',
+              };
+            }
+          }
+          
+          return { 
+            ...s, 
+            macro_source: 'ai_estimate',
+            has_conflict: hasConflict,
+            conflict_info: safetyConflict,
+          };
+        });
       }
     }
 

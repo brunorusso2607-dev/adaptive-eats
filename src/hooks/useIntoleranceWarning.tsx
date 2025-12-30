@@ -37,6 +37,43 @@ interface DietaryLabelItem {
   name: string;
 }
 
+/**
+ * Verifica se uma palavra está contida como palavra completa em outra string
+ * Evita falsos positivos como "maçã" matchando "macaron" ou "alho" em "galho"
+ * SINCRONIZADO com globalSafetyEngine.ts do backend
+ */
+function containsWholeWord(text: string, word: string): boolean {
+  if (!text || !word) return false;
+  
+  // Se são iguais, é match perfeito
+  if (text === word) return true;
+  
+  // Escapar caracteres especiais de regex
+  const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Delimitadores comuns
+  const delimiters = '[\\s,;:()\\[\\]\\-\\/]';
+  
+  // Padrão: (início ou delimitador) + palavra + (fim ou delimitador)
+  const regex = new RegExp(`(^|${delimiters})${escapedWord}(${delimiters}|$)`, 'i');
+  
+  if (regex.test(text)) {
+    return true;
+  }
+  
+  // Para palavras mais longas (>= 5 chars), permitir match se o texto
+  // COMEÇA com a palavra seguida de espaço (ex: "leite integral" contém "leite")
+  if (word.length >= 5) {
+    const startsWithWord = new RegExp(`^${escapedWord}(${delimiters}|$)`, 'i');
+    const endsWithWord = new RegExp(`(^|${delimiters})${escapedWord}$`, 'i');
+    if (startsWithWord.test(text) || endsWithWord.test(text)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 export function useIntoleranceWarning() {
   const [intolerances, setIntolerances] = useState<string[]>([]);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
@@ -175,7 +212,8 @@ export function useIntoleranceWarning() {
     const normalizedIngredient = ingredientName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
     for (const excluded of excludedIngredients) {
-      if (normalizedIngredient.includes(excluded) || excluded.includes(normalizedIngredient)) {
+      // Usar containsWholeWord para evitar falsos positivos
+      if (containsWholeWord(normalizedIngredient, excluded)) {
         return { hasConflict: true, excludedItem: excluded };
       }
     }
@@ -195,7 +233,8 @@ export function useIntoleranceWarning() {
     for (const forbidden of forbiddenIngredients) {
       if (forbidden.dietary_key === dietaryPreference) {
         const normalizedForbidden = forbidden.ingredient.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
-        if (normalizedIngredient.includes(normalizedForbidden) || normalizedForbidden.includes(normalizedIngredient)) {
+        // Usar containsWholeWord para evitar falsos positivos
+        if (containsWholeWord(normalizedIngredient, normalizedForbidden)) {
           return { hasConflict: true, restriction: dietaryPreference };
         }
       }
@@ -231,7 +270,8 @@ export function useIntoleranceWarning() {
       // Check against mappings from database
       for (const mapping of mappings) {
         const normalizedIngredient = mapping.ingredient.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        if (normalizedName.includes(normalizedIngredient) && intolerances.includes(mapping.intolerance_key)) {
+        // Usar containsWholeWord para evitar falsos positivos (sincronizado com backend)
+        if (containsWholeWord(normalizedName, normalizedIngredient) && intolerances.includes(mapping.intolerance_key)) {
           foundConflicts.add(mapping.intolerance_key);
         }
       }

@@ -140,6 +140,11 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     descricao: string;
     mensagem: string;
   } | null>(null);
+  const [packagedProductError, setPackagedProductError] = useState<{
+    product_name: string;
+    product_category: string;
+    message: string;
+  } | null>(null);
   
   // Label two-step flow
   const [labelStep, setLabelStep] = useState<LabelStep>("front");
@@ -329,6 +334,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setIsAnalyzing(true);
     setNotFoodError(null);
     setCategoryError(null);
+    setPackagedProductError(null);
     
     try {
       // Get current user session to ensure authentication
@@ -346,6 +352,16 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
       if (error) throw error;
       if (data.error) throw new Error(data.error);
+
+      // Handle packaged product detection - redirect to label scanner
+      if (data.packagedProduct) {
+        setPackagedProductError({
+          product_name: data.product_name || "produto",
+          product_category: data.product_category || "other",
+          message: data.message || "Este é um produto embalado. Use o módulo 'Verificar Rótulo' para analisar os ingredientes."
+        });
+        return;
+      }
 
       // Handle structured category error with detailed feedback
       if (data.categoryError || data.notFood) {
@@ -668,6 +684,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setCorrecoesAplicadas(null);
     setNotFoodError(null);
     setCategoryError(null);
+    setPackagedProductError(null);
     setLabelStep("front");
     setFrontImage(null);
     setNeedsBackPhoto(false);
@@ -687,6 +704,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       setCorrecoesAplicadas(null);
       setNotFoodError(null);
       setCategoryError(null);
+      setPackagedProductError(null);
       setLabelStep("front");
       setFrontImage(null);
       setNeedsBackPhoto(false);
@@ -696,6 +714,14 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       // Set mode last to ensure all states are reset before re-render
       setMode(newMode);
     }
+  };
+
+  // Handler to switch to label mode for packaged products
+  const switchToLabelMode = () => {
+    setPackagedProductError(null);
+    setImagePreview(null);
+    setMode("label");
+    setLabelStep("front");
   };
 
   const getVeredictIcon = (veredicto: string) => {
@@ -1108,8 +1134,49 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               </CardContent>
             )}
 
+            {/* Packaged product detection - redirect to label scanner */}
+            {packagedProductError && (
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center gap-4 text-center p-5 rounded-xl border-2 bg-blue-50/50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-800">
+                  <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-md">
+                    <Package className="w-10 h-10 text-blue-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-foreground">
+                      Produto Embalado Detectado
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Identificamos: <span className="font-medium">{packagedProductError.product_name}</span>
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                    {packagedProductError.message}
+                  </p>
+                  <div className="flex flex-col gap-2 w-full max-w-xs">
+                    <Button
+                      variant="default"
+                      onClick={switchToLabelMode}
+                      className="gradient-primary"
+                      size="lg"
+                    >
+                      <ScanBarcode className="w-5 h-5 mr-2" />
+                      Verificar Rótulo
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={resetAnalysis}
+                      size="sm"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Tirar Outra Foto
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+
             {/* Not food/label error message */}
-            {notFoodError && !categoryError && (
+            {notFoodError && !categoryError && !packagedProductError && (
               <CardContent className="p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">
@@ -1128,7 +1195,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               </CardContent>
             )}
 
-            {!foodAnalysis && !labelAnalysis && !notFoodError && !categoryError && (
+            {!foodAnalysis && !labelAnalysis && !notFoodError && !categoryError && !packagedProductError && (
               <CardContent className="p-4">
                 {/* For food mode: show loading state (analysis starts automatically) */}
                 {mode === "food" && isAnalyzing && (

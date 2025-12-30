@@ -416,7 +416,27 @@ Before ANY analysis, classify the image:
 1. **FOOD_DETECTED** → type: "food", proceed with full analysis
 2. **PARTIAL_FOOD** → type: "partial_food", proceed with lower confidence
 3. **NO_FOOD** → type: "not_food", return minimal response
-4. **LABEL_DETECTED** → type: "label", redirect to label analysis module
+4. **PACKAGED_PRODUCT** → type: "packaged_product", redirect to label scanner (VERY IMPORTANT!)
+5. **LABEL_DETECTED** → type: "label", redirect to label analysis module
+
+**CRITICAL - PACKAGED_PRODUCT DETECTION:**
+If the image shows:
+- A product package, box, jar, bottle, can, or container
+- Commercial product packaging (even if it's food like Nutella, Ovomaltine, protein powder, etc.)
+- Sealed/unopened products with branding visible
+- Products on store shelves
+- Industrial food packaging (not a prepared meal/dish)
+
+Then return type: "packaged_product" IMMEDIATELY, do NOT proceed with nutritional analysis.
+This is NOT food to analyze - it's a product that needs the label scanner module.
+
+If PACKAGED PRODUCT, return:
+{
+  "type": "packaged_product",
+  "product_name": "Name of the product visible (e.g., 'Ovomaltine')",
+  "product_category": "drink_powder|chocolate|cereal|snack|dairy|supplement|other",
+  "message": "Message in ${userLocale} explaining this is a packaged product and needs label scanning"
+}
 
 If NOT food, return:
 {
@@ -672,6 +692,28 @@ If any alert exists, set health_bonus to null.
     } catch (parseError) {
       logStep("Parse error", { error: String(parseError), content: content.slice(0, 200) });
       throw new Error("Não foi possível analisar a imagem. Tente com uma foto mais clara.");
+    }
+
+    // ========== CHECK FOR PACKAGED_PRODUCT RESPONSE ==========
+    // The prompt asks AI to return type: "packaged_product" for product packages
+    if (analysis.type === "packaged_product") {
+      logStep("Packaged product detected - redirecting to label scanner", { 
+        type: analysis.type,
+        product_name: analysis.product_name,
+        product_category: analysis.product_category
+      });
+      
+      return new Response(JSON.stringify({
+        success: false,
+        packagedProduct: true,
+        product_name: analysis.product_name || "produto",
+        product_category: analysis.product_category || "other",
+        message: analysis.message || "Este é um produto embalado. Para verificar se é seguro para você, use o módulo 'Verificar Rótulo' para analisar os ingredientes.",
+        redirect_to: "label"
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
     }
 
     // ========== CHECK FOR NOT_FOOD RESPONSE (NEW FORMAT) ==========

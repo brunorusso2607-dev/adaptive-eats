@@ -127,6 +127,10 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [duplicatingPlan, setDuplicatingPlan] = useState<MealPlan | null>(null);
+  
+  // Estado elevado para preservar dia selecionado ao navegar calendar <-> recipe
+  const [calendarSelectedWeek, setCalendarSelectedWeek] = useState<number | null>(null);
+  const [calendarSelectedDayIndex, setCalendarSelectedDayIndex] = useState<number | null>(null);
 
   // Swipe to close with visual feedback
   const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
@@ -429,6 +433,9 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
       <MealPlanCalendar
         mealPlan={selectedPlan}
         onClose={() => {
+          // Reset calendar state when closing calendar completely
+          setCalendarSelectedWeek(null);
+          setCalendarSelectedDayIndex(null);
           setSelectedPlan(null);
           setView("list");
         }}
@@ -440,6 +447,11 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
           setView("edit");
         }}
         userProfile={userProfile}
+        // Props elevados para preservar estado
+        externalSelectedWeek={calendarSelectedWeek}
+        externalSelectedDayIndex={calendarSelectedDayIndex}
+        onSelectedWeekChange={setCalendarSelectedWeek}
+        onSelectedDayIndexChange={setCalendarSelectedDayIndex}
       />
     );
   }

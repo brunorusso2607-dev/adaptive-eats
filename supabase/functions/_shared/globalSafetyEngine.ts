@@ -336,7 +336,7 @@ function checkSafeKeywords(
  * Verifica se uma palavra está contida como palavra completa em outra string
  * Evita falsos positivos como "maçã" matchando "macaron"
  */
-function containsWholeWord(text: string, word: string): boolean {
+export function containsWholeWord(text: string, word: string): boolean {
   if (!text || !word) return false;
   
   // Se são iguais, é match perfeito

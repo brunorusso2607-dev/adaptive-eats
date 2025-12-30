@@ -1,7 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { checkUserIntoleranceConflict, getIntoleranceLabel } from '@/lib/intoleranceDetection';
+import { useSafetyLabels } from './useSafetyLabels';
 
+// NOTA: checkUserIntoleranceConflict de intoleranceDetection.ts foi depreciado
+// Agora usamos dados do banco de dados diretamente
 export interface IntoleranceWarning {
   hasConflict: boolean;
   conflicts: string[];
@@ -49,6 +51,9 @@ export function useIntoleranceWarning() {
   const [forbiddenIngredients, setForbiddenIngredients] = useState<ForbiddenIngredientItem[]>([]);
   const [dietaryLabels, setDietaryLabels] = useState<Record<string, string>>(FALLBACK_DIETARY_LABELS);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Hook para labels de segurança do banco de dados
+  const { getIntoleranceLabel: getDbIntoleranceLabel } = useSafetyLabels();
 
   // Fetch user profile data, mappings, and forbidden ingredients from database
   useEffect(() => {
@@ -236,10 +241,6 @@ export function useIntoleranceWarning() {
           foundConflicts.add(mapping.intolerance_key);
         }
       }
-
-      // Also use the detection function for additional coverage
-      const detectionResult = checkUserIntoleranceConflict(foodName, intolerances);
-      detectionResult.conflicts.forEach(c => foundConflicts.add(c));
     }
 
     const conflicts = Array.from(foundConflicts);
@@ -247,7 +248,7 @@ export function useIntoleranceWarning() {
       if (c.startsWith('excluded:')) {
         return c.replace('excluded:', '');
       }
-      return dietaryLabels[c] || getIntoleranceLabel(c);
+      return dietaryLabels[c] || getDbIntoleranceLabel(c);
     });
 
     return {
@@ -257,7 +258,7 @@ export function useIntoleranceWarning() {
       badgeLabel: labels.length > 0 ? labels[0] : null,
       fullLabel: labels.length > 0 ? `Contém ${labels.join(', ')}` : null,
     };
-  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict, checkExcludedConflict]);
+  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict, checkExcludedConflict, dietaryLabels, getDbIntoleranceLabel]);
 
   // Check a meal with ingredients for conflicts
   const checkMeal = useCallback((mealName: string, ingredients?: any[]): IntoleranceWarning => {
@@ -283,7 +284,7 @@ export function useIntoleranceWarning() {
     }
 
     const conflicts = Array.from(allConflicts);
-    const labels = conflicts.map(c => dietaryLabels[c] || getIntoleranceLabel(c));
+    const labels = conflicts.map(c => dietaryLabels[c] || getDbIntoleranceLabel(c));
 
     return {
       hasConflict: conflicts.length > 0,
@@ -292,7 +293,7 @@ export function useIntoleranceWarning() {
       badgeLabel: labels.length > 0 ? labels[0] : null,
       fullLabel: labels.length > 0 ? `Contém ${labels.join(', ')}` : null,
     };
-  }, [hasAnyRestriction, checkFood]);
+  }, [hasAnyRestriction, checkFood, dietaryLabels, getDbIntoleranceLabel]);
 
   // Batch check multiple foods at once (for lists)
   const checkFoodList = useCallback((foods: string[]): Map<string, IntoleranceWarning> => {

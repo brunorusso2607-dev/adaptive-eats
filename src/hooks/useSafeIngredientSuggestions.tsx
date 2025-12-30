@@ -1,5 +1,6 @@
 import { useMemo, useCallback, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useSafetyLabels } from "./useSafetyLabels";
 
 // Mapeamento de substitutos por CATEGORIA do ingrediente original
 // Estes são substitutos comuns para cada tipo de ingrediente
@@ -238,41 +239,27 @@ export function useSafeIngredientSuggestions(profile: UserProfile | null) {
     }
   }, [profile]);
 
+  const { getIntoleranceLabel, getDietaryLabel } = useSafetyLabels();
+  
   const getUserRestrictionLabels = useCallback((): string[] => {
     if (!profile) return [];
     
     const labels: string[] = [];
-    const restrictionLabels: Record<string, string> = {
-      lactose: "Lactose",
-      gluten: "Glúten",
-      acucar: "Açúcar",
-      amendoim: "Amendoim",
-      frutos_mar: "Frutos do mar",
-      ovo: "Ovo",
-      vegana: "Vegano",
-      vegetariana: "Vegetariano",
-      low_carb: "Low Carb",
-      pescetariana: "Pescetariano",
-      cetogenica: "Cetogênica",
-      flexitariana: "Flexitariano",
-    };
     
     if (profile.intolerances) {
       profile.intolerances.forEach(i => {
-        if (i !== "nenhuma" && restrictionLabels[i]) {
-          labels.push(restrictionLabels[i]);
+        if (i !== "nenhuma") {
+          labels.push(getIntoleranceLabel(i));
         }
       });
     }
     
-    if (profile.dietary_preference && 
-        profile.dietary_preference !== "comum" && 
-        restrictionLabels[profile.dietary_preference]) {
-      labels.push(restrictionLabels[profile.dietary_preference]);
+    if (profile.dietary_preference && profile.dietary_preference !== "comum") {
+      labels.push(getDietaryLabel(profile.dietary_preference));
     }
     
     return labels;
-  }, [profile]);
+  }, [profile, getIntoleranceLabel, getDietaryLabel]);
 
   const hasRestrictions = useMemo(() => {
     if (!profile) return false;

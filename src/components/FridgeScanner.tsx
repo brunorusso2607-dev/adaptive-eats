@@ -156,11 +156,56 @@ export default function FridgeScanner() {
     }
   };
 
+  // Process image after it's read
+  const processImage = useCallback(async (base64: string, slotId: FridgeSlot["id"]) => {
+    console.log("[FRIDGE] processImage called for slot:", slotId);
+    
+    // Set to validating state with the image preview
+    setSlots(prev => prev.map(slot => 
+      slot.id === slotId ? { ...slot, image: base64 } : slot
+    ));
+    setCurrentStep("validating");
+    
+    const isValid = await validateSingleImage(base64, slotId);
+    
+    if (isValid) {
+      // Image is valid, proceed to next phase
+      setCurrentStep("capture");
+      setPendingSlot(null);
+      
+      const slotLabel = slotId === "geladeira" ? "Geladeira" : 
+                        slotId === "freezer" ? "Freezer" : "Porta";
+      toast.success(`${slotLabel} identificada!`);
+      
+      if (slotId === "geladeira") {
+        transitionToPhase("freezer");
+      } else if (slotId === "freezer") {
+        transitionToPhase("porta");
+      } else if (slotId === "porta") {
+        // All photos taken, start analysis
+        setTimeout(() => startAnalysis(), 300);
+      }
+    } else {
+      // Image is invalid - remove it and stay in capture mode
+      setSlots(prev => prev.map(slot => 
+        slot.id === slotId ? { ...slot, image: null } : slot
+      ));
+      setCurrentStep("capture");
+      setPendingSlot(null);
+      // invalidImageError will be set by validateSingleImage
+    }
+  }, [validateSingleImage, transitionToPhase]);
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     const currentPendingSlot = pendingSlot;
     
-    if (!file || !currentPendingSlot) return;
+    console.log("[FRIDGE] handleFileSelect called", { file: !!file, pendingSlot: currentPendingSlot, capturePhase });
+    
+    if (!file) {
+      console.log("[FRIDGE] No file selected");
+      return;
+    }
 
     if (!file.type.startsWith("image/")) {
       toast.error("Por favor, selecione uma imagem");
@@ -171,45 +216,19 @@ export default function FridgeScanner() {
       toast.error("Imagem muito grande. Máximo 10MB.");
       return;
     }
+    
+    // Determine slot - use pendingSlot if available, otherwise infer from phase
+    const targetSlot = currentPendingSlot || (
+      capturePhase === "initial" ? "geladeira" : 
+      capturePhase === "freezer" ? "freezer" : "porta"
+    );
+    
+    console.log("[FRIDGE] Target slot determined:", targetSlot);
 
     const reader = new FileReader();
     reader.onload = async (e) => {
       const base64 = e.target?.result as string;
-      
-      // Set to validating state with the image preview
-      setSlots(prev => prev.map(slot => 
-        slot.id === currentPendingSlot ? { ...slot, image: base64 } : slot
-      ));
-      setCurrentStep("validating");
-      
-      const isValid = await validateSingleImage(base64, currentPendingSlot);
-      
-      if (isValid) {
-        // Image is valid, proceed to next phase
-        setCurrentStep("capture");
-        setPendingSlot(null);
-        
-        const slotLabel = currentPendingSlot === "geladeira" ? "Geladeira" : 
-                          currentPendingSlot === "freezer" ? "Freezer" : "Porta";
-        toast.success(`${slotLabel} identificada!`);
-        
-        if (currentPendingSlot === "geladeira") {
-          transitionToPhase("freezer");
-        } else if (currentPendingSlot === "freezer") {
-          transitionToPhase("porta");
-        } else if (currentPendingSlot === "porta") {
-          // All photos taken, start analysis
-          setTimeout(() => startAnalysis(), 300);
-        }
-      } else {
-        // Image is invalid - remove it and stay in capture mode
-        setSlots(prev => prev.map(slot => 
-          slot.id === currentPendingSlot ? { ...slot, image: null } : slot
-        ));
-        setCurrentStep("capture");
-        setPendingSlot(null);
-        // invalidImageError will be set by validateSingleImage
-      }
+      await processImage(base64, targetSlot);
     };
     reader.readAsDataURL(file);
     

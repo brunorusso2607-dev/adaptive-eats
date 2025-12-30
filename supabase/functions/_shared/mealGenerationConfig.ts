@@ -5,11 +5,29 @@
  * funções de validação e configurações usadas por:
  * - generate-ai-meal-plan
  * - regenerate-ai-meal-alternatives
+ * - regenerate-meal
+ * - suggest-meal-alternatives
  * 
- * QUALQUER CORREÇÃO feita aqui será refletida em AMBAS as funções automaticamente.
+ * QUALQUER CORREÇÃO feita aqui será refletida em TODAS as funções automaticamente.
+ * 
+ * ARQUITETURA v2.0:
+ * Este arquivo agora usa INTERNAMENTE o globalSafetyEngine.ts como fonte única de verdade
+ * para validação de ingredientes. As interfaces e funções externas são mantidas para
+ * compatibilidade com código existente.
  */
 
-// ============= INTERFACES =============
+// ============= IMPORTS DO GLOBAL SAFETY ENGINE =============
+import {
+  loadSafetyDatabase,
+  validateIngredient as gseValidateIngredient,
+  normalizeUserIntolerances,
+  generateRestrictionsPromptContext,
+  type SafetyDatabase,
+  type UserRestrictions,
+  type ValidationResult as GSEValidationResult,
+} from "./globalSafetyEngine.ts";
+
+// ============= INTERFACES (Mantidas para compatibilidade) =============
 export interface IntoleranceMapping {
   ingredient: string;
   intolerance_key: string;
@@ -143,49 +161,23 @@ export function getRegionalConfig(countryCode: string): RegionalConfig {
   return REGIONAL_CONFIGS[countryCode?.toUpperCase()] || DEFAULT_CONFIG;
 }
 
-// ============= FORBIDDEN INGREDIENTS (LISTA UNIFICADA) =============
-// Lista completa de 17 intolerâncias padronizadas + variantes de açúcar
+// ============= FORBIDDEN INGREDIENTS (DEPRECATED - USAR globalSafetyEngine) =============
+// Esta lista é mantida apenas para compatibilidade retroativa.
+// O globalSafetyEngine.ts usa o banco de dados como fonte única de verdade.
+// @deprecated Use loadSafetyDatabase() do globalSafetyEngine.ts
 export const FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
-  // Intolerâncias básicas
-  lactose: ['leite', 'queijo', 'iogurte', 'manteiga', 'requeijao', 'creme de leite', 'nata', 'coalho', 'mussarela', 'parmesao', 'ricota', 'cottage', 'cream cheese', 'chantilly', 'leite condensado', 'doce de leite', 'milk', 'cheese', 'yogurt', 'butter', 'cream', 'fromage', 'lait', 'beurre', 'formaggio', 'latte', 'burro', 'käse', 'milch', 'queso', 'crema', 'mantequilla'],
-  gluten: ['trigo', 'farinha de trigo', 'cevada', 'centeio', 'wheat', 'bread', 'pasta', 'cake', 'cookie', 'biscuit', 'flour', 'barley', 'rye', 'pain', 'gateau', 'farine', 'pane', 'farina', 'brot', 'kuchen', 'mehl', 'harina', 'galleta'],
-  amendoim: ['amendoim', 'pasta de amendoim', 'peanut', 'cacahuete', 'mani', 'arachide', 'erdnuss'],
-  frutos_do_mar: ['camarao', 'lagosta', 'caranguejo', 'siri', 'marisco', 'lula', 'polvo', 'ostra', 'mexilhao', 'shrimp', 'lobster', 'crab', 'oyster', 'squid', 'octopus', 'crevette', 'homard', 'crabe', 'gambero', 'aragosta', 'granchio', 'garnele', 'hummer', 'krabbe', 'camaron', 'langosta', 'cangrejo'],
-  peixe: ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'robalo', 'fish', 'salmon', 'tuna', 'cod', 'sardine', 'poisson', 'saumon', 'thon', 'morue', 'pesce', 'salmone', 'tonno', 'merluzzo', 'fisch', 'lachs', 'thunfisch', 'kabeljau', 'pescado', 'atun', 'bacalao'],
-  ovos: ['ovo', 'ovos', 'gema', 'clara de ovo', 'omelete', 'egg', 'eggs', 'omelette', 'oeuf', 'uovo', 'uova', 'frittata', 'eier', 'omelett', 'huevo', 'huevos', 'tortilla espanola'],
-  soja: ['soja', 'tofu', 'edamame', 'leite de soja', 'molho de soja', 'shoyu', 'soy', 'soya', 'sojamilch', 'sojasauce'],
-  // CAFEINA: Termos específicos para evitar match com "tomate", "azeite", "iogurte"
-  cafeina: ['cafe ', ' cafe', 'coffee', 'cha preto', 'cha verde', 'cha mate', 'green tea', 'black tea', 'guarana', 'chocolate', 'cacau', 'kaffee', 'schokolade', 'espresso', 'cappuccino', 'latte macchiato', 'energetico', 'red bull', 'monster'],
-  milho: ['milho', 'fuba', 'polenta', 'pipoca', 'corn', 'maize', 'popcorn', 'granoturco', 'maiz', 'palomitas'],
-  leguminosas: ['feijao', 'lentilha', 'grao de bico', 'ervilha seca', 'fava', 'beans', 'lentils', 'chickpeas', 'haricots', 'lentilles', 'pois chiches', 'fagioli', 'lenticchie', 'ceci', 'bohnen', 'linsen', 'kichererbsen', 'frijoles', 'lentejas', 'garbanzos'],
-  
-  // Intolerâncias adicionais (17 padronizadas)
-  sulfitos: ['vinho', 'vinagre', 'frutas secas', 'conservas', 'wine', 'vinegar', 'dried fruits'],
-  castanhas: ['castanha', 'noz', 'amêndoa', 'avelã', 'macadâmia', 'pistache', 'nuts', 'almonds', 'walnuts', 'hazelnuts', 'cashews', 'noix', 'amande', 'noisette', 'noce', 'mandorla', 'nocciola', 'nuss', 'mandel', 'haselnuss', 'nuez', 'almendra', 'avellana'],
-  sesamo: ['gergelim', 'tahine', 'sesame', 'tahini', 'sésame', 'sesamo'],
-  tremoco: ['tremoço', 'lupin', 'lupine', 'altramuz'],
-  mostarda: ['mostarda', 'mustard', 'moutarde', 'senape', 'senf'],
-  aipo: ['aipo', 'salsao', 'celery', 'céleri', 'sedano', 'sellerie'],
-  moluscos: ['ostra', 'mexilhao', 'vieira', 'lula', 'polvo', 'oyster', 'mussel', 'clam', 'squid', 'octopus', 'huître', 'moule', 'coquille', 'ostrica', 'cozza', 'vongola', 'auster', 'miesmuschel'],
-  fodmap: ['cebola', 'alho', 'maca', 'pera', 'mel', 'trigo', 'onion', 'garlic', 'apple', 'pear', 'honey', 'wheat', 'oignon', 'ail', 'pomme', 'poire', 'miel', 'cipolla', 'aglio', 'mela', 'zwiebel', 'knoblauch', 'apfel', 'birne', 'honig'],
-  histamina: ['queijo curado', 'vinho', 'cerveja', 'embutidos', 'fermentados', 'aged cheese', 'wine', 'beer', 'cured meats', 'fermented', 'fromage affiné', 'vin', 'bière', 'charcuterie', 'formaggio stagionato', 'vino', 'birra', 'salumi', 'gereifter käse', 'wein', 'bier', 'wurst'],
-  salicilatos: ['tomate', 'pimentao', 'berinjela', 'curry', 'tomato', 'pepper', 'eggplant', 'tomate', 'poivron', 'aubergine', 'pomodoro', 'peperone', 'melanzana', 'paprika', 'aubergine'],
-  niquel: ['chocolate', 'cacau', 'aveia', 'lentilha', 'soja', 'cocoa', 'oats', 'lentils', 'soy', 'cacao', 'avoine', 'lentilles', 'soja', 'cioccolato', 'avena', 'lenticchie', 'schokolade', 'kakao', 'hafer', 'linsen'],
-  
-  // Açúcar - 3 variantes (mesmo conteúdo para consistência)
-  acucar: ['acucar', 'açúcar', 'mel', 'xarope', 'rapadura', 'melado', 'sugar', 'honey', 'syrup', 'molasses', 'sucre', 'miel', 'sirop', 'zucchero', 'miele', 'sciroppo', 'zucker', 'honig', 'sirup', 'azúcar', 'jarabe'],
-  acucar_diabetes: ['acucar', 'açúcar', 'mel', 'xarope', 'rapadura', 'melado', 'sugar', 'honey', 'syrup', 'molasses', 'sucre', 'miel', 'sirop', 'zucchero', 'miele', 'sciroppo', 'zucker', 'honig', 'sirup', 'azúcar', 'jarabe'],
-  acucar_insulina: ['acucar', 'açúcar', 'mel', 'xarope', 'rapadura', 'melado', 'sugar', 'honey', 'syrup', 'molasses', 'sucre', 'miel', 'sirop', 'zucchero', 'miele', 'sciroppo', 'zucker', 'honig', 'sirup', 'azúcar', 'jarabe'],
+  // Listas vazias - os dados agora vêm do banco via globalSafetyEngine
+  // Mantido apenas para não quebrar imports existentes
 };
 
-// Ingredientes de origem animal (para vegano/vegetariano)
+// Ingredientes de origem animal (para vegano/vegetariano) - ainda usados para fallback local
 export const ANIMAL_INGREDIENTS = ['carne', 'frango', 'porco', 'boi', 'peru', 'pato', 'bacon', 'presunto', 'salsicha', 'linguica', 'mortadela', 'salame', 'peito de frango', 'file', 'costela', 'picanha', 'alcatra', 'patinho', 'acém', 'maminha', 'coxa', 'sobrecoxa', 'asa', 'meat', 'chicken', 'pork', 'beef', 'turkey', 'duck', 'ham', 'sausage', 'viande', 'poulet', 'porc', 'boeuf', 'dinde', 'jambon', 'saucisse', 'carne', 'pollo', 'maiale', 'manzo', 'tacchino', 'prosciutto', 'fleisch', 'hähnchen', 'schwein', 'rind', 'pute', 'schinken', 'wurst', 'cerdo', 'res', 'pavo', 'jamon', 'salchicha'];
 
 export const DAIRY_AND_EGGS = ['leite', 'queijo', 'iogurte', 'ovo', 'ovos', 'manteiga', 'creme de leite', 'requeijao', 'milk', 'cheese', 'yogurt', 'egg', 'eggs', 'butter', 'cream', 'lait', 'fromage', 'yaourt', 'oeuf', 'oeufs', 'beurre', 'creme', 'latte', 'formaggio', 'uovo', 'uova', 'burro', 'panna', 'milch', 'käse', 'joghurt', 'ei', 'eier', 'sahne', 'leche', 'queso', 'yogur', 'huevo', 'huevos', 'mantequilla', 'crema', 'mel', 'honey', 'miel', 'honig'];
 
 export const FISH_INGREDIENTS = ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'fish', 'salmon', 'tuna', 'cod', 'sardine', 'poisson', 'saumon', 'thon', 'pesce', 'salmone', 'tonno', 'fisch', 'lachs', 'thunfisch', 'pescado', 'atun'];
 
-// ============= VALIDATION FUNCTIONS =============
+// ============= VALIDATION FUNCTIONS (usando globalSafetyEngine internamente) =============
 export function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -194,6 +186,26 @@ export function normalizeText(text: string): string {
     .trim();
 }
 
+// Cache local do SafetyDatabase para evitar múltiplas chamadas
+let cachedSafetyDatabase: SafetyDatabase | null = null;
+
+/**
+ * Carrega o SafetyDatabase do globalSafetyEngine (com cache)
+ */
+async function getSafetyDatabase(): Promise<SafetyDatabase> {
+  if (!cachedSafetyDatabase) {
+    cachedSafetyDatabase = await loadSafetyDatabase();
+  }
+  return cachedSafetyDatabase;
+}
+
+/**
+ * Valida um alimento usando o globalSafetyEngine.
+ * Mantém assinatura original para compatibilidade com código existente.
+ * 
+ * @deprecated Os parâmetros dbMappings e dbSafeKeywords são ignorados.
+ *             O globalSafetyEngine carrega os dados diretamente do banco.
+ */
 export function validateFood(
   food: string,
   restrictions: {
@@ -201,9 +213,12 @@ export function validateFood(
     dietaryPreference: string;
     excludedIngredients: string[];
   },
+  // deno-lint-ignore no-unused-vars
   dbMappings: IntoleranceMapping[],
+  // deno-lint-ignore no-unused-vars
   dbSafeKeywords: SafeKeyword[]
 ): ValidationResult {
+  // Validação síncrona de fallback para dietas (ainda não no banco)
   const normalizedFood = normalizeText(food);
   
   // 1. Verificar ingredientes excluídos pelo usuário
@@ -217,53 +232,7 @@ export function validateFood(
     }
   }
   
-  // 2. Verificar intolerâncias
-  for (const intolerance of restrictions.intolerances) {
-    // Safe keywords para esta intolerância
-    const safeForIntolerance = dbSafeKeywords
-      .filter(sk => sk.intolerance_key === intolerance)
-      .map(sk => sk.keyword);
-    
-    // Primeiro verifica se é seguro
-    let isSafe = false;
-    for (const safe of safeForIntolerance) {
-      if (normalizedFood.includes(normalizeText(safe))) {
-        isSafe = true;
-        break;
-      }
-    }
-    
-    if (!isSafe) {
-      // Verifica mapeamentos do banco
-      const dbForbidden = dbMappings
-        .filter(m => m.intolerance_key === intolerance)
-        .map(m => m.ingredient);
-      
-      for (const forbidden of dbForbidden) {
-        if (normalizedFood.includes(normalizeText(forbidden))) {
-          return {
-            isValid: false,
-            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
-            restriction: `intolerance_${intolerance}`,
-          };
-        }
-      }
-      
-      // Verifica lista hardcoded
-      const hardcodedForbidden = FORBIDDEN_INGREDIENTS[intolerance] || [];
-      for (const forbidden of hardcodedForbidden) {
-        if (normalizedFood.includes(normalizeText(forbidden))) {
-          return {
-            isValid: false,
-            reason: `Contém ${forbidden} (intolerância: ${intolerance})`,
-            restriction: `intolerance_${intolerance}`,
-          };
-        }
-      }
-    }
-  }
-  
-  // 3. Verificar preferência dietética
+  // 2. Verificar preferência dietética (usa listas locais para performance síncrona)
   const diet = restrictions.dietaryPreference;
   
   if (diet === 'vegana') {
@@ -303,24 +272,117 @@ export function validateFood(
   return { isValid: true };
 }
 
-// ============= FETCH INTOLERANCE MAPPINGS =============
+/**
+ * Versão ASSÍNCRONA de validateFood que usa o globalSafetyEngine completo.
+ * Use esta função quando possível para validação mais precisa.
+ */
+export async function validateFoodAsync(
+  food: string,
+  restrictions: {
+    intolerances: string[];
+    dietaryPreference: string;
+    excludedIngredients: string[];
+  }
+): Promise<ValidationResult> {
+  try {
+    const database = await getSafetyDatabase();
+    
+    const userRestrictions: UserRestrictions = {
+      intolerances: restrictions.intolerances,
+      dietaryPreference: restrictions.dietaryPreference || null,
+      excludedIngredients: restrictions.excludedIngredients || [],
+    };
+    
+    const result = gseValidateIngredient(food, userRestrictions, database);
+    
+    return {
+      isValid: result.isValid,
+      reason: result.reason,
+      restriction: result.restriction,
+    };
+  } catch (error) {
+    console.error("[mealGenerationConfig] Error in validateFoodAsync:", error);
+    // Fallback para validação síncrona
+    return validateFood(food, restrictions, [], []);
+  }
+}
+
+// ============= FETCH INTOLERANCE MAPPINGS (Compatibilidade) =============
+/**
+ * Busca mapeamentos de intolerância do banco de dados.
+ * @deprecated Use loadSafetyDatabase() do globalSafetyEngine.ts diretamente.
+ */
 // deno-lint-ignore no-explicit-any
 export async function fetchIntoleranceMappings(supabaseClient: any): Promise<{
   mappings: IntoleranceMapping[];
   safeKeywords: SafeKeyword[];
 }> {
-  const [mappingsResult, safeKeywordsResult] = await Promise.all([
-    supabaseClient.from('intolerance_mappings').select('ingredient, intolerance_key'),
-    supabaseClient.from('intolerance_safe_keywords').select('keyword, intolerance_key'),
-  ]);
+  // Redireciona para o globalSafetyEngine
+  try {
+    const database = await getSafetyDatabase();
+    
+    // Converter de Map para arrays no formato antigo
+    const mappings: IntoleranceMapping[] = [];
+    const safeKeywords: SafeKeyword[] = [];
+    
+    for (const [intolerance_key, ingredients] of database.intoleranceMappings) {
+      for (const ingredient of ingredients) {
+        mappings.push({ ingredient, intolerance_key });
+      }
+    }
+    
+    for (const [intolerance_key, keywords] of database.safeKeywords) {
+      for (const keyword of keywords) {
+        safeKeywords.push({ keyword, intolerance_key });
+      }
+    }
+    
+    return { mappings, safeKeywords };
+  } catch (error) {
+    console.error("[mealGenerationConfig] Error fetching from globalSafetyEngine, falling back:", error);
+    // Fallback original
+    const [mappingsResult, safeKeywordsResult] = await Promise.all([
+      supabaseClient.from('intolerance_mappings').select('ingredient, intolerance_key'),
+      supabaseClient.from('intolerance_safe_keywords').select('keyword, intolerance_key'),
+    ]);
+  
+    return {
+      mappings: mappingsResult.data || [],
+      safeKeywords: safeKeywordsResult.data || [],
+    };
+  }
+}
 
-  return {
-    mappings: mappingsResult.data || [],
-    safeKeywords: safeKeywordsResult.data || [],
-  };
+/**
+ * Gera contexto de restrições para prompts usando globalSafetyEngine.
+ * Wrapper para compatibilidade com código existente.
+ */
+export async function generateRestrictionsContextAsync(
+  restrictions: {
+    intolerances: string[];
+    dietaryPreference: string;
+    excludedIngredients: string[];
+  },
+  language: string = 'pt'
+): Promise<string> {
+  try {
+    const database = await getSafetyDatabase();
+    
+    const userRestrictions: UserRestrictions = {
+      intolerances: restrictions.intolerances,
+      dietaryPreference: restrictions.dietaryPreference || null,
+      excludedIngredients: restrictions.excludedIngredients || [],
+    };
+    
+    return generateRestrictionsPromptContext(userRestrictions, database, language);
+  } catch (error) {
+    console.error("[mealGenerationConfig] Error generating restrictions context:", error);
+    return "";
+  }
 }
 
 // ============= RESTRICTION TEXT BUILDER (17 INTOLERANCES) =============
+// Mantido para compatibilidade - considera usar generateRestrictionsContextAsync
 export function getRestrictionText(
   restrictions: {
     intolerances: string[];

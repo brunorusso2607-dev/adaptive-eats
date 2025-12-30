@@ -149,3 +149,6 @@ verify_jwt = false
 
 [functions.expand-intolerance-mappings]
 verify_jwt = false
+
+[functions.expand-all-intolerances]
+verify_jwt = false

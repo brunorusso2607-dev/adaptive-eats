@@ -181,15 +181,15 @@ export async function loadSafetyDatabase(
     supabaseClient
       .from("intolerance_mappings")
       .select("intolerance_key, ingredient")
-      .limit(15000),
+      .limit(5000),  // Increased limit for full coverage
     supabaseClient
       .from("intolerance_safe_keywords")
       .select("intolerance_key, keyword")
-      .limit(5000),
+      .limit(2000),
     supabaseClient
       .from("dietary_forbidden_ingredients")
       .select("dietary_key, ingredient, language, category")
-      .limit(10000),
+      .limit(3000),
     supabaseClient
       .from("intolerance_key_normalization")
       .select("onboarding_key, database_key, label"),

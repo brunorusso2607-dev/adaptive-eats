@@ -51,7 +51,7 @@ type FridgeSlot = {
 };
 
 type AnalysisStep = "capture" | "validating" | "analyzing" | "ingredients" | "recipes";
-type CapturePhase = "initial" | "freezer" | "porta";
+type CapturePhase = "initial" | "porta";
 type InvalidImageError = {
   categoria: string;
   descricao: string;
@@ -62,9 +62,8 @@ type InvalidImageError = {
 
 export default function FridgeScanner() {
   const [slots, setSlots] = useState<FridgeSlot[]>([
-    { id: "geladeira", label: "Geladeira", description: "Interior principal", image: null, required: true },
-    { id: "freezer", label: "Freezer", description: "Congelador", image: null, required: false },
-    { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null, required: false },
+    { id: "geladeira", label: "Interior", description: "Geladeira + Freezer abertos", image: null, required: true },
+    { id: "porta", label: "Portas", description: "Porta da geladeira + porta do freezer", image: null, required: false },
   ]);
   const [capturePhase, setCapturePhase] = useState<CapturePhase>("initial");
   const [currentStep, setCurrentStep] = useState<AnalysisStep>("capture");
@@ -86,10 +85,9 @@ export default function FridgeScanner() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
 
-  const geladeiraSlot = slots.find(s => s.id === "geladeira");
-  const freezerSlot = slots.find(s => s.id === "freezer");
+  const interiorSlot = slots.find(s => s.id === "geladeira");
   const portaSlot = slots.find(s => s.id === "porta");
-  const hasGeladeiraPhoto = geladeiraSlot?.image !== null;
+  const hasInteriorPhoto = interiorSlot?.image !== null;
   const photoCount = slots.filter(slot => slot.image !== null).length;
 
   // Smooth transition helper
@@ -103,10 +101,10 @@ export default function FridgeScanner() {
 
   // Auto-advance to next phase after capturing AND validating initial photo
   useEffect(() => {
-    if (capturePhase === "initial" && hasGeladeiraPhoto && pendingSlot === null && !isValidating && !invalidImageError) {
+    if (capturePhase === "initial" && hasInteriorPhoto && pendingSlot === null && !isValidating && !invalidImageError) {
       // Don't auto-advance - the validation flow handles this
     }
-  }, [hasGeladeiraPhoto, capturePhase, pendingSlot, isValidating, invalidImageError, transitionToPhase]);
+  }, [hasInteriorPhoto, capturePhase, pendingSlot, isValidating, invalidImageError, transitionToPhase]);
 
   // Quick validation of a single image
   const validateSingleImage = async (imageBase64: string, slotId: FridgeSlot["id"]): Promise<boolean> => {
@@ -173,13 +171,10 @@ export default function FridgeScanner() {
       setCurrentStep("capture");
       setPendingSlot(null);
       
-      const slotLabel = slotId === "geladeira" ? "Geladeira" : 
-                        slotId === "freezer" ? "Freezer" : "Porta";
-      toast.success(`${slotLabel} identificada!`);
+      const slotLabel = slotId === "geladeira" ? "Interior" : "Portas";
+      toast.success(`${slotLabel} identificado!`);
       
       if (slotId === "geladeira") {
-        transitionToPhase("freezer");
-      } else if (slotId === "freezer") {
         transitionToPhase("porta");
       } else if (slotId === "porta") {
         // All photos taken, start analysis
@@ -219,8 +214,7 @@ export default function FridgeScanner() {
     
     // Determine slot - use pendingSlot if available, otherwise infer from phase
     const targetSlot = currentPendingSlot || (
-      capturePhase === "initial" ? "geladeira" : 
-      capturePhase === "freezer" ? "freezer" : "porta"
+      capturePhase === "initial" ? "geladeira" : "porta"
     );
     
     console.log("[FRIDGE] Target slot determined:", targetSlot);
@@ -254,9 +248,7 @@ export default function FridgeScanner() {
   };
 
   const skipPhase = () => {
-    if (capturePhase === "freezer") {
-      transitionToPhase("porta");
-    } else if (capturePhase === "porta") {
+    if (capturePhase === "porta") {
       startAnalysis();
     }
   };
@@ -400,9 +392,8 @@ export default function FridgeScanner() {
 
   const resetAll = () => {
     setSlots([
-      { id: "geladeira", label: "Geladeira", description: "Interior principal", image: null, required: true },
-      { id: "freezer", label: "Freezer", description: "Congelador", image: null, required: false },
-      { id: "porta", label: "Porta", description: "Prateleiras da porta", image: null, required: false },
+      { id: "geladeira", label: "Interior", description: "Geladeira + Freezer abertos", image: null, required: true },
+      { id: "porta", label: "Portas", description: "Porta da geladeira + porta do freezer", image: null, required: false },
     ]);
     setCapturePhase("initial");
     setAnalysis(null);
@@ -421,8 +412,6 @@ export default function FridgeScanner() {
     // Set the correct phase based on which slot had the error
     if (currentSlot === "geladeira") {
       setCapturePhase("initial");
-    } else if (currentSlot === "freezer") {
-      setCapturePhase("freezer");
     } else if (currentSlot === "porta") {
       setCapturePhase("porta");
     }
@@ -511,33 +500,24 @@ export default function FridgeScanner() {
   );
 
   // Illustration guide component
-  const PhotoGuide = ({ type }: { type: "geladeira" | "freezer" | "porta" }) => {
+  const PhotoGuide = ({ type }: { type: "geladeira" | "porta" }) => {
     const guides = {
       geladeira: {
         icon: <Refrigerator className="w-12 h-12 text-primary" />,
-        title: "Interior da Geladeira",
+        title: "Interior Geladeira + Freezer",
         tips: [
-          "Abra a porta para ver o interior",
-          "Certifique-se de boa iluminação",
-          "Capture todas as prateleiras visíveis"
-        ]
-      },
-      freezer: {
-        icon: <Snowflake className="w-12 h-12 text-cyan-500" />,
-        title: "Freezer / Congelador",
-        tips: [
-          "Fotografe os itens congelados",
-          "Não precisa abrir 100%",
-          "Capture carnes, vegetais, etc."
+          "Abra as duas portas (geladeira e freezer)",
+          "Fotografe as prateleiras internas de ambos",
+          "Certifique-se de boa iluminação"
         ]
       },
       porta: {
         icon: <DoorOpen className="w-12 h-12 text-amber-500" />,
-        title: "Porta da Geladeira",
+        title: "Portas da Geladeira + Freezer",
         tips: [
-          "Molhos, laticínios, bebidas",
-          "Ovos e condimentos",
-          "Itens nas prateleiras da porta"
+          "Fotografe os compartimentos das portas",
+          "Ovos, molhos, condimentos, laticínios",
+          "Inclua porta do freezer se tiver itens"
         ]
       }
     };
@@ -577,37 +557,27 @@ export default function FridgeScanner() {
           <h2 className="text-xl font-bold text-foreground">Geladeira Inteligente</h2>
           <p className="text-sm text-muted-foreground">
             {capturePhase === "initial" 
-              ? "Fotografe o interior da sua geladeira"
-              : capturePhase === "freezer"
-              ? "Deseja adicionar foto do freezer?"
-              : "Deseja adicionar foto da porta?"
+              ? "Fotografe o interior da geladeira e freezer"
+              : "Deseja adicionar foto das portas?"
             }
           </p>
         </div>
 
         {/* Progress indicator - only show after first photo */}
-        {hasGeladeiraPhoto && (
+        {hasInteriorPhoto && (
           <div className="flex items-center justify-center gap-2 mb-2">
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-              geladeiraSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+              interiorSlot?.image ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             }`}>
-              {geladeiraSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '1'}
+              {interiorSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '1'}
             </div>
             <div className={`w-6 h-0.5 ${capturePhase !== "initial" ? 'bg-primary/50' : 'bg-muted'}`} />
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
-              freezerSlot?.image ? 'bg-primary text-primary-foreground' : 
-              capturePhase === "freezer" ? 'bg-primary/20 text-primary ring-2 ring-primary' : 
-              'bg-muted text-muted-foreground'
-            }`}>
-              {freezerSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '2'}
-            </div>
-            <div className={`w-6 h-0.5 ${capturePhase === "porta" || portaSlot?.image ? 'bg-primary/50' : 'bg-muted'}`} />
             <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-medium ${
               portaSlot?.image ? 'bg-primary text-primary-foreground' : 
               capturePhase === "porta" ? 'bg-primary/20 text-primary ring-2 ring-primary' : 
               'bg-muted text-muted-foreground'
             }`}>
-              {portaSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '3'}
+              {portaSlot?.image ? <CheckCircle2 className="w-4 h-4" /> : '2'}
             </div>
           </div>
         )}
@@ -709,11 +679,7 @@ export default function FridgeScanner() {
                       variant="outline"
                       onClick={() => {
                         setInvalidImageError(null);
-                        if (invalidImageError.slotId === "freezer") {
-                          transitionToPhase("porta");
-                        } else {
-                          startAnalysis();
-                        }
+                        startAnalysis();
                       }}
                       size="lg"
                     >
@@ -742,7 +708,7 @@ export default function FridgeScanner() {
                   onClick={() => openCamera("geladeira")}
                 >
                   <Camera className="w-5 h-5 mr-2" />
-                  Tirar Foto da Geladeira
+                  Tirar Foto do Interior
                 </Button>
                 
                 <Button
@@ -758,80 +724,21 @@ export default function FridgeScanner() {
           </Card>
         )}
 
-        {/* Phase: Freezer - Optional freezer photo */}
-        {capturePhase === "freezer" && !categoryError && (
-          <div className={cn(
-            "space-y-3 transition-all duration-300",
-            isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0 animate-fade-in"
-          )}>
-            {/* Show captured photos */}
-            <div className="flex gap-2 animate-scale-in">
-              {geladeiraSlot?.image && (
-                <div className="relative aspect-video w-24 rounded-lg overflow-hidden border-2 border-primary/50 shadow-md">
-                  <img src={geladeiraSlot.image} alt="Geladeira" className="w-full h-full object-cover" />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                    <p className="text-[9px] text-white font-medium flex items-center gap-0.5">
-                      <CheckCircle2 className="w-2.5 h-2.5" />
-                      Geladeira
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            <Card className="glass-card">
-              <CardContent className="p-5 space-y-4">
-                <PhotoGuide type="freezer" />
-                
-                <div className="space-y-2">
-                  <Button
-                    className="w-full gradient-primary h-12"
-                    onClick={() => openCamera("freezer")}
-                  >
-                    <Camera className="w-5 h-5 mr-2" />
-                    Fotografar Freezer
-                  </Button>
-                  
-                  <Button
-                    variant="ghost"
-                    className="w-full h-10 text-muted-foreground"
-                    onClick={skipPhase}
-                  >
-                    <SkipForward className="w-4 h-4 mr-2" />
-                    Pular este passo
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-
         {/* Phase: Porta - Optional door photo */}
         {capturePhase === "porta" && !categoryError && (
           <div className={cn(
             "space-y-3 transition-all duration-300",
             isTransitioning ? "opacity-0 translate-x-4" : "opacity-100 translate-x-0 animate-fade-in"
           )}>
-            {/* Show captured photos */}
+            {/* Show captured photo */}
             <div className="flex gap-2 animate-scale-in">
-              {geladeiraSlot?.image && (
-                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-primary/50 shadow-md">
-                  <img src={geladeiraSlot.image} alt="Geladeira" className="w-full h-full object-cover" />
+              {interiorSlot?.image && (
+                <div className="relative aspect-video w-24 rounded-lg overflow-hidden border-2 border-primary/50 shadow-md">
+                  <img src={interiorSlot.image} alt="Interior" className="w-full h-full object-cover" />
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                    <p className="text-[8px] text-white font-medium flex items-center gap-0.5">
-                      <CheckCircle2 className="w-2 h-2" />
-                      Geladeira
-                    </p>
-                  </div>
-                </div>
-              )}
-              {freezerSlot?.image && (
-                <div className="relative aspect-video w-20 rounded-lg overflow-hidden border-2 border-cyan-500/50 shadow-md">
-                  <img src={freezerSlot.image} alt="Freezer" className="w-full h-full object-cover" />
-                  <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/70 to-transparent p-1">
-                    <p className="text-[8px] text-white font-medium flex items-center gap-0.5">
-                      <CheckCircle2 className="w-2 h-2" />
-                      Freezer
+                    <p className="text-[9px] text-white font-medium flex items-center gap-0.5">
+                      <CheckCircle2 className="w-2.5 h-2.5" />
+                      Interior
                     </p>
                   </div>
                 </div>
@@ -845,11 +752,11 @@ export default function FridgeScanner() {
                 <div className="space-y-2">
                   <Button
                     className="w-full gradient-primary h-12"
-                    onClick={() => openCamera("porta")}
-                  >
-                    <Camera className="w-5 h-5 mr-2" />
-                    Fotografar Porta
-                  </Button>
+                  onClick={() => openCamera("porta")}
+                >
+                  <Camera className="w-5 h-5 mr-2" />
+                  Fotografar Portas
+                </Button>
                   
                   <Button
                     variant="ghost"
@@ -889,9 +796,9 @@ export default function FridgeScanner() {
           <CardContent className="p-8 flex flex-col items-center gap-4">
             <div className="relative">
               <div className="w-24 h-24 rounded-xl bg-muted/50 overflow-hidden border-2 border-primary/30">
-                {geladeiraSlot?.image && (
+                {interiorSlot?.image && (
                   <img 
-                    src={geladeiraSlot.image} 
+                    src={interiorSlot.image} 
                     alt="Verificando" 
                     className="w-full h-full object-cover"
                   />

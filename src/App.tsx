@@ -69,7 +69,7 @@ const queryClient = new QueryClient({
   },
 });
 
-function AppContent() {
+function AppRoutes() {
   // Load and apply app settings on mount
   useAppSettings();
   
@@ -83,7 +83,7 @@ function AppContent() {
   useNetworkStatus();
   
   return (
-    <BrowserRouter>
+    <>
       {/* Global notification handler - processes markAsRead params on any page */}
       <NotificationHandler />
       <Toaster />
@@ -128,7 +128,7 @@ function AppContent() {
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
         <Route path="*" element={<NotFound />} />
       </Routes>
-    </BrowserRouter>
+    </>
   );
 }
 
@@ -136,7 +136,9 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <AppContent />
+        <BrowserRouter>
+          <AppRoutes />
+        </BrowserRouter>
       </TooltipProvider>
     </QueryClientProvider>
   </ErrorBoundary>

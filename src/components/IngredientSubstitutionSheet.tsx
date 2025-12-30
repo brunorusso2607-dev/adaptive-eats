@@ -53,7 +53,7 @@ export default function IngredientSubstitutionSheet({
   const [selectedSubstitute, setSelectedSubstitute] = useState<SmartSubstitute | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   
-  // Fetch user profile for restrictions and strategy
+  // Fetch user profile for restrictions and strategy (dados completos como generate-ai-meal-plan)
   const { data: profile } = useQuery({
     queryKey: ["profile-for-substitution"],
     queryFn: async () => {
@@ -62,7 +62,7 @@ export default function IngredientSubstitutionSheet({
       
       const { data } = await supabase
         .from("profiles")
-        .select("intolerances, dietary_preference, excluded_ingredients, strategy_id")
+        .select("intolerances, dietary_preference, excluded_ingredients, strategy_id, goal, country")
         .eq("id", user.id)
         .single();
       
@@ -94,7 +94,7 @@ export default function IngredientSubstitutionSheet({
     return match ? parseInt(match[1]) : 100;
   };
 
-  // Fetch smart substitutes from edge function
+  // Fetch smart substitutes from edge function (usando mesmos parâmetros que generate-ai-meal-plan)
   const { data: smartData, isLoading, refetch } = useQuery({
     queryKey: ["smart-substitutes", originalIngredient?.item, mealType, originalIngredient?.protein, originalIngredient?.grams],
     queryFn: async () => {
@@ -116,7 +116,11 @@ export default function IngredientSubstitutionSheet({
         ingredientFat,
         ingredientCalories,
         mealType,
-        strategyKey: profile?.strategyKey
+        strategyKey: profile?.strategyKey,
+        intolerances: profile?.intolerances,
+        dietaryPreference: profile?.dietary_preference,
+        goal: profile?.goal,
+        userCountry: profile?.country
       });
       
       const { data, error } = await supabase.functions.invoke('suggest-smart-substitutes', {
@@ -129,7 +133,14 @@ export default function IngredientSubstitutionSheet({
           ingredientCalories,
           mealType: mealType || 'almoco',
           restrictions,
-          strategyKey: profile?.strategyKey // Passar estratégia para gerar opções flexíveis
+          strategyKey: profile?.strategyKey,
+          // Novos campos para usar mesma lógica do generate-ai-meal-plan
+          intolerances: profile?.intolerances || [],
+          dietaryPreference: profile?.dietary_preference || 'comum',
+          excludedIngredients: profile?.excluded_ingredients || [],
+          goal: profile?.goal || 'manter',
+          userCountry: profile?.country || 'BR',
+          existingFoods: [] // Pode ser expandido para receber os alimentos já na refeição
         }
       });
       

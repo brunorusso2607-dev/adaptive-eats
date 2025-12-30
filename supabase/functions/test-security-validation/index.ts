@@ -4,11 +4,11 @@ import {
   validateFood,
   fetchIntoleranceMappings,
   normalizeText,
-  FORBIDDEN_INGREDIENTS,
-  ANIMAL_INGREDIENTS,
-  DAIRY_AND_EGGS,
-  FISH_INGREDIENTS,
 } from "../_shared/mealGenerationConfig.ts";
+import {
+  loadSafetyDatabase,
+  getDatabaseStats,
+} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -464,6 +464,15 @@ serve(async (req) => {
     // Detailed failed tests
     const failedTests = results.tests.filter(t => !t.passed);
 
+    // Get database stats from globalSafetyEngine
+    let dbStats = "Unable to load";
+    try {
+      const safetyDb = await loadSafetyDatabase();
+      dbStats = getDatabaseStats(safetyDb);
+    } catch (e) {
+      console.error('[SECURITY-TEST] Error loading safety database stats:', e);
+    }
+
     return new Response(JSON.stringify({
       summary,
       failedTests,
@@ -471,10 +480,8 @@ serve(async (req) => {
       metadata: {
         intolerance_mappings_count: mappings.length,
         safe_keywords_count: safeKeywords.length,
-        hardcoded_intolerances: Object.keys(FORBIDDEN_INGREDIENTS).length,
-        animal_ingredients: ANIMAL_INGREDIENTS.length,
-        dairy_eggs_ingredients: DAIRY_AND_EGGS.length,
-        fish_ingredients: FISH_INGREDIENTS.length,
+        database_stats: dbStats,
+        architecture: "globalSafetyEngine v1.0 - Centralized validation",
       },
     }, null, 2), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

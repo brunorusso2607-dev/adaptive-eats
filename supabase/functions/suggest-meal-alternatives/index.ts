@@ -8,10 +8,6 @@ import {
   getRestrictionText,
   getMealPromptRules,
   shouldAddSugarQualifier,
-  FORBIDDEN_INGREDIENTS,
-  ANIMAL_INGREDIENTS,
-  DAIRY_AND_EGGS,
-  FISH_INGREDIENTS,
 } from "../_shared/mealGenerationConfig.ts";
 import { logAIUsage } from "../_shared/logAIUsage.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";

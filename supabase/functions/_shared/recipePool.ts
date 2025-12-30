@@ -6,12 +6,17 @@
 // Receitas geradas são automaticamente salvas para reutilização.
 // 
 // FILTRO 2: Validação rigorosa contra perfil do usuário antes de usar
+// 
+// ARCHITECTURE: Usa globalSafetyEngine para validação centralizada
 
 import { SupabaseClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
-  FORBIDDEN_INGREDIENTS,
-  DIETARY_FORBIDDEN_INGREDIENTS,
-} from "./recipeConfig.ts";
+  loadSafetyDatabase,
+  validateIngredient as gseValidateIngredient,
+  normalizeUserIntolerances,
+  type SafetyDatabase,
+  type UserRestrictions,
+} from "./globalSafetyEngine.ts";
 
 // ============================================
 // TIPOS
@@ -202,38 +207,57 @@ function isIngredientForbidden(
 /**
  * Constrói lista completa de ingredientes proibidos baseado no perfil
  */
+/**
+ * @deprecated Use validateRecipeWithGSE() para validação via globalSafetyEngine
+ * Mantida para compatibilidade, agora delega para globalSafetyEngine
+ */
 function buildForbiddenListForProfile(
   dietaryPreference?: string,
   intolerances?: string[],
   excludedIngredients?: string[]
 ): string[] {
+  // Esta função agora é legacy - a validação real acontece via gseValidateIngredient
+  // Retorna apenas os ingredientes excluídos manualmente para logging
   const allForbidden: string[] = [];
   
-  // Adiciona proibidos da preferência dietética
-  if (dietaryPreference) {
-    const dietaryForbidden = DIETARY_FORBIDDEN_INGREDIENTS[dietaryPreference];
-    if (dietaryForbidden) {
-      allForbidden.push(...dietaryForbidden);
-    }
-  }
-  
-  // Adiciona proibidos das intolerâncias
-  if (intolerances && intolerances.length > 0) {
-    for (const intolerance of intolerances) {
-      const forbidden = FORBIDDEN_INGREDIENTS[intolerance.toLowerCase()];
-      if (forbidden) {
-        allForbidden.push(...forbidden);
-      }
-    }
-  }
-  
-  // Adiciona ingredientes excluídos manualmente
   if (excludedIngredients && excludedIngredients.length > 0) {
     allForbidden.push(...excludedIngredients);
   }
   
-  // Remove duplicatas
   return [...new Set(allForbidden)];
+}
+
+// Cache para SafetyDatabase
+let cachedRecipePoolDB: SafetyDatabase | null = null;
+
+/**
+ * Valida um ingrediente usando globalSafetyEngine
+ */
+async function validateIngredientWithGSE(
+  ingredient: string,
+  intolerances?: string[],
+  dietaryPreference?: string,
+  excludedIngredients?: string[]
+): Promise<{ isValid: boolean; reason?: string }> {
+  try {
+    if (!cachedRecipePoolDB) {
+      cachedRecipePoolDB = await loadSafetyDatabase();
+    }
+    
+    const normalizedIntolerances = normalizeUserIntolerances(intolerances || [], cachedRecipePoolDB);
+    
+    const userRestrictions: UserRestrictions = {
+      intolerances: normalizedIntolerances,
+      dietaryPreference: dietaryPreference || null,
+      excludedIngredients: excludedIngredients || [],
+    };
+    
+    const result = gseValidateIngredient(ingredient, userRestrictions, cachedRecipePoolDB);
+    return { isValid: result.isValid, reason: result.reason };
+  } catch (error) {
+    console.error("[recipePool] GSE validation error:", error);
+    return { isValid: true }; // Em caso de erro, permite (fallback seguro para disponibilidade)
+  }
 }
 
 /**

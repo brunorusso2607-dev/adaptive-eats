@@ -345,35 +345,31 @@ export function containsWholeWord(text: string, word: string): boolean {
   // Escapar caracteres especiais de regex
   const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   
-  // Para palavras curtas (< 4 chars), exigir match como palavra separada ou no início/fim
-  // Isso evita "ovo" matchear em "novo" ou "alho" em "galho"
-  if (word.length < 4) {
-    // Verificar se é uma palavra separada por espaços, vírgulas, ou início/fim de string
-    const regex = new RegExp(`(^|[\\s,;:()\\[\\]])${escapedWord}([\\s,;:()\\[\\]]|$)`, 'i');
-    return regex.test(text);
-  }
+  // Criar regex que verifica se a palavra aparece como palavra SEPARADA
+  // Usa word boundaries ou delimitadores comuns
+  // \b não funciona bem com acentos, então usamos delimitadores explícitos
   
-  // Para palavras maiores (>= 4 chars), verificar como palavra completa OU como prefixo/sufixo significativo
-  // mas evitar falsos positivos onde a palavra é parte de outra palavra diferente
+  // A palavra deve estar:
+  // - No início da string seguida de espaço/delimitador
+  // - No final da string precedida de espaço/delimitador
+  // - No meio cercada de espaços/delimitadores
+  const delimiters = '[\\s,;:()\\[\\]\\-\\/]';
   
-  // Primeiro: verificar se é palavra completa separada
-  const wordBoundaryRegex = new RegExp(`(^|[\\s,;:()\\[\\]])${escapedWord}([\\s,;:()\\[\\]]|$)`, 'i');
-  if (wordBoundaryRegex.test(text)) {
+  // Padrão: (início ou delimitador) + palavra + (fim ou delimitador)
+  const regex = new RegExp(`(^|${delimiters})${escapedWord}(${delimiters}|$)`, 'i');
+  
+  if (regex.test(text)) {
     return true;
   }
   
-  // Segundo: verificar se o texto COMEÇA ou TERMINA com a palavra (não no meio)
-  // Isso permite "leite integral" matchear "leite" mas não "alho" em "galho"
-  if (text.startsWith(word) || text.endsWith(word)) {
-    return true;
-  }
-  
-  // Terceiro: verificar se a palavra aparece após um espaço (como parte de um termo composto)
-  // Ex: "leite de cabra" contém "leite"
-  const afterSpaceRegex = new RegExp(`\\s${escapedWord}`, 'i');
-  const beforeSpaceRegex = new RegExp(`${escapedWord}\\s`, 'i');
-  if (afterSpaceRegex.test(text) || beforeSpaceRegex.test(text)) {
-    return true;
+  // Para palavras mais longas (>= 5 chars), permitir match se o texto
+  // COMEÇA com a palavra seguida de espaço (ex: "leite integral" contém "leite")
+  if (word.length >= 5) {
+    const startsWithWord = new RegExp(`^${escapedWord}(${delimiters}|$)`, 'i');
+    const endsWithWord = new RegExp(`(^|${delimiters})${escapedWord}$`, 'i');
+    if (startsWithWord.test(text) || endsWithWord.test(text)) {
+      return true;
+    }
   }
   
   return false;

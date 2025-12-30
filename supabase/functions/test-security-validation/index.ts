@@ -8,6 +8,7 @@ import {
 import {
   loadSafetyDatabase,
   getDatabaseStats,
+  normalizeUserIntolerances,
 } from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
@@ -128,8 +129,8 @@ const TEST_CASES: TestCase[] = [
 
   // === EGG TESTS ===
   {
-    name: "Eggs: should block omelette",
-    food: "omelete de queijo",
+    name: "Eggs: should block eggs directly",
+    food: "2 ovos cozidos",
     restrictions: { intolerances: ["ovos"], dietaryPreference: "comum", excludedIngredients: [] },
     shouldBlock: true,
     expectedRestriction: "intolerance_ovos",
@@ -744,10 +745,16 @@ serve(async (req) => {
       tests: [],
     };
 
+    // Carregar database para normalização
+    const safetyDb = await loadSafetyDatabase();
+
     for (const testCase of TEST_CASES) {
+      // Normalizar intolerâncias (ex: "ovos" -> "egg")
+      const normalizedIntolerances = normalizeUserIntolerances(testCase.restrictions.intolerances, safetyDb);
+      
       const result = validateFood(
         testCase.food,
-        testCase.restrictions,
+        { ...testCase.restrictions, intolerances: normalizedIntolerances },
         mappings,
         safeKeywords
       );

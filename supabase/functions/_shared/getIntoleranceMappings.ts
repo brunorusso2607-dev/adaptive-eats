@@ -4,6 +4,7 @@
  * Este arquivo é mantido apenas para compatibilidade com código legado.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { containsWholeWord } from "./globalSafetyEngine.ts";
 
 interface IntoleranceMapping {
   intolerance_key: string;
@@ -171,8 +172,9 @@ export function checkFoodForIntolerance(
   const matchedIngredients: string[] = [];
   for (const ingredient of ingredients) {
     const normalizedIngredient = normalizeText(ingredient);
-    // Verificar se o alimento contém o ingrediente como substring
-    if (normalizedFood.includes(normalizedIngredient) || normalizedIngredient.includes(normalizedFood)) {
+    // Evitar falsos positivos: verificar se é palavra completa
+    // "maca" (maçã) não deve matchear "macaron" ou "macadamia"
+    if (containsWholeWord(normalizedFood, normalizedIngredient)) {
       matchedIngredients.push(ingredient);
     }
   }

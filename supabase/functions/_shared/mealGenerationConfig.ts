@@ -22,6 +22,7 @@ import {
   validateIngredient as gseValidateIngredient,
   normalizeUserIntolerances,
   generateRestrictionsPromptContext,
+  containsWholeWord,
   type SafetyDatabase,
   type UserRestrictions,
   type ValidationResult as GSEValidationResult,
@@ -334,7 +335,10 @@ export function validateFood(
         .map(m => normalizeText(m.ingredient));
       
       for (const forbidden of forbiddenIngredients) {
-        if (normalizedFood.includes(forbidden) || forbidden.includes(normalizedFood)) {
+        // Evitar falsos positivos: verificar se é palavra completa
+        // "maca" (maçã) não deve matchear "macaron" ou "macadamia"
+        const isWholeWordMatch = containsWholeWord(normalizedFood, forbidden);
+        if (isWholeWordMatch) {
           return {
             isValid: false,
             reason: `Contém ${forbidden} (intolerância: ${intolerance})`,

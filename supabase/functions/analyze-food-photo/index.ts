@@ -734,6 +734,55 @@ If any alert exists, set health_bonus to null.
       throw new Error("Não foi possível analisar a imagem. Tente com uma foto mais clara.");
     }
 
+    // ========== TRANSFORM AI RESPONSE FORMAT ==========
+    // The AI returns 'items' and 'totals', but we need 'alimentos' and 'total_geral'
+    if (analysis.items && !analysis.alimentos) {
+      analysis.alimentos = analysis.items.map((item: any) => ({
+        item: item.name || item.item || '',
+        item_original_language: item.name_in_cuisine_language,
+        porcao_estimada: item.portion_estimate 
+          ? `${item.portion_estimate.value}${item.portion_estimate.unit}` 
+          : '',
+        calorias: item.calories || 0,
+        macros: {
+          proteinas: item.macros?.protein || 0,
+          carboidratos: item.macros?.carbs || 0,
+          gorduras: item.macros?.fat || 0,
+        },
+        confianca_identificacao: item.portion_estimate?.margin_error_percent 
+          ? (item.portion_estimate.margin_error_percent <= 25 ? 'alta' : item.portion_estimate.margin_error_percent <= 35 ? 'media' : 'baixa')
+          : 'media',
+        culinaria_origem: item.cuisine_origin,
+        ingredientes_visiveis: item.detected_ingredients?.filter((i: any) => i.certainty === 'high').map((i: any) => i.name) || [],
+        ingredientes_provaveis_ocultos: item.probable_hidden_ingredients?.map((i: any) => i.name) || [],
+        metodo_preparo_provavel: item.cooking_method,
+      }));
+      delete analysis.items;
+      logStep("Transformed items → alimentos", { count: analysis.alimentos.length });
+    }
+    
+    if (analysis.totals && !analysis.total_geral) {
+      analysis.total_geral = {
+        calorias_totais: analysis.totals.calories || 0,
+        proteinas_totais: analysis.totals.protein || 0,
+        carboidratos_totais: analysis.totals.carbs || 0,
+        gorduras_totais: analysis.totals.fat || 0,
+      };
+      delete analysis.totals;
+      logStep("Transformed totals → total_geral", analysis.total_geral);
+    }
+    
+    // Transform intolerance_alerts → alertas_intolerancia
+    if (analysis.intolerance_alerts && !analysis.alertas_intolerancia) {
+      analysis.alertas_intolerancia = analysis.intolerance_alerts.map((alert: any) => ({
+        alimento: alert.ingredient,
+        intolerancia: alert.intolerance,
+        risco: alert.severity === 'high' ? 'alto' : alert.severity === 'medium' ? 'medio' : 'baixo',
+        motivo: alert.alert_source || '',
+      }));
+      delete analysis.intolerance_alerts;
+    }
+
     // Ensure alertas_intolerancia exists
     if (!analysis.alertas_intolerancia) {
       analysis.alertas_intolerancia = [];

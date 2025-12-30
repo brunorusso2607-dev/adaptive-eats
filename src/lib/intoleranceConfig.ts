@@ -1,10 +1,16 @@
 /**
  * Configuração centralizada de intolerâncias alimentares
  * 
- * ARQUITETURA DE INTERNACIONALIZAÇÃO:
- * - Chaves canônicas em inglês (internas, usadas no banco e código)
- * - Traduções para cada idioma suportado
- * - Mapeamento de chaves legadas para migração
+ * @deprecated ESTE ARQUIVO ESTÁ DEPRECATED
+ * A fonte de verdade para intolerâncias é o banco de dados:
+ * - intolerance_key_normalization: normalização de chaves
+ * - onboarding_options: labels e opções do onboarding
+ * - intolerance_mappings: mapeamento ingrediente -> intolerância
+ * 
+ * Para frontend, usar: useSafetyLabels hook
+ * Para backend, usar: globalSafetyEngine.ts
+ * 
+ * Este arquivo é mantido apenas para compatibilidade com código legado.
  */
 
 // Idiomas suportados

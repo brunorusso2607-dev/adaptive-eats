@@ -1,22 +1,29 @@
-// Detecção automática de intolerâncias para alimentos cadastrados
-
-// Mapeamento abrangente de palavras-chave para cada intolerância
-// Isso funciona como um fallback local quando o banco não tem o mapeamento
+/**
+ * Detecção automática de intolerâncias para alimentos cadastrados
+ * 
+ * NOTA: Este arquivo usa fallbacks locais para detecção rápida client-side.
+ * Os labels e mapeamentos definitivos vêm do banco de dados via useSafetyLabels.
+ * Usar este módulo apenas para detecção rápida local sem chamadas de rede.
+ * 
+ * @deprecated Para labels, usar useSafetyLabels hook que busca do banco de dados
+ */
 
 interface IntoleranceKeywords {
   keywords: string[];
   safeKeywords?: string[];
 }
 
+/**
+ * Mapeamento local para detecção rápida client-side (fallback)
+ * A fonte de verdade são as tabelas intolerance_mappings e intolerance_safe_keywords
+ */
 const INTOLERANCE_KEYWORDS: Record<string, IntoleranceKeywords> = {
   lactose: {
     keywords: [
-      // Laticínios diretos
       'leite', 'queijo', 'iogurte', 'manteiga', 'creme', 'nata', 'requeijão',
       'mussarela', 'parmesão', 'cheddar', 'cottage', 'ricota', 'catupiry',
       'cream cheese', 'burrata', 'mascarpone', 'gorgonzola', 'provolone',
       'coalho', 'chantilly', 'coalhada', 'kefir',
-      // Fast-food e processados com lactose
       'big mac', 'mc chicken', 'whopper', 'cheeseburger', 'x-burguer', 'x-salada',
       'x-tudo', 'x-bacon', 'x-egg', 'pizza', 'lasanha', 'strogonoff', 'estrogonofe',
       'parmegiana', 'gratinado', 'carbonara', 'alfredo', 'molho branco', 'bechamel',
@@ -24,7 +31,6 @@ const INTOLERANCE_KEYWORDS: Record<string, IntoleranceKeywords> = {
       'cappuccino', 'latte', 'mocha', 'frappuccino', 'café com leite',
       'brigadeiro', 'beijinho', 'pudim', 'flan', 'mousse', 'cheesecake', 'tiramisu',
       'pão de queijo', 'croissant', 'fondue', 'misto quente',
-      // Ingredientes derivados
       'doce de leite', 'leite condensado', 'chocolate ao leite', 'achocolatado',
     ],
     safeKeywords: [
@@ -35,16 +41,12 @@ const INTOLERANCE_KEYWORDS: Record<string, IntoleranceKeywords> = {
   
   gluten: {
     keywords: [
-      // Cereais com glúten
       'trigo', 'farinha', 'pão', 'macarrão', 'massa', 'biscoito', 'bolacha',
       'bolo', 'torta', 'cerveja', 'cevada', 'centeio', 'aveia', 'semolina',
       'bulgur', 'triguilho', 'cuscuz', 'seitan',
-      // Tipos de pão
       'baguete', 'brioche', 'ciabatta', 'croissant', 'torrada',
-      // Tipos de massa
       'espaguete', 'penne', 'fusilli', 'talharim', 'fettuccine', 'lasanha',
       'canelone', 'ravióli', 'capeletti', 'tortellini', 'nhoque', 'miojo',
-      // Fast-food e processados
       'big mac', 'mc chicken', 'whopper', 'hamburguer', 'hamburger', 'cheeseburger',
       'x-burguer', 'x-salada', 'x-tudo', 'x-bacon', 'x-egg',
       'hot dog', 'cachorro quente', 'sanduiche', 'sandwich', 'wrap', 'burrito', 'taco',
@@ -52,7 +54,6 @@ const INTOLERANCE_KEYWORDS: Record<string, IntoleranceKeywords> = {
       'coxinha', 'risole', 'pastel', 'kibe', 'quibe', 'esfirra', 'esfiha',
       'salgado', 'empada', 'empadinha', 'quiche', 'panini', 'misto quente',
       'bauru', 'francesinha', 'strogonoff', 'estrogonofe',
-      // Molhos com glúten
       'shoyu', 'molho de soja', 'teriyaki',
     ],
     safeKeywords: [
@@ -124,7 +125,6 @@ const INTOLERANCE_KEYWORDS: Record<string, IntoleranceKeywords> = {
   },
 };
 
-// Normaliza texto removendo acentos e convertendo para minúsculas
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -133,7 +133,6 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-// Verifica se um alimento contém uma intolerância específica
 export function checkFoodIntolerance(
   foodName: string,
   intoleranceKey: string
@@ -143,7 +142,6 @@ export function checkFoodIntolerance(
   
   if (!config) return false;
   
-  // Primeiro verifica se tem palavras que indicam segurança
   if (config.safeKeywords) {
     const isSafe = config.safeKeywords.some(safe => 
       normalizedFood.includes(normalizeText(safe))
@@ -151,13 +149,11 @@ export function checkFoodIntolerance(
     if (isSafe) return false;
   }
   
-  // Verifica se contém alguma palavra-chave de intolerância
   return config.keywords.some(keyword => 
     normalizedFood.includes(normalizeText(keyword))
   );
 }
 
-// Detecta todas as intolerâncias de um alimento
 export function detectFoodIntolerances(foodName: string): string[] {
   const detectedIntolerances: string[] = [];
   
@@ -170,7 +166,6 @@ export function detectFoodIntolerances(foodName: string): string[] {
   return detectedIntolerances;
 }
 
-// Verifica se um alimento conflita com as intolerâncias do usuário
 export function checkUserIntoleranceConflict(
   foodName: string,
   userIntolerances: string[]
@@ -191,7 +186,10 @@ export function checkUserIntoleranceConflict(
   };
 }
 
-// Labels amigáveis para as intolerâncias
+/**
+ * Labels de fallback - usar useSafetyLabels hook para labels do banco de dados
+ * @deprecated Usar useSafetyLabels.getIntoleranceLabel() para labels atualizados do DB
+ */
 export const INTOLERANCE_LABELS: Record<string, string> = {
   lactose: "Lactose",
   gluten: "Glúten",
@@ -206,7 +204,9 @@ export const INTOLERANCE_LABELS: Record<string, string> = {
   fodmap: "FODMAP",
 };
 
-// Retorna o label amigável de uma intolerância
+/**
+ * @deprecated Usar useSafetyLabels.getIntoleranceLabel() para labels atualizados do DB
+ */
 export function getIntoleranceLabel(key: string): string {
   return INTOLERANCE_LABELS[key] || key;
 }

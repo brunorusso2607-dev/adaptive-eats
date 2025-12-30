@@ -97,7 +97,7 @@ export interface SafetyCheckResult {
 
 let cachedDatabase: SafetyDatabase | null = null;
 let cacheTimestamp: number = 0;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutos
+const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes - reduced for faster updates
 
 // ============= LABELS AMIGÁVEIS =============
 

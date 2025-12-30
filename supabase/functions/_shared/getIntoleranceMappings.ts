@@ -1,3 +1,8 @@
+/**
+ * @deprecated v2.0: Este módulo foi substituído pelo globalSafetyEngine.ts
+ * Use loadSafetyDatabase() e as funções de validação do globalSafetyEngine.ts.
+ * Este arquivo é mantido apenas para compatibilidade com código legado.
+ */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 
 interface IntoleranceMapping {

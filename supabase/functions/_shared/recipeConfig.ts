@@ -762,8 +762,10 @@ export interface CategoryContext {
 // ============================================
 // MAPEAMENTO EXPANDIDO DE INGREDIENTES PROIBIDOS
 // ============================================
-// Lista COMPLETA de todos os ingredientes e derivados que JAMAIS
-// devem aparecer em receitas para usuários com cada intolerância
+// @deprecated v2.0: Estas listas são mantidas apenas como FALLBACK.
+// O globalSafetyEngine.ts agora é a fonte única de verdade,
+// buscando dados diretamente das tabelas intolerance_mappings e dietary_forbidden_ingredients.
+// Novas validações devem usar loadSafetyDatabase() e validateIngredient() do globalSafetyEngine.
 
 export const FORBIDDEN_INGREDIENTS: Record<string, string[]> = {
   lactose: [
@@ -1237,10 +1239,14 @@ export const MEAL_TYPE_EXAMPLES: Record<string, string[]> = {
  * Retorna lista COMPLETA de ingredientes proibidos para o usuário
  * baseado em suas intolerâncias e alimentos excluídos manualmente
  */
+/**
+ * @deprecated v2.0: Use validateIngredientAsync ou globalSafetyEngine diretamente.
+ * Esta função usa listas hardcoded como fallback.
+ */
 export function getAllForbiddenIngredients(profile: UserProfile): string[] {
   const forbidden: string[] = [];
   
-  // Adiciona ingredientes de cada intolerância
+  // Adiciona ingredientes de cada intolerância (fallback hardcoded)
   const intolerances = profile.intolerances || [];
   for (const intolerance of intolerances) {
     if (intolerance !== "nenhuma" && FORBIDDEN_INGREDIENTS[intolerance]) {

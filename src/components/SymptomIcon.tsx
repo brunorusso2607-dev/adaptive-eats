@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { 
   Circle, 
   Wind, 
@@ -56,18 +57,23 @@ interface SymptomIconProps {
   size?: number;
 }
 
-export function SymptomIcon({ name, category, className, size = 16 }: SymptomIconProps) {
-  const Icon = symptomIconMap[name] || Frown;
-  const colorClass = category ? categoryColors[category] || "text-muted-foreground" : "text-muted-foreground";
-  
-  return (
-    <Icon 
-      className={cn(colorClass, className)} 
-      size={size}
-      strokeWidth={2}
-    />
-  );
-}
+export const SymptomIcon = forwardRef<SVGSVGElement, SymptomIconProps>(
+  ({ name, category, className, size = 16 }, ref) => {
+    const Icon = symptomIconMap[name] || Frown;
+    const colorClass = category ? categoryColors[category] || "text-muted-foreground" : "text-muted-foreground";
+    
+    return (
+      <Icon 
+        ref={ref}
+        className={cn(colorClass, className)} 
+        size={size}
+        strokeWidth={2}
+      />
+    );
+  }
+);
+
+SymptomIcon.displayName = "SymptomIcon";
 
 // Exportar o mapa para uso em outros lugares se necessário
 export { symptomIconMap, categoryColors };

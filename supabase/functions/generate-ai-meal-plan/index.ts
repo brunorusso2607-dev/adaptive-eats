@@ -211,6 +211,16 @@ IMPORTANTE:
 - Foco na ação principal, sem detalhes óbvios
 - Exemplo: ["Grelhe o frango temperado por 4 min de cada lado.", "Cozinhe o arroz.", "Monte o prato com salada fresca."]
 
+🚫 REGRA CRÍTICA DE ESCOPO DAS INSTRUÇÕES:
+- As instruções devem cobrir APENAS itens que são PREPARADOS/COZINHADOS
+- NÃO mencione nas instruções:
+  • Frutas de sobremesa (são consumidas cruas, não precisam preparo)
+  • Bebidas (café, chá, suco - o usuário sabe preparar)
+  • Alimentos prontos para consumo (iogurte, pão, castanhas)
+- ERRADO: "Sirva com a laranja como sobremesa" ❌ (laranja é item separado, não entra no preparo)
+- CERTO: Instruções focam só no prato principal + acompanhamentos cozidos ✓
+- O campo "foods" lista TODOS os itens, mas "instructions" só cobre o que precisa preparo
+
 📐 FORMATO DOS ALIMENTOS (foods):
 Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - O campo "name" DEVE incluir APENAS medida caseira qualitativa (NUNCA números de gramas)

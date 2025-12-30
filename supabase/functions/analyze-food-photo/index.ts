@@ -5,6 +5,7 @@ import {
   getIntoleranceMappings, 
   generateIngredientsPromptContext,
   getMappingsStats,
+  checkFoodForIntolerance,
   INTOLERANCE_LABELS 
 } from "../_shared/getIntoleranceMappings.ts";
 import { 
@@ -1051,6 +1052,7 @@ If any alert exists, set health_bonus to null.
 
     // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========
     // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
+    // IMPORTANTE: Agora usa checkFoodForIntolerance para respeitar safe keywords!
     
     const alertasPersonalizados: Array<{
       ingrediente: string;
@@ -1058,6 +1060,7 @@ If any alert exists, set health_bonus to null.
       status: "seguro" | "risco_potencial" | "contem";
       mensagem: string;
       icone: string;
+      safeReason?: string;
     }> = [];
     
     // Verificar cada intolerância do usuário contra os alimentos identificados
@@ -1068,28 +1071,74 @@ If any alert exists, set health_bonus to null.
       let found = false;
       let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
       let foundFood = "";
+      let safeReason = "";
       
       // Verificar em alimentos identificados
       if (analysis.alimentos) {
         for (const food of analysis.alimentos) {
-          const foodName = food.item?.toLowerCase() || "";
+          const foodName = food.item || "";
+          const normalizedFoodName = foodName.toLowerCase();
           
-          // Verificar se este alimento corresponde à intolerância
+          // PRIMEIRO: Usar database mappings se disponíveis (respeita safe keywords!)
+          if (intoleranceData) {
+            const check = checkFoodForIntolerance(foodName, intoleranceKey, intoleranceData);
+            
+            if (check.isSafe) {
+              // Produto contém indicador de segurança (ex: "zero lactose")
+              logStep("Safe keyword detected", { 
+                food: foodName, 
+                intolerance: intoleranceKey,
+                reason: check.safeReason 
+              });
+              safeReason = check.safeReason || "";
+              // Não marcar como conflito, produto é seguro!
+              continue;
+            }
+            
+            if (check.hasConflict) {
+              found = true;
+              foundFood = foodName;
+              foundStatus = "contem";
+              logStep("Conflict detected via database mappings", { 
+                food: foodName, 
+                intolerance: intoleranceKey,
+                matchedIngredients: check.matchedIngredients 
+              });
+              break;
+            }
+          }
+          
+          // FALLBACK: Verificar via synonyms hardcoded (para intolerâncias não no DB)
           const matchesIntolerance = synonyms.some(syn => 
-            foodName.includes(syn.toLowerCase())
+            normalizedFoodName.includes(syn.toLowerCase())
           );
           
           if (matchesIntolerance) {
+            // Dupla verificação: checar se há safe keyword no nome
+            const safeKeywords = intoleranceData?.safeKeywords.get(intoleranceKey) || [];
+            const hasSafeIndicator = safeKeywords.some(keyword => 
+              normalizedFoodName.includes(keyword.toLowerCase())
+            );
+            
+            if (hasSafeIndicator) {
+              logStep("Safe keyword detected via fallback", { 
+                food: foodName, 
+                intolerance: intoleranceKey 
+              });
+              safeReason = `Indicador de segurança detectado no nome do produto`;
+              continue;
+            }
+            
             found = true;
-            foundFood = food.item;
+            foundFood = foodName;
             foundStatus = "contem";
             break;
           }
         }
       }
       
-      // Verificar também nos alertas da IA
-      if (!found && analysis.alertas_intolerancia) {
+      // Verificar também nos alertas da IA (se não já encontrado via safe keyword)
+      if (!found && !safeReason && analysis.alertas_intolerancia) {
         for (const alerta of analysis.alertas_intolerancia) {
           if (alerta.intolerancia?.toLowerCase().includes(intoleranceKey)) {
             found = true;
@@ -1101,7 +1150,8 @@ If any alert exists, set health_bonus to null.
       }
       
       // Gerar mensagem personalizada para o usuário
-      const restricaoLabel = intoleranceKey === "lactose" ? "Lactose" :
+      const restricaoLabel = INTOLERANCE_LABELS[intoleranceKey] || 
+                            (intoleranceKey === "lactose" ? "Lactose" :
                             intoleranceKey === "gluten" ? "Glúten" :
                             intoleranceKey === "acucar" ? "Açúcar" :
                             intoleranceKey === "amendoim" ? "Amendoim" :
@@ -1109,7 +1159,7 @@ If any alert exists, set health_bonus to null.
                             intoleranceKey === "ovo" ? "Ovo" :
                             intoleranceKey === "soja" ? "Soja" :
                             intoleranceKey === "oleaginosas" ? "Oleaginosas" :
-                            userIntolerance;
+                            userIntolerance);
       
       if (found) {
         alertasPersonalizados.push({
@@ -1120,6 +1170,16 @@ If any alert exists, set health_bonus to null.
             ? `⚠️ ATENÇÃO: "${foundFood}" contém ${restricaoLabel.toUpperCase()}, que está na sua lista de restrições`
             : `⚡ VERIFICAR: "${foundFood}" pode conter ${restricaoLabel}`,
           icone: foundStatus === "contem" ? "🔴" : "🟡"
+        });
+      } else if (safeReason) {
+        // Produto tem indicador de segurança - mostrar como seguro com motivo!
+        alertasPersonalizados.push({
+          ingrediente: "",
+          restricao: restricaoLabel,
+          status: "seguro",
+          mensagem: `✅ Seguro: Produto identificado como sem ${restricaoLabel}`,
+          icone: "🟢",
+          safeReason: safeReason
         });
       } else {
         alertasPersonalizados.push({

@@ -2270,3 +2270,304 @@ ${persona.recommendedFoods.map(f => `- ${f}`).join('\n')}
 💡 SPECIAL NOTES: ${persona.specialNotes}
 `;
 }
+
+// ============= PÓS-PROCESSAMENTO: AGRUPAMENTO DE INGREDIENTES =============
+// Esta função detecta ingredientes separados que deveriam formar uma preparação única
+// e os agrupa automaticamente
+
+// Usar FoodItem já definido no arquivo (name + grams)
+export type FoodItemWithGrams = FoodItem;
+
+interface IngredientGroupRule {
+  // Padrões de ingredientes que devem ser agrupados
+  patterns: RegExp[];
+  // Nome base da preparação resultante
+  baseName: string;
+  // Função para gerar o nome final da preparação
+  nameBuilder: (matchedItems: string[]) => string;
+  // Tipo de refeição em que essa regra se aplica (null = todos)
+  mealTypes?: string[] | null;
+}
+
+// Regras de agrupamento de ingredientes
+const INGREDIENT_GROUP_RULES: IngredientGroupRule[] = [
+  // OVOS + VEGETAIS/PROTEÍNAS = OMELETE/MEXIDO
+  {
+    patterns: [
+      /clara.*ovo|clara.*de.*ovo|claras/i,
+      /ovo.*mexido|ovos.*mexido/i,
+      /ovo.*cozido|ovos.*cozido/i,
+    ],
+    baseName: 'Omelete',
+    nameBuilder: (items) => {
+      // Encontrar vegetais/complementos nos itens
+      const hasEspinafre = items.some(i => /espinafre/i.test(i));
+      const hasTomate = items.some(i => /tomate/i.test(i));
+      const hasCogumelo = items.some(i => /cogumelo|champignon|shimeji/i.test(i));
+      const hasQueijo = items.some(i => /queijo|cottage|ricota|mussarela/i.test(i));
+      const hasCebola = items.some(i => /cebola/i.test(i));
+      const hasOregano = items.some(i => /oregano|orégano/i.test(i));
+      const hasPimentao = items.some(i => /piment[aã]o/i.test(i));
+      const hasErvas = items.some(i => /ervas|manjericao|salsa|cebolinha/i.test(i));
+      
+      // Verificar se é clara ou ovo inteiro
+      const isClaras = items.some(i => /clara/i.test(i));
+      const base = isClaras ? 'Omelete de claras' : 'Omelete';
+      
+      // Construir lista de complementos
+      const complementos: string[] = [];
+      if (hasEspinafre) complementos.push('espinafre');
+      if (hasTomate) complementos.push('tomate');
+      if (hasCogumelo) complementos.push('cogumelos');
+      if (hasQueijo) complementos.push('queijo');
+      if (hasCebola) complementos.push('cebola');
+      if (hasPimentao) complementos.push('pimentão');
+      if (hasOregano) complementos.push('orégano');
+      if (hasErvas) complementos.push('ervas');
+      
+      if (complementos.length === 0) {
+        return isClaras ? 'Omelete de claras temperada' : 'Omelete simples';
+      }
+      
+      return `${base} com ${complementos.join(', ')}`;
+    },
+    mealTypes: ['cafe_manha', 'jantar', 'lanche_manha', 'lanche_tarde'],
+  },
+  
+  // ARROZ + FEIJÃO = ARROZ COM FEIJÃO
+  {
+    patterns: [
+      /arroz/i,
+      /feij[aã]o/i,
+    ],
+    baseName: 'Arroz com feijão',
+    nameBuilder: (items) => {
+      const hasArroz = items.some(i => /arroz/i.test(i));
+      const hasFeijao = items.some(i => /feij[aã]o/i.test(i));
+      
+      if (hasArroz && hasFeijao) {
+        // Verificar se há detalhes específicos
+        const arrozIntegral = items.some(i => /arroz.*integral/i.test(i));
+        const feijaoPreto = items.some(i => /feij[aã]o.*preto/i.test(i));
+        const feijaoCarioca = items.some(i => /feij[aã]o.*(carioca|marrom)/i.test(i));
+        
+        let arrozType = arrozIntegral ? 'integral' : '';
+        let feijaoType = feijaoPreto ? 'preto' : (feijaoCarioca ? 'carioca' : '');
+        
+        let nome = 'Arroz';
+        if (arrozType) nome += ` ${arrozType}`;
+        nome += ' com feijão';
+        if (feijaoType) nome += ` ${feijaoType}`;
+        
+        return nome;
+      }
+      
+      return 'Arroz com feijão';
+    },
+    mealTypes: ['almoco', 'jantar'],
+  },
+];
+
+// Padrões para identificar ingredientes que são "complementos" (vegetais, temperos)
+const COMPLEMENT_PATTERNS = [
+  /tomate.*picado|tomate.*pequeno|tomate.*cereja/i,
+  /cebola.*picad[ao]/i,
+  /espinafre.*refogado|espinafre.*cozido/i,
+  /cogumelo|champignon|shimeji/i,
+  /piment[aã]o.*picado|piment[aã]o.*em.*tiras/i,
+  /oregano|orégano/i,
+  /ervas|manjericao|salsa|cebolinha/i,
+  /alho.*picado|alho.*amassado/i,
+];
+
+// Padrões para identificar ingredientes base (ovos, proteínas)
+const BASE_INGREDIENT_PATTERNS = [
+  /\d+\s*clara.*ovo|\d+\s*claras/i,
+  /\d+\s*ovo.*mexido|\d+\s*ovos.*mexido/i,
+  /\d+\s*gema/i,
+];
+
+/**
+ * Verifica se dois itens de comida devem ser agrupados em uma preparação
+ */
+function shouldGroupItems(item1: string, item2: string): boolean {
+  const normalized1 = normalizeText(item1);
+  const normalized2 = normalizeText(item2);
+  
+  // Verificar se um é ingrediente base e outro é complemento
+  const isBase1 = BASE_INGREDIENT_PATTERNS.some(p => p.test(item1));
+  const isBase2 = BASE_INGREDIENT_PATTERNS.some(p => p.test(item2));
+  const isComplement1 = COMPLEMENT_PATTERNS.some(p => p.test(item1));
+  const isComplement2 = COMPLEMENT_PATTERNS.some(p => p.test(item2));
+  
+  // Agrupar se um é base e outro é complemento
+  if ((isBase1 && isComplement2) || (isBase2 && isComplement1)) {
+    return true;
+  }
+  
+  // Agrupar se ambos são complementos de mesma categoria (vegetais para omelete)
+  if (isComplement1 && isComplement2) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Processa os alimentos de uma opção e agrupa ingredientes separados em preparações compostas
+ */
+export function groupSeparatedIngredients(
+  foods: FoodItemWithGrams[],
+  mealType: string
+): { groupedFoods: FoodItemWithGrams[]; wasGrouped: boolean; groupedTitle?: string } {
+  if (!foods || foods.length < 2) {
+    return { groupedFoods: foods, wasGrouped: false };
+  }
+  
+  // Identificar ingredientes que devem ser agrupados
+  const eggPatterns = [
+    /clara.*ovo|clara.*de.*ovo|claras/i,
+    /ovo.*mexido|ovos.*mexido/i,
+  ];
+  
+  const vegetablePatterns = [
+    /tomate.*picado|tomate.*pequeno|tomate.*cereja/i,
+    /espinafre/i,
+    /cogumelo|champignon/i,
+    /cebola.*picad/i,
+    /piment[aã]o/i,
+    /oregano|orégano/i,
+  ];
+  
+  // Encontrar itens de ovo
+  const eggItems: FoodItemWithGrams[] = [];
+  const vegetableItems: FoodItemWithGrams[] = [];
+  const otherItems: FoodItemWithGrams[] = [];
+  
+  for (const food of foods) {
+    const name = food.name.toLowerCase();
+    
+    if (eggPatterns.some(p => p.test(food.name))) {
+      eggItems.push(food);
+    } else if (vegetablePatterns.some(p => p.test(food.name))) {
+      vegetableItems.push(food);
+    } else {
+      otherItems.push(food);
+    }
+  }
+  
+  // Se temos ovos + vegetais separados, agrupar em omelete
+  if (eggItems.length > 0 && vegetableItems.length > 0) {
+    // Construir nome da preparação
+    const isClaras = eggItems.some(e => /clara/i.test(e.name));
+    
+    // Extrair nomes dos vegetais
+    const vegNames: string[] = [];
+    for (const veg of vegetableItems) {
+      if (/tomate/i.test(veg.name)) vegNames.push('tomate');
+      else if (/espinafre/i.test(veg.name)) vegNames.push('espinafre');
+      else if (/cogumelo|champignon/i.test(veg.name)) vegNames.push('cogumelos');
+      else if (/cebola/i.test(veg.name)) vegNames.push('cebola');
+      else if (/piment[aã]o/i.test(veg.name)) vegNames.push('pimentão');
+      else if (/oregano|orégano/i.test(veg.name)) vegNames.push('orégano');
+    }
+    
+    // Remover duplicatas
+    const uniqueVegNames = [...new Set(vegNames)];
+    
+    // Construir nome final
+    const baseName = isClaras ? 'Omelete de claras' : 'Omelete';
+    const groupedTitle = uniqueVegNames.length > 0 
+      ? `${baseName} com ${uniqueVegNames.join(' e ')}`
+      : baseName;
+    
+    // Somar gramaturas
+    const totalGrams = [...eggItems, ...vegetableItems].reduce((sum, item) => sum + (item.grams || 0), 0);
+    
+    // Criar item agrupado
+    const groupedItem: FoodItemWithGrams = {
+      name: groupedTitle,
+      grams: totalGrams,
+    };
+    
+    return {
+      groupedFoods: [groupedItem, ...otherItems],
+      wasGrouped: true,
+      groupedTitle,
+    };
+  }
+  
+  // Verificar arroz + feijão separados
+  const arrozItems: FoodItemWithGrams[] = [];
+  const feijaoItems: FoodItemWithGrams[] = [];
+  const restItems: FoodItemWithGrams[] = [];
+  
+  for (const food of foods) {
+    if (/arroz/i.test(food.name) && !/com\s+feij[aã]o/i.test(food.name)) {
+      arrozItems.push(food);
+    } else if (/feij[aã]o/i.test(food.name) && !/arroz\s+com/i.test(food.name)) {
+      feijaoItems.push(food);
+    } else {
+      restItems.push(food);
+    }
+  }
+  
+  if (arrozItems.length > 0 && feijaoItems.length > 0) {
+    // Detectar tipos
+    const arrozIntegral = arrozItems.some(a => /integral/i.test(a.name));
+    const feijaoPreto = feijaoItems.some(f => /preto/i.test(f.name));
+    
+    let groupedTitle = arrozIntegral ? 'Arroz integral' : 'Arroz';
+    groupedTitle += feijaoPreto ? ' com feijão preto' : ' com feijão';
+    
+    // Somar gramaturas
+    const totalGrams = [...arrozItems, ...feijaoItems].reduce((sum, item) => sum + (item.grams || 0), 0);
+    
+    const groupedItem: FoodItemWithGrams = {
+      name: groupedTitle,
+      grams: totalGrams,
+    };
+    
+    return {
+      groupedFoods: [groupedItem, ...restItems],
+      wasGrouped: true,
+      groupedTitle,
+    };
+  }
+  
+  return { groupedFoods: foods, wasGrouped: false };
+}
+
+/**
+ * Atualiza o título da refeição se os ingredientes foram agrupados
+ */
+export function updateMealTitleIfNeeded(
+  originalTitle: string,
+  groupedTitle: string | undefined,
+  wasGrouped: boolean
+): string {
+  if (!wasGrouped || !groupedTitle) {
+    return originalTitle;
+  }
+  
+  // Se o título original é genérico ou não reflete a preparação, usar o novo
+  const genericTitles = [
+    /opção\s*\d+/i,
+    /refeição\s*\d+/i,
+    /café\s*da\s*manhã\s*\d*/i,
+    /lanche\s*\d*/i,
+  ];
+  
+  if (genericTitles.some(p => p.test(originalTitle))) {
+    return groupedTitle;
+  }
+  
+  // Se o título original menciona ingredientes separados, atualizar
+  if (/clara.*ovo/i.test(originalTitle) && /tomate/i.test(originalTitle)) {
+    // O título já tenta descrever a preparação, mas está incorreto
+    // (ex: "Omelete de claras com tomate e orégano" mas ingredients separados)
+    return originalTitle; // Manter título original se já é descritivo
+  }
+  
+  return originalTitle;
+}

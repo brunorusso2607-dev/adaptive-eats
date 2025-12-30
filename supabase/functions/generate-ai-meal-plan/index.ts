@@ -43,6 +43,8 @@ import {
   getRestrictionText,
   getStrategyPromptRules,
   getStrategyPersona,
+  groupSeparatedIngredients,
+  updateMealTitleIfNeeded,
   type RegionalConfig,
   type IntoleranceMapping,
   type SafeKeyword,
@@ -438,24 +440,50 @@ function validateMealPlan(
         }
       }
       
-      // Calcular calorias baseado na tabela
-      const calculatedCalories = calculateOptionCalories(cleanedFoods);
+      // ============= PÓS-PROCESSAMENTO: AGRUPAR INGREDIENTES SEPARADOS =============
+      // Converter para FoodItem e aplicar agrupamento
+      const foodsForGrouping: FoodItem[] = cleanedFoods.map(f => ({
+        name: typeof f === 'string' ? f : f.name,
+        grams: typeof f === 'object' && 'grams' in f ? f.grams : 100,
+      }));
+      
+      const { groupedFoods, wasGrouped, groupedTitle } = groupSeparatedIngredients(
+        foodsForGrouping,
+        meal.meal_type
+      );
+      
+      // Log se houve agrupamento
+      if (wasGrouped) {
+        logStep(`🔄 AGRUPAMENTO APLICADO em "${meal.label}"`, {
+          originalCount: cleanedFoods.length,
+          groupedCount: groupedFoods.length,
+          groupedTitle,
+          originalItems: cleanedFoods.map(f => typeof f === 'string' ? f : f.name),
+          groupedItems: groupedFoods.map(f => f.name),
+        });
+      }
+      
+      // Atualizar título se necessário
+      const updatedTitle = updateMealTitleIfNeeded(option.title, groupedTitle, wasGrouped);
+      
+      // Calcular calorias baseado na tabela (usar foods agrupados)
+      const calculatedCalories = calculateOptionCalories(groupedFoods);
       
       // CRITICAL: Se todos os alimentos foram removidos, marca para regeneração
       // NÃO coloca placeholder - isso cria receitas inválidas
-      if (cleanedFoods.length === 0) {
+      if (groupedFoods.length === 0) {
         needsRegeneration = true;
         logStep(`❌ CRITICAL: Option "${option.title}" has all foods removed by restrictions - needs regeneration`);
       }
       
       return {
         ...option,
-        // Manter os alimentos originais se cleanedFoods estiver vazio para permitir regeneração
-        // O sistema deve regenerar essa refeição, não exibir um placeholder
-        foods: cleanedFoods.length > 0 ? cleanedFoods : option.foods,
+        title: updatedTitle,
+        // Usar os alimentos agrupados
+        foods: groupedFoods.length > 0 ? groupedFoods : option.foods,
         calculated_calories: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
         calories_kcal: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
-        _needsRegeneration: cleanedFoods.length === 0, // Flag interna para marcar opções problemáticas
+        _needsRegeneration: groupedFoods.length === 0, // Flag interna para marcar opções problemáticas
       };
     });
     

@@ -87,16 +87,26 @@ const ingredientAliases: Record<string, string[]> = {
   ]
 };
 
-// Ingredientes de origem animal (para veganos)
+// Ingredientes de origem animal (para veganos) - COMPLETO incluindo peixes e frutos do mar
 const animalIngredients = [
+  // Carnes
   "carne", "frango", "galinha", "peru", "pato", "porco", "bacon", "presunto",
   "linguiça", "salsicha", "boi", "vaca", "vitela", "cordeiro", "carneiro",
-  "gelatina", "gelatina animal", "colágeno", "colágeno animal", "banha", "toucinho",
-  "gordura animal", "sebo", "tutano", "caldo de carne", "extrato de carne",
+  // Peixes e frutos do mar (CRÍTICO para veganos!)
+  "peixe", "fish", "fish oil", "óleo de peixe", "omega-3 de peixe", 
+  "atum", "sardinha", "salmão", "bacalhau", "tilápia", "anchova",
+  "camarão", "camarões", "marisco", "crustáceo", "molusco", "surimi",
+  "lagosta", "caranguejo", "lula", "polvo", "ostra", "mexilhão", "vieira",
+  // Derivados animais
+  "gelatina", "gelatina animal", "colágeno", "colágeno animal", "colágeno de peixe",
+  "banha", "toucinho", "gordura animal", "sebo", "tutano", 
+  "caldo de carne", "caldo de galinha", "caldo de peixe", "extrato de carne",
+  // Produtos de abelha
   "mel", "própolis", "geleia real", "cera de abelha",
+  // Corantes e aditivos animais
   "carmim", "cochonilha", "E120", "corante natural vermelho",
   "queratina", "lanolina", "seda", "albumina", "caseína",
-  // inclui laticínios e ovos também
+  // Laticínios e ovos
   "leite", "queijo", "manteiga", "iogurte", "ovo", "clara", "gema"
 ];
 
@@ -933,7 +943,26 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       let found = false;
       let foundIngredient = "";
       
-      if (analysis.ingredientes_analisados) {
+      // 1. Verificar no NOME DO PRODUTO (ex: "Fish Oil", "Óleo de Peixe")
+      const productName = (analysis.produto_identificado || "").toLowerCase();
+      const productBrand = (analysis.marca || "").toLowerCase();
+      const productFull = `${productName} ${productBrand}`;
+      
+      for (const item of ingredientsToCheck) {
+        if (productFull.includes(item.toLowerCase())) {
+          found = true;
+          foundIngredient = analysis.produto_identificado;
+          logStep("Product name contains animal ingredient", { 
+            product: analysis.produto_identificado, 
+            animalIngredient: item,
+            dietaryPreference 
+          });
+          break;
+        }
+      }
+      
+      // 2. Verificar nos ingredientes analisados
+      if (!found && analysis.ingredientes_analisados) {
         for (const ing of analysis.ingredientes_analisados) {
           const ingName = ing.nome?.toLowerCase() || "";
           if (ingredientsToCheck.some(item => ingName.includes(item.toLowerCase()))) {
@@ -944,12 +973,37 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
         }
       }
       
+      // 3. Verificar nos alertas da IA (fallback)
+      if (!found && analysis.alertas) {
+        for (const alerta of analysis.alertas) {
+          const alertaLower = alerta.toLowerCase();
+          if (ingredientsToCheck.some(item => alertaLower.includes(item.toLowerCase()))) {
+            found = true;
+            foundIngredient = alerta;
+            break;
+          }
+        }
+      }
+      
+      // Se encontrou ingrediente animal, SEMPRE mostrar como RISCO/CONTÉM
+      // Substituir qualquer alerta de "fish_allergy" etc por "veganismo"
+      const existingAlertIndex = alertasPersonalizados.findIndex(a => 
+        a.restricao.toLowerCase().includes("peixe") || 
+        a.restricao.toLowerCase().includes("fish") ||
+        a.restricao.toLowerCase().includes("frutos")
+      );
+      
+      // Remover alertas duplicados de peixe/frutos do mar que devem ser cobertos por veganismo
+      if (existingAlertIndex >= 0 && found) {
+        alertasPersonalizados.splice(existingAlertIndex, 1);
+      }
+      
       alertasPersonalizados.push({
         ingrediente: foundIngredient,
         restricao: dietLabel,
         status: found ? "contem" : "seguro",
         mensagem: found 
-          ? `⚠️ ATENÇÃO: Este produto contém ingredientes incompatíveis com ${dietLabel.toLowerCase()}`
+          ? `⚠️ ATENÇÃO: "${foundIngredient}" contém ingredientes de origem animal, incompatíveis com ${dietLabel.toLowerCase()}`
           : `✅ Compatível com ${dietLabel.toLowerCase()}`,
         icone: found ? "🔴" : "🟢"
       });

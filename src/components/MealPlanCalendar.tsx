@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from "react";
+import { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -319,20 +319,24 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
   
   const { weeks, totalWeeks, currentWeek, todayWeek, todayDayIndex, monthName, year } = useMonthWeeks(planStartDate);
 
-  // Use external state if provided, otherwise use local state
-  // Inicializa com valor externo se disponível, caso contrário usa currentWeek/todayDayIndex
-  const [internalSelectedWeek, setInternalSelectedWeek] = useState(
-    externalSelectedWeek ?? currentWeek
+  // Estado interno - inicializa com externo se disponível
+  const [internalSelectedWeek, setInternalSelectedWeek] = useState(() => 
+    externalSelectedWeek !== null ? externalSelectedWeek : currentWeek
   );
-  const [internalSelectedDayIndex, setInternalSelectedDayIndex] = useState(
-    externalSelectedDayIndex ?? todayDayIndex
+  const [internalSelectedDayIndex, setInternalSelectedDayIndex] = useState(() => 
+    externalSelectedDayIndex !== null ? externalSelectedDayIndex : todayDayIndex
   );
   
-  // Sempre usar estado interno (que é sincronizado com externo)
+  // Rastreia se o componente já foi inicializado com estado preservado
+  const [wasInitializedWithExternal] = useState(() => 
+    externalSelectedWeek !== null && externalSelectedDayIndex !== null
+  );
+  
+  // Sempre usar estado interno
   const selectedWeek = internalSelectedWeek;
   const selectedDayIndex = internalSelectedDayIndex;
   
-  // Unified setter que atualiza interno E notifica o parent via callback
+  // Setter que atualiza interno E notifica o parent
   const setSelectedWeek = useCallback((week: number) => {
     setInternalSelectedWeek(week);
     onSelectedWeekChange?.(week);
@@ -342,16 +346,6 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     setInternalSelectedDayIndex(dayIndex);
     onSelectedDayIndexChange?.(dayIndex);
   }, [onSelectedDayIndexChange]);
-  
-  // Sincroniza estado externo com interno quando componente monta com estado preservado
-  useEffect(() => {
-    if (externalSelectedWeek !== null && externalSelectedWeek !== internalSelectedWeek) {
-      setInternalSelectedWeek(externalSelectedWeek);
-    }
-    if (externalSelectedDayIndex !== null && externalSelectedDayIndex !== internalSelectedDayIndex) {
-      setInternalSelectedDayIndex(externalSelectedDayIndex);
-    }
-  }, []);
 
   // Get the currently selected week data
   const currentWeekData = useMemo(() => {
@@ -369,29 +363,30 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return formatWeekRange(currentWeekData, planStartDate);
   }, [currentWeekData, planStartDate]);
 
-  // Track if we have preserved external state (non-null values passed from parent)
-  const hasPreservedState = externalSelectedWeek !== null && externalSelectedDayIndex !== null;
-
-  // Auto-select first visible non-past day when week changes
-  // Só executa quando mudamos de semana manualmente (não na inicialização com estado preservado)
-  const [initializedWithPreservedState] = useState(hasPreservedState);
+  // Auto-select dia apenas quando mudamos de semana MANUALMENTE (não na inicialização)
+  // Este useEffect só roda quando internalSelectedWeek muda APÓS a montagem inicial
+  const isFirstMount = useRef(true);
   
   useEffect(() => {
-    // Se inicializamos com estado preservado, não fazer auto-select
-    if (initializedWithPreservedState) return;
+    // Na primeira montagem, não fazer nada - usar o estado inicial
+    if (isFirstMount.current) {
+      isFirstMount.current = false;
+      return;
+    }
     
+    // Se foi inicializado com estado externo preservado, não auto-selecionar
+    if (wasInitializedWithExternal) return;
+    
+    // Apenas auto-seleciona quando a semana muda manualmente
     if (visibleDays.length > 0) {
-      // When week changes, select today if it's in this week, otherwise first non-past visible day
       const todayInWeek = currentWeekData.days.findIndex(d => d.isToday);
       if (todayInWeek >= 0) {
         setSelectedDayIndex(todayInWeek);
       } else {
-        // Select first non-past day in month for this week
         const firstNonPastInMonth = currentWeekData.days.findIndex(d => d.isInMonth && !d.isPast);
         if (firstNonPastInMonth >= 0) {
           setSelectedDayIndex(firstNonPastInMonth);
         } else {
-          // Fallback to first day in month (even if past) - for past weeks that user somehow got to
           const firstInMonth = currentWeekData.days.findIndex(d => d.isInMonth);
           if (firstInMonth >= 0) {
             setSelectedDayIndex(firstInMonth);
@@ -399,7 +394,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         }
       }
     }
-  }, [internalSelectedWeek, initializedWithPreservedState]);
+  }, [internalSelectedWeek]);
 
   // Get the selected day info
   const selectedDay = currentWeekData?.days[selectedDayIndex];

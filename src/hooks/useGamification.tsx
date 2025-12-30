@@ -313,14 +313,17 @@ export function useGamification() {
         longestStreak !== currentData.longest_streak ||
         totalMealsCompleted !== currentData.total_meals_completed
       ) {
-        await supabase.from("user_gamification").upsert({
-          user_id: userId,
-          total_xp: totalXp,
-          current_level: calculateLevel(totalXp).level,
-          longest_streak: longestStreak,
-          total_meals_completed: totalMealsCompleted,
-          updated_at: new Date().toISOString(),
-        });
+        await supabase.from("user_gamification").upsert(
+          {
+            user_id: userId,
+            total_xp: totalXp,
+            current_level: calculateLevel(totalXp).level,
+            longest_streak: longestStreak,
+            total_meals_completed: totalMealsCompleted,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: 'user_id' }
+        );
       }
 
       if (newAchievements.length > 0) {

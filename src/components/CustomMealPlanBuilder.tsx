@@ -174,21 +174,12 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     return getAvailableDaysInPlan(weeks, selectedWeek);
   }, [weeks, selectedWeek]);
 
-  // Default plan name based on month - considers 5-day window for next month
+  // Default plan name based on current month - always use current month
   const defaultPlanName = useMemo(() => {
     const today = new Date();
-    const lastDayOfMonth = endOfMonth(today);
-    const daysLeftCurrentMonth = differenceInDays(lastDayOfMonth, today) + 1;
-    const nearMonthEnd = daysLeftCurrentMonth <= 5;
-    
-    // If near month end, target next month for plan name
-    const targetDate = nearMonthEnd 
-      ? new Date(today.getFullYear(), today.getMonth() + 1, 1)
-      : today;
-    
-    const targetMonthName = format(targetDate, "MMMM", { locale: ptBR });
+    const targetMonthName = format(today, "MMMM", { locale: ptBR });
     const capitalizedMonth = targetMonthName.charAt(0).toUpperCase() + targetMonthName.slice(1);
-    const targetYear = format(targetDate, "yyyy");
+    const targetYear = format(today, "yyyy");
     
     return `${capitalizedMonth} ${targetYear}`;
   }, []);
@@ -591,6 +582,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         onWeekChange={setSelectedWeek}
         onDayChange={setSelectedDay}
         showDaySelector={true}
+        minDate={today}
       />
 
       {/* Macros Preview */}

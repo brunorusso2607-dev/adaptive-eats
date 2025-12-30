@@ -336,10 +336,22 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     return weeks[selectedWeek - 1] || weeks[0];
   }, [weeks, selectedWeek]);
 
-  // Get the visible days (only days in the current month)
+  // Get the visible days (only days in the current month AND >= plan start date)
   const visibleDays = useMemo(() => {
-    return currentWeekData?.days.filter(d => d.isInMonth) || [];
-  }, [currentWeekData]);
+    if (!currentWeekData) return [];
+    
+    return currentWeekData.days.filter(d => {
+      if (!d.isInMonth) return false;
+      
+      // Filter out days before plan start date
+      const dayDate = new Date(d.date);
+      dayDate.setHours(0, 0, 0, 0);
+      const planStart = new Date(planStartDate);
+      planStart.setHours(0, 0, 0, 0);
+      
+      return dayDate >= planStart;
+    });
+  }, [currentWeekData, planStartDate]);
 
   // Calculate week date range for display
   const weekRangeText = useMemo(() => {

@@ -58,6 +58,7 @@ function buildAlternativesPrompt(params: {
   const strategyRules = effectiveStrategyKey ? getStrategyPromptRules(effectiveStrategyKey, language, {
     dietaryPreference: restrictions.dietaryPreference,
     intolerances: restrictions.intolerances,
+    goal: restrictions.goal, // Passar objetivo (emagrecer, manter, ganhar_peso)
   }) : '';
 
   let macroDescription = `${targetCalories} kcal`;

@@ -34,6 +34,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 
 type IntoleranceMapping = {
   id: string;
@@ -49,7 +50,8 @@ type SafeKeyword = {
   created_at: string;
 };
 
-const INTOLERANCE_LABELS: Record<string, string> = {
+// Fallback labels (DB é fonte de verdade via useSafetyLabels)
+const FALLBACK_INTOLERANCE_LABELS: Record<string, string> = {
   lactose: "Lactose",
   gluten: "Glúten",
   ovo: "Ovo",
@@ -74,6 +76,12 @@ export default function AdminIntoleranceMappings() {
   const [selectedIntolerance, setSelectedIntolerance] = useState<string>("lactose");
   const [activeTab, setActiveTab] = useState<"ingredients" | "keywords">("ingredients");
   const [searchTerm, setSearchTerm] = useState("");
+  
+  // Hook para labels do banco de dados
+  const { getIntoleranceLabel } = useSafetyLabels();
+  
+  // Função helper para obter label (fallback se hook não retornar)
+  const getLabel = (key: string) => getIntoleranceLabel(key) || FALLBACK_INTOLERANCE_LABELS[key] || key;
   
   // Dialog states
   const [isAddIngredientOpen, setIsAddIngredientOpen] = useState(false);
@@ -118,7 +126,7 @@ export default function AdminIntoleranceMappings() {
   const intoleranceKeys = [...new Set([
     ...(mappings?.map(m => m.intolerance_key) || []),
     ...(safeKeywords?.map(k => k.intolerance_key) || []),
-    ...Object.keys(INTOLERANCE_LABELS)
+    ...Object.keys(FALLBACK_INTOLERANCE_LABELS)
   ])].sort();
 
   // Filter by selected intolerance and search
@@ -291,7 +299,7 @@ export default function AdminIntoleranceMappings() {
                       className="w-full justify-between"
                       onClick={() => setSelectedIntolerance(key)}
                     >
-                      <span>{INTOLERANCE_LABELS[key] || key}</span>
+                      <span>{getLabel(key)}</span>
                       <Badge variant="secondary" className="ml-2">
                         {getIntoleranceCount(key)}
                       </Badge>
@@ -305,7 +313,7 @@ export default function AdminIntoleranceMappings() {
             <div className="lg:col-span-3">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="text-lg font-semibold">
-                  {INTOLERANCE_LABELS[selectedIntolerance] || selectedIntolerance}
+                  {getLabel(selectedIntolerance)}
                 </h3>
                 <div className="flex items-center gap-2">
                   <div className="relative">
@@ -406,7 +414,7 @@ export default function AdminIntoleranceMappings() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Adicionar Ingredientes - {INTOLERANCE_LABELS[selectedIntolerance]}
+              Adicionar Ingredientes - {getLabel(selectedIntolerance)}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -449,7 +457,7 @@ export default function AdminIntoleranceMappings() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Adicionar Palavra Segura - {INTOLERANCE_LABELS[selectedIntolerance]}
+              Adicionar Palavra Segura - {getLabel(selectedIntolerance)}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
@@ -488,7 +496,7 @@ export default function AdminIntoleranceMappings() {
             <AlertDialogTitle>Remover ingrediente?</AlertDialogTitle>
             <AlertDialogDescription>
               O ingrediente "{deleteMapping?.ingredient}" será removido do mapeamento de{" "}
-              {INTOLERANCE_LABELS[deleteMapping?.intolerance_key || ""] || deleteMapping?.intolerance_key}.
+              {getLabel(deleteMapping?.intolerance_key || "")}.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

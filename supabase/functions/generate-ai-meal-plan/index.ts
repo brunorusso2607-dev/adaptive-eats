@@ -197,6 +197,12 @@ RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
 IMPORTANTE: 
 - O campo "title" DEVE ser o NOME DESCRITIVO DA REFEIÇÃO (ex: "Omelete de queijo com torradas", "Salada Caesar com frango grelhado").
 - NUNCA use nomes genéricos como "Opção 1", "Opção 2", "Refeição 1", etc.
+- Cada opção DEVE incluir um campo "instructions" com 3-5 passos CURTOS e PRÁTICOS de preparo.
+
+📝 FORMATO DAS INSTRUÇÕES (instructions):
+- Array de strings com passos curtos e diretos (máximo 15 palavras por passo)
+- Foco na ação principal, sem detalhes óbvios
+- Exemplo: ["Grelhe o frango temperado por 4 min de cada lado.", "Cozinhe o arroz.", "Monte o prato com salada fresca."]
 
 📐 FORMATO DOS ALIMENTOS (foods):
 Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
@@ -1164,6 +1170,11 @@ serve(async (req) => {
             food_id: item.food_id,
           }));
           
+          // Extrair instruções se existirem
+          const instructions = Array.isArray((firstOption as any).instructions) 
+            ? (firstOption as any).instructions 
+            : [];
+          
           items.push({
             meal_plan_id: mealPlanIdToUse,
             day_of_week: dayIndex,
@@ -1175,7 +1186,7 @@ serve(async (req) => {
             recipe_fat: Math.round(totalMacros.fat * 10) / 10,
             recipe_prep_time: 15,
             recipe_ingredients: recipeIngredients,
-            recipe_instructions: [],
+            recipe_instructions: instructions,
             week_number: targetWeekNum
           });
         }

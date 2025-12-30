@@ -70,7 +70,8 @@ const TEST_CASES: TestCase[] = [
     name: "Gluten: should block pasta",
     food: "macarrao integral",
     restrictions: { intolerances: ["gluten"], dietaryPreference: "comum", excludedIngredients: [] },
-    shouldBlock: false, // "macarrao" not in list, only "pasta"
+    shouldBlock: true, // Macarrão contém glúten, deve ser bloqueado
+    expectedRestriction: "intolerance_gluten",
   },
   {
     name: "Gluten: should allow rice",

@@ -1,5 +1,6 @@
 import { AlertTriangle, ShieldCheck } from "lucide-react";
 import { useIntoleranceWarning, type ConflictType } from "@/hooks/useIntoleranceWarning";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import { useMemo } from "react";
 
 interface Ingredient {
@@ -18,26 +19,13 @@ interface MealSubstanceBadgesProps {
   compact?: boolean;
 }
 
-// Labels amigáveis para as restrições
-const RESTRICTION_LABELS: Record<string, string> = {
-  lactose: "Lactose",
-  gluten: "Glúten",
-  acucar: "Açúcar",
-  amendoim: "Amendoim",
-  frutos_mar: "Frutos do Mar",
-  ovo: "Ovo",
-  vegana: "Produto Animal",
-  vegetariana: "Carne",
-  low_carb: "Alto Carbo",
-  excluded: "Excluído",
-};
-
 export default function MealSubstanceBadges({ 
   ingredients, 
   userProfile,
   compact = false 
 }: MealSubstanceBadgesProps) {
   const { checkConflict } = useIntoleranceWarning();
+  const { getIntoleranceLabel, getDietaryLabel } = useSafetyLabels();
   
   // Check if user has any restrictions configured
   const hasUserRestrictions = useMemo(() => {
@@ -122,18 +110,31 @@ export default function MealSubstanceBadges({
   
   return (
     <div className="flex flex-wrap gap-1 mt-1">
-      {conflicts.slice(0, 2).map((conflict, index) => (
-        <span
-          key={index}
-          className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
-        >
-          <AlertTriangle className="w-3 h-3" />
-          {conflict.restriction === "excluded" 
-            ? `Contém ${conflict.restrictionLabel}` 
-            : `Contém ${RESTRICTION_LABELS[conflict.restriction] || conflict.restriction}`
+      {conflicts.slice(0, 2).map((conflict, index) => {
+        // Determinar o label baseado no tipo de conflito
+        const getConflictLabel = () => {
+          if (conflict.restriction === "excluded") {
+            return `Contém ${conflict.restrictionLabel}`;
           }
-        </span>
-      ))}
+          // Verificar se é uma preferência dietética
+          const dietaryKeys = ['vegana', 'vegetariana', 'low_carb', 'pescetariana', 'cetogenica'];
+          if (dietaryKeys.includes(conflict.restriction)) {
+            return `Incompatível: ${getDietaryLabel(conflict.restriction)}`;
+          }
+          // É uma intolerância
+          return `Contém ${getIntoleranceLabel(conflict.restriction)}`;
+        };
+        
+        return (
+          <span
+            key={index}
+            className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
+          >
+            <AlertTriangle className="w-3 h-3" />
+            {getConflictLabel()}
+          </span>
+        );
+      })}
       {conflicts.length > 2 && (
         <span className="text-[10px] text-amber-600 dark:text-amber-400 px-1">
           +{conflicts.length - 2}

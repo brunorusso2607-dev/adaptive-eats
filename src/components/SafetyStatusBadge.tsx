@@ -10,6 +10,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -23,28 +24,6 @@ interface SafetyStatusBadgeProps {
   onUpdate?: () => void;
 }
 
-// Mapeamento de intolerâncias para labels amigáveis
-const INTOLERANCE_LABELS: Record<string, string> = {
-  lactose: "Sem Lactose",
-  gluten: "Sem Glúten",
-  amendoim: "Sem Amendoim",
-  oleaginosas: "Sem Oleaginosas",
-  frutos_do_mar: "Sem Frutos do Mar",
-  peixe: "Sem Peixe",
-  ovo: "Sem Ovo",
-  soja: "Sem Soja",
-  acucar: "Sem Açúcar",
-};
-
-const DIET_LABELS: Record<string, string> = {
-  vegetariana: "Vegetariana",
-  vegana: "Vegana",
-  low_carb: "Low Carb",
-  pescetariana: "Pescetariana",
-  cetogenica: "Cetogênica",
-  flexitariana: "Flexitariana",
-};
-
 export function SafetyStatusBadge({
   intolerances,
   excludedIngredients,
@@ -57,6 +36,7 @@ export function SafetyStatusBadge({
   const [isSaving, setIsSaving] = useState(false);
   
   const { data: options, isLoading: optionsLoading } = useOnboardingOptions();
+  const { getIntoleranceLabel, getDietaryLabel } = useSafetyLabels();
   
   const hasRestrictions = intolerances.length > 0 || excludedIngredients.length > 0 || (dietaryPreference && dietaryPreference !== "comum");
 
@@ -151,19 +131,15 @@ export function SafetyStatusBadge({
     type: "intolerance" | "excluded" | "diet" 
   }> = [];
 
-  // Adicionar intolerâncias
+  // Adicionar intolerâncias usando labels do database
   for (const intolerance of intolerances) {
     const key = intolerance.toLowerCase();
-    const label = INTOLERANCE_LABELS[key];
-    if (label) {
-      activeRestrictions.push({ label, key, type: "intolerance" });
-    } else {
-      activeRestrictions.push({ 
-        label: `Sem ${intolerance}`, 
-        key: "excluded",
-        type: "intolerance" 
-      });
-    }
+    const label = getIntoleranceLabel(key);
+    activeRestrictions.push({ 
+      label: `Sem ${label}`, 
+      key, 
+      type: "intolerance" 
+    });
   }
 
   // Adicionar ingredientes excluídos
@@ -175,12 +151,10 @@ export function SafetyStatusBadge({
     });
   }
 
-  // Adicionar preferência alimentar
+  // Adicionar preferência alimentar usando labels do database
   if (dietaryPreference && dietaryPreference !== "comum") {
-    const label = DIET_LABELS[dietaryPreference];
-    if (label) {
-      activeRestrictions.push({ label, key: dietaryPreference, type: "diet" });
-    }
+    const label = getDietaryLabel(dietaryPreference);
+    activeRestrictions.push({ label, key: dietaryPreference, type: "diet" });
   }
 
   return (

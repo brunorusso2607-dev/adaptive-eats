@@ -24,47 +24,18 @@ interface IntoleranceMappingItem {
   intolerance_key: string;
 }
 
-// Ingredientes de origem animal (para veganos)
-const ANIMAL_INGREDIENTS = [
-  "carne", "carne moída", "carne bovina", "patinho", "alcatra", "picanha",
-  "contra filé", "filé mignon", "maminha", "fraldinha", "acém", "músculo", "cupim",
-  "costela", "costela bovina", "coxão mole", "coxão duro", "lagarto", "paleta",
-  "carne seca", "carne de sol", "charque", "bife", "fígado bovino",
-  "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango",
-  "frango desfiado", "moela", "coração de frango", "fígado de frango",
-  "peru", "peito de peru", "chester", "pato", "codorna",
-  "carne de porco", "lombo", "pernil", "bisteca", "costela de porco",
-  "barriga de porco", "pancetta", "bacon", "toucinho", "torresmo",
-  "linguiça", "linguiça calabresa", "linguiça toscana", "linguiça portuguesa",
-  "paio", "chouriço", "salsicha", "presunto", "copa", "salame", "mortadela", "tender",
-  "peixe", "salmão", "atum", "tilápia", "bacalhau", "sardinha", "camarão", "lagosta",
-  "lula", "polvo", "marisco", "mexilhão", "ostra", "vieira", "siri", "caranguejo",
-  "ovo", "ovos", "gema", "clara de ovo", "omelete", "maionese",
-  "leite", "leite integral", "creme de leite", "chantilly", "nata", "coalhada",
-  "iogurte", "kefir", "manteiga", "queijo", "mussarela", "parmesão", "ricota",
-  "requeijão", "cream cheese", "catupiry", "burrata", "mascarpone",
-  "mel", "mel silvestre", "gelatina",
-];
+interface ForbiddenIngredientItem {
+  ingredient: string;
+  dietary_key: string;
+}
 
-// Ingredientes de carne (para vegetarianos)
-const MEAT_INGREDIENTS = [
-  "carne", "carne moída", "carne bovina", "patinho", "alcatra", "picanha",
-  "contra filé", "filé mignon", "maminha", "fraldinha", "acém", "músculo", "cupim",
-  "costela", "costela bovina", "coxão mole", "coxão duro", "lagarto", "paleta",
-  "carne seca", "carne de sol", "charque", "bife", "fígado bovino",
-  "frango", "peito de frango", "coxa de frango", "sobrecoxa", "asa de frango",
-  "frango desfiado", "moela", "coração de frango", "fígado de frango",
-  "peru", "peito de peru", "chester", "pato", "codorna",
-  "carne de porco", "lombo", "pernil", "bisteca", "costela de porco",
-  "barriga de porco", "pancetta", "bacon", "toucinho", "torresmo",
-  "linguiça", "linguiça calabresa", "linguiça toscana", "linguiça portuguesa",
-  "paio", "chouriço", "salsicha", "presunto", "copa", "salame", "mortadela", "tender",
-  "peixe", "salmão", "atum", "tilápia", "bacalhau", "sardinha", "camarão", "lagosta",
-  "lula", "polvo", "marisco", "mexilhão", "ostra", "vieira", "siri", "caranguejo",
-];
+interface DietaryLabelItem {
+  key: string;
+  name: string;
+}
 
-// Labels para restrições alimentares
-const DIETARY_LABELS: Record<string, string> = {
+// Labels para restrições alimentares (fallback, substituído por dados do DB)
+const FALLBACK_DIETARY_LABELS: Record<string, string> = {
   vegana: "vegano(a)",
   vegetariana: "vegetariano(a)",
   low_carb: "low carb",
@@ -75,9 +46,11 @@ export function useIntoleranceWarning() {
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
   const [dietaryPreference, setDietaryPreference] = useState<string | null>(null);
   const [mappings, setMappings] = useState<IntoleranceMappingItem[]>([]);
+  const [forbiddenIngredients, setForbiddenIngredients] = useState<ForbiddenIngredientItem[]>([]);
+  const [dietaryLabels, setDietaryLabels] = useState<Record<string, string>>(FALLBACK_DIETARY_LABELS);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch user profile data and mappings
+  // Fetch user profile data, mappings, and forbidden ingredients from database
   useEffect(() => {
     const fetchData = async () => {
       try {
@@ -87,8 +60,8 @@ export function useIntoleranceWarning() {
           return;
         }
 
-        // Fetch in parallel
-        const [profileResult, mappingsResult] = await Promise.all([
+        // Fetch all data in parallel
+        const [profileResult, mappingsResult, forbiddenResult, dietaryProfilesResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('intolerances, dietary_preference, excluded_ingredients')
@@ -96,7 +69,14 @@ export function useIntoleranceWarning() {
             .single(),
           supabase
             .from('intolerance_mappings')
-            .select('ingredient, intolerance_key')
+            .select('ingredient, intolerance_key'),
+          supabase
+            .from('dietary_forbidden_ingredients')
+            .select('ingredient, dietary_key'),
+          supabase
+            .from('dietary_profiles')
+            .select('key, name')
+            .eq('is_active', true)
         ]);
 
         if (profileResult.data) {
@@ -151,6 +131,20 @@ export function useIntoleranceWarning() {
         if (mappingsResult.data) {
           setMappings(mappingsResult.data);
         }
+
+        // Set forbidden ingredients from database
+        if (forbiddenResult.data) {
+          setForbiddenIngredients(forbiddenResult.data);
+        }
+
+        // Set dietary labels from database
+        if (dietaryProfilesResult.data) {
+          const labels: Record<string, string> = { ...FALLBACK_DIETARY_LABELS };
+          for (const profile of dietaryProfilesResult.data) {
+            labels[profile.key] = profile.name;
+          }
+          setDietaryLabels(labels);
+        }
       } catch (error) {
         console.error('Error fetching intolerance data:', error);
       } finally {
@@ -190,30 +184,26 @@ export function useIntoleranceWarning() {
     return { hasConflict: false, excludedItem: null };
   }, [hasExcludedIngredients, excludedIngredients]);
 
-  // Check dietary conflict for a single ingredient
+  // Check dietary conflict for a single ingredient using database forbidden ingredients
   const checkDietaryConflict = useCallback((ingredientName: string): { hasConflict: boolean; restriction: string | null } => {
-    if (!hasDietaryRestriction || !ingredientName) {
+    if (!hasDietaryRestriction || !ingredientName || !dietaryPreference) {
       return { hasConflict: false, restriction: null };
     }
 
-    const normalizedIngredient = ingredientName.toLowerCase().trim();
+    const normalizedIngredient = ingredientName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
 
-    if (dietaryPreference === 'vegana') {
-      const conflict = ANIMAL_INGREDIENTS.some(animal => 
-        normalizedIngredient.includes(animal)
-      );
-      if (conflict) return { hasConflict: true, restriction: 'vegana' };
-    }
-
-    if (dietaryPreference === 'vegetariana') {
-      const conflict = MEAT_INGREDIENTS.some(meat => 
-        normalizedIngredient.includes(meat)
-      );
-      if (conflict) return { hasConflict: true, restriction: 'vegetariana' };
+    // Check against forbidden ingredients from database
+    for (const forbidden of forbiddenIngredients) {
+      if (forbidden.dietary_key === dietaryPreference) {
+        const normalizedForbidden = forbidden.ingredient.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+        if (normalizedIngredient.includes(normalizedForbidden) || normalizedForbidden.includes(normalizedIngredient)) {
+          return { hasConflict: true, restriction: dietaryPreference };
+        }
+      }
     }
 
     return { hasConflict: false, restriction: null };
-  }, [hasDietaryRestriction, dietaryPreference]);
+  }, [hasDietaryRestriction, dietaryPreference, forbiddenIngredients]);
 
   // Check a single food/ingredient name for intolerance conflicts
   const checkFood = useCallback((foodName: string): IntoleranceWarning => {
@@ -257,7 +247,7 @@ export function useIntoleranceWarning() {
       if (c.startsWith('excluded:')) {
         return c.replace('excluded:', '');
       }
-      return DIETARY_LABELS[c] || getIntoleranceLabel(c);
+      return dietaryLabels[c] || getIntoleranceLabel(c);
     });
 
     return {
@@ -293,7 +283,7 @@ export function useIntoleranceWarning() {
     }
 
     const conflicts = Array.from(allConflicts);
-    const labels = conflicts.map(c => DIETARY_LABELS[c] || getIntoleranceLabel(c));
+    const labels = conflicts.map(c => dietaryLabels[c] || getIntoleranceLabel(c));
 
     return {
       hasConflict: conflicts.length > 0,

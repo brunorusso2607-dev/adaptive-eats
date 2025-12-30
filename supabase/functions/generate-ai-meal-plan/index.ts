@@ -33,10 +33,6 @@ import {
   REGIONAL_CONFIGS,
   DEFAULT_CONFIG,
   getRegionalConfig,
-  FORBIDDEN_INGREDIENTS,
-  ANIMAL_INGREDIENTS,
-  DAIRY_AND_EGGS,
-  FISH_INGREDIENTS,
   normalizeText,
   validateFood,
   fetchIntoleranceMappings,
@@ -426,9 +422,9 @@ const CALORIE_DISTRIBUTION: Record<string, number> = {
   ceia: 0.08,
 };
 
-// Nota: FORBIDDEN_INGREDIENTS, ANIMAL_INGREDIENTS, DAIRY_AND_EGGS, FISH_INGREDIENTS,
-// fetchIntoleranceMappings, normalizeText, validateFood, IntoleranceMapping, SafeKeyword
-// são importados de mealGenerationConfig.ts
+// ARCHITECTURE: Validação de ingredientes agora usa globalSafetyEngine internamente
+// via mealGenerationConfig.ts. As funções validateFood e fetchIntoleranceMappings
+// já delegam para o engine centralizado.
 
 // Função local para verificar ingredientes proibidos (wrapper para uso interno)
 function checkForbiddenIngredient(

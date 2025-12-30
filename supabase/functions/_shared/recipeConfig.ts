@@ -3,6 +3,9 @@
 // ============================================
 // Este arquivo é a RAIZ ÚNICA para todos os geradores de receitas.
 // Qualquer alteração aqui afeta: generate-recipe, generate-meal-plan, regenerate-meal
+//
+// ARQUITETURA v2.0:
+// Este arquivo agora usa INTERNAMENTE o globalSafetyEngine.ts para validação de ingredientes.
 
 // Importar cálculos nutricionais centralizados
 import {
@@ -29,6 +32,14 @@ import {
   getStrategyPromptRules,
   getStrategyPersona,
 } from "./mealGenerationConfig.ts";
+
+// ============= IMPORTS DO GLOBAL SAFETY ENGINE =============
+import {
+  loadSafetyDatabase,
+  validateIngredient as gseValidateIngredient,
+  type SafetyDatabase,
+  type UserRestrictions,
+} from "./globalSafetyEngine.ts";
 
 // Re-export for consumers of recipeConfig
 export {
@@ -2044,8 +2055,21 @@ Responda APENAS JSON válido.`;
 }
 
 // ============================================
-// VALIDAÇÃO PÓS-GERAÇÃO
+// VALIDAÇÃO PÓS-GERAÇÃO (USA GLOBAL SAFETY ENGINE)
 // ============================================
+
+// Cache do SafetyDatabase para evitar múltiplas chamadas
+let cachedSafetyDatabase: SafetyDatabase | null = null;
+
+/**
+ * Carrega o SafetyDatabase do globalSafetyEngine (com cache)
+ */
+async function getRecipeSafetyDatabase(): Promise<SafetyDatabase> {
+  if (!cachedSafetyDatabase) {
+    cachedSafetyDatabase = await loadSafetyDatabase();
+  }
+  return cachedSafetyDatabase;
+}
 
 /**
  * Normaliza texto para comparação (remove acentos, lowercase)
@@ -2063,6 +2087,7 @@ function normalizeText(text: string | undefined | null): string {
 
 /**
  * Verifica se um ingrediente viola as restrições do usuário
+ * @deprecated Use validateIngredientAsync para validação completa via globalSafetyEngine
  */
 export function validateIngredient(
   ingredientName: string,
@@ -2070,36 +2095,11 @@ export function validateIngredient(
 ): { isValid: boolean; matchedForbidden: string | null } {
   const normalizedIngredient = normalizeText(ingredientName);
   
-  // Exceções para ingredientes que são substitutos seguros
-  const safeExceptions = [
-    "leite de coco", "leite de amendoas", "leite de aveia", "leite vegetal",
-    "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
-    "nata vegetal", "leite de soja", "leite de arroz", "cream cheese vegano",
-    "creme de leite de coco", "iogurte de coco", "manteiga de coco"
-  ];
-  
-  // PRIMEIRO: Verifica se o ingrediente é uma exceção segura
-  const isSafeException = safeExceptions.some(safe => 
-    normalizedIngredient.includes(normalizeText(safe))
-  );
-  
-  // Se é uma exceção segura, é válido independentemente das palavras proibidas
-  if (isSafeException) {
-    return { isValid: true, matchedForbidden: null };
-  }
-  
-  // DEPOIS: Verifica se contém palavras proibidas
+  // Verifica se contém palavras proibidas
   for (const forbidden of forbiddenIngredients) {
     const normalizedForbidden = normalizeText(forbidden);
     
-    // Verifica se o ingrediente contém a palavra proibida
     if (normalizedIngredient.includes(normalizedForbidden)) {
-      return { isValid: false, matchedForbidden: forbidden };
-    }
-    
-    // Verifica se a palavra proibida contém o ingrediente (match parcial reverso)
-    // Mas só se o ingrediente tiver pelo menos 4 caracteres para evitar falsos positivos
-    if (normalizedForbidden.includes(normalizedIngredient) && normalizedIngredient.length >= 4) {
       return { isValid: false, matchedForbidden: forbidden };
     }
   }
@@ -2108,7 +2108,40 @@ export function validateIngredient(
 }
 
 /**
- * Valida uma receita individual contra as restrições do usuário
+ * Versão ASSÍNCRONA de validateIngredient que usa o globalSafetyEngine.
+ * Esta é a função RECOMENDADA para validação completa.
+ */
+export async function validateIngredientAsync(
+  ingredientName: string,
+  profile: UserProfile
+): Promise<{ isValid: boolean; matchedForbidden: string | null; reason?: string }> {
+  try {
+    const database = await getRecipeSafetyDatabase();
+    
+    const userRestrictions: UserRestrictions = {
+      intolerances: profile.intolerances || [],
+      dietaryPreference: profile.dietary_preference || null,
+      excludedIngredients: profile.excluded_ingredients || [],
+    };
+    
+    const result = gseValidateIngredient(ingredientName, userRestrictions, database);
+    
+    return {
+      isValid: result.isValid,
+      matchedForbidden: result.restriction || null,
+      reason: result.reason,
+    };
+  } catch (error) {
+    console.error("[recipeConfig] Error in validateIngredientAsync:", error);
+    // Fallback para lista de proibidos derivada do perfil
+    const forbiddenList = getAllForbiddenIngredientsWithDiet(profile);
+    return validateIngredient(ingredientName, forbiddenList);
+  }
+}
+
+/**
+ * Valida uma receita individual contra as restrições do usuário (versão síncrona)
+ * Usa lista de proibidos derivada localmente para validação rápida.
  */
 export function validateRecipe(
   recipe: {
@@ -2127,12 +2160,11 @@ export function validateRecipe(
   
   // Verifica cada ingrediente da receita
   for (const ingredient of recipe.recipe_ingredients) {
-    // Handle both object format { item: string } and string format
     const ingredientName = typeof ingredient === 'string' 
       ? ingredient 
       : ((ingredient as any)?.item || (ingredient as any)?.name || '');
     
-    if (!ingredientName) continue; // Skip empty ingredients
+    if (!ingredientName) continue;
     
     const { isValid, matchedForbidden } = validateIngredient(ingredientName, forbiddenIngredients);
     
@@ -2150,6 +2182,57 @@ export function validateRecipe(
   }
   
   return { isValid: true, invalidIngredients: [], reason: "" };
+}
+
+/**
+ * Versão ASSÍNCRONA de validateRecipe que usa o globalSafetyEngine.
+ * Esta é a função RECOMENDADA para validação completa e precisa.
+ */
+export async function validateRecipeAsync(
+  recipe: {
+    recipe_name: string;
+    recipe_ingredients: Array<{ item: string; quantity?: string; unit?: string }>;
+  },
+  profile: UserProfile
+): Promise<MealValidationResult> {
+  const invalidIngredients: string[] = [];
+  
+  try {
+    const database = await getRecipeSafetyDatabase();
+    
+    const userRestrictions: UserRestrictions = {
+      intolerances: profile.intolerances || [],
+      dietaryPreference: profile.dietary_preference || null,
+      excludedIngredients: profile.excluded_ingredients || [],
+    };
+    
+    for (const ingredient of recipe.recipe_ingredients) {
+      const ingredientName = typeof ingredient === 'string' 
+        ? ingredient 
+        : ((ingredient as any)?.item || (ingredient as any)?.name || '');
+      
+      if (!ingredientName) continue;
+      
+      const result = gseValidateIngredient(ingredientName, userRestrictions, database);
+      
+      if (!result.isValid) {
+        invalidIngredients.push(`${ingredientName} (${result.reason})`);
+      }
+    }
+    
+    if (invalidIngredients.length > 0) {
+      return {
+        isValid: false,
+        invalidIngredients,
+        reason: `Ingredientes proibidos encontrados: ${invalidIngredients.join(", ")}`
+      };
+    }
+    
+    return { isValid: true, invalidIngredients: [], reason: "" };
+  } catch (error) {
+    console.error("[recipeConfig] Error in validateRecipeAsync, using sync fallback:", error);
+    return validateRecipe(recipe, profile);
+  }
 }
 
 /**

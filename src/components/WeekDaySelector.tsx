@@ -18,6 +18,8 @@ type WeekDaySelectorProps = {
   onDayChange: (day: number) => void;
   showDaySelector?: boolean;
   className?: string;
+  /** Optional: filter out days before this date (e.g., plan start date) */
+  minDate?: Date;
 };
 
 export default function WeekDaySelector({
@@ -27,17 +29,28 @@ export default function WeekDaySelector({
   onWeekChange,
   onDayChange,
   showDaySelector = true,
-  className
+  className,
+  minDate
 }: WeekDaySelectorProps) {
   const { weeks, monthName, year } = useMonthWeeks(referenceDate);
 
-  // Filter only weeks that have at least one available (non-past) day
+  // Helper to check if a day is before minDate
+  const isDayBeforeMinDate = (day: DayInfo): boolean => {
+    if (!minDate) return false;
+    const dayDate = new Date(day.date);
+    dayDate.setHours(0, 0, 0, 0);
+    const min = new Date(minDate);
+    min.setHours(0, 0, 0, 0);
+    return dayDate < min;
+  };
+
+  // Filter only weeks that have at least one available (non-past AND >= minDate) day
   const availableWeeks = useMemo(() => {
     return weeks.filter(week => {
       const daysInMonth = week.days.filter(d => d.isInMonth);
-      return daysInMonth.some(d => !d.isPast || d.isToday);
+      return daysInMonth.some(d => (!d.isPast || d.isToday) && !isDayBeforeMinDate(d));
     });
-  }, [weeks]);
+  }, [weeks, minDate]);
 
   const currentWeekData = useMemo(() => {
     return weeks.find(w => w.weekNumber === selectedWeek);
@@ -45,8 +58,10 @@ export default function WeekDaySelector({
 
   const availableDaysCount = useMemo(() => {
     if (!currentWeekData) return 0;
-    return currentWeekData.days.filter(d => d.isInMonth && (!d.isPast || d.isToday)).length;
-  }, [currentWeekData]);
+    return currentWeekData.days.filter(d => 
+      d.isInMonth && (!d.isPast || d.isToday) && !isDayBeforeMinDate(d)
+    ).length;
+  }, [currentWeekData, minDate]);
 
   return (
     <Card className={cn("glass-card", className)}>
@@ -75,7 +90,9 @@ export default function WeekDaySelector({
             <SelectContent>
               {weeks.map((week) => {
                 const daysInMonth = week.days.filter(d => d.isInMonth);
-                const hasAvailableDays = daysInMonth.some(d => !d.isPast || d.isToday);
+                const hasAvailableDays = daysInMonth.some(d => 
+                  (!d.isPast || d.isToday) && !isDayBeforeMinDate(d)
+                );
                 const isDisabled = !hasAvailableDays;
                 
                 return (
@@ -114,7 +131,8 @@ export default function WeekDaySelector({
             </div>
             <div className="grid grid-cols-7 gap-1">
               {currentWeekData.days.map((day, index) => {
-                const isAvailable = day.isInMonth && (!day.isPast || day.isToday);
+                const isBeforeMinDate = isDayBeforeMinDate(day);
+                const isAvailable = day.isInMonth && (!day.isPast || day.isToday) && !isBeforeMinDate;
                 const isSelected = selectedDay === index;
                 
                 return (

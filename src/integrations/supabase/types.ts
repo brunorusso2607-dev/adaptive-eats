@@ -433,6 +433,33 @@ export type Database = {
           },
         ]
       }
+      dietary_forbidden_ingredients: {
+        Row: {
+          category: string | null
+          created_at: string
+          dietary_key: string
+          id: string
+          ingredient: string
+          language: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          dietary_key: string
+          id?: string
+          ingredient: string
+          language?: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          dietary_key?: string
+          id?: string
+          ingredient?: string
+          language?: string
+        }
+        Relationships: []
+      }
       dietary_profiles: {
         Row: {
           created_at: string
@@ -770,6 +797,30 @@ export type Database = {
           suggestions?: string[] | null
           user_feedback?: string | null
           user_id?: string
+        }
+        Relationships: []
+      }
+      intolerance_key_normalization: {
+        Row: {
+          created_at: string
+          database_key: string
+          id: string
+          label: string
+          onboarding_key: string
+        }
+        Insert: {
+          created_at?: string
+          database_key: string
+          id?: string
+          label: string
+          onboarding_key: string
+        }
+        Update: {
+          created_at?: string
+          database_key?: string
+          id?: string
+          label?: string
+          onboarding_key?: string
         }
         Relationships: []
       }

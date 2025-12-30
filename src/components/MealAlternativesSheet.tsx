@@ -8,7 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Flame, Beef, Wheat, Droplets, Clock, Check, RefreshCw } from "lucide-react";
+import { Loader2, Flame, Beef, Wheat, Droplets, Clock, Check, RefreshCw, Salad, Pizza } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
@@ -25,6 +25,7 @@ type MealAlternative = {
   recipe_ingredients: Ingredient[];
   recipe_instructions: string[];
   is_safe?: boolean;
+  is_flexible?: boolean; // Flag para identificar comfort foods
 };
 
 type MealPlanItem = {
@@ -63,6 +64,7 @@ export default function MealAlternativesSheet({
   const [alternatives, setAlternatives] = useState<MealAlternative[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState<number | null>(null);
+  const [isDietaFlexivel, setIsDietaFlexivel] = useState(false);
 
   // Auto-load alternatives when sheet opens
   useEffect(() => {
@@ -72,6 +74,7 @@ export default function MealAlternativesSheet({
       // Reset state when sheet closes
       setAlternatives([]);
       setIsLoading(false);
+      setIsDietaFlexivel(false);
     }
   }, [open, meal?.id, mealType]);
 
@@ -100,6 +103,7 @@ export default function MealAlternativesSheet({
 
       if (response.data?.success && response.data?.alternatives) {
         setAlternatives(response.data.alternatives);
+        setIsDietaFlexivel(response.data.isDietaFlexivel || false);
       } else {
         throw new Error(response.data?.error || "Nenhuma alternativa encontrada");
       }
@@ -174,6 +178,104 @@ export default function MealAlternativesSheet({
     }
   };
 
+  // Separar alternativas em saudáveis e flexíveis
+  const healthyAlternatives = alternatives.filter(alt => !alt.is_flexible);
+  const flexibleAlternatives = alternatives.filter(alt => alt.is_flexible);
+
+  // Renderizar um card de alternativa
+  const renderAlternativeCard = (alt: MealAlternative, index: number, isFlexible: boolean) => (
+    <Card 
+      key={`${isFlexible ? 'flex' : 'healthy'}-${index}`}
+      className={cn(
+        "border transition-all cursor-pointer hover:border-primary/50",
+        isApplying === index && "border-primary bg-primary/5",
+        isFlexible && "border-orange-200 bg-orange-50/30 dark:border-orange-900/50 dark:bg-orange-950/20"
+      )}
+      onClick={() => !isApplying && applyAlternative(alt, index)}
+    >
+      <CardContent className="p-4">
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <h3 className="font-semibold text-foreground text-sm line-clamp-2">
+                {alt.recipe_name}
+              </h3>
+              {isFlexible && (
+                <Badge variant="outline" className="shrink-0 text-[10px] bg-orange-100 text-orange-700 border-orange-300 dark:bg-orange-950 dark:text-orange-400 dark:border-orange-800">
+                  <Pizza className="w-3 h-3 mr-1" />
+                  Flexível
+                </Badge>
+              )}
+            </div>
+            
+            {/* Macros */}
+            <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
+              <span className="flex items-center gap-1">
+                <Flame className="w-3 h-3 text-orange-500" />
+                {alt.recipe_calories} kcal
+              </span>
+              <span className="flex items-center gap-1">
+                <Beef className="w-3 h-3 text-red-500" />
+                {alt.recipe_protein}g
+              </span>
+              <span className="flex items-center gap-1">
+                <Wheat className="w-3 h-3 text-amber-500" />
+                {alt.recipe_carbs}g
+              </span>
+              <span className="flex items-center gap-1">
+                <Droplets className="w-3 h-3 text-blue-500" />
+                {alt.recipe_fat}g
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {alt.recipe_prep_time} min
+              </span>
+            </div>
+            
+            {/* Ingredients preview */}
+            <div className="mt-2 flex flex-wrap gap-1">
+              {alt.recipe_ingredients.slice(0, 4).map((ing, i) => (
+                <Badge 
+                  key={i} 
+                  variant="secondary" 
+                  className="text-[10px] px-1.5 py-0"
+                >
+                  {ing.item.split(" ").slice(0, 3).join(" ")}
+                </Badge>
+              ))}
+              {alt.recipe_ingredients.length > 4 && (
+                <Badge 
+                  variant="outline" 
+                  className="text-[10px] px-1.5 py-0"
+                >
+                  +{alt.recipe_ingredients.length - 4}
+                </Badge>
+              )}
+            </div>
+          </div>
+          
+          {/* Apply button */}
+          <Button
+            size="sm"
+            variant={isApplying === index ? "default" : "outline"}
+            className="shrink-0"
+            disabled={isApplying !== null}
+            onClick={(e) => {
+              e.stopPropagation();
+              applyAlternative(alt, index);
+            }}
+          >
+            {isApplying === index ? (
+              <Loader2 className="w-4 h-4 animate-spin" />
+            ) : (
+              <Check className="w-4 h-4" />
+            )}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
@@ -202,96 +304,73 @@ export default function MealAlternativesSheet({
                 Tentar novamente
               </Button>
             </div>
+          ) : isDietaFlexivel && flexibleAlternatives.length > 0 ? (
+            // ============= LAYOUT DIETA FLEXÍVEL: 2 SEÇÕES =============
+            <>
+              {/* Seção Opções Saudáveis */}
+              {healthyAlternatives.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Salad className="w-4 h-4 text-green-600" />
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                      Opções Saudáveis ({healthyAlternatives.length})
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    {healthyAlternatives.map((alt, index) => 
+                      renderAlternativeCard(alt, index, false)
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Seção Opções Flexíveis (Comfort Foods) */}
+              {flexibleAlternatives.length > 0 && (
+                <div className="space-y-3 pt-4 border-t border-border">
+                  <div className="flex items-center gap-2">
+                    <Pizza className="w-4 h-4 text-orange-500" />
+                    <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
+                      Opções Flexíveis ({flexibleAlternatives.length})
+                    </p>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Comfort foods que cabem nos seus macros 🍔
+                  </p>
+                  
+                  <div className="space-y-3">
+                    {flexibleAlternatives.map((alt, index) => 
+                      renderAlternativeCard(alt, healthyAlternatives.length + index, true)
+                    )}
+                  </div>
+                </div>
+              )}
+              
+              {/* Refresh button */}
+              <div className="pt-2">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full text-muted-foreground"
+                  onClick={loadAlternatives}
+                  disabled={isLoading}
+                >
+                  <RefreshCw className={cn("w-4 h-4 mr-2", isLoading && "animate-spin")} />
+                  Carregar mais opções
+                </Button>
+              </div>
+            </>
           ) : (
+            // ============= LAYOUT PADRÃO: LISTA ÚNICA =============
             <>
               <p className="text-xs text-muted-foreground uppercase tracking-wide font-medium">
                 {alternatives.length} opções disponíveis
               </p>
               
               <div className="space-y-3">
-                {alternatives.map((alt, index) => (
-                  <Card 
-                    key={index}
-                    className={cn(
-                      "border transition-all cursor-pointer hover:border-primary/50",
-                      isApplying === index && "border-primary bg-primary/5"
-                    )}
-                    onClick={() => !isApplying && applyAlternative(alt, index)}
-                  >
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <h3 className="font-semibold text-foreground text-sm line-clamp-2">
-                            {alt.recipe_name}
-                          </h3>
-                          
-                          {/* Macros */}
-                          <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground flex-wrap">
-                            <span className="flex items-center gap-1">
-                              <Flame className="w-3 h-3 text-orange-500" />
-                              {alt.recipe_calories} kcal
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Beef className="w-3 h-3 text-red-500" />
-                              {alt.recipe_protein}g
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Wheat className="w-3 h-3 text-amber-500" />
-                              {alt.recipe_carbs}g
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Droplets className="w-3 h-3 text-blue-500" />
-                              {alt.recipe_fat}g
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {alt.recipe_prep_time} min
-                            </span>
-                          </div>
-                          
-                          {/* Ingredients preview */}
-                          <div className="mt-2 flex flex-wrap gap-1">
-                            {alt.recipe_ingredients.slice(0, 4).map((ing, i) => (
-                              <Badge 
-                                key={i} 
-                                variant="secondary" 
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {ing.item.split(" ").slice(0, 3).join(" ")}
-                              </Badge>
-                            ))}
-                            {alt.recipe_ingredients.length > 4 && (
-                              <Badge 
-                                variant="outline" 
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                +{alt.recipe_ingredients.length - 4}
-                              </Badge>
-                            )}
-                          </div>
-                        </div>
-                        
-                        {/* Apply button */}
-                        <Button
-                          size="sm"
-                          variant={isApplying === index ? "default" : "outline"}
-                          className="shrink-0"
-                          disabled={isApplying !== null}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            applyAlternative(alt, index);
-                          }}
-                        >
-                          {isApplying === index ? (
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                          ) : (
-                            <Check className="w-4 h-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                {alternatives.map((alt, index) => 
+                  renderAlternativeCard(alt, index, false)
+                )}
               </div>
               
               {/* Refresh button */}

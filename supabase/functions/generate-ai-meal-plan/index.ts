@@ -45,6 +45,7 @@ import {
   getStrategyPersona,
   groupSeparatedIngredients,
   updateMealTitleIfNeeded,
+  sortMealIngredients,
   type RegionalConfig,
   type IntoleranceMapping,
   type SafeKeyword,
@@ -466,12 +467,25 @@ function validateMealPlan(
       // Atualizar título se necessário
       const updatedTitle = updateMealTitleIfNeeded(option.title, groupedTitle, wasGrouped);
       
-      // Calcular calorias baseado na tabela (usar foods agrupados)
-      const calculatedCalories = calculateOptionCalories(groupedFoods);
+      // ============= ORDENAR INGREDIENTES (FRUTAS/SOBREMESAS POR ÚLTIMO) =============
+      const sortedFoods = sortMealIngredients(groupedFoods);
+      
+      // Log se a ordem foi alterada
+      const orderChanged = groupedFoods.length > 1 && 
+        groupedFoods.some((f, i) => sortedFoods[i]?.name !== f.name);
+      if (orderChanged) {
+        logStep(`📋 ORDENAÇÃO APLICADA em "${meal.label}"`, {
+          antes: groupedFoods.map(f => f.name),
+          depois: sortedFoods.map(f => f.name),
+        });
+      }
+      
+      // Calcular calorias baseado na tabela (usar foods ordenados)
+      const calculatedCalories = calculateOptionCalories(sortedFoods);
       
       // CRITICAL: Se todos os alimentos foram removidos, marca para regeneração
       // NÃO coloca placeholder - isso cria receitas inválidas
-      if (groupedFoods.length === 0) {
+      if (sortedFoods.length === 0) {
         needsRegeneration = true;
         logStep(`❌ CRITICAL: Option "${option.title}" has all foods removed by restrictions - needs regeneration`);
       }
@@ -479,11 +493,11 @@ function validateMealPlan(
       return {
         ...option,
         title: updatedTitle,
-        // Usar os alimentos agrupados
-        foods: groupedFoods.length > 0 ? groupedFoods : option.foods,
+        // Usar os alimentos agrupados E ordenados
+        foods: sortedFoods.length > 0 ? sortedFoods : option.foods,
         calculated_calories: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
         calories_kcal: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
-        _needsRegeneration: groupedFoods.length === 0, // Flag interna para marcar opções problemáticas
+        _needsRegeneration: sortedFoods.length === 0, // Flag interna para marcar opções problemáticas
       };
     });
     

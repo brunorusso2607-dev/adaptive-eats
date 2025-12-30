@@ -2350,6 +2350,278 @@ export function getStrategyPersona(strategyKey?: string, goal?: string): Strateg
   return STRATEGY_PERSONAS['manter'];
 }
 
+// ============= PROTEIN DIVERSITY RULES FOR ALL 18 INTOLERANCES =============
+
+/**
+ * Mapa de alternativas proteicas para cada intolerância
+ * Quando um usuário tem uma intolerância, estas são as proteínas seguras alternativas
+ */
+const INTOLERANCE_PROTEIN_ALTERNATIVES: Record<string, {
+  blocked: string[];
+  alternatives: string[];
+  label_pt: string;
+  label_en: string;
+}> = {
+  // Intolerâncias a proteínas animais
+  egg: {
+    blocked: ['ovo', 'ovos', 'clara', 'gema', 'omelete', 'egg', 'eggs'],
+    alternatives: ['tofu', 'grão-de-bico', 'lentilha', 'feijão', 'cogumelos', 'tempeh', 'seitan'],
+    label_pt: 'Sem Ovos',
+    label_en: 'Egg-Free',
+  },
+  fish: {
+    blocked: ['peixe', 'salmão', 'atum', 'tilápia', 'bacalhau', 'sardinha', 'fish', 'salmon', 'tuna'],
+    alternatives: ['frango', 'carne bovina', 'carne suína', 'peru', 'tofu', 'ovos', 'leguminosas'],
+    label_pt: 'Sem Peixe',
+    label_en: 'Fish-Free',
+  },
+  seafood: {
+    blocked: ['camarão', 'lagosta', 'caranguejo', 'mexilhão', 'ostra', 'lula', 'polvo', 'shrimp', 'lobster'],
+    alternatives: ['peixe', 'frango', 'carne', 'tofu', 'ovos', 'leguminosas'],
+    label_pt: 'Sem Frutos do Mar',
+    label_en: 'Seafood-Free',
+  },
+  shellfish: {
+    blocked: ['mexilhão', 'ostra', 'vieira', 'berbigão', 'amêijoa', 'mussel', 'oyster', 'clam'],
+    alternatives: ['peixe', 'camarão', 'frango', 'carne', 'tofu', 'ovos'],
+    label_pt: 'Sem Moluscos',
+    label_en: 'Shellfish-Free',
+  },
+  
+  // Intolerâncias a laticínios
+  lactose: {
+    blocked: ['leite', 'queijo', 'iogurte', 'creme de leite', 'manteiga', 'requeijão', 'milk', 'cheese', 'yogurt'],
+    alternatives: ['leite vegetal', 'tofu', 'proteínas vegetais', 'carnes magras', 'ovos', 'leguminosas'],
+    label_pt: 'Sem Lactose',
+    label_en: 'Lactose-Free',
+  },
+  
+  // Intolerâncias a proteínas vegetais
+  soy: {
+    blocked: ['soja', 'tofu', 'tempeh', 'edamame', 'molho shoyu', 'soy', 'tofu'],
+    alternatives: ['grão-de-bico', 'lentilha', 'feijão', 'seitan', 'cogumelos', 'ovos', 'carnes'],
+    label_pt: 'Sem Soja',
+    label_en: 'Soy-Free',
+  },
+  gluten: {
+    blocked: ['trigo', 'cevada', 'centeio', 'seitan', 'pão', 'macarrão', 'wheat', 'barley', 'rye'],
+    alternatives: ['quinoa', 'arroz', 'batata', 'mandioca', 'milho', 'leguminosas', 'carnes', 'ovos'],
+    label_pt: 'Sem Glúten',
+    label_en: 'Gluten-Free',
+  },
+  peanut: {
+    blocked: ['amendoim', 'pasta de amendoim', 'peanut', 'peanut butter'],
+    alternatives: ['castanhas', 'amêndoas', 'nozes', 'sementes de girassol', 'tahine', 'leguminosas'],
+    label_pt: 'Sem Amendoim',
+    label_en: 'Peanut-Free',
+  },
+  tree_nuts: {
+    blocked: ['castanha', 'amêndoa', 'noz', 'avelã', 'pistache', 'macadâmia', 'nuts', 'almond', 'walnut'],
+    alternatives: ['sementes (girassol, abóbora, chia)', 'coco', 'amendoim', 'leguminosas'],
+    label_pt: 'Sem Castanhas',
+    label_en: 'Tree Nut-Free',
+  },
+  sesame: {
+    blocked: ['gergelim', 'tahine', 'óleo de gergelim', 'sesame', 'tahini'],
+    alternatives: ['sementes de girassol', 'sementes de abóbora', 'chia', 'linhaça'],
+    label_pt: 'Sem Sésamo',
+    label_en: 'Sesame-Free',
+  },
+  
+  // Intolerâncias químicas/compostos
+  sulfite: {
+    blocked: ['vinho', 'frutas secas', 'conservas', 'vinagre', 'wine', 'dried fruits'],
+    alternatives: ['frutas frescas', 'vegetais frescos', 'carnes frescas', 'grãos integrais'],
+    label_pt: 'Sem Sulfitos',
+    label_en: 'Sulfite-Free',
+  },
+  histamine: {
+    blocked: ['queijos maturados', 'embutidos', 'fermentados', 'peixes enlatados', 'aged cheese', 'cured meats'],
+    alternatives: ['carnes frescas', 'ovos frescos', 'vegetais frescos', 'grãos', 'leguminosas frescas'],
+    label_pt: 'Baixa Histamina',
+    label_en: 'Low Histamine',
+  },
+  salicylate: {
+    blocked: ['tomate', 'pimentão', 'berinjela', 'especiarias fortes', 'tomato', 'pepper', 'spices'],
+    alternatives: ['batata', 'cenoura', 'abobrinha', 'couve-flor', 'carnes simples', 'arroz'],
+    label_pt: 'Baixo Salicilato',
+    label_en: 'Low Salicylate',
+  },
+  nickel: {
+    blocked: ['chocolate', 'nozes', 'lentilha', 'aveia', 'soja', 'chocolate', 'oats', 'lentils'],
+    alternatives: ['arroz branco', 'batata', 'frango', 'carne bovina', 'ovos', 'laticínios'],
+    label_pt: 'Baixo Níquel',
+    label_en: 'Low Nickel',
+  },
+  fodmap: {
+    blocked: ['cebola', 'alho', 'trigo', 'leguminosas', 'maçã', 'leite', 'onion', 'garlic', 'wheat', 'beans'],
+    alternatives: ['arroz', 'quinoa', 'batata', 'cenoura', 'abobrinha', 'frango', 'peixe', 'ovos', 'tofu firme'],
+    label_pt: 'Baixo FODMAP',
+    label_en: 'Low FODMAP',
+  },
+  
+  // Outras intolerâncias
+  lupin: {
+    blocked: ['tremoço', 'farinha de tremoço', 'lupin', 'lupine'],
+    alternatives: ['grão-de-bico', 'lentilha', 'feijão', 'soja', 'amendoim'],
+    label_pt: 'Sem Tremoço',
+    label_en: 'Lupin-Free',
+  },
+  mustard: {
+    blocked: ['mostarda', 'molho mostarda', 'mustard'],
+    alternatives: ['maionese', 'azeite', 'limão', 'ervas frescas'],
+    label_pt: 'Sem Mostarda',
+    label_en: 'Mustard-Free',
+  },
+  celery: {
+    blocked: ['aipo', 'salsão', 'celery'],
+    alternatives: ['pepino', 'erva-doce', 'couve', 'espinafre'],
+    label_pt: 'Sem Aipo',
+    label_en: 'Celery-Free',
+  },
+  sugar: {
+    blocked: ['açúcar', 'mel', 'xarope', 'doces', 'sugar', 'honey', 'syrup'],
+    alternatives: ['stevia', 'eritritol', 'frutas com baixo índice glicêmico', 'proteínas', 'gorduras boas'],
+    label_pt: 'Sem Açúcar',
+    label_en: 'Sugar-Free',
+  },
+};
+
+/**
+ * Gera regras de diversidade proteica com base nas restrições do usuário
+ */
+function generateProteinDiversityRules(
+  dietaryPreference: string | undefined,
+  intolerances: string[],
+  isPortuguese: boolean,
+  isSpanish: boolean
+): string {
+  const rules: string[] = [];
+  
+  // 1. Regras para preferências dietéticas
+  if (dietaryPreference === 'vegana') {
+    if (isPortuguese) {
+      rules.push(`
+🌱 DIVERSIDADE PROTEICA VEGANA (OBRIGATÓRIO):
+Use no mínimo 5 fontes proteicas DIFERENTES ao longo do dia:
+• LEGUMINOSAS: grão-de-bico, lentilha, feijão preto, feijão branco, ervilha
+• DERIVADOS DE SOJA: tofu, tempeh, edamame, proteína texturizada
+• SEITAN (proteína de trigo)
+• COGUMELOS: shimeji, shitake, champignon, portobello
+• OLEAGINOSAS: castanhas, amendoim, amêndoas, nozes
+• SEMENTES: chia, linhaça, gergelim, girassol, abóbora
+• PSEUDOCEREAIS: quinoa, amaranto, trigo sarraceno
+
+⚠️ LIMITE: Máximo 2 refeições/dia com a mesma proteína (ex: tofu)!`);
+    } else if (isSpanish) {
+      rules.push(`
+🌱 DIVERSIDAD PROTEICA VEGANA (OBLIGATORIO):
+Use mínimo 5 fuentes proteicas DIFERENTES: legumbres, tofu, tempeh, seitan, hongos, frutos secos, semillas.
+⚠️ LÍMITE: Máximo 2 comidas/día con la misma proteína!`);
+    } else {
+      rules.push(`
+🌱 VEGAN PROTEIN DIVERSITY (MANDATORY):
+Use at least 5 DIFFERENT protein sources: legumes, tofu, tempeh, seitan, mushrooms, nuts, seeds.
+⚠️ LIMIT: Max 2 meals/day with the same protein!`);
+    }
+  } else if (dietaryPreference === 'vegetariana') {
+    if (isPortuguese) {
+      rules.push(`
+🥚 DIVERSIDADE PROTEICA VEGETARIANA (OBRIGATÓRIO):
+Varie as fontes proteicas: OVOS, LATICÍNIOS, LEGUMINOSAS, TOFU, COGUMELOS, OLEAGINOSAS.
+⚠️ LIMITE: Máximo 2 refeições/dia com a mesma proteína!`);
+    } else {
+      rules.push(`
+🥚 VEGETARIAN PROTEIN DIVERSITY: Vary sources: eggs, dairy, legumes, tofu, mushrooms, nuts.
+⚠️ LIMIT: Max 2 meals/day with the same protein!`);
+    }
+  }
+  
+  // 2. Regras para cada intolerância detectada
+  const normalizedIntolerances = intolerances
+    .filter(i => i && i !== 'none' && i !== 'nenhuma')
+    .map(i => i.toLowerCase());
+  
+  // Mapeamento de keys do onboarding para keys do sistema
+  const KEY_NORMALIZATION: Record<string, string> = {
+    'amendoim': 'peanut',
+    'ovos': 'egg',
+    'soja': 'soy',
+    'acucar_diabetes': 'sugar',
+    'acucar': 'sugar',
+    'acucar_insulina': 'sugar',
+    'castanhas': 'tree_nuts',
+    'frutos_do_mar': 'seafood',
+    'peixe': 'fish',
+    'histamina': 'histamine',
+    'salicilatos': 'salicylate',
+    'sulfitos': 'sulfite',
+    'sesamo': 'sesame',
+    'tremoco': 'lupin',
+    'mostarda': 'mustard',
+    'aipo': 'celery',
+    'moluscos': 'shellfish',
+    'niquel': 'nickel',
+    'fodmap': 'fodmap',
+    'lactose': 'lactose',
+    'gluten': 'gluten',
+  };
+  
+  const processedIntolerances: string[] = [];
+  
+  for (const intolerance of normalizedIntolerances) {
+    const normalizedKey = KEY_NORMALIZATION[intolerance] || intolerance;
+    
+    // Evitar duplicatas
+    if (processedIntolerances.includes(normalizedKey)) continue;
+    processedIntolerances.push(normalizedKey);
+    
+    const altData = INTOLERANCE_PROTEIN_ALTERNATIVES[normalizedKey];
+    if (!altData) continue;
+    
+    if (isPortuguese) {
+      rules.push(`
+🔄 ${altData.label_pt.toUpperCase()}:
+❌ EVITAR: ${altData.blocked.slice(0, 5).join(', ')}
+✅ USAR: ${altData.alternatives.join(', ')}`);
+    } else if (isSpanish) {
+      rules.push(`
+🔄 ${altData.label_en.toUpperCase()}:
+❌ EVITAR: ${altData.blocked.slice(0, 5).join(', ')}
+✅ USAR: ${altData.alternatives.join(', ')}`);
+    } else {
+      rules.push(`
+🔄 ${altData.label_en.toUpperCase()}:
+❌ AVOID: ${altData.blocked.slice(0, 5).join(', ')}
+✅ USE: ${altData.alternatives.join(', ')}`);
+    }
+  }
+  
+  // 3. Regra geral de diversidade (sempre aplicada)
+  if (isPortuguese) {
+    rules.push(`
+📊 REGRA GERAL DE DIVERSIDADE (TODOS OS PERFIS):
+• VARIE a proteína principal em cada refeição do dia
+• NÃO repita o mesmo prato ou variação no mesmo dia
+• ALTERNE entre grupos: carnes, ovos, leguminosas, laticínios, vegetais proteicos
+• MÁXIMO 2 ocorrências da mesma fonte proteica por dia`);
+  } else if (isSpanish) {
+    rules.push(`
+📊 REGLA GENERAL DE DIVERSIDAD:
+• VARÍE la proteína principal en cada comida
+• NO repita el mismo plato en el mismo día
+• MÁXIMO 2 ocurrencias de la misma fuente proteica por día`);
+  } else {
+    rules.push(`
+📊 GENERAL DIVERSITY RULE:
+• VARY the main protein in each meal
+• DO NOT repeat the same dish on the same day
+• MAX 2 occurrences of the same protein source per day`);
+  }
+  
+  return rules.join('\n');
+}
+
 // ============= STRATEGY-SPECIFIC PROMPT RULES =============
 export function getStrategyPromptRules(
   strategyKey: string, 
@@ -2439,80 +2711,13 @@ Meals already generated TODAY: ${previousProteins}
     }
   }
   
-  // NOVO: Gerar regra de diversidade proteica para perfis com restrições
-  let proteinDiversityRule = '';
-  if (dietPref === 'vegana') {
-    if (isPortuguese) {
-      proteinDiversityRule = `
-🌱 REGRA DE DIVERSIDADE PROTEICA VEGANA (OBRIGATÓRIO):
-USE no mínimo 5 fontes proteicas DIFERENTES ao longo do dia:
-1. LEGUMINOSAS: grão-de-bico, lentilha, feijão preto, feijão branco, ervilha
-2. DERIVADOS DE SOJA: tofu, tempeh, edamame, proteína de soja texturizada
-3. SEITAN (proteína de trigo)
-4. COGUMELOS: shimeji, shitake, champignon, portobello
-5. OLEAGINOSAS: castanhas, amendoim, amêndoas, nozes
-6. SEMENTES: chia, linhaça, gergelim, girassol, abóbora
-7. PSEUDOCEREAIS: quinoa, amaranto, trigo sarraceno
-
-⚠️ NÃO USE a mesma proteína (ex: tofu) em mais de 2 refeições do dia!
-⚠️ DISTRIBUA as fontes: se usou tofu no café, use lentilha no almoço e grão-de-bico no jantar
-`;
-    } else if (isSpanish) {
-      proteinDiversityRule = `
-🌱 REGLA DE DIVERSIDAD PROTEICA VEGANA (OBLIGATORIO):
-USE mínimo 5 fuentes proteicas DIFERENTES a lo largo del día:
-1. LEGUMBRES: garbanzos, lentejas, frijoles negros, frijoles blancos
-2. DERIVADOS DE SOJA: tofu, tempeh, edamame
-3. SEITAN
-4. HONGOS: shiitake, champiñones, portobello
-5. FRUTOS SECOS: nueces, almendras, cacahuates
-6. SEMILLAS: chía, linaza, sésamo
-
-⚠️ NO USE la misma proteína en más de 2 comidas del día!
-`;
-    } else {
-      proteinDiversityRule = `
-🌱 VEGAN PROTEIN DIVERSITY RULE (MANDATORY):
-USE at least 5 DIFFERENT protein sources throughout the day:
-1. LEGUMES: chickpeas, lentils, black beans, white beans
-2. SOY PRODUCTS: tofu, tempeh, edamame
-3. SEITAN
-4. MUSHROOMS: shiitake, portobello, champignon
-5. NUTS: walnuts, almonds, peanuts
-6. SEEDS: chia, flax, sesame
-
-⚠️ DO NOT use the same protein in more than 2 meals per day!
-`;
-    }
-  } else if (dietPref === 'vegetariana') {
-    if (isPortuguese) {
-      proteinDiversityRule = `
-🥚 REGRA DE DIVERSIDADE PROTEICA VEGETARIANA (OBRIGATÓRIO):
-VARIE as fontes proteicas ao longo do dia:
-- OVOS (omelete, cozido, mexido)
-- LATICÍNIOS (queijo, iogurte, ricota, cottage)
-- LEGUMINOSAS (grão-de-bico, lentilha, feijão)
-- TOFU e TEMPEH
-- COGUMELOS
-- OLEAGINOSAS e SEMENTES
-
-⚠️ NÃO repita a mesma proteína (ex: ovo) em mais de 2 refeições!
-`;
-    } else {
-      proteinDiversityRule = `
-🥚 VEGETARIAN PROTEIN DIVERSITY RULE (MANDATORY):
-VARY protein sources throughout the day:
-- EGGS (omelet, boiled, scrambled)
-- DAIRY (cheese, yogurt, ricotta)
-- LEGUMES (chickpeas, lentils, beans)
-- TOFU and TEMPEH
-- MUSHROOMS
-- NUTS and SEEDS
-
-⚠️ DO NOT repeat the same protein in more than 2 meals!
-`;
-    }
-  }
+  // GERAR REGRAS DE DIVERSIDADE PROTEICA PARA TODOS OS PERFIS
+  const proteinDiversityRule = generateProteinDiversityRules(
+    dietPref,
+    options?.intolerances || [],
+    isPortuguese,
+    isSpanish
+  );
   
   if (isPortuguese) {
     return `

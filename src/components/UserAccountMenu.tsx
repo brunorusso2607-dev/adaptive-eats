@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -17,6 +17,8 @@ import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
 import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
+import { useSafetyLabels } from "@/hooks/useSafetyLabels";
+import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
 
 type UserProfile = {
   dietary_preference: string | null;
@@ -47,13 +49,8 @@ type UserAccountMenuProps = {
   onExternalOpenChange?: (open: boolean) => void;
 };
 
-const LABELS = {
-  dietary_preference: {
-    comum: "Comum",
-    vegetariana: "Vegetariana",
-    vegana: "Vegana",
-    low_carb: "Low Carb",
-  },
+// Labels estáticos que não vêm do DB (activity, sex, goal display)
+const STATIC_LABELS = {
   goal: {
     emagrecer: "Emagrecer",
     manter: "Manter peso",
@@ -70,24 +67,6 @@ const LABELS = {
     male: "Masculino",
     female: "Feminino",
   },
-};
-
-const INTOLERANCES_OPTIONS = [
-  { id: "lactose", label: "Lactose" },
-  { id: "gluten", label: "Glúten" },
-  { id: "acucar", label: "Açúcar" },
-  { id: "amendoim", label: "Amendoim" },
-  { id: "frutos_mar", label: "Frutos do mar" },
-  { id: "ovo", label: "Ovo" },
-];
-
-const INTOLERANCES_LABELS: Record<string, string> = {
-  lactose: "Lactose",
-  gluten: "Glúten",
-  acucar: "Açúcar",
-  amendoim: "Amendoim",
-  frutos_mar: "Frutos do mar",
-  ovo: "Ovo",
 };
 
 // Componente para editar alimentos excluídos no menu
@@ -178,6 +157,31 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
   const [internalOpen, setInternalOpen] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const { data: strategies } = useNutritionalStrategies();
+  const { getIntoleranceLabel, getDietaryLabel, dietaryLabels } = useSafetyLabels();
+  const { data: onboardingOptions } = useOnboardingOptions();
+
+  // Memoize intolerance options from DB
+  const intoleranceOptionsFormatted = useMemo(() => {
+    const intolerances = onboardingOptions?.intolerances || [];
+    return intolerances
+      .filter(opt => opt.option_id !== 'nenhuma' && opt.option_id !== 'none')
+      .map(opt => ({
+        id: opt.option_id,
+        label: opt.label
+      }));
+  }, [onboardingOptions]);
+
+  // Memoize dietary labels from DB
+  const dietaryPreferenceLabels = useMemo(() => {
+    const labels: Record<string, string> = {};
+    const dietaryOptions = onboardingOptions?.dietary_preferences || [];
+    dietaryOptions.forEach(opt => {
+      labels[opt.option_id] = opt.label;
+    });
+    // Fallback comum se não tiver no DB
+    if (!labels['comum']) labels['comum'] = 'Comum';
+    return labels;
+  }, [onboardingOptions]);
 
   // Use external control if provided, otherwise use internal state
   const isOpen = externalOpen !== undefined ? externalOpen : internalOpen;
@@ -271,9 +275,9 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
     setEditedProfile({ ...editedProfile, intolerances: updated });
   };
 
-  const getLabel = (category: keyof typeof LABELS, value: string | null) => {
+  const getLabel = (category: keyof typeof STATIC_LABELS, value: string | null) => {
     if (!value) return "Não definido";
-    return (LABELS[category] as Record<string, string>)[value] || value;
+    return (STATIC_LABELS[category] as Record<string, string>)[value] || value;
   };
 
   const planName = subscription?.plan === "premium" ? "Premium" : subscription?.plan === "essencial" ? "Essencial" : null;
@@ -371,7 +375,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           <div className="space-y-1">
             <Label className="text-xs">Dieta</Label>
             <div className="grid grid-cols-2 gap-2">
-              {Object.entries(LABELS.dietary_preference).map(([id, label]) => (
+              {Object.entries(dietaryPreferenceLabels).map(([id, label]) => (
                 <button
                   type="button"
                   key={id}
@@ -396,7 +400,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
             Restrições e Condições
           </h3>
           <div className="flex flex-wrap gap-2">
-            {INTOLERANCES_OPTIONS.map((opt) => {
+            {intoleranceOptionsFormatted.map((opt) => {
               const isSelected = (editedProfile.intolerances || []).includes(opt.id);
               return (
                 <button
@@ -555,7 +559,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
           <div className="space-y-2">
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-xs text-muted-foreground">Dieta</p>
-              <p className="text-sm font-medium">{getLabel("dietary_preference", profile.dietary_preference)}</p>
+              <p className="text-sm font-medium">{dietaryPreferenceLabels[profile.dietary_preference || ''] || getDietaryLabel(profile.dietary_preference || '') || 'Não definido'}</p>
             </div>
           </div>
         </div>
@@ -573,7 +577,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
                   key={item} 
                   className="px-3 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20"
                 >
-                  {INTOLERANCES_LABELS[item] || item}
+                  {getIntoleranceLabel(item)}
                 </span>
               ))}
             </div>

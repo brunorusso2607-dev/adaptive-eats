@@ -2,13 +2,6 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { 
-  getIntoleranceMappings, 
-  generateIngredientsPromptContext,
-  getMappingsStats,
-  checkFoodForIntolerance,
-  INTOLERANCE_LABELS 
-} from "../_shared/getIntoleranceMappings.ts";
-import { 
   extractGramsFromPortion
 } from "../_shared/calorieTable.ts";
 import {
@@ -18,6 +11,18 @@ import {
   getLocaleFromCountry
 } from "../_shared/nutritionPrompt.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+// ============= GLOBAL SAFETY ENGINE (CENTRALIZED) =============
+import {
+  loadSafetyDatabase,
+  normalizeUserIntolerances,
+  validateIngredientList,
+  generateRestrictionsPromptContext,
+  getIntoleranceLabel,
+  getDietaryLabel,
+  type UserRestrictions,
+  type SafetyCheckResult,
+  type ConflictDetail,
+} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -29,85 +34,11 @@ const logStep = (step: string, details?: any) => {
   console.log(`[ANALYZE-FOOD-PHOTO] ${step}${detailsStr}`);
 };
 
-// Mapa expandido de sinônimos por intolerância (consistente com rótulo e geladeira)
-const SINONIMOS_INTOLERANCIA: Record<string, string[]> = {
-  lactose: [
-    'leite', 'queijo', 'manteiga', 'creme de leite', 'nata', 'iogurte', 'requeijão',
-    'cream cheese', 'chantilly', 'molho branco', 'bechamel', 'alfredo', 'carbonara',
-    'gratinado', 'au gratin', 'fondue', 'raclette', 'lasanha', 'pizza', 'risoto',
-    'purê', 'sorvete', 'milk shake', 'cappuccino', 'café com leite', 'chocolate quente',
-    'pudim', 'mousse', 'cheesecake', 'petit gateau', 'brigadeiro', 'beijinho',
-    'doce de leite', 'leite condensado', 'whey', 'caseína', 'soro de leite',
-    'creme', 'cremoso', 'cheese', 'mussarela', 'parmesão', 'gorgonzola', 'brie',
-    'camembert', 'provolone', 'ricota', 'cottage', 'mascarpone', 'cream'
-  ],
-  gluten: [
-    'pão', 'torrada', 'farinha', 'trigo', 'massa', 'macarrão', 'espaguete', 'fusilli',
-    'penne', 'lasanha', 'ravioli', 'nhoque', 'pizza', 'esfiha', 'empada', 'pastel',
-    'coxinha', 'quibe', 'bolinho', 'croquete', 'nuggets', 'empanado', 'à milanesa',
-    'breaded', 'panko', 'farinha de rosca', 'biscoito', 'bolacha', 'bolo', 'torta',
-    'croissant', 'brioche', 'bagel', 'wrap', 'tortilla de trigo', 'tabule',
-    'cerveja', 'malte', 'centeio', 'cevada', 'aveia', 'seitan', 'molho shoyu',
-    'molho teriyaki', 'molho inglês', 'ketchup', 'mostarda', 'gravy', 'roux'
-  ],
-  amendoim: [
-    'amendoim', 'pasta de amendoim', 'manteiga de amendoim', 'paçoca', 'pé de moleque',
-    'satay', 'molho satay', 'pad thai', 'comida tailandesa', 'kung pao'
-  ],
-  oleaginosas: [
-    'castanha', 'nozes', 'amêndoas', 'pistache', 'avelã', 'macadâmia', 'pecã',
-    'castanha de caju', 'castanha do pará', 'pesto', 'baklava', 'marzipã',
-    'praline', 'torrone', 'nutella', 'granola', 'cereal', 'barra de cereal'
-  ],
-  frutos_do_mar: [
-    'camarão', 'lagosta', 'caranguejo', 'siri', 'lula', 'polvo', 'marisco',
-    'mexilhão', 'ostra', 'vieira', 'surimi', 'kani', 'tempurá de camarão',
-    'paella', 'moqueca', 'bobó', 'vatapá', 'acarajé', 'risoto de frutos do mar',
-    'sushi', 'sashimi', 'camarão seco', 'pasta de camarão'
-  ],
-  peixe: [
-    'peixe', 'salmão', 'atum', 'tilápia', 'bacalhau', 'sardinha', 'anchova',
-    'truta', 'robalo', 'linguado', 'pescada', 'merluza', 'fish', 'sashimi',
-    'sushi', 'ceviche', 'molho de peixe', 'fish sauce', 'caesar', 'worcestershire'
-  ],
-  ovo: [
-    'ovo', 'ovos', 'omelete', 'fritada', 'quiche', 'suflê', 'meringue', 'merengue',
-    'maionese', 'aioli', 'hollandaise', 'carbonara', 'custard', 'pudim', 'flan',
-    'bolo', 'panqueca', 'waffle', 'crepe', 'french toast', 'rabanada',
-    'massa fresca', 'macarrão ao ovo', 'tempura', 'empanado'
-  ],
-  soja: [
-    'soja', 'tofu', 'tempeh', 'edamame', 'missô', 'molho shoyu', 'molho de soja',
-    'leite de soja', 'proteína de soja', 'lecitina de soja', 'óleo de soja',
-    'molho teriyaki', 'yakisoba', 'comida japonesa', 'comida chinesa'
-  ],
-  acucar: [
-    'açúcar', 'doce', 'sobremesa', 'bolo', 'torta', 'sorvete', 'chocolate',
-    'pudim', 'mousse', 'brigadeiro', 'beijinho', 'trufa', 'bombom',
-    'refrigerante', 'suco industrializado', 'mel', 'xarope', 'geleia',
-    'caramelo', 'calda', 'cobertura', 'glacê', 'fondant'
-  ]
-};
+// ============= REMOVED: HARDCODED SINONIMOS_INTOLERANCIA =============
+// Now loaded dynamically from globalSafetyEngine via loadSafetyDatabase()
 
-// Mapeamento de intolerâncias do perfil para chaves do mapa
-const INTOLERANCE_MAP: Record<string, string> = {
-  'lactose': 'lactose',
-  'gluten': 'gluten',
-  'amendoim': 'amendoim',
-  'oleaginosas': 'oleaginosas',
-  'frutos_do_mar': 'frutos_do_mar',
-  'peixe': 'peixe',
-  'ovo': 'ovo',
-  'soja': 'soja',
-  'acucar': 'acucar',
-  'leite': 'lactose',
-  'trigo': 'gluten',
-  'nozes': 'oleaginosas',
-  'castanhas': 'oleaginosas',
-  'camarão': 'frutos_do_mar',
-  'mariscos': 'frutos_do_mar',
-  'ovos': 'ovo'
-};
+// ============= REMOVED: HARDCODED INTOLERANCE_MAP =============
+// Key normalization now handled by globalSafetyEngine.normalizeUserIntolerances()
 
 // ========== FUZZY MATCHING UTILITIES ==========
 
@@ -400,54 +331,39 @@ serve(async (req) => {
       ? imageBase64.split(',')[1] 
       : imageBase64;
 
-    // ========== FETCH DYNAMIC INTOLERANCE MAPPINGS FROM DATABASE ==========
-    let intoleranceData;
-    let dynamicIngredientsContext = "";
-    try {
-      intoleranceData = await getIntoleranceMappings();
-      logStep("Loaded dynamic intolerance mappings", { stats: getMappingsStats(intoleranceData) });
-      
-      // Generate context from database mappings (much more comprehensive than hardcoded)
-      dynamicIngredientsContext = generateIngredientsPromptContext(userIntolerances, intoleranceData);
-    } catch (mappingsError) {
-      logStep("Failed to load dynamic mappings, using fallback", { error: mappingsError });
-    }
+    // ========== FETCH SAFETY DATABASE FROM GLOBAL ENGINE ==========
+    const safetyDatabase = await loadSafetyDatabase();
+    logStep("Safety database loaded", { 
+      intoleranceTypes: safetyDatabase.intoleranceMappings.size,
+      dietaryProfiles: safetyDatabase.dietaryForbidden.size,
+      totalIngredients: Array.from(safetyDatabase.intoleranceMappings.values()).reduce((sum, arr) => sum + arr.length, 0)
+    });
 
-    // Build intolerance context for the prompt - now using database mappings
+    // Normalize user restrictions for consistent validation
+    const normalizedIntolerances = normalizeUserIntolerances(userIntolerances, safetyDatabase);
+    const userRestrictionsForEngine: UserRestrictions = {
+      intolerances: normalizedIntolerances,
+      dietaryPreference: dietaryPreference || "comum",
+      excludedIngredients: excludedIngredients || [],
+    };
+
+    // Generate comprehensive prompt context from centralized engine
+    const dynamicIngredientsContext = generateRestrictionsPromptContext(userRestrictionsForEngine, safetyDatabase);
+
+    // Build intolerance context for the prompt
     let intoleranceContext = "";
     const hasRestrictions = userIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "comum";
     
     if (hasRestrictions) {
-      // Use dynamic mappings from database if available, otherwise fallback to hardcoded
-      let synonymsList: string[] = [];
-      
-      if (intoleranceData) {
-        // Use database mappings
-        for (const intolerance of userIntolerances) {
-          const ingredients = intoleranceData.mappings.get(intolerance.toLowerCase()) || [];
-          synonymsList = [...synonymsList, ...ingredients];
-        }
-      } else {
-        // Fallback to hardcoded mappings
-        for (const intolerance of userIntolerances) {
-          const key = INTOLERANCE_MAP[intolerance.toLowerCase()] || intolerance.toLowerCase();
-          const synonyms = SINONIMOS_INTOLERANCIA[key] || [];
-          synonymsList = [...synonymsList, ...synonyms];
-        }
-      }
-      
-      // Adicionar ingredientes excluídos manualmente à lista de verificação
-      const allExcluded = [...new Set([...synonymsList, ...excludedIngredients.map((i: string) => i.toLowerCase())])];
-      
       intoleranceContext = `
 IMPORTANTE - RESTRIÇÕES ALIMENTARES DO USUÁRIO:
-${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${userIntolerances.map((i: string) => INTOLERANCE_LABELS[i] || i).join(", ")}` : ""}
+${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${normalizedIntolerances.map((i: string) => getIntoleranceLabel(i, safetyDatabase)).join(", ")}` : ""}
 ${excludedIngredients.length > 0 ? `- Ingredientes Excluídos Manualmente: ${excludedIngredients.join(", ")}` : ""}
-${dietaryPreference === "vegetariana" ? "- Dieta: VEGETARIANA (não consome carne, peixe, frutos do mar)" : ""}
-${dietaryPreference === "vegana" ? "- Dieta: VEGANA (não consome nenhum produto de origem animal)" : ""}
+${dietaryPreference === "vegetariana" ? `- Dieta: ${getDietaryLabel("vegetariana")}` : ""}
+${dietaryPreference === "vegana" ? `- Dieta: ${getDietaryLabel("vegana")}` : ""}
+${dietaryPreference === "pescetariana" ? `- Dieta: ${getDietaryLabel("pescetariana")}` : ""}
 
-${dynamicIngredientsContext || `INGREDIENTES/PRATOS A VERIFICAR (podem conter alérgenos ou ingredientes excluídos):
-${allExcluded.slice(0, 80).join(', ')}`}
+${dynamicIngredientsContext}
 
 Você DEVE analisar cada alimento identificado e verificar se contém ou pode conter ingredientes problemáticos para essas restrições.
 Considere também ingredientes "escondidos" em molhos, temperos e preparações.
@@ -1073,9 +989,9 @@ If any alert exists, set health_bonus to null.
       });
     }
 
-    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========
+    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - USANDO GLOBAL SAFETY ENGINE ==========
     // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
-    // IMPORTANTE: Agora usa checkFoodForIntolerance para respeitar safe keywords!
+    // Usa validateIngredientList do globalSafetyEngine que respeita safe keywords!
     
     const alertasPersonalizados: Array<{
       ingrediente: string;
@@ -1086,165 +1002,76 @@ If any alert exists, set health_bonus to null.
       safeReason?: string;
     }> = [];
     
-    // Verificar cada intolerância do usuário contra os alimentos identificados
-    for (const userIntolerance of userIntolerances) {
-      const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
-      const synonyms = SINONIMOS_INTOLERANCIA[intoleranceKey] || [userIntolerance];
+    // Coletar todos os alimentos identificados para validação centralizada
+    const identifiedFoods = analysis.alimentos?.map((food: { item?: string }) => food.item || "") || [];
+    
+    // Variável para armazenar resultado fora do escopo do if
+    let validationResult: SafetyCheckResult | null = null;
+    
+    if (identifiedFoods.length > 0) {
+      // Usar validateIngredientList do globalSafetyEngine
+      validationResult = validateIngredientList(identifiedFoods, userRestrictionsForEngine, safetyDatabase);
       
-      let found = false;
-      let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
-      let foundFood = "";
-      let safeReason = "";
+      logStep("Global safety validation complete", { 
+        isSafe: validationResult.isSafe,
+        conflictCount: validationResult.conflicts.length 
+      });
       
-      // Verificar em alimentos identificados
-      if (analysis.alimentos) {
-        for (const food of analysis.alimentos) {
-          const foodName = food.item || "";
-          const normalizedFoodName = foodName.toLowerCase();
-          
-          // PRIMEIRO: Usar database mappings se disponíveis (respeita safe keywords!)
-          if (intoleranceData) {
-            const check = checkFoodForIntolerance(foodName, intoleranceKey, intoleranceData);
-            
-            if (check.isSafe) {
-              // Produto contém indicador de segurança (ex: "zero lactose")
-              logStep("Safe keyword detected", { 
-                food: foodName, 
-                intolerance: intoleranceKey,
-                reason: check.safeReason 
-              });
-              safeReason = check.safeReason || "";
-              // Não marcar como conflito, produto é seguro!
-              continue;
-            }
-            
-            if (check.hasConflict) {
-              found = true;
-              foundFood = foodName;
-              foundStatus = "contem";
-              logStep("Conflict detected via database mappings", { 
-                food: foodName, 
-                intolerance: intoleranceKey,
-                matchedIngredients: check.matchedIngredients 
-              });
-              break;
-            }
-          }
-          
-          // FALLBACK: Verificar via synonyms hardcoded (para intolerâncias não no DB)
-          const matchesIntolerance = synonyms.some(syn => 
-            normalizedFoodName.includes(syn.toLowerCase())
-          );
-          
-          if (matchesIntolerance) {
-            // Dupla verificação: checar se há safe keyword no nome
-            const safeKeywords = intoleranceData?.safeKeywords.get(intoleranceKey) || [];
-            const hasSafeIndicator = safeKeywords.some(keyword => 
-              normalizedFoodName.includes(keyword.toLowerCase())
-            );
-            
-            if (hasSafeIndicator) {
-              logStep("Safe keyword detected via fallback", { 
-                food: foodName, 
-                intolerance: intoleranceKey 
-              });
-              safeReason = `Indicador de segurança detectado no nome do produto`;
-              continue;
-            }
-            
-            found = true;
-            foundFood = foodName;
-            foundStatus = "contem";
-            break;
-          }
-        }
+      // Converter conflicts para alertasPersonalizados
+      for (const conflict of validationResult.conflicts) {
+        const restricaoLabel = conflict.label;
+        
+        alertasPersonalizados.push({
+          ingrediente: conflict.originalIngredient,
+          restricao: restricaoLabel,
+          status: "contem",
+          mensagem: `⚠️ ATENÇÃO: "${conflict.originalIngredient}" contém ${restricaoLabel.toUpperCase()}, que está na sua lista de restrições`,
+          icone: "🔴"
+        });
       }
       
-      // Verificar também nos alertas da IA (se não já encontrado via safe keyword)
-      if (!found && !safeReason && analysis.alertas_intolerancia) {
-        for (const alerta of analysis.alertas_intolerancia) {
-          if (alerta.intolerancia?.toLowerCase().includes(intoleranceKey)) {
-            found = true;
-            foundFood = alerta.alimento;
-            foundStatus = alerta.risco === "alto" ? "contem" : "risco_potencial";
-            break;
-          }
+      // Se não houve conflitos, adicionar alertas de segurança para cada restrição
+      if (validationResult.isSafe) {
+        for (const intolerance of normalizedIntolerances) {
+          const restricaoLabel = getIntoleranceLabel(intolerance, safetyDatabase);
+          alertasPersonalizados.push({
+            ingrediente: "",
+            restricao: restricaoLabel,
+            status: "seguro",
+            mensagem: `✅ Seguro para você: Não identificamos ${restricaoLabel} nesta refeição`,
+            icone: "🟢"
+          });
         }
-      }
-      
-      // Gerar mensagem personalizada para o usuário
-      const restricaoLabel = INTOLERANCE_LABELS[intoleranceKey] || 
-                            (intoleranceKey === "lactose" ? "Lactose" :
-                            intoleranceKey === "gluten" ? "Glúten" :
-                            intoleranceKey === "acucar" ? "Açúcar" :
-                            intoleranceKey === "amendoim" ? "Amendoim" :
-                            intoleranceKey === "frutos_do_mar" ? "Frutos do Mar" :
-                            intoleranceKey === "ovo" ? "Ovo" :
-                            intoleranceKey === "soja" ? "Soja" :
-                            intoleranceKey === "oleaginosas" ? "Oleaginosas" :
-                            userIntolerance);
-      
-      if (found) {
-        alertasPersonalizados.push({
-          ingrediente: foundFood,
-          restricao: restricaoLabel,
-          status: foundStatus,
-          mensagem: foundStatus === "contem" 
-            ? `⚠️ ATENÇÃO: "${foundFood}" contém ${restricaoLabel.toUpperCase()}, que está na sua lista de restrições`
-            : `⚡ VERIFICAR: "${foundFood}" pode conter ${restricaoLabel}`,
-          icone: foundStatus === "contem" ? "🔴" : "🟡"
-        });
-      } else if (safeReason) {
-        // Produto tem indicador de segurança - mostrar como seguro com motivo!
-        alertasPersonalizados.push({
-          ingrediente: "",
-          restricao: restricaoLabel,
-          status: "seguro",
-          mensagem: `✅ Seguro: Produto identificado como sem ${restricaoLabel}`,
-          icone: "🟢",
-          safeReason: safeReason
-        });
-      } else {
-        alertasPersonalizados.push({
-          ingrediente: "",
-          restricao: restricaoLabel,
-          status: "seguro",
-          mensagem: `✅ Seguro para você: Não identificamos ${restricaoLabel} nesta refeição`,
-          icone: "🟢"
-        });
       }
     }
     
-    // Adicionar verificação de preferência alimentar
-    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana") {
-      const dietLabel = dietaryPreference === "vegana" ? "Veganismo" : "Vegetarianismo";
-      const meatKeywords = ["carne", "frango", "peixe", "camarão", "bacon", "linguiça", "presunto", "salsicha"];
-      const animalKeywords = [...meatKeywords, "leite", "queijo", "ovo", "manteiga", "iogurte", "mel"];
-      const keywordsToCheck = dietaryPreference === "vegana" ? animalKeywords : meatKeywords;
+    // Verificação de preferência alimentar JÁ é feita pelo globalSafetyEngine
+    // mas mantemos fallback visual para clareza
+    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana" || dietaryPreference === "pescetariana") {
+      const dietLabel = getDietaryLabel(dietaryPreference);
       
-      let found = false;
-      let foundFood = "";
+      // Verificar se há conflitos de dieta nos resultados
+      const dietaryConflicts = validationResult?.conflicts?.filter((c: ConflictDetail) => c.type === "dietary") || [];
       
-      if (analysis.alimentos) {
-        for (const food of analysis.alimentos) {
-          const foodName = food.item?.toLowerCase() || "";
-          if (keywordsToCheck.some(keyword => foodName.includes(keyword))) {
-            found = true;
-            foundFood = food.item;
-            break;
-          }
+      if (dietaryConflicts.length > 0) {
+        for (const conflict of dietaryConflicts) {
+          alertasPersonalizados.push({
+            ingrediente: conflict.originalIngredient,
+            restricao: dietLabel,
+            status: "contem",
+            mensagem: `⚠️ ATENÇÃO: "${conflict.originalIngredient}" é incompatível com ${dietLabel.toLowerCase()}`,
+            icone: "🔴"
+          });
         }
+      } else {
+        alertasPersonalizados.push({
+          ingrediente: "",
+          restricao: dietLabel,
+          status: "seguro",
+          mensagem: `✅ Compatível com ${dietLabel.toLowerCase()}`,
+          icone: "🟢"
+        });
       }
-      
-      alertasPersonalizados.push({
-        ingrediente: foundFood,
-        restricao: dietLabel,
-        status: found ? "contem" : "seguro",
-        mensagem: found 
-          ? `⚠️ ATENÇÃO: "${foundFood}" é incompatível com ${dietLabel.toLowerCase()}`
-          : `✅ Compatível com ${dietLabel.toLowerCase()}`,
-        icone: found ? "🔴" : "🟢"
-      });
     }
     
     // Adicionar verificação de ingredientes excluídos manualmente

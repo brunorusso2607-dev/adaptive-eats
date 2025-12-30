@@ -98,7 +98,7 @@ serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('intolerances, dietary_preference, recipe_complexity, goal, context, excluded_ingredients')
+      .select('intolerances, dietary_preference, goal, excluded_ingredients')
       .eq('id', user.id)
       .single();
 
@@ -108,12 +108,10 @@ serve(async (req) => {
 
     const intolerances = profile?.intolerances || [];
     const dietaryPreference = profile?.dietary_preference || 'comum';
-    const complexity = profile?.recipe_complexity || 'equilibrada';
     const goal = profile?.goal || 'manter';
-    const context = profile?.context || 'individual';
     const excludedIngredients = profile?.excluded_ingredients || [];
 
-    logStep('Profile loaded', { intolerances, dietaryPreference, complexity, goal, context });
+    logStep('Profile loaded', { intolerances, dietaryPreference, goal });
 
     // Load global safety database for validation
     const safetyDatabase = await loadSafetyDatabase(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -175,19 +173,9 @@ REGRAS DE SEGURANÇA:
       goalContext = 'O usuário quer GANHAR PESO - sugira receitas mais calóricas e nutritivas.';
     }
 
-    let complexityContext = '';
-    if (complexity === 'rapida') {
-      complexityContext = 'Priorize receitas RÁPIDAS e simples (até 20 minutos).';
-    } else if (complexity === 'elaborada') {
-      complexityContext = 'Pode sugerir receitas mais ELABORADAS e complexas.';
-    }
-
-    let contextInfo = '';
-    if (context === 'familia') {
-      contextInfo = 'Sugira receitas que sirvam uma FAMÍLIA (porções maiores).';
-    } else if (context === 'modo_kids') {
-      contextInfo = 'Sugira receitas INFANTIS, atrativas para crianças.';
-    }
+    // Removed complexity and context - not available in profiles table
+    const complexityContext = '';
+    const contextInfo = '';
 
     const systemPrompt = `You are a WORLD-CLASS EXPERT in FOOD SAFETY and GLOBAL CUISINE with encyclopedic knowledge of products from all countries.
 

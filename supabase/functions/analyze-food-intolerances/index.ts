@@ -1,14 +1,14 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { 
-  getIntoleranceMappings, 
-  checkFoodAgainstUserIntolerances,
-  generateIngredientsPromptContext,
-  getMappingsStats,
-  INTOLERANCE_LABELS,
-  normalizeText
-} from "../_shared/getIntoleranceMappings.ts";
+  loadSafetyDatabase,
+  normalizeUserIntolerances,
+  validateIngredientList,
+  generateRestrictionsPromptContext,
+  getIntoleranceLabel,
+  getDatabaseStats,
+  type UserRestrictions,
+} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -40,15 +40,22 @@ serve(async (req) => {
 
     logStep("Starting analysis", { foodName, intolerances: userIntolerances });
 
-    // Buscar mapeamentos dinâmicos do banco de dados
-    const intoleranceData = await getIntoleranceMappings();
-    logStep("Loaded intolerance mappings from database", { stats: getMappingsStats(intoleranceData) });
+    // Load global safety database
+    const safetyDatabase = await loadSafetyDatabase();
+    logStep("Loaded safety database", { stats: getDatabaseStats(safetyDatabase) });
 
-    // Gerar contexto de ingredientes para o prompt
-    const ingredientsContext = generateIngredientsPromptContext(
-      userIntolerances || [],
-      intoleranceData
-    );
+    // Normalize user intolerances
+    const normalizedIntolerances = normalizeUserIntolerances(userIntolerances || [], safetyDatabase);
+    
+    // Build user restrictions
+    const userRestrictions: UserRestrictions = {
+      intolerances: normalizedIntolerances,
+      dietaryPreference: "comum",
+      excludedIngredients: [],
+    };
+
+    // Generate context for prompt
+    const ingredientsContext = generateRestrictionsPromptContext(userRestrictions, safetyDatabase, 'pt');
 
     // Prompt SUPERINTELIGENTE com conhecimento enciclopédico
     const systemPrompt = `Você é o MAIOR ESPECIALISTA MUNDIAL em segurança alimentar e intolerâncias.
@@ -121,7 +128,7 @@ Considere:
 3. Ingredientes que podem estar "escondidos"
 4. Possíveis fontes de contaminação cruzada
 
-INTOLERÂNCIAS DO USUÁRIO PARA VERIFICAR: ${userIntolerances?.length > 0 ? userIntolerances.join(", ") : "nenhuma registrada"}
+INTOLERÂNCIAS DO USUÁRIO PARA VERIFICAR: ${normalizedIntolerances.length > 0 ? normalizedIntolerances.map(i => getIntoleranceLabel(i, safetyDatabase)).join(", ") : "nenhuma registrada"}
 
 Forneça uma análise completa em formato JSON.`;
 
@@ -184,7 +191,17 @@ Forneça uma análise completa em formato JSON.`;
       };
     }
 
-    // Detectar conflitos usando os mapeamentos do banco de dados
+    // Validate ingredients using global safety engine
+    const allIngredients = [
+      ...(analysisResult.ingredientes || []),
+      ...(analysisResult.analise_detalhada?.ingredientes_principais || []),
+      ...(analysisResult.analise_detalhada?.ingredientes_secundarios || []),
+      ...(analysisResult.analise_detalhada?.possiveis_contaminacoes || [])
+    ];
+
+    const validationResult = validateIngredientList(allIngredients, userRestrictions, safetyDatabase);
+
+    // Build conflicts array from validation result
     const conflicts: Array<{
       intolerance: string;
       intoleranceLabel: string;
@@ -193,77 +210,43 @@ Forneça uma análise completa em formato JSON.`;
       details: string;
     }> = [];
 
-    if (userIntolerances && userIntolerances.length > 0) {
-      // Juntar todos os ingredientes identificados para análise
-      const allIngredients = [
-        ...(analysisResult.ingredientes || []),
-        ...(analysisResult.analise_detalhada?.ingredientes_principais || []),
-        ...(analysisResult.analise_detalhada?.ingredientes_secundarios || []),
-        ...(analysisResult.analise_detalhada?.possiveis_contaminacoes || [])
-      ];
+    if (validationResult.conflicts && validationResult.conflicts.length > 0) {
+      // Group conflicts by restriction type
+      const conflictsByRestriction = new Map<string, string[]>();
+      
+      for (const conflict of validationResult.conflicts) {
+        const key = conflict.key;
+        if (!conflictsByRestriction.has(key)) {
+          conflictsByRestriction.set(key, []);
+        }
+        conflictsByRestriction.get(key)!.push(conflict.originalIngredient);
+      }
 
-      for (const intolerance of userIntolerances) {
-        if (intolerance === "nenhuma" || !intolerance) continue;
+      for (const [key, ingredients] of conflictsByRestriction.entries()) {
+        const label = getIntoleranceLabel(key, safetyDatabase);
         
-        const problematicIngredients = intoleranceData.mappings.get(intolerance) || [];
-        const safeWords = intoleranceData.safeKeywords.get(intolerance) || [];
-        const foundProblematic: string[] = [];
-        let isSafe = false;
-        let safeReason = "";
-
-        // Verificar se o alimento tem indicadores de segurança
-        const normalizedFood = normalizeText(foodName);
-        for (const safeWord of safeWords) {
-          if (normalizedFood.includes(normalizeText(safeWord))) {
-            isSafe = true;
-            safeReason = safeWord;
-            break;
-          }
+        // Determine risk level based on where ingredients were found
+        const mainIngredients = analysisResult.analise_detalhada?.ingredientes_principais || [];
+        const contaminations = analysisResult.analise_detalhada?.possiveis_contaminacoes || [];
+        
+        let riskLevel = "medio";
+        if (ingredients.some(ing => 
+          mainIngredients.some(mi => mi.toLowerCase().includes(ing.toLowerCase()))
+        )) {
+          riskLevel = "alto";
+        } else if (ingredients.every(ing => 
+          contaminations.some(c => c.toLowerCase().includes(ing.toLowerCase()))
+        )) {
+          riskLevel = "baixo";
         }
 
-        if (!isSafe) {
-          // Verificar cada ingrediente identificado
-          for (const ingredient of allIngredients) {
-            const normalizedIngredient = normalizeText(ingredient);
-            
-            for (const problematic of problematicIngredients) {
-              const normalizedProblematic = normalizeText(problematic);
-              
-              // Match mais inteligente: substring bidirecional
-              if (normalizedIngredient.includes(normalizedProblematic) || 
-                  normalizedProblematic.includes(normalizedIngredient)) {
-                if (!foundProblematic.includes(ingredient)) {
-                  foundProblematic.push(ingredient);
-                }
-              }
-            }
-          }
-        }
-
-        if (foundProblematic.length > 0) {
-          // Determinar nível de risco
-          let riskLevel = "medio";
-          const mainIngredients = analysisResult.analise_detalhada?.ingredientes_principais || [];
-          const contaminations = analysisResult.analise_detalhada?.possiveis_contaminacoes || [];
-          
-          if (foundProblematic.some(fp => 
-            mainIngredients.some(mi => normalizeText(mi).includes(normalizeText(fp)))
-          )) {
-            riskLevel = "alto";
-          } else if (foundProblematic.every(fp => 
-            contaminations.some(c => normalizeText(c).includes(normalizeText(fp)))
-          )) {
-            riskLevel = "baixo";
-          }
-
-          conflicts.push({
-            intolerance,
-            intoleranceLabel: INTOLERANCE_LABELS[intolerance] || intolerance,
-            foundIngredients: foundProblematic,
-            riskLevel,
-            details: `Encontrado(s) ${foundProblematic.length} ingrediente(s) problemático(s) para ${INTOLERANCE_LABELS[intolerance] || intolerance}`
-          });
-        }
+        conflicts.push({
+          intolerance: key,
+          intoleranceLabel: label,
+          foundIngredients: ingredients,
+          riskLevel,
+          details: `Encontrado(s) ${ingredients.length} ingrediente(s) problemático(s) para ${label}`
+        });
       }
     }
 
@@ -278,11 +261,15 @@ Forneça uma análise completa em formato JSON.`;
       conflictSummary: conflicts.length > 0 
         ? `⚠️ ${conflicts.length} conflito(s) detectado(s): ${conflicts.map(c => c.intoleranceLabel).join(", ")}`
         : "✅ Nenhum conflito detectado com suas intolerâncias",
-      analysisSource: "database_mappings_v2",
+      analysisSource: "global_safety_engine_v1",
+      safetyValidation: {
+        isSafe: validationResult.isSafe,
+        conflictsCount: validationResult.conflicts?.length || 0,
+      },
       mappingsUsed: {
-        totalIntolerances: intoleranceData.allIntoleranceKeys.length,
-        totalIngredients: Array.from(intoleranceData.mappings.values()).reduce((sum, arr) => sum + arr.length, 0),
-        totalSafeKeywords: Array.from(intoleranceData.safeKeywords.values()).reduce((sum, arr) => sum + arr.length, 0)
+        totalIntolerances: safetyDatabase.intoleranceMappings.size,
+        totalIngredients: Array.from(safetyDatabase.intoleranceMappings.values()).reduce((sum, arr) => sum + arr.length, 0),
+        totalSafeKeywords: Array.from(safetyDatabase.safeKeywords.values()).reduce((sum, arr) => sum + arr.length, 0)
       }
     };
 

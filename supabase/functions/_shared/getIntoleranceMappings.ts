@@ -66,16 +66,18 @@ export async function getIntoleranceMappings(
     auth: { persistSession: false }
   });
 
-  // Buscar dados em paralelo
+  // Buscar dados em paralelo - usando limit maior para garantir que pegamos todos
   const [mappingsResult, safeKeywordsResult] = await Promise.all([
     supabaseClient
       .from("intolerance_mappings")
       .select("intolerance_key, ingredient")
-      .order("intolerance_key"),
+      .order("intolerance_key")
+      .limit(10000), // Increased from default 1000
     supabaseClient
       .from("intolerance_safe_keywords")
       .select("intolerance_key, keyword")
       .order("intolerance_key")
+      .limit(5000) // Increased from default 1000
   ]);
 
   if (mappingsResult.error) {

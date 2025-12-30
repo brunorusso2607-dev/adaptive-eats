@@ -1,13 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
-import {
-  loadSafetyDatabase,
-  normalizeUserIntolerances,
-  validateIngredientList,
-  type UserRestrictions,
-  type SafetyDatabase,
-} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',

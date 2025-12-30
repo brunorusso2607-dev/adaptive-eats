@@ -158,3 +158,6 @@ verify_jwt = false
 
 [functions.run-regression-tests]
 verify_jwt = false
+
+[functions.run-human-simulation-tests]
+verify_jwt = false

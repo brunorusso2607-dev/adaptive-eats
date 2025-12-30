@@ -2571,3 +2571,162 @@ export function updateMealTitleIfNeeded(
   
   return originalTitle;
 }
+
+// ============= ORDENAÇÃO DE INGREDIENTES (FRUTAS/SOBREMESAS POR ÚLTIMO) =============
+
+/**
+ * Categorias de alimentos para ordenação
+ * Ordem: 1-Prato Principal, 2-Acompanhamentos, 3-Condimentos, 4-Frutas/Sobremesas
+ */
+const FOOD_CATEGORY_PATTERNS = {
+  // Categoria 1: Pratos principais (proteínas, pratos quentes)
+  mainDish: [
+    /omelete/i,
+    /filé|file/i,
+    /frango/i,
+    /carne/i,
+    /peixe/i,
+    /salmão|salmao/i,
+    /atum/i,
+    /tilápia|tilapia/i,
+    /camarão|camarao/i,
+    /ovo.*mexido|ovos.*mexidos/i,
+    /peito.*peru/i,
+    /hambúrguer|hamburguer/i,
+    /sopa/i,
+    /caldo/i,
+    /wrap.*recheado/i,
+    /tapioca.*com/i,
+    /crepioca/i,
+    /panqueca/i,
+    /mingau/i,
+    /vitamina/i,
+    /shake/i,
+    /smoothie/i,
+  ],
+  
+  // Categoria 2: Acompanhamentos (grãos, legumes, saladas)
+  sides: [
+    /arroz/i,
+    /feijão|feijao/i,
+    /batata/i,
+    /legumes/i,
+    /brócolis|brocolis/i,
+    /salada/i,
+    /couve/i,
+    /espinafre/i,
+    /pão|pao/i,
+    /torrada/i,
+    /quinoa/i,
+    /mandioca/i,
+    /purê|pure/i,
+    /abobrinha/i,
+    /berinjela/i,
+    /cenoura/i,
+    /vagem/i,
+    /aspargos/i,
+    /cogumelo/i,
+    /champignon/i,
+  ],
+  
+  // Categoria 3: Condimentos e gorduras
+  condiments: [
+    /azeite/i,
+    /óleo|oleo/i,
+    /molho/i,
+    /vinagrete/i,
+    /mostarda/i,
+    /tempero/i,
+    /sal\b/i,
+    /pimenta/i,
+    /orégano|oregano/i,
+    /manjericão|manjericao/i,
+    /limão|limao.*siciliano/i,
+    /tahine/i,
+    /homus|hummus/i,
+  ],
+  
+  // Categoria 4: Frutas e sobremesas (SEMPRE POR ÚLTIMO)
+  fruitsAndDesserts: [
+    /banana/i,
+    /maçã|maca/i,
+    /laranja/i,
+    /mamão|mamao/i,
+    /melancia/i,
+    /melão|melao/i,
+    /morango/i,
+    /uva/i,
+    /abacaxi/i,
+    /manga/i,
+    /kiwi/i,
+    /pêra|pera/i,
+    /ameixa/i,
+    /framboesa/i,
+    /mirtilo/i,
+    /açaí|acai/i,
+    /berry|berries/i,
+    /gelatina/i,
+    /pudim/i,
+    /mousse/i,
+    /iogurte/i,
+    /sobremesa/i,
+    /fruta/i,
+  ],
+};
+
+/**
+ * Determina a categoria de ordenação de um alimento
+ * Retorna: 1 (prato principal), 2 (acompanhamento), 3 (condimento), 4 (fruta/sobremesa)
+ */
+function getFoodSortCategory(foodName: string): number {
+  const normalizedName = foodName.toLowerCase();
+  
+  // Verificar se é fruta/sobremesa (categoria 4 - ÚLTIMA)
+  if (FOOD_CATEGORY_PATTERNS.fruitsAndDesserts.some(p => p.test(normalizedName))) {
+    // Exceção: se a fruta está em uma preparação complexa, não mover
+    // Ex: "Vitamina de banana" é prato principal, não sobremesa
+    const isPartOfMainDish = /vitamina|smoothie|shake|suco|panqueca.*com.*banana/i.test(normalizedName);
+    if (!isPartOfMainDish) {
+      return 4;
+    }
+  }
+  
+  // Verificar se é prato principal (categoria 1 - PRIMEIRO)
+  if (FOOD_CATEGORY_PATTERNS.mainDish.some(p => p.test(normalizedName))) {
+    return 1;
+  }
+  
+  // Verificar se é acompanhamento (categoria 2)
+  if (FOOD_CATEGORY_PATTERNS.sides.some(p => p.test(normalizedName))) {
+    return 2;
+  }
+  
+  // Verificar se é condimento (categoria 3)
+  if (FOOD_CATEGORY_PATTERNS.condiments.some(p => p.test(normalizedName))) {
+    return 3;
+  }
+  
+  // Default: acompanhamento (2) para não priorizar nem deixar por último
+  return 2;
+}
+
+/**
+ * Ordena os ingredientes de uma refeição seguindo a ordem lógica:
+ * 1. Pratos principais (proteínas, preparações quentes)
+ * 2. Acompanhamentos (grãos, legumes, saladas)
+ * 3. Condimentos (azeite, temperos)
+ * 4. Frutas e sobremesas (SEMPRE POR ÚLTIMO)
+ */
+export function sortMealIngredients(foods: FoodItemWithGrams[]): FoodItemWithGrams[] {
+  if (!foods || foods.length <= 1) {
+    return foods;
+  }
+  
+  return [...foods].sort((a, b) => {
+    const categoryA = getFoodSortCategory(a.name);
+    const categoryB = getFoodSortCategory(b.name);
+    
+    // Ordenar por categoria (menor número = aparece primeiro)
+    return categoryA - categoryB;
+  });
+}

@@ -352,7 +352,18 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
         return;
       }
 
-      setFoodAnalysis(data.analysis);
+      // Ensure total_geral has default values to prevent undefined errors
+      const analysisWithDefaults = {
+        ...data.analysis,
+        total_geral: data.analysis?.total_geral || {
+          calorias_totais: 0,
+          proteinas_totais: 0,
+          carboidratos_totais: 0,
+          gorduras_totais: 0,
+        },
+        alimentos: data.analysis?.alimentos || [],
+      };
+      setFoodAnalysis(analysisWithDefaults);
       setMetaDiaria(data.meta_diaria || null);
       setPerfilAplicado(data.perfil_usuario_aplicado || null);
       setCorrecoesAplicadas(data.correcoes_aplicadas || null);
@@ -505,7 +516,18 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           return;
         }
 
-        setFoodAnalysis(data.analysis);
+        // Ensure total_geral has default values to prevent undefined errors
+        const analysisWithDefaults = {
+          ...data.analysis,
+          total_geral: data.analysis?.total_geral || {
+            calorias_totais: 0,
+            proteinas_totais: 0,
+            carboidratos_totais: 0,
+            gorduras_totais: 0,
+          },
+          alimentos: data.analysis?.alimentos || [],
+        };
+        setFoodAnalysis(analysisWithDefaults);
         setMetaDiaria(data.meta_diaria || null);
         setPerfilAplicado(data.perfil_usuario_aplicado || null);
         setCorrecoesAplicadas(data.correcoes_aplicadas || null);
@@ -1214,22 +1236,22 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   <div className="grid grid-cols-4 gap-2">
                     <div className="text-center p-3 rounded-lg bg-orange-500/10">
                       <Flame className="w-5 h-5 mx-auto mb-1 text-orange-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral.calorias_totais}</p>
+                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.calorias_totais ?? 0}</p>
                       <p className="text-xs text-muted-foreground">kcal</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-red-500/10">
                       <Beef className="w-5 h-5 mx-auto mb-1 text-red-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral.proteinas_totais}g</p>
+                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.proteinas_totais ?? 0}g</p>
                       <p className="text-xs text-muted-foreground">proteína</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-amber-500/10">
                       <Wheat className="w-5 h-5 mx-auto mb-1 text-amber-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral.carboidratos_totais}g</p>
+                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.carboidratos_totais ?? 0}g</p>
                       <p className="text-xs text-muted-foreground">carbos</p>
                     </div>
                     <div className="text-center p-3 rounded-lg bg-blue-500/10">
                       <Droplets className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral.gorduras_totais}g</p>
+                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.gorduras_totais ?? 0}g</p>
                       <p className="text-xs text-muted-foreground">gordura</p>
                     </div>
                   </div>
@@ -1438,7 +1460,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">
                     <Flame className="w-4 h-4 text-orange-500" />
                     <span className="text-sm">
-                      Total: <span className="font-semibold text-foreground">{foodAnalysis.total_geral.calorias_totais} kcal</span>
+                      Total: <span className="font-semibold text-foreground">{foodAnalysis.total_geral?.calorias_totais ?? 0} kcal</span>
                     </span>
                     <span className="text-muted-foreground/40">|</span>
                     <AnalysisFeedbackButton 

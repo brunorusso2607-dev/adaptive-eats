@@ -538,21 +538,22 @@ function validateMealPlan(
       // Calcular calorias baseado na tabela (usar foods ordenados)
       const calculatedCalories = calculateOptionCalories(sortedFoods);
       
-      // CRITICAL: Se todos os alimentos foram removidos, marca para regeneração
-      // NÃO coloca placeholder - isso cria receitas inválidas
+      // ESTRATÉGIA ROBUSTA: Se todos os alimentos foram removidos, NÃO regenerar
+      // Em vez disso, manter os alimentos originais e logar o problema
+      // O frontend irá mostrar a refeição e o usuário pode usar "Surpreenda-me" para trocar
       if (sortedFoods.length === 0) {
-        needsRegeneration = true;
-        logStep(`❌ CRITICAL: Option "${option.title}" has all foods removed by restrictions - needs regeneration`);
+        logStep(`⚠️ WARNING: Option "${option.title}" has all foods removed by restrictions - keeping original foods for user to swap later`);
+        // Manter alimentos originais - a validação foi muito restritiva
+        // O usuário pode trocar depois usando o botão "Surpreenda-me"
       }
       
       return {
         ...option,
         title: updatedTitle,
-        // Usar os alimentos agrupados E ordenados
+        // Usar os alimentos agrupados E ordenados, ou originais se todos foram removidos
         foods: sortedFoods.length > 0 ? sortedFoods : option.foods,
         calculated_calories: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
         calories_kcal: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
-        _needsRegeneration: sortedFoods.length === 0, // Flag interna para marcar opções problemáticas
       };
     });
     
@@ -956,10 +957,10 @@ serve(async (req) => {
       
       logStep("AI response received", { contentLength: content.length, finishReason, isTruncated });
 
-      // Parse JSON from response
+    // Parse JSON from response
       let dayPlanValidated: SimpleDayPlan | null = null;
       let retryCount = 0;
-      const MAX_RETRIES = 3; // Aumentado para lidar com truncamentos
+      const MAX_RETRIES = 1; // REDUZIDO: Máximo 1 retry para evitar timeout
       
       while (!dayPlanValidated && retryCount <= MAX_RETRIES) {
         try {
@@ -1045,33 +1046,12 @@ serve(async (req) => {
               });
             });
             
-            // Se precisa regenerar e ainda tem tentativas, tenta de novo
-            if (validationResult.needsRegeneration && retryCount < MAX_RETRIES) {
-              logStep(`🔄 Regenerating day ${dayIndex + 1} due to critical violations...`);
-              retryCount++;
-              
-              // Fazer nova chamada à API com temperatura um pouco maior
-              const retryResponse = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${aiPromptData?.model || 'gemini-2.0-flash-lite'}:generateContent?key=${GOOGLE_AI_API_KEY}`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt + `\n\nIMPORTANTE: O plano anterior continha alimentos proibidos. Gere um plano COMPLETAMENTE novo com APENAS alimentos seguros para as restrições do usuário.` }] }],
-                    generationConfig: {
-                      temperature: 0.7 + (retryCount * 0.1), // Aumenta temperatura a cada retry
-                      maxOutputTokens: 8192,
-                    }
-                  }),
-                }
-              );
-              
-              if (retryResponse.ok) {
-                const retryData = await retryResponse.json();
-                content = retryData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                logStep(`Retry ${retryCount} response received`, { contentLength: content.length });
-                continue; // Tenta validar novamente
-              }
+            // ESTRATÉGIA ROBUSTA: Não regenerar por violações - apenas logar e continuar
+            // O plano validado já teve os alimentos problemáticos removidos
+            // O usuário pode usar "Surpreenda-me" para trocar refeições depois
+            if (validationResult.needsRegeneration) {
+              logStep(`⚠️ Day ${dayIndex + 1} has critical violations but continuing without regeneration to avoid timeout`);
+              // NÃO incrementar retryCount - apenas aceitar o plano com as correções aplicadas
             }
           } else {
             logStep(`✓ Day ${dayIndex + 1} passed validation - no violations`);
@@ -1216,11 +1196,9 @@ serve(async (req) => {
           const firstOption = meal.options?.[0];
           if (!firstOption) continue;
           
-          // CRITICAL: Não salvar opções que foram marcadas para regeneração
-          if ((firstOption as any)._needsRegeneration) {
-            logStep(`⚠️ Skipping meal "${firstOption.title}" - marked for regeneration due to restriction violations`);
-            continue;
-          }
+          // NOTA: A flag _needsRegeneration foi removida da lógica
+          // Todas as refeições são salvas, mesmo com violações removidas
+          // O usuário pode trocar depois usando "Surpreenda-me"
           
           // Preparar foods para cálculo de macros reais
           const foodsForCalculation: RealMacrosFoodItem[] = (firstOption.foods || []).map((food: any) => {

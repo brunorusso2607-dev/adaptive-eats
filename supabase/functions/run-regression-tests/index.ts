@@ -460,6 +460,388 @@ serve(async (req) => {
   ];
 
   // ============================================
+  // MÓDULO 9: ADMIN SYSTEM TESTS
+  // ============================================
+  const adminTests: ModuleTest[] = [
+    {
+      name: "ADMIN: User roles table has admins",
+      description: "Verifica se existem usuários admin configurados",
+      test: async () => {
+        const { count, error } = await supabase
+          .from('user_roles')
+          .select('*', { count: 'exact', head: true })
+          .eq('role', 'admin');
+        
+        if (error) return { passed: false, error: error.message };
+        if (!count || count === 0) return { passed: false, error: 'Nenhum admin configurado' };
+        return { passed: true };
+      }
+    },
+    {
+      name: "ADMIN: AI prompts are configured",
+      description: "Verifica se prompts de IA estão configurados",
+      test: async () => {
+        const { count, error } = await supabase
+          .from('ai_prompts')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true);
+        
+        if (error) return { passed: false, error: error.message };
+        if (!count || count < 3) return { passed: false, error: `Apenas ${count} prompts ativos` };
+        return { passed: true };
+      }
+    },
+    {
+      name: "ADMIN: App settings exist",
+      description: "Verifica configurações do app",
+      test: async () => {
+        const { data, error } = await supabase
+          .from('app_settings')
+          .select('id, primary_color, logo_url')
+          .limit(1);
+        
+        if (error) return { passed: false, error: error.message };
+        if (!data || data.length === 0) return { passed: false, error: 'App settings não configurado' };
+        return { passed: true };
+      }
+    },
+    {
+      name: "ADMIN: Feature flags exist",
+      description: "Verifica se feature flags estão configuradas",
+      test: async () => {
+        const { count, error } = await supabase
+          .from('feature_flags')
+          .select('*', { count: 'exact', head: true });
+        
+        if (error) return { passed: false, error: error.message };
+        if (!count || count === 0) return { passed: false, error: 'Nenhum feature flag configurado' };
+        return { passed: true };
+      }
+    },
+    {
+      name: "ADMIN: Dietary profiles are active",
+      description: "Verifica se perfis dietéticos estão ativos",
+      test: async () => {
+        const { count, error } = await supabase
+          .from('dietary_profiles')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true);
+        
+        if (error) return { passed: false, error: error.message };
+        if (!count || count < 5) return { passed: false, error: `Apenas ${count} perfis dietéticos ativos` };
+        return { passed: true };
+      }
+    },
+    {
+      name: "ADMIN: Symptom types configured",
+      description: "Verifica se tipos de sintomas estão configurados",
+      test: async () => {
+        const { count, error } = await supabase
+          .from('symptom_types')
+          .select('*', { count: 'exact', head: true })
+          .eq('is_active', true);
+        
+        if (error) return { passed: false, error: error.message };
+        if (!count || count < 5) return { passed: false, error: `Apenas ${count} tipos de sintomas` };
+        return { passed: true };
+      }
+    }
+  ];
+
+  // ============================================
+  // MÓDULO 10: DASHBOARD DATA TESTS
+  // ============================================
+  const dashboardTests: ModuleTest[] = [
+    {
+      name: "DASHBOARD: Meal consumption table accessible",
+      description: "Verifica se tabela de consumo está acessível",
+      test: async () => {
+        const { error } = await supabase
+          .from('meal_consumption')
+          .select('id, user_id, consumed_at, total_calories')
+          .limit(0);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    },
+    {
+      name: "DASHBOARD: Water consumption table accessible",
+      description: "Verifica se tabela de água está acessível",
+      test: async () => {
+        const { error } = await supabase
+          .from('water_consumption')
+          .select('id, user_id, amount_ml, consumed_at')
+          .limit(0);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    },
+    {
+      name: "DASHBOARD: Weight history table accessible",
+      description: "Verifica se histórico de peso está acessível",
+      test: async () => {
+        const { error } = await supabase
+          .from('weight_history')
+          .select('id, user_id, weight, recorded_at')
+          .limit(0);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    },
+    {
+      name: "DASHBOARD: Symptom logs table accessible",
+      description: "Verifica se logs de sintomas está acessível",
+      test: async () => {
+        const { error } = await supabase
+          .from('symptom_logs')
+          .select('id, user_id, symptoms, severity, logged_at')
+          .limit(0);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    },
+    {
+      name: "DASHBOARD: Gamification tables accessible",
+      description: "Verifica se tabelas de gamificação estão acessíveis",
+      test: async () => {
+        const { error: gamError } = await supabase
+          .from('user_gamification')
+          .select('id, user_id, total_xp, current_level')
+          .limit(0);
+        
+        if (gamError) return { passed: false, error: `Gamification: ${gamError.message}` };
+        
+        const { error: achieveError } = await supabase
+          .from('user_achievements')
+          .select('id, user_id, achievement_key')
+          .limit(0);
+        
+        if (achieveError) return { passed: false, error: `Achievements: ${achieveError.message}` };
+        
+        return { passed: true };
+      }
+    },
+    {
+      name: "DASHBOARD: Notifications table accessible",
+      description: "Verifica se tabela de notificações está acessível",
+      test: async () => {
+        const { error } = await supabase
+          .from('notifications')
+          .select('id, user_id, title, message, is_read')
+          .limit(0);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    }
+  ];
+
+  // ============================================
+  // MÓDULO 11: USER PROFILE TESTS
+  // ============================================
+  const userProfileTests: ModuleTest[] = [
+    {
+      name: "PROFILE: All required columns exist",
+      description: "Verifica se todas as colunas do perfil existem",
+      test: async () => {
+        const { error } = await supabase
+          .from('profiles')
+          .select(`
+            id, email, first_name, last_name,
+            intolerances, dietary_preference, excluded_ingredients,
+            goal, strategy_id,
+            weight_current, weight_goal, height, age, sex,
+            activity_level, country, timezone,
+            default_meal_times, enabled_meals, kids_mode,
+            onboarding_completed, created_at, updated_at
+          `)
+          .limit(0);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    },
+    {
+      name: "PROFILE: Strategy foreign key works",
+      description: "Verifica se foreign key de estratégia funciona",
+      test: async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, strategy_id, nutritional_strategies(key, label)')
+          .not('strategy_id', 'is', null)
+          .limit(1);
+        
+        if (error) return { passed: false, error: error.message };
+        return { passed: true };
+      }
+    },
+    {
+      name: "PROFILE: Intolerances array works",
+      description: "Verifica se array de intolerâncias funciona",
+      test: async () => {
+        const { data, error } = await supabase
+          .from('profiles')
+          .select('id, intolerances')
+          .not('intolerances', 'is', null)
+          .limit(5);
+        
+        if (error) return { passed: false, error: error.message };
+        // Verificar se é array válido
+        if (data && data.length > 0) {
+          const sample = data[0];
+          if (!Array.isArray(sample.intolerances)) {
+            return { passed: false, error: 'Intolerances não é um array' };
+          }
+        }
+        return { passed: true };
+      }
+    }
+  ];
+
+  // ============================================
+  // MÓDULO 12: DATA INTEGRITY TESTS
+  // ============================================
+  const dataIntegrityTests: ModuleTest[] = [
+    {
+      name: "INTEGRITY: All intolerance keys normalized",
+      description: "Verifica se todas as chaves de intolerância têm normalização",
+      test: async () => {
+        const { data: onboardingIntolerances } = await supabase
+          .from('onboarding_options')
+          .select('option_id')
+          .eq('category', 'intolerances')
+          .eq('is_active', true);
+        
+        const { data: normalizations } = await supabase
+          .from('intolerance_key_normalization')
+          .select('onboarding_key, database_key');
+        
+        const onboardingKeys = onboardingIntolerances?.map(o => o.option_id) || [];
+        const normalizedKeys = new Set(normalizations?.map(n => n.onboarding_key) || []);
+        
+        const missing = onboardingKeys.filter(k => !normalizedKeys.has(k));
+        
+        if (missing.length > 0) {
+          return { passed: false, error: `Normalização faltando: ${missing.join(', ')}` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "INTEGRITY: All intolerances have mappings",
+      description: "Verifica se todas as intolerâncias têm mapeamentos de ingredientes",
+      test: async () => {
+        const { data: normalizations } = await supabase
+          .from('intolerance_key_normalization')
+          .select('database_key');
+        
+        // Excluir "none" que é uma chave especial que não precisa de mapeamento
+        const databaseKeys = [...new Set(normalizations?.map(n => n.database_key) || [])]
+          .filter(k => k !== 'none');
+        
+        const { data: mappings } = await supabase
+          .from('intolerance_mappings')
+          .select('intolerance_key');
+        
+        const mappedKeys = new Set(mappings?.map(m => m.intolerance_key) || []);
+        
+        const missing = databaseKeys.filter(k => !mappedKeys.has(k));
+        
+        if (missing.length > 0) {
+          return { passed: false, error: `Mapeamentos faltando para: ${missing.join(', ')}` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "INTEGRITY: Simple meals have required fields",
+      description: "Verifica se refeições simples têm campos obrigatórios",
+      test: async () => {
+        const { data, error } = await supabase
+          .from('simple_meals')
+          .select('id, name, meal_type, calories, protein, carbs, fat, ingredients')
+          .eq('is_active', true)
+          .limit(10);
+        
+        if (error) return { passed: false, error: error.message };
+        
+        const invalid = data?.filter(m => 
+          !m.name || !m.meal_type || m.calories === null
+        ) || [];
+        
+        if (invalid.length > 0) {
+          return { passed: false, error: `${invalid.length} refeições com campos faltando` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "INTEGRITY: Meal plan items have valid structure",
+      description: "Verifica se itens de plano têm estrutura válida",
+      test: async () => {
+        const { data, error } = await supabase
+          .from('meal_plan_items')
+          .select('id, recipe_name, meal_type, recipe_ingredients, recipe_instructions')
+          .limit(10);
+        
+        if (error) return { passed: false, error: error.message };
+        
+        const invalid = data?.filter(item => 
+          !item.recipe_name || !item.meal_type
+        ) || [];
+        
+        if (invalid.length > 0) {
+          return { passed: false, error: `${invalid.length} itens com campos faltando` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "INTEGRITY: Multi-language intolerance coverage",
+      description: "Verifica cobertura multi-idioma de intolerâncias",
+      test: async () => {
+        // Verificar se temos termos em múltiplos idiomas para lactose
+        const { data, error } = await supabase
+          .from('intolerance_mappings')
+          .select('ingredient')
+          .eq('intolerance_key', 'lactose')
+          .or('ingredient.ilike.%milk%,ingredient.ilike.%leite%,ingredient.ilike.%lait%,ingredient.ilike.%milch%,ingredient.ilike.%leche%');
+        
+        if (error) return { passed: false, error: error.message };
+        
+        // Deve ter pelo menos 5 termos multi-idioma
+        if (!data || data.length < 5) {
+          return { passed: false, error: `Apenas ${data?.length || 0} termos multi-idioma para lactose` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "INTEGRITY: Multi-language safe keywords coverage",
+      description: "Verifica cobertura multi-idioma de safe keywords",
+      test: async () => {
+        // Verificar se temos safe keywords em múltiplos idiomas
+        const { data, error } = await supabase
+          .from('intolerance_safe_keywords')
+          .select('keyword')
+          .eq('intolerance_key', 'lactose')
+          .or('keyword.ilike.%free%,keyword.ilike.%sem%,keyword.ilike.%sans%,keyword.ilike.%frei%,keyword.ilike.%sin%');
+        
+        if (error) return { passed: false, error: error.message };
+        
+        if (!data || data.length < 5) {
+          return { passed: false, error: `Apenas ${data?.length || 0} safe keywords multi-idioma` };
+        }
+        return { passed: true };
+      }
+    }
+  ];
+
+  // ============================================
   // Executar todos os testes
   // ============================================
   const allTests = [
@@ -471,6 +853,10 @@ serve(async (req) => {
     { module: 'User Profiles', tests: profileTests },
     { module: 'Nutritional Strategies', tests: strategyTests },
     { module: 'Functional Tests', tests: functionalTests },
+    { module: 'Admin System', tests: adminTests },
+    { module: 'Dashboard Data', tests: dashboardTests },
+    { module: 'User Profile Schema', tests: userProfileTests },
+    { module: 'Data Integrity', tests: dataIntegrityTests },
   ];
 
   for (const moduleGroup of allTests) {

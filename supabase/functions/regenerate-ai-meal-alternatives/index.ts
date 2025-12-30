@@ -45,23 +45,38 @@ function buildAlternativesPrompt(params: {
   optionsCount: number;
   addSugarQualifier: boolean;
   strategyKey?: string;
+  isFlexibleOption?: boolean; // Flag para gerar comfort foods
 }): string {
-  const { mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, language, countryCode, optionsCount, addSugarQualifier, strategyKey } = params;
+  const { mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, language, countryCode, optionsCount, addSugarQualifier, strategyKey, isFlexibleOption } = params;
 
   const restrictionText = getRestrictionText(restrictions, language, addSugarQualifier);
   const promptRules = getMealPromptRules(language);
-  const strategyRules = strategyKey ? getStrategyPromptRules(strategyKey, language) : '';
+  
+  // Para opções flexíveis, usar persona da dieta_flexivel
+  // Para opções comuns, usar persona de emagrecer
+  const effectiveStrategyKey = isFlexibleOption ? 'dieta_flexivel' : (strategyKey === 'dieta_flexivel' ? 'emagrecer' : strategyKey);
+  const strategyRules = effectiveStrategyKey ? getStrategyPromptRules(effectiveStrategyKey, language) : '';
 
   let macroDescription = `${targetCalories} kcal`;
   if (targetProtein && targetCarbs && targetFat) {
     macroDescription = `${targetCalories} kcal | ${targetProtein}g proteína | ${targetCarbs}g carboidratos | ${targetFat}g gordura`;
   }
 
+  // Contexto adicional para opções flexíveis
+  const flexibleContext = isFlexibleOption ? `
+🍔🍕 MODO COMFORT FOOD ATIVO:
+- Gere opções de "comfort food" que são SABOROSAS e INDULGENTES
+- Exemplos: hambúrgueres, pizzas, massas cremosas, sobremesas, fast food gourmet
+- O usuário está em DIETA FLEXÍVEL - pode comer o que quiser se couber nos macros
+- Foque em pratos que trazem PRAZER e SATISFAÇÃO
+- Não precisa ser "fit" ou "light" - pode ser a versão tradicional do prato
+` : '';
+
   return `Você é um NUTRICIONISTA CLÍNICO com mais de 20 anos de experiência prática.
 REGRA DE OURO: Priorize a NATURALIDADE DOS ALIMENTOS sobre otimização nutricional.
 
 ==========================================================
-TAREFA: GERAR ${optionsCount} OPÇÕES DE ${mealLabel.toUpperCase()}
+TAREFA: GERAR ${optionsCount} OPÇÕES DE ${mealLabel.toUpperCase()}${isFlexibleOption ? ' (COMFORT FOODS)' : ''}
 ==========================================================
 
 PAÍS: ${countryCode}
@@ -73,6 +88,8 @@ RESTRIÇÕES OBRIGATÓRIAS (VETO LAYER - CRÍTICO):
 ${restrictionText}
 
 ⚠️ SEGURANÇA: Verifique TODAS as restrições acima ANTES de gerar qualquer opção.
+
+${flexibleContext}
 
 ${strategyRules ? `
 ==========================================================
@@ -104,6 +121,96 @@ RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
 
 Gere exatamente ${optionsCount} opções DIFERENTES de ${mealLabel}.
 Cada opção deve ter entre 2 e 5 alimentos.`;
+}
+
+// ============= INTERFACE PARA ALTERNATIVAS =============
+interface MealAlternative {
+  recipe_name: string;
+  recipe_calories: number;
+  recipe_protein: number;
+  recipe_carbs: number;
+  recipe_fat: number;
+  recipe_prep_time: number;
+  recipe_ingredients: Array<{ item: string; quantity: string; unit: string }>;
+  recipe_instructions: never[];
+  is_safe: boolean;
+  is_flexible?: boolean; // Flag para identificar comfort foods
+}
+
+// ============= FUNÇÃO PARA GERAR ALTERNATIVAS =============
+async function generateAlternatives(
+  prompt: string,
+  targetCalories: number,
+  targetProtein: number | undefined,
+  targetCarbs: number | undefined,
+  targetFat: number | undefined,
+  // deno-lint-ignore no-explicit-any
+  restrictions: any,
+  // deno-lint-ignore no-explicit-any
+  dbMappings: any[],
+  // deno-lint-ignore no-explicit-any
+  dbSafeKeywords: any[],
+  isFlexible: boolean,
+  GOOGLE_AI_API_KEY: string
+): Promise<{ alternatives: MealAlternative[]; responseText: string }> {
+  const geminiResponse = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.8, maxOutputTokens: 4096, responseMimeType: "application/json" },
+      }),
+    }
+  );
+
+  if (!geminiResponse.ok) throw new Error(`Gemini API error: ${geminiResponse.status}`);
+
+  const geminiData = await geminiResponse.json();
+  const responseText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
+  if (!responseText) throw new Error("Empty response from Gemini");
+
+  // Parse response
+  const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
+  const parsed = JSON.parse(cleaned);
+  const rawAlternatives = parsed.alternatives || parsed || [];
+
+  // Validate using SHARED validateFood
+  const validatedAlternatives: MealAlternative[] = [];
+
+  for (const alt of rawAlternatives) {
+    const foods = alt.foods || [];
+    let hasViolation = false;
+    const validatedFoods: Array<{ item: string; quantity: string; unit: string }> = [];
+
+    for (const food of foods) {
+      const validation = validateFood(food.name, restrictions, dbMappings, dbSafeKeywords);
+      if (!validation.isValid) {
+        logStep("Food violation", { food: food.name, reason: validation.reason });
+        hasViolation = true;
+        break;
+      }
+      validatedFoods.push({ item: food.name, quantity: String(food.grams), unit: "g" });
+    }
+
+    if (!hasViolation && validatedFoods.length > 0) {
+      validatedAlternatives.push({
+        recipe_name: alt.title || "Refeição",
+        recipe_calories: alt.calories_kcal || targetCalories,
+        recipe_protein: alt.protein_g || targetProtein || 25,
+        recipe_carbs: alt.carbs_g || targetCarbs || 35,
+        recipe_fat: alt.fat_g || targetFat || 12,
+        recipe_prep_time: 15,
+        recipe_ingredients: validatedFoods,
+        recipe_instructions: [],
+        is_safe: true,
+        is_flexible: isFlexible, // Marca se é comfort food
+      });
+    }
+  }
+
+  return { alternatives: validatedAlternatives, responseText };
 }
 
 serve(async (req) => {
@@ -209,115 +316,158 @@ serve(async (req) => {
       goal: profile.goal || 'manter',
     };
 
-    // Build prompt using SHARED rules
-    const prompt = buildAlternativesPrompt({
-      mealType,
-      mealLabel,
-      targetCalories,
-      targetProtein,
-      targetCarbs,
-      targetFat,
-      restrictions,
-      language: regional.language,
-      countryCode: userCountry,
-      optionsCount,
-      addSugarQualifier,
-      strategyKey, // Passa a estratégia nutricional para aplicar persona culinária
-    });
-
-    logStep("Prompt built", { length: prompt.length });
-
-    // Call Gemini API
     const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
     if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
 
-    const geminiResponse = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          generationConfig: { temperature: 0.8, maxOutputTokens: 4096, responseMimeType: "application/json" },
-        }),
-      }
-    );
+    let allAlternatives: MealAlternative[] = [];
+    let totalResponseLength = 0;
+    let totalPromptLength = 0;
 
-    if (!geminiResponse.ok) throw new Error(`Gemini API error: ${geminiResponse.status}`);
+    // ============= LÓGICA ESPECIAL PARA DIETA FLEXÍVEL =============
+    // Gera 3 opções saudáveis + 2 comfort foods
+    if (strategyKey === 'dieta_flexivel') {
+      logStep("🍽️ Dieta Flexível detectada: gerando 3 saudáveis + 2 comfort foods");
 
-    const geminiData = await geminiResponse.json();
-    const responseText = geminiData?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!responseText) throw new Error("Empty response from Gemini");
+      // Gerar 3 alternativas saudáveis (usando pool de emagrecer)
+      const healthyPrompt = buildAlternativesPrompt({
+        mealType,
+        mealLabel,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        restrictions,
+        language: regional.language,
+        countryCode: userCountry,
+        optionsCount: 3, // 3 saudáveis
+        addSugarQualifier,
+        strategyKey: 'emagrecer', // Usa pool de emagrecimento
+        isFlexibleOption: false,
+      });
 
-    // Parse response
-    const cleaned = responseText.replace(/```json\n?/g, "").replace(/```\n?/g, "").trim();
-    const parsed = JSON.parse(cleaned);
-    const rawAlternatives = parsed.alternatives || parsed || [];
+      totalPromptLength += healthyPrompt.length;
+      logStep("Building healthy alternatives prompt", { length: healthyPrompt.length });
 
-    // Validate using SHARED validateFood
-    const validatedAlternatives: Array<{
-      recipe_name: string;
-      recipe_calories: number;
-      recipe_protein: number;
-      recipe_carbs: number;
-      recipe_fat: number;
-      recipe_prep_time: number;
-      recipe_ingredients: Array<{ item: string; quantity: string; unit: string }>;
-      recipe_instructions: never[];
-      is_safe: boolean;
-    }> = [];
+      const healthyResult = await generateAlternatives(
+        healthyPrompt,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        restrictions,
+        dbMappings,
+        dbSafeKeywords,
+        false,
+        GOOGLE_AI_API_KEY
+      );
 
-    for (const alt of rawAlternatives) {
-      const foods = alt.foods || [];
-      let hasViolation = false;
-      const validatedFoods: Array<{ item: string; quantity: string; unit: string }> = [];
+      totalResponseLength += healthyResult.responseText.length;
+      logStep("Healthy alternatives generated", { count: healthyResult.alternatives.length });
 
-      for (const food of foods) {
-        const validation = validateFood(food.name, restrictions, dbMappings, dbSafeKeywords);
-        if (!validation.isValid) {
-          logStep("Food violation", { food: food.name, reason: validation.reason });
-          hasViolation = true;
-          break;
-        }
-        validatedFoods.push({ item: food.name, quantity: String(food.grams), unit: "g" });
-      }
+      // Gerar 2 alternativas de comfort food
+      const flexiblePrompt = buildAlternativesPrompt({
+        mealType,
+        mealLabel,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        restrictions,
+        language: regional.language,
+        countryCode: userCountry,
+        optionsCount: 2, // 2 comfort foods
+        addSugarQualifier,
+        strategyKey: 'dieta_flexivel',
+        isFlexibleOption: true, // Flag para gerar comfort foods
+      });
 
-      if (!hasViolation && validatedFoods.length > 0) {
-        validatedAlternatives.push({
-          recipe_name: alt.title || "Refeição",
-          recipe_calories: alt.calories_kcal || targetCalories,
-          recipe_protein: alt.protein_g || targetProtein || 25,
-          recipe_carbs: alt.carbs_g || targetCarbs || 35,
-          recipe_fat: alt.fat_g || targetFat || 12,
-          recipe_prep_time: 15,
-          recipe_ingredients: validatedFoods,
-          recipe_instructions: [],
-          is_safe: true,
-        });
-      }
+      totalPromptLength += flexiblePrompt.length;
+      logStep("Building flexible alternatives prompt", { length: flexiblePrompt.length });
+
+      const flexibleResult = await generateAlternatives(
+        flexiblePrompt,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        restrictions,
+        dbMappings,
+        dbSafeKeywords,
+        true, // Marca como flexível
+        GOOGLE_AI_API_KEY
+      );
+
+      totalResponseLength += flexibleResult.responseText.length;
+      logStep("Flexible alternatives generated", { count: flexibleResult.alternatives.length });
+
+      // Combina: primeiro as saudáveis, depois as flexíveis
+      allAlternatives = [...healthyResult.alternatives, ...flexibleResult.alternatives];
+
+    } else {
+      // ============= LÓGICA PADRÃO: 5 OPÇÕES DO MESMO TIPO =============
+      const prompt = buildAlternativesPrompt({
+        mealType,
+        mealLabel,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        restrictions,
+        language: regional.language,
+        countryCode: userCountry,
+        optionsCount,
+        addSugarQualifier,
+        strategyKey,
+        isFlexibleOption: false,
+      });
+
+      totalPromptLength = prompt.length;
+      logStep("Prompt built", { length: prompt.length });
+
+      const result = await generateAlternatives(
+        prompt,
+        targetCalories,
+        targetProtein,
+        targetCarbs,
+        targetFat,
+        restrictions,
+        dbMappings,
+        dbSafeKeywords,
+        false,
+        GOOGLE_AI_API_KEY
+      );
+
+      totalResponseLength = result.responseText.length;
+      allAlternatives = result.alternatives;
     }
 
-    logStep("Alternatives validated", { raw: rawAlternatives.length, valid: validatedAlternatives.length });
+    logStep("All alternatives validated", { total: allAlternatives.length });
 
     // Log AI usage
     await logAIUsage({
       functionName: "regenerate-ai-meal-alternatives",
       model: "gemini-2.5-flash-lite",
-      promptTokens: Math.ceil(prompt.length / 4),
-      completionTokens: Math.ceil(responseText.length / 4),
-      totalTokens: Math.ceil((prompt.length + responseText.length) / 4),
+      promptTokens: Math.ceil(totalPromptLength / 4),
+      completionTokens: Math.ceil(totalResponseLength / 4),
+      totalTokens: Math.ceil((totalPromptLength + totalResponseLength) / 4),
       userId,
-      itemsGenerated: validatedAlternatives.length,
-      metadata: { mealType, targetCalories, executionTimeMs: Date.now() - startTime },
+      itemsGenerated: allAlternatives.length,
+      metadata: { 
+        mealType, 
+        targetCalories, 
+        executionTimeMs: Date.now() - startTime,
+        isDietaFlexivel: strategyKey === 'dieta_flexivel',
+      },
     });
 
     return new Response(
       JSON.stringify({
         success: true,
-        alternatives: validatedAlternatives.length > 0 ? validatedAlternatives : rawAlternatives.slice(0, optionsCount),
+        alternatives: allAlternatives,
         mealType,
         mealLabel,
         targetCalories,
+        isDietaFlexivel: strategyKey === 'dieta_flexivel', // Informa o frontend
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

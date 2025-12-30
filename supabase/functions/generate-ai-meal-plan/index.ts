@@ -581,6 +581,7 @@ serve(async (req) => {
     // ============= DETERMINAR STRATEGY KEY =============
     // Buscar a chave da estratégia nutricional para aplicar persona culinária
     let strategyKey: string | undefined = undefined;
+    let originalStrategyKey: string | undefined = undefined; // Guardar a estratégia original para alternativas
     
     if (profile.strategy_id) {
       // Buscar a key da estratégia do banco
@@ -592,6 +593,7 @@ serve(async (req) => {
       
       if (strategyData?.key) {
         strategyKey = strategyData.key;
+        originalStrategyKey = strategyData.key;
         logStep("Strategy key from database", { strategyId: profile.strategy_id, strategyKey });
       }
     }
@@ -599,10 +601,24 @@ serve(async (req) => {
     // Fallback: usar goal legado como strategyKey
     if (!strategyKey) {
       strategyKey = restrictions.goal;
+      originalStrategyKey = restrictions.goal;
       logStep("Using goal as fallback strategy key", { strategyKey });
     }
 
-    logStep("🎯 Final strategy key for culinary persona", { strategyKey });
+    // ============= REGRA DIETA FLEXÍVEL =============
+    // Para Dieta Flexível: gerar plano com pool de EMAGRECIMENTO (saudável)
+    // As comfort foods só aparecem como ALTERNATIVAS ao trocar refeição
+    let effectiveStrategyKey = strategyKey;
+    if (strategyKey === 'dieta_flexivel') {
+      effectiveStrategyKey = 'emagrecer'; // Usa pool saudável para o plano principal
+      logStep("🍽️ Dieta Flexível: usando pool de EMAGRECIMENTO para plano principal");
+      logStep("💡 Comfort foods disponíveis apenas nas alternativas de troca");
+    }
+
+    logStep("🎯 Final strategy key for culinary persona", { 
+      original: originalStrategyKey, 
+      effective: effectiveStrategyKey 
+    });
 
     // ============= CÁLCULOS NUTRICIONAIS CENTRALIZADOS =============
     // Calcular targets nutricionais baseados no perfil do usuário
@@ -791,7 +807,7 @@ serve(async (req) => {
         countryCode: userCountry,
         baseSystemPrompt: aiPromptData?.system_prompt,
         nutritionalContext,
-        strategyKey,
+        strategyKey: effectiveStrategyKey, // Usa pool efetivo (emagrecer para dieta_flexivel)
         previousDaysMeals, // Passa receitas anteriores para evitar repetição
       });
 

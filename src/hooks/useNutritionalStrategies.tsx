@@ -32,6 +32,23 @@ export function useNutritionalStrategies() {
   });
 }
 
+// Hook para admin: busca TODAS as estratégias (incluindo inativas)
+export function useAllNutritionalStrategies() {
+  return useQuery({
+    queryKey: ["nutritional-strategies-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("nutritional_strategies")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+      return data as (NutritionalStrategy & { is_active: boolean })[];
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutos
+  });
+}
+
 // Mapeia goal para strategy_key para fallback
 export const GOAL_TO_STRATEGY_KEY: Record<string, string> = {
   emagrecer: "emagrecer",

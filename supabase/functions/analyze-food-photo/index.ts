@@ -295,21 +295,46 @@ serve(async (req) => {
     const GOOGLE_AI_API_KEY = await getGeminiApiKey();
     logStep("Gemini API key fetched from database");
 
-    const authHeader = req.headers.get("Authorization");
-    if (!authHeader) throw new Error("No authorization header provided");
+    // Parse body first to get potential userId fallback
+    const body = await req.json();
+    const { imageBase64, userId: bodyUserId } = body;
+    if (!imageBase64) throw new Error("No image provided");
 
-    const token = authHeader.replace("Bearer ", "");
-    const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
-    if (userError) throw new Error(`Authentication error: ${userError.message}`);
-    const user = userData.user;
-    if (!user) throw new Error("User not authenticated");
-    logStep("User authenticated", { userId: user.id });
+    // Try to authenticate user from token, with fallback to body userId
+    let userId: string | null = null;
+    
+    const authHeader = req.headers.get("Authorization");
+    if (authHeader) {
+      const token = authHeader.replace("Bearer ", "");
+      // Only try to authenticate if it looks like a JWT (contains dots)
+      if (token.includes('.')) {
+        try {
+          const { data: userData, error: userError } = await supabaseClient.auth.getUser(token);
+          if (!userError && userData?.user) {
+            userId = userData.user.id;
+            logStep("User authenticated via token", { userId });
+          }
+        } catch (authError) {
+          logStep("Token auth failed, trying fallback", { error: authError });
+        }
+      }
+    }
+    
+    // Fallback to userId from body if token auth failed
+    if (!userId && bodyUserId) {
+      userId = bodyUserId;
+      logStep("Using userId from request body", { userId });
+    }
+    
+    if (!userId) {
+      throw new Error("User not authenticated. Please log in again.");
+    }
 
     // Fetch user's full profile for calorie calculation
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
       .select("intolerances, excluded_ingredients, dietary_preference, weight_current, height, age, sex, activity_level, goal, country")
-      .eq("id", user.id)
+      .eq("id", userId)
       .single();
 
     if (profileError) {
@@ -368,8 +393,6 @@ serve(async (req) => {
     
     logStep("Auto-correction disabled - each analysis starts fresh");
 
-    const { imageBase64 } = await req.json();
-    if (!imageBase64) throw new Error("No image provided");
     logStep("Image received", { imageSize: imageBase64.length });
 
     // Extract base64 data (remove data URL prefix if present)

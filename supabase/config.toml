@@ -146,3 +146,6 @@ verify_jwt = false
 
 [functions.populate-usda-queue]
 verify_jwt = false
+
+[functions.expand-intolerance-mappings]
+verify_jwt = false

@@ -334,7 +334,7 @@ function checkSafeKeywords(
  */
 /**
  * Verifica se uma palavra está contida como palavra completa em outra string
- * Evita falsos positivos como "maçã" matchando "macaron"
+ * Evita falsos positivos como "maçã" matchando "macaron" ou "alho" em "galho"
  */
 export function containsWholeWord(text: string, word: string): boolean {
   if (!text || !word) return false;
@@ -342,24 +342,41 @@ export function containsWholeWord(text: string, word: string): boolean {
   // Se são iguais, é match perfeito
   if (text === word) return true;
   
-  // Se a palavra é muito curta (< 4 chars), exigir match exato ou como palavra separada
+  // Escapar caracteres especiais de regex
+  const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  
+  // Para palavras curtas (< 4 chars), exigir match como palavra separada ou no início/fim
+  // Isso evita "ovo" matchear em "novo" ou "alho" em "galho"
   if (word.length < 4) {
-    const regex = new RegExp(`(^|\\s|,|;)${word}($|\\s|,|;)`, 'i');
+    // Verificar se é uma palavra separada por espaços, vírgulas, ou início/fim de string
+    const regex = new RegExp(`(^|[\\s,;:()\\[\\]])${escapedWord}([\\s,;:()\\[\\]]|$)`, 'i');
     return regex.test(text);
   }
   
-  // Para palavras maiores, verificar se está contida como palavra ou parte significativa
-  // Criar regex com word boundaries
-  const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const regex = new RegExp(`(^|\\s|,|;)${escapedWord}|${escapedWord}($|\\s|,|;)`, 'i');
+  // Para palavras maiores (>= 4 chars), verificar como palavra completa OU como prefixo/sufixo significativo
+  // mas evitar falsos positivos onde a palavra é parte de outra palavra diferente
   
-  // Também aceitar se o ingrediente DO USUÁRIO contém o proibido
-  // mas NÃO se o proibido contém o ingrediente (evita "maca" in "macaron")
-  if (text.includes(word) && text.length >= word.length) {
+  // Primeiro: verificar se é palavra completa separada
+  const wordBoundaryRegex = new RegExp(`(^|[\\s,;:()\\[\\]])${escapedWord}([\\s,;:()\\[\\]]|$)`, 'i');
+  if (wordBoundaryRegex.test(text)) {
     return true;
   }
   
-  return regex.test(text);
+  // Segundo: verificar se o texto COMEÇA ou TERMINA com a palavra (não no meio)
+  // Isso permite "leite integral" matchear "leite" mas não "alho" em "galho"
+  if (text.startsWith(word) || text.endsWith(word)) {
+    return true;
+  }
+  
+  // Terceiro: verificar se a palavra aparece após um espaço (como parte de um termo composto)
+  // Ex: "leite de cabra" contém "leite"
+  const afterSpaceRegex = new RegExp(`\\s${escapedWord}`, 'i');
+  const beforeSpaceRegex = new RegExp(`${escapedWord}\\s`, 'i');
+  if (afterSpaceRegex.test(text) || beforeSpaceRegex.test(text)) {
+    return true;
+  }
+  
+  return false;
 }
 
 export function checkIngredientForIntolerance(

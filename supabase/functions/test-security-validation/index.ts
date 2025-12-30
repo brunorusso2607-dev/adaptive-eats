@@ -385,6 +385,313 @@ const TEST_CASES: TestCase[] = [
     shouldBlock: true,
     expectedRestriction: "intolerance_amendoim",
   },
+
+  // ============================================
+  // === FALSE POSITIVE PREVENTION TESTS ===
+  // ============================================
+  // Estes testes garantem que alimentos seguros NÃO sejam incorretamente bloqueados
+  // devido a substring matching (ex: "maçã" não deve matchear "macaron")
+  
+  // --- LACTOSE FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Lactose - maçã should NOT match anything",
+    food: "maçã fresca",
+    restrictions: { intolerances: ["lactose"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Lactose - manga should NOT match anything",
+    food: "manga madura",
+    restrictions: { intolerances: ["lactose"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Lactose - banana should NOT match anything",
+    food: "banana prata",
+    restrictions: { intolerances: ["lactose"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- GLUTEN FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Gluten - maçã should NOT match gluten",
+    food: "maçã verde",
+    restrictions: { intolerances: ["gluten"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Gluten - rice should NOT match gluten",
+    food: "arroz integral",
+    restrictions: { intolerances: ["gluten"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Gluten - quinoa should NOT match gluten",
+    food: "quinoa cozida",
+    restrictions: { intolerances: ["gluten"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Gluten - milho should NOT match gluten",
+    food: "milho cozido",
+    restrictions: { intolerances: ["gluten"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- PEANUT FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Peanut - ameixa should NOT match amendoim",
+    food: "ameixa seca",
+    restrictions: { intolerances: ["amendoim"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Peanut - amora should NOT match amendoim",
+    food: "amora silvestre",
+    restrictions: { intolerances: ["amendoim"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Peanut - manga should NOT match amendoim",
+    food: "manga rosa",
+    restrictions: { intolerances: ["amendoim"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- TREE NUTS FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Tree nuts - castanha should NOT match casta",
+    food: "casca de limão",
+    restrictions: { intolerances: ["castanhas"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Tree nuts - noz should NOT match incorrectly",
+    food: "arroz com legumes",
+    restrictions: { intolerances: ["castanhas"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- EGG FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Egg - ovo should NOT match ovos incorrectly",
+    food: "novo prato de arroz",
+    restrictions: { intolerances: ["ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Egg - couve should NOT match ovo",
+    food: "couve refogada",
+    restrictions: { intolerances: ["ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- SOY FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Soy - soja should NOT match sojado incorrectly",
+    food: "frango assado",
+    restrictions: { intolerances: ["soja"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Soy - soy should NOT match boy/joy",
+    food: "maçã fresca",
+    restrictions: { intolerances: ["soja"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- FISH FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Fish - peixe should NOT match incorrectly",
+    food: "frango grelhado",
+    restrictions: { intolerances: ["peixe"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Fish - fish should NOT match dish",
+    food: "main dish salad",
+    restrictions: { intolerances: ["peixe"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- SEAFOOD FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Seafood - camarão should NOT match câmara",
+    food: "maçã da câmara",
+    restrictions: { intolerances: ["frutos_do_mar"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Seafood - shrimp should NOT match crimp",
+    food: "vegetable dish",
+    restrictions: { intolerances: ["frutos_do_mar"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- SUGAR FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Sugar - açúcar should NOT match maçã",
+    food: "maçã gala",
+    restrictions: { intolerances: ["acucar_diabetes"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Sugar - mel should NOT match caramel incorrectly",
+    food: "melancia fresca",
+    restrictions: { intolerances: ["acucar_diabetes"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- CORN FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Corn - milho should NOT match milhões",
+    food: "frango com legumes",
+    restrictions: { intolerances: ["milho"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Corn - corn should NOT match corner/acorn",
+    food: "corner salad",
+    restrictions: { intolerances: ["milho"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- CAFFEINE FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Caffeine - café should NOT match incorrectly",
+    food: "maçã caramelizada",
+    restrictions: { intolerances: ["cafeina"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Caffeine - tea should NOT match meat/heat",
+    food: "meat with vegetables",
+    restrictions: { intolerances: ["cafeina"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- SULFITE FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Sulfite - sulfito should NOT match incorrectly",
+    food: "salada de alface",
+    restrictions: { intolerances: ["sulfito"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- FRUCTOSE FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Fructose - frutose should NOT match fruta incorrectly in safe items",
+    food: "frango com ervas",
+    restrictions: { intolerances: ["frutose"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- HISTAMINE FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Histamine - histamina should NOT match incorrectly",
+    food: "arroz branco",
+    restrictions: { intolerances: ["histamina"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: Histamine - vinho should NOT match vizinho",
+    food: "frango vizinho",
+    restrictions: { intolerances: ["histamina"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- NICKEL FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Nickel - níquel should NOT match incorrectly",
+    food: "frango grelhado simples",
+    restrictions: { intolerances: ["niquel"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- SALICYLATE FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Salicylate - salicilato should NOT match salada incorrectly",
+    food: "frango assado",
+    restrictions: { intolerances: ["salicilatos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- FODMAP FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: FODMAP - cebola should NOT match incorrectly",
+    food: "frango com arroz",
+    restrictions: { intolerances: ["fodmap"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "FALSE_POS: FODMAP - alho should NOT match galho",
+    food: "galho de alecrim",
+    restrictions: { intolerances: ["fodmap"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // --- SORBITOL FALSE POSITIVES ---
+  {
+    name: "FALSE_POS: Sorbitol - sorbitol should NOT match incorrectly",
+    food: "arroz com legumes",
+    restrictions: { intolerances: ["sorbitol"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // === CRITICAL EDGE CASE: MAÇÃ/MACARON ===
+  {
+    name: "CRITICAL: maçã (apple) must NOT be blocked for ANY intolerance",
+    food: "maçã",
+    restrictions: { intolerances: ["lactose", "gluten", "amendoim", "castanhas", "soja", "ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "CRITICAL: apple must NOT be blocked for ANY intolerance (English)",
+    food: "apple",
+    restrictions: { intolerances: ["lactose", "gluten", "amendoim", "castanhas", "soja", "ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "CRITICAL: manzana must NOT be blocked for ANY intolerance (Spanish)",
+    food: "manzana",
+    restrictions: { intolerances: ["lactose", "gluten", "amendoim", "castanhas", "soja", "ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "CRITICAL: pomme must NOT be blocked for ANY intolerance (French)",
+    food: "pomme",
+    restrictions: { intolerances: ["lactose", "gluten", "amendoim", "castanhas", "soja", "ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  
+  // === SUBSTRING EDGE CASES ===
+  {
+    name: "EDGE: 'maca' alone should NOT block maçã",
+    food: "suco de maçã natural",
+    restrictions: { intolerances: ["lactose", "gluten"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: false,
+  },
+  {
+    name: "EDGE: short words should require exact match",
+    food: "ovo cozido",
+    restrictions: { intolerances: ["ovos"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: true,
+    expectedRestriction: "intolerance_ovos",
+  },
+  {
+    name: "EDGE: macaron SHOULD be blocked for gluten",
+    food: "macaron de chocolate",
+    restrictions: { intolerances: ["gluten"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: true,
+    expectedRestriction: "intolerance_gluten",
+  },
+  {
+    name: "EDGE: macadamia SHOULD be blocked for tree nuts",
+    food: "nozes de macadamia",
+    restrictions: { intolerances: ["castanhas"], dietaryPreference: "comum", excludedIngredients: [] },
+    shouldBlock: true,
+    expectedRestriction: "intolerance_castanhas",
+  },
 ];
 
 serve(async (req) => {

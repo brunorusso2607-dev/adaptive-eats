@@ -2,6 +2,7 @@ import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useUserProfileContext } from './useUserProfileContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useSafetyLabels } from './useSafetyLabels';
+import { FALLBACK_GLOBAL_SAFE_EXCEPTIONS } from '@/lib/safetyFallbacks';
 
 // ============================================
 // ESTE HOOK AGORA USA DADOS DO BANCO DE DADOS
@@ -33,14 +34,6 @@ export interface ConflictResult {
   }>;
   isSafe: boolean;
 }
-
-// FALLBACK: Exceções seguras globais (backup caso DB falhe)
-const FALLBACK_GLOBAL_SAFE_EXCEPTIONS = [
-  "leite de coco", "leite de amendoas", "leite de amêndoas", "leite de aveia", "leite vegetal",
-  "queijo vegano", "manteiga vegana", "iogurte vegetal", "creme de coco",
-  "sem lactose", "zero lactose", "sem gluten", "gluten free",
-  "maionese vegana", "requeijao vegano"
-];
 
 function normalizeText(text: string): string {
   return text

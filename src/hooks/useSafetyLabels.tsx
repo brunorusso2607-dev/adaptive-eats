@@ -1,22 +1,14 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { 
+  FALLBACK_INTOLERANCE_LABELS, 
+  FALLBACK_DIETARY_LABELS 
+} from '@/lib/safetyFallbacks';
 
 /**
  * Hook centralizado para buscar todos os labels de segurança do database
  * Substitui as listas hardcoded nos componentes do frontend
  */
-
-interface IntoleranceLabel {
-  key: string;
-  label: string;
-  description?: string;
-}
-
-interface DietaryLabel {
-  key: string;
-  name: string;
-  description?: string;
-}
 
 interface SafetyLabels {
   intoleranceLabels: Record<string, string>;
@@ -26,36 +18,6 @@ interface SafetyLabels {
   getDietaryLabel: (key: string) => string;
   getRestrictionLabel: (key: string, type?: 'intolerance' | 'dietary' | 'excluded') => string;
 }
-
-// Fallback labels (usados apenas enquanto carrega do DB)
-const FALLBACK_INTOLERANCE_LABELS: Record<string, string> = {
-  lactose: "Lactose",
-  gluten: "Glúten",
-  amendoim: "Amendoim",
-  castanhas: "Castanhas",
-  frutos_do_mar: "Frutos do Mar",
-  frutos_mar: "Frutos do Mar",
-  peixe: "Peixe",
-  ovo: "Ovo",
-  soja: "Soja",
-  acucar: "Açúcar",
-  cafeina: "Cafeína",
-  histamina: "Histamina",
-  fodmap: "FODMAP",
-  sulfitos: "Sulfitos",
-  salicilatos: "Salicilatos",
-  niquel: "Níquel",
-};
-
-const FALLBACK_DIETARY_LABELS: Record<string, string> = {
-  vegana: "Vegana",
-  vegetariana: "Vegetariana",
-  low_carb: "Low Carb",
-  pescetariana: "Pescetariana",
-  cetogenica: "Cetogênica",
-  flexitariana: "Flexitariana",
-  comum: "Comum",
-};
 
 let cachedLabels: {
   intoleranceLabels: Record<string, string>;

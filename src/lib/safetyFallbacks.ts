@@ -1,0 +1,152 @@
+/**
+ * Fallbacks centralizados para labels de segurança alimentar.
+ * 
+ * IMPORTANTE: Estes são apenas fallbacks visuais usados durante o loading inicial.
+ * A validação de segurança real acontece no backend via globalSafetyEngine.ts,
+ * que sempre busca dados do banco de dados.
+ * 
+ * O banco de dados é a fonte de verdade. Estes fallbacks existem apenas para:
+ * 1. Evitar UI vazia durante carregamento
+ * 2. Garantir consistência visual se o DB estiver temporariamente indisponível
+ */
+
+// ============================================================================
+// INTOLERANCE LABELS
+// ============================================================================
+
+export const FALLBACK_INTOLERANCE_LABELS: Record<string, string> = {
+  lactose: "Lactose",
+  gluten: "Glúten",
+  amendoim: "Amendoim",
+  castanhas: "Castanhas",
+  frutos_do_mar: "Frutos do Mar",
+  frutos_mar: "Frutos do Mar",
+  peixe: "Peixe",
+  ovo: "Ovo",
+  ovos: "Ovos",
+  soja: "Soja",
+  acucar: "Açúcar",
+  cafeina: "Cafeína",
+  histamina: "Histamina",
+  fodmap: "FODMAP",
+  sulfitos: "Sulfitos",
+  salicilatos: "Salicilatos",
+  niquel: "Níquel",
+  sesamo: "Sésamo",
+  tremoco: "Tremoço",
+  mostarda: "Mostarda",
+  aipo: "Aipo",
+  moluscos: "Moluscos",
+};
+
+// ============================================================================
+// DIETARY LABELS
+// ============================================================================
+
+export const FALLBACK_DIETARY_LABELS: Record<string, string> = {
+  vegana: "Vegana",
+  vegetariana: "Vegetariana",
+  low_carb: "Low Carb",
+  pescetariana: "Pescetariana",
+  cetogenica: "Cetogênica",
+  flexitariana: "Flexitariana",
+  comum: "Comum",
+};
+
+// Versão com artigo para frases (ex: "não é adequado para vegano(a)")
+export const FALLBACK_DIETARY_LABELS_WITH_ARTICLE: Record<string, string> = {
+  vegana: "vegano(a)",
+  vegetariana: "vegetariano(a)",
+  pescetariana: "pescetariano(a)",
+  flexitariana: "flexitariano(a)",
+  low_carb: "low carb",
+  cetogenica: "cetogênico(a)",
+  comum: "dieta comum",
+};
+
+// ============================================================================
+// DIETARY PREFERENCES (para selects/dropdowns)
+// ============================================================================
+
+export const FALLBACK_DIETARY_PREFERENCES = [
+  { value: "comum", label: "Comum / Omnívora" },
+  { value: "vegetariana", label: "Vegetariana" },
+  { value: "vegana", label: "Vegana" },
+  { value: "pescetariana", label: "Pescetariana" },
+  { value: "flexitariana", label: "Flexitariana" },
+  { value: "low_carb", label: "Low Carb" },
+  { value: "cetogenica", label: "Cetogênica" },
+] as const;
+
+// ============================================================================
+// RESTRICTION LABELS (combinado para UI de ingredientes)
+// ============================================================================
+
+export const FALLBACK_RESTRICTION_LABELS: Record<string, string> = {
+  // Intolerâncias
+  ...FALLBACK_INTOLERANCE_LABELS,
+  // Dietas
+  ...FALLBACK_DIETARY_LABELS,
+};
+
+// ============================================================================
+// SAFE EXCEPTIONS (ingredientes que parecem proibidos mas são seguros)
+// ============================================================================
+
+export const FALLBACK_GLOBAL_SAFE_EXCEPTIONS = [
+  "leite de coco",
+  "leite de amendoas", 
+  "leite de amêndoas",
+  "leite de aveia",
+  "leite vegetal",
+  "creme de leite de coco",
+  "manteiga de coco",
+  "queijo vegano",
+  "iogurte vegano",
+  "cream cheese vegano",
+  "requeijão vegano",
+  "chocolate vegano",
+  "maionese vegana",
+];
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Obtém o label de uma intolerância com fallback
+ */
+export function getIntoleranceLabelFallback(key: string): string {
+  if (!key) return '';
+  const normalizedKey = key.toLowerCase().replace(/\s+/g, '_');
+  return FALLBACK_INTOLERANCE_LABELS[normalizedKey] || key;
+}
+
+/**
+ * Obtém o label de uma preferência dietética com fallback
+ */
+export function getDietaryLabelFallback(key: string): string {
+  if (!key) return '';
+  const normalizedKey = key.toLowerCase();
+  return FALLBACK_DIETARY_LABELS[normalizedKey] || key;
+}
+
+/**
+ * Obtém o label de qualquer restrição (intolerância ou dieta) com fallback
+ */
+export function getRestrictionLabelFallback(
+  key: string, 
+  type: 'intolerance' | 'dietary' | 'excluded' = 'intolerance'
+): string {
+  if (!key) return '';
+  
+  if (type === 'dietary') {
+    return getDietaryLabelFallback(key);
+  }
+  
+  if (type === 'excluded') {
+    return key.charAt(0).toUpperCase() + key.slice(1);
+  }
+  
+  return getIntoleranceLabelFallback(key);
+}

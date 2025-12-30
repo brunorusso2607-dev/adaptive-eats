@@ -282,6 +282,184 @@ serve(async (req) => {
   ];
 
   // ============================================
+  // MÓDULO 8: TESTES FUNCIONAIS (Comportamento Real)
+  // ============================================
+  const functionalTests: ModuleTest[] = [
+    {
+      name: "FUNC: Food search filter returns results for common terms",
+      description: "Testa se busca por alimentos comuns retorna resultados",
+      test: async () => {
+        // Testar termos comuns de busca
+        const searchTerms = ['frango', 'arroz', 'feijao', 'banana', 'ovo'];
+        const failures: string[] = [];
+        
+        for (const term of searchTerms) {
+          const { data, error } = await supabase
+            .from('foods')
+            .select('id, name')
+            .or(`name.ilike.%${term}%,name_normalized.ilike.%${term}%`)
+            .limit(5);
+          
+          if (error) {
+            failures.push(`${term}: ${error.message}`);
+          } else if (!data || data.length === 0) {
+            failures.push(`${term}: 0 resultados`);
+          }
+        }
+        
+        if (failures.length > 0) {
+          return { passed: false, error: `Busca falhou para: ${failures.join(', ')}` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "FUNC: Food category filter works",
+      description: "Testa se filtro por categoria funciona",
+      test: async () => {
+        // Buscar categorias distintas
+        const { data: categories, error: catError } = await supabase
+          .from('foods')
+          .select('category')
+          .not('category', 'is', null)
+          .limit(100);
+        
+        if (catError) return { passed: false, error: catError.message };
+        
+        const uniqueCategories = [...new Set(categories?.map(c => c.category).filter(Boolean))];
+        if (uniqueCategories.length < 3) {
+          return { passed: false, error: `Apenas ${uniqueCategories.length} categorias encontradas` };
+        }
+        
+        // Testar filtro por uma categoria
+        const testCategory = uniqueCategories[0];
+        const { data, error } = await supabase
+          .from('foods')
+          .select('id, name, category')
+          .eq('category', testCategory)
+          .limit(5);
+        
+        if (error) return { passed: false, error: error.message };
+        if (!data || data.length === 0) return { passed: false, error: `Filtro por "${testCategory}" retornou 0 resultados` };
+        
+        return { passed: true };
+      }
+    },
+    {
+      name: "FUNC: Single active meal plan per user constraint",
+      description: "Verifica que usuários não têm múltiplos planos ativos",
+      test: async () => {
+        // Buscar usuários com mais de 1 plano ativo
+        const { data, error } = await supabase
+          .from('meal_plans')
+          .select('user_id')
+          .eq('is_active', true);
+        
+        if (error) return { passed: false, error: error.message };
+        
+        // Contar planos por usuário
+        const userPlanCount: Record<string, number> = {};
+        data?.forEach(plan => {
+          userPlanCount[plan.user_id] = (userPlanCount[plan.user_id] || 0) + 1;
+        });
+        
+        const usersWithMultiple = Object.entries(userPlanCount)
+          .filter(([, count]) => count > 1)
+          .map(([userId, count]) => `${userId.slice(0, 8)}...: ${count} planos`);
+        
+        if (usersWithMultiple.length > 0) {
+          return { 
+            passed: false, 
+            error: `${usersWithMultiple.length} usuários com múltiplos planos ativos` 
+          };
+        }
+        
+        return { passed: true };
+      }
+    },
+    {
+      name: "FUNC: Intolerance validation blocks correct ingredients",
+      description: "Testa se validação de intolerância bloqueia ingredientes corretos",
+      test: async () => {
+        // Verificar mapeamentos críticos (chaves em inglês conforme banco)
+        const criticalMappings = [
+          { intolerance: 'lactose', shouldContain: 'milk' },
+          { intolerance: 'peanut', shouldContain: 'peanut' },
+          { intolerance: 'seafood', shouldContain: 'shrimp' },
+          { intolerance: 'gluten', shouldContain: 'wheat' },
+        ];
+        
+        const failures: string[] = [];
+        
+        for (const mapping of criticalMappings) {
+          const { data, error } = await supabase
+            .from('intolerance_mappings')
+            .select('ingredient')
+            .eq('intolerance_key', mapping.intolerance)
+            .ilike('ingredient', `%${mapping.shouldContain}%`)
+            .limit(1);
+          
+          if (error) {
+            failures.push(`${mapping.intolerance}: ${error.message}`);
+          } else if (!data || data.length === 0) {
+            failures.push(`${mapping.intolerance} não contém "${mapping.shouldContain}"`);
+          }
+        }
+        
+        if (failures.length > 0) {
+          return { passed: false, error: failures.join('; ') };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "FUNC: Safe keywords prevent false positives",
+      description: "Verifica se palavras seguras existem para evitar falsos positivos",
+      test: async () => {
+        // Verificar se existem safe keywords
+        const { count, error } = await supabase
+          .from('intolerance_safe_keywords')
+          .select('*', { count: 'exact', head: true });
+        
+        if (error) return { passed: false, error: error.message };
+        if (!count || count < 10) {
+          return { passed: false, error: `Apenas ${count} safe keywords (esperado >10)` };
+        }
+        return { passed: true };
+      }
+    },
+    {
+      name: "FUNC: Key normalization covers all intolerances",
+      description: "Verifica se normalização de chaves está completa",
+      test: async () => {
+        // Verificar se temos normalização para intolerâncias do onboarding
+        const { data: onboardingIntolerances } = await supabase
+          .from('onboarding_options')
+          .select('option_id')
+          .eq('category', 'intolerances')
+          .eq('is_active', true);
+        
+        const { data: normalizations } = await supabase
+          .from('intolerance_key_normalization')
+          .select('onboarding_key');
+        
+        const onboardingKeys = onboardingIntolerances?.map(o => o.option_id) || [];
+        const normalizedKeys = normalizations?.map(n => n.onboarding_key) || [];
+        
+        const missingNormalizations = onboardingKeys.filter(k => !normalizedKeys.includes(k));
+        
+        if (missingNormalizations.length > 0) {
+          return { 
+            passed: false, 
+            error: `Normalização faltando para: ${missingNormalizations.slice(0, 5).join(', ')}` 
+          };
+        }
+        return { passed: true };
+      }
+    }
+  ];
+
+  // ============================================
   // Executar todos os testes
   // ============================================
   const allTests = [
@@ -292,6 +470,7 @@ serve(async (req) => {
     { module: 'Meal Times', tests: mealTimeTests },
     { module: 'User Profiles', tests: profileTests },
     { module: 'Nutritional Strategies', tests: strategyTests },
+    { module: 'Functional Tests', tests: functionalTests },
   ];
 
   for (const moduleGroup of allTests) {

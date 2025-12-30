@@ -19,6 +19,7 @@ import {
   calculateNutritionalTargets,
   getMealTarget,
 } from "../_shared/nutritionalCalculations.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -275,6 +276,80 @@ serve(async (req) => {
       throw new Error("No valid alternatives generated");
     }
 
+    // CRITICAL FIX: Calibrate macros using calculateRealMacros for database consistency
+    const calibratedAlternatives = [];
+    for (const alt of validAlternatives) {
+      try {
+        // Convert ingredients to FoodItem format for calculateRealMacrosForFoods
+        const ingredients = alt.recipe_ingredients || [];
+        const foodItems = ingredients.map((ing: { item?: string; name?: string; quantity?: string | number }) => {
+          const ingName = typeof ing === 'string' ? ing : (ing.item || ing.name || '');
+          const grams = typeof ing === 'string' ? 100 : (parseFloat(String(ing.quantity)) || 100);
+          return {
+            name: ingName,
+            grams,
+            // Preserve AI estimates as fallback
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+          };
+        });
+
+        if (foodItems.length > 0) {
+          const { items: calculatedItems } = await calculateRealMacrosForFoods(
+            supabaseClient,
+            foodItems,
+            profile.country || 'BR'
+          );
+
+          // Sum up calibrated macros
+          let totalCalories = 0;
+          let totalProtein = 0;
+          let totalCarbs = 0;
+          let totalFat = 0;
+
+          for (const item of calculatedItems) {
+            totalCalories += item.calories || 0;
+            totalProtein += item.protein || 0;
+            totalCarbs += item.carbs || 0;
+            totalFat += item.fat || 0;
+          }
+
+          // Only override if we got valid data from database
+          const hasDbData = calculatedItems.some(item => item.source === 'database' || item.source === 'database_global');
+          
+          if (hasDbData && totalCalories > 0) {
+            logStep("Macros calibrated from database", { 
+              recipe: alt.recipe_name,
+              original: { cal: alt.recipe_calories, p: alt.recipe_protein, c: alt.recipe_carbs, f: alt.recipe_fat },
+              calibrated: { cal: Math.round(totalCalories), p: Math.round(totalProtein), c: Math.round(totalCarbs), f: Math.round(totalFat) }
+            });
+            
+            calibratedAlternatives.push({
+              ...alt,
+              recipe_calories: Math.round(totalCalories),
+              recipe_protein: Math.round(totalProtein * 10) / 10,
+              recipe_carbs: Math.round(totalCarbs * 10) / 10,
+              recipe_fat: Math.round(totalFat * 10) / 10,
+            });
+          } else {
+            // Keep AI estimates if no database data
+            calibratedAlternatives.push(alt);
+          }
+        } else {
+          calibratedAlternatives.push(alt);
+        }
+      } catch (calibrationError) {
+        logStep("Calibration error, keeping AI values", { recipe: alt.recipe_name, error: String(calibrationError) });
+        calibratedAlternatives.push(alt);
+      }
+    }
+
+    logStep("Calibration complete", { 
+      total: calibratedAlternatives.length 
+    });
+
     // Log AI usage
     const promptTokens = Math.ceil(prompt.length / 4);
     const completionTokens = Math.ceil(responseText.length / 4);
@@ -292,7 +367,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        alternatives: validAlternatives.slice(0, 5),
+        alternatives: calibratedAlternatives.slice(0, 5),
         mealType,
         targetCalories,
       }),

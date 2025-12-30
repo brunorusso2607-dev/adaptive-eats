@@ -11,7 +11,7 @@ import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Loader2, Utensils, Globe, Target, AlertCircle, Scale, Ruler, User, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
+import { useAllNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 import { useOnboardingOptions } from "@/hooks/useOnboardingOptions";
 
 // Validação de peso baseada na estratégia
@@ -168,7 +168,7 @@ function calculateEstimatedCalories(
 }
 
 export default function AdminAIMealPlanTest() {
-  const { data: strategies, isLoading: isLoadingStrategies } = useNutritionalStrategies();
+  const { data: strategies, isLoading: isLoadingStrategies } = useAllNutritionalStrategies();
   const { data: onboardingOptions, isLoading: isLoadingOptions } = useOnboardingOptions();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -486,12 +486,17 @@ export default function AdminAIMealPlanTest() {
                   <SelectContent>
                     {strategies?.map(s => (
                       <SelectItem key={s.id} value={s.id}>
-                        {s.icon} {s.label}
-                        {s.calorie_modifier !== null && (
-                          <span className="ml-2 text-xs text-muted-foreground">
-                            ({s.calorie_modifier > 0 ? "+" : ""}{s.calorie_modifier} kcal)
-                          </span>
-                        )}
+                        <span className="flex items-center gap-2">
+                          {s.icon} {s.label}
+                          {s.calorie_modifier !== null && (
+                            <span className="text-xs text-muted-foreground">
+                              ({s.calorie_modifier > 0 ? "+" : ""}{s.calorie_modifier} kcal)
+                            </span>
+                          )}
+                          {!s.is_active && (
+                            <span className="ml-1 text-xs text-orange-500 font-medium">(Inativa)</span>
+                          )}
+                        </span>
                       </SelectItem>
                     ))}
                   </SelectContent>

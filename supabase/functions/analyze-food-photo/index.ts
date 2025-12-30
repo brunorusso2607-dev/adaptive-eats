@@ -734,6 +734,29 @@ If any alert exists, set health_bonus to null.
       throw new Error("Não foi possível analisar a imagem. Tente com uma foto mais clara.");
     }
 
+    // ========== CHECK FOR NOT_FOOD RESPONSE (NEW FORMAT) ==========
+    // The prompt asks AI to return type: "not_food" for non-food images
+    if (analysis.type === "not_food") {
+      logStep("Not food detected (type format)", { 
+        type: analysis.type,
+        detected_category: analysis.detected_category,
+        detected_object: analysis.detected_object 
+      });
+      
+      return new Response(JSON.stringify({
+        success: false,
+        notFood: true,
+        categoryError: true,
+        categoria_detectada: analysis.detected_category || "objeto",
+        objeto_identificado: analysis.detected_object || "",
+        message: analysis.message || "Não consegui identificar comida nesta imagem.",
+        dica: "Tire uma foto do seu prato de cima com boa iluminação."
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 200,
+      });
+    }
+
     // ========== TRANSFORM AI RESPONSE FORMAT ==========
     // The AI returns 'items' and 'totals', but we need 'alimentos' and 'total_geral'
     if (analysis.items && !analysis.alimentos) {

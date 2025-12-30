@@ -20,6 +20,23 @@
  * 2. Normaliza keys de intolerância (onboarding → database)
  * 3. Valida ingredientes contra intolerâncias e perfis dietéticos
  * 4. Gera contexto de prompt para IA
+ * 
+ * INTERNACIONALIZAÇÃO (i18n):
+ * - intolerance_mappings: Termos globais (sem coluna de idioma)
+ *   → Inclui ingredientes em PT, EN, ES, FR, DE, IT, e outros idiomas
+ *   → Novos países/idiomas herdam TODAS as configurações automaticamente
+ * - intolerance_safe_keywords: Termos globais de segurança
+ *   → Ex: "sem lactose", "lactose free", "sans lactose", "laktosefrei"
+ * - dietary_forbidden_ingredients: Tem coluna 'language' mas CARREGA TODOS
+ *   → Sistema usa todos os idiomas em conjunto para validação
+ *   → Novo idioma adicionado no banco é automaticamente incluído
+ * 
+ * REGRA DE HERANÇA:
+ * Quando um novo país/idioma é adicionado ao sistema:
+ * 1. Os intolerance_mappings existentes já cobrem múltiplos idiomas
+ * 2. Basta adicionar novos termos no banco de dados
+ * 3. O cache é recarregado automaticamente (TTL: 2 minutos)
+ * 4. Todas as edge functions herdam as novas configurações
  */
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";

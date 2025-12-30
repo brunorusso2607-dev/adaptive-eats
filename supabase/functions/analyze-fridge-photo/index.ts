@@ -3,6 +3,16 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+import {
+  loadSafetyDatabase,
+  normalizeUserIntolerances,
+  validateIngredientList,
+  generateRestrictionsPromptContext,
+  getIntoleranceLabel,
+  getDietaryLabel,
+  type UserRestrictions,
+  type SafetyCheckResult,
+} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -13,88 +23,8 @@ const logStep = (step: string, details?: any) => {
   console.log(`[FRIDGE-ANALYZER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
-// Mapa de produtos de risco por intolerância (inclui nomes comerciais e técnicos)
-const PRODUTOS_RISCO: Record<string, string[]> = {
-  lactose: [
-    // Produtos comuns
-    'margarina', 'manteiga', 'iogurte', 'queijo', 'requeijão', 'cream cheese',
-    'leite', 'creme de leite', 'chantilly', 'doce de leite', 'leite condensado',
-    'sorvete', 'pudim', 'mousse', 'yakult', 'danoninho', 'petit suisse',
-    'nata', 'coalhada', 'kefir', 'ricota', 'cottage', 'mussarela', 'parmesão',
-    'gorgonzola', 'brie', 'camembert', 'provolone', 'gouda', 'cheddar',
-    // Marcas conhecidas com lactose
-    'qualy', 'danone', 'activia', 'vigor', 'nestle', 'elegê', 'parmalat',
-    // Nomes técnicos (alérgenos ocultos)
-    'caseína', 'caseinato', 'lactose', 'soro de leite', 'whey', 'lactoalbumina',
-    'lactoglobulina', 'proteína do leite', 'gordura de leite', 'lactato'
-  ],
-  gluten: [
-    // Produtos comuns
-    'pão', 'torrada', 'bisnaguinha', 'bolo', 'bolacha', 'biscoito', 'massa',
-    'macarrão', 'lasanha', 'pizza', 'cerveja', 'molho shoyu', 'molho teriyaki',
-    'empanado', 'nuggets', 'salsicha', 'linguiça', 'hambúrguer', 'ketchup',
-    'mostarda', 'maionese', 'molho barbecue', 'molho branco', 'croquete',
-    'esfiha', 'pão de queijo', 'croissant', 'wrap', 'tortilla',
-    // Marcas conhecidas com glúten
-    'bauducco', 'pullman', 'wickbold', 'seven boys', 'visconti', 'adria',
-    // Nomes técnicos (alérgenos ocultos)
-    'glúten', 'trigo', 'centeio', 'cevada', 'aveia', 'malte', 'maltodextrina',
-    'amido de trigo', 'farinha de trigo', 'proteína de trigo', 'seitan',
-    'triticale', 'espelta', 'kamut', 'bulgur', 'cuscuz'
-  ],
-  amendoim: [
-    'pasta de amendoim', 'paçoca', 'pé de moleque', 'amendoim', 'manteiga de amendoim',
-    'molho satay', 'pad thai', 'cookies', 'brownie', 'sorvete', 'granola',
-    'barra de cereal', 'chocolate', 'bombom',
-    // Nomes técnicos
-    'arachis hypogaea', 'óleo de amendoim', 'proteína de amendoim'
-  ],
-  oleaginosas: [
-    'castanha', 'nozes', 'amêndoas', 'pistache', 'avelã', 'macadâmia',
-    'castanha de caju', 'castanha do pará', 'nutella', 'creme de avelã',
-    'leite de amêndoas', 'pesto', 'marzipã', 'torrone', 'praline',
-    // Nomes técnicos
-    'corylus avellana', 'prunus dulcis', 'anacardium occidentale'
-  ],
-  frutos_do_mar: [
-    'camarão', 'lagosta', 'caranguejo', 'siri', 'lula', 'polvo', 'marisco',
-    'mexilhão', 'ostra', 'vieira', 'surimi', 'kani', 'tempurá',
-    // Nomes técnicos
-    'crustáceo', 'molusco', 'extrato de crustáceos'
-  ],
-  peixe: [
-    'atum', 'sardinha', 'salmão', 'tilápia', 'bacalhau', 'anchova',
-    'molho de peixe', 'fish sauce', 'caesar', 'molho worcestershire',
-    // Nomes técnicos
-    'colágeno de peixe', 'gelatina de peixe', 'óleo de peixe', 'ômega-3'
-  ],
-  ovo: [
-    'ovo', 'maionese', 'aioli', 'mousse', 'merengue', 'marshmallow',
-    'massa fresca', 'macarrão', 'bolo', 'biscoito', 'pão de ló',
-    'quiche', 'omelete', 'fritada', 'panqueca', 'waffle', 'crepe',
-    // Nomes técnicos
-    'albumina', 'ovalbumina', 'ovomucoide', 'lecitina de ovo', 'lisozima',
-    'globulina', 'livetina', 'ovomucina', 'ovovitelina'
-  ],
-  soja: [
-    'tofu', 'molho shoyu', 'missô', 'edamame', 'leite de soja', 'tempeh',
-    'proteína de soja', 'óleo de soja', 'lecitina', 'molho teriyaki',
-    // Nomes técnicos
-    'lecitina de soja', 'proteína vegetal hidrolisada', 'PVT', 'TVP',
-    'isolado proteico de soja', 'gordura vegetal hidrogenada'
-  ],
-  acucar: [
-    'refrigerante', 'suco de caixinha', 'iogurte', 'achocolatado', 'gelatina',
-    'pudim', 'doce', 'geleia', 'mel', 'açúcar', 'leite condensado',
-    'chocolate', 'sorvete', 'bolo', 'biscoito', 'cereal matinal',
-    // Nomes técnicos (açúcares ocultos)
-    'sacarose', 'frutose', 'glicose', 'dextrose', 'maltose', 'xarope de milho',
-    'xarope de glicose', 'açúcar invertido', 'melaço', 'xarope de agave',
-    'xarope de malte', 'concentrado de suco de fruta'
-  ]
-};
-
 // Conhecimento enciclopédico de produtos industrializados conhecidos
+// (mantido para enriquecimento de produtos por embalagem/marca)
 const PRODUTOS_CONHECIDOS: Record<string, { contem: string[], marcasTipicas: string[] }> = {
   margarina: {
     contem: ['soro de leite', 'lactose', 'gordura vegetal'],
@@ -138,27 +68,6 @@ const PRODUTOS_CONHECIDOS: Record<string, { contem: string[], marcasTipicas: str
   }
 };
 
-// Mapeamento de intolerâncias do perfil para chaves do mapa
-const INTOLERANCE_MAP: Record<string, string> = {
-  'lactose': 'lactose',
-  'gluten': 'gluten',
-  'amendoim': 'amendoim',
-  'oleaginosas': 'oleaginosas',
-  'frutos_do_mar': 'frutos_do_mar',
-  'peixe': 'peixe',
-  'ovo': 'ovo',
-  'soja': 'soja',
-  'acucar': 'acucar',
-  // Sinônimos comuns
-  'leite': 'lactose',
-  'trigo': 'gluten',
-  'nozes': 'oleaginosas',
-  'castanhas': 'oleaginosas',
-  'camarão': 'frutos_do_mar',
-  'mariscos': 'frutos_do_mar',
-  'ovos': 'ovo'
-};
-
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -189,7 +98,7 @@ serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('intolerances, dietary_preference, recipe_complexity, goal, context')
+      .select('intolerances, dietary_preference, recipe_complexity, goal, context, excluded_ingredients')
       .eq('id', user.id)
       .single();
 
@@ -202,8 +111,26 @@ serve(async (req) => {
     const complexity = profile?.recipe_complexity || 'equilibrada';
     const goal = profile?.goal || 'manter';
     const context = profile?.context || 'individual';
+    const excludedIngredients = profile?.excluded_ingredients || [];
 
     logStep('Profile loaded', { intolerances, dietaryPreference, complexity, goal, context });
+
+    // Load global safety database for validation
+    const safetyDatabase = await loadSafetyDatabase(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
+    const normalizedIntolerances = normalizeUserIntolerances(intolerances, safetyDatabase);
+    
+    // Build user restrictions for safety engine
+    const userRestrictions: UserRestrictions = {
+      intolerances: normalizedIntolerances,
+      dietaryPreference,
+      excludedIngredients,
+    };
+
+    logStep('Safety database loaded', { 
+      intoleranceMappings: safetyDatabase.intoleranceMappings.size,
+      dietaryForbidden: safetyDatabase.dietaryForbidden.size,
+      normalizedIntolerances
+    });
 
     const { imageBase64, additionalImages, areas } = await req.json();
     
@@ -702,43 +629,21 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
             }
           }
           
-          // 3. VERIFICAR CONFLITOS COM INTOLERÂNCIAS DO USUÁRIO
-          if (intolerances.length > 0) {
-            const substanciasDoIngrediente = ingrediente.substancias_detectadas.map((s: string) => 
-              s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
-            );
+          // 3. VERIFICAR CONFLITOS COM INTOLERÂNCIAS DO USUÁRIO USANDO GLOBAL SAFETY ENGINE
+          if (normalizedIntolerances.length > 0) {
+            const substanciasDoIngrediente = ingrediente.substancias_detectadas || [];
             
-            const conflitosDetectados: string[] = [];
-            
-            for (const userIntolerance of intolerances) {
-              const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
-              const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
-              
-              // Verificar se alguma substância do ingrediente conflita com a intolerância
-              for (const substancia of substanciasDoIngrediente) {
-                const conflito = produtosRisco.some(produto => 
-                  substancia.includes(produto.toLowerCase()) || 
-                  produto.toLowerCase().includes(substancia)
-                );
-                if (conflito && !conflitosDetectados.includes(intoleranceKey)) {
-                  conflitosDetectados.push(intoleranceKey);
-                }
-              }
-            }
+            // Use globalSafetyEngine to validate the substances
+            const safetyCheck = validateIngredientList(substanciasDoIngrediente, userRestrictions, safetyDatabase);
             
             // 4. ADICIONAR ALERTA DE SEGURANÇA SE HOUVER CONFLITO
-            if (conflitosDetectados.length > 0) {
-              const restricoesLabel = conflitosDetectados.map(c => 
-                c === 'lactose' ? 'LACTOSE' :
-                c === 'gluten' ? 'GLÚTEN' :
-                c === 'ovo' ? 'OVO' :
-                c === 'soja' ? 'SOJA' :
-                c === 'acucar' ? 'AÇÚCAR' :
-                c.toUpperCase()
+            if (!safetyCheck.isSafe && safetyCheck.conflicts.length > 0) {
+              const restricoesLabel = safetyCheck.conflicts.map(c => 
+                getIntoleranceLabel(c.key, safetyDatabase)
               ).join(', ');
               
               const alertaAtual = ingrediente.alerta_seguranca || '';
-              const novoAlerta = `🔴 CONTÉM ${restricoesLabel} (baseado em conhecimento do produto "${produtoKey}")`;
+              const novoAlerta = `🔴 CONTÉM ${restricoesLabel.toUpperCase()} (baseado em conhecimento do produto "${produtoKey}")`;
               
               if (!alertaAtual.includes(restricoesLabel)) {
                 ingrediente.alerta_seguranca = alertaAtual 
@@ -760,25 +665,17 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
           }
         }
         
-        // 5. VERIFICAÇÃO ADICIONAL COM PRODUTOS_RISCO (mesmo sem match em PRODUTOS_CONHECIDOS)
-        if (intolerances.length > 0) {
-          for (const userIntolerance of intolerances) {
-            const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
-            const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
-            
-            const isRisco = produtosRisco.some(produto => 
-              nomeNormalizado.includes(produto.toLowerCase()) || 
-              produto.toLowerCase().includes(nomeNormalizado)
-            );
-            
-            if (isRisco && ingrediente.tipo === 'industrializado' && ingrediente.confianca !== 'alta') {
-              if (!ingrediente.alerta_seguranca) {
-                const versaoSegura = intoleranceKey === 'lactose' ? 'sem lactose' :
-                                     intoleranceKey === 'gluten' ? 'sem glúten' :
-                                     intoleranceKey === 'acucar' ? 'sem açúcar' :
-                                     `sem ${userIntolerance}`;
-                ingrediente.alerta_seguranca = `⚠️ Verifique se este produto é a versão ${versaoSegura} antes de usar.`;
-              }
+        // 5. VERIFICAÇÃO ADICIONAL USANDO GLOBAL SAFETY ENGINE (mesmo sem match em PRODUTOS_CONHECIDOS)
+        if (normalizedIntolerances.length > 0) {
+          const ingredientCheck = validateIngredientList([ingrediente.nome], userRestrictions, safetyDatabase);
+          
+          if (!ingredientCheck.isSafe && ingrediente.tipo === 'industrializado' && ingrediente.confianca !== 'alta') {
+            if (!ingrediente.alerta_seguranca) {
+              const conflictLabel = ingredientCheck.conflicts.length > 0 
+                ? getIntoleranceLabel(ingredientCheck.conflicts[0].key, safetyDatabase)
+                : '';
+              const versaoSegura = conflictLabel ? `sem ${conflictLabel.toLowerCase()}` : 'adequada';
+              ingrediente.alerta_seguranca = `⚠️ Verifique se este produto é a versão ${versaoSegura} antes de usar.`;
             }
           }
         }
@@ -809,7 +706,7 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       });
     }
 
-    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL ==========
+    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL USANDO GLOBAL SAFETY ENGINE ==========
     // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
     
     const alertasPersonalizados: Array<{
@@ -821,26 +718,25 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
     }> = [];
     
     // Verificar cada intolerância do usuário contra os ingredientes identificados
-    for (const userIntolerance of intolerances) {
-      const intoleranceKey = INTOLERANCE_MAP[userIntolerance.toLowerCase()] || userIntolerance.toLowerCase();
-      const produtosRisco = PRODUTOS_RISCO[intoleranceKey] || [];
-      
+    for (const userIntolerance of normalizedIntolerances) {
       let found = false;
       let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
       let foundIngredient = "";
       
-      // Verificar em ingredientes identificados
+      // Verificar em ingredientes identificados usando globalSafetyEngine
       if (analysis.ingredientes_identificados) {
         for (const ing of analysis.ingredientes_identificados) {
-          const ingName = ing.nome?.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '') || "";
+          const ingName = ing.nome || "";
           
-          // Verificar se este ingrediente corresponde à intolerância
-          const matchesIntolerance = produtosRisco.some(produto => 
-            ingName.includes(produto.toLowerCase()) || 
-            produto.toLowerCase().includes(ingName)
-          );
+          // Verificar se este ingrediente corresponde à intolerância usando globalSafetyEngine
+          const singleRestriction: UserRestrictions = {
+            intolerances: [userIntolerance],
+            dietaryPreference: 'comum',
+            excludedIngredients: [],
+          };
+          const check = validateIngredientList([ingName], singleRestriction, safetyDatabase);
           
-          if (matchesIntolerance) {
+          if (!check.isSafe) {
             found = true;
             foundIngredient = ing.nome;
             // Se temos alerta de segurança ou confiança baixa, é risco_potencial
@@ -855,15 +751,7 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       }
       
       // Gerar mensagem personalizada para o usuário
-      const restricaoLabel = intoleranceKey === "lactose" ? "Lactose" :
-                            intoleranceKey === "gluten" ? "Glúten" :
-                            intoleranceKey === "acucar" ? "Açúcar" :
-                            intoleranceKey === "amendoim" ? "Amendoim" :
-                            intoleranceKey === "frutos_do_mar" ? "Frutos do Mar" :
-                            intoleranceKey === "ovo" ? "Ovo" :
-                            intoleranceKey === "soja" ? "Soja" :
-                            intoleranceKey === "oleaginosas" ? "Oleaginosas" :
-                            userIntolerance;
+      const restricaoLabel = getIntoleranceLabel(userIntolerance, safetyDatabase);
       
       if (found) {
         alertasPersonalizados.push({

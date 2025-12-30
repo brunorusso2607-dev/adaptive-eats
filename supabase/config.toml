@@ -152,3 +152,6 @@ verify_jwt = false
 
 [functions.expand-all-intolerances]
 verify_jwt = false
+
+[functions.run-module-tests]
+verify_jwt = false

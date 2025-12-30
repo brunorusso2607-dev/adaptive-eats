@@ -426,6 +426,7 @@ export function checkIngredientForIntolerance(
 
 /**
  * Verifica se um ingrediente conflita com um perfil dietético
+ * ATUALIZADO: Agora verifica safe keywords para dietas também
  */
 export function checkIngredientForDietary(
   ingredient: string,
@@ -437,6 +438,19 @@ export function checkIngredientForDietary(
   }
   
   const normalizedIngredient = normalizeText(ingredient);
+  
+  // NOVO: Primeiro verificar se é um ingrediente SEGURO para esta dieta
+  // Usa a mesma tabela intolerance_safe_keywords com dietaryKey
+  const safeWords = database.safeKeywords.get(dietaryKey) || [];
+  for (const safeWord of safeWords) {
+    if (normalizedIngredient.includes(normalizeText(safeWord))) {
+      return { 
+        isValid: true, 
+        reason: `Ingrediente seguro para ${getDietaryLabel(dietaryKey)}: contém "${safeWord}"` 
+      };
+    }
+  }
+  
   const forbiddenIngredients = database.dietaryForbidden.get(dietaryKey) || [];
   
   for (const forbidden of forbiddenIngredients) {
@@ -444,7 +458,7 @@ export function checkIngredientForDietary(
     if (containsWholeWord(normalizedIngredient, forbidden)) {
       return {
         isValid: false,
-        reason: `Contém ${forbidden} (incompatível com ${getDietaryLabel(dietaryKey)})`,
+        reason: `Contém ingrediente animal: ${forbidden}`,
         restriction: `dietary_${dietaryKey}`,
         matchedIngredient: forbidden
       };

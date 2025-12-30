@@ -207,10 +207,30 @@ IMPORTANTE:
 - NUNCA use nomes genéricos como "Opção 1", "Opção 2", "Refeição 1", etc.
 - Cada opção DEVE incluir um campo "instructions" com 3-5 passos CURTOS e PRÁTICOS de preparo.
 
-📝 FORMATO DAS INSTRUÇÕES (instructions):
-- Array de strings com passos curtos e diretos (máximo 15 palavras por passo)
-- Foco na ação principal, sem detalhes óbvios
-- Exemplo: ["Grelhe o frango temperado por 4 min de cada lado.", "Cozinhe o arroz.", "Monte o prato com salada fresca."]
+📝 FORMATO DAS INSTRUÇÕES (instructions) - HUMANIZADAS:
+- Array de strings com passos curtos mas HUMANIZADOS (máximo 20 palavras por passo)
+- SEMPRE incluir TEMPEROS E SUGESTÕES DE PREPARO para tornar útil ao usuário
+- Foco na ação principal COM CONTEXTO de tempero/temperatura/tempo
+
+🧂 REGRAS DE HUMANIZAÇÃO DAS INSTRUÇÕES (OBRIGATÓRIO):
+========================================================================
+✓ SEMPRE adicionar temperos básicos: "sal, azeite, limão, alho, ervas, pimenta a gosto"
+✓ SEMPRE dar contexto de tempo/temperatura quando relevante: "~20 min", "180°C", "fogo baixo"
+✓ USAR verbos ricos: "refogue", "tempere", "finalize", "grelhe", "asse" (não só "prepare")
+✓ SUGESTÕES de finalização para saladas e grãos: "finalize com azeite e limão"
+
+EXEMPLOS HUMANIZADOS:
+• RUIM: "Asse o filé de tilápia." ❌
+• BOM: "Tempere a tilápia com sal, limão e ervas. Asse a 180°C por ~20 min." ✓
+
+• RUIM: "Cozinhe a quinoa." ❌  
+• BOM: "Cozinhe a quinoa em água com sal. Finalize com um fio de azeite." ✓
+
+• RUIM: "Prepare os legumes cozidos." ❌
+• BOM: "Refogue os legumes com alho e azeite até ficarem al dente." ✓
+
+• RUIM: "Monte o prato com salada." ❌
+• BOM: "Monte o prato e tempere a salada com azeite, sal e limão a gosto." ✓
 
 🚫🚫🚫 REGRA CRÍTICA - ESCOPO DAS INSTRUÇÕES (LEIA COM ATENÇÃO):
 ========================================================================
@@ -229,11 +249,11 @@ As instruções (campo "instructions") devem cobrir APENAS preparações que exi
 • "Tome o café com..." 
 • "Beba o suco..."
 
-✓ CORRETO: Instruções focam APENAS no prato principal + acompanhamentos cozidos
+✓ CORRETO: Instruções focam APENAS no prato principal + acompanhamentos cozidos (COM temperos!)
 ✓ O campo "foods" lista TODOS os itens, mas "instructions" só cobre o que precisa preparo
 
 EXEMPLO CORRETO para café da manhã com omelete, pão, café e banana:
-instructions: ["Bata as claras com tomate e orégano.", "Cozinhe a omelete em fogo baixo.", "Sirva com pão e queijo."]
+instructions: ["Bata as claras com sal, tomate e orégano. Cozinhe em fogo baixo até firmar.", "Sirva com o pão tostado."]
 (NÃO menciona banana nem café - são itens separados listados em "foods")
 ========================================================================
 

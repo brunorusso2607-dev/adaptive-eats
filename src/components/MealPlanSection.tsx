@@ -90,6 +90,16 @@ const isNearMonthEnd = () => {
   return daysUntilEnd <= 5;
 };
 
+// Helper to check if there's ANY plan for current month (regardless of status)
+const hasAnyPlanThisMonth = (plans: MealPlan[]) => {
+  const today = new Date();
+  return plans.some(plan => {
+    const [year, month, day] = plan.start_date.split('-').map(Number);
+    const startDate = new Date(year, month - 1, day);
+    return isSameMonth(startDate, today);
+  });
+};
+
 // Helper to check if there's an active plan for current month
 const hasActivePlanThisMonth = (plans: MealPlan[]) => {
   const today = new Date();
@@ -141,18 +151,18 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
 
   // Check if user can create a new plan
   const canCreateNewPlan = useMemo(() => {
-    const hasActiveThisMonth = hasActivePlanThisMonth(mealPlans);
+    const hasPlanThisMonth = hasAnyPlanThisMonth(mealPlans);
     const nearMonthEnd = isNearMonthEnd();
     const hasNextMonthPlan = hasPlanForNextMonth(mealPlans);
     
-    // Se estamos perto do fim do mês, verificar se já existe plano para o próximo mês
+    // Se estamos perto do fim do mês (5 dias ou menos)
     if (nearMonthEnd) {
-      // Só pode criar se NÃO existe plano para o próximo mês
+      // Pode criar para o próximo mês se NÃO existe plano para ele
       return !hasNextMonthPlan;
     }
     
-    // Fora do período de fim de mês, só pode criar se não tem plano ativo este mês
-    return !hasActiveThisMonth;
+    // Fora do período de fim de mês, só pode criar se NÃO tem nenhum plano este mês
+    return !hasPlanThisMonth;
   }, [mealPlans]);
 
   const getNewPlanDisabledReason = useMemo(() => {
@@ -162,7 +172,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
     if (nearMonthEnd && hasNextMonthPlan) {
       return "Você já tem um plano para o próximo mês";
     }
-    return "Você já tem um plano ativo este mês. Exclua-o para criar um novo.";
+    return "Você já tem um plano este mês. Exclua-o para criar um novo.";
   }, [canCreateNewPlan, mealPlans]);
 
   const fetchMealPlans = async () => {

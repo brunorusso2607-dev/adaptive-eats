@@ -1046,30 +1046,37 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onPla
       )}
 
       {/* Actions */}
-      <div className="grid grid-cols-2 gap-3">
-        <Button variant="outline" onClick={handleSaveOnly} disabled={!isComplete || isSaving || hasDangerRisk} className="h-12">
-          {isSaving ? (
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : null}
-          Não gerar e salvar
-        </Button>
-        <Button
-          onClick={handleGeneratePlanClick}
-          disabled={!isComplete || isSaving || hasDangerRisk}
-          className={cn(
-            "h-12 border-0",
-            modeInfo 
-              ? `bg-gradient-to-r ${modeInfo.gradient} hover:opacity-90` 
-              : "bg-gradient-to-r from-primary to-primary/80"
-          )}
+      <div className={cn("gap-3", hasExistingPlan ? "flex" : "grid grid-cols-2")}>
+        <Button 
+          variant="outline" 
+          onClick={handleSaveOnly} 
+          disabled={!isComplete || isSaving || hasDangerRisk} 
+          className={cn("h-12", hasExistingPlan && "flex-1")}
         >
           {isSaving ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : (
-            <Sparkles className="w-4 h-4 mr-2" />
-          )}
-          {hasExistingPlan ? "Regenerar Plano" : "Gerar Plano Alimentar"}
+          ) : null}
+          {hasExistingPlan ? "Salvar" : "Não gerar e salvar"}
         </Button>
+        {!hasExistingPlan && (
+          <Button
+            onClick={handleGeneratePlanClick}
+            disabled={!isComplete || isSaving || hasDangerRisk}
+            className={cn(
+              "h-12 border-0",
+              modeInfo 
+                ? `bg-gradient-to-r ${modeInfo.gradient} hover:opacity-90` 
+                : "bg-gradient-to-r from-primary to-primary/80"
+            )}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Sparkles className="w-4 h-4 mr-2" />
+            )}
+            Criar Plano
+          </Button>
+        )}
       </div>
     </div>
   );

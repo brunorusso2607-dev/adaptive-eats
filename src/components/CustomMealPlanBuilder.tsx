@@ -21,7 +21,8 @@ import {
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, endOfMonth, differenceInDays } from "date-fns";
+import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { useUnifiedFavorites } from "@/hooks/useUnifiedFavorites";
 import { useMonthWeeks } from "@/hooks/useMonthWeeks";
@@ -173,11 +174,24 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     return getAvailableDaysInPlan(weeks, selectedWeek);
   }, [weeks, selectedWeek]);
 
-  // Default plan name based on month
+  // Default plan name based on month - considers 5-day window for next month
   const defaultPlanName = useMemo(() => {
-    const capitalizedMonth = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-    return `${capitalizedMonth} ${year}`;
-  }, [monthName, year]);
+    const today = new Date();
+    const lastDayOfMonth = endOfMonth(today);
+    const daysLeftCurrentMonth = differenceInDays(lastDayOfMonth, today) + 1;
+    const nearMonthEnd = daysLeftCurrentMonth <= 5;
+    
+    // If near month end, target next month for plan name
+    const targetDate = nearMonthEnd 
+      ? new Date(today.getFullYear(), today.getMonth() + 1, 1)
+      : today;
+    
+    const targetMonthName = format(targetDate, "MMMM", { locale: ptBR });
+    const capitalizedMonth = targetMonthName.charAt(0).toUpperCase() + targetMonthName.slice(1);
+    const targetYear = format(targetDate, "yyyy");
+    
+    return `${capitalizedMonth} ${targetYear}`;
+  }, []);
 
   // Initialize selected day to first available day in selected week
   useEffect(() => {

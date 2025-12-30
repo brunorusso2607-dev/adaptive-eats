@@ -75,20 +75,34 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
   }, []);
 
   // Calculate remaining days from today until end of current month
+  // If near month end (5 days or less), target next month
   const { remainingDays, monthName, defaultPlanName, targetStartDate } = useMemo(() => {
     const today = new Date();
     const lastDayOfMonth = endOfMonth(today);
     const daysLeftCurrentMonth = differenceInDays(lastDayOfMonth, today) + 1; // +1 to include today
     
-    const month = format(today, "MMMM", { locale: ptBR });
+    // Check if we're within 5 days of month end
+    const nearMonthEnd = daysLeftCurrentMonth <= 5;
+    
+    // If near month end, target next month
+    const targetDate = nearMonthEnd 
+      ? new Date(today.getFullYear(), today.getMonth() + 1, 1)
+      : today;
+    
+    const month = format(targetDate, "MMMM", { locale: ptBR });
     const capitalizedMonth = month.charAt(0).toUpperCase() + month.slice(1);
-    const year = format(today, "yyyy");
+    const year = format(targetDate, "yyyy");
+    
+    // If near month end, calculate days in next month
+    const remainingDaysValue = nearMonthEnd 
+      ? differenceInDays(endOfMonth(targetDate), targetDate) + 1
+      : daysLeftCurrentMonth;
     
     return {
-      remainingDays: daysLeftCurrentMonth,
+      remainingDays: remainingDaysValue,
       monthName: capitalizedMonth,
       defaultPlanName: `${capitalizedMonth} ${year}`,
-      targetStartDate: today
+      targetStartDate: targetDate
     };
   }, []);
 

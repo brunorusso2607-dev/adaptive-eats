@@ -22,6 +22,8 @@ import {
   type IntoleranceMapping,
   type SafeKeyword,
 } from "../_shared/mealGenerationConfig.ts";
+import { getNutritionalTablePrompt } from "../_shared/nutritionalTableInjection.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -207,6 +209,10 @@ serve(async (req) => {
       safeKeywordsCount: dbSafeKeywords.length 
     });
 
+    // ============= INJEÇÃO DE TABELA NUTRICIONAL (CASCATA CAMADA 1) =============
+    const nutritionalTablePrompt = await getNutritionalTablePrompt(supabase, userCountry);
+    logStep("Nutritional table loaded for prompt injection");
+
     // Detectar categoria do macro principal
     const macroCategory = detectMacroCategory(
       ingredientProtein || 0, 
@@ -297,7 +303,10 @@ As opções flexíveis devem respeitar as restrições do usuário mas podem ser
     const countryConfig = COUNTRY_LANGUAGE[userCountry] || COUNTRY_LANGUAGE['BR'];
     
     // ============= PROMPT v6.0 PARA SUBSTITUIÇÕES (MULTILINGUAL) =============
-    const prompt = `You are ${countryConfig.nutritionist} with 20 years of clinical experience.
+    // Inject nutritional table BEFORE the main prompt (CASCATA CAMADA 1)
+    const prompt = `${nutritionalTablePrompt}
+
+You are ${countryConfig.nutritionist} with 20 years of clinical experience.
 You suggest PRECISE and BALANCED substitutions as you would for your VIP patients.
 IMPORTANT: All food names and instructions MUST be in ${countryConfig.lang}.
 
@@ -510,7 +519,55 @@ Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos.`;
     });
 
     // Limitar a 5 sugestões válidas
-    const finalSuggestions = validatedSuggestions.slice(0, 5);
+    const validSuggestions = validatedSuggestions.slice(0, 5);
+
+    // ============= CALIBRAÇÃO DE MACROS PÓS-GERAÇÃO (CASCATA CAMADA 2) =============
+    const calibratedSuggestions = [];
+    for (const suggestion of validSuggestions) {
+      try {
+        const foodItems = [{
+          name: suggestion.name,
+          grams: suggestion.grams,
+          calories: suggestion.calories || 0,
+          protein: suggestion.protein || 0,
+          carbs: suggestion.carbs || 0,
+          fat: suggestion.fat || 0,
+        }];
+
+        const { items: calculatedItems } = await calculateRealMacrosForFoods(
+          supabase,
+          foodItems,
+          userCountry
+        );
+
+        const calibratedItem = calculatedItems[0];
+        const hasDbData = calibratedItem?.source === 'database' || calibratedItem?.source === 'database_global';
+
+        if (hasDbData && calibratedItem.calories > 0) {
+          logStep("Suggestion calibrated from database", { 
+            name: suggestion.name,
+            original: { cal: suggestion.calories, p: suggestion.protein, c: suggestion.carbs, f: suggestion.fat },
+            calibrated: { cal: calibratedItem.calories, p: calibratedItem.protein, c: calibratedItem.carbs, f: calibratedItem.fat }
+          });
+          
+          calibratedSuggestions.push({
+            ...suggestion,
+            calories: Math.round(calibratedItem.calories),
+            protein: Math.round(calibratedItem.protein * 10) / 10,
+            carbs: Math.round(calibratedItem.carbs * 10) / 10,
+            fat: Math.round(calibratedItem.fat * 10) / 10,
+          });
+        } else {
+          // Keep AI estimates if no database data
+          calibratedSuggestions.push(suggestion);
+        }
+      } catch (calibrationError) {
+        logStep("Calibration error, keeping AI values", { name: suggestion.name, error: String(calibrationError) });
+        calibratedSuggestions.push(suggestion);
+      }
+    }
+
+    const finalSuggestions = calibratedSuggestions;
 
     logStep('Returning suggestions', { 
       count: finalSuggestions.length,

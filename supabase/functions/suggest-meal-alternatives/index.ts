@@ -16,6 +16,7 @@ import {
   getMealTarget,
 } from "../_shared/nutritionalCalculations.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+import { getNutritionalTablePrompt } from "../_shared/nutritionalTableInjection.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -165,8 +166,12 @@ serve(async (req) => {
     // Get format rules from shared config
     const formatRules = getMealPromptRules(regional.language);
 
+    // ============= INJEÇÃO DE TABELA NUTRICIONAL (CASCATA CAMADA 1) =============
+    const nutritionalTablePrompt = await getNutritionalTablePrompt(supabaseClient, profile.country || 'BR');
+    logStep("Nutritional table loaded for prompt injection");
+
     // Build prompt for alternatives
-    const prompt = buildAlternativesPrompt(
+    const basePrompt = buildAlternativesPrompt(
       mealLabel,
       targetCalories,
       5,
@@ -175,6 +180,9 @@ serve(async (req) => {
       profile.kids_mode === true,
       regional.language
     );
+    
+    // Inject nutritional table BEFORE the alternatives prompt
+    const prompt = `${nutritionalTablePrompt}\n\n${basePrompt}`;
 
     // Call Gemini
     const geminiKey = await getGeminiApiKey();

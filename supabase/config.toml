@@ -161,3 +161,6 @@ verify_jwt = false
 
 [functions.run-human-simulation-tests]
 verify_jwt = false
+
+[functions.run-protected-modules-tests]
+verify_jwt = false

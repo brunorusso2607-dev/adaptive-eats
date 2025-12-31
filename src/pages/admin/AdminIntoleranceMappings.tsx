@@ -130,14 +130,31 @@ export default function AdminIntoleranceMappings() {
     }
   });
 
+  // Category definitions for grouping
+  const CATEGORY_KEYS = {
+    intolerances: ['gluten', 'lactose', 'fodmap', 'fructose', 'sorbitol', 'wheat'],
+    allergies: ['peanut', 'tree_nuts', 'seafood', 'fish', 'egg', 'soy', 'sesame'],
+    sensitivities: ['cafeina', 'caffeine', 'histamine', 'salicylate', 'nickel', 'sulfite', 'corn'],
+  };
+
   // Get unique intolerance keys (only from database, deduplicated by canonical key)
-  const intoleranceKeys = [...new Set(
-    mappings?.map(m => m.intolerance_key) || []
-  )].sort((a, b) => {
+  const allKeys = [...new Set(mappings?.map(m => m.intolerance_key) || [])];
+  
+  const sortByLabel = (a: string, b: string) => {
     const labelA = canonicalKeyMap.get(a) || getLabel(a);
     const labelB = canonicalKeyMap.get(b) || getLabel(b);
     return labelA.localeCompare(labelB, 'pt-BR');
-  });
+  };
+
+  // Group keys by category
+  const intoleranceKeysList = allKeys.filter(k => CATEGORY_KEYS.intolerances.includes(k)).sort(sortByLabel);
+  const allergyKeysList = allKeys.filter(k => CATEGORY_KEYS.allergies.includes(k)).sort(sortByLabel);
+  const sensitivityKeysList = allKeys.filter(k => CATEGORY_KEYS.sensitivities.includes(k)).sort(sortByLabel);
+  const otherKeysList = allKeys.filter(k => 
+    !CATEGORY_KEYS.intolerances.includes(k) && 
+    !CATEGORY_KEYS.allergies.includes(k) && 
+    !CATEGORY_KEYS.sensitivities.includes(k)
+  ).sort(sortByLabel);
 
   // Filter by selected intolerance and search
   const filteredMappings = mappings?.filter(m => 
@@ -297,24 +314,105 @@ export default function AdminIntoleranceMappings() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        {/* Sidebar with intolerances */}
+        {/* Sidebar with intolerances grouped by category */}
         <div className="md:col-span-1">
-          <Label className="text-sm font-medium mb-2 block">Intolerância</Label>
-          <ScrollArea className="h-[500px] pr-2">
-            <div className="space-y-1">
-              {intoleranceKeys.map((key) => (
-                <Button
-                  key={key}
-                  variant={selectedIntolerance === key ? "default" : "ghost"}
-                  className="w-full justify-between text-left"
-                  onClick={() => setSelectedIntolerance(key)}
-                >
-                  <span className="truncate">{getLabelWithCanonical(key, canonicalKeyMap)}</span>
-                  <Badge variant="secondary" className="ml-2 flex-shrink-0">
-                    {getIntoleranceCount(key)}
-                  </Badge>
-                </Button>
-              ))}
+          <ScrollArea className="h-[600px] pr-2">
+            <div className="space-y-4">
+              {/* Intolerâncias */}
+              {intoleranceKeysList.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium mb-2 block text-blue-600 dark:text-blue-400">
+                    🔵 Intolerâncias ({intoleranceKeysList.length})
+                  </Label>
+                  <div className="space-y-1">
+                    {intoleranceKeysList.map((key) => (
+                      <Button
+                        key={key}
+                        variant={selectedIntolerance === key ? "default" : "ghost"}
+                        className="w-full justify-between text-left"
+                        onClick={() => setSelectedIntolerance(key)}
+                      >
+                        <span className="truncate">{getLabelWithCanonical(key, canonicalKeyMap)}</span>
+                        <Badge variant="secondary" className="ml-2 flex-shrink-0">
+                          {getIntoleranceCount(key)}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Alergias */}
+              {allergyKeysList.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium mb-2 block text-red-600 dark:text-red-400">
+                    🔴 Alergias ({allergyKeysList.length})
+                  </Label>
+                  <div className="space-y-1">
+                    {allergyKeysList.map((key) => (
+                      <Button
+                        key={key}
+                        variant={selectedIntolerance === key ? "default" : "ghost"}
+                        className="w-full justify-between text-left"
+                        onClick={() => setSelectedIntolerance(key)}
+                      >
+                        <span className="truncate">{getLabelWithCanonical(key, canonicalKeyMap)}</span>
+                        <Badge variant="secondary" className="ml-2 flex-shrink-0">
+                          {getIntoleranceCount(key)}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Sensibilidades */}
+              {sensitivityKeysList.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium mb-2 block text-yellow-600 dark:text-yellow-400">
+                    🟡 Sensibilidades ({sensitivityKeysList.length})
+                  </Label>
+                  <div className="space-y-1">
+                    {sensitivityKeysList.map((key) => (
+                      <Button
+                        key={key}
+                        variant={selectedIntolerance === key ? "default" : "ghost"}
+                        className="w-full justify-between text-left"
+                        onClick={() => setSelectedIntolerance(key)}
+                      >
+                        <span className="truncate">{getLabelWithCanonical(key, canonicalKeyMap)}</span>
+                        <Badge variant="secondary" className="ml-2 flex-shrink-0">
+                          {getIntoleranceCount(key)}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Outros (se houver) */}
+              {otherKeysList.length > 0 && (
+                <div>
+                  <Label className="text-sm font-medium mb-2 block text-muted-foreground">
+                    Outros ({otherKeysList.length})
+                  </Label>
+                  <div className="space-y-1">
+                    {otherKeysList.map((key) => (
+                      <Button
+                        key={key}
+                        variant={selectedIntolerance === key ? "default" : "ghost"}
+                        className="w-full justify-between text-left"
+                        onClick={() => setSelectedIntolerance(key)}
+                      >
+                        <span className="truncate">{getLabelWithCanonical(key, canonicalKeyMap)}</span>
+                        <Badge variant="secondary" className="ml-2 flex-shrink-0">
+                          {getIntoleranceCount(key)}
+                        </Badge>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </ScrollArea>
         </div>

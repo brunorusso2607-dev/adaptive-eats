@@ -296,9 +296,26 @@ export default function AdminIntoleranceMappings() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-            {/* Sidebar with intolerances */}
-            <div className="lg:col-span-1">
+          <div className="flex flex-col lg:grid lg:grid-cols-4 gap-6">
+            {/* Mobile: Select dropdown */}
+            <div className="lg:hidden">
+              <Label className="text-sm font-medium mb-2 block">Intolerância</Label>
+              <Select value={selectedIntolerance} onValueChange={setSelectedIntolerance}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Selecione uma intolerância" />
+                </SelectTrigger>
+                <SelectContent className="bg-card">
+                  {intoleranceKeys.map((key) => (
+                    <SelectItem key={key} value={key}>
+                      {getLabelWithCanonical(key, canonicalKeyMap)} ({getIntoleranceCount(key)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Desktop: Sidebar with intolerances */}
+            <div className="hidden lg:block lg:col-span-1">
               <Label className="text-sm font-medium mb-2 block">Intolerância</Label>
               <ScrollArea className="h-[500px] pr-2">
                 <div className="space-y-1">
@@ -321,20 +338,18 @@ export default function AdminIntoleranceMappings() {
 
             {/* Main content */}
             <div className="lg:col-span-3">
-              <div className="flex items-center justify-between mb-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
                 <h3 className="text-lg font-semibold">
                   {getLabel(selectedIntolerance)}
                 </h3>
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar..."
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      className="pl-9 w-48"
-                    />
-                  </div>
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="pl-9 w-full sm:w-48"
+                  />
                 </div>
               </div>
 
@@ -352,9 +367,10 @@ export default function AdminIntoleranceMappings() {
 
                 <TabsContent value="ingredients">
                   <div className="flex justify-end mb-4">
-                    <Button onClick={() => setIsAddIngredientOpen(true)}>
+                    <Button onClick={() => setIsAddIngredientOpen(true)} size="sm" className="sm:size-default">
                       <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Ingredientes
+                      <span className="hidden sm:inline">Adicionar Ingredientes</span>
+                      <span className="sm:hidden">Adicionar</span>
                     </Button>
                   </div>
 
@@ -384,9 +400,10 @@ export default function AdminIntoleranceMappings() {
 
                 <TabsContent value="keywords">
                   <div className="flex justify-end mb-4">
-                    <Button onClick={() => setIsAddKeywordOpen(true)}>
+                    <Button onClick={() => setIsAddKeywordOpen(true)} size="sm" className="sm:size-default">
                       <Plus className="h-4 w-4 mr-2" />
-                      Adicionar Palavra-chave
+                      <span className="hidden sm:inline">Adicionar Palavra-chave</span>
+                      <span className="sm:hidden">Adicionar</span>
                     </Button>
                   </div>
 

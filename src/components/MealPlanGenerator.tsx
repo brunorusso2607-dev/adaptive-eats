@@ -148,7 +148,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           const { data, error } = await supabase.functions.invoke("generate-ai-meal-plan", {
             body: {
               planName: finalPlanName,
-              startDate: batchStartDate.toISOString().split('T')[0],
+              // Usar data local do usuário (não UTC) para evitar problemas de timezone
+              startDate: `${batchStartDate.getFullYear()}-${String(batchStartDate.getMonth() + 1).padStart(2, '0')}-${String(batchStartDate.getDate()).padStart(2, '0')}`,
               daysCount: daysInThisBatch,
               existingPlanId: mealPlanId,
               weekNumber: batch + 1,

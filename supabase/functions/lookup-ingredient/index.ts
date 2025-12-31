@@ -87,31 +87,35 @@ function isPreparedDish(food: any): boolean {
     return false;
   }
   
-  // Check if name STARTS WITH a safe base ingredient - allow these through
-  for (const safe of SAFE_BASE_INGREDIENTS) {
-    const safeNormalized = normalizeText(safe);
-    if (nameNormalized.startsWith(safeNormalized)) {
-      // This is a variation of a base ingredient, allow it
-      return false;
-    }
-  }
-  
-  // Check for prepared dish patterns
-  for (const pattern of PREPARED_DISH_PATTERNS) {
-    if (nameLower.includes(pattern)) {
-      return true;
-    }
-  }
-  
-  // Check for "ingredient + ingredient" combinations (e.g., "Arroz com Feijão")
-  // This pattern: "Food com Food" or "Food, c/ Food" indicates a prepared dish
+  // FIRST: Check for combination patterns - these are ALWAYS prepared dishes
+  // Check for "ingredient + ingredient" combinations (e.g., "Arroz com Feijão", "Arroz com Pequi")
   const comboPatterns = [
     /\w+\s+com\s+\w+/i,    // "X com Y"
     /\w+,?\s*c\/\s*\w+/i,  // "X, c/ Y" or "X c/ Y"
+    /\w+\s+e\s+\w+/i,      // "X e Y"
   ];
   
   for (const regex of comboPatterns) {
     if (regex.test(nameLower)) {
+      return true; // It's a prepared dish, filter it out
+    }
+  }
+  
+  // Check if name STARTS WITH a safe base ingredient
+  // Only allow if it doesn't match prepared patterns
+  for (const safe of SAFE_BASE_INGREDIENTS) {
+    const safeNormalized = normalizeText(safe);
+    if (nameNormalized.startsWith(safeNormalized)) {
+      // Check if it has preparation patterns (cozido, frito, etc.)
+      // These are allowed for base ingredients (arroz cozido, feijão cozido)
+      // because they're still the same base ingredient, just prepared
+      return false;
+    }
+  }
+  
+  // Check for prepared dish patterns (for non-base ingredients)
+  for (const pattern of PREPARED_DISH_PATTERNS) {
+    if (nameLower.includes(pattern)) {
       return true;
     }
   }

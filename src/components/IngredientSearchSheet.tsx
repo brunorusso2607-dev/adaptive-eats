@@ -3,7 +3,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Search, Plus, Loader2, Sparkles, PenLine, AlertTriangle, Flame, Database, Globe, Link2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Search, Plus, Loader2, Sparkles, PenLine, AlertTriangle, Flame, Database, Globe, Link2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLookupIngredient } from "@/hooks/useLookupIngredient";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
@@ -84,6 +85,11 @@ export default function IngredientSearchSheet({
   const [showAISuggestions, setShowAISuggestions] = useState(false);
   const [isAnalyzingIntolerance, setIsAnalyzingIntolerance] = useState(false);
   const [showManualModal, setShowManualModal] = useState(false);
+  
+  // Estado para seleção de porção (fluxo em 2 passos)
+  const [selectedFood, setSelectedFood] = useState<LookupFood | null>(null);
+  const [portionGrams, setPortionGrams] = useState<number>(100);
+  const [portionSuggestion, setPortionSuggestion] = useState<string>("");
 
   const { lookup, reset, results, source, isLoading } = useLookupIngredient();
   const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
@@ -107,6 +113,9 @@ export default function IngredientSearchSheet({
       reset();
       setAiSuggestions([]);
       setShowAISuggestions(false);
+      setSelectedFood(null);
+      setPortionGrams(100);
+      setPortionSuggestion("");
     }
   }, [open, reset]);
 
@@ -115,6 +124,8 @@ export default function IngredientSearchSheet({
     const timer = setTimeout(() => {
       if (searchQuery.length >= 2) {
         lookup(searchQuery, 10);
+        // Limpar seleção ao buscar novamente
+        setSelectedFood(null);
       } else {
         reset();
       }
@@ -199,9 +210,15 @@ export default function IngredientSearchSheet({
     };
   };
 
-  const handleSelectFood = useCallback(async (food: LookupFood) => {
-    if (!originalIngredient) return;
+  // Passo 1: Selecionar alimento e expandir para mostrar porção
+  const handleSelectFoodForPortion = useCallback(async (food: LookupFood) => {
+    // Se já está selecionado, desmarcar
+    if (selectedFood?.id === food.id) {
+      setSelectedFood(null);
+      return;
+    }
 
+    // Verificar conflitos
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
@@ -220,10 +237,31 @@ export default function IngredientSearchSheet({
       }
     }
 
-    const ingredientResult = convertFoodToIngredientResult(food);
-    onSubstitute(ingredientResult, originalIngredient.item, null);
+    // Obter sugestão de porção
+    const serving = suggestServingByName(food.name);
+    const defaultPortion = food.default_serving_size || serving.defaultServingSize;
+    
+    setSelectedFood(food);
+    setPortionGrams(defaultPortion);
+    setPortionSuggestion(`${defaultPortion}${food.serving_unit || 'g'} (${serving.description})`);
+  }, [selectedFood, checkFoodConflicts, hasIntolerances, analyzeWithAI]);
+
+  // Passo 2: Confirmar substituição com a porção definida
+  const handleConfirmSubstitution = useCallback(() => {
+    if (!originalIngredient || !selectedFood) return;
+
+    const ingredientResult = convertFoodToIngredientResult(selectedFood);
+    
+    // Criar resultado com os valores ajustados para a porção selecionada
+    const multiplier = portionGrams / 100;
+    const adjustedResult: IngredientResult = {
+      ...ingredientResult,
+      // Os valores per_100g permanecem, mas podemos passar informação extra se necessário
+    };
+    
+    onSubstitute(adjustedResult, originalIngredient.item, null);
     onOpenChange(false);
-  }, [checkFoodConflicts, hasIntolerances, analyzeWithAI, onSubstitute, originalIngredient, onOpenChange]);
+  }, [selectedFood, portionGrams, onSubstitute, originalIngredient, onOpenChange]);
 
   const handleAddAISuggestion = async (suggestion: AISuggestion) => {
     if (!originalIngredient) return;
@@ -294,9 +332,8 @@ export default function IngredientSearchSheet({
         );
       }
 
-      const ingredientResult = convertFoodToIngredientResult(food);
-      onSubstitute(ingredientResult, originalIngredient.item, null);
-      onOpenChange(false);
+      // Usar o mesmo fluxo de seleção com porção
+      handleSelectFoodForPortion(food);
     } catch (error) {
       console.error("Error adding AI suggestion:", error);
       toast.error("Erro ao adicionar alimento");
@@ -317,6 +354,17 @@ export default function IngredientSearchSheet({
     
     onSubstitute(ingredientResult, originalIngredient.item, null);
     onOpenChange(false);
+  };
+
+  // Calcular macros para a porção selecionada
+  const calculateMacrosForPortion = (food: LookupFood, grams: number) => {
+    const multiplier = grams / 100;
+    return {
+      calories: Math.round(food.calories_per_100g * multiplier),
+      protein: Math.round(food.protein_per_100g * multiplier * 10) / 10,
+      carbs: Math.round(food.carbs_per_100g * multiplier * 10) / 10,
+      fat: Math.round(food.fat_per_100g * multiplier * 10) / 10,
+    };
   };
 
   if (!originalIngredient) return null;
@@ -391,45 +439,135 @@ export default function IngredientSearchSheet({
                 {/* Lookup results */}
                 {results.map((food) => {
                   const conflict = checkFoodConflicts(food.name);
+                  const isSelected = selectedFood?.id === food.id;
+                  const macros = isSelected ? calculateMacrosForPortion(food, portionGrams) : null;
+                  
                   return (
-                    <button
+                    <div
                       key={food.id}
-                      onClick={() => handleSelectFood(food)}
-                      disabled={isAnalyzingIntolerance}
                       className={cn(
-                        "w-full flex items-center justify-between p-3 bg-card border rounded-lg hover:bg-muted/50 transition-colors text-left",
-                        conflict && "border-amber-500/50 bg-amber-500/5"
+                        "w-full bg-card border rounded-lg transition-all overflow-hidden",
+                        conflict && "border-amber-500/50 bg-amber-500/5",
+                        isSelected && "border-primary ring-1 ring-primary/20"
                       )}
                     >
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          {isAnalyzingIntolerance ? (
-                            <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
-                          ) : (
-                            <Plus className="w-4 h-4 text-primary flex-shrink-0" />
-                          )}
-                          <span className="text-sm font-medium truncate">{food.name}</span>
-                          {food.is_verified && (
-                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
-                              ✓
+                      {/* Header do card - clicável para expandir */}
+                      <button
+                        onClick={() => handleSelectFoodForPortion(food)}
+                        disabled={isAnalyzingIntolerance}
+                        className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors text-left"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            {isAnalyzingIntolerance ? (
+                              <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
+                            ) : isSelected ? (
+                              <Check className="w-4 h-4 text-primary flex-shrink-0" />
+                            ) : (
+                              <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+                            )}
+                            <span className="text-sm font-medium truncate">{food.name}</span>
+                            {food.is_verified && (
+                              <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                ✓
+                              </span>
+                            )}
+                          </div>
+                          <div className="flex items-center gap-2 ml-6 mt-1 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Flame className="w-3 h-3 text-orange-500" />
+                              {food.calories_per_100g} kcal/100g
+                            </span>
+                            <SourceBadge source={food.source} />
+                          </div>
+                          {conflict && (
+                            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                              <AlertTriangle className="w-3 h-3" />
+                              Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
                             </span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2 ml-6 mt-1 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Flame className="w-3 h-3 text-orange-500" />
-                            {food.calories_per_100g} kcal/100g
-                          </span>
-                          <SourceBadge source={food.source} />
+                        <div className="flex-shrink-0 ml-2">
+                          {isSelected ? (
+                            <ChevronUp className="w-4 h-4 text-muted-foreground" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                          )}
                         </div>
-                        {conflict && (
-                          <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
-                            <AlertTriangle className="w-3 h-3" />
-                            Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
-                          </span>
-                        )}
-                      </div>
-                    </button>
+                      </button>
+
+                      {/* Seção expandida com seleção de porção */}
+                      {isSelected && (
+                        <div className="px-3 pb-3 border-t bg-muted/30 space-y-3">
+                          {/* Sugestão de porção */}
+                          {portionSuggestion && (
+                            <button
+                              onClick={() => {
+                                const serving = suggestServingByName(food.name);
+                                setPortionGrams(food.default_serving_size || serving.defaultServingSize);
+                              }}
+                              className="w-full flex items-center justify-between p-2 mt-2 rounded-lg bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors"
+                            >
+                              <span className="flex items-center gap-2 text-sm">
+                                <Sparkles className="w-4 h-4 text-primary" />
+                                <span className="text-muted-foreground">Sugestão:</span>
+                                <span className="font-medium text-foreground">{portionSuggestion}</span>
+                              </span>
+                              <span className="text-xs text-primary font-medium">Aplicar</span>
+                            </button>
+                          )}
+
+                          {/* Input de porção */}
+                          <div className="flex items-center gap-3">
+                            <div className="flex-1">
+                              <label className="text-xs text-muted-foreground mb-1 block">Quantidade</label>
+                              <div className="flex items-center gap-2">
+                                <Input
+                                  type="number"
+                                  value={portionGrams}
+                                  onChange={(e) => setPortionGrams(Number(e.target.value) || 0)}
+                                  className="h-9 text-center"
+                                  min={1}
+                                />
+                                <span className="text-sm text-muted-foreground">{food.serving_unit || 'g'}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Preview dos macros calculados */}
+                          {macros && (
+                            <div className="grid grid-cols-4 gap-2 text-center">
+                              <div className="p-2 rounded-lg bg-background border">
+                                <div className="text-xs text-muted-foreground">Calorias</div>
+                                <div className="font-semibold text-sm text-orange-500">{macros.calories}</div>
+                              </div>
+                              <div className="p-2 rounded-lg bg-background border">
+                                <div className="text-xs text-muted-foreground">Prot</div>
+                                <div className="font-semibold text-sm text-blue-500">{macros.protein}g</div>
+                              </div>
+                              <div className="p-2 rounded-lg bg-background border">
+                                <div className="text-xs text-muted-foreground">Carbs</div>
+                                <div className="font-semibold text-sm text-amber-500">{macros.carbs}g</div>
+                              </div>
+                              <div className="p-2 rounded-lg bg-background border">
+                                <div className="text-xs text-muted-foreground">Gord</div>
+                                <div className="font-semibold text-sm text-red-500">{macros.fat}g</div>
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Botão de confirmar */}
+                          <Button 
+                            onClick={handleConfirmSubstitution}
+                            className="w-full"
+                            size="sm"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Confirmar Substituição
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   );
                 })}
 

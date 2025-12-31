@@ -574,8 +574,11 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         </label>
         <div className="grid grid-cols-7 gap-1">
           {currentWeekData?.days.map((day, index) => {
-            // If day is not in month, render empty placeholder to maintain grid
-            if (!day.isInMonth) {
+            // Verificar se o dia é anterior ao start_date do plano - NÃO RENDERIZAR
+            const isDayBeforePlanStart = day.date < planStartDate;
+            
+            // If day is not in month OR before plan start, render empty placeholder
+            if (!day.isInMonth || isDayBeforePlanStart) {
               return <div key={`empty-${index}`} className="min-h-[60px]" />;
             }
 
@@ -586,9 +589,7 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             const hasMeals = getDayMeals(day).length > 0;
             const isToday = day.isToday;
 
-            // Verificar se o dia é anterior ao start_date do plano
-            const isDayBeforePlanStart = day.date < planStartDate;
-            const isPastDay = day.isPast || isDayBeforePlanStart;
+            const isPastDay = day.isPast;
 
             return (
               <button

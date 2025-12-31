@@ -12,7 +12,8 @@ import {
   type MealStatus,
   MEAL_LABELS,
   getMealStatus,
-  getMinutesOverdue
+  getMinutesOverdue,
+  isMealActiveNow
 } from "@/hooks/usePendingMeals";
 import MealDetailSheet from "./MealDetailSheet";
 import MealSubstanceBadges from "./MealSubstanceBadges";
@@ -33,17 +34,19 @@ interface PendingMealCardProps {
 }
 
 // Status colors (fixed)
+// - "active" = refeição dentro da janela de tempo (AGORA) = card branco
+// - "overdue" = refeição fora da janela (atrasada) = card cinza claro
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
+  active: { backgroundColor: '#FFFFFF', color: 'hsl(var(--primary))', borderColor: 'hsl(var(--primary) / 0.3)' },
+  overdue: { backgroundColor: 'hsl(var(--muted) / 0.5)', color: 'rgba(239, 68, 68, 1)', borderColor: 'hsl(var(--border))' },
   on_time: { backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'rgba(34, 197, 94, 1)', borderColor: 'rgba(34, 197, 94, 0.3)' },
-  alert: { backgroundColor: '#FFFFFF', color: 'rgba(217, 119, 6, 1)', borderColor: 'rgba(251, 191, 36, 0.5)' },
-  late: { backgroundColor: '#FFFFFF', color: 'rgba(239, 68, 68, 1)', borderColor: 'rgba(239, 68, 68, 0.5)' },
 };
 
 // Map internal status to style keys
 const statusToStyleKey: Record<MealStatus, string> = {
   on_time: "on_time",
-  delayed: "alert",
-  critical: "late",
+  delayed: "overdue",
+  critical: "overdue",
   completed: "on_time",
 };
 
@@ -73,15 +76,19 @@ export default function PendingMealCard({
   const minutesOverdueValue = externalMinutesOverdue ?? getMinutesOverdue(meal.meal_type, meal.actual_date);
   const mealLabel = MEAL_LABELS[meal.meal_type] || meal.meal_type;
   
+  // Verifica se a refeição está ATIVA agora (dentro da janela de tempo)
+  // Esta é a mesma lógica usada no MealPlanCalendar para mostrar "AGORA"
+  const isActiveNow = isMealActiveNow(meal.meal_type, meal.actual_date);
+  
   // Determina se pode trocar - apenas refeições do dia atual (on_time ou delayed, mas não critical/passadas)
   const canSwap = mealStatus === "on_time" || mealStatus === "delayed";
   
   // Refeição passada = status crítico (não pode substituir ingredientes)
   const isPastMeal = mealStatus === "critical";
 
-  // Get fixed colors
-  const styleKey = statusToStyleKey[mealStatus];
-  const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.on_time;
+  // Get fixed colors - usa "active" se está dentro da janela, senão usa o mapeamento padrão
+  const styleKey = isActiveNow ? "active" : statusToStyleKey[mealStatus];
+  const statusStyles = STATUS_STYLES[styleKey] || STATUS_STYLES.overdue;
   
   // Get day abbreviation and formatted date (day/month)
   const dayAbbrev = DAY_LABELS[meal.day_of_week];
@@ -151,15 +158,15 @@ export default function PendingMealCard({
               <div 
                 className={cn(
                   "w-12 h-12 rounded-xl flex items-center justify-center shrink-0 transition-colors",
-                  mealStatus === "critical" || mealStatus === "delayed"
-                    ? "bg-muted" 
-                    : "gradient-primary"
+                  isActiveNow
+                    ? "gradient-primary"
+                    : "bg-muted"
                 )}
               >
-                {mealStatus === "critical" || mealStatus === "delayed" ? (
-                  <UtensilsCrossed className="w-6 h-6 text-muted-foreground" />
-                ) : (
+                {isActiveNow ? (
                   <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
+                ) : (
+                  <UtensilsCrossed className="w-6 h-6 text-muted-foreground" />
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -170,26 +177,24 @@ export default function PendingMealCard({
                   <span className="text-xs font-medium text-muted-foreground">
                     {mealLabel}
                   </span>
-                  {mealStatus === "critical" && minutesOverdueValue > 0 && (
+                  {/* Tag "Agora" para refeições dentro da janela de tempo */}
+                  {isActiveNow && (
+                    <span 
+                      className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary text-primary-foreground font-medium"
+                    >
+                      Agora
+                    </span>
+                  )}
+                  {/* Tag com tempo atrás para refeições atrasadas (fora da janela) */}
+                  {!isActiveNow && (mealStatus === "critical" || mealStatus === "delayed") && minutesOverdueValue > 0 && (
                     <span 
                       className="text-[10px] px-1.5 py-0.5 rounded-full"
                       style={{
-                        backgroundColor: statusStyles.backgroundColor,
-                        color: statusStyles.color,
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        color: 'rgba(239, 68, 68, 1)',
                       }}
                     >
                       {formatOverdue(minutesOverdueValue)}
-                    </span>
-                  )}
-                  {mealStatus === "delayed" && (
-                    <span 
-                      className="text-[10px] px-1.5 py-0.5 rounded-full"
-                      style={{
-                        backgroundColor: statusStyles.backgroundColor,
-                        color: statusStyles.color,
-                      }}
-                    >
-                      Atrasado
                     </span>
                   )}
                 </div>

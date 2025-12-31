@@ -87,34 +87,55 @@ function isPreparedDish(food: any): boolean {
     return false;
   }
   
-  // FIRST: Check for combination patterns - these are ALWAYS prepared dishes
-  // Check for "ingredient + ingredient" combinations (e.g., "Arroz com Feijão", "Arroz com Pequi")
-  const comboPatterns = [
-    /\w+\s+com\s+\w+/i,    // "X com Y"
-    /\w+,?\s*c\/\s*\w+/i,  // "X, c/ Y" or "X c/ Y"
-    /\w+\s+e\s+\w+/i,      // "X e Y"
+  // CRITICAL: Check for combination patterns FIRST - these are ALWAYS prepared dishes
+  // Must check before base ingredients since "Arroz com Feijão" starts with "Arroz"
+  
+  // Pattern 1: "X com Y" - ingredient combinations (arroz com feijão, arroz com brócolis)
+  if (/\s+com\s+/i.test(nameLower)) {
+    return true;
+  }
+  
+  // Pattern 2: "X, c/ Y" or "X c/ Y" - abbreviated combinations
+  if (/\s*c\/\s*/i.test(nameLower)) {
+    return true;
+  }
+  
+  // Pattern 3: Prepared dish names (grega, carreteiro, caipira, etc.)
+  const preparedDishNames = [
+    'grega', 'carreteiro', 'caipira', 'chop suey', 'chopsuey', 'cabidela',
+    'tropeiro', 'baiao', 'galinhada', 'risoto', 'risotto', 'paella',
+    'feijoada', 'strogonoff', 'stroganoff', 'yakisoba', 'yakissoba',
+    'carbonara', 'lasanha', 'lasagna', 'macarronada', 'moqueca',
+    'bobo', 'vatapa', 'acaraje', 'escondidinho', 'virado', 'tutu',
+    'canjica', 'cuscuz paulista', 'cuscuz nordestino', 'torta de',
+    'casserole', 'stew', 'curry', 'stir-fry', 'chili con'
   ];
   
-  for (const regex of comboPatterns) {
-    if (regex.test(nameLower)) {
-      return true; // It's a prepared dish, filter it out
+  for (const dish of preparedDishNames) {
+    if (nameLower.includes(dish)) {
+      return true;
     }
   }
   
   // Check if name STARTS WITH a safe base ingredient
-  // Only allow if it doesn't match prepared patterns
+  // Allow variations like "Arroz integral", "Arroz polido", "Feijão preto"
   for (const safe of SAFE_BASE_INGREDIENTS) {
     const safeNormalized = normalizeText(safe);
     if (nameNormalized.startsWith(safeNormalized)) {
-      // Check if it has preparation patterns (cozido, frito, etc.)
-      // These are allowed for base ingredients (arroz cozido, feijão cozido)
-      // because they're still the same base ingredient, just prepared
+      // This is a variation of a base ingredient, allow it
       return false;
     }
   }
   
-  // Check for prepared dish patterns (for non-base ingredients)
-  for (const pattern of PREPARED_DISH_PATTERNS) {
+  // Check for other prepared dish patterns (for non-base ingredients)
+  const otherPreparedPatterns = [
+    'recheado', 'recheada', 'preparado', 'preparada', 'pronto', 'pronta',
+    'caseiro', 'caseira', 'tradicional', 'ao molho', 'gratinado', 'gratinada',
+    'empanado', 'empanada', 'milanesa', 'parmegiana', 'dore', 'romana',
+    'bolonhesa', 'homemade', 'with sauce', 'with gravy', 'stuffed'
+  ];
+  
+  for (const pattern of otherPreparedPatterns) {
     if (nameLower.includes(pattern)) {
       return true;
     }

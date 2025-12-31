@@ -66,7 +66,7 @@ const SAFE_BASE_INGREDIENTS = [
   'salmao', 'tilapia', 'atum', 'sardinha', 'bacalhau', 'camarao',
 ];
 
-const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche', 'graos', 'cereais'];
+const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
 
 function normalizeText(text: string): string {
   return text
@@ -82,21 +82,16 @@ function isPreparedDish(food: any): boolean {
   const nameNormalized = normalizeText(name);
   const categoryLower = (food.category || '').toLowerCase();
   
-  // Allow fast-food category and base ingredient categories
-  if (ALLOWED_PREPARED_CATEGORIES.some(cat => categoryLower.includes(cat))) {
-    return false;
-  }
-  
   // CRITICAL: Check for combination patterns FIRST - these are ALWAYS prepared dishes
-  // Must check before base ingredients since "Arroz com Feijão" starts with "Arroz"
+  // Must check BEFORE any category exceptions
   
   // Pattern 1: "X com Y" - ingredient combinations (arroz com feijão, arroz com brócolis)
   if (/\s+com\s+/i.test(nameLower)) {
     return true;
   }
   
-  // Pattern 2: "X, c/ Y" or "X c/ Y" - abbreviated combinations
-  if (/\s*c\/\s*/i.test(nameLower)) {
+  // Pattern 2: ", c/" or " c/" - abbreviated combinations  
+  if (/,?\s*c\/\s*/i.test(nameLower)) {
     return true;
   }
   
@@ -108,13 +103,19 @@ function isPreparedDish(food: any): boolean {
     'carbonara', 'lasanha', 'lasagna', 'macarronada', 'moqueca',
     'bobo', 'vatapa', 'acaraje', 'escondidinho', 'virado', 'tutu',
     'canjica', 'cuscuz paulista', 'cuscuz nordestino', 'torta de',
-    'casserole', 'stew', 'curry', 'stir-fry', 'chili con'
+    'casserole', 'stew', 'curry', 'stir-fry', 'chili con',
+    'doce', 'de brocolis', 'de brócolis'
   ];
   
   for (const dish of preparedDishNames) {
     if (nameLower.includes(dish)) {
       return true;
     }
+  }
+  
+  // NOW check for allowed categories (fast-food, etc.) - but only after ruling out combinations
+  if (ALLOWED_PREPARED_CATEGORIES.some(cat => categoryLower.includes(cat))) {
+    return false;
   }
   
   // Check if name STARTS WITH a safe base ingredient

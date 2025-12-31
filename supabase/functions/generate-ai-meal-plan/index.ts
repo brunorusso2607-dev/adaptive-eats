@@ -326,13 +326,30 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - Iogurtes (consumidos à parte)
 
 ⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
-- LÍQUIDOS (água, sucos, chás, leite, caldos, sopas): usar "xícara", "copo", "ml"
+- LÍQUIDOS (água, sucos, chás, leite, caldos, sopas): usar "xícara", "copo" ou "ml" - NUNCA "grams" para bebidas!
 - PROTEÍNAS (carnes, peixes, frango): usar "filé", "pedaço", "porção"
 - OVOS: usar "unidade" (ex: "2 ovos cozidos")
 - GRÃOS/ARROZ/MASSAS: usar "colher de sopa", "colher de servir", "porção"
 - VEGETAIS SÓLIDOS (brócolis, cenoura, alface): usar "porção", "folhas", "floretes", "ramos" (NUNCA "xícara")
 - FRUTAS: usar "unidade" + tamanho (ex: "1 banana média", "1 maçã pequena")
 - GORDURAS/ÓLEOS: usar "colher de sopa", "colher de chá"
+
+🔴🔴🔴 REGRA CRÍTICA DE ORDEM DOS INGREDIENTES (foods):
+==========================================================
+A ordem dos ingredientes em "foods" DEVE seguir SEMPRE esta sequência:
+1️⃣ PRIMEIRO: Pratos principais (proteínas, preparações cozidas)
+2️⃣ SEGUNDO: Acompanhamentos (arroz, saladas, legumes)
+3️⃣ TERCEIRO: Condimentos (azeite, limão)
+4️⃣ PENÚLTIMO: Frutas (banana, maçã, laranja)
+5️⃣ ÚLTIMO: Bebidas (chá, café, suco) - SEMPRE no final da lista!
+
+Exemplo CORRETO de ordem:
+[
+  {"name": "Omelete de claras com espinafre", "grams": 200},
+  {"name": "2 fatias de pão integral", "grams": 60},
+  {"name": "1 banana média", "grams": 120},
+  {"name": "1 xícara de chá verde (sem açúcar)", "grams": 200}
+]
 
 ==========================================================
 🍽️ REGRAS DE COERÊNCIA CULINÁRIA (CRÍTICO):
@@ -344,25 +361,32 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - ERRADO: Sopa de legumes + Arroz branco + Salada de alface ❌
 - CERTO: Sopa de legumes com macarrão integral + Torrada integral ✓
 
-2️⃣ BEBIDAS POR TIPO DE REFEIÇÃO:
+2️⃣ BEBIDAS POR TIPO DE REFEIÇÃO (VARIEDADE OBRIGATÓRIA):
 - CAFÉ DA MANHÃ: café, chá, leite, suco natural, vitamina
 - ALMOÇO: NÃO incluir bebidas calóricas - substituir por alimento real (fruta, salada extra)
 - LANCHE DA TARDE: chá, café, suco natural, água de coco
 - JANTAR: NÃO incluir bebidas calóricas - substituir por alimento real (fruta, salada extra)
-- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão), leite morno
+- CEIA: chás calmantes (camomila, erva-cidreira, capim-limão, melissa, hortelã), leite morno
 - NUNCA incluir chás calmantes (camomila, erva-cidreira) no almoço ou jantar
 
-⚠️ REGRA DE BEBIDAS PARA REFEIÇÕES PRINCIPAIS (ALMOÇO/JANTAR):
+🚫🚫🚫 REGRA ANTI-REPETIÇÃO DE BEBIDAS (CRÍTICO):
+- VARIAR os tipos de chá a cada refeição do dia: NÃO repetir "chá verde" em múltiplas refeições
+- Se usou chá verde no café da manhã → usar chá de hibisco, hortelã, erva-doce no lanche
+- Se usou chá de camomila na ceia anterior → usar chá de erva-cidreira, melissa, mulungu
+- ALTERNAR: chá verde ↔ hibisco ↔ hortelã ↔ gengibre ↔ erva-doce ↔ canela ↔ frutas vermelhas
+
+⚠️ REGRA DE BEBIDAS - NÃO INCLUIR NO ALMOÇO/JANTAR:
 - NÃO incluir bebidas no cardápio do almoço e jantar
 - Substituir bebidas por ALIMENTO REAL (ex: fruta de sobremesa, porção extra de salada)
 - NOTA: Hidratação fica a critério do usuário (água, suco sem açúcar ou refrigerante zero)
 - A IA gera o PLANO ALIMENTAR, não impõe preferências de bebidas
 
-3️⃣ APRESENTAÇÃO DE FRUTAS:
-- No ALMOÇO e JANTAR: servir frutas INTEIRAS como sobremesa (fibras + saciedade)
-- CERTO: "1 laranja média" como sobremesa ✓
-- CERTO: "1 fatia média de melancia" ✓
-- Frutas podem ser servidas inteiras em qualquer refeição
+3️⃣ APRESENTAÇÃO DE FRUTAS (CONTEXTO OBRIGATÓRIO):
+- Frutas são itens SEPARADOS, listados nos "foods", mas com CONTEXTO nas instruções
+- Nas instruções: mencionar "Consuma a fruta como sobremesa" ou "Coma junto com a refeição"
+- NÃO deixar frutas sem contexto - o usuário precisa saber quando/como consumir
+- CERTO: "1 laranja média" em foods + instrução "Finalize com a laranja como sobremesa"
+- ERRADO: "1 limão" sem contexto de uso ❌
 
 4️⃣ COERÊNCIA DE TEMPERATURA:
 - Refeições QUENTES (sopas, caldos, pratos cozidos): acompanhamentos neutros ou quentes
@@ -374,6 +398,15 @@ ITENS QUE PERMANECEM SEPARADOS (consumidos independentemente):
 - Arroz/grãos: servir COM proteínas grelhadas/assadas, NUNCA junto com sopas
 - Saladas cruas: combinar com pratos secos (grelhados, assados), NUNCA com caldos/sopas
 - Pães/torradas: funcionam como acompanhamento universal neutro
+
+==========================================================
+🚫 REGRA ANTI-REPETIÇÃO DE PROTEÍNAS NO MESMO DIA (CRÍTICO):
+==========================================================
+- NÃO usar a MESMA proteína em múltiplas refeições do mesmo dia
+- Se usou TOFU no café da manhã → NÃO usar tofu no almoço/jantar/ceia
+- Se usou FRANGO no almoço → usar PEIXE ou CARNE ou OVO no jantar
+- Proteínas DEVEM variar: tofu ↔ grão-de-bico ↔ lentilha ↔ ovos ↔ frango ↔ peixe ↔ carne
+- CEIA com proteína é PROIBIDO: ceia deve ter apenas chá, fruta ou iogurte
 
 ==========================================================
 📊 REGRA DE COMPLEXIDADE GRADUAL (CRÍTICO):
@@ -412,6 +445,22 @@ Opção 1: "Atum grelhado com arroz e salada verde" ✓
 Opção 2: "Atum em conserva com quinoa e legumes" ✓
 Opção 3: "Salada completa com atum, grão-de-bico, rúcula, tomate e quinoa" ✓
 
+==========================================================
+📝 REGRA DE INSTRUÇÕES - CONTEXTUALIZAR TODOS OS ITENS (CRÍTICO):
+==========================================================
+As instruções DEVEM dar contexto para CADA item em "foods":
+- Se há fruta: mencionar "Consuma a [fruta] como sobremesa" ou "junto à refeição"
+- Se há bebida: mencionar "Sirva o [chá/café] ao final" (a menos que seja café da manhã)
+- Se há limão: mencionar "Use o limão para temperar a salada" ou "esprema sobre o peixe"
+
+ERRADO (ingrediente sem contexto):
+foods: [..., {"name": "1 limão", "grams": 50}]
+instructions: ["Grelhe o frango.", "Monte o prato."] ❌ Limão fica solto!
+
+CERTO (todos contextualizados):
+foods: [..., {"name": "Suco de 1/2 limão para temperar", "grams": 30}]
+instructions: ["Grelhe o frango.", "Tempere a salada com o suco do limão.", "Monte o prato."] ✓
+
 Exemplos CORRETOS:
 {"name": "Omelete de claras com espinafre e tomate", "grams": 310}
 {"name": "Frango grelhado com legumes salteados", "grams": 280}
@@ -419,8 +468,8 @@ Exemplos CORRETOS:
 {"name": "1 banana média", "grams": 120}
 {"name": "1 xícara de chá verde (sem açúcar)", "grams": 200}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
-{"name": "1 copo de água com limão", "grams": 250}
-{"name": "1 copo de água de coco", "grams": 250}
+{"name": "1 copo de água com limão (250ml)", "grams": 250}
+{"name": "1 copo de água de coco (250ml)", "grams": 250}
 
 Exemplos INCORRETOS (NÃO FAZER):
 {"name": "3 claras de ovo mexidas", "grams": 150} + {"name": "1 xícara de espinafre", "grams": 80} ❌ (preparados juntos!)
@@ -431,6 +480,8 @@ Exemplos INCORRETOS (NÃO FAZER):
 {"name": "Sopa quente", "grams": 300} + {"name": "Salada de alface", "grams": 100} ❌ (incoerência de temperatura)
 {"name": "1 copo de suco de laranja", "grams": 250} no almoço/jantar ❌ (bebida calórica - usar fruta inteira)
 {"name": "Chá de camomila", "grams": 200} no almoço ❌ (camomila é para ceia)
+{"name": "Mix de frutas com sementes", "grams": 150} ❌ (QUAIS frutas? Seja específico!)
+{"name": "1 limão", "grams": 50} ❌ (limão para quê? Dar contexto!)
 
 Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;
 

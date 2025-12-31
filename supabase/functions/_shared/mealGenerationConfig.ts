@@ -3298,7 +3298,7 @@ export function updateMealTitleIfNeeded(
 
 /**
  * Categorias de alimentos para ordenação
- * Ordem: 1-Prato Principal, 2-Acompanhamentos, 3-Condimentos, 4-Frutas/Sobremesas
+ * Ordem: 1-Prato Principal, 2-Acompanhamentos, 3-Condimentos, 4-Frutas/Sobremesas, 5-Bebidas (SEMPRE ÚLTIMO)
  */
 const FOOD_CATEGORY_PATTERNS = {
   // Categoria 1: Pratos principais (proteínas, pratos quentes)
@@ -3368,7 +3368,7 @@ const FOOD_CATEGORY_PATTERNS = {
     /homus|hummus/i,
   ],
   
-  // Categoria 4: Frutas e sobremesas (SEMPRE POR ÚLTIMO)
+  // Categoria 4: Frutas e sobremesas
   fruitsAndDesserts: [
     /banana/i,
     /maçã|maca/i,
@@ -3394,6 +3394,17 @@ const FOOD_CATEGORY_PATTERNS = {
     /sobremesa/i,
     /fruta/i,
   ],
+  
+  // Categoria 5: Bebidas (SEMPRE POR ÚLTIMO)
+  beverages: [
+    /chá|cha\b/i,
+    /café|cafe/i,
+    /suco/i,
+    /leite(?!.*coco)/i, // Leite mas não leite de coco
+    /água|agua/i,
+    /infusão|infusao/i,
+    /água.*coco|agua.*coco/i,
+  ],
 };
 
 /**
@@ -3403,7 +3414,16 @@ const FOOD_CATEGORY_PATTERNS = {
 function getFoodSortCategory(foodName: string): number {
   const normalizedName = foodName.toLowerCase();
   
-  // Verificar se é fruta/sobremesa (categoria 4 - ÚLTIMA)
+  // Verificar se é bebida (categoria 5 - SEMPRE ÚLTIMA)
+  if (FOOD_CATEGORY_PATTERNS.beverages.some(p => p.test(normalizedName))) {
+    // Exceção: vitaminas e shakes são pratos principais
+    const isMainDishBeverage = /vitamina|smoothie|shake/i.test(normalizedName);
+    if (!isMainDishBeverage) {
+      return 5;
+    }
+  }
+  
+  // Verificar se é fruta/sobremesa (categoria 4 - PENÚLTIMA)
   if (FOOD_CATEGORY_PATTERNS.fruitsAndDesserts.some(p => p.test(normalizedName))) {
     // Exceção: se a fruta está em uma preparação complexa, não mover
     // Ex: "Vitamina de banana" é prato principal, não sobremesa
@@ -3437,7 +3457,8 @@ function getFoodSortCategory(foodName: string): number {
  * 1. Pratos principais (proteínas, preparações quentes)
  * 2. Acompanhamentos (grãos, legumes, saladas)
  * 3. Condimentos (azeite, temperos)
- * 4. Frutas e sobremesas (SEMPRE POR ÚLTIMO)
+ * 4. Frutas e sobremesas
+ * 5. Bebidas (SEMPRE POR ÚLTIMO)
  */
 export function sortMealIngredients(foods: FoodItemWithGrams[]): FoodItemWithGrams[] {
   if (!foods || foods.length <= 1) {

@@ -721,7 +721,14 @@ export default function Dashboard() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : showMealPlan ? (
-            <MealPlanSection key={mealPlanKey} onBack={() => setShowMealPlan(false)} />
+            <MealPlanSection 
+              key={mealPlanKey} 
+              onBack={() => setShowMealPlan(false)} 
+              onPlanDeleted={() => {
+                setHasMealPlan(false);
+                refetchPendingMeals();
+              }}
+            />
           ) : isSubscribed ? (
             showWeightLossSetup ? (
               <WeightGoalSetup

@@ -342,7 +342,81 @@ function estimateMacrosFromAI(item: FoodItem): Omit<CalculatedFoodItem, 'name' |
 }
 
 /**
+ * OTIMIZAÇÃO: Busca em batch para reduzir queries ao banco
+ * Carrega todos os alimentos de uma vez e faz matching local
+ */
+async function batchFindFoodsInDatabase(
+  supabase: any,
+  searchTerms: string[],
+  prioritySources: string[]
+): Promise<Map<string, { food: any; source: 'database' | 'database_global' }>> {
+  const results = new Map<string, { food: any; source: 'database' | 'database_global' }>();
+  
+  if (searchTerms.length === 0) return results;
+  
+  // Criar termos normalizados únicos
+  const uniqueTerms = [...new Set(searchTerms.map(t => normalizeText(t)))];
+  const simplifiedTerms = uniqueTerms.map(t => {
+    // Extrair apenas a palavra principal (primeira palavra significativa)
+    const words = t.split(/\s+/).filter(w => w.length > 2);
+    return words[0] || t;
+  }).filter(t => t.length > 2);
+  
+  const allTermsSet = new Set([...uniqueTerms, ...simplifiedTerms]);
+  const allTerms = [...allTermsSet];
+  
+  // Query única: buscar todos os alimentos que contenham qualquer termo
+  const orConditions = allTerms.slice(0, 20).map(term => 
+    `name_normalized.ilike.%${term}%`
+  ).join(',');
+  
+  const { data: allFoods } = await supabase
+    .from('foods')
+    .select('*')
+    .eq('is_recipe', false)
+    .or(orConditions)
+    .order('is_verified', { ascending: false })
+    .order('search_count', { ascending: false })
+    .limit(200);
+  
+  if (!allFoods || allFoods.length === 0) return results;
+  
+  // Fazer matching local
+  for (const originalTerm of searchTerms) {
+    const normalizedOriginal = normalizeText(originalTerm);
+    
+    // Tentar match exato primeiro
+    let matched = allFoods.find((f: any) => f.name_normalized === normalizedOriginal);
+    
+    // Tentar match parcial
+    if (!matched) {
+      // Priorizar fontes do país
+      matched = allFoods.find((f: any) => 
+        prioritySources.includes(f.source) && 
+        (f.name_normalized.includes(normalizedOriginal) || normalizedOriginal.includes(f.name_normalized))
+      );
+    }
+    
+    // Qualquer match parcial
+    if (!matched) {
+      const words = normalizedOriginal.split(/\s+/).filter(w => w.length > 2);
+      matched = allFoods.find((f: any) => 
+        words.some(word => f.name_normalized.includes(word))
+      );
+    }
+    
+    if (matched) {
+      const source = prioritySources.includes(matched.source) ? 'database' : 'database_global';
+      results.set(originalTerm, { food: matched, source });
+    }
+  }
+  
+  return results;
+}
+
+/**
  * Processa um array de ingredientes e calcula macros reais
+ * VERSÃO OTIMIZADA: Usa busca em batch para reduzir latência
  */
 export async function calculateRealMacrosForFoods(
   supabase: any,
@@ -353,12 +427,22 @@ export async function calculateRealMacrosForFoods(
   let fromDatabase = 0;
   let fromAI = 0;
   
+  // Determinar fontes prioritárias
+  const country = userCountry || 'BR';
+  const prioritySources = COUNTRY_SOURCE_PRIORITY[country] || COUNTRY_SOURCE_PRIORITY['BR'];
+  
+  // Extrair termos de busca de todos os alimentos
+  const allSearchTerms = foods.map(item => item.name);
+  
+  // OTIMIZAÇÃO: Busca em batch única
+  const batchResults = await batchFindFoodsInDatabase(supabase, allSearchTerms, prioritySources);
+  
+  // Processar resultados
   for (const item of foods) {
-    // Busca em cascata: país → global → fallback → IA
-    const match = await findFoodInDatabase(supabase, item.name, userCountry);
+    const match = batchResults.get(item.name);
     
     if (match) {
-      // ✅ Encontrou no banco de dados
+      // ✅ Encontrou no banco de dados (via batch)
       const macros = calculateMacrosForGrams(match.food, item.grams, match.source);
       calculatedItems.push({
         name: item.name,
@@ -367,8 +451,8 @@ export async function calculateRealMacrosForFoods(
       });
       fromDatabase++;
     } else {
-      // ❌ Não encontrou - usar fallback de categoria ou IA com sanity check
-      const estimated = estimateMacrosFromAI(item);
+      // ❌ Não encontrou - usar fallback de categoria (mais rápido que busca individual)
+      const estimated = getCategoryFallbackMacros(item);
       calculatedItems.push({
         name: item.name,
         grams: item.grams,
@@ -379,6 +463,13 @@ export async function calculateRealMacrosForFoods(
   }
   
   const matchRate = foods.length > 0 ? Math.round((fromDatabase / foods.length) * 100) : 0;
+  
+  logStep('Batch calculation complete', { 
+    totalItems: foods.length,
+    fromDb: fromDatabase, 
+    fromFallback: fromAI,
+    matchRate: `${matchRate}%`
+  });
   
   return {
     items: calculatedItems,

@@ -481,15 +481,16 @@ function calculateOptionCalories(foods: FoodItem[]): number {
 }
 
 // ============= VALIDAÇÃO ESTRUTURAL: Coerência Título-Ingredientes =============
-// Lista de ingredientes-chave que devem aparecer no título e nos foods
+// Lista EXPANDIDA de ingredientes-chave que devem aparecer no título e nos foods
 const TITLE_FOOD_KEYWORDS = [
+  // Proteínas
   { titleKey: 'tofu', foodKeys: ['tofu'] },
   { titleKey: 'hamburguer', foodKeys: ['hamburguer', 'burger', 'hambúrguer'] },
   { titleKey: 'hamburger', foodKeys: ['hamburguer', 'burger', 'hambúrguer'] },
   { titleKey: 'wrap', foodKeys: ['wrap', 'tortilla'] },
   { titleKey: 'sanduiche', foodKeys: ['pao', 'sanduiche', 'sanduíche'] },
   { titleKey: 'omelete', foodKeys: ['ovo', 'clara', 'omelete'] },
-  { titleKey: 'espaguete', foodKeys: ['espaguete', 'macarrao', 'massa', 'abobrinha'] },
+  { titleKey: 'espaguete', foodKeys: ['espaguete', 'macarrao', 'massa'] },
   { titleKey: 'salmao', foodKeys: ['salmao', 'salmão'] },
   { titleKey: 'frango', foodKeys: ['frango', 'peito de frango', 'coxa'] },
   { titleKey: 'carne', foodKeys: ['carne', 'bife', 'file', 'filé'] },
@@ -500,6 +501,19 @@ const TITLE_FOOD_KEYWORDS = [
   { titleKey: 'ovo', foodKeys: ['ovo', 'ovos', 'clara'] },
   { titleKey: 'queijo', foodKeys: ['queijo'] },
   { titleKey: 'iogurte', foodKeys: ['iogurte', 'yogurt'] },
+  // Sopas e preparações que PRECISAM do ingrediente principal
+  { titleKey: 'sopa', foodKeys: ['sopa', 'caldo', 'abobora', 'abóbora', 'legume', 'frango', 'carne', 'feijao', 'lentilha', 'ervilha'] },
+  { titleKey: 'creme', foodKeys: ['creme', 'abobora', 'abóbora', 'legume', 'milho', 'espinafre', 'mandioquinha'] },
+  { titleKey: 'pure', foodKeys: ['pure', 'purê', 'batata', 'mandioca', 'mandioquinha', 'abobora'] },
+  { titleKey: 'vitamina', foodKeys: ['vitamina', 'banana', 'morango', 'mamao', 'manga', 'leite', 'iogurte'] },
+  { titleKey: 'mingau', foodKeys: ['mingau', 'aveia', 'tapioca', 'fuba', 'maizena'] },
+  { titleKey: 'salada', foodKeys: ['salada', 'alface', 'rucula', 'tomate', 'pepino', 'folha', 'verdura', 'legume'] },
+  // Preparações com abóbora/gengibre/leite de coco
+  { titleKey: 'abobora', foodKeys: ['abobora', 'abóbora'] },
+  { titleKey: 'gengibre', foodKeys: ['gengibre'] },
+  { titleKey: 'leite de coco', foodKeys: ['leite de coco', 'coco'] },
+  // Torradas (diferente de pão)
+  { titleKey: 'torrada', foodKeys: ['torrada', 'toast'] },
 ];
 
 function validateTitleIngredientCoherence(
@@ -588,6 +602,21 @@ function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
   return foods[0]?.name?.substring(0, 50) || 'Refeição';
 }
 
+// ============= INGREDIENTES ESPECÍFICOS PARA VALIDAÇÃO DE INSTRUÇÕES =============
+const INSTRUCTION_INGREDIENT_KEYWORDS = [
+  'tofu', 'abobora', 'abóbora', 'gengibre', 'leite de coco', 'coco',
+  'frango', 'carne', 'peixe', 'salmao', 'salmão', 'atum', 'sardinha',
+  'ovo', 'ovos', 'clara', 'gema', 'omelete',
+  'arroz', 'feijao', 'feijão', 'lentilha', 'quinoa',
+  'batata', 'mandioca', 'inhame', 'cenoura', 'abobrinha', 'berinjela',
+  'brocolis', 'brócolis', 'couve', 'espinafre', 'repolho',
+  'torrada', 'pao', 'pão', 'wrap', 'tortilla',
+  'queijo', 'iogurte', 'leite', 'creme',
+  'aveia', 'granola', 'tapioca', 'fuba', 'fubá',
+  'banana', 'maca', 'maçã', 'morango', 'mamao', 'mamão', 'manga', 'laranja',
+  'tomate', 'pepino', 'alface', 'rucula', 'rúcula',
+];
+
 // ============= VALIDAR E CORRIGIR INSTRUÇÕES =============
 function validateAndFixInstructions(
   instructions: string[] | undefined,
@@ -597,32 +626,55 @@ function validateAndFixInstructions(
     return [];
   }
   
-  const foodNames = foods.map(f => normalizeText(f.name)).join(' ');
+  // Criar lista de ingredientes presentes nos foods (normalizada)
+  const foodIngredients = new Set<string>();
+  for (const food of foods) {
+    const normalized = normalizeText(food.name);
+    for (const keyword of INSTRUCTION_INGREDIENT_KEYWORDS) {
+      if (normalized.includes(keyword)) {
+        foodIngredients.add(keyword);
+      }
+    }
+  }
+  
   const validInstructions: string[] = [];
   
   for (const instruction of instructions) {
     const normalizedInstruction = normalizeText(instruction);
-    
-    // Verificar se menciona ingrediente que NÃO está nos foods
     let mentionsPhantomIngredient = false;
+    let phantomIngredient = '';
     
-    for (const mapping of TITLE_FOOD_KEYWORDS) {
-      if (normalizedInstruction.includes(mapping.titleKey)) {
-        const hasIngredient = mapping.foodKeys.some(fk => foodNames.includes(fk));
+    // Verificar CADA ingrediente mencionado na instrução
+    for (const keyword of INSTRUCTION_INGREDIENT_KEYWORDS) {
+      if (normalizedInstruction.includes(keyword)) {
+        // Verificar se esse ingrediente existe nos foods
+        const hasIngredient = foodIngredients.has(keyword);
         if (!hasIngredient) {
-          mentionsPhantomIngredient = true;
-          logStep(`⚠️ INSTRUÇÃO INVÁLIDA: "${instruction}" menciona ${mapping.titleKey} que não está nos ingredientes`);
-          break;
+          // Verificar variações (ex: "abobora" vs "abóbora")
+          const variations = [keyword, keyword.replace('ó', 'o').replace('á', 'a').replace('ã', 'a').replace('ç', 'c')];
+          const hasVariation = variations.some(v => 
+            Array.from(foodIngredients).some(fi => fi.includes(v) || v.includes(fi))
+          );
+          
+          if (!hasVariation) {
+            mentionsPhantomIngredient = true;
+            phantomIngredient = keyword;
+            break;
+          }
         }
       }
     }
     
-    if (!mentionsPhantomIngredient) {
+    if (mentionsPhantomIngredient) {
+      logStep(`🚫 INSTRUÇÃO REJEITADA: "${instruction}" menciona "${phantomIngredient}" que NÃO está nos ingredientes`, {
+        ingredientesPresentes: Array.from(foodIngredients),
+      });
+    } else {
       validInstructions.push(instruction);
     }
   }
   
-  // Se removemos muitas instruções, gerar instruções genéricas baseadas nos foods
+  // Se removemos TODAS as instruções, gerar instruções genéricas baseadas nos foods
   if (validInstructions.length === 0 && foods.length > 0) {
     const mainFoods = foods.filter(f => {
       const n = normalizeText(f.name);
@@ -630,11 +682,20 @@ function validateAndFixInstructions(
     });
     
     if (mainFoods.length > 0) {
-      validInstructions.push(`Prepare ${mainFoods[0].name} conforme preferência.`);
-      if (mainFoods.length > 1) {
-        validInstructions.push(`Sirva acompanhado dos demais ingredientes.`);
-      }
+      // Extrair nome limpo do primeiro alimento
+      const firstFoodName = mainFoods[0].name
+        .replace(/^\d+\s*(unidade[s]?|porcao|colher[es]?\s*(de\s*sopa)?)\s*(de\s*)?/gi, '')
+        .trim();
+      
+      validInstructions.push(`Sirva ${firstFoodName} como preferir.`);
+    } else {
+      // Último fallback para frutas/bebidas
+      validInstructions.push('Consumir naturalmente.');
     }
+    
+    logStep(`🔧 INSTRUÇÕES GERADAS AUTOMATICAMENTE para refeição com ${foods.length} alimento(s)`, {
+      novasInstrucoes: validInstructions,
+    });
   }
   
   return validInstructions;
@@ -687,11 +748,28 @@ function validateRealisticMacros(
 function validateMeasureUsage(food: FoodItem): { isCorrect: boolean; fixedName?: string; issue?: string } {
   const name = food.name;
   const normalizedName = normalizeText(name);
-  
-  // Vegetais sólidos NÃO devem usar "xícara" - corrigir para "porção"
-  const solidVegetables = ['brocolis', 'couve', 'espinafre', 'alface', 'rucula', 'agriao', 'repolho', 'cenoura', 'abobrinha', 'berinjela', 'tomate', 'pepino'];
-  const hasSolidVeggie = solidVegetables.some(v => normalizedName.includes(v));
   const usesCupMeasure = normalizedName.includes('xicara') || name.includes('xícara');
+  
+  // ============= ARROZ/GRÃOS NÃO devem usar "xícara" - corrigir para "colher de sopa" =============
+  const grainsFoods = ['arroz', 'quinoa', 'quinua', 'feijao', 'lentilha', 'grao de bico', 'ervilha'];
+  const hasGrain = grainsFoods.some(g => normalizedName.includes(g));
+  
+  if (hasGrain && usesCupMeasure) {
+    // Calcular quantas colheres de sopa baseado na gramagem (1 colher de sopa ≈ 25g)
+    const tablespoons = Math.max(2, Math.round(food.grams / 25));
+    const fixedName = name
+      .replace(/\d+\s*x[íi]cara[s]?\s*(de\s*)?/gi, `${tablespoons} colheres de sopa de `)
+      .replace(/uma\s*x[íi]cara\s*(de\s*)?/gi, `${tablespoons} colheres de sopa de `);
+    return { 
+      isCorrect: false, 
+      fixedName,
+      issue: `Grão/arroz "${name}" deve usar "colher de sopa", não "xícara"`
+    };
+  }
+  
+  // ============= VEGETAIS sólidos NÃO devem usar "xícara" - corrigir para "porção" =============
+  const solidVegetables = ['brocolis', 'couve', 'espinafre', 'alface', 'rucula', 'agriao', 'repolho', 'cenoura', 'abobrinha', 'berinjela', 'tomate', 'pepino', 'legume'];
+  const hasSolidVeggie = solidVegetables.some(v => normalizedName.includes(v));
   
   if (hasSolidVeggie && usesCupMeasure) {
     const fixedName = name
@@ -704,7 +782,22 @@ function validateMeasureUsage(food: FoodItem): { isCorrect: boolean; fixedName?:
     };
   }
   
-  // Gramas duplicados no nome (ex: "100g de atum")
+  // ============= FRUTAS NÃO devem usar "xícara" - corrigir para "unidade" =============
+  const fruits = ['banana', 'maca', 'laranja', 'pera', 'morango', 'mamao', 'manga', 'abacate', 'kiwi', 'uva', 'melancia', 'melao'];
+  const hasFruit = fruits.some(f => normalizedName.includes(f));
+  
+  if (hasFruit && usesCupMeasure) {
+    const fixedName = name
+      .replace(/\d+\s*x[íi]cara[s]?\s*(de\s*)?/gi, '1 unidade média de ')
+      .replace(/uma\s*x[íi]cara\s*(de\s*)?/gi, '1 unidade média de ');
+    return { 
+      isCorrect: false, 
+      fixedName,
+      issue: `Fruta "${name}" deve usar "unidade", não "xícara"`
+    };
+  }
+  
+  // ============= Gramas duplicados no nome (ex: "100g de atum") =============
   const gramsInName = /\d+\s*g\s*(de\s*)?/i.test(name);
   if (gramsInName) {
     const fixedName = name.replace(/\d+\s*g\s*(de\s*)?/gi, '1 porção de ');

@@ -336,6 +336,9 @@ const INSTRUCTION_INGREDIENT_KEYWORDS = [
   // Grãos e carboidratos
   'arroz', 'feijao', 'feijão', 'lentilha', 'quinoa', 'grao de bico', 'grão de bico',
   'torrada', 'pao', 'pão', 'wrap', 'tortilla', 'macarrao', 'macarrão', 'espaguete',
+  // Preparações compostas (CRÍTICO - detectar ingredientes fantasmas)
+  'massa', 'crepioca', 'panqueca', 'waffle', 'pizza', 'lasanha', 'risoto',
+  'sopa', 'caldo', 'mingau', 'vitamina', 'smoothie', 'pudim',
   // Laticínios
   'queijo', 'iogurte', 'leite', 'creme', 'requeijao', 'requeijão',
   // Cereais

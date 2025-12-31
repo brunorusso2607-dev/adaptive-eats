@@ -189,23 +189,34 @@ function calculateOptionCalories(foods: FoodItem[]): number {
 // Lista EXPANDIDA de ingredientes-chave que devem aparecer no título e nos foods
 const TITLE_FOOD_KEYWORDS = [
   // Proteínas
-  { titleKey: 'tofu', foodKeys: ['tofu'] },
-  { titleKey: 'hamburguer', foodKeys: ['hamburguer', 'burger', 'hambúrguer'] },
-  { titleKey: 'hamburger', foodKeys: ['hamburguer', 'burger', 'hambúrguer'] },
-  { titleKey: 'wrap', foodKeys: ['wrap', 'tortilla'] },
-  { titleKey: 'sanduiche', foodKeys: ['pao', 'sanduiche', 'sanduíche'] },
-  { titleKey: 'omelete', foodKeys: ['ovo', 'clara', 'omelete'] },
-  { titleKey: 'espaguete', foodKeys: ['espaguete', 'macarrao', 'massa'] },
-  { titleKey: 'salmao', foodKeys: ['salmao', 'salmão'] },
   { titleKey: 'frango', foodKeys: ['frango', 'peito de frango', 'coxa'] },
   { titleKey: 'carne', foodKeys: ['carne', 'bife', 'file', 'filé'] },
   { titleKey: 'peixe', foodKeys: ['peixe', 'tilapia', 'atum', 'sardinha'] },
+  { titleKey: 'salmao', foodKeys: ['salmao', 'salmão', 'salmon'] },
+  { titleKey: 'ovo', foodKeys: ['ovo', 'ovos', 'clara'] },
+  { titleKey: 'tofu', foodKeys: ['tofu'] },
+  
+  // Carboidratos
   { titleKey: 'feijao', foodKeys: ['feijao', 'feijão'] },
   { titleKey: 'arroz', foodKeys: ['arroz'] },
   { titleKey: 'quinoa', foodKeys: ['quinoa', 'quinua'] },
-  { titleKey: 'ovo', foodKeys: ['ovo', 'ovos', 'clara'] },
+  { titleKey: 'grao de bico', foodKeys: ['grao de bico', 'grão de bico', 'grao-de-bico', 'grão-de-bico', 'homus', 'hummus', 'farinha de grao'] },
+  { titleKey: 'aveia', foodKeys: ['aveia', 'flocos de aveia'] },
+  { titleKey: 'tapioca', foodKeys: ['tapioca', 'goma de tapioca'] },
+  { titleKey: 'batata', foodKeys: ['batata', 'batata doce', 'batata-doce'] },
+  
+  // Laticínios
   { titleKey: 'queijo', foodKeys: ['queijo'] },
   { titleKey: 'iogurte', foodKeys: ['iogurte', 'yogurt'] },
+  { titleKey: 'leite', foodKeys: ['leite', 'leite de coco', 'leite de amendoas', 'leite de aveia'] },
+  
+  // Preparações compostas
+  { titleKey: 'crepioca', foodKeys: ['crepioca', 'tapioca', 'goma de tapioca', 'grao de bico', 'farinha de grao'] },
+  { titleKey: 'panqueca', foodKeys: ['panqueca', 'massa de panqueca', 'farinha', 'aveia'] },
+  { titleKey: 'omelete', foodKeys: ['omelete', 'ovo', 'ovos', 'clara'] },
+  { titleKey: 'wrap', foodKeys: ['wrap', 'tortilla', 'tortilha'] },
+  { titleKey: 'sanduiche', foodKeys: ['sanduiche', 'sanduíche', 'pao', 'pão'] },
+  
   // Sopas e preparações que PRECISAM do ingrediente principal
   { titleKey: 'sopa', foodKeys: ['sopa', 'caldo', 'abobora', 'abóbora', 'legume', 'frango', 'carne', 'feijao', 'lentilha', 'ervilha'] },
   { titleKey: 'creme', foodKeys: ['creme', 'abobora', 'abóbora', 'legume', 'milho', 'espinafre', 'mandioquinha'] },
@@ -213,10 +224,15 @@ const TITLE_FOOD_KEYWORDS = [
   { titleKey: 'vitamina', foodKeys: ['vitamina', 'banana', 'morango', 'mamao', 'manga', 'leite', 'iogurte'] },
   { titleKey: 'mingau', foodKeys: ['mingau', 'aveia', 'tapioca', 'fuba', 'maizena'] },
   { titleKey: 'salada', foodKeys: ['salada', 'alface', 'rucula', 'tomate', 'pepino', 'folha', 'verdura', 'legume'] },
-  // Preparações com abóbora/gengibre/leite de coco
+  { titleKey: 'smoothie', foodKeys: ['smoothie', 'vitamina', 'banana', 'morango', 'leite'] },
+  { titleKey: 'pudim', foodKeys: ['pudim', 'chia', 'leite', 'leite de coco'] },
+  
+  // Preparações com ingredientes específicos
   { titleKey: 'abobora', foodKeys: ['abobora', 'abóbora'] },
   { titleKey: 'gengibre', foodKeys: ['gengibre'] },
   { titleKey: 'leite de coco', foodKeys: ['leite de coco', 'coco'] },
+  { titleKey: 'chia', foodKeys: ['chia', 'semente de chia'] },
+  
   // Torradas (diferente de pão)
   { titleKey: 'torrada', foodKeys: ['torrada', 'toast'] },
 ];

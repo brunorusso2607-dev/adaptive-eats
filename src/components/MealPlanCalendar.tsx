@@ -586,7 +586,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
             const hasMeals = getDayMeals(day).length > 0;
             const isToday = day.isToday;
 
-            const isPastDay = day.isPast;
+            // Verificar se o dia é anterior ao start_date do plano
+            const isDayBeforePlanStart = day.date < planStartDate;
+            const isPastDay = day.isPast || isDayBeforePlanStart;
 
             return (
               <button

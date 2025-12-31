@@ -48,6 +48,28 @@ export interface RegionalConfig {
   mealLabels: Record<string, string>;
   dayNames?: string[];
   domesticUnits?: string;
+  // Nova estrutura: Comportamental por país
+  mealStructure?: {
+    // Estrutura típica do almoço/jantar principal (itens separados)
+    lunchDinner: {
+      structure: string; // Ex: "Proteína + Base + Acompanhamento + Salada"
+      components: string[]; // Ex: ["Frango grelhado", "Arroz", "Feijão", "Salada"]
+      example: string; // Exemplo completo nativo
+    };
+    // Tipos de prato único (consolidar em 1 item)
+    consolidatedDishes: string[]; // Ex: ["Sopas", "Omeletes", "Wraps"]
+    // Exemplos de pratos únicos típicos do país
+    oneDishExamples: string[];
+    // Café da manhã típico
+    breakfast: {
+      structure: string;
+      examples: string[];
+    };
+    // Lanches típicos
+    snacks: {
+      examples: string[];
+    };
+  };
 }
 
 export interface FoodItem {
@@ -61,7 +83,7 @@ export interface ValidationResult {
   restriction?: string;
 }
 
-// ============= REGIONAL CONFIGS =============
+// ============= REGIONAL CONFIGS COM ESTRUTURA COMPORTAMENTAL =============
 export const REGIONAL_CONFIGS: Record<string, RegionalConfig> = {
   'BR': {
     language: 'pt-BR',
@@ -83,6 +105,38 @@ JANTAR: Similar ao almoco ou mais leve (sopas, omeletes, sanduiches)`,
     },
     dayNames: ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"],
     domesticUnits: 'unidade, colher de sopa, copo, fatia, prato medio, concha, porcao',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Proteína + Arroz + Feijão + Salada",
+        components: ["Frango grelhado", "Arroz branco", "Feijão carioca", "Salada verde"],
+        example: "Filé de frango grelhado ao limão, arroz integral, feijão preto, salada de alface com tomate"
+      },
+      consolidatedDishes: ["Sopas", "Caldos", "Feijoada", "Moqueca", "Omeletes", "Tapiocas recheadas", "Açaí bowl", "Vitaminas"],
+      oneDishExamples: [
+        "Sopa de legumes com frango",
+        "Caldo verde com linguiça",
+        "Omelete de queijo com tomate",
+        "Tapioca recheada com queijo e presunto",
+        "Açaí bowl com granola e banana"
+      ],
+      breakfast: {
+        structure: "Pão/Tapioca + Bebida quente + Fruta",
+        examples: [
+          "Tapioca com queijo branco, café com leite, mamão",
+          "Pão francês com manteiga, café, banana",
+          "Ovos mexidos com tomate, suco de laranja, melancia"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Iogurte com granola e frutas",
+          "Maçã com pasta de amendoim",
+          "Pão de queijo com suco natural",
+          "Banana com chia e canela",
+          "Mix de castanhas com frutas secas"
+        ]
+      }
+    }
   },
   'US': {
     language: 'en-US',
@@ -104,6 +158,38 @@ DINNER: Protein + starch + vegetables (grilled chicken, pasta, steak, fish)`,
     },
     dayNames: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
     domesticUnits: 'piece, tablespoon, cup, slice, medium plate, serving, portion',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Protein + Starch + Vegetable",
+        components: ["Grilled chicken breast", "Mashed potatoes", "Steamed broccoli"],
+        example: "Grilled salmon with roasted sweet potatoes and steamed asparagus"
+      },
+      consolidatedDishes: ["Soups", "Stews", "Salads with protein", "Wraps", "Sandwiches", "Burgers", "Pasta dishes", "Stir-fries", "Smoothie bowls"],
+      oneDishExamples: [
+        "Chicken noodle soup",
+        "Caesar salad with grilled chicken",
+        "Turkey and avocado wrap",
+        "Beef stew with vegetables",
+        "Acai bowl with granola and berries"
+      ],
+      breakfast: {
+        structure: "Protein + Bread/Grain + Fruit",
+        examples: [
+          "Scrambled eggs with whole wheat toast and berries",
+          "Oatmeal with banana and honey",
+          "Greek yogurt parfait with granola and strawberries"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Apple slices with peanut butter",
+          "Greek yogurt with berries",
+          "Almonds and dried cranberries",
+          "Cheese stick with grapes",
+          "Hummus with carrot sticks"
+        ]
+      }
+    }
   },
   'PT': {
     language: 'pt-PT',
@@ -125,11 +211,49 @@ JANTAR: Similar ao almoco ou mais leve`,
     },
     dayNames: ["Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado", "Domingo"],
     domesticUnits: 'unidade, colher de sopa, copo, fatia, prato medio, porcao',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Proteína + Arroz/Batata + Legumes",
+        components: ["Bacalhau assado", "Batatas a murro", "Legumes salteados"],
+        example: "Frango assado com batatas e brócolos salteados com alho"
+      },
+      consolidatedDishes: ["Sopas", "Caldos", "Caldeiradas", "Açordas", "Omeletes", "Saladas completas"],
+      oneDishExamples: [
+        "Caldo verde com chouriço",
+        "Sopa de legumes",
+        "Caldeirada de peixe",
+        "Açorda de bacalhau",
+        "Salada de atum com grão"
+      ],
+      breakfast: {
+        structure: "Pão + Bebida quente + Fruta/Sumo",
+        examples: [
+          "Torrada com manteiga, café e sumo de laranja",
+          "Cereais com leite e fruta fresca",
+          "Pão com queijo, café com leite"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Iogurte com fruta",
+          "Tostas com compota",
+          "Maçã com nozes",
+          "Queijo fresco com mel",
+          "Banana com amêndoas"
+        ]
+      }
+    }
   },
   'MX': {
     language: 'es-MX',
     languageName: 'Español Mexicano',
     measurementSystem: 'metric',
+    typicalMeals: `
+DESAYUNO: Huevos, frijoles, tortillas, chilaquiles, fruta, café
+COLACIÓN: Frutas, nueces, yogurt, barritas
+COMIDA: Proteína + arroz/frijoles + tortillas + ensalada
+CENA: Más ligera o antojitos saludables`,
+    culturalNotes: 'Ingredientes mexicanos: tortilla, frijoles, aguacate, chile, nopal, pollo, res, limón.',
     mealLabels: {
       cafe_manha: "Desayuno",
       lanche_manha: "Colación Matutina",
@@ -139,11 +263,50 @@ JANTAR: Similar ao almoco ou mais leve`,
       ceia: "Cena Ligera",
     },
     dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    domesticUnits: 'pieza, cucharada, vaso, rebanada, plato mediano, porción',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Proteína + Arroz/Frijoles + Tortilla + Ensalada",
+        components: ["Pollo a la plancha", "Arroz rojo", "Frijoles refritos", "Ensalada mixta"],
+        example: "Pechuga de pollo a la plancha con arroz rojo, frijoles y ensalada de nopal"
+      },
+      consolidatedDishes: ["Sopas", "Caldos", "Tacos", "Quesadillas", "Enchiladas", "Burritos", "Pozole", "Ensaladas completas"],
+      oneDishExamples: [
+        "Sopa de tortilla",
+        "Caldo de pollo con verduras",
+        "Tacos de pollo con guacamole",
+        "Quesadillas de queso con champiñones",
+        "Ensalada de atún con aguacate"
+      ],
+      breakfast: {
+        structure: "Huevos + Frijoles/Tortilla + Fruta",
+        examples: [
+          "Huevos rancheros con frijoles y fruta",
+          "Chilaquiles verdes con pollo y café",
+          "Huevos revueltos con tortilla y papaya"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Manzana con crema de cacahuate",
+          "Yogurt griego con mango",
+          "Jícama con limón y chile",
+          "Nueces mixtas con arándanos",
+          "Pepino con limón y tajín"
+        ]
+      }
+    }
   },
   'ES': {
     language: 'es-ES',
     languageName: 'Español de España',
     measurementSystem: 'metric',
+    typicalMeals: `
+DESAYUNO: Tostada con tomate, café, zumo de naranja
+MEDIA MAÑANA: Fruta, yogur, frutos secos
+ALMUERZO: Proteína + guarnición + ensalada (estructura clásica española)
+CENA: Más ligera o tapas saludables`,
+    culturalNotes: 'Ingredientes españoles: aceite de oliva, jamón serrano, pescado, legumbres, tomate, pimientos.',
     mealLabels: {
       cafe_manha: "Desayuno",
       lanche_manha: "Media Mañana",
@@ -153,6 +316,145 @@ JANTAR: Similar ao almoco ou mais leve`,
       ceia: "Cena Tardía",
     },
     dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, rebanada, plato mediano, ración',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Proteína + Guarnición + Ensalada",
+        components: ["Merluza a la plancha", "Patatas asadas", "Ensalada mixta"],
+        example: "Pollo asado con patatas y pimientos, ensalada mediterránea"
+      },
+      consolidatedDishes: ["Sopas", "Gazpachos", "Cremas", "Tortillas", "Ensaladas completas", "Revueltos", "Guisos"],
+      oneDishExamples: [
+        "Gazpacho andaluz",
+        "Tortilla española",
+        "Crema de calabacín",
+        "Ensalada de atún con garbanzos",
+        "Revuelto de setas con jamón"
+      ],
+      breakfast: {
+        structure: "Tostada + Café/Zumo + Fruta",
+        examples: [
+          "Tostada con tomate y aceite, café con leche",
+          "Tostada con aguacate, zumo de naranja",
+          "Cereales con leche y fruta fresca"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Yogur natural con nueces",
+          "Manzana con mantequilla de almendras",
+          "Frutos secos variados",
+          "Queso fresco con membrillo",
+          "Plátano con chocolate negro"
+        ]
+      }
+    }
+  },
+  'AR': {
+    language: 'es-AR',
+    languageName: 'Español Argentino',
+    measurementSystem: 'metric',
+    typicalMeals: `
+DESAYUNO: Medialunas, tostadas, café con leche, mate
+COLACIÓN: Frutas, yogur, alfajores saludables
+ALMUERZO: Carne/proteína + guarnición (papas, ensalada)
+CENA: Similar al almuerzo o más ligera`,
+    culturalNotes: 'Ingredientes argentinos: carne de res, chimichurri, empanadas, mate, dulce de leche, yerba mate.',
+    mealLabels: {
+      cafe_manha: "Desayuno",
+      lanche_manha: "Colación",
+      almoco: "Almuerzo",
+      lanche_tarde: "Merienda",
+      jantar: "Cena",
+      ceia: "Cena Tardía",
+    },
+    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, rebanada, plato mediano, porción',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Carne/Proteína + Guarnición + Ensalada",
+        components: ["Bife de chorizo", "Papas al horno", "Ensalada criolla"],
+        example: "Milanesa de pollo con puré de papas y ensalada mixta"
+      },
+      consolidatedDishes: ["Guisos", "Locro", "Empanadas", "Carbonada", "Ensaladas completas"],
+      oneDishExamples: [
+        "Guiso de lentejas",
+        "Locro argentino",
+        "Empanadas de carne",
+        "Carbonada criolla",
+        "Ensalada de pollo con palta"
+      ],
+      breakfast: {
+        structure: "Medialunas/Tostadas + Café/Mate + Fruta",
+        examples: [
+          "Tostadas con queso crema, café con leche",
+          "Medialunas con café, naranja",
+          "Mate con tostadas y mermelada"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Yogur con frutas",
+          "Manzana con manteca de maní",
+          "Nueces y almendras",
+          "Banana con avena",
+          "Queso port salut con membrillo"
+        ]
+      }
+    }
+  },
+  'CO': {
+    language: 'es-CO',
+    languageName: 'Español Colombiano',
+    measurementSystem: 'metric',
+    typicalMeals: `
+DESAYUNO: Arepa, huevos, café con leche, fruta tropical
+MEDIA MAÑANA: Frutas, yogurt, almojábanas
+ALMUERZO: Proteína + arroz + frijoles + plátano + ensalada (bandeja paisa simplificada)
+CENA: Más ligera o sopas`,
+    culturalNotes: 'Ingredientes colombianos: arepa, plátano, frijoles, aguacate, café, panela, yuca.',
+    mealLabels: {
+      cafe_manha: "Desayuno",
+      lanche_manha: "Media Mañana",
+      almoco: "Almuerzo",
+      lanche_tarde: "Onces",
+      jantar: "Cena",
+      ceia: "Cena Tardía",
+    },
+    dayNames: ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"],
+    domesticUnits: 'unidad, cucharada, vaso, tajada, plato mediano, porción',
+    mealStructure: {
+      lunchDinner: {
+        structure: "Proteína + Arroz + Frijoles + Plátano + Ensalada",
+        components: ["Pollo asado", "Arroz blanco", "Frijoles rojos", "Plátano maduro", "Ensalada"],
+        example: "Pechuga de pollo con arroz, frijoles, tajadas de plátano y ensalada fresca"
+      },
+      consolidatedDishes: ["Sancochos", "Ajiacos", "Sopas", "Empanadas", "Arepas rellenas"],
+      oneDishExamples: [
+        "Ajiaco santafereño",
+        "Sancocho de gallina",
+        "Sopa de lentejas",
+        "Arepa rellena con queso y pollo",
+        "Ensalada de atún con aguacate"
+      ],
+      breakfast: {
+        structure: "Arepa + Huevos + Bebida + Fruta",
+        examples: [
+          "Arepa con queso, huevos pericos, café",
+          "Huevos revueltos con arepa y jugo de maracuyá",
+          "Calentado con café con leche"
+        ]
+      },
+      snacks: {
+        examples: [
+          "Yogurt con fruta tropical",
+          "Mango con limón",
+          "Nueces mixtas",
+          "Arepa pequeña con queso",
+          "Patacones con guacamole"
+        ]
+      }
+    }
   },
 };
 
@@ -160,6 +462,58 @@ export const DEFAULT_CONFIG: RegionalConfig = REGIONAL_CONFIGS['BR'];
 
 export function getRegionalConfig(countryCode: string): RegionalConfig {
   return REGIONAL_CONFIGS[countryCode?.toUpperCase()] || DEFAULT_CONFIG;
+}
+
+// ============= FUNÇÃO PARA GERAR PROMPT COMPORTAMENTAL POR PAÍS =============
+export function getCountryBehavioralPrompt(countryCode: string): string {
+  const config = getRegionalConfig(countryCode);
+  const structure = config.mealStructure;
+  
+  if (!structure) {
+    // Fallback para países sem estrutura definida - usar BR como base
+    return getCountryBehavioralPrompt('BR');
+  }
+  
+  const lang = config.language;
+  const isSpanish = lang.startsWith('es');
+  const isEnglish = lang.startsWith('en');
+  const isPortuguese = lang.startsWith('pt');
+  
+  // Headers localizados
+  const headers = isEnglish 
+    ? { composed: "COMPOSED MEAL STRUCTURE", single: "SINGLE DISH TYPES", examples: "TYPICAL EXAMPLES" }
+    : isSpanish 
+    ? { composed: "ESTRUCTURA DE COMIDA COMPUESTA", single: "TIPOS DE PLATO ÚNICO", examples: "EJEMPLOS TÍPICOS" }
+    : { composed: "ESTRUTURA DE REFEIÇÃO COMPOSTA", single: "TIPOS DE PRATO ÚNICO", examples: "EXEMPLOS TÍPICOS" };
+
+  return `
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌍 ${headers.composed} (${config.languageName}):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${isEnglish ? 'For lunch/dinner, LIST ITEMS SEPARATELY:' : isSpanish ? 'Para almuerzo/cena, LISTAR ÍTEMS SEPARADOS:' : 'Para almoço/jantar, LISTAR ITENS SEPARADOS:'}
+📐 ${structure.lunchDinner.structure}
+📦 ${structure.lunchDinner.components.join(' + ')}
+💡 ${isEnglish ? 'Example:' : isSpanish ? 'Ejemplo:' : 'Exemplo:'} ${structure.lunchDinner.example}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍲 ${headers.single} (${isEnglish ? 'CONSOLIDATE INTO 1 ITEM' : isSpanish ? 'CONSOLIDAR EN 1 ÍTEM' : 'CONSOLIDAR EM 1 ITEM'}):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${structure.consolidatedDishes.map(d => `• ${d}`).join('\n')}
+
+${headers.examples}:
+${structure.oneDishExamples.map(e => `  ✅ "${e}"`).join('\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+☕ ${isEnglish ? 'BREAKFAST' : isSpanish ? 'DESAYUNO' : 'CAFÉ DA MANHÃ'}:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📐 ${structure.breakfast.structure}
+${structure.breakfast.examples.map(e => `  • ${e}`).join('\n')}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍎 ${isEnglish ? 'SNACKS' : isSpanish ? 'COLACIONES' : 'LANCHES'}:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${structure.snacks.examples.map(e => `  • ${e}`).join('\n')}
+`;
 }
 
 // ============= FORBIDDEN INGREDIENTS (DEPRECATED - USAR globalSafetyEngine) =============
@@ -3491,7 +3845,60 @@ export function cleanInstructionsFromFruitsAndBeverages(instructions: string[]):
 }
 
 // =============================================================================
-// PROMPT v5.0 FINAL - NUTRICIONISTA HUMANIZADO
+// FUNÇÕES HELPER PARA INTERNACIONALIZAÇÃO DO PROMPT
+// =============================================================================
+
+function getNutritionistPersona(countryCode: string, language: string): string {
+  const personas: Record<string, string> = {
+    'BR': 'Você é a DRA. ANA, nutricionista brasileira com 20 anos de experiência clínica.\nVocê cria cardápios REAIS como faria para seus pacientes VIP.',
+    'PT': 'Você é a DRA. MARIA, nutricionista portuguesa com 20 anos de experiência clínica.\nVocê cria ementas REAIS como faria para os seus pacientes VIP.',
+    'US': 'You are DR. SARAH, an American registered dietitian with 20 years of clinical experience.\nYou create REAL meal plans as you would for your VIP patients.',
+    'MX': 'Eres la DRA. CARMEN, nutrióloga mexicana con 20 años de experiencia clínica.\nCreas menús REALES como lo harías para tus pacientes VIP.',
+    'ES': 'Eres la DRA. LUCIA, nutricionista española con 20 años de experiencia clínica.\nCreas menús REALES como lo harías para tus pacientes VIP.',
+    'AR': 'Sos la DRA. VALENTINA, nutricionista argentina con 20 años de experiencia clínica.\nCreás menús REALES como lo harías para tus pacientes VIP.',
+    'CO': 'Eres la DRA. SOFIA, nutricionista colombiana con 20 años de experiencia clínica.\nCreas menús REALES como lo harías para tus pacientes VIP.',
+  };
+  return personas[countryCode] || personas['BR'];
+}
+
+function getMissionText(language: string, dayName: string, dayNumber: number, calories: number): string {
+  if (language.startsWith('en')) return `MISSION: Create the menu for ${dayName} (Day ${dayNumber}) with ${calories} kcal.`;
+  if (language.startsWith('es')) return `MISIÓN: Crear el menú de ${dayName} (Día ${dayNumber}) con ${calories} kcal.`;
+  return `MISSÃO: Criar o cardápio de ${dayName} (Dia ${dayNumber}) com ${calories} kcal.`;
+}
+
+function getMealsHeader(language: string): string {
+  if (language.startsWith('en')) return 'MEALS OF THE DAY';
+  if (language.startsWith('es')) return 'COMIDAS DEL DÍA';
+  return 'REFEIÇÕES DO DIA';
+}
+
+function getRestrictionsHeader(language: string): string {
+  if (language.startsWith('en')) return 'ABSOLUTE RESTRICTIONS (NEVER INCLUDE)';
+  if (language.startsWith('es')) return 'RESTRICCIONES ABSOLUTAS (NUNCA INCLUIR)';
+  return 'RESTRIÇÕES ABSOLUTAS (NUNCA INCLUIR)';
+}
+
+function getStrategyHeader(language: string): string {
+  if (language.startsWith('en')) return 'NUTRITIONAL STRATEGY';
+  if (language.startsWith('es')) return 'ESTRATEGIA NUTRICIONAL';
+  return 'ESTRATÉGIA NUTRICIONAL';
+}
+
+function getNoRepeatHeader(language: string): string {
+  if (language.startsWith('en')) return 'DO NOT REPEAT (already used)';
+  if (language.startsWith('es')) return 'NO REPETIR (ya usados)';
+  return 'NÃO REPETIR (já usados)';
+}
+
+function getPhilosophyHeader(language: string): string {
+  if (language.startsWith('en')) return 'REAL MEAL PHILOSOPHY';
+  if (language.startsWith('es')) return 'FILOSOFÍA DE COMIDAS REALES';
+  return 'FILOSOFIA DE REFEIÇÕES REAIS';
+}
+
+// =============================================================================
+// PROMPT v6.0 GLOBAL - NUTRICIONISTA HUMANIZADO + COMPORTAMENTAL
 // =============================================================================
 // Este é o prompt mestre utilizado por:
 // - generate-ai-meal-plan
@@ -3511,6 +3918,7 @@ export interface MasterPromptParams {
   dayNumber: number;
   dayName: string;
   regional: RegionalConfig;
+  countryCode?: string; // Código do país para prompt comportamental
   strategyKey?: string;
   previousDaysMeals?: string[];
   nutritionalTablePrompt?: string;
@@ -3524,6 +3932,7 @@ export function getMasterMealPromptV5(params: MasterPromptParams): string {
     dayNumber,
     dayName,
     regional,
+    countryCode = 'BR',
     strategyKey,
     previousDaysMeals = [],
     nutritionalTablePrompt = ''
@@ -3554,14 +3963,35 @@ export function getMasterMealPromptV5(params: MasterPromptParams): string {
     goal: restrictions.goal,
   }) : '';
 
-  // =============================================================================
-  // PROMPT v5.0 FINAL - 100% LIMPO E COMPLETO
-  // =============================================================================
-  return `Você é a DRA. ANA, nutricionista brasileira com 20 anos de experiência clínica.
-Você cria cardápios REAIS como faria para seus pacientes VIP.
+  // Gerar o prompt comportamental baseado no país
+  const countryBehavioralPrompt = getCountryBehavioralPrompt(countryCode);
+  
+  // Determinar o nome/persona do nutricionista baseado no país
+  const nutritionistPersona = getNutritionistPersona(countryCode, regional.language);
 
-🎯 MISSÃO: Criar o cardápio de ${dayName} (Dia ${dayNumber}) com ${dailyCalories} kcal.
+  // =============================================================================
+  // PROMPT v6.0 GLOBAL - COMPORTAMENTAL POR PAÍS
+  // =============================================================================
+  return `${nutritionistPersona}
 
+🎯 ${getMissionText(regional.language, dayName, dayNumber, dailyCalories)}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📋 ${getMealsHeader(regional.language)}:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${mealsDescription}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 ${getRestrictionsHeader(regional.language)}:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+${restrictionText}
+${strategyRules ? `\n━━━ ${getStrategyHeader(regional.language)} ━━━\n${strategyRules}` : ''}
+${previousDaysMeals.length > 0 ? `\n━━━ ${getNoRepeatHeader(regional.language)} ━━━\n${previousDaysMeals.map(m => `• ${m}`).join('\n')}` : ''}
+
+${countryBehavioralPrompt}
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍽️ ${getPhilosophyHeader(regional.language)}:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📋 REFEIÇÕES DO DIA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

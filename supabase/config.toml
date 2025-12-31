@@ -167,3 +167,6 @@ verify_jwt = false
 
 [functions.test-prompt-validation]
 verify_jwt = false
+
+[functions.test-timezone-scenarios]
+verify_jwt = false

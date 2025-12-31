@@ -319,7 +319,7 @@ serve(async (req) => {
       .in('source', preferredSources)
       .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
       .order('name')
-      .limit(limit * 2);
+      .limit(100); // Fetch more to allow for filtering
 
     if (startsWithPriority && startsWithPriority.length > 0) {
       const filtered = startsWithPriority.filter(f => !isPreparedDish(f));
@@ -337,7 +337,7 @@ serve(async (req) => {
         .in('source', preferredSources)
         .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
         .order('name')
-        .limit(limit * 2);
+        .limit(100); // Fetch more to allow for filtering
 
       if (containsPriority && containsPriority.length > 0) {
         const existingIds = new Set(allFoods.map(f => f.id));
@@ -372,7 +372,32 @@ serve(async (req) => {
 
     // Return results if we have any
     if (allFoods.length > 0) {
-      const finalResults = allFoods.slice(0, limit);
+      // Sort to prioritize simpler base ingredients
+      const sortedFoods = allFoods.sort((a, b) => {
+        // Prioritize ingredients without commas (simpler names)
+        const aHasComma = (a.name || '').includes(',') ? 1 : 0;
+        const bHasComma = (b.name || '').includes(',') ? 1 : 0;
+        if (aHasComma !== bHasComma) return aHasComma - bHasComma;
+        
+        // Prioritize certain categories (graos, cereais, ingrediente)
+        const priorityCategories = ['graos', 'cereais', 'ingrediente', 'legumes', 'verduras', 'frutas', 'carnes'];
+        const aCategory = (a.category || '').toLowerCase();
+        const bCategory = (b.category || '').toLowerCase();
+        const aPriority = priorityCategories.findIndex(c => aCategory.includes(c));
+        const bPriority = priorityCategories.findIndex(c => bCategory.includes(c));
+        const aScore = aPriority >= 0 ? aPriority : 99;
+        const bScore = bPriority >= 0 ? bPriority : 99;
+        if (aScore !== bScore) return aScore - bScore;
+        
+        // Then by name length (shorter = simpler)
+        const lenDiff = (a.name?.length || 0) - (b.name?.length || 0);
+        if (lenDiff !== 0) return lenDiff;
+        
+        // Then alphabetically
+        return (a.name || '').localeCompare(b.name || '');
+      });
+      
+      const finalResults = sortedFoods.slice(0, limit);
       logStep('Returning database results', { count: finalResults.length });
       return new Response(
         JSON.stringify({ 

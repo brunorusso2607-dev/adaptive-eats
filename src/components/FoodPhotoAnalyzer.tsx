@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -108,9 +108,10 @@ type LabelStep = "front" | "back" | "complete";
 interface FoodPhotoAnalyzerProps {
   initialMode?: AnalysisMode;
   hideModeTabs?: boolean;
+  initialImage?: string;
 }
 
-export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs = false }: FoodPhotoAnalyzerProps) {
+export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs = false, initialImage }: FoodPhotoAnalyzerProps) {
   const [mode, setMode] = useState<AnalysisMode>(initialMode);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
@@ -162,6 +163,27 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
+  const hasProcessedInitialImage = useRef(false);
+
+  // Process initial image if provided (from direct camera capture)
+  useEffect(() => {
+    if (initialImage && !hasProcessedInitialImage.current) {
+      hasProcessedInitialImage.current = true;
+      setImagePreview(initialImage);
+      
+      // Auto-analyze based on mode
+      if (mode === "food") {
+        setTimeout(() => {
+          analyzeImageWithBase64(initialImage);
+        }, 100);
+      } else if (mode === "label") {
+        setTimeout(() => {
+          analyzeLabelWithBase64(initialImage, labelStep);
+        }, 100);
+      }
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialImage, mode]);
 
   // Recalculate totals when food items are edited
   const recalculateTotals = useCallback((alimentos: FoodItem[]) => {

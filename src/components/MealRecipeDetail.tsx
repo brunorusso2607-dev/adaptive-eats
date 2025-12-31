@@ -50,8 +50,8 @@ const MEAL_LABELS: Record<string, string> = {
   ceia: "Ceia"
 };
 
-// Componente de Instruções Resumidas colapsável
-function QuickInstructions({ instructions }: { instructions: string[] }) {
+// Componente de Dicas de Preparo colapsável
+function QuickTips({ instructions }: { instructions: string[] }) {
   const [isOpen, setIsOpen] = useState(false);
 
   return (
@@ -59,7 +59,7 @@ function QuickInstructions({ instructions }: { instructions: string[] }) {
       <CollapsibleTrigger asChild>
         <button className="flex items-center gap-2 text-sm text-primary hover:text-primary/80 transition-colors w-full">
           {isOpen ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          <span className="font-medium">Ver instruções</span>
+          <span className="font-medium">Ver dicas de preparo</span>
         </button>
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-3">
@@ -276,9 +276,9 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
             </div>
           </div>
 
-          {/* Instruções Resumidas - Estilo Fridge Scanner */}
+          {/* Dicas de Preparo - Estilo Fridge Scanner */}
           {meal.recipe_instructions && meal.recipe_instructions.length > 0 && meal.recipe_instructions[0] !== "" && (
-            <QuickInstructions instructions={meal.recipe_instructions} />
+            <QuickTips instructions={meal.recipe_instructions} />
           )}
         </CardContent>
       </Card>

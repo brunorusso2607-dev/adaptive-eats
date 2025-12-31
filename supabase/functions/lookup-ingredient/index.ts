@@ -264,14 +264,14 @@ serve(async (req) => {
     // Step 1: Search in verified local foods - prioritize by country sources
     let localFoods: any[] = [];
     
-    // First, try to find foods from preferred sources
+    // First, try to find foods from preferred sources - prioritize "starts with" matches
     const { data: priorityFoods, error: priorityError } = await supabase
       .from('foods')
       .select('*')
       .eq('is_verified', true)
       .eq('is_recipe', false)
       .in('source', preferredSources)
-      .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
+      .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
       .order('name')
       .limit(limit);
 
@@ -289,7 +289,7 @@ serve(async (req) => {
         .eq('is_verified', true)
         .eq('is_recipe', false)
         .in('cuisine_origin', preferredCuisines)
-        .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
+        .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
         .order('name')
         .limit((limit - localFoods.length) * 2); // Fetch more to account for filtering
       
@@ -317,11 +317,11 @@ serve(async (req) => {
       );
     }
 
-    // Step 2: Search in ingredient aliases
+    // Step 2: Search in ingredient aliases - starts with match
     const { data: aliasResults } = await supabase
       .from('ingredient_aliases')
       .select('food_id, alias, foods!inner(*)')
-      .ilike('alias', `%${normalizedQuery}%`)
+      .ilike('alias', `${normalizedQuery}%`)
       .limit(limit);
 
     if (aliasResults && aliasResults.length > 0) {

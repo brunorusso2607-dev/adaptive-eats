@@ -323,35 +323,58 @@ function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
   return foods[0]?.name?.substring(0, 50) || 'Refeição';
 }
 
-// ============= INGREDIENTES ESPECÍFICOS PARA VALIDAÇÃO DE INSTRUÇÕES =============
-const INSTRUCTION_INGREDIENT_KEYWORDS = [
-  // Proteínas
-  'tofu', 'frango', 'carne', 'peixe', 'salmao', 'salmão', 'atum', 'sardinha', 'tilapia', 'tilópia',
-  'ovo', 'ovos', 'clara', 'gema', 'omelete', 'camarao', 'camarão',
-  // Cogumelos e vegetais
-  'cogumelo', 'cogumelos', 'champignon', 'shimeji', 'shiitake',
-  'abobora', 'abóbora', 'gengibre', 'coco', 'leite de coco',
-  'batata', 'mandioca', 'inhame', 'cenoura', 'abobrinha', 'berinjela',
-  'brocolis', 'brócolis', 'couve', 'espinafre', 'repolho', 'vagem',
-  // Grãos e carboidratos
-  'arroz', 'feijao', 'feijão', 'lentilha', 'quinoa', 'grao de bico', 'grão de bico',
-  'torrada', 'pao', 'pão', 'wrap', 'tortilla', 'macarrao', 'macarrão', 'espaguete',
-  // Preparações compostas (CRÍTICO - detectar ingredientes fantasmas)
-  'massa', 'crepioca', 'panqueca', 'waffle', 'pizza', 'lasanha', 'risoto',
-  'sopa', 'caldo', 'mingau', 'vitamina', 'smoothie', 'pudim',
-  // Laticínios
-  'queijo', 'iogurte', 'leite', 'creme', 'requeijao', 'requeijão',
-  // Cereais
-  'aveia', 'granola', 'tapioca', 'fuba', 'fubá', 'chia', 'linhaça',
-  // Frutas
-  'banana', 'maca', 'maçã', 'morango', 'mamao', 'mamão', 'manga', 'laranja', 'abacate', 'melao', 'melão',
-  // Vegetais/Saladas
-  'tomate', 'pepino', 'alface', 'rucula', 'rúcula', 'cebola', 'alho', 'pimentao', 'pimentão',
-  // Oleaginosas
-  'castanha', 'amendoim', 'nozes', 'amendoas', 'amêndoas',
-];
+// ============= STOP WORDS - Verbos e palavras comuns que NÃO são ingredientes =============
+const INSTRUCTION_STOP_WORDS = new Set([
+  // Verbos culinários (português)
+  'aqueça', 'aqueca', 'coloque', 'adicione', 'misture', 'sirva', 'corte', 'pique', 'frite',
+  'asse', 'cozinhe', 'ferva', 'refogue', 'grelhe', 'tempere', 'bata', 'amasse', 'despeje',
+  'espalhe', 'dobre', 'enrole', 'monte', 'finalize', 'decore', 'reserve', 'escorra',
+  'leve', 'deixe', 'tampe', 'destampe', 'mexa', 'vire', 'retire', 'transfira',
+  // Verbos culinários (espanhol)
+  'caliente', 'agregue', 'mezcle', 'sirva', 'corte', 'pique', 'fria', 'hornee', 'cocine',
+  'hierva', 'saltee', 'ase', 'sazone', 'bata', 'vierta', 'esparza', 'doble', 'enrolle',
+  // Verbos culinários (inglês)
+  'heat', 'add', 'mix', 'serve', 'cut', 'chop', 'fry', 'bake', 'cook', 'boil', 'saute',
+  'grill', 'season', 'beat', 'pour', 'spread', 'fold', 'roll', 'garnish', 'drain',
+  // Artigos e preposições (multi-idioma)
+  'o', 'a', 'os', 'as', 'um', 'uma', 'uns', 'umas', 'de', 'do', 'da', 'dos', 'das',
+  'em', 'no', 'na', 'nos', 'nas', 'com', 'para', 'por', 'pelo', 'pela', 'ao', 'à',
+  'el', 'la', 'los', 'las', 'un', 'una', 'unos', 'unas', 'del', 'al', 'con', 'para', 'por',
+  'the', 'a', 'an', 'of', 'in', 'on', 'with', 'for', 'to', 'and', 'or',
+  // Palavras comuns de instruções
+  'uma', 'frigideira', 'panela', 'forno', 'microondas', 'antiaderente', 'medio', 'médio',
+  'fogo', 'brando', 'alto', 'baixo', 'minutos', 'segundos', 'horas', 'ate', 'até',
+  'bem', 'levemente', 'cuidadosamente', 'uniformemente', 'completamente',
+  'picado', 'picada', 'picados', 'picadas', 'fatias', 'cubos', 'pedacos', 'pedaços',
+  'meio', 'metade', 'inteiro', 'inteira', 'quente', 'frio', 'fria', 'morno', 'morna',
+  'preferir', 'gosto', 'desejado', 'necessario', 'necessário',
+  // Utensílios
+  'colher', 'garfo', 'faca', 'prato', 'tigela', 'bowl', 'forma', 'assadeira', 'tabuleiro',
+]);
 
-// ============= VALIDAR E CORRIGIR INSTRUÇÕES =============
+// ============= EXTRAIR PALAVRAS-CHAVE DOS FOODS (AUTOMÁTICO) =============
+function extractFoodKeywords(foods: FoodItem[]): Set<string> {
+  const keywords = new Set<string>();
+  
+  for (const food of foods) {
+    // Normalizar e tokenizar o nome do alimento
+    const normalized = normalizeText(food.name);
+    const words = normalized.split(/[\s,\-\(\)\/]+/).filter(w => w.length >= 3);
+    
+    for (const word of words) {
+      // Ignorar números e palavras muito curtas
+      if (!/^\d+$/.test(word) && word.length >= 3) {
+        keywords.add(word);
+        // Adicionar variações sem acento
+        keywords.add(word.replace(/[áàâã]/g, 'a').replace(/[éèê]/g, 'e').replace(/[íìî]/g, 'i').replace(/[óòôõ]/g, 'o').replace(/[úùû]/g, 'u').replace(/ç/g, 'c'));
+      }
+    }
+  }
+  
+  return keywords;
+}
+
+// ============= VALIDAR E CORRIGIR INSTRUÇÕES (AUTOMÁTICO) =============
 function validateAndFixInstructions(
   instructions: string[] | undefined,
   foods: FoodItem[]
@@ -360,48 +383,59 @@ function validateAndFixInstructions(
     return [];
   }
   
-  // Criar lista de ingredientes presentes nos foods (normalizada)
-  const foodIngredients = new Set<string>();
-  for (const food of foods) {
-    const normalized = normalizeText(food.name);
-    for (const keyword of INSTRUCTION_INGREDIENT_KEYWORDS) {
-      if (normalized.includes(keyword)) {
-        foodIngredients.add(keyword);
-      }
-    }
-  }
+  // Extrair AUTOMATICAMENTE todas as palavras-chave dos foods
+  const foodKeywords = extractFoodKeywords(foods);
   
   const validInstructions: string[] = [];
   
   for (const instruction of instructions) {
     const normalizedInstruction = normalizeText(instruction);
+    const instructionWords = normalizedInstruction.split(/[\s,\-\(\)\/\.]+/).filter(w => w.length >= 3);
+    
     let mentionsPhantomIngredient = false;
     let phantomIngredient = '';
     
-    // Verificar CADA ingrediente mencionado na instrução
-    for (const keyword of INSTRUCTION_INGREDIENT_KEYWORDS) {
-      if (normalizedInstruction.includes(keyword)) {
-        // Verificar se esse ingrediente existe nos foods
-        const hasIngredient = foodIngredients.has(keyword);
-        if (!hasIngredient) {
-          // Verificar variações (ex: "abobora" vs "abóbora")
-          const variations = [keyword, keyword.replace('ó', 'o').replace('á', 'a').replace('ã', 'a').replace('ç', 'c')];
-          const hasVariation = variations.some(v => 
-            Array.from(foodIngredients).some(fi => fi.includes(v) || v.includes(fi))
-          );
-          
-          if (!hasVariation) {
-            mentionsPhantomIngredient = true;
-            phantomIngredient = keyword;
-            break;
-          }
+    for (const word of instructionWords) {
+      // Ignorar stop words (verbos, artigos, preposições)
+      if (INSTRUCTION_STOP_WORDS.has(word)) continue;
+      
+      // Ignorar números
+      if (/^\d+$/.test(word)) continue;
+      
+      // Verificar se a palavra parece ser um ingrediente (substantivo alimentar)
+      // Se a palavra NÃO está nos foods E tem características de ingrediente, é fantasma
+      const wordVariant = word.replace(/[áàâã]/g, 'a').replace(/[éèê]/g, 'e').replace(/[íìî]/g, 'i').replace(/[óòôõ]/g, 'o').replace(/[úùû]/g, 'u').replace(/ç/g, 'c');
+      
+      const isInFoods = foodKeywords.has(word) || foodKeywords.has(wordVariant) ||
+        Array.from(foodKeywords).some(fk => fk.includes(word) || word.includes(fk));
+      
+      if (!isInFoods) {
+        // Verificar se parece ser um ingrediente (não é verbo comum, utensílio, etc.)
+        // Palavras que terminam em padrões de ingredientes
+        const looksLikeIngredient = 
+          word.endsWith('oca') || word.endsWith('ioca') || // tapioca, crepioca
+          word.endsWith('elo') || word.endsWith('elos') || // cogumelo
+          word.endsWith('ssa') || // massa
+          word.endsWith('nte') || word.endsWith('ntes') || // ingrediente comum
+          word.endsWith('ao') || word.endsWith('ão') || // feijão, limão
+          word.endsWith('igo') || // trigo
+          word.endsWith('ote') || // mamão, abacate
+          word.endsWith('ngo') || // frango
+          word.endsWith('xa') || // linhaça
+          word.endsWith('ia') || // chia, tapioca
+          (word.length >= 5 && !INSTRUCTION_STOP_WORDS.has(word));
+        
+        if (looksLikeIngredient) {
+          mentionsPhantomIngredient = true;
+          phantomIngredient = word;
+          break;
         }
       }
     }
     
     if (mentionsPhantomIngredient) {
       logStep(`🚫 INSTRUÇÃO REJEITADA: "${instruction}" menciona "${phantomIngredient}" que NÃO está nos ingredientes`, {
-        ingredientesPresentes: Array.from(foodIngredients),
+        ingredientesPresentes: Array.from(foodKeywords).slice(0, 20),
       });
     } else {
       validInstructions.push(instruction);

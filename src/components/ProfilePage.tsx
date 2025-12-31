@@ -399,16 +399,48 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
 
         </div>
 
-        {/* Restrições */}
-        <div className="space-y-3">
-          <h3 className="font-semibold text-sm flex items-center gap-2">
-            <AlertCircle className="w-4 h-4 text-destructive" />
-            Restrições e Condições
-          </h3>
-          <div className="flex flex-wrap gap-2">
-            {onboardingOptions?.intolerances
-              .filter(opt => opt.option_id !== "none" && opt.option_id !== "nenhuma")
-              .map((opt) => {
+        {/* Restrições - 3 categorias */}
+        <div className="space-y-4">
+          {/* Intolerâncias */}
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-amber-500" />
+              Intolerâncias
+              <span className="text-xs text-muted-foreground font-normal">(digestivas)</span>
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {onboardingOptions?.intolerances
+                .filter(opt => opt.option_id !== "none" && opt.option_id !== "nenhuma")
+                .map((opt) => {
+                  const isSelected = (editedProfile.intolerances || []).includes(opt.option_id);
+                  return (
+                    <button
+                      type="button"
+                      key={opt.option_id}
+                      onClick={() => toggleIntolerance(opt.option_id)}
+                      className={cn(
+                        "px-3 py-1.5 rounded-full text-xs font-medium transition-all touch-manipulation",
+                        isSelected 
+                          ? "bg-amber-500/20 text-amber-700 dark:text-amber-400 border border-amber-500/30" 
+                          : "bg-muted text-muted-foreground border border-border hover:border-amber-500/50"
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  );
+                })}
+            </div>
+          </div>
+
+          {/* Alergias */}
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-red-500" />
+              Alergias
+              <span className="text-xs text-muted-foreground font-normal">(reações imunológicas)</span>
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {onboardingOptions?.allergies?.map((opt) => {
                 const isSelected = (editedProfile.intolerances || []).includes(opt.option_id);
                 return (
                   <button
@@ -418,14 +450,44 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
                     className={cn(
                       "px-3 py-1.5 rounded-full text-xs font-medium transition-all touch-manipulation",
                       isSelected 
-                        ? "bg-destructive/20 text-destructive border border-destructive/30" 
-                        : "bg-muted text-muted-foreground border border-border hover:border-destructive/50"
+                        ? "bg-red-500/20 text-red-700 dark:text-red-400 border border-red-500/30" 
+                        : "bg-muted text-muted-foreground border border-border hover:border-red-500/50"
                     )}
                   >
                     {opt.label}
                   </button>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Sensibilidades */}
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-purple-500" />
+              Sensibilidades
+              <span className="text-xs text-muted-foreground font-normal">(metabólicas)</span>
+            </h3>
+            <div className="flex flex-wrap gap-2">
+              {onboardingOptions?.sensitivities?.map((opt) => {
+                const isSelected = (editedProfile.intolerances || []).includes(opt.option_id);
+                return (
+                  <button
+                    type="button"
+                    key={opt.option_id}
+                    onClick={() => toggleIntolerance(opt.option_id)}
+                    className={cn(
+                      "px-3 py-1.5 rounded-full text-xs font-medium transition-all touch-manipulation",
+                      isSelected 
+                        ? "bg-purple-500/20 text-purple-700 dark:text-purple-400 border border-purple-500/30" 
+                        : "bg-muted text-muted-foreground border border-border hover:border-purple-500/50"
+                    )}
+                  >
+                    {opt.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
 
@@ -689,22 +751,45 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
           </div>
         </div>
 
-        {/* Intolerâncias e Restrições */}
+        {/* Restrições e Condições - Exibição */}
         {profile.intolerances && profile.intolerances.length > 0 && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <h3 className="font-semibold text-sm flex items-center gap-2">
               <AlertCircle className="w-4 h-4 text-destructive" />
               Restrições e Condições
             </h3>
             <div className="flex flex-wrap gap-2">
-              {profile.intolerances.map((item) => (
-                <span 
-                  key={item} 
-                  className="px-3 py-1 rounded-full text-xs font-medium bg-destructive/10 text-destructive border border-destructive/20"
-                >
-                  {getOptionLabel(onboardingOptions, "intolerances", item)}
-                </span>
-              ))}
+              {profile.intolerances.map((item) => {
+                // Determinar a categoria do item para cor correta
+                const isIntolerance = onboardingOptions?.intolerances.some(o => o.option_id === item);
+                const isAllergy = onboardingOptions?.allergies?.some(o => o.option_id === item);
+                const isSensitivity = onboardingOptions?.sensitivities?.some(o => o.option_id === item);
+                
+                let colorClasses = "bg-destructive/10 text-destructive border-destructive/20";
+                if (isIntolerance) {
+                  colorClasses = "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/20";
+                } else if (isAllergy) {
+                  colorClasses = "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/20";
+                } else if (isSensitivity) {
+                  colorClasses = "bg-purple-500/10 text-purple-700 dark:text-purple-400 border-purple-500/20";
+                }
+
+                // Buscar label em todas as categorias
+                let label = item;
+                const intoleranceOpt = onboardingOptions?.intolerances.find(o => o.option_id === item);
+                const allergyOpt = onboardingOptions?.allergies?.find(o => o.option_id === item);
+                const sensitivityOpt = onboardingOptions?.sensitivities?.find(o => o.option_id === item);
+                label = intoleranceOpt?.label || allergyOpt?.label || sensitivityOpt?.label || item;
+
+                return (
+                  <span 
+                    key={item} 
+                    className={cn("px-3 py-1 rounded-full text-xs font-medium border", colorClasses)}
+                  >
+                    {label}
+                  </span>
+                );
+              })}
             </div>
           </div>
         )}

@@ -284,155 +284,135 @@ export default function AdminIntoleranceMappings() {
   }
 
   return (
-    <div className="space-y-4 sm:space-y-6 w-full overflow-x-hidden">
-      <Card className="overflow-hidden">
-        <CardHeader className="px-3 py-4 sm:px-6 sm:py-6">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-            <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-orange-500 flex-shrink-0" />
-            <span className="truncate">Mapeamento de Intolerâncias</span>
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            Gerencie ingredientes e palavras-chave de intolerâncias.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="px-3 pb-4 sm:px-6 sm:pb-6">
-          <div className="flex flex-col gap-4 sm:gap-6 lg:grid lg:grid-cols-4">
-            {/* Mobile: Select dropdown */}
-            <div className="lg:hidden">
-              <Label className="text-xs sm:text-sm font-medium mb-2 block">Intolerância</Label>
-              <Select value={selectedIntolerance} onValueChange={setSelectedIntolerance}>
-                <SelectTrigger className="w-full text-sm">
-                  <SelectValue placeholder="Selecione" />
-                </SelectTrigger>
-                <SelectContent className="bg-card max-h-60">
-                  {intoleranceKeys.map((key) => (
-                    <SelectItem key={key} value={key} className="text-sm">
-                      {getLabelWithCanonical(key, canonicalKeyMap)} ({getIntoleranceCount(key)})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          <AlertTriangle className="h-5 w-5 text-orange-500" />
+          Mapeamento de Intolerâncias
+        </h1>
+        <p className="text-muted-foreground text-sm mt-1">
+          Gerencie ingredientes e palavras-chave de intolerâncias.
+        </p>
+      </div>
 
-            {/* Desktop: Sidebar with intolerances */}
-            <div className="hidden lg:block lg:col-span-1">
-              <Label className="text-sm font-medium mb-2 block">Intolerância</Label>
-              <ScrollArea className="h-[500px] pr-2">
-                <div className="space-y-1">
-                  {intoleranceKeys.map((key) => (
-                    <Button
-                      key={key}
-                      variant={selectedIntolerance === key ? "default" : "ghost"}
-                      className="w-full justify-between"
-                      onClick={() => setSelectedIntolerance(key)}
-                    >
-                      <span>{getLabelWithCanonical(key, canonicalKeyMap)}</span>
-                      <Badge variant="secondary" className="ml-2">
-                        {getIntoleranceCount(key)}
-                      </Badge>
-                    </Button>
-                  ))}
-                </div>
-              </ScrollArea>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        {/* Sidebar with intolerances */}
+        <div className="md:col-span-1">
+          <Label className="text-sm font-medium mb-2 block">Intolerância</Label>
+          <ScrollArea className="h-[500px] pr-2">
+            <div className="space-y-1">
+              {intoleranceKeys.map((key) => (
+                <Button
+                  key={key}
+                  variant={selectedIntolerance === key ? "default" : "ghost"}
+                  className="w-full justify-between text-left"
+                  onClick={() => setSelectedIntolerance(key)}
+                >
+                  <span className="truncate">{getLabelWithCanonical(key, canonicalKeyMap)}</span>
+                  <Badge variant="secondary" className="ml-2 flex-shrink-0">
+                    {getIntoleranceCount(key)}
+                  </Badge>
+                </Button>
+              ))}
             </div>
+          </ScrollArea>
+        </div>
 
-            {/* Main content */}
-            <div className="lg:col-span-3 min-w-0">
-              <div className="flex flex-col gap-3 mb-4">
-                <h3 className="text-base sm:text-lg font-semibold truncate">
-                  {getLabel(selectedIntolerance)}
-                </h3>
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    className="pl-9 w-full text-sm"
-                  />
-                </div>
+        {/* Main content */}
+        <div className="md:col-span-3">
+          <h3 className="text-lg font-semibold mb-4">
+            {getLabel(selectedIntolerance)}
+          </h3>
+          
+          <div className="relative mb-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-9 max-w-md"
+            />
+          </div>
+
+          <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
+            <TabsList className="mb-4">
+              <TabsTrigger value="ingredients" className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4" />
+                Ingred. ({filteredMappings.length})
+              </TabsTrigger>
+              <TabsTrigger value="keywords" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Seguras ({filteredKeywords.length})
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="ingredients">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setIsAddIngredientOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
               </div>
 
-              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-                <TabsList className="mb-4 w-full grid grid-cols-2 h-auto">
-                  <TabsTrigger value="ingredients" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
-                    <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate">Ingred. ({filteredMappings.length})</span>
-                  </TabsTrigger>
-                  <TabsTrigger value="keywords" className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm py-2 px-2 sm:px-3">
-                    <Shield className="h-3 w-3 sm:h-4 sm:w-4 flex-shrink-0" />
-                    <span className="truncate">Seguras ({filteredKeywords.length})</span>
-                  </TabsTrigger>
-                </TabsList>
+              <div className="flex flex-wrap gap-2">
+                {filteredMappings.map((mapping) => (
+                  <Badge
+                    key={mapping.id}
+                    variant="outline"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-orange-500/10 border-orange-500/30"
+                  >
+                    {mapping.ingredient}
+                    <button
+                      onClick={() => setDeleteMapping(mapping)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {filteredMappings.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    Nenhum ingrediente cadastrado para esta intolerância.
+                  </p>
+                )}
+              </div>
+            </TabsContent>
 
-                <TabsContent value="ingredients">
-                  <div className="flex justify-end mb-4">
-                    <Button onClick={() => setIsAddIngredientOpen(true)} size="sm">
-                      <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-                      <span className="text-xs sm:text-sm">Adicionar</span>
-                    </Button>
-                  </div>
+            <TabsContent value="keywords">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setIsAddKeywordOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
 
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {filteredMappings.map((mapping) => (
-                      <Badge
-                        key={mapping.id}
-                        variant="outline"
-                        className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 bg-orange-500/10 border-orange-500/30"
-                      >
-                        <span className="truncate max-w-[120px] sm:max-w-none">{mapping.ingredient}</span>
-                        <button
-                          onClick={() => setDeleteMapping(mapping)}
-                          className="hover:text-destructive flex-shrink-0"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    {filteredMappings.length === 0 && (
-                      <p className="text-muted-foreground text-xs sm:text-sm">
-                        Nenhum ingrediente cadastrado.
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-
-                <TabsContent value="keywords">
-                  <div className="flex justify-end mb-4">
-                    <Button onClick={() => setIsAddKeywordOpen(true)} size="sm">
-                      <Plus className="h-4 w-4 mr-1 sm:mr-2" />
-                      <span className="text-xs sm:text-sm">Adicionar</span>
-                    </Button>
-                  </div>
-
-                  <div className="flex flex-wrap gap-1.5 sm:gap-2">
-                    {filteredKeywords.map((keyword) => (
-                      <Badge
-                        key={keyword.id}
-                        variant="outline"
-                        className="px-2 py-1 sm:px-3 sm:py-1.5 text-xs sm:text-sm flex items-center gap-1.5 sm:gap-2 bg-green-500/10 border-green-500/30"
-                      >
-                        <span className="truncate max-w-[120px] sm:max-w-none">{keyword.keyword}</span>
-                        <button
-                          onClick={() => setDeleteKeyword(keyword)}
-                          className="hover:text-destructive flex-shrink-0"
-                        >
-                          <X className="h-3 w-3" />
-                        </button>
-                      </Badge>
-                    ))}
-                    {filteredKeywords.length === 0 && (
-                      <p className="text-muted-foreground text-xs sm:text-sm">
-                        Nenhuma palavra-chave cadastrada.
-                      </p>
-                    )}
-                  </div>
-                </TabsContent>
-              </Tabs>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+              <div className="flex flex-wrap gap-2">
+                {filteredKeywords.map((keyword) => (
+                  <Badge
+                    key={keyword.id}
+                    variant="outline"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-green-500/10 border-green-500/30"
+                  >
+                    {keyword.keyword}
+                    <button
+                      onClick={() => setDeleteKeyword(keyword)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {filteredKeywords.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    Nenhuma palavra-chave cadastrada. Palavras como "sem lactose" neutralizam a suspeita.
+                  </p>
+                )}
+              </div>
+            </TabsContent>
+          </Tabs>
+        </div>
+      </div>
 
       {/* Add Ingredient Dialog */}
       <Dialog open={isAddIngredientOpen} onOpenChange={setIsAddIngredientOpen}>

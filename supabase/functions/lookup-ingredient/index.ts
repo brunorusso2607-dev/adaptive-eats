@@ -289,7 +289,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, limit = 10, country = 'BR' } = await req.json();
+    const { query, limit = 25, country = 'BR' } = await req.json();
 
     if (!query || typeof query !== 'string' || query.trim().length < 2) {
       return new Response(

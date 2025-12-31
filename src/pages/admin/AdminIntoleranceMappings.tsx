@@ -60,8 +60,15 @@ export default function AdminIntoleranceMappings() {
   // Hook para labels do banco de dados
   const { getIntoleranceLabel } = useSafetyLabels();
   
-  // Função helper para obter label (fallback se hook não retornar)
-  const getLabel = (key: string) => getIntoleranceLabel(key) || FALLBACK_INTOLERANCE_LABELS[key] || key;
+  // Função helper para obter label (usa normalization ou fallback)
+  const getLabel = (key: string) => {
+    return getIntoleranceLabel(key) || FALLBACK_INTOLERANCE_LABELS[key] || key;
+  };
+  
+  // Função para obter label com suporte a canonical keys
+  const getLabelWithCanonical = (key: string, canonicalMap: Map<string, string>) => {
+    return canonicalMap.get(key) || getLabel(key);
+  };
   
   // Dialog states
   const [isAddIngredientOpen, setIsAddIngredientOpen] = useState(false);
@@ -102,12 +109,35 @@ export default function AdminIntoleranceMappings() {
     },
   });
 
-  // Get unique intolerance keys
-  const intoleranceKeys = [...new Set([
-    ...(mappings?.map(m => m.intolerance_key) || []),
-    ...(safeKeywords?.map(k => k.intolerance_key) || []),
-    ...Object.keys(FALLBACK_INTOLERANCE_LABELS)
-  ])].sort();
+  // Fetch normalization table for deduplication
+  const { data: normalizationData } = useQuery({
+    queryKey: ["intolerance-key-normalization"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("intolerance_key_normalization")
+        .select("*");
+
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  // Build canonical key mapping (database_key -> label)
+  const canonicalKeyMap = new Map<string, string>();
+  normalizationData?.forEach((item) => {
+    if (!canonicalKeyMap.has(item.database_key)) {
+      canonicalKeyMap.set(item.database_key, item.label);
+    }
+  });
+
+  // Get unique intolerance keys (only from database, deduplicated by canonical key)
+  const intoleranceKeys = [...new Set(
+    mappings?.map(m => m.intolerance_key) || []
+  )].sort((a, b) => {
+    const labelA = canonicalKeyMap.get(a) || getLabel(a);
+    const labelB = canonicalKeyMap.get(b) || getLabel(b);
+    return labelA.localeCompare(labelB, 'pt-BR');
+  });
 
   // Filter by selected intolerance and search
   const filteredMappings = mappings?.filter(m => 
@@ -279,7 +309,7 @@ export default function AdminIntoleranceMappings() {
                       className="w-full justify-between"
                       onClick={() => setSelectedIntolerance(key)}
                     >
-                      <span>{getLabel(key)}</span>
+                      <span>{getLabelWithCanonical(key, canonicalKeyMap)}</span>
                       <Badge variant="secondary" className="ml-2">
                         {getIntoleranceCount(key)}
                       </Badge>

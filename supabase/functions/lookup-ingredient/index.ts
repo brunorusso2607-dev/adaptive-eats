@@ -68,30 +68,58 @@ const SAFE_BASE_INGREDIENTS = [
 
 const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
 
-// English terms that indicate the food name is in English (not Portuguese)
-const ENGLISH_TERMS = [
-  // Grain types
-  'long-grain', 'short-grain', 'medium-grain', 'wild rice', 'brown rice', 'white rice',
-  'long grain', 'short grain', 'medium grain', 'enriched', 'unenriched', 'parboiled',
-  // Cooking terms
-  'cooked', 'raw', 'steamed', 'boiled', 'baked', 'fried', 'grilled', 'roasted',
-  'sauteed', 'sautéed', 'stir-fried', 'stewed', 'braised', 'poached',
-  // Descriptors  
-  'regular', 'instant', 'precooked', 'dried', 'dehydrated', 'canned',
-  'frozen', 'fresh', 'whole', 'ground', 'sliced', 'diced', 'chopped',
-  'boneless', 'skinless', 'with skin', 'without skin',
-  // Food categories
-  'meat', 'fish', 'poultry', 'vegetable', 'fruit', 'grain', 'cereal',
-  'dairy', 'beverage', 'snack', 'dessert', 'sauce', 'soup',
-  // Common foods in English
-  'rice,', 'rice ', 'chicken,', 'chicken ', 'beef,', 'beef ', 'pork,', 'pork ',
-  'beans,', 'beans ', 'bread,', 'bread ', 'cheese,', 'cheese ', 'milk,', 'milk ',
-  'egg,', 'egg ', 'pasta,', 'pasta ', 'noodle', 'flour,', 'flour ',
-  // Units and measurements
-  'per serving', 'per 100g', 'cup', 'tablespoon', 'teaspoon',
-  // Other indicators
-  'prepared', 'ready-to-', 'ready to',
-];
+// Country to language mapping
+const COUNTRY_LANGUAGE: Record<string, string> = {
+  'BR': 'pt', 'PT': 'pt',
+  'US': 'en', 'GB': 'en', 'UK': 'en', 'AU': 'en', 'CA': 'en',
+  'ES': 'es', 'MX': 'es', 'AR': 'es', 'CO': 'es', 'CL': 'es', 'PE': 'es',
+  'FR': 'fr',
+  'IT': 'it',
+  'DE': 'de',
+};
+
+// Language-specific terms that indicate a food is in that language
+const LANGUAGE_INDICATORS: Record<string, string[]> = {
+  'en': [
+    // Cooking methods
+    'cooked', 'raw', 'steamed', 'boiled', 'baked', 'fried', 'grilled', 'roasted',
+    'sauteed', 'stir-fried', 'stewed', 'braised', 'poached', 'dried', 'canned',
+    // Descriptors
+    'long-grain', 'short-grain', 'medium-grain', 'enriched', 'unenriched', 'parboiled',
+    'regular', 'instant', 'precooked', 'frozen', 'fresh', 'whole', 'ground',
+    'sliced', 'diced', 'chopped', 'boneless', 'skinless', 'with skin', 'without',
+    // Foods
+    'rice,', 'chicken,', 'beef,', 'pork,', 'beans,', 'bread,', 'cheese,', 'milk,',
+    'egg,', 'pasta,', 'noodle', 'flour,', 'meat', 'fish', 'poultry', 'vegetable',
+  ],
+  'pt': [
+    'cozido', 'cru', 'assado', 'frito', 'grelhado', 'refogado', 'integral',
+    'polido', 'parboilizado', 'branco', 'preto', 'carioca', 'vermelho',
+    'moído', 'picado', 'fatiado', 'congelado', 'fresco', 'seco',
+    'arroz,', 'feijão,', 'carne,', 'frango,', 'peixe,', 'ovo,', 'leite,',
+  ],
+  'es': [
+    'cocido', 'crudo', 'asado', 'frito', 'a la plancha', 'hervido', 'integral',
+    'blanco', 'negro', 'rojo', 'molido', 'picado', 'rebanado', 'congelado',
+    'fresco', 'seco', 'arroz,', 'frijol', 'carne,', 'pollo,', 'pescado,',
+    'huevo,', 'leche,', 'queso,', 'pan,',
+  ],
+  'fr': [
+    'cuit', 'cru', 'rôti', 'frit', 'grillé', 'bouilli', 'complet', 'blanc',
+    'noir', 'rouge', 'haché', 'tranché', 'congelé', 'frais', 'sec',
+    'riz,', 'viande,', 'poulet,', 'poisson,', 'oeuf,', 'lait,', 'fromage,', 'pain,',
+  ],
+  'it': [
+    'cotto', 'crudo', 'arrosto', 'fritto', 'alla griglia', 'bollito', 'integrale',
+    'bianco', 'nero', 'rosso', 'macinato', 'affettato', 'congelato', 'fresco', 'secco',
+    'riso,', 'carne,', 'pollo,', 'pesce,', 'uovo,', 'latte,', 'formaggio,', 'pane,',
+  ],
+  'de': [
+    'gekocht', 'roh', 'gebraten', 'frittiert', 'gegrillt', 'gedünstet', 'vollkorn',
+    'weiß', 'schwarz', 'rot', 'gemahlen', 'geschnitten', 'gefroren', 'frisch', 'trocken',
+    'reis,', 'fleisch,', 'hähnchen,', 'fisch,', 'ei,', 'milch,', 'käse,', 'brot,',
+  ],
+};
 
 function normalizeText(text: string): string {
   return text
@@ -101,24 +129,37 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-// Check if a food name appears to be in English (not Portuguese)
-function isEnglishFood(name: string): boolean {
+// Detect the language of a food name
+function detectFoodLanguage(name: string): string | null {
   const nameLower = name.toLowerCase();
   
-  // Check for English terms
-  for (const term of ENGLISH_TERMS) {
-    if (nameLower.includes(term)) {
-      return true;
+  // Check each language for indicators
+  for (const [lang, indicators] of Object.entries(LANGUAGE_INDICATORS)) {
+    for (const term of indicators) {
+      if (nameLower.includes(term)) {
+        return lang;
+      }
     }
   }
   
   // Check for typical English naming pattern: "Food, descriptor, descriptor"
-  // Portuguese typically uses "Food descriptor descriptor" (no commas after main name)
   if (/^[a-z]+,\s+[a-z]+/i.test(name)) {
-    return true;
+    return 'en';
   }
   
-  return false;
+  return null; // Unable to detect
+}
+
+// Check if a food is in the wrong language for the user's country
+function isWrongLanguage(name: string, userCountry: string): boolean {
+  const expectedLang = COUNTRY_LANGUAGE[userCountry];
+  if (!expectedLang) return false; // Unknown country, don't filter
+  
+  const detectedLang = detectFoodLanguage(name);
+  if (!detectedLang) return false; // Can't detect, don't filter
+  
+  // If detected language differs from expected, filter it out
+  return detectedLang !== expectedLang;
 }
 
 function isPreparedDish(food: any): boolean {
@@ -393,10 +434,9 @@ serve(async (req) => {
       .limit(100); // Fetch more to allow for filtering
 
     if (startsWithPriority && startsWithPriority.length > 0) {
-      const shouldFilterEnglish = ['BR', 'PT'].includes(upperCountry);
       const filtered = startsWithPriority
         .filter(f => !isPreparedDish(f))
-        .filter(f => !shouldFilterEnglish || !isEnglishFood(f.name || ''));
+        .filter(f => !isWrongLanguage(f.name || '', upperCountry));
       allFoods = [...allFoods, ...filtered];
       logStep('Found starts-with in country sources', { count: filtered.length, sources: preferredSources });
     }
@@ -415,11 +455,10 @@ serve(async (req) => {
 
       if (containsPriority && containsPriority.length > 0) {
         const existingIds = new Set(allFoods.map(f => f.id));
-        const shouldFilterEnglish = ['BR', 'PT'].includes(upperCountry);
         const newFoods = containsPriority
           .filter(f => !existingIds.has(f.id))
           .filter(f => !isPreparedDish(f))
-          .filter(f => !shouldFilterEnglish || !isEnglishFood(f.name || ''));
+          .filter(f => !isWrongLanguage(f.name || '', upperCountry));
         allFoods = [...allFoods, ...newFoods];
         logStep('Found contains in country sources', { added: newFoods.length });
       }
@@ -435,13 +474,12 @@ serve(async (req) => {
 
       if (aliasResults && aliasResults.length > 0) {
         const existingIds = new Set(allFoods.map(f => f.id));
-        const shouldFilterEnglish = ['BR', 'PT'].includes(upperCountry);
         const aliasFoods = aliasResults
           .map((a: any) => a.foods)
           .filter((f: any) => f && f.is_verified && !existingIds.has(f.id))
-          .filter((f: any) => preferredSources.includes(f.source)) // Filter by country sources
+          .filter((f: any) => preferredSources.includes(f.source))
           .filter((f: any) => !isPreparedDish(f))
-          .filter((f: any) => !shouldFilterEnglish || !isEnglishFood(f.name || ''));
+          .filter((f: any) => !isWrongLanguage(f.name || '', upperCountry));
         
         allFoods = [...allFoods, ...aliasFoods];
         logStep('Found via alias (filtered by country)', { added: aliasFoods.length });

@@ -241,17 +241,44 @@ Formato esperado:
     // Limpar e parsear JSON
     let generatedMeal: any;
     try {
-      const cleanJson = rawText
+      let cleanJson = rawText
         .replace(/```json\n?/g, '')
         .replace(/```\n?/g, '')
         .trim();
+      
+      // Tentar extrair JSON do texto se não começar com {
+      if (!cleanJson.startsWith('{')) {
+        const jsonMatch = cleanJson.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          cleanJson = jsonMatch[0];
+        }
+      }
+      
+      console.log('[PROMPT-VALIDATION] Raw AI response:', rawText.substring(0, 300));
+      console.log('[PROMPT-VALIDATION] Clean JSON:', cleanJson.substring(0, 300));
+      
       generatedMeal = JSON.parse(cleanJson);
+      
+      // Normalizar campos se necessário
+      if (!generatedMeal.title && generatedMeal.nome) {
+        generatedMeal.title = generatedMeal.nome;
+      }
+      if (!generatedMeal.instructions && generatedMeal.dicas) {
+        generatedMeal.instructions = generatedMeal.dicas;
+      }
+      if (!generatedMeal.foods && generatedMeal.alimentos) {
+        generatedMeal.foods = generatedMeal.alimentos;
+      }
+      if (!generatedMeal.calories_kcal && generatedMeal.calorias) {
+        generatedMeal.calories_kcal = generatedMeal.calorias;
+      }
+      
     } catch (e) {
-      console.error('[PROMPT-VALIDATION] Failed to parse AI response:', rawText.substring(0, 500));
+      console.error('[PROMPT-VALIDATION] Failed to parse AI response:', rawText);
       return new Response(JSON.stringify({
         success: false,
         error: 'Falha ao parsear resposta da IA',
-        rawResponse: rawText.substring(0, 500),
+        rawResponse: rawText.substring(0, 800),
         promptPreview,
         timestamp: new Date().toISOString(),
       }), { 

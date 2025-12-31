@@ -248,6 +248,37 @@ export function getMinutesOverdueWithRanges(
   return (daysDiff * 24 * 60) + currentTimeInMinutes - delayStartInMinutes;
 }
 
+// Função para verificar se a refeição está ATIVA agora (dentro da janela de tempo atual)
+// Sincronizada com a lógica do MealPlanCalendar (isMealActive)
+export function isMealActiveNowWithRanges(
+  mealType: string,
+  actualDate: Date | undefined,
+  customRanges?: MealTimeRanges | null
+): boolean {
+  if (!actualDate) return false;
+  
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
+  
+  // Só pode estar ativa se é do dia de hoje
+  if (mealDate.getTime() !== today.getTime()) return false;
+  
+  const currentHour = now.getHours() + now.getMinutes() / 60;
+  const timeRanges = customRanges || getMealTimeRangesSync();
+  const range = timeRanges[mealType];
+  
+  if (!range) return false;
+  
+  // A refeição está ativa se a hora atual está dentro do range (start <= current < end)
+  return currentHour >= range.start && currentHour < range.end;
+}
+
+// Versão retrocompatível
+export function isMealActiveNow(mealType: string, actualDate: Date | undefined): boolean {
+  return isMealActiveNowWithRanges(mealType, actualDate, null);
+}
+
 // Versão retrocompatível (usa ranges globais)
 export function getMinutesOverdue(mealType: string, actualDate: Date | undefined): number {
   return getMinutesOverdueWithRanges(mealType, actualDate, null);

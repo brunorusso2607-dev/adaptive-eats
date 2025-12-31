@@ -19,7 +19,7 @@ const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
 const STEPS = [
   { id: 1, title: "Sua região", description: "De qual país você é?" },
-  { id: 2, title: "Intolerâncias", description: "Quais são suas restrições alimentares?" },
+  { id: 2, title: "Restrições", description: "Intolerâncias, alergias e sensibilidades" },
   { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?" },
   { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
   { id: 5, title: "Objetivo", description: "Qual sua estratégia nutricional?" },
@@ -212,28 +212,134 @@ export default function Onboarding() {
 
       case 2:
         return (
-          <div className="grid grid-cols-2 gap-3">
-            {options.intolerances.map((item) => {
+          <div className="space-y-6 max-h-[420px] overflow-y-auto pr-1">
+            {/* Seção 1: Intolerâncias */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-amber-500" />
+                <h3 className="text-sm font-semibold text-foreground">Intolerâncias</h3>
+                <span className="text-xs text-muted-foreground">(digestivas)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {options.intolerances.filter(item => item.option_id !== 'none').map((item) => {
+                  const IconComponent = getOnboardingIcon(item);
+                  return (
+                    <button
+                      key={item.option_id}
+                      onClick={() => toggleIntolerance(item.option_id)}
+                      className={cn(
+                        "p-3 rounded-xl border text-left transition-all",
+                        profile.intolerances.includes(item.option_id)
+                          ? "border-amber-500 bg-amber-500/10"
+                          : "border-border/80 hover:border-amber-500/50 bg-card"
+                      )}
+                    >
+                      <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
+                        {IconComponent ? (
+                          <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                        ) : (
+                          <span className="text-lg">{item.emoji || "•"}</span>
+                        )}
+                      </div>
+                      <span className="font-medium text-xs">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Seção 2: Alergias */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-red-500" />
+                <h3 className="text-sm font-semibold text-foreground">Alergias</h3>
+                <span className="text-xs text-muted-foreground">(reações imunológicas)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {options.allergies.map((item) => {
+                  const IconComponent = getOnboardingIcon(item);
+                  return (
+                    <button
+                      key={item.option_id}
+                      onClick={() => toggleIntolerance(item.option_id)}
+                      className={cn(
+                        "p-3 rounded-xl border text-left transition-all",
+                        profile.intolerances.includes(item.option_id)
+                          ? "border-red-500 bg-red-500/10"
+                          : "border-border/80 hover:border-red-500/50 bg-card"
+                      )}
+                    >
+                      <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
+                        {IconComponent ? (
+                          <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                        ) : (
+                          <span className="text-lg">{item.emoji || "•"}</span>
+                        )}
+                      </div>
+                      <span className="font-medium text-xs">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Seção 3: Sensibilidades */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-purple-500" />
+                <h3 className="text-sm font-semibold text-foreground">Sensibilidades</h3>
+                <span className="text-xs text-muted-foreground">(metabólicas)</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                {options.sensitivities.map((item) => {
+                  const IconComponent = getOnboardingIcon(item);
+                  return (
+                    <button
+                      key={item.option_id}
+                      onClick={() => toggleIntolerance(item.option_id)}
+                      className={cn(
+                        "p-3 rounded-xl border text-left transition-all",
+                        profile.intolerances.includes(item.option_id)
+                          ? "border-purple-500 bg-purple-500/10"
+                          : "border-border/80 hover:border-purple-500/50 bg-card"
+                      )}
+                    >
+                      <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
+                        {IconComponent ? (
+                          <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                        ) : (
+                          <span className="text-lg">{item.emoji || "•"}</span>
+                        )}
+                      </div>
+                      <span className="font-medium text-xs">{item.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Opção "Nenhuma" */}
+            {options.intolerances.filter(item => item.option_id === 'none').map((item) => {
               const IconComponent = getOnboardingIcon(item);
               return (
                 <button
                   key={item.option_id}
                   onClick={() => toggleIntolerance(item.option_id)}
                   className={cn(
-                    "p-4 rounded-xl border text-left transition-all",
+                    "w-full p-3 rounded-xl border text-center transition-all",
                     profile.intolerances.includes(item.option_id)
-                      ? "border-primary bg-primary/5"
+                      ? "border-primary bg-primary/10"
                       : "border-border/80 hover:border-primary/50 bg-card"
                   )}
                 >
-                  <div className="w-8 h-8 mb-2 flex items-center justify-center">
+                  <div className="flex items-center justify-center gap-2">
                     {IconComponent ? (
-                      <IconComponent className="w-6 h-6 text-foreground stroke-[1.5]" />
+                      <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
                     ) : (
-                      <span className="text-xl">{item.emoji || "•"}</span>
+                      <span className="text-lg">{item.emoji || "✅"}</span>
                     )}
+                    <span className="font-medium text-sm">{item.label}</span>
                   </div>
-                  <span className="font-medium text-sm">{item.label}</span>
                 </button>
               );
             })}

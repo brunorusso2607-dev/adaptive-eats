@@ -15,6 +15,8 @@ export type OnboardingOption = {
 
 export type OnboardingOptionsMap = {
   intolerances: OnboardingOption[];
+  allergies: OnboardingOption[];
+  sensitivities: OnboardingOption[];
   excluded_ingredients: OnboardingOption[];
   dietary_preferences: OnboardingOption[];
   goals: OnboardingOption[];
@@ -25,26 +27,40 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
   intolerances: [
     { id: "1", category: "intolerances", option_id: "gluten", label: "Glúten", description: "Trigo, cevada, centeio", emoji: "🌾", icon_name: "wheat", is_active: true, sort_order: 1 },
     { id: "2", category: "intolerances", option_id: "lactose", label: "Lactose", description: "Leite e derivados", emoji: "🥛", icon_name: "milk", is_active: true, sort_order: 2 },
-    { id: "3", category: "intolerances", option_id: "none", label: "Nenhuma", description: "Não tenho intolerâncias", emoji: "✅", icon_name: "check", is_active: true, sort_order: 7 },
+    { id: "3", category: "intolerances", option_id: "fodmap", label: "FODMAP", description: "Carboidratos fermentáveis", emoji: "🫘", icon_name: "bean", is_active: true, sort_order: 3 },
+    { id: "4", category: "intolerances", option_id: "none", label: "Nenhuma", description: "Não tenho restrições", emoji: "✅", icon_name: "check", is_active: true, sort_order: 99 },
+  ],
+  allergies: [
+    { id: "5", category: "allergies", option_id: "peanut", label: "Amendoim", description: "Alergia a amendoim", emoji: "🥜", icon_name: "nut", is_active: true, sort_order: 1 },
+    { id: "6", category: "allergies", option_id: "nuts", label: "Oleaginosas", description: "Castanhas, nozes, amêndoas", emoji: "🌰", icon_name: "acorn", is_active: true, sort_order: 2 },
+    { id: "7", category: "allergies", option_id: "seafood", label: "Frutos do mar", description: "Crustáceos e moluscos", emoji: "🦐", icon_name: "fish", is_active: true, sort_order: 3 },
+    { id: "8", category: "allergies", option_id: "fish", label: "Peixe", description: "Todos os tipos de peixe", emoji: "🐟", icon_name: "fish", is_active: true, sort_order: 4 },
+    { id: "9", category: "allergies", option_id: "eggs", label: "Ovos", description: "Ovos e derivados", emoji: "🥚", icon_name: "egg", is_active: true, sort_order: 5 },
+    { id: "10", category: "allergies", option_id: "soy", label: "Soja", description: "Soja e derivados", emoji: "🫘", icon_name: "bean", is_active: true, sort_order: 6 },
+  ],
+  sensitivities: [
+    { id: "11", category: "sensitivities", option_id: "acucar", label: "Açúcar", description: "Restrição ao açúcar", emoji: "🍬", icon_name: "candy", is_active: true, sort_order: 1 },
+    { id: "12", category: "sensitivities", option_id: "cafeina", label: "Cafeína", description: "Sensibilidade à cafeína", emoji: "☕", icon_name: "coffee", is_active: true, sort_order: 2 },
+    { id: "13", category: "sensitivities", option_id: "histamina", label: "Histamina", description: "Sensibilidade à histamina", emoji: "🧪", icon_name: "flask", is_active: true, sort_order: 3 },
   ],
   excluded_ingredients: [
-    { id: "11", category: "excluded_ingredients", option_id: "carne_porco", label: "Carne de porco", description: "Inclui bacon, presunto, linguiça de porco", emoji: null, icon_name: "ban", is_active: true, sort_order: 1 },
-    { id: "12", category: "excluded_ingredients", option_id: "figado", label: "Fígado", description: "Fígado bovino, de frango ou outros", emoji: null, icon_name: "ban", is_active: true, sort_order: 2 },
-    { id: "13", category: "excluded_ingredients", option_id: "frutos_mar", label: "Frutos do mar", description: "Camarão, lula, polvo, mexilhão", emoji: null, icon_name: "fish", is_active: true, sort_order: 3 },
+    { id: "21", category: "excluded_ingredients", option_id: "carne_porco", label: "Carne de porco", description: "Inclui bacon, presunto, linguiça de porco", emoji: null, icon_name: "ban", is_active: true, sort_order: 1 },
+    { id: "22", category: "excluded_ingredients", option_id: "figado", label: "Fígado", description: "Fígado bovino, de frango ou outros", emoji: null, icon_name: "ban", is_active: true, sort_order: 2 },
+    { id: "23", category: "excluded_ingredients", option_id: "frutos_mar", label: "Frutos do mar", description: "Camarão, lula, polvo, mexilhão", emoji: null, icon_name: "fish", is_active: true, sort_order: 3 },
   ],
   dietary_preferences: [
-    { id: "4", category: "dietary_preferences", option_id: "comum", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", icon_name: "utensils", is_active: true, sort_order: 1 },
-    { id: "5", category: "dietary_preferences", option_id: "vegetariana", label: "Vegetariana", description: "Não como carnes", emoji: "🥗", icon_name: "salad", is_active: true, sort_order: 2 },
-    { id: "6", category: "dietary_preferences", option_id: "vegana", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 3 },
-    { id: "7", category: "dietary_preferences", option_id: "low_carb", label: "Low Carb", description: "Reduzo carboidratos", emoji: "🥩", icon_name: "beef", is_active: true, sort_order: 4 },
-    { id: "14", category: "dietary_preferences", option_id: "pescetariana", label: "Pescetariana", description: "Como peixes e frutos do mar, sem carnes", emoji: "🐟", icon_name: "fish", is_active: true, sort_order: 5 },
-    { id: "15", category: "dietary_preferences", option_id: "cetogenica", label: "Cetogênica", description: "Baixo carboidrato, alta gordura", emoji: "🥑", icon_name: "flame", is_active: true, sort_order: 6 },
-    { id: "16", category: "dietary_preferences", option_id: "flexitariana", label: "Flexitariana", description: "Vegetariana com carne ocasional", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 7 },
+    { id: "31", category: "dietary_preferences", option_id: "comum", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", icon_name: "utensils", is_active: true, sort_order: 1 },
+    { id: "32", category: "dietary_preferences", option_id: "vegetariana", label: "Vegetariana", description: "Não como carnes", emoji: "🥗", icon_name: "salad", is_active: true, sort_order: 2 },
+    { id: "33", category: "dietary_preferences", option_id: "vegana", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 3 },
+    { id: "34", category: "dietary_preferences", option_id: "low_carb", label: "Low Carb", description: "Reduzo carboidratos", emoji: "🥩", icon_name: "beef", is_active: true, sort_order: 4 },
+    { id: "35", category: "dietary_preferences", option_id: "pescetariana", label: "Pescetariana", description: "Como peixes e frutos do mar, sem carnes", emoji: "🐟", icon_name: "fish", is_active: true, sort_order: 5 },
+    { id: "36", category: "dietary_preferences", option_id: "cetogenica", label: "Cetogênica", description: "Baixo carboidrato, alta gordura", emoji: "🥑", icon_name: "flame", is_active: true, sort_order: 6 },
+    { id: "37", category: "dietary_preferences", option_id: "flexitariana", label: "Flexitariana", description: "Vegetariana com carne ocasional", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 7 },
   ],
   goals: [
-    { id: "8", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
-    { id: "9", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
-    { id: "10", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
+    { id: "41", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
+    { id: "42", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
+    { id: "43", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
   ],
 };
 
@@ -70,6 +86,8 @@ export function useOnboardingOptions() {
       // Organize by category
       const organized: OnboardingOptionsMap = {
         intolerances: [],
+        allergies: [],
+        sensitivities: [],
         excluded_ingredients: [],
         dietary_preferences: [],
         goals: [],

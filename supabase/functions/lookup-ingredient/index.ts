@@ -52,17 +52,21 @@ const PREPARED_DISH_PATTERNS = [
 ];
 
 // Ingredients that should NEVER be filtered out even if they match patterns
-const SAFE_RAW_INGREDIENTS = [
-  'arroz', 'arroz integral', 'arroz parboilizado', 'arroz branco',
-  'arroz arbóreo', 'arroz basmati', 'arroz jasmine', 'arroz selvagem',
-  'arroz agulhinha', 'arroz cateto', 'arroz negro', 'arroz vermelho',
-  'feijão', 'feijão preto', 'feijão carioca', 'feijão branco',
-  'feijão vermelho', 'feijão fradinho', 'feijão roxo', 'feijão rajado',
-  'macarrão', 'espaguete', 'penne', 'fusilli', 'farfalle',
-  'carne', 'frango', 'peixe', 'ovo', 'leite', 'queijo',
+// These are BASE ingredients that can have variations
+const SAFE_BASE_INGREDIENTS = [
+  'arroz', 'feijao', 'macarrao', 'espaguete', 'penne', 'fusilli', 'farfalle',
+  'carne', 'frango', 'peixe', 'ovo', 'leite', 'queijo', 'batata', 'mandioca',
+  'milho', 'trigo', 'aveia', 'quinoa', 'lentilha', 'grao de bico',
+  'banana', 'maca', 'laranja', 'limao', 'tomate', 'cebola', 'alho',
+  'cenoura', 'brocolis', 'couve', 'alface', 'repolho', 'pepino',
+  'abobrinha', 'berinjela', 'pimentao', 'abobora', 'chuchu',
+  'cafe', 'cha', 'suco', 'agua', 'iogurte', 'cream cheese', 'ricota',
+  'peito de frango', 'file de frango', 'coxa de frango', 'sobrecoxa',
+  'carne moida', 'patinho', 'acem', 'alcatra', 'maminha', 'picanha',
+  'salmao', 'tilapia', 'atum', 'sardinha', 'bacalhau', 'camarao',
 ];
 
-const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
+const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche', 'graos', 'cereais'];
 
 function normalizeText(text: string): string {
   return text
@@ -78,19 +82,17 @@ function isPreparedDish(food: any): boolean {
   const nameNormalized = normalizeText(name);
   const categoryLower = (food.category || '').toLowerCase();
   
-  // Allow fast-food category
+  // Allow fast-food category and base ingredient categories
   if (ALLOWED_PREPARED_CATEGORIES.some(cat => categoryLower.includes(cat))) {
     return false;
   }
   
-  // Check if it's a safe raw ingredient (exact match or starts with)
-  for (const safe of SAFE_RAW_INGREDIENTS) {
+  // Check if name STARTS WITH a safe base ingredient - allow these through
+  for (const safe of SAFE_BASE_INGREDIENTS) {
     const safeNormalized = normalizeText(safe);
-    if (nameNormalized === safeNormalized || nameNormalized.startsWith(safeNormalized + ' ')) {
-      // But if it has "com" or other combo indicators, it's still a prepared dish
-      if (!nameLower.includes(' com ') && !nameLower.includes(' c/') && !nameLower.includes(', c/')) {
-        return false;
-      }
+    if (nameNormalized.startsWith(safeNormalized)) {
+      // This is a variation of a base ingredient, allow it
+      return false;
     }
   }
   

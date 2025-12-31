@@ -101,7 +101,7 @@ export default function FreeFormMealLogger({
   const [showRegistrationFlow, setShowRegistrationFlow] = useState(false);
 
   // Use the unified lookup hook (Local + Aliases + USDA)
-  const { lookup, reset, results, source, isLoading } = useLookupIngredient();
+  const { lookup, reset, results, source, isLoading, searchPlaceholder } = useLookupIngredient();
   const { checkFood, checkConflict } = useIntoleranceWarning();
 
   // Fetch user profile for conflict checking
@@ -505,11 +505,14 @@ export default function FreeFormMealLogger({
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 ref={searchInputRef}
-                placeholder="Buscar alimento..."
+                placeholder={searchPlaceholder.placeholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
+              <p className="text-xs text-muted-foreground mt-1.5 ml-1">
+                {searchPlaceholder.hint}
+              </p>
             </div>
             
             {/* Search results dropdown */}

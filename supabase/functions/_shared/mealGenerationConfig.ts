@@ -782,17 +782,19 @@ EXEMPLOS CORRETOS:
 - ERRADO: listar "1 wrap integral" separado do recheio ❌
 - CERTO: "1 wrap integral recheado com atum e alface" ✓
 
-⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO):
-- LÍQUIDOS (água, sucos, chás, leite): usar "xícara", "copo", "ml"
-- PROTEÍNAS (carnes, peixes, frango): usar "filé", "pedaço", "porção"
+⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO - CRÍTICO):
+- LÍQUIDOS (água, sucos, chás, leite, cafés): usar "xícara", "copo", "ml"
+- PROTEÍNAS (carnes, peixes, frango, tofu): usar "filé", "pedaço", "porção"
 - OVOS: usar "unidade" (ex: "2 ovos cozidos")
-- GRÃOS/ARROZ/MASSAS: usar "colher de sopa", "colher de servir", "porção"
+- 🔴 GRÃOS/ARROZ/MASSAS: usar "colher de sopa" ou "porção" (NUNCA "xícara"!)
+  ❌ ERRADO: "1 xícara de arroz integral" 
+  ✓ CERTO: "4 colheres de sopa de arroz integral"
 - VEGETAIS SÓLIDOS: usar "porção", "folhas", "floretes" (NUNCA "xícara" para vegetais!)
-- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média")
+- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média") (NUNCA "xícara"!)
 
 Exemplos CORRETOS:
 {"name": "1 filé médio de frango grelhado", "grams": 120}
-{"name": "2 colheres de sopa de arroz integral", "grams": 150}
+{"name": "4 colheres de sopa de arroz integral", "grams": 150}
 {"name": "1 porção de brócolis cozido", "grams": 100}
 {"name": "1 banana média", "grams": 120}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
@@ -800,7 +802,28 @@ Exemplos CORRETOS:
 
 🔴 REGRA DE CONSISTÊNCIA NOME-INGREDIENTES:
 O campo "title" DEVE ser um nome descritivo que reflete os ingredientes (ex: "Frango grelhado com arroz e salada")
-NUNCA use nomes genéricos como "Opção 1", "Opção 2", etc.`;
+NUNCA use nomes genéricos como "Opção 1", "Opção 2", etc.
+
+🔴🔴🔴 REGRA DE COERÊNCIA INSTRUÇÃO-INGREDIENTES (ABSOLUTO - CRÍTICO):
+As instruções ("instructions") DEVEM mencionar APENAS ingredientes que existem na lista "foods".
+- Se "foods" contém apenas maçã, as instruções NÃO podem falar de abóbora, gengibre, etc.
+- Se "foods" contém apenas pão, as instruções NÃO podem mencionar torradas (são coisas diferentes!)
+
+EXEMPLOS DE ERROS GRAVES (NUNCA FAZER):
+❌ foods: [{"name": "1 maçã média", "grams": 150}] 
+   instructions: ["Refogue a abóbora com gengibre"]
+   ISSO É INVÁLIDO! Maçã não é abóbora!
+
+❌ foods: [{"name": "2 fatias de pão sem glúten", "grams": 60}]
+   instructions: ["Sirva com as torradas"]
+   ISSO É INVÁLIDO! Pão não é torrada!
+
+EXEMPLOS CORRETOS:
+✓ foods: [{"name": "1 maçã média", "grams": 150}]
+   instructions: ["Lave a maçã", "Corte em fatias se preferir", "Sirva naturalmente"]
+
+✓ foods: [{"name": "Sopa cremosa de abóbora", "grams": 300}]
+   instructions: ["Cozinhe a abóbora até ficar macia", "Bata no liquidificador", "Sirva quente"]`;
   }
 
   if (isSpanish) {

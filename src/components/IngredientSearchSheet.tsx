@@ -91,7 +91,7 @@ export default function IngredientSearchSheet({
   const [portionGrams, setPortionGrams] = useState<number>(100);
   const [portionSuggestion, setPortionSuggestion] = useState<string>("");
 
-  const { lookup, reset, results, source, isLoading } = useLookupIngredient();
+  const { lookup, reset, results, source, isLoading, searchPlaceholder } = useLookupIngredient();
   const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
 
   const checkFoodConflicts = useCallback((foodName: string) => {
@@ -394,7 +394,7 @@ export default function IngredientSearchSheet({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar alimento..."
+                placeholder={searchPlaceholder.placeholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
@@ -402,7 +402,7 @@ export default function IngredientSearchSheet({
               />
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Busque o alimento que você realmente comeu
+              {searchPlaceholder.hint}
             </p>
           </div>
 

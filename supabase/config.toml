@@ -173,3 +173,6 @@ verify_jwt = false
 
 [functions.health-check-system]
 verify_jwt = false
+
+[functions.expand-language-terms]
+verify_jwt = false

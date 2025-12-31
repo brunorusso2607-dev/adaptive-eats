@@ -1804,6 +1804,51 @@ export type Database = {
         }
         Relationships: []
       }
+      supported_languages: {
+        Row: {
+          code: string
+          created_at: string
+          expansion_status: string
+          id: string
+          is_active: boolean
+          is_base_language: boolean
+          last_expansion_at: string | null
+          name: string
+          native_name: string
+          sort_order: number
+          total_terms: number | null
+          updated_at: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          expansion_status?: string
+          id?: string
+          is_active?: boolean
+          is_base_language?: boolean
+          last_expansion_at?: string | null
+          name: string
+          native_name: string
+          sort_order?: number
+          total_terms?: number | null
+          updated_at?: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          expansion_status?: string
+          id?: string
+          is_active?: boolean
+          is_base_language?: boolean
+          last_expansion_at?: string | null
+          name?: string
+          native_name?: string
+          sort_order?: number
+          total_terms?: number | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       symptom_logs: {
         Row: {
           created_at: string

@@ -50,6 +50,7 @@ import { SymptomFeedbackModal } from "@/components/SymptomFeedbackModal";
 import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 
 type Recipe = {
   name: string;
@@ -149,6 +150,9 @@ export default function Dashboard() {
   
   // Admin check
   const { isAdmin } = useAdmin();
+  
+  // Timezone sync - detecta e atualiza timezone automaticamente a cada acesso
+  const { timezone } = useUserTimezone();
   
   // Feature flag for Kids Mode
   const { isEnabled: isKidsModeEnabled } = useFeatureFlag("kids_mode");

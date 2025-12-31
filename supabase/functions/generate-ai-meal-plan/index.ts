@@ -479,6 +479,124 @@ function calculateOptionCalories(foods: FoodItem[]): number {
   }, 0);
 }
 
+// ============= VALIDAÇÃO ESTRUTURAL: Coerência Título-Ingredientes =============
+function validateTitleIngredientCoherence(
+  title: string,
+  foods: FoodItem[]
+): { isCoherent: boolean; issue?: string } {
+  const normalizedTitle = normalizeText(title);
+  const foodNames = foods.map(f => normalizeText(f.name)).join(' ');
+  
+  // Palavras-chave que indicam tipo de prato no título
+  const titleKeywords = [
+    { keyword: 'wrap', requires: ['wrap', 'tortilla', 'recheado', 'recheio'] },
+    { keyword: 'sanduiche', requires: ['pao', 'sanduiche', 'torrada'] },
+    { keyword: 'omelete', requires: ['ovo', 'clara', 'omelete', 'mexido'] },
+    { keyword: 'salada', requires: ['salada', 'folha', 'alface', 'rúcula', 'agriao'] },
+    { keyword: 'sopa', requires: ['sopa', 'caldo', 'creme'] },
+    { keyword: 'vitamina', requires: ['vitamina', 'smoothie', 'batido', 'leite', 'fruta'] },
+    { keyword: 'mingau', requires: ['mingau', 'aveia', 'tapioca'] },
+    { keyword: 'arroz', requires: ['arroz', 'grao'] },
+    { keyword: 'frango', requires: ['frango', 'peito', 'coxa', 'sobrecoxa'] },
+    { keyword: 'peixe', requires: ['peixe', 'tilapia', 'salmao', 'atum', 'sardinha'] },
+    { keyword: 'carne', requires: ['carne', 'bife', 'file', 'costela', 'picanha'] },
+  ];
+  
+  for (const check of titleKeywords) {
+    if (normalizedTitle.includes(check.keyword)) {
+      const hasRequiredIngredient = check.requires.some(req => 
+        foodNames.includes(req) || normalizedTitle.includes(req)
+      );
+      if (!hasRequiredIngredient) {
+        return { 
+          isCoherent: false, 
+          issue: `Título "${title}" menciona "${check.keyword}" mas ingredientes não correspondem` 
+        };
+      }
+    }
+  }
+  
+  return { isCoherent: true };
+}
+
+// ============= VALIDAÇÃO: Macros Realistas por Tipo de Alimento =============
+function validateRealisticMacros(
+  food: FoodItem,
+  declaredCalories: number
+): { isRealistic: boolean; suggestedCalories?: number; issue?: string } {
+  const normalizedName = normalizeText(food.name);
+  
+  // Bebidas simples (chás, água) - máximo 5 calorias por 100g
+  const zeroCalorieBeverages = [
+    'cha', 'agua', 'cafe preto', 'cafe sem acucar', 'infusao'
+  ];
+  
+  const isZeroCalorieBeverage = zeroCalorieBeverages.some(b => normalizedName.includes(b));
+  if (isZeroCalorieBeverage) {
+    const maxCalsForBeverage = Math.round(food.grams * 0.05); // 5 cal/100g max
+    if (declaredCalories > maxCalsForBeverage + 20) {
+      return { 
+        isRealistic: false, 
+        suggestedCalories: maxCalsForBeverage,
+        issue: `Bebida "${food.name}" com ${declaredCalories} kcal é irrealista. Máx esperado: ~${maxCalsForBeverage} kcal`
+      };
+    }
+  }
+  
+  // Frutas simples - entre 30-100 cal por 100g
+  const simpleFruits = ['banana', 'maca', 'laranja', 'pera', 'morango', 'mamao', 'manga'];
+  const isSimpleFruit = simpleFruits.some(f => normalizedName.includes(f) && !normalizedName.includes('vitamina'));
+  if (isSimpleFruit && food.grams <= 200) {
+    const minCals = Math.round(food.grams * 0.3);
+    const maxCals = Math.round(food.grams * 1.1);
+    if (declaredCalories < minCals || declaredCalories > maxCals * 1.5) {
+      const suggested = Math.round(food.grams * 0.6); // ~60 cal/100g média
+      return { 
+        isRealistic: false, 
+        suggestedCalories: suggested,
+        issue: `Fruta "${food.name}" com ${declaredCalories} kcal. Esperado: ${minCals}-${maxCals} kcal`
+      };
+    }
+  }
+  
+  return { isRealistic: true };
+}
+
+// ============= VALIDAÇÃO: Uso Correto de Medidas Caseiras =============
+function validateMeasureUsage(food: FoodItem): { isCorrect: boolean; fixedName?: string; issue?: string } {
+  const name = food.name;
+  const normalizedName = normalizeText(name);
+  
+  // Vegetais sólidos NÃO devem usar "xícara" - corrigir para "porção"
+  const solidVegetables = ['brocolis', 'couve', 'espinafre', 'alface', 'rucula', 'agriao', 'repolho', 'cenoura', 'abobrinha', 'berinjela', 'tomate', 'pepino'];
+  const hasSolidVeggie = solidVegetables.some(v => normalizedName.includes(v));
+  const usesCupMeasure = normalizedName.includes('xicara') || name.includes('xícara');
+  
+  if (hasSolidVeggie && usesCupMeasure) {
+    const fixedName = name
+      .replace(/\d+\s*x[íi]cara[s]?\s*(de\s*)?/gi, '1 porção de ')
+      .replace(/uma\s*x[íi]cara\s*(de\s*)?/gi, '1 porção de ');
+    return { 
+      isCorrect: false, 
+      fixedName,
+      issue: `Vegetal sólido "${name}" não deve usar medida "xícara"`
+    };
+  }
+  
+  // Gramas duplicados no nome (ex: "100g de atum")
+  const gramsInName = /\d+\s*g\s*(de\s*)?/i.test(name);
+  if (gramsInName) {
+    const fixedName = name.replace(/\d+\s*g\s*(de\s*)?/gi, '1 porção de ');
+    return { 
+      isCorrect: false, 
+      fixedName,
+      issue: `Gramagem duplicada no nome "${name}" - já existe no campo grams`
+    };
+  }
+  
+  return { isCorrect: true };
+}
+
 function validateMealPlan(
   dayPlan: SimpleDayPlan,
   restrictions: {
@@ -499,13 +617,28 @@ function validateMealPlan(
   const validatedMeals = dayPlan.meals.map(meal => {
     const validatedOptions = meal.options.map(option => {
       const cleanedFoods: FoodItem[] = [];
+      let optionTotalCalories = 0;
       
       for (const food of option.foods) {
         const foodName = typeof food === 'string' ? food : food.name;
+        const foodGrams = typeof food === 'object' && 'grams' in food ? food.grams : 100;
         const validation = validateFood(foodName, restrictions, dbMappings, dbSafeKeywords);
         
         if (validation.isValid) {
-          cleanedFoods.push(food);
+          let fixedFood: FoodItem = { name: foodName, grams: foodGrams };
+          
+          // Validação 1: Corrigir uso incorreto de medidas
+          const measureCheck = validateMeasureUsage(fixedFood);
+          if (!measureCheck.isCorrect && measureCheck.fixedName) {
+            logStep(`🔧 CORREÇÃO DE MEDIDA: "${foodName}" → "${measureCheck.fixedName}"`, { issue: measureCheck.issue });
+            fixedFood.name = measureCheck.fixedName;
+          }
+          
+          // Calcular calorias do item para validação
+          const itemCalories = calculateFoodCalories(fixedFood.name, fixedFood.grams);
+          optionTotalCalories += itemCalories.calories;
+          
+          cleanedFoods.push(fixedFood);
         } else {
           violations.push({
             meal: meal.label,
@@ -516,8 +649,29 @@ function validateMealPlan(
         }
       }
       
+      // Validação 2: Coerência título-ingredientes
+      const coherenceCheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
+      if (!coherenceCheck.isCoherent) {
+        logStep(`⚠️ INCOERÊNCIA TÍTULO-INGREDIENTES: ${coherenceCheck.issue}`, {
+          title: option.title,
+          foods: cleanedFoods.map(f => f.name),
+        });
+        // Marcar para log mas não bloquear - pode ser ajustado via prompt
+      }
+      
+      // Validação 3: Macros realistas
+      for (const food of cleanedFoods) {
+        const macroCheck = validateRealisticMacros(food, option.calories_kcal);
+        if (!macroCheck.isRealistic) {
+          logStep(`⚠️ MACRO IRREALISTA: ${macroCheck.issue}`, { 
+            food: food.name, 
+            declared: option.calories_kcal,
+            suggested: macroCheck.suggestedCalories 
+          });
+        }
+      }
+      
       // ============= PÓS-PROCESSAMENTO: AGRUPAR INGREDIENTES SEPARADOS =============
-      // Converter para FoodItem e aplicar agrupamento
       const foodsForGrouping: FoodItem[] = cleanedFoods.map(f => ({
         name: typeof f === 'string' ? f : f.name,
         grams: typeof f === 'object' && 'grams' in f ? f.grams : 100,
@@ -528,7 +682,6 @@ function validateMealPlan(
         meal.meal_type
       );
       
-      // Log se houve agrupamento
       if (wasGrouped) {
         logStep(`🔄 AGRUPAMENTO APLICADO em "${meal.label}"`, {
           originalCount: cleanedFoods.length,
@@ -539,13 +692,11 @@ function validateMealPlan(
         });
       }
       
-      // Atualizar título se necessário
       const updatedTitle = updateMealTitleIfNeeded(option.title, groupedTitle, wasGrouped);
       
       // ============= ORDENAR INGREDIENTES (FRUTAS/SOBREMESAS POR ÚLTIMO) =============
       const sortedFoods = sortMealIngredients(groupedFoods);
       
-      // Log se a ordem foi alterada
       const orderChanged = groupedFoods.length > 1 && 
         groupedFoods.some((f, i) => sortedFoods[i]?.name !== f.name);
       if (orderChanged) {
@@ -558,22 +709,25 @@ function validateMealPlan(
       // Calcular calorias baseado na tabela (usar foods ordenados)
       const calculatedCalories = calculateOptionCalories(sortedFoods);
       
-      // ESTRATÉGIA ROBUSTA: Se todos os alimentos foram removidos, NÃO regenerar
-      // Em vez disso, manter os alimentos originais e logar o problema
-      // O frontend irá mostrar a refeição e o usuário pode usar "Surpreenda-me" para trocar
+      // Garantir que nunca retornamos 0 calorias
+      let finalCalories = calculatedCalories > 0 ? calculatedCalories : option.calories_kcal;
+      if (finalCalories <= 0) {
+        // Fallback: estimar baseado em 100 cal por 100g (média genérica)
+        const estimatedFromGrams = sortedFoods.reduce((sum, f) => sum + (f.grams || 100), 0);
+        finalCalories = Math.max(estimatedFromGrams, 100);
+        logStep(`⚠️ FALLBACK CALORIAS: option "${option.title}" tinha 0 cal, estimando ${finalCalories}`);
+      }
+      
       if (sortedFoods.length === 0) {
         logStep(`⚠️ WARNING: Option "${option.title}" has all foods removed by restrictions - keeping original foods for user to swap later`);
-        // Manter alimentos originais - a validação foi muito restritiva
-        // O usuário pode trocar depois usando o botão "Surpreenda-me"
       }
       
       return {
         ...option,
         title: updatedTitle,
-        // Usar os alimentos agrupados E ordenados, ou originais se todos foram removidos
         foods: sortedFoods.length > 0 ? sortedFoods : option.foods,
-        calculated_calories: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
-        calories_kcal: calculatedCalories > 0 ? calculatedCalories : option.calories_kcal,
+        calculated_calories: finalCalories,
+        calories_kcal: finalCalories,
       };
     });
     

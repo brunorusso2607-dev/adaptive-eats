@@ -733,6 +733,24 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - ERRADO: "Ovos cozidos" (ingrediente isolado) ❌
 - CERTO: "Salada com ovos cozidos e vegetais" ✓
 
+🔴🔴🔴 REGRA DE COERÊNCIA TÍTULO-INGREDIENTES (ABSOLUTO - CRÍTICO):
+O título ("title") DEVE corresponder EXATAMENTE ao conteúdo dos ingredientes ("foods").
+- Se o título menciona "Wrap" → foods DEVE conter wrap/tortilla como ingrediente
+- Se o título menciona "Omelete" → foods DEVE conter ovos/claras
+- Se o título menciona "Salada" → foods DEVE conter vegetais folhosos
+- Se o título menciona "Sanduíche" → foods DEVE conter pão
+
+EXEMPLOS DE ERROS GRAVES (NUNCA FAZER):
+❌ title: "Wrap integral de frango" mas foods: [{"name": "1 xícara de chá verde", "grams": 200}]
+   ISSO É INVÁLIDO! O título diz "Wrap" mas não há wrap nos ingredientes!
+
+❌ title: "Omelete de queijo" mas foods: [{"name": "1 banana média", "grams": 120}]
+   ISSO É INVÁLIDO! O título diz "Omelete" mas não há ovos nos ingredientes!
+
+EXEMPLOS CORRETOS:
+✓ title: "Wrap integral de frango com salada" + foods: [{"name": "1 wrap integral recheado com frango e alface", "grams": 200}]
+✓ title: "Chá de camomila com torradas" + foods: [{"name": "1 xícara de chá de camomila", "grams": 200}, {"name": "2 torradas integrais", "grams": 40}]
+
 🌙 REGRA DE ADEQUAÇÃO POR TIPO DE REFEIÇÃO (CRÍTICO):
 **CEIA (lanche noturno) - REGRAS ESTRITAS:**
 - Deve ser ULTRA-LEVE e de fácil digestão
@@ -769,8 +787,8 @@ Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
 - PROTEÍNAS (carnes, peixes, frango): usar "filé", "pedaço", "porção"
 - OVOS: usar "unidade" (ex: "2 ovos cozidos")
 - GRÃOS/ARROZ/MASSAS: usar "colher de sopa", "colher de servir", "porção"
-- VEGETAIS SÓLIDOS: usar "porção", "folhas", "floretes" (NUNCA "xícara")
-- FRUTAS: usar "unidade" + tamaho (ex: "1 banana média")
+- VEGETAIS SÓLIDOS: usar "porção", "folhas", "floretes" (NUNCA "xícara" para vegetais!)
+- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média")
 
 Exemplos CORRETOS:
 {"name": "1 filé médio de frango grelhado", "grams": 120}
@@ -778,7 +796,7 @@ Exemplos CORRETOS:
 {"name": "1 porção de brócolis cozido", "grams": 100}
 {"name": "1 banana média", "grams": 120}
 {"name": "1 wrap integral recheado com atum e alface", "grams": 200}
-{"name": "Chá de camomila com 2 torradas integrais", "grams": 250}
+{"name": "1 xícara de chá de camomila (sem açúcar)", "grams": 200}
 
 🔴 REGRA DE CONSISTÊNCIA NOME-INGREDIENTES:
 O campo "title" DEVE ser um nome descritivo que reflete os ingredientes (ex: "Frango grelhado com arroz e salada")

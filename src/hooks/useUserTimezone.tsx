@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { toast } from "@/hooks/use-toast";
 
 // Fallback de timezone por país (IANA)
 const COUNTRY_TIMEZONE_FALLBACK: Record<string, string> = {
@@ -99,6 +100,16 @@ export function useUserTimezone() {
           setTimezone(savedTimezone || getCountryFallbackTimezone(country) || browserTimezone);
         } else {
           setTimezone(browserTimezone);
+          
+          // Notificar o usuário sobre a mudança de timezone (apenas se havia um timezone anterior)
+          if (savedTimezone) {
+            const cityName = browserTimezone.split('/').pop()?.replace(/_/g, ' ') || browserTimezone;
+            toast({
+              title: "📍 Fuso horário atualizado",
+              description: `Seus horários foram ajustados para ${cityName}`,
+              duration: 5000,
+            });
+          }
         }
       } else if (savedTimezone) {
         // Timezone já está correto

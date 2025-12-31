@@ -15,15 +15,15 @@ export interface CountryConfig {
   currencySymbol?: string;
 }
 
-// Configuração padrão que todos os países herdam
+// Configuração padrão (US) para países não cadastrados
 const DEFAULT_CONFIG: Omit<CountryConfig, 'code'> = {
-  language: 'pt',
-  locale: 'pt-BR',
+  language: 'en',
+  locale: 'en-US',
   measurementSystem: 'metric',
-  nutritionalSources: ['TBCA', 'USDA'],
+  nutritionalSources: ['USDA', 'FDA'],
   searchPlaceholder: {
-    text: 'Digite o alimento completo (ex: arroz integral cozido)',
-    hint: 'Seja específico: "peito de frango grelhado" ao invés de "frango"'
+    text: 'Type the full food name (e.g., grilled chicken breast)',
+    hint: 'Be specific: "brown rice cooked" instead of "rice"'
   },
   portionExample: '100g'
 };

@@ -25,12 +25,15 @@ import {
 } from "../_shared/nutritionalCalculations.ts";
 // Importar cálculo de macros reais da tabela foods
 import {
-  calculateRealMacrosForFoods,
+  calculateOptimizedMacrosForDay,
   type FoodItem as RealMacrosFoodItem,
+  type CalculatedFoodItem,
 } from "../_shared/calculateRealMacros.ts";
 // Importar injeção de tabela nutricional no prompt
 import {
   getNutritionalTablePrompt,
+  loadNutritionalTable,
+  type NutritionalFood,
 } from "../_shared/nutritionalTableInjection.ts";
 // ============= IMPORTAR CONFIGURAÇÃO COMPARTILHADA =============
 import {
@@ -1237,11 +1240,14 @@ serve(async (req) => {
       safeKeywordsCount: dbSafeKeywords.length 
     });
 
-    // ============= CARREGAR TABELA NUTRICIONAL PARA INJEÇÃO NO PROMPT =============
-    logStep("Loading nutritional table for prompt injection");
-    const nutritionalTablePrompt = await getNutritionalTablePrompt(supabaseClient, userCountry);
-    logStep("Nutritional table loaded for prompt", { 
-      tableLength: nutritionalTablePrompt.length,
+    // ============= CARREGAR TABELA NUTRICIONAL (MEMÓRIA + PROMPT) =============
+    logStep("Loading nutritional table for memory lookup and prompt injection");
+    const nutritionalTable: NutritionalFood[] = await loadNutritionalTable(supabaseClient, userCountry);
+    const { formatNutritionalTableForPrompt } = await import("../_shared/nutritionalTableInjection.ts");
+    const nutritionalTablePrompt = formatNutritionalTableForPrompt(nutritionalTable);
+    logStep("Nutritional table loaded", { 
+      tableSize: nutritionalTable.length,
+      promptLength: nutritionalTablePrompt.length,
       estimatedTokens: Math.round(nutritionalTablePrompt.length / 4)
     });
 
@@ -1612,25 +1618,27 @@ serve(async (req) => {
       // Converter os dias gerados para meal_plan_items COM MACROS REAIS
       const items: any[] = [];
       const targetWeekNum = weekNumber || 1;
-      let totalFromDb = 0;
-      let totalFromAi = 0;
       
+      // ============= CALCULAR MACROS OTIMIZADO (1 vez para todos) =============
+      // Primeiro, coletar TODOS os alimentos de TODAS as refeições
+      const allFoodsForCalculation: Array<{ mealIndex: number; food: RealMacrosFoodItem }> = [];
+      const mealInfoMap: Map<number, { dayIndex: number; meal: any; firstOption: any }> = new Map();
+      
+      let mealCounter = 0;
       for (let dayIndex = 0; dayIndex < generatedDays.length; dayIndex++) {
         const day = generatedDays[dayIndex];
         
         for (const meal of day.meals) {
-          // Pegar a primeira opção de cada refeição (optionsPerMeal = 1)
           const firstOption = meal.options?.[0];
           if (!firstOption) continue;
           
-          // NOTA: A flag _needsRegeneration foi removida da lógica
-          // Todas as refeições são salvas, mesmo com violações removidas
-          // O usuário pode trocar depois usando "Surpreenda-me"
+          // Guardar info da refeição para reconstrução depois
+          mealInfoMap.set(mealCounter, { dayIndex, meal, firstOption });
           
-          // Preparar foods para cálculo de macros reais
-          const foodsForCalculation: RealMacrosFoodItem[] = (firstOption.foods || []).map((food: any) => {
+          // Preparar foods para cálculo
+          const mealFoods = (firstOption.foods || []).map((food: any) => {
             if (typeof food === 'string') {
-              return { name: food, grams: 100 }; // Estimativa padrão
+              return { name: food, grams: 100 };
             }
             return {
               name: food.name || food.item || "",
@@ -1638,73 +1646,97 @@ serve(async (req) => {
             };
           });
           
-          // CALCULAR MACROS REAIS usando a tabela foods
-          logStep(`Calculating real macros for meal: ${firstOption.title}`, { 
-            ingredients: foodsForCalculation.length 
-          });
+          // Adicionar ao array global com índice da refeição
+          for (const food of mealFoods) {
+            allFoodsForCalculation.push({ mealIndex: mealCounter, food });
+          }
           
-          const macroResult = await calculateRealMacrosForFoods(
-            supabaseClient,
-            foodsForCalculation
-          );
-          
-          totalFromDb += macroResult.fromDb;
-          totalFromAi += macroResult.fromAi;
-          
-          // Calcular totais dos macros
-          const totalMacros = macroResult.items.reduce(
-            (acc, item) => ({
-              calories: acc.calories + item.calories,
-              protein: acc.protein + item.protein,
-              carbs: acc.carbs + item.carbs,
-              fat: acc.fat + item.fat,
-            }),
-            { calories: 0, protein: 0, carbs: 0, fat: 0 }
-          );
-          
-          // Converter foods para o formato recipe_ingredients (com macros individuais)
-          const recipeIngredients = macroResult.items.map((item) => ({
-            item: item.name,
-            quantity: `${item.grams}g`,
-            unit: "",
-            calories: item.calories,
-            protein: item.protein,
-            carbs: item.carbs,
-            fat: item.fat,
-            source: item.source,
-            food_id: item.food_id,
-          }));
-          
-          // Extrair instruções se existirem e LIMPAR menções a frutas/bebidas
-          const rawInstructions = Array.isArray((firstOption as any).instructions) 
-            ? (firstOption as any).instructions 
-            : [];
-          const instructions = cleanInstructionsFromFruitsAndBeverages(rawInstructions);
-          
-          items.push({
-            meal_plan_id: mealPlanIdToUse,
-            day_of_week: dayIndex,
-            meal_type: meal.meal_type,
-            recipe_name: firstOption.title || meal.label,
-            recipe_calories: Math.round(totalMacros.calories),
-            recipe_protein: Math.round(totalMacros.protein * 10) / 10,
-            recipe_carbs: Math.round(totalMacros.carbs * 10) / 10,
-            recipe_fat: Math.round(totalMacros.fat * 10) / 10,
-            recipe_prep_time: 15,
-            recipe_ingredients: recipeIngredients,
-            recipe_instructions: instructions,
-            week_number: targetWeekNum
-          });
+          mealCounter++;
         }
       }
+      
+      logStep("Starting optimized macro calculation for all meals", { 
+        totalMeals: mealCounter,
+        totalFoods: allFoodsForCalculation.length,
+        nutritionalTableSize: nutritionalTable.length
+      });
+      
+      // Calcular TODOS os macros de uma vez (memória → DB batch → AI)
+      const { results: macroResults, stats: macroStats } = await calculateOptimizedMacrosForDay(
+        supabaseClient,
+        allFoodsForCalculation,
+        nutritionalTable,
+        userCountry
+      );
+      
+      logStep("Optimized macro calculation complete", { 
+        fromMemory: macroStats.totalFromMemory,
+        fromDb: macroStats.totalFromDb,
+        fromAi: macroStats.totalFromAi,
+        matchRate: `${macroStats.matchRate}%`
+      });
+      
+      // Reconstruir items com os macros calculados
+      for (const [mealIdx, mealInfo] of mealInfoMap.entries()) {
+        const { dayIndex, meal, firstOption } = mealInfo;
+        const mealResult = macroResults.get(mealIdx);
+        
+        if (!mealResult) continue;
+        
+        // Calcular totais dos macros
+        const totalMacros = mealResult.items.reduce(
+          (acc: { calories: number; protein: number; carbs: number; fat: number }, item: CalculatedFoodItem) => ({
+            calories: acc.calories + item.calories,
+            protein: acc.protein + item.protein,
+            carbs: acc.carbs + item.carbs,
+            fat: acc.fat + item.fat,
+          }),
+          { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        );
+        
+        // Converter foods para o formato recipe_ingredients (com macros individuais)
+        const recipeIngredients = mealResult.items.map((item: CalculatedFoodItem) => ({
+          item: item.name,
+          quantity: `${item.grams}g`,
+          unit: "",
+          calories: item.calories,
+          protein: item.protein,
+          carbs: item.carbs,
+          fat: item.fat,
+          source: item.source,
+          food_id: item.food_id,
+        }));
+        
+        // Extrair instruções se existirem e LIMPAR menções a frutas/bebidas
+        const rawInstructions = Array.isArray((firstOption as any).instructions) 
+          ? (firstOption as any).instructions 
+          : [];
+        const instructions = cleanInstructionsFromFruitsAndBeverages(rawInstructions);
+        
+        items.push({
+          meal_plan_id: mealPlanIdToUse,
+          day_of_week: dayIndex,
+          meal_type: meal.meal_type,
+          recipe_name: firstOption.title || meal.label,
+          recipe_calories: Math.round(totalMacros.calories),
+          recipe_protein: Math.round(totalMacros.protein * 10) / 10,
+          recipe_carbs: Math.round(totalMacros.carbs * 10) / 10,
+          recipe_fat: Math.round(totalMacros.fat * 10) / 10,
+          recipe_prep_time: 15,
+          recipe_ingredients: recipeIngredients,
+          recipe_instructions: instructions,
+          week_number: targetWeekNum
+        });
+      }
 
-      const totalIngredients = totalFromDb + totalFromAi;
-      const matchRate = totalIngredients > 0 ? Math.round((totalFromDb / totalIngredients) * 100) : 0;
+      const totalIngredients = macroStats.totalFromMemory + macroStats.totalFromDb + macroStats.totalFromAi;
+      const matchRate = totalIngredients > 0 ? Math.round(((macroStats.totalFromMemory + macroStats.totalFromDb) / totalIngredients) * 100) : 0;
       
       logStep("Real macros calculation complete", { 
         matchRate: `${matchRate}%`,
-        fromDatabase: totalFromDb,
-        fromAI: totalFromAi,
+        fromMemory: macroStats.totalFromMemory,
+        fromDatabase: macroStats.totalFromDb,
+        fromAI: macroStats.totalFromAi,
       });
 
       logStep("Inserting meal items with real macros", { count: items.length });
@@ -1740,8 +1772,9 @@ serve(async (req) => {
           stats: {
             daysGenerated: generatedDays.length,
             totalMeals: items.length,
-            macrosFromDatabase: totalFromDb,
-            macrosFromAI: totalFromAi,
+            macrosFromMemory: macroStats.totalFromMemory,
+            macrosFromDatabase: macroStats.totalFromDb,
+            macrosFromAI: macroStats.totalFromAi,
             databaseMatchRate: matchRate,
           }
         }),

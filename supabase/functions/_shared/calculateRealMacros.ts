@@ -2,10 +2,16 @@
 // CÁLCULO HÍBRIDO DE MACROS - TABELA REAL + FALLBACK IA
 // ============================================
 // Este módulo calcula os macros reais baseados na tabela foods,
-// com busca em cascata (país → global → fallback → IA) e sanity checks.
+// com busca em cascata (memória → país → global → fallback → IA) e sanity checks.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applySanityCheck, getCategoryFallback, detectFoodCategory } from "./sanityCheckLimits.ts";
+import { 
+  NutritionalFood, 
+  lookupFromNutritionalTable, 
+  batchLookupFromNutritionalTable,
+  loadNutritionalTable,
+} from "./nutritionalTableInjection.ts";
 
 export interface FoodItem {
   name: string;
@@ -640,4 +646,216 @@ export async function processFullDayMacros(
     ingredients_from_database: totalFromDb,
     ingredients_from_ai: totalFromAi,
   };
+}
+
+// ============================================
+// CÁLCULO OTIMIZADO COM TABELA EM MEMÓRIA
+// ============================================
+// Este é o método preferido para uso no generate-ai-meal-plan.
+// Usa cascata: 1) Tabela em memória → 2) DB batch → 3) AI estimation
+
+/**
+ * Calcula macros para TODAS as refeições de um dia usando cascata otimizada:
+ * 1. Primeiro tenta encontrar na tabela nutricional em memória (mais rápido)
+ * 2. Para não encontrados, faz UMA query batch ao DB
+ * 3. Usa AI estimation apenas como último recurso
+ */
+export async function calculateOptimizedMacrosForDay(
+  supabase: any,
+  allFoods: Array<{ mealIndex: number; food: FoodItem }>,
+  nutritionalTable: NutritionalFood[],
+  userCountry?: string
+): Promise<{
+  results: Map<number, { items: CalculatedFoodItem[]; fromMemory: number; fromDb: number; fromAi: number }>;
+  stats: { totalFromMemory: number; totalFromDb: number; totalFromAi: number; matchRate: number };
+}> {
+  const startTime = Date.now();
+  logStep('Starting optimized macro calculation', { 
+    totalFoods: allFoods.length,
+    tableSize: nutritionalTable.length,
+    country: userCountry
+  });
+  
+  // Agrupar por refeição para retorno organizado
+  const mealResults = new Map<number, { items: CalculatedFoodItem[]; fromMemory: number; fromDb: number; fromAi: number }>();
+  
+  // Inicializar resultados para cada refeição
+  const mealIndices = [...new Set(allFoods.map(f => f.mealIndex))];
+  for (const idx of mealIndices) {
+    mealResults.set(idx, { items: [], fromMemory: 0, fromDb: 0, fromAi: 0 });
+  }
+  
+  let totalFromMemory = 0;
+  let totalFromDb = 0;
+  let totalFromAi = 0;
+  
+  // ========================================
+  // FASE 1: Busca na tabela em memória (MAIS RÁPIDO)
+  // ========================================
+  const notFoundInMemory: Array<{ mealIndex: number; food: FoodItem }> = [];
+  
+  for (const entry of allFoods) {
+    const lookup = lookupFromNutritionalTable(nutritionalTable, entry.food.name, entry.food.grams);
+    
+    if (lookup.found && lookup.macros) {
+      const result = mealResults.get(entry.mealIndex)!;
+      result.items.push({
+        name: entry.food.name,
+        grams: entry.food.grams,
+        calories: lookup.macros.calories,
+        protein: lookup.macros.protein,
+        carbs: lookup.macros.carbs,
+        fat: lookup.macros.fat,
+        fiber: 0,
+        source: 'database',
+        confidence: lookup.confidence,
+        matched_name: lookup.matchedName,
+      });
+      result.fromMemory++;
+      totalFromMemory++;
+    } else {
+      notFoundInMemory.push(entry);
+    }
+  }
+  
+  logStep('Memory lookup phase complete', { 
+    found: totalFromMemory, 
+    notFound: notFoundInMemory.length 
+  });
+  
+  // ========================================
+  // FASE 2: Busca em batch no DB para não encontrados
+  // ========================================
+  if (notFoundInMemory.length > 0) {
+    const prioritySources = userCountry ? COUNTRY_SOURCE_PRIORITY[userCountry] || COUNTRY_SOURCE_PRIORITY['BR'] : COUNTRY_SOURCE_PRIORITY['BR'];
+    const searchTerms = notFoundInMemory.map(e => e.food.name);
+    
+    const batchResults = await batchFindFoodsInDatabase(supabase, searchTerms, prioritySources);
+    
+    const stillNotFound: Array<{ mealIndex: number; food: FoodItem }> = [];
+    
+    for (const entry of notFoundInMemory) {
+      const dbMatch = batchResults.get(entry.food.name);
+      
+      if (dbMatch) {
+        const macros = calculateMacrosForGrams(dbMatch.food, entry.food.grams, dbMatch.source);
+        const result = mealResults.get(entry.mealIndex)!;
+        result.items.push({
+          name: entry.food.name,
+          grams: entry.food.grams,
+          ...macros,
+        });
+        result.fromDb++;
+        totalFromDb++;
+      } else {
+        stillNotFound.push(entry);
+      }
+    }
+    
+    logStep('DB batch phase complete', { 
+      found: totalFromDb, 
+      stillNotFound: stillNotFound.length 
+    });
+    
+    // ========================================
+    // FASE 3: AI estimation para remanescentes
+    // ========================================
+    for (const entry of stillNotFound) {
+      const estimated = estimateMacrosFromAI(entry.food);
+      const result = mealResults.get(entry.mealIndex)!;
+      result.items.push({
+        name: entry.food.name,
+        grams: entry.food.grams,
+        ...estimated,
+      });
+      result.fromAi++;
+      totalFromAi++;
+    }
+  }
+  
+  const total = totalFromMemory + totalFromDb + totalFromAi;
+  const matchRate = total > 0 ? Math.round(((totalFromMemory + totalFromDb) / total) * 100) : 0;
+  const elapsed = Date.now() - startTime;
+  
+  logStep('Optimized calculation complete', { 
+    elapsed: `${elapsed}ms`,
+    totalItems: total,
+    fromMemory: totalFromMemory,
+    fromDb: totalFromDb,
+    fromAi: totalFromAi,
+    matchRate: `${matchRate}%`,
+  });
+  
+  return {
+    results: mealResults,
+    stats: {
+      totalFromMemory,
+      totalFromDb,
+      totalFromAi,
+      matchRate,
+    },
+  };
+}
+
+/**
+ * Wrapper simplificado para calcular macros de múltiplas refeições de uma vez.
+ * Retorna array de resultados na mesma ordem das refeições de entrada.
+ */
+export async function calculateOptimizedMacrosForMeals(
+  supabase: any,
+  meals: Array<{ title: string; foods: FoodItem[] }>,
+  nutritionalTable: NutritionalFood[],
+  userCountry?: string
+): Promise<{
+  mealsWithMacros: Array<{
+    title: string;
+    items: CalculatedFoodItem[];
+    totals: { calories: number; protein: number; carbs: number; fat: number };
+  }>;
+  stats: { totalFromMemory: number; totalFromDb: number; totalFromAi: number; matchRate: number };
+}> {
+  // Flatten all foods with meal index
+  const allFoods: Array<{ mealIndex: number; food: FoodItem }> = [];
+  
+  for (let i = 0; i < meals.length; i++) {
+    for (const food of meals[i].foods) {
+      allFoods.push({ mealIndex: i, food });
+    }
+  }
+  
+  // Calculate all at once
+  const { results, stats } = await calculateOptimizedMacrosForDay(
+    supabase,
+    allFoods,
+    nutritionalTable,
+    userCountry
+  );
+  
+  // Reconstruct meals with macros
+  const mealsWithMacros = meals.map((meal, idx) => {
+    const mealResult = results.get(idx) || { items: [], fromMemory: 0, fromDb: 0, fromAi: 0 };
+    
+    const totals = mealResult.items.reduce(
+      (acc, item) => ({
+        calories: acc.calories + item.calories,
+        protein: acc.protein + item.protein,
+        carbs: acc.carbs + item.carbs,
+        fat: acc.fat + item.fat,
+      }),
+      { calories: 0, protein: 0, carbs: 0, fat: 0 }
+    );
+    
+    return {
+      title: meal.title,
+      items: mealResult.items,
+      totals: {
+        calories: Math.round(totals.calories),
+        protein: Math.round(totals.protein * 10) / 10,
+        carbs: Math.round(totals.carbs * 10) / 10,
+        fat: Math.round(totals.fat * 10) / 10,
+      },
+    };
+  });
+  
+  return { mealsWithMacros, stats };
 }

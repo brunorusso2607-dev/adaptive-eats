@@ -219,7 +219,7 @@ export function getMinutesUntilStart(mealType: string): number {
 }
 
 export function useNextMeal() {
-  console.log("🔄 [useNextMeal] Hook v6 - com suporte a custom meal times");
+  console.log("🔄 [useNextMeal] Hook v7 - hierarquia Plano > Perfil > Global");
   const [nextMeal, setNextMeal] = useState<NextMealData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [hasMealPlan, setHasMealPlan] = useState(false);
@@ -234,26 +234,36 @@ export function useNextMeal() {
         return;
       }
 
-      // Buscar plano ativo COM custom_meal_times
+      // Buscar plano ativo E perfil do usuário em paralelo
       const now = new Date();
       const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
       
       console.log("[useNextMeal] Hora local:", now.toLocaleString('pt-BR'), "| UTC:", now.toISOString());
       
-      const { data: plans, error: plansError } = await supabase
-        .from("meal_plans")
-        .select("id, start_date, custom_meal_times, unlocks_at")
-        .eq("user_id", session.user.id)
-        .eq("is_active", true)
-        .order("created_at", { ascending: false })
-        .limit(1);
+      const [plansResult, profileResult] = await Promise.all([
+        supabase
+          .from("meal_plans")
+          .select("id, start_date, custom_meal_times, unlocks_at")
+          .eq("user_id", session.user.id)
+          .eq("is_active", true)
+          .order("created_at", { ascending: false })
+          .limit(1),
+        supabase
+          .from("profiles")
+          .select("default_meal_times")
+          .eq("id", session.user.id)
+          .single()
+      ]);
 
-      if (plansError) throw plansError;
+      if (plansResult.error) throw plansResult.error;
+
+      const plans = plansResult.data;
+      const profileDefaultTimes = profileResult.data?.default_meal_times as CustomMealTimes | null;
 
       if (!plans || plans.length === 0) {
         setHasMealPlan(false);
         setNextMeal(null);
-        setCustomMealTimes(null);
+        setCustomMealTimes(profileDefaultTimes); // Usar perfil mesmo sem plano
         setIsLoading(false);
         return;
       }
@@ -266,7 +276,7 @@ export function useNextMeal() {
           console.log("[useNextMeal] Plano agendado, unlocks_at:", plan.unlocks_at);
           setHasMealPlan(true); // Has a plan but it's scheduled
           setNextMeal(null);
-          setCustomMealTimes(null);
+          setCustomMealTimes(profileDefaultTimes);
           setIsLoading(false);
           return;
         }
@@ -275,11 +285,18 @@ export function useNextMeal() {
       setHasMealPlan(true);
       const activePlanId = plan.id;
       
-      // Extrair custom_meal_times do plano
+      // HIERARQUIA: Plano > Perfil > Global
+      // 1. Se o plano tem custom_meal_times, usar
+      // 2. Senão, se o perfil tem default_meal_times, usar
+      // 3. Senão, getMergedTimeRanges usará o global
       const planCustomTimes = plan.custom_meal_times as CustomMealTimes | null;
-      setCustomMealTimes(planCustomTimes);
+      const effectiveMealTimes = planCustomTimes && Object.keys(planCustomTimes).length > 0
+        ? planCustomTimes
+        : profileDefaultTimes;
       
-      console.log("[useNextMeal] Custom meal times do plano:", planCustomTimes);
+      setCustomMealTimes(effectiveMealTimes);
+      
+      console.log("[useNextMeal] Hierarquia de horários - Plano:", planCustomTimes, "| Perfil:", profileDefaultTimes, "| Efetivo:", effectiveMealTimes);
 
       // Calcular day_of_week baseado na data de início do plano
       const [year, month, day] = plan.start_date.split('-').map(Number);

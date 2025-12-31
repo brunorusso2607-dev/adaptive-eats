@@ -38,12 +38,45 @@ const COUNTRY_CUISINE_MAP: Record<string, string[]> = {
   'IT': ['italiana', 'internacional'],
 };
 
+// Patterns that indicate a prepared dish (not a raw ingredient)
+const PREPARED_DISH_PATTERNS = [
+  // Portuguese patterns
+  'à grega', 'a grega', 'c/ sal', 's/ sal', 'c/sal', 's/sal',
+  'cozido', 'cozida', 'frito', 'frita', 'grelhado', 'grelhada',
+  'assado', 'assada', 'refogado', 'refogada', 'temperado', 'temperada',
+  'com molho', 'ao molho', 'gratinado', 'gratinada', 'empanado', 'empanada',
+  'à milanesa', 'a milanesa', 'à parmegiana', 'a parmegiana',
+  'à dorê', 'a dore', 'à romana', 'a romana', 'à bolonhesa', 'a bolonhesa',
+  'ao alho', 'com alho', 'com cebola', 'com legumes', 'com verduras',
+  'recheado', 'recheada', 'preparado', 'preparada', 'pronto', 'pronta',
+  'caseiro', 'caseira', 'tradicional', 'típico', 'típica',
+  // English patterns
+  'cooked', 'fried', 'grilled', 'baked', 'roasted', 'sauteed', 'seasoned',
+  'with sauce', 'with gravy', 'stuffed', 'prepared', 'homemade',
+];
+
+// Categories that are allowed even if they match prepared patterns (fast food)
+const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
+
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+function isPreparedDish(food: any): boolean {
+  const nameLower = (food.name || '').toLowerCase();
+  const categoryLower = (food.category || '').toLowerCase();
+  
+  // Allow fast food items
+  if (ALLOWED_PREPARED_CATEGORIES.some(cat => categoryLower.includes(cat))) {
+    return false;
+  }
+  
+  // Check for prepared dish patterns
+  return PREPARED_DISH_PATTERNS.some(pattern => nameLower.includes(pattern));
 }
 
 function logStep(step: string, data?: any) {
@@ -243,8 +276,9 @@ serve(async (req) => {
       .limit(limit);
 
     if (!priorityError && priorityFoods && priorityFoods.length > 0) {
-      localFoods = priorityFoods;
-      logStep('Found in priority sources', { count: localFoods.length, sources: preferredSources });
+      // Filter out prepared dishes
+      localFoods = priorityFoods.filter(f => !isPreparedDish(f));
+      logStep('Found in priority sources', { count: priorityFoods.length, afterFilter: localFoods.length, sources: preferredSources });
     }
     
     // If not enough results, also search by cuisine_origin
@@ -257,24 +291,27 @@ serve(async (req) => {
         .in('cuisine_origin', preferredCuisines)
         .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
         .order('name')
-        .limit(limit - localFoods.length);
+        .limit((limit - localFoods.length) * 2); // Fetch more to account for filtering
       
       if (cuisineFoods && cuisineFoods.length > 0) {
-        // Merge without duplicates
+        // Merge without duplicates, filtering out prepared dishes
         const existingIds = new Set(localFoods.map(f => f.id));
-        const newFoods = cuisineFoods.filter(f => !existingIds.has(f.id));
+        const newFoods = cuisineFoods
+          .filter(f => !existingIds.has(f.id))
+          .filter(f => !isPreparedDish(f));
         localFoods = [...localFoods, ...newFoods];
         logStep('Added cuisine-based results', { added: newFoods.length });
       }
     }
 
     if (localFoods.length > 0) {
-      logStep('Returning local results', { count: localFoods.length });
+      const finalResults = localFoods.slice(0, limit);
+      logStep('Returning local results', { count: finalResults.length });
       return new Response(
         JSON.stringify({ 
-          results: localFoods.slice(0, limit), 
+          results: finalResults, 
           source: 'local',
-          count: Math.min(localFoods.length, limit)
+          count: finalResults.length
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -288,10 +325,11 @@ serve(async (req) => {
       .limit(limit);
 
     if (aliasResults && aliasResults.length > 0) {
-      // Filter aliases to prefer foods from user's country sources
+      // Filter aliases to prefer foods from user's country sources, excluding prepared dishes
       const foods = aliasResults
         .map((a: any) => a.foods)
         .filter((f: any) => f && f.is_verified)
+        .filter((f: any) => !isPreparedDish(f))
         .filter((f: any) => {
           // Prioritize foods from preferred sources
           return preferredSources.includes(f.source) || preferredCuisines.includes(f.cuisine_origin);
@@ -301,9 +339,9 @@ serve(async (req) => {
         logStep('Found via alias', { count: foods.length });
         return new Response(
           JSON.stringify({ 
-            results: foods, 
+            results: foods.slice(0, limit), 
             source: 'alias',
-            count: foods.length 
+            count: Math.min(foods.length, limit)
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
@@ -312,15 +350,16 @@ serve(async (req) => {
       // If no country-specific aliases, return general alias results
       const generalFoods = aliasResults
         .map((a: any) => a.foods)
-        .filter((f: any) => f && f.is_verified);
+        .filter((f: any) => f && f.is_verified)
+        .filter((f: any) => !isPreparedDish(f));
       
       if (generalFoods.length > 0) {
         logStep('Found via alias (general)', { count: generalFoods.length });
         return new Response(
           JSON.stringify({ 
-            results: generalFoods, 
+            results: generalFoods.slice(0, limit), 
             source: 'alias',
-            count: generalFoods.length 
+            count: Math.min(generalFoods.length, limit)
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

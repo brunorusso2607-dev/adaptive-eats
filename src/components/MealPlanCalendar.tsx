@@ -687,12 +687,14 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
               key={mealType} 
               className={cn(
                 "glass-card transition-all",
+                // Hierarquia visual: passada (cinza), atual (branco com destaque), futura (verde)
                 isPastMeal 
-                  ? "opacity-50 cursor-not-allowed border-muted bg-muted/20" 
-                  : "hover:border-primary/30 cursor-pointer group",
-                meal && !isPastMeal ? "border-border" : "border-dashed border-muted-foreground/30",
-                // Highlight active meal
-                isActiveMeal && meal && "ring-2 ring-primary ring-offset-2 ring-offset-background border-primary shadow-[0_0_16px_rgba(var(--primary),0.3)]"
+                  ? "bg-muted/40 border-muted cursor-not-allowed" 
+                  : isActiveMeal && meal
+                    ? "bg-background border-primary ring-2 ring-primary ring-offset-2 ring-offset-background shadow-[0_0_16px_rgba(var(--primary),0.3)]"
+                    : meal 
+                      ? "border-emerald-500/30 bg-emerald-500/5 hover:border-primary/30 cursor-pointer group"
+                      : "border-dashed border-muted-foreground/30 hover:border-primary/30 cursor-pointer group"
               )}
               onClick={() => !isPastMeal && meal && onSelectMeal(meal)}
             >

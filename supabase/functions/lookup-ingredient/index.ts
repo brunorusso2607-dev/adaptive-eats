@@ -68,12 +68,57 @@ const SAFE_BASE_INGREDIENTS = [
 
 const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
 
+// English terms that indicate the food name is in English (not Portuguese)
+const ENGLISH_TERMS = [
+  // Grain types
+  'long-grain', 'short-grain', 'medium-grain', 'wild rice', 'brown rice', 'white rice',
+  'long grain', 'short grain', 'medium grain', 'enriched', 'unenriched', 'parboiled',
+  // Cooking terms
+  'cooked', 'raw', 'steamed', 'boiled', 'baked', 'fried', 'grilled', 'roasted',
+  'sauteed', 'sautéed', 'stir-fried', 'stewed', 'braised', 'poached',
+  // Descriptors  
+  'regular', 'instant', 'precooked', 'dried', 'dehydrated', 'canned',
+  'frozen', 'fresh', 'whole', 'ground', 'sliced', 'diced', 'chopped',
+  'boneless', 'skinless', 'with skin', 'without skin',
+  // Food categories
+  'meat', 'fish', 'poultry', 'vegetable', 'fruit', 'grain', 'cereal',
+  'dairy', 'beverage', 'snack', 'dessert', 'sauce', 'soup',
+  // Common foods in English
+  'rice,', 'rice ', 'chicken,', 'chicken ', 'beef,', 'beef ', 'pork,', 'pork ',
+  'beans,', 'beans ', 'bread,', 'bread ', 'cheese,', 'cheese ', 'milk,', 'milk ',
+  'egg,', 'egg ', 'pasta,', 'pasta ', 'noodle', 'flour,', 'flour ',
+  // Units and measurements
+  'per serving', 'per 100g', 'cup', 'tablespoon', 'teaspoon',
+  // Other indicators
+  'prepared', 'ready-to-', 'ready to',
+];
+
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .trim();
+}
+
+// Check if a food name appears to be in English (not Portuguese)
+function isEnglishFood(name: string): boolean {
+  const nameLower = name.toLowerCase();
+  
+  // Check for English terms
+  for (const term of ENGLISH_TERMS) {
+    if (nameLower.includes(term)) {
+      return true;
+    }
+  }
+  
+  // Check for typical English naming pattern: "Food, descriptor, descriptor"
+  // Portuguese typically uses "Food descriptor descriptor" (no commas after main name)
+  if (/^[a-z]+,\s+[a-z]+/i.test(name)) {
+    return true;
+  }
+  
+  return false;
 }
 
 function isPreparedDish(food: any): boolean {
@@ -348,7 +393,10 @@ serve(async (req) => {
       .limit(100); // Fetch more to allow for filtering
 
     if (startsWithPriority && startsWithPriority.length > 0) {
-      const filtered = startsWithPriority.filter(f => !isPreparedDish(f));
+      const shouldFilterEnglish = ['BR', 'PT'].includes(upperCountry);
+      const filtered = startsWithPriority
+        .filter(f => !isPreparedDish(f))
+        .filter(f => !shouldFilterEnglish || !isEnglishFood(f.name || ''));
       allFoods = [...allFoods, ...filtered];
       logStep('Found starts-with in country sources', { count: filtered.length, sources: preferredSources });
     }
@@ -367,9 +415,11 @@ serve(async (req) => {
 
       if (containsPriority && containsPriority.length > 0) {
         const existingIds = new Set(allFoods.map(f => f.id));
+        const shouldFilterEnglish = ['BR', 'PT'].includes(upperCountry);
         const newFoods = containsPriority
           .filter(f => !existingIds.has(f.id))
-          .filter(f => !isPreparedDish(f));
+          .filter(f => !isPreparedDish(f))
+          .filter(f => !shouldFilterEnglish || !isEnglishFood(f.name || ''));
         allFoods = [...allFoods, ...newFoods];
         logStep('Found contains in country sources', { added: newFoods.length });
       }
@@ -385,11 +435,13 @@ serve(async (req) => {
 
       if (aliasResults && aliasResults.length > 0) {
         const existingIds = new Set(allFoods.map(f => f.id));
+        const shouldFilterEnglish = ['BR', 'PT'].includes(upperCountry);
         const aliasFoods = aliasResults
           .map((a: any) => a.foods)
           .filter((f: any) => f && f.is_verified && !existingIds.has(f.id))
           .filter((f: any) => preferredSources.includes(f.source)) // Filter by country sources
-          .filter((f: any) => !isPreparedDish(f));
+          .filter((f: any) => !isPreparedDish(f))
+          .filter((f: any) => !shouldFilterEnglish || !isEnglishFood(f.name || ''));
         
         allFoods = [...allFoods, ...aliasFoods];
         logStep('Found via alias (filtered by country)', { added: aliasFoods.length });

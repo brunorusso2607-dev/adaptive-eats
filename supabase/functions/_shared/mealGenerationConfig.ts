@@ -3632,60 +3632,109 @@ ${previousDaysMeals.length > 0 ? `\n━━━ NÃO REPETIR (já usados) ━━�
    • Azeite pode aparecer separado APENAS para finalização de saladas
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 FORMATO DOS ALIMENTOS (foods):
+📝 FORMATO DOS ALIMENTOS (foods) - PRATOS CONSOLIDADOS:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-ESTRUTURA: {"name": "descrição humanizada", "grams": número}
+🚨🚨 REGRA CRÍTICA: CONSOLIDAR INGREDIENTES EM PRATOS! 🚨🚨
 
-✅ CORRETO:
-• {"name": "Filé de frango grelhado ao limão", "grams": 150}
-• {"name": "Arroz integral", "grams": 120}
-• {"name": "1 xícara de chá de camomila", "grams": 200}
-• {"name": "1 banana média (sobremesa)", "grams": 120}
+❌ ERRADO - ingredientes soltos (parece receita):
+[
+  {"name": "Lentilha cozida", "grams": 100},
+  {"name": "Cenoura em cubos", "grams": 50},
+  {"name": "Cebola picada", "grams": 20},
+  {"name": "Tofu em cubos", "grams": 80},
+  {"name": "Aipo em cubos", "grams": 30}
+]
+
+✅ CORRETO - prato consolidado (parece cardápio):
+[
+  {"name": "Sopa de lentilha com tofu e legumes", "grams": 350},
+  {"name": "1 copo de água (opcional)", "grams": 200}
+]
+
+REGRA DE CONSOLIDAÇÃO:
+• Sopas: TODO conteúdo da sopa = 1 item único
+• Omeletes: ovos + recheios = 1 item único  
+• Saladas compostas: salada + ingredientes = 1 item único
+• Pratos cozidos: carne + legumes cozidos juntos = 1 item único
+• Apenas SEPARAR: arroz/feijão (servidos ao lado), bebidas, frutas de sobremesa
+
+ESTRUTURA: {"name": "descrição do PRATO", "grams": soma_dos_ingredientes}
+
+✅ EXEMPLOS CORRETOS:
+• {"name": "Sopa de lentilha com tofu e legumes", "grams": 350}
+• {"name": "Omelete de claras com espinafre e tomate", "grams": 180}
+• {"name": "Salada mediterrânea com grão-de-bico e atum", "grams": 250}
+• {"name": "Frango grelhado ao limão com ervas", "grams": 150}
 • {"name": "1 copo de água (opcional)", "grams": 200}
 
-❌ INCORRETO:
-• {"name": "150g de frango", "grams": 150} → gramagem duplicada!
-• {"name": "Mix de frutas", "grams": 200} → QUAIS frutas?
-• {"name": "Suco de limão", "grams": 15} → tempero, não alimento!
-• {"name": "Suco de laranja", "grams": 200} → gera caloria, use "água" ou "suco zero"
+❌ PROIBIDO (ingredientes soltos):
+• {"name": "Cenoura em cubos", "grams": 50} → vai DENTRO da sopa!
+• {"name": "Cebola picada", "grams": 20} → vai DENTRO do prato!
+• {"name": "Suco de limão", "grams": 15} → tempero, não item!
+• {"name": "Azeite de oliva", "grams": 5} → vai no nome do prato!
 
-REGRAS:
-1. LÍQUIDOS: usar medida caseira (xícara, copo)
-2. PREPARAÇÕES COMPOSTAS: agrupar (ex: "Omelete de claras com espinafre")
-3. ORDEM: Prato principal → Acompanhamentos → Frutas → Bebida zero (opcional)
-4. TEMPEROS: incorporar no nome do prato, não listar separados
+ORDEM NO ARRAY foods:
+1. Prato principal consolidado
+2. Acompanhamentos separados (arroz, feijão - servidos ao lado)
+3. Fruta de sobremesa
+4. Bebida zero/opcional (almoço/jantar)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📖 FORMATO DAS INSTRUÇÕES (MÍNIMO 2-3 PASSOS DETALHADOS):
+📖 FORMATO DAS DICAS (instructions) - COMO PREPARAR:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚨🚨 REGRA ABSOLUTAMENTE CRÍTICA 🚨🚨
-Instruções DEVEM ter MÍNIMO 2 passos COMPLETOS e DETALHADOS!
-Se um ingrediente está nas instruções, ELE DEVE ESTAR nos foods.
+🚨 DICAS ensinam a MONTAR o prato, detalhando os ingredientes! 🚨
 
-⛔ INSTRUÇÕES TOTALMENTE PROIBIDAS (NUNCA GERAR):
-• "Enrole e ." → LIXO! Incompleto!
-• "Adicione a canela." → 1 passo = ERRADO!
-• "Corte a maçã." → muito curto = ERRADO!
-• "Misture." → vago = ERRADO!
-• "Sirva." → não é instrução = ERRADO!
-• Qualquer instrução com menos de 2 passos = REJEITAR!
+As "dicas" devem explicar COMO preparar o prato, mencionando os ingredientes
+que compõem a refeição. É um guia prático, NÃO uma receita formal.
 
-✅ FORMATO CORRETO (sempre 2-3 passos):
-Passo 1: Preparo (cortar, temperar, grelhar)
-Passo 2: Montagem (dispor no prato, adicionar)
-Passo 3 (opcional): Finalização (polvilhar, regar)
+✅ FORMATO CORRETO (dica rica e detalhada):
+[
+  "Use lentilha cozida (100g), cenoura em cubos (50g), cebola picada (20g), tofu em cubos (80g), aipo (30g) e um fio de azeite.",
+  "Refogue a cebola e o aipo no azeite até dourar. Adicione a cenoura e a lentilha com água.",
+  "Cozinhe por 15 minutos, adicione o tofu nos últimos 5 minutos. Tempere com sal e sirva quente."
+]
 
-EXEMPLO OBRIGATÓRIO para lanche simples:
-• ❌ "Adicione as amêndoas." → ERRADO!
-• ✅ "Corte a maçã em fatias finas e disponha no prato. Adicione as amêndoas ao redor e polvilhe canela. Sirva fria para manter a crocância."
+❌ FORMATO ERRADO (instrução vaga):
+[
+  "Refogue a cebola e o aipo no azeite.",
+  "Adicione o tofu e a salsa."
+]
 
-❌ NÃO INCLUIR nas instruções:
-• Frutas (consumidas naturalmente)
-• Bebidas prontas (café, chá, água)
-• Itens prontos (pão, iogurte)
-• Ingredientes que NÃO estão listados nos foods
+ESTRUTURA IDEAL DA DICA:
+1️⃣ PRIMEIRO PASSO: Listar os ingredientes que compõem o prato com gramagens
+2️⃣ SEGUNDO PASSO: Explicar o preparo principal (como cozinhar/montar)
+3️⃣ TERCEIRO PASSO: Finalização e dicas de servir
+
+EXEMPLOS DE DICAS BEM ESCRITAS:
+
+🍲 Para SOPA:
+[
+  "Ingredientes: lentilha cozida (100g), cenoura picada (50g), cebola (20g), tofu em cubos (80g), aipo (30g) e azeite (5g).",
+  "Refogue cebola e aipo no azeite. Adicione cenoura, lentilha e água. Cozinhe 15 min.",
+  "Acrescente o tofu nos últimos minutos. Tempere e sirva bem quente."
+]
+
+🍳 Para OMELETE:
+[
+  "Ingredientes: 2 claras de ovo, espinafre picado (30g), tomate em cubos (40g), queijo cottage (30g).",
+  "Bata as claras, adicione os vegetais e despeje na frigideira antiaderente quente.",
+  "Cozinhe em fogo baixo, adicione o queijo e dobre. Sirva quente."
+]
+
+🥗 Para SALADA COMPOSTA:
+[
+  "Ingredientes: grão-de-bico (80g), atum em água (60g), tomate cereja (50g), pepino (40g), azeite (5g).",
+  "Misture o grão-de-bico com atum escorrido, tomate e pepino em cubos.",
+  "Tempere com azeite, limão e sal. Sirva fria."
+]
+
+⛔ DICAS PROIBIDAS (NUNCA GERAR):
+• "Enrole e ." → INCOMPLETO!
+• "Adicione a canela." → MUITO CURTO!
+• "Misture tudo." → VAGO!
+• Qualquer dica que NÃO mencione os ingredientes do prato!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 EXEMPLOS COMPLETOS (6 REFEIÇÕES):
@@ -3700,104 +3749,96 @@ EXEMPLO OBRIGATÓRIO para lanche simples:
     {"name": "1 fatia de mamão (sobremesa)", "grams": 100}
   ],
   "instructions": [
-    "Hidrate a tapioca e espalhe na frigideira antiaderente quente.",
-    "Adicione o queijo branco fatiado no centro.",
-    "Dobre ao meio e sirva quente."
+    "Ingredientes da tapioca: goma de tapioca (80g) e queijo branco fatiado (40g).",
+    "Hidrate a goma e espalhe na frigideira antiaderente quente até formar disco.",
+    "Adicione o queijo no centro, dobre ao meio e sirva quente."
   ]
 }
 
 🥐 LANCHE DA MANHÃ:
 {
-  "title": "Iogurte com granola e frutas",
+  "title": "Iogurte com granola e morangos",
   "foods": [
-    {"name": "Iogurte natural desnatado", "grams": 170},
-    {"name": "Granola sem açúcar", "grams": 30},
-    {"name": "Morangos frescos fatiados", "grams": 50}
+    {"name": "Bowl de iogurte com granola e morangos", "grams": 250}
   ],
   "instructions": [
-    "Coloque o iogurte em um bowl.",
-    "Adicione a granola por cima e finalize com os morangos."
+    "Ingredientes: iogurte natural (170g), granola sem açúcar (30g), morangos frescos (50g).",
+    "Coloque o iogurte em um bowl, cubra com a granola e finalize com morangos fatiados.",
+    "Sirva gelado para melhor sabor e textura crocante."
   ]
 }
 
 🍽️ ALMOÇO:
 {
-  "title": "Frango grelhado ao limão com arroz e salada",
+  "title": "Frango grelhado com arroz, feijão e salada",
   "foods": [
     {"name": "Filé de frango grelhado ao limão", "grams": 150},
     {"name": "Arroz integral", "grams": 100},
     {"name": "Feijão carioca", "grams": 80},
-    {"name": "Salada de alface e tomate com azeite", "grams": 80},
+    {"name": "Salada verde com tomate e azeite", "grams": 80},
     {"name": "1 laranja média (sobremesa)", "grams": 150},
     {"name": "1 copo de água (opcional)", "grams": 200}
   ],
   "instructions": [
-    "Tempere o frango com sal, alho e limão. Deixe marinar por 10 minutos.",
-    "Grelhe em fogo médio por 5-6 min de cada lado até dourar.",
-    "Monte o prato com arroz, feijão, salada temperada e o frango."
+    "Para o frango: tempere com sal, alho picado e suco de 1/2 limão. Marine por 10 min.",
+    "Grelhe em frigideira quente por 5-6 min de cada lado até dourar bem.",
+    "Monte o prato: arroz, feijão, salada temperada com azeite e limão, e o frango por cima."
   ]
 }
 
 🍎 LANCHE DA TARDE:
 {
-  "title": "Maçã com amêndoas e canela",
+  "title": "Maçã com pasta de amendoim e canela",
   "foods": [
-    {"name": "1 maçã média fatiada", "grams": 150},
-    {"name": "10 amêndoas", "grams": 15},
-    {"name": "Canela em pó", "grams": 2}
+    {"name": "Maçã fatiada com pasta de amendoim", "grams": 175}
   ],
   "instructions": [
-    "Corte a maçã em fatias finas e disponha no prato.",
-    "Adicione as amêndoas ao redor e polvilhe canela por cima.",
-    "Sirva imediatamente para manter a crocância."
+    "Ingredientes: 1 maçã média (150g), pasta de amendoim natural (20g), canela em pó (5g).",
+    "Fatie a maçã em gomos finos e disponha no prato em leque.",
+    "Regue com a pasta de amendoim e polvilhe canela por cima. Sirva imediatamente."
   ]
 }
 
 🌙 JANTAR:
 {
-  "title": "Salmão grelhado com legumes",
+  "title": "Sopa de lentilha com tofu e legumes",
   "foods": [
-    {"name": "Filé de salmão grelhado com ervas", "grams": 150},
-    {"name": "Batata-doce assada em cubos", "grams": 120},
-    {"name": "Brócolis no vapor", "grams": 100},
-    {"name": "1 tangerina (sobremesa)", "grams": 100},
-    {"name": "1 copo de água de coco (opcional)", "grams": 200}
+    {"name": "Sopa de lentilha com tofu e legumes", "grams": 380},
+    {"name": "1 copo de água (opcional)", "grams": 200}
   ],
   "instructions": [
-    "Tempere o salmão com sal, limão, dill e azeite.",
-    "Grelhe por 4 min de cada lado em fogo médio até dourar.",
-    "Sirva com a batata-doce assada e brócolis no vapor."
+    "Ingredientes: lentilha cozida (100g), tofu em cubos (80g), cenoura (50g), aipo (30g), cebola (20g), salsinha (5g), azeite (5g).",
+    "Refogue cebola e aipo no azeite. Adicione cenoura, lentilha e 500ml de água. Cozinhe 15 min.",
+    "Acrescente o tofu nos últimos 5 min, tempere com sal e finalize com salsinha. Sirva bem quente."
   ]
 }
 
 🌙 CEIA:
 {
-  "title": "Banana com chia e canela",
+  "title": "Banana com chia e chá de camomila",
   "foods": [
-    {"name": "1/2 banana média fatiada", "grams": 60},
-    {"name": "Sementes de chia", "grams": 10},
-    {"name": "Canela em pó", "grams": 2},
+    {"name": "Banana com chia e canela", "grams": 75},
     {"name": "1 xícara de chá de camomila", "grams": 200}
   ],
   "instructions": [
-    "Fatie a banana em rodelas e disponha em um prato pequeno.",
-    "Polvilhe as sementes de chia e a canela por cima.",
-    "Acompanhe com o chá de camomila morno."
+    "Ingredientes: 1/2 banana (60g), chia (10g), canela em pó (5g).",
+    "Fatie a banana em rodelas e disponha em prato pequeno.",
+    "Polvilhe chia e canela por cima. Acompanhe com chá de camomila morno."
   ]
 }
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ⚠️ ERROS QUE NUNCA COMETO:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+❌ Listar ingredientes soltos ao invés de prato consolidado
+❌ Dicas que não mencionam os ingredientes do prato
 ❌ Sopa + Arroz separado (arroz vai DENTRO se necessário)
-❌ Sopa + Salada crua (incoerência de temperatura)
 ❌ Mesma proteína no almoço e jantar
-❌ Chá verde em todas as refeições (variar!)
 ❌ "Mix de frutas" sem especificar quais
 ❌ Proteína pesada na ceia (máximo iogurte)
 ❌ Bebida com açúcar para diabéticos
-❌ Suco de limão/temperos como item separado (incorporar no nome do prato!)
-❌ Suco com calorias no almoço/jantar (usar água, água de coco ou zero!)
+❌ Suco de limão/temperos como item separado
+❌ Suco com calorias no almoço/jantar
 ❌ Instruções com apenas 1 frase curta (mínimo 2-3 passos!)
 ❌ Título menciona ingrediente que NÃO está nos foods
 ❌ Instruções mencionam ingrediente que NÃO está nos foods

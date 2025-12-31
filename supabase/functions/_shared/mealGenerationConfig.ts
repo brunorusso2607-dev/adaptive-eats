@@ -4062,53 +4062,63 @@ ${previousDaysMeals.length > 0 ? `\n━━━ NÃO REPETIR (já usados) ━━�
    • Azeite pode aparecer separado APENAS para finalização de saladas
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 FORMATO DOS ALIMENTOS (foods) - PRATOS CONSOLIDADOS:
+📝 FORMATO DOS ALIMENTOS (foods) - REGRA ABSOLUTA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚨🚨 REGRA CRÍTICA: CONSOLIDAR INGREDIENTES EM PRATOS! 🚨🚨
+🚨🚨🚨 REGRA CRÍTICA: PRATOS ÚNICOS vs COMPOSTOS 🚨🚨🚨
 
-❌ ERRADO - ingredientes soltos (parece receita):
+▶️ TIPO 1 - PRATOS ÚNICOS (CONSOLIDAR EM 1 ITEM):
+SE a refeição é: Sopa, Caldo, Creme, Omelete, Fritata, Salada com proteína,
+Wrap, Sanduíche, Taco, Burrito, Bowl, Smoothie, Vitamina, Mingau, Porridge,
+Feijoada, Moqueca, Paella, Risotto, Curry, Stir-fry...
+
+→ CONSOLIDAR TODOS os ingredientes em 1 ÚNICO item no array foods!
+
+✅ CERTO: [{"name": "Sopa de lentilha com tofu e legumes", "grams": 350}]
+✅ CERTO: [{"name": "Omelete de claras com espinafre e queijo", "grams": 180}]
+✅ CERTO: [{"name": "Salada caesar com frango grelhado", "grams": 280}]
+
+❌ PROIBIDO: 
 [
-  {"name": "Lentilha cozida", "grams": 100},
-  {"name": "Cenoura em cubos", "grams": 50},
-  {"name": "Cebola picada", "grams": 20},
-  {"name": "Tofu em cubos", "grams": 80},
-  {"name": "Aipo em cubos", "grams": 30}
+  {"name": "Tofu amassado", "grams": 50},
+  {"name": "Tomate seco picado", "grams": 20},
+  {"name": "Sal", "grams": 2}
 ]
+→ Isso NÃO é cardápio, é lista de compras! ERRO GRAVE!
 
-✅ CORRETO - prato consolidado (parece cardápio):
+▶️ TIPO 2 - REFEIÇÃO COMPOSTA (LISTA SEPARADA):
+SE a refeição é: Almoço/Jantar tradicional com Proteína + Base + Acompanhamento
+
+→ LISTAR cada componente separado (são servidos ao lado, não misturados)
+
+✅ CERTO:
 [
-  {"name": "Sopa de lentilha com tofu e legumes", "grams": 350},
+  {"name": "Filé de frango grelhado ao limão", "grams": 150},
+  {"name": "Arroz integral", "grams": 100},
+  {"name": "Feijão carioca", "grams": 80},
+  {"name": "Salada verde com azeite", "grams": 80},
+  {"name": "1 laranja média (sobremesa)", "grams": 150},
   {"name": "1 copo de água (opcional)", "grams": 200}
 ]
 
-REGRA DE CONSOLIDAÇÃO:
-• Sopas: TODO conteúdo da sopa = 1 item único
-• Omeletes: ovos + recheios = 1 item único  
-• Saladas compostas: salada + ingredientes = 1 item único
-• Pratos cozidos: carne + legumes cozidos juntos = 1 item único
-• Apenas SEPARAR: arroz/feijão (servidos ao lado), bebidas, frutas de sobremesa
+⚠️ REGRAS DE SEPARAÇÃO:
+• Arroz/Feijão = sempre separados (servidos ao lado)
+• Fruta de sobremesa = sempre separada
+• Bebida = sempre separada (último item)
+• Temperos/condimentos = NUNCA separados (vão DENTRO do nome do prato)
 
-ESTRUTURA: {"name": "descrição do PRATO", "grams": soma_dos_ingredientes}
-
-✅ EXEMPLOS CORRETOS:
-• {"name": "Sopa de lentilha com tofu e legumes", "grams": 350}
-• {"name": "Omelete de claras com espinafre e tomate", "grams": 180}
-• {"name": "Salada mediterrânea com grão-de-bico e atum", "grams": 250}
-• {"name": "Frango grelhado ao limão com ervas", "grams": 150}
-• {"name": "1 copo de água (opcional)", "grams": 200}
-
-❌ PROIBIDO (ingredientes soltos):
-• {"name": "Cenoura em cubos", "grams": 50} → vai DENTRO da sopa!
-• {"name": "Cebola picada", "grams": 20} → vai DENTRO do prato!
-• {"name": "Suco de limão", "grams": 15} → tempero, não item!
-• {"name": "Azeite de oliva", "grams": 5} → vai no nome do prato!
+❌ NUNCA FAZER (ingredientes soltos sem contexto):
+• {"name": "Tofu amassado", "grams": 50} → SOLTO! Cadê o prato?
+• {"name": "Sal", "grams": 2} → TEMPERO! Não é item!
+• {"name": "Azeite de oliva", "grams": 5} → TEMPERO! Não é item!
+• {"name": "Tomate seco picado", "grams": 20} → SOLTO! Faz parte de qual prato?
 
 ORDEM NO ARRAY foods:
-1. Prato principal consolidado
-2. Acompanhamentos separados (arroz, feijão - servidos ao lado)
-3. Fruta de sobremesa
-4. Bebida zero/opcional (almoço/jantar)
+1. Prato principal (consolidado OU proteína do prato composto)
+2. Acompanhamentos (arroz, feijão - se prato composto)
+3. Condimentos (azeite para finalização - APENAS se necessário)
+4. Fruta de sobremesa
+5. Bebida zero/opcional (almoço/jantar)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📖 FORMATO DAS DICAS (instructions) - COMO PREPARAR:

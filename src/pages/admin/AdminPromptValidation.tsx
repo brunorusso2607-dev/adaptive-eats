@@ -19,17 +19,23 @@ import {
   ChevronUp,
   FileCode,
   ListChecks,
-  Utensils
+  Utensils,
+  AlertCircle,
+  Info,
+  RefreshCw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface ValidationRule {
   id: string;
   name: string;
   description: string;
+  category: string;
   passed: boolean;
   details?: string;
+  severity: 'critical' | 'warning' | 'info';
 }
 
 interface ValidationResult {
@@ -40,8 +46,10 @@ interface ValidationResult {
   rules: ValidationRule[];
   generatedMeal: any;
   promptPreview: string;
+  rawAIResponse?: string;
   timestamp: string;
   error?: string;
+  categories: Record<string, { total: number; passed: number; failed: number }>;
 }
 
 const MEAL_TYPES = [
@@ -63,6 +71,12 @@ const COUNTRIES = [
   { value: 'CO', label: '🇨🇴 Colômbia' },
 ];
 
+const SEVERITY_CONFIG = {
+  critical: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10', label: 'Crítico' },
+  warning: { icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/10', label: 'Aviso' },
+  info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Info' },
+};
+
 export default function AdminPromptValidation() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const [mealType, setMealType] = useState('almoco');
@@ -73,6 +87,7 @@ export default function AdminPromptValidation() {
   const [promptPreview, setPromptPreview] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showMeal, setShowMeal] = useState(true);
+  const [activeTab, setActiveTab] = useState('all');
 
   if (adminLoading) {
     return (
@@ -151,6 +166,18 @@ export default function AdminPromptValidation() {
     }
   };
 
+  const categories = result?.categories || {};
+  const categoryNames = Object.keys(categories);
+
+  const filteredRules = result?.rules.filter(rule => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'failed') return !rule.passed;
+    return rule.category === activeTab;
+  }) || [];
+
+  const criticalFailed = result?.rules.filter(r => !r.passed && r.severity === 'critical').length || 0;
+  const warningsFailed = result?.rules.filter(r => !r.passed && r.severity === 'warning').length || 0;
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -163,7 +190,7 @@ export default function AdminPromptValidation() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold">Validação do Prompt</h1>
-            <p className="text-muted-foreground">Teste automatizado do formato de geração de refeições</p>
+            <p className="text-muted-foreground">Teste automatizado com 24+ regras de conformidade</p>
           </div>
         </div>
 
@@ -175,7 +202,7 @@ export default function AdminPromptValidation() {
               Configuração do Teste
             </CardTitle>
             <CardDescription>
-              Selecione o tipo de refeição e país para testar
+              Selecione o tipo de refeição e país para testar a geração de IA
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -227,7 +254,7 @@ export default function AdminPromptValidation() {
                 ) : (
                   <>
                     <Play className="w-4 h-4 mr-2" />
-                    Rodar Validação
+                    Rodar Validação Completa
                   </>
                 )}
               </Button>
@@ -263,54 +290,117 @@ export default function AdminPromptValidation() {
                 Resultado da Validação
               </CardTitle>
               <CardDescription>
-                {result.passedRules}/{result.totalRules} regras aprovadas • {result.timestamp}
+                {result.passedRules}/{result.totalRules} regras aprovadas • {new Date(result.timestamp).toLocaleString('pt-BR')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Resumo */}
-              <div className="flex gap-2">
+              {/* Resumo com severidades */}
+              <div className="flex flex-wrap gap-2">
                 <Badge variant={result.success ? "default" : "destructive"} className="text-sm">
                   {result.success ? '✓ APROVADO' : '✗ REPROVADO'}
                 </Badge>
-                <Badge variant="outline" className="text-sm">
-                  {result.passedRules} passou
+                <Badge variant="outline" className="text-sm bg-green-500/10 text-green-600 border-green-500/30">
+                  ✓ {result.passedRules} passou
                 </Badge>
-                {result.failedRules > 0 && (
+                {criticalFailed > 0 && (
                   <Badge variant="destructive" className="text-sm">
-                    {result.failedRules} falhou
+                    🚫 {criticalFailed} crítico
+                  </Badge>
+                )}
+                {warningsFailed > 0 && (
+                  <Badge variant="outline" className="text-sm bg-orange-500/10 text-orange-600 border-orange-500/30">
+                    ⚠️ {warningsFailed} aviso
                   </Badge>
                 )}
               </div>
 
-              {/* Lista de Regras */}
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm">Checklist de Regras:</h4>
-                <div className="space-y-1">
-                  {result.rules.map(rule => (
+              {/* Resumo por Categoria */}
+              {Object.keys(categories).length > 0 && (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                  {Object.entries(categories).map(([cat, stats]) => (
                     <div 
-                      key={rule.id} 
-                      className={`flex items-start gap-3 p-2 rounded-lg text-sm ${
-                        rule.passed ? 'bg-green-500/10' : 'bg-destructive/10'
+                      key={cat}
+                      className={`p-2 rounded-lg text-xs ${
+                        stats.failed === 0 ? 'bg-green-500/10' : 'bg-orange-500/10'
                       }`}
                     >
-                      {rule.passed ? (
-                        <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
-                      ) : (
-                        <XCircle className="w-4 h-4 text-destructive mt-0.5 shrink-0" />
-                      )}
-                      <div className="flex-1">
-                        <p className="font-medium">{rule.name}</p>
-                        <p className="text-muted-foreground text-xs">{rule.description}</p>
-                        {rule.details && (
-                          <p className="text-xs mt-1 font-mono bg-muted/50 px-2 py-1 rounded">
-                            {rule.details}
-                          </p>
-                        )}
-                      </div>
+                      <p className="font-medium truncate">{cat}</p>
+                      <p className="text-muted-foreground">
+                        {stats.passed}/{stats.total} ✓
+                      </p>
                     </div>
                   ))}
                 </div>
-              </div>
+              )}
+
+              {/* Tabs para filtrar regras */}
+              <Tabs value={activeTab} onValueChange={setActiveTab}>
+                <TabsList className="w-full flex-wrap h-auto gap-1">
+                  <TabsTrigger value="all" className="text-xs">
+                    Todas ({result.rules.length})
+                  </TabsTrigger>
+                  <TabsTrigger value="failed" className="text-xs text-destructive">
+                    Falhas ({result.failedRules})
+                  </TabsTrigger>
+                  {categoryNames.slice(0, 4).map(cat => (
+                    <TabsTrigger key={cat} value={cat} className="text-xs hidden md:inline-flex">
+                      {cat.split(' ')[0]}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+
+                <TabsContent value={activeTab} className="mt-3">
+                  <ScrollArea className="h-80">
+                    <div className="space-y-1 pr-4">
+                      {filteredRules.map(rule => {
+                        const severity = SEVERITY_CONFIG[rule.severity] || SEVERITY_CONFIG.info;
+                        const SeverityIcon = severity.icon;
+                        
+                        return (
+                          <div 
+                            key={rule.id} 
+                            className={`flex items-start gap-3 p-2 rounded-lg text-sm ${
+                              rule.passed ? 'bg-green-500/10' : severity.bg
+                            }`}
+                          >
+                            {rule.passed ? (
+                              <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5 shrink-0" />
+                            ) : (
+                              <SeverityIcon className={`w-4 h-4 ${severity.color} mt-0.5 shrink-0`} />
+                            )}
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-medium">{rule.name}</p>
+                                <Badge variant="outline" className="text-[10px] px-1 py-0">
+                                  {rule.category}
+                                </Badge>
+                              </div>
+                              <p className="text-muted-foreground text-xs">{rule.description}</p>
+                              {rule.details && (
+                                <p className="text-xs mt-1 font-mono bg-muted/50 px-2 py-1 rounded truncate">
+                                  {rule.details}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </ScrollArea>
+                </TabsContent>
+              </Tabs>
+
+              {/* Botão de retry */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={runValidation}
+                disabled={isRunning}
+                className="w-full"
+              >
+                <RefreshCw className={`w-4 h-4 mr-2 ${isRunning ? 'animate-spin' : ''}`} />
+                Rodar Novamente
+              </Button>
 
               {/* Refeição Gerada */}
               {result.generatedMeal && (
@@ -328,7 +418,7 @@ export default function AdminPromptValidation() {
                     <div className="bg-muted/50 p-4 rounded-lg space-y-3">
                       <div>
                         <span className="text-xs text-muted-foreground">Título:</span>
-                        <p className="font-medium">{result.generatedMeal.title}</p>
+                        <p className="font-medium">{result.generatedMeal.title || '(undefined)'}</p>
                       </div>
                       
                       <div>
@@ -350,8 +440,18 @@ export default function AdminPromptValidation() {
                       </div>
                       
                       <div className="flex gap-4 text-sm">
-                        <span>🔥 {result.generatedMeal.calories_kcal} kcal</span>
+                        <span>🔥 {result.generatedMeal.calories_kcal || 0} kcal</span>
                       </div>
+
+                      {/* Raw AI Response */}
+                      {result.rawAIResponse && (
+                        <div className="mt-2 pt-2 border-t">
+                          <span className="text-xs text-muted-foreground">Resposta bruta da IA:</span>
+                          <pre className="text-xs font-mono bg-muted p-2 rounded mt-1 overflow-auto max-h-20">
+                            {result.rawAIResponse}
+                          </pre>
+                        </div>
+                      )}
                     </div>
                   </CollapsibleContent>
                 </Collapsible>
@@ -388,57 +488,66 @@ export default function AdminPromptValidation() {
           </Card>
         )}
 
-        {/* Regras Implementadas */}
+        {/* Categorias de Validação */}
         <Card>
           <CardHeader>
-            <CardTitle>Regras de Validação</CardTitle>
+            <CardTitle>Categorias de Validação (24+ regras)</CardTitle>
             <CardDescription>
               O que é verificado em cada refeição gerada
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="grid gap-3 text-sm">
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Título é prato, não lista</p>
-                  <p className="text-muted-foreground text-xs">O título deve descrever um prato completo</p>
-                </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Badge variant="outline" className="bg-destructive/10 text-destructive">Crítico</Badge>
+                  Estrutura Obrigatória
+                </h4>
+                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+                  <li>• JSON válido com campos corretos</li>
+                  <li>• Foods é array de objetos</li>
+                  <li>• Cada food tem name e grams</li>
+                  <li>• Calorias definidas</li>
+                </ul>
               </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Sem condimentos soltos</p>
-                  <p className="text-muted-foreground text-xs">Sal, azeite, limão devem estar dentro do nome do prato</p>
-                </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Badge variant="outline" className="bg-orange-500/10 text-orange-500">Aviso</Badge>
+                  Qualidade do Conteúdo
+                </h4>
+                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+                  <li>• Título descritivo (não lista)</li>
+                  <li>• Sem condimentos soltos</li>
+                  <li>• Pratos únicos consolidados</li>
+                  <li>• Mínimo 2 dicas de preparo</li>
+                </ul>
               </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Prato único consolidado</p>
-                  <p className="text-muted-foreground text-xs">Sopas, omeletes, bowls = 1 item principal</p>
-                </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Badge variant="outline" className="bg-blue-500/10 text-blue-500">Info</Badge>
+                  Ordenação e Formato
+                </h4>
+                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+                  <li>• Proteína primeiro</li>
+                  <li>• Bebidas por último</li>
+                  <li>• Frutas antes das bebidas</li>
+                  <li>• Sem frutas nas dicas</li>
+                </ul>
               </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Mínimo 2 dicas</p>
-                  <p className="text-muted-foreground text-xs">Dicas de preparo devem ter pelo menos 2 passos</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Primeira dica lista ingredientes</p>
-                  <p className="text-muted-foreground text-xs">A primeira dica deve listar ingredientes com gramagens</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <CheckCircle2 className="w-4 h-4 text-green-500 mt-0.5" />
-                <div>
-                  <p className="font-medium">Sem dicas vagas</p>
-                  <p className="text-muted-foreground text-xs">Dicas não podem ser curtas demais ou genéricas</p>
-                </div>
+
+              <div className="space-y-2">
+                <h4 className="font-medium text-sm flex items-center gap-2">
+                  <Badge variant="outline" className="bg-green-500/10 text-green-500">Segurança</Badge>
+                  Validações de Segurança
+                </h4>
+                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+                  <li>• Sem ingredientes fantasma</li>
+                  <li>• Calorias realistas por refeição</li>
+                  <li>• Gramagens válidas (5g-1000g)</li>
+                  <li>• Refeição composta completa</li>
+                </ul>
               </div>
             </div>
           </CardContent>

@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, Check, Loader2, X } from "lucide-react";
 import type { NextMealData } from "@/hooks/useNextMeal";
-import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
+import IngredientSearchSheet from "@/components/IngredientSearchSheet";
 import RecipeRenameDialog from "@/components/RecipeRenameDialog";
 import MealConfirmDialog from "@/components/MealConfirmDialog";
 import { DietaryCompatibilityBadge } from "@/components/DietaryCompatibilityBadge";
@@ -533,12 +533,11 @@ export default function MealDetailSheet({
         </SheetContent>
       </Sheet>
 
-      {/* Ingredient Substitution Sheet */}
-      <IngredientSubstitutionSheet
+      {/* Ingredient Search Sheet - busca de alimentos como na home */}
+      <IngredientSearchSheet
         open={substitutionOpen}
         onOpenChange={setSubstitutionOpen}
         originalIngredient={selectedIngredient}
-        mealType={meal?.meal_type}
         onSubstitute={handleSubstitute}
       />
 

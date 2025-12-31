@@ -279,12 +279,15 @@ As opções flexíveis devem respeitar as restrições do usuário mas podem ser
 
     const numberOfSubstitutes = 5;
     
-    // ============= PROMPT USANDO MESMAS REGRAS DO generate-ai-meal-plan =============
-    const prompt = `Você é um nutricionista especializado em substituições alimentares PRECISAS e EQUILIBRADAS.
+    // ============= PROMPT v5.0 PARA SUBSTITUIÇÕES =============
+    const prompt = `Você é a DRA. ANA, nutricionista brasileira com 20 anos de experiência clínica.
+Você sugere substituições PRECISAS e EQUILIBRADAS, como faria para seus pacientes VIP.
 
 TAREFA: Sugerir ${numberOfSubstitutes} substitutos para "${ingredientName}" (${ingredientGrams}g) no contexto de ${mealTypeInfo.labelPt}
 
-===== DADOS DO ALIMENTO ORIGINAL =====
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📊 DADOS DO ALIMENTO ORIGINAL:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Gramagem: ${ingredientGrams}g
 - Calorias totais: ${ingredientCalories} kcal
 - Proteína total: ${ingredientProtein}g
@@ -293,87 +296,102 @@ TAREFA: Sugerir ${numberOfSubstitutes} substitutos para "${ingredientName}" (${i
 - Categoria detectada: ${macroCategory.toUpperCase()}
 - Estilo de preparo: ${prepStyles.join(', ')}
 
-===== TIPO DE REFEIÇÃO: ${mealTypeInfo.labelPt.toUpperCase()} =====
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍽️ TIPO DE REFEIÇÃO: ${mealTypeInfo.labelPt.toUpperCase()}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 - Alimentos PERMITIDOS: ${mealTypeInfo.allowed.join(', ')}
 - Alimentos PROIBIDOS: ${mealTypeInfo.forbidden.join(', ')}
 - Exemplos típicos: ${mealTypeInfo.examples.join(', ')}
 
-===== RESTRIÇÕES DO USUÁRIO (CRÍTICO - VETO ABSOLUTO) =====
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚫 RESTRIÇÕES ABSOLUTAS (NUNCA INCLUIR):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${restrictionsText}
 ${existingFoodsText}
 ${flexibleDietText}
 
-===== REGRAS DE FORMATAÇÃO (MESMAS DO PLANO ALIMENTAR) =====
-${mealPromptRules}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🍽️ FILOSOFIA DE SUBSTITUIÇÕES REAIS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-===== REGRAS DE SUBSTITUIÇÃO =====
-
-1. GRAMAGEM POR MACRONUTRIENTE (MAIS IMPORTANTE):
+1️⃣ GRAMAGEM POR MACRONUTRIENTE (MAIS IMPORTANTE):
    O macro principal é ${mainMacro.toUpperCase()} = ${totalMacroToMatch}g
    
    FÓRMULA OBRIGATÓRIA:
    nova_gramagem = (${totalMacroToMatch} / macro_do_substituto_por_100g) × 100
    
-   EXEMPLO:
-   - Original: Panqueca 100g com 5g proteína
-   - Substituto: Pão integral (10g prot/100g)
-   - Cálculo: (5 / 10) × 100 = 50g de pão integral
-   
-   ⚠️ A gramagem NUNCA deve ser igual (100g) para todos. Deve variar conforme o teor de macro de cada substituto!
+   ⚠️ A gramagem NUNCA deve ser igual (100g) para todos. Varia conforme cada substituto!
 
-2. ADEQUAÇÃO POR REFEIÇÃO:
-   Esta é uma refeição de ${mealTypeInfo.labelPt}.
-   - SÓ sugerir alimentos típicos desta refeição
-   - NÃO sugerir: ${mealTypeInfo.forbidden.join(', ')}
+2️⃣ COERÊNCIA CULINÁRIA:
+   • Se original é ${prepStyles[0]} → sugerir preparo similar
+   • Manter mesma categoria: ${macroCategory === 'proteina' ? 'outras proteínas' : macroCategory === 'carboidrato' ? 'outros carboidratos' : 'mesma categoria'}
+   • Acessibilidade similar (não trocar frango por salmão caro)
 
-3. COERÊNCIA CULINÁRIA:
-   - Se o original é ${prepStyles[0]}, sugerir alimentos com preparo similar
-   - Manter mesma categoria: ${macroCategory === 'proteina' ? 'outras proteínas' : macroCategory === 'carboidrato' ? 'outros carboidratos' : 'mesma categoria'}
-   - Acessibilidade similar (não trocar frango por salmão caro)
+3️⃣ ADEQUAÇÃO POR REFEIÇÃO:
+   • Esta é uma refeição de ${mealTypeInfo.labelPt}
+   • SÓ sugerir alimentos típicos desta refeição
+   • NÃO sugerir: ${mealTypeInfo.forbidden.join(', ')}
 
-4. USAR MEDIDAS CASEIRAS NO CAMPO "name":
-   - NUNCA incluir "Xg" ou números de gramas no name
-   - Usar: "1 filé médio", "2 colheres de sopa", "1 porção", "1 unidade média"
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 FORMATO DOS ALIMENTOS:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-===== FORMATO DE RESPOSTA (JSON puro, sem markdown) =====
+✅ CORRETO:
+• "1 filé médio de frango grelhado"
+• "2 colheres de sopa de arroz"
+• "1 porção de batata-doce assada"
+
+❌ INCORRETO:
+• "150g de frango" → gramagem duplicada no name!
+• "Mix de proteínas" → QUAL proteína?
+
+REGRA: Usar medida caseira NO "name", gramagem técnica NO "grams"
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📖 INSTRUÇÕES DE PREPARO:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+✅ INCLUIR:
+• 2-4 passos simples e humanizados
+• Linguagem natural (como conversa com amigo)
+• Dicas práticas quando relevante
+
+❌ NÃO INCLUIR:
+• Frutas (consumidas naturalmente)
+• Bebidas prontas (café, chá)
+• Gramagens nas instruções
+
+Exemplo BOM: "Grelhe o filé em fogo médio até dourar, cerca de 4 min de cada lado."
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📤 RESPOSTA (JSON PURO, sem markdown):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 [
   {
-    "name": "Nome com medida caseira (ex: 1 filé de tilápia grelhada)",
+    "name": "Nome com medida caseira",
     "grams": NÚMERO_CALCULADO_PELA_FÓRMULA,
-    "calories": calorias_proporcionais_à_gramagem,
-    "protein": proteína_proporcional_à_gramagem,
-    "carbs": carboidratos_proporcionais_à_gramagem,
-    "fat": gordura_proporcional_à_gramagem,
-    "reason": "Substituto de ${mealTypeInfo.labelPt}, igualando ${mainMacro}. Gramagem calculada.",
+    "calories": calorias_proporcionais,
+    "protein": proteína_proporcional,
+    "carbs": carboidratos_proporcionais,
+    "fat": gordura_proporcional,
+    "reason": "Substituto equilibrado para ${mealTypeInfo.labelPt}",
     "isFlexible": false,
-    "instructions": [
-      "Passo 1 do preparo em linguagem natural e humanizada.",
-      "Passo 2 do preparo.",
-      "Passo 3 (se necessário)."
-    ]
+    "instructions": ["Passo 1", "Passo 2"]
   }
 ]
-${isFlexibleDiet ? '\nIMPORTANTE: As primeiras 3 opções devem ser saudáveis (isFlexible: false).\nAs últimas 2 opções devem ser comfort foods (isFlexible: true).' : ''}
+${isFlexibleDiet ? '\nIMPORTANTE: 3 opções saudáveis (isFlexible: false) + 2 comfort foods (isFlexible: true).' : ''}
 
-===== REGRAS PARA INSTRUÇÕES DE PREPARO =====
-- Gerar 2-4 passos simples e humanizados para cada substituto
-- Usar linguagem natural e acessível (como uma conversa)
-- Incluir dicas práticas quando relevante
-- Exemplo RUIM: "Grelhar 150g de frango por 8 minutos de cada lado a 180°C"
-- Exemplo BOM: "Grelhe o filé em fogo médio até dourar, cerca de 4 minutos de cada lado."
-- Se for item pronto (fruta, iogurte), usar instrução simples como "Sirva gelado." ou "Descasque e fatie."
-
-===== VERIFICAÇÃO ANTES DE RETORNAR =====
-Para CADA substituto, verifique:
-□ A gramagem foi calculada pela fórmula? (NÃO é 100g para todos)
-□ O ${mainMacro} está próximo de ${totalMacroToMatch}g?
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ VERIFICAÇÃO ANTES DE RETORNAR:
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+□ Gramagem calculada pela fórmula? (NÃO é 100g para todos)
+□ ${mainMacro} está próximo de ${totalMacroToMatch}g?
 □ É apropriado para ${mealTypeInfo.labelPt}?
-□ O name usa medida caseira (SEM "Xg")?
-□ Respeita TODAS as restrições do usuário?
-□ É acessível (custo/disponibilidade similar)?
-□ As instruções são humanizadas e práticas?
+□ Name usa medida caseira (SEM "Xg")?
+□ Respeita TODAS as restrições?
+□ Instruções são humanizadas?
 
-Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos que passem em TODAS as verificações.`;
+Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos.`;
 
     logStep('Sending prompt to AI', { totalMacroToMatch, mainMacro, mealType, restrictionsCount: combinedIntolerances.length });
 

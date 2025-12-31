@@ -436,7 +436,7 @@ export function findCaloriesPerGram(foodName: string): number | null {
   const normalized = normalizeForCalorieTable(foodName);
   
   // Busca exata primeiro
-  if (CALORIE_TABLE[normalized]) {
+  if (CALORIE_TABLE[normalized] !== undefined) {
     return CALORIE_TABLE[normalized] / 100;
   }
   
@@ -447,7 +447,33 @@ export function findCaloriesPerGram(foodName: string): number | null {
     }
   }
   
+  // Busca por palavras-chave individuais (para casos como "1 xicara de cha de camomila")
+  const words = normalized.split(/\s+/).filter(w => w.length >= 3);
+  for (const word of words) {
+    if (CALORIE_TABLE[word] !== undefined) {
+      return CALORIE_TABLE[word] / 100;
+    }
+    // Buscar chaves que contenham a palavra
+    for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
+      if (key.includes(word)) {
+        return kcalPer100g / 100;
+      }
+    }
+  }
+  
   return null;
+}
+
+/**
+ * Detecta se um alimento é uma bebida/líquido de baixa caloria
+ */
+function isLowCalorieBeverage(foodName: string): boolean {
+  const normalized = normalizeForCalorieTable(foodName);
+  const lowCalorieBeverages = [
+    'cha', 'cafe', 'agua', 'infusao', 'tisana',
+    'tea', 'coffee', 'water', 'te', 'tisane',
+  ];
+  return lowCalorieBeverages.some(b => normalized.includes(b));
 }
 
 /**
@@ -468,9 +494,19 @@ export function calculateFoodCalories(
     };
   }
   
-  // Fallback: estima ~1.5 kcal/g como média genérica
+  // Fallback: usar valores por categoria
+  // Para bebidas de baixa caloria, usar 0-2 kcal/100ml
+  if (isLowCalorieBeverage(foodName)) {
+    return {
+      calories: Math.round(grams * 0.01), // ~1 kcal por 100ml
+      source: 'estimate',
+      kcalPer100g: 1,
+    };
+  }
+  
+  // Fallback genérico: estima ~1.0 kcal/g (reduzido de 1.5)
   return {
-    calories: Math.round(grams * 1.5),
+    calories: Math.round(grams * 1.0),
     source: 'estimate',
     kcalPer100g: null,
   };

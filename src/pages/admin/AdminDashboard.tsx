@@ -33,7 +33,8 @@ import {
   ToggleLeft,
   ChefHat,
   Apple,
-  Activity
+  Activity,
+  Globe
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -94,6 +95,7 @@ const mainMenuItems: SubMenuItem[] = [
             { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
             { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
             { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
+            { path: "/admin/languages", label: "Idiomas", icon: Globe },
           ],
         },
       { 

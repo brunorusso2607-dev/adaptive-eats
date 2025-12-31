@@ -227,13 +227,39 @@ serve(async (req) => {
       const globalNutritionPrompt = getGlobalNutritionPrompt(userCountry);
       const nutritionalSource = getNutritionalSource(userCountry);
 
+      // Country-specific language and cultural context
+      const COUNTRY_RECIPE_CONFIG: Record<string, { lang: string; culture: string; examples: string }> = {
+        'BR': { lang: 'português brasileiro', culture: 'culinária brasileira', examples: 'Feijoada, Pão de Queijo, Moqueca' },
+        'PT': { lang: 'português europeu', culture: 'culinária portuguesa', examples: 'Bacalhau à Brás, Caldo Verde, Francesinha' },
+        'US': { lang: 'American English', culture: 'American cuisine', examples: 'Burgers, Mac and Cheese, BBQ Ribs' },
+        'GB': { lang: 'British English', culture: 'British cuisine', examples: 'Fish and Chips, Shepherd\'s Pie, Sunday Roast' },
+        'MX': { lang: 'español mexicano', culture: 'cocina mexicana', examples: 'Tacos, Enchiladas, Pozole' },
+        'ES': { lang: 'español', culture: 'cocina española', examples: 'Paella, Tortilla Española, Gazpacho' },
+        'FR': { lang: 'français', culture: 'cuisine française', examples: 'Coq au Vin, Ratatouille, Quiche Lorraine' },
+        'DE': { lang: 'Deutsch', culture: 'deutsche Küche', examples: 'Schnitzel, Bratwurst, Spätzle' },
+        'IT': { lang: 'italiano', culture: 'cucina italiana', examples: 'Pasta Carbonara, Risotto, Lasagna' },
+        'AR': { lang: 'español argentino', culture: 'cocina argentina', examples: 'Asado, Empanadas, Milanesa' },
+        'CO': { lang: 'español colombiano', culture: 'cocina colombiana', examples: 'Bandeja Paisa, Arepas, Sancocho' },
+      };
+      
+      const recipeConfig = COUNTRY_RECIPE_CONFIG[userCountry] || COUNTRY_RECIPE_CONFIG['BR'];
+
       const baseSystemPrompt = buildRecipeSystemPrompt(promptOptions);
       
-      // Build enriched prompt with nutritional context
-      let systemPrompt = `${globalNutritionPrompt}\n\nUSE ${nutritionalSource.sourceName} AS PRIMARY NUTRITIONAL SOURCE.\n\n${baseSystemPrompt}`;
+      // Build enriched prompt with nutritional context AND cultural localization
+      let systemPrompt = `${globalNutritionPrompt}\n\nUSE ${nutritionalSource.sourceName} AS PRIMARY NUTRITIONAL SOURCE.
+
+=== CULTURAL LOCALIZATION ===
+- Output language: ${recipeConfig.lang}
+- Culinary culture: ${recipeConfig.culture}
+- Typical dishes from this region: ${recipeConfig.examples}
+- PRIORITIZE local ingredients and cooking techniques
+- All recipe names, ingredients, and instructions MUST be in ${recipeConfig.lang}
+
+${baseSystemPrompt}`;
       
       if (nutritionalContext) {
-        systemPrompt += `\n\n${nutritionalContext}\n\n⚠️ IMPORTANTE: A receita gerada deve estar ALINHADA com as metas nutricionais do usuário listadas acima.`;
+        systemPrompt += `\n\n${nutritionalContext}\n\n⚠️ IMPORTANT: The generated recipe must be ALIGNED with the user's nutritional goals listed above.`;
       }
       
       const userPrompt = buildRecipeUserPrompt(promptOptions);
@@ -242,7 +268,9 @@ serve(async (req) => {
         systemPromptLength: systemPrompt.length,
         userPromptLength: userPrompt.length,
         category: categoryContext?.category,
-        subcategory: categoryContext?.subcategory
+        subcategory: categoryContext?.subcategory,
+        country: userCountry,
+        language: recipeConfig.lang
       });
 
       logStep("Calling Google Gemini API");

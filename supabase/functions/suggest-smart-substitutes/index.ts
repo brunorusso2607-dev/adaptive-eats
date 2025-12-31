@@ -279,20 +279,38 @@ As opções flexíveis devem respeitar as restrições do usuário mas podem ser
 
     const numberOfSubstitutes = 5;
     
-    // ============= PROMPT v5.0 PARA SUBSTITUIÇÕES =============
-    const prompt = `Você é a DRA. ANA, nutricionista brasileira com 20 anos de experiência clínica.
-Você sugere substituições PRECISAS e EQUILIBRADAS, como faria para seus pacientes VIP.
+    // Country-specific language mapping
+    const COUNTRY_LANGUAGE: Record<string, { lang: string; nutritionist: string; examples: string[] }> = {
+      'BR': { lang: 'português brasileiro', nutritionist: 'DRA. ANA, nutricionista brasileira', examples: ['Tapioca com queijo', 'Arroz integral', 'Feijão preto'] },
+      'PT': { lang: 'português europeu', nutritionist: 'DRA. MARIA, nutricionista portuguesa', examples: ['Bacalhau à brás', 'Caldo verde', 'Pastel de nata'] },
+      'US': { lang: 'English', nutritionist: 'DR. SARAH, American nutritionist', examples: ['Grilled chicken', 'Brown rice', 'Mixed greens salad'] },
+      'GB': { lang: 'British English', nutritionist: 'DR. EMMA, British nutritionist', examples: ['Jacket potato', 'Grilled salmon', 'Garden peas'] },
+      'MX': { lang: 'español mexicano', nutritionist: 'DRA. ELENA, nutrióloga mexicana', examples: ['Tacos de pollo', 'Frijoles negros', 'Arroz rojo'] },
+      'ES': { lang: 'español', nutritionist: 'DRA. CARMEN, nutricionista española', examples: ['Tortilla española', 'Gazpacho', 'Paella'] },
+      'FR': { lang: 'français', nutritionist: 'DR. SOPHIE, nutritionniste française', examples: ['Poulet grillé', 'Ratatouille', 'Salade niçoise'] },
+      'DE': { lang: 'Deutsch', nutritionist: 'DR. ANNA, deutsche Ernährungsberaterin', examples: ['Hähnchenbrust', 'Kartoffelsalat', 'Vollkornbrot'] },
+      'IT': { lang: 'italiano', nutritionist: 'DR. GIULIA, nutrizionista italiana', examples: ['Petto di pollo', 'Risotto', 'Insalata mista'] },
+      'AR': { lang: 'español argentino', nutritionist: 'DRA. VALENTINA, nutricionista argentina', examples: ['Bife de chorizo', 'Empanadas', 'Milanesa'] },
+      'CO': { lang: 'español colombiano', nutritionist: 'DRA. CATALINA, nutricionista colombiana', examples: ['Bandeja paisa', 'Arepas', 'Sancocho'] },
+    };
+    
+    const countryConfig = COUNTRY_LANGUAGE[userCountry] || COUNTRY_LANGUAGE['BR'];
+    
+    // ============= PROMPT v6.0 PARA SUBSTITUIÇÕES (MULTILINGUAL) =============
+    const prompt = `You are ${countryConfig.nutritionist} with 20 years of clinical experience.
+You suggest PRECISE and BALANCED substitutions as you would for your VIP patients.
+IMPORTANT: All food names and instructions MUST be in ${countryConfig.lang}.
 
-TAREFA: Sugerir ${numberOfSubstitutes} substitutos para "${ingredientName}" (${ingredientGrams}g) no contexto de ${mealTypeInfo.labelPt}
+TASK: Suggest ${numberOfSubstitutes} substitutes for "${ingredientName}" (${ingredientGrams}g) in the context of ${mealTypeInfo.labelPt}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 DADOS DO ALIMENTO ORIGINAL:
+📊 ORIGINAL FOOD DATA:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-- Gramagem: ${ingredientGrams}g
-- Calorias totais: ${ingredientCalories} kcal
-- Proteína total: ${ingredientProtein}g
-- Carboidratos totais: ${ingredientCarbs}g
-- Gordura total: ${ingredientFat}g
+- Grams: ${ingredientGrams}g
+- Total Calories: ${ingredientCalories} kcal
+- Total Protein: ${ingredientProtein}g
+- Total Carbs: ${ingredientCarbs}g
+- Total Fat: ${ingredientFat}g
 - Categoria detectada: ${macroCategory.toUpperCase()}
 - Estilo de preparo: ${prepStyles.join(', ')}
 

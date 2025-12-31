@@ -271,21 +271,23 @@ serve(async (req) => {
       });
     }
     
-    // Get user profiles with timezone
+    // Get user profiles with timezone and country
     const userIds = [...new Set(activePlans.map(p => p.user_id))];
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, timezone")
+      .select("id, timezone, country")
       .in("id", userIds);
     
     if (profilesError) {
       console.error("Error fetching profiles:", profilesError);
     }
     
-    // Create timezone map (default: America/Sao_Paulo)
+    // Create timezone and country maps
     const timezoneMap = new Map<string, string>();
+    const countryMap = new Map<string, string>();
     profiles?.forEach(p => {
       timezoneMap.set(p.id, p.timezone || 'America/Sao_Paulo');
+      countryMap.set(p.id, p.country || 'BR');
     });
     
     // Filter active plans based on user's local date and exclude locked plans
@@ -507,16 +509,64 @@ serve(async (req) => {
           continue;
         }
         
-        // Create notification message
-        const timeText = userSettings.reminder_minutes_before > 0 
-          ? `em ${userSettings.reminder_minutes_before} minutos` 
-          : "agora";
+        // Create notification message based on user's country
+        const userCountry = countryMap.get(plan.user_id) || 'BR';
         
-        const reminderMessages = [
-          `🍽️ ${mealSetting.label} ${timeText}!`,
-          `⏰ Hora do ${mealSetting.label}!`,
-          `🥗 Prepare seu ${mealSetting.label}!`,
-        ];
+        // Country-specific message templates
+        const COUNTRY_MESSAGES: Record<string, { timeNow: string; timeIn: (min: number) => string; title: (label: string, time: string) => string[] }> = {
+          'BR': { 
+            timeNow: 'agora', 
+            timeIn: (min) => `em ${min} minutos`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ Hora do ${label}!`, `🥗 Prepare seu ${label}!`]
+          },
+          'PT': { 
+            timeNow: 'agora', 
+            timeIn: (min) => `em ${min} minutos`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ Hora do ${label}!`, `🥗 Prepare o seu ${label}!`]
+          },
+          'US': { 
+            timeNow: 'now', 
+            timeIn: (min) => `in ${min} minutes`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ Time for ${label}!`, `🥗 Prepare your ${label}!`]
+          },
+          'GB': { 
+            timeNow: 'now', 
+            timeIn: (min) => `in ${min} minutes`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ Time for ${label}!`, `🥗 Prepare your ${label}!`]
+          },
+          'MX': { 
+            timeNow: 'ahora', 
+            timeIn: (min) => `en ${min} minutos`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ ¡Hora de ${label}!`, `🥗 ¡Prepara tu ${label}!`]
+          },
+          'ES': { 
+            timeNow: 'ahora', 
+            timeIn: (min) => `en ${min} minutos`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ ¡Hora de ${label}!`, `🥗 ¡Prepara tu ${label}!`]
+          },
+          'FR': { 
+            timeNow: 'maintenant', 
+            timeIn: (min) => `dans ${min} minutes`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ C'est l'heure du ${label}!`, `🥗 Préparez votre ${label}!`]
+          },
+          'DE': { 
+            timeNow: 'jetzt', 
+            timeIn: (min) => `in ${min} Minuten`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ Zeit für ${label}!`, `🥗 Bereiten Sie Ihr ${label} vor!`]
+          },
+          'IT': { 
+            timeNow: 'adesso', 
+            timeIn: (min) => `tra ${min} minuti`,
+            title: (label, time) => [`🍽️ ${label} ${time}!`, `⏰ È ora di ${label}!`, `🥗 Prepara il tuo ${label}!`]
+          },
+        };
+        
+        const msgConfig = COUNTRY_MESSAGES[userCountry] || COUNTRY_MESSAGES['BR'];
+        const timeText = userSettings.reminder_minutes_before > 0 
+          ? msgConfig.timeIn(userSettings.reminder_minutes_before) 
+          : msgConfig.timeNow;
+        
+        const reminderMessages = msgConfig.title(mealSetting.label, timeText);
         const randomMessage = reminderMessages[Math.floor(Math.random() * reminderMessages.length)];
         
         // First, create in-app notification to get the ID

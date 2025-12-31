@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import IngredientSubstitutionSheet from "@/components/IngredientSubstitutionSheet";
+import IngredientSearchSheet from "@/components/IngredientSearchSheet";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
@@ -283,12 +283,11 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
         </CardContent>
       </Card>
 
-      {/* Ingredient Substitution Sheet */}
-      <IngredientSubstitutionSheet
+      {/* Ingredient Search Sheet - busca de alimentos como na home */}
+      <IngredientSearchSheet
         open={substitutionOpen}
         onOpenChange={setSubstitutionOpen}
         originalIngredient={selectedIngredient}
-        mealType={meal.meal_type}
         onSubstitute={handleSubstitute}
       />
 

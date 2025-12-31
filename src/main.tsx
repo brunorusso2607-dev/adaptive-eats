@@ -2,7 +2,10 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
+import { setupGlobalErrorHandlers } from "./lib/errorLogger";
 
+// Setup global error handlers for automatic error logging
+setupGlobalErrorHandlers();
 // Register Service Worker for PWA + Push Notifications
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {

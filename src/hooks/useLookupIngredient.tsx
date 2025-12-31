@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 
 interface LookupFood {
@@ -30,8 +30,33 @@ export function useLookupIngredient() {
   const [error, setError] = useState<string | null>(null);
   const [results, setResults] = useState<LookupFood[]>([]);
   const [source, setSource] = useState<string | null>(null);
+  const [userCountry, setUserCountry] = useState<string>('BR');
 
-  const lookup = useCallback(async (query: string, limit = 5): Promise<LookupResult | null> => {
+  // Fetch user's country from profile
+  useEffect(() => {
+    const fetchUserCountry = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('country')
+          .eq('id', user.id)
+          .maybeSingle();
+
+        if (profile?.country) {
+          setUserCountry(profile.country);
+        }
+      } catch (err) {
+        console.error('Error fetching user country:', err);
+      }
+    };
+
+    fetchUserCountry();
+  }, []);
+
+  const lookup = useCallback(async (query: string, limit = 10): Promise<LookupResult | null> => {
     if (!query || query.trim().length < 2) {
       setResults([]);
       setSource(null);
@@ -43,7 +68,7 @@ export function useLookupIngredient() {
 
     try {
       const { data, error: fnError } = await supabase.functions.invoke('lookup-ingredient', {
-        body: { query: query.trim(), limit }
+        body: { query: query.trim(), limit, country: userCountry }
       });
 
       if (fnError) {
@@ -63,7 +88,7 @@ export function useLookupIngredient() {
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [userCountry]);
 
   const reset = useCallback(() => {
     setResults([]);
@@ -77,6 +102,7 @@ export function useLookupIngredient() {
     results,
     source,
     isLoading,
-    error
+    error,
+    userCountry
   };
 }

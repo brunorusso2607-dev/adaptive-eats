@@ -10,6 +10,34 @@ const USDA_API_KEY = Deno.env.get('USDA_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
+// Country to preferred data sources mapping
+const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
+  'BR': ['TBCA', 'taco', 'curated'],
+  'PT': ['TBCA', 'taco', 'curated'], // Portugal uses Brazilian sources
+  'US': ['usda', 'curated'],
+  'GB': ['McCance', 'curated'],
+  'UK': ['McCance', 'curated'],
+  'FR': ['CIQUAL', 'curated'],
+  'MX': ['BAM', 'curated'],
+  'ES': ['AESAN Spain', 'curated'],
+  'DE': ['BLS Germany', 'curated'],
+  'IT': ['CREA', 'curated'],
+};
+
+// Country to cuisine_origin mapping
+const COUNTRY_CUISINE_MAP: Record<string, string[]> = {
+  'BR': ['brasileira', 'internacional'],
+  'PT': ['portuguesa', 'brasileira', 'internacional'],
+  'US': ['americana', 'internacional'],
+  'GB': ['britanica', 'internacional'],
+  'UK': ['britanica', 'internacional'],
+  'FR': ['francesa', 'internacional'],
+  'MX': ['mexicana', 'internacional'],
+  'ES': ['espanhola', 'internacional'],
+  'DE': ['alema', 'internacional'],
+  'IT': ['italiana', 'internacional'],
+};
+
 function normalizeText(text: string): string {
   return text
     .toLowerCase()
@@ -181,7 +209,7 @@ serve(async (req) => {
   }
 
   try {
-    const { query, limit = 5 } = await req.json();
+    const { query, limit = 10, country = 'BR' } = await req.json();
 
     if (!query || typeof query !== 'string' || query.trim().length < 2) {
       return new Response(
@@ -192,31 +220,61 @@ serve(async (req) => {
 
     const supabase = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
     const normalizedQuery = normalizeText(query);
+    const upperCountry = country.toUpperCase();
     
-    logStep('Starting lookup', { query, normalizedQuery });
+    // Get preferred sources for the user's country
+    const preferredSources = COUNTRY_SOURCE_PRIORITY[upperCountry] || COUNTRY_SOURCE_PRIORITY['BR'];
+    const preferredCuisines = COUNTRY_CUISINE_MAP[upperCountry] || COUNTRY_CUISINE_MAP['BR'];
+    
+    logStep('Starting lookup', { query, normalizedQuery, country: upperCountry, preferredSources });
 
-    // Step 1: Search in verified local foods
-    const { data: localFoods, error: localError } = await supabase
+    // Step 1: Search in verified local foods - prioritize by country sources
+    let localFoods: any[] = [];
+    
+    // First, try to find foods from preferred sources
+    const { data: priorityFoods, error: priorityError } = await supabase
       .from('foods')
       .select('*')
       .eq('is_verified', true)
       .eq('is_recipe', false)
+      .in('source', preferredSources)
       .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
       .order('name')
       .limit(limit);
 
-    if (localError) {
-      logStep('Local search error', { error: localError });
-      throw localError;
+    if (!priorityError && priorityFoods && priorityFoods.length > 0) {
+      localFoods = priorityFoods;
+      logStep('Found in priority sources', { count: localFoods.length, sources: preferredSources });
+    }
+    
+    // If not enough results, also search by cuisine_origin
+    if (localFoods.length < limit) {
+      const { data: cuisineFoods } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('is_verified', true)
+        .eq('is_recipe', false)
+        .in('cuisine_origin', preferredCuisines)
+        .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
+        .order('name')
+        .limit(limit - localFoods.length);
+      
+      if (cuisineFoods && cuisineFoods.length > 0) {
+        // Merge without duplicates
+        const existingIds = new Set(localFoods.map(f => f.id));
+        const newFoods = cuisineFoods.filter(f => !existingIds.has(f.id));
+        localFoods = [...localFoods, ...newFoods];
+        logStep('Added cuisine-based results', { added: newFoods.length });
+      }
     }
 
-    if (localFoods && localFoods.length > 0) {
-      logStep('Found in local database', { count: localFoods.length });
+    if (localFoods.length > 0) {
+      logStep('Returning local results', { count: localFoods.length });
       return new Response(
         JSON.stringify({ 
-          results: localFoods, 
+          results: localFoods.slice(0, limit), 
           source: 'local',
-          count: localFoods.length 
+          count: Math.min(localFoods.length, limit)
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
@@ -230,9 +288,14 @@ serve(async (req) => {
       .limit(limit);
 
     if (aliasResults && aliasResults.length > 0) {
+      // Filter aliases to prefer foods from user's country sources
       const foods = aliasResults
         .map((a: any) => a.foods)
-        .filter((f: any) => f && f.is_verified);
+        .filter((f: any) => f && f.is_verified)
+        .filter((f: any) => {
+          // Prioritize foods from preferred sources
+          return preferredSources.includes(f.source) || preferredCuisines.includes(f.cuisine_origin);
+        });
       
       if (foods.length > 0) {
         logStep('Found via alias', { count: foods.length });
@@ -245,34 +308,53 @@ serve(async (req) => {
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
+      
+      // If no country-specific aliases, return general alias results
+      const generalFoods = aliasResults
+        .map((a: any) => a.foods)
+        .filter((f: any) => f && f.is_verified);
+      
+      if (generalFoods.length > 0) {
+        logStep('Found via alias (general)', { count: generalFoods.length });
+        return new Response(
+          JSON.stringify({ 
+            results: generalFoods, 
+            source: 'alias',
+            count: generalFoods.length 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    // Step 3: Fallback to USDA API
-    logStep('No local results, trying USDA API');
-    const usdaResult = await searchUSDA(query);
+    // Step 3: For non-US countries, do NOT fallback to USDA to avoid English results
+    // Only use USDA fallback for US users
+    if (upperCountry === 'US') {
+      logStep('No local results, trying USDA API (US user)');
+      const usdaResult = await searchUSDA(query);
 
-    if (!usdaResult) {
-      logStep('No results from USDA either');
-      return new Response(
-        JSON.stringify({ 
-          results: [], 
-          source: 'none',
-          count: 0,
-          message: 'Nenhum ingrediente encontrado' 
-        }),
-        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+      if (usdaResult) {
+        const savedFood = await saveToDatabase(supabase, usdaResult);
+        logStep('Returning USDA result', { name: savedFood.name });
+        return new Response(
+          JSON.stringify({ 
+            results: [savedFood], 
+            source: 'usda',
+            count: 1 
+          }),
+          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
     }
 
-    // Save USDA result to local database for future lookups
-    const savedFood = await saveToDatabase(supabase, usdaResult);
-
-    logStep('Returning USDA result', { name: savedFood.name });
+    // No results found
+    logStep('No results found for country', { country: upperCountry });
     return new Response(
       JSON.stringify({ 
-        results: [savedFood], 
-        source: 'usda',
-        count: 1 
+        results: [], 
+        source: 'none',
+        count: 0,
+        message: 'Nenhum ingrediente encontrado' 
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

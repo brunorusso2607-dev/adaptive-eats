@@ -3,6 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { getAIPrompt } from "../_shared/getAIPrompt.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+import {
+  getLocaleFromCountry,
+  getNutritionalSource
+} from "../_shared/nutritionPrompt.ts";
 // ============= GLOBAL SAFETY ENGINE - NÚCLEO CENTRALIZADO =============
 import {
   loadSafetyDatabase,
@@ -88,7 +92,7 @@ serve(async (req) => {
     // Fetch user's intolerances and excluded ingredients from profile
     const { data: profile, error: profileError } = await supabaseClient
       .from("profiles")
-      .select("intolerances, dietary_preference, excluded_ingredients")
+      .select("intolerances, dietary_preference, excluded_ingredients, country")
       .eq("id", userId)
       .single();
 
@@ -99,7 +103,13 @@ serve(async (req) => {
     const userIntolerances = profile?.intolerances || [];
     const dietaryPreference = profile?.dietary_preference || "comum";
     const excludedIngredients = profile?.excluded_ingredients || [];
-    logStep("User profile loaded", { intolerances: userIntolerances, dietaryPreference, excludedIngredients });
+    const userCountry = profile?.country || "BR";
+    
+    // Get locale for the user's country
+    const userLocale = getLocaleFromCountry(userCountry);
+    const nutritionalSource = getNutritionalSource(userCountry);
+    
+    logStep("User profile loaded", { intolerances: userIntolerances, dietaryPreference, excludedIngredients, userCountry, userLocale });
 
     logStep("Image received", { imageSize: imageBase64.length, step: step || "single" });
 
@@ -176,7 +186,15 @@ serve(async (req) => {
     // INTELLIGENT IDENTIFICATION AND ANALYSIS PROMPT - GLOBAL VERSION
     const systemPrompt = `You are a WORLD-CLASS EXPERT in food label analysis from ANY COUNTRY. Your job is to PROTECT the user from consuming something harmful.
 
-**IMPORTANT: Always respond in the same language as the user (Brazilian Portuguese for this user).**
+=== LANGUAGE & OUTPUT RULES ===
+- REASON internally in English for maximum accuracy
+- OUTPUT all user-facing text in: ${userLocale}
+- Use culturally appropriate terms for the user's region (${userCountry})
+- JSON KEYS: always English. TEXT VALUES shown to user: ${userLocale}
+
+User country: ${userCountry}
+User locale: ${userLocale}
+Primary nutritional database: ${nutritionalSource.sourceName}
 
 ## GLOBAL FOOD PRODUCT RECOGNITION
 

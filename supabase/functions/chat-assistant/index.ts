@@ -1,6 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
+import { getLocaleFromCountry } from "../_shared/nutritionPrompt.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -1183,6 +1184,17 @@ serve(async (req) => {
 
     logStep("Admin user authenticated", { userId: user.id });
 
+    // Fetch admin's country for language context
+    const { data: profileData } = await supabaseClient
+      .from("profiles")
+      .select("country")
+      .eq("id", user.id)
+      .maybeSingle();
+    
+    const userCountry = profileData?.country || "BR";
+    const userLocale = getLocaleFromCountry(userCountry);
+    logStep("User locale detected", { userCountry, userLocale });
+
     const { messages, images, currentPage } = await req.json();
     if (!messages || !Array.isArray(messages)) {
       throw new Error("Messages array is required");
@@ -1203,13 +1215,16 @@ serve(async (req) => {
     logStep("Using model", { model });
 
     // Build dynamic context based on current page - REFORÇADO para evitar confusão com histórico
+    // Build language context based on user's country
+    const languageContext = `\n\n---\n\n# 🌍 IDIOMA DO USUÁRIO\n\nO usuário está configurado para: **${userLocale}**\nPaís: **${userCountry}**\n\nResponda SEMPRE no idioma do usuário. Se o locale for pt-BR ou pt-PT, responda em português. Se for en-US ou en-GB, responda em inglês. Se for es-*, responda em espanhol.\n\n---\n\n`;
+    
     const pageContextNote = currentPage 
       ? `\n\n---\n\n# 📍 CONTEXTO ATUAL (IMPORTANTE!)\n\n⚠️ **ATENÇÃO**: O admin está AGORA na página: **${currentPage.name}** (${currentPage.path})\n\n${currentPage.description}\n\n**REGRA CRÍTICA**: Ignore qualquer referência a outras páginas que apareçam no histórico da conversa. O contexto que vale é ESTE, a página ATUAL onde o admin está agora. Se ele perguntar "onde estamos?" ou "qual página é essa?", responda com base NESTE contexto atual, não no histórico!\n\nFoque suas respostas neste contexto! Se ele perguntar "o que eu posso fazer aqui?", responda especificamente sobre esta página.\n\n---\n\n`
       : "";
 
     // Build conversation parts - contexto atual vem PRIMEIRO e também no FINAL para reforçar
     const conversationParts: any[] = [
-      { text: RECEITAI_SYSTEM_PROMPT + pageContextNote }
+      { text: RECEITAI_SYSTEM_PROMPT + languageContext + pageContextNote }
     ];
 
     // Add previous messages

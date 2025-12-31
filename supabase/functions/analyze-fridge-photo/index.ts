@@ -4,6 +4,11 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 import {
+  getGlobalNutritionPrompt,
+  getNutritionalSource,
+  getLocaleFromCountry
+} from "../_shared/nutritionPrompt.ts";
+import {
   loadSafetyDatabase,
   normalizeUserIntolerances,
   validateIngredientList,
@@ -98,7 +103,7 @@ serve(async (req) => {
 
     const { data: profile, error: profileError } = await supabase
       .from('profiles')
-      .select('intolerances, dietary_preference, goal, excluded_ingredients')
+      .select('intolerances, dietary_preference, goal, excluded_ingredients, country')
       .eq('id', user.id)
       .single();
 
@@ -110,8 +115,14 @@ serve(async (req) => {
     const dietaryPreference = profile?.dietary_preference || 'comum';
     const goal = profile?.goal || 'manter';
     const excludedIngredients = profile?.excluded_ingredients || [];
+    const userCountry = profile?.country || 'BR';
+    
+    // Get locale and nutritional context for the user's country
+    const userLocale = getLocaleFromCountry(userCountry);
+    const nutritionalSource = getNutritionalSource(userCountry);
+    const globalNutritionPrompt = getGlobalNutritionPrompt(userCountry);
 
-    logStep('Profile loaded', { intolerances, dietaryPreference, goal });
+    logStep('Profile loaded', { intolerances, dietaryPreference, goal, userCountry, userLocale });
 
     // Load global safety database for validation
     const safetyDatabase = await loadSafetyDatabase(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!);
@@ -178,6 +189,19 @@ REGRAS DE SEGURANÇA:
     const contextInfo = '';
 
     const systemPrompt = `You are a WORLD-CLASS EXPERT in FOOD SAFETY and GLOBAL CUISINE with encyclopedic knowledge of products from all countries.
+
+=== LANGUAGE & OUTPUT RULES ===
+- REASON internally in English for maximum accuracy
+- OUTPUT all user-facing text in: ${userLocale}
+- Use culturally appropriate food names for the user's region (${userCountry})
+- JSON KEYS: always English. TEXT VALUES shown to user: ${userLocale}
+
+=== GLOBAL NUTRITION CONTEXT ===
+${globalNutritionPrompt}
+
+User country: ${userCountry}
+User locale: ${userLocale}
+Primary nutritional database: ${nutritionalSource.sourceName}
 
 === STEP ZERO - IMAGE CLASSIFICATION (EXECUTE FIRST!) ===
 

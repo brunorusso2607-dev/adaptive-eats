@@ -3625,15 +3625,19 @@ REGRAS:
 📖 FORMATO DAS INSTRUÇÕES:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+🚨 REGRA CRÍTICA: As instruções devem mencionar APENAS ingredientes que estão nos foods!
+Se um ingrediente está nas instruções, ELE DEVE ESTAR nos foods.
+
 ✅ INCLUIR:
 • Preparo da proteína e acompanhamentos cozidos
-• Temperos e técnicas ("tempere com sal e limão")
+• Temperos genéricos ("tempere com sal e limão")
 • Montagem do prato
 
 ❌ NÃO INCLUIR:
 • Frutas (consumidas naturalmente)
 • Bebidas prontas (café, chá)
-• Itens prontos (pão, iogurte fatiado)
+• Itens prontos (pão, iogurte)
+• Ingredientes que NÃO estão listados nos foods (ex: se não há "leite de coco" nos foods, NÃO mencione nas instruções)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🎯 EXEMPLOS COMPLETOS (6 REFEIÇÕES):
@@ -3740,6 +3744,8 @@ REGRAS:
 ❌ "Mix de frutas" sem especificar quais
 ❌ Proteína pesada na ceia (máximo iogurte)
 ❌ Bebida com açúcar para diabéticos
+❌ Título menciona ingrediente que NÃO está nos foods (ex: "Pudim de chia com leite de coco" mas foods não tem leite de coco)
+❌ Instruções mencionam ingrediente que NÃO está nos foods (ex: "Bata com leite de amêndoas" mas foods não tem leite de amêndoas)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 TABELA NUTRICIONAL:

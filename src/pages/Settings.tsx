@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
+import { useUserCountry, DEFAULT_COUNTRY } from "@/hooks/useUserCountry";
 import { toast } from "sonner";
 
 const COUNTRIES = [
@@ -49,6 +50,9 @@ export default function Settings() {
   } = usePushSubscription();
 
   const { settings: mealTimeSettings } = useMealTimeSettings();
+  
+  // Usar hook centralizado para país
+  const { country: initialCountry, isLoading: isLoadingCountryHook } = useUserCountry();
 
   const [waterSettings, setWaterSettings] = useState({
     reminder_enabled: true,
@@ -70,36 +74,43 @@ export default function Settings() {
   const [isSavingMeal, setIsSavingMeal] = useState(false);
   const [isSendingMealTest, setIsSendingMealTest] = useState(false);
 
-  // Country and timezone settings
-  const [userCountry, setUserCountry] = useState("BR");
+  // Country and timezone settings - país vem do hook centralizado
+  const [userCountry, setUserCountry] = useState<string>(DEFAULT_COUNTRY);
   const [userTimezone, setUserTimezone] = useState("America/Sao_Paulo");
-  const [isLoadingCountry, setIsLoadingCountry] = useState(true);
+  const [isLoadingTimezone, setIsLoadingTimezone] = useState(true);
   const [isSavingCountry, setIsSavingCountry] = useState(false);
   const [isSavingTimezone, setIsSavingTimezone] = useState(false);
+
+  // Sincronizar país do hook centralizado
+  useEffect(() => {
+    if (!isLoadingCountryHook) {
+      setUserCountry(initialCountry);
+    }
+  }, [initialCountry, isLoadingCountryHook]);
 
   useEffect(() => {
     fetchWaterSettings();
     fetchMealSettings();
-    fetchCountry();
+    fetchTimezone();
   }, [mealTimeSettings]);
 
-  const fetchCountry = async () => {
+  const fetchTimezone = async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    if (!session) return;
+    if (!session) {
+      setIsLoadingTimezone(false);
+      return;
+    }
 
     const { data } = await supabase
       .from("profiles")
-      .select("country, timezone")
+      .select("timezone")
       .eq("id", session.user.id)
       .maybeSingle();
 
-    if (data?.country) {
-      setUserCountry(data.country);
-    }
     if (data?.timezone) {
       setUserTimezone(data.timezone);
     }
-    setIsLoadingCountry(false);
+    setIsLoadingTimezone(false);
   };
 
   const saveTimezone = async (newTimezone: string) => {
@@ -330,7 +341,7 @@ export default function Settings() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {isLoadingCountry ? (
+            {isLoadingCountryHook ? (
               <div className="flex justify-center py-4">
                 <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
               </div>

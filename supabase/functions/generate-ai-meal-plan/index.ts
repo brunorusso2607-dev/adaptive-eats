@@ -1270,7 +1270,7 @@ serve(async (req) => {
     // Build meals with target calories and regional labels
     // IMPORTANTE: Se o usuário passou dailyCalories explicitamente, devemos respeitar essa preferência
     // mesmo que tenhamos nutritionalTargets calculados do perfil
-    let meals;
+    let meals: Array<{ type: string; label: string; targetCalories: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }>;
     if (nutritionalTargets) {
       // Se o usuário passou calorias explicitamente, ajustar os targets para respeitar
       const effectiveTargets = requestedCalories 
@@ -1310,21 +1310,25 @@ serve(async (req) => {
       }));
     }
 
-    // Generate plan for each day
-    const generatedDays: SimpleDayPlan[] = [];
+    // ============= GERAÇÃO PARALELA EM BATCHES =============
+    const generatedDays: SimpleDayPlan[] = new Array(daysCount).fill(null);
     const allViolations: Array<{ day: number; meal: string; food: string; reason: string; restriction: string }> = [];
     
     // Coletar receitas já geradas para evitar repetição entre dias
     const previousDaysMeals: string[] = [];
-
-    for (let dayIndex = 0; dayIndex < daysCount; dayIndex++) {
+    
+    // Configuração de paralelismo
+    const BATCH_SIZE = 4; // Gerar 4 dias simultaneamente
+    const MAX_RETRIES = 1;
+    
+    // Função para gerar um único dia
+    async function generateSingleDay(
+      dayIndex: number, 
+      previousMeals: string[]
+    ): Promise<{ dayIndex: number; plan: SimpleDayPlan | null; violations: any[] }> {
       const dayName = regional.dayNames?.[dayIndex % 7] || `Day ${dayIndex + 1}`;
       
-      logStep(`Generating day ${dayIndex + 1}`, { 
-        dayName, 
-        language: regional.language,
-        previousMealsCount: previousDaysMeals.length 
-      });
+      logStep(`🚀 Starting day ${dayIndex + 1}`, { dayName, batchMode: true });
 
       const prompt = buildSimpleNutritionistPrompt({
         dailyCalories,
@@ -1337,123 +1341,58 @@ serve(async (req) => {
         countryCode: userCountry,
         baseSystemPrompt: aiPromptData?.system_prompt,
         nutritionalContext,
-        strategyKey: effectiveStrategyKey, // Usa pool efetivo (emagrecer para dieta_flexivel)
-        previousDaysMeals, // Passa receitas anteriores para evitar repetição
-        nutritionalTablePrompt, // Tabela nutricional para cálculo de macros pela IA
+        strategyKey: effectiveStrategyKey,
+        previousDaysMeals: previousMeals,
+        nutritionalTablePrompt,
       });
 
-      // Call Google AI API directly
       const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
       if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
 
-      // Usar modelo do banco ou fallback para gemini-2.0-flash-lite
       const modelName = aiPromptData?.model || 'gemini-2.0-flash-lite';
-      logStep(`Using AI model: ${modelName}`);
 
-      const aiResponse = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [{ text: prompt }]
-              }
-            ],
-            generationConfig: {
-              temperature: 0.6,
-              maxOutputTokens: 16384, // Aumentado para evitar truncamento
-            }
-          }),
-        }
-      );
-
-      if (!aiResponse.ok) {
-        const errorText = await aiResponse.text();
-        logStep("AI API Error", { status: aiResponse.status, error: errorText });
-        
-        if (aiResponse.status === 429) {
-          throw new Error("Rate limit exceeded. Please try again in a few minutes.");
-        }
-        throw new Error(`AI API error: ${aiResponse.status} - ${errorText}`);
-      }
-
-      const aiData = await aiResponse.json();
-      let content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      
-      // Check for truncation - finishReason other than STOP indicates truncation
-      const finishReason = aiData.candidates?.[0]?.finishReason;
-      const isTruncated = finishReason && finishReason !== "STOP";
-      
-      logStep("AI response received", { contentLength: content.length, finishReason, isTruncated });
-
-    // Parse JSON from response
-      let dayPlanValidated: SimpleDayPlan | null = null;
+      let content = "";
       let retryCount = 0;
-      const MAX_RETRIES = 1; // REDUZIDO: Máximo 1 retry para evitar timeout
       
-      while (!dayPlanValidated && retryCount <= MAX_RETRIES) {
+      while (retryCount <= MAX_RETRIES) {
         try {
-          // Remove markdown code blocks if present
+          const aiResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt + (retryCount > 0 ? '\n\nIMPORTANTE: JSON COMPACTO e COMPLETO.' : '') }] }],
+                generationConfig: {
+                  temperature: 0.6,
+                  maxOutputTokens: 16384,
+                }
+              }),
+            }
+          );
+
+          if (!aiResponse.ok) {
+            if (aiResponse.status === 429) {
+              // Rate limit - esperar e tentar novamente
+              await new Promise(r => setTimeout(r, 2000));
+              retryCount++;
+              continue;
+            }
+            throw new Error(`AI API error: ${aiResponse.status}`);
+          }
+
+          const aiData = await aiResponse.json();
+          content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+          
+          // Remover markdown
           content = content.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
           
-          // Try to detect and handle truncated JSON
-          let parsedContent: SimpleDayPlan;
-          try {
-            parsedContent = JSON.parse(content);
-          } catch (parseErr) {
-            // Log truncation for debugging
-            logStep("JSON parse error", { 
-              error: parseErr, 
-              content: content.substring(0, 500) 
-            });
-            
-            // If this is a truncation issue and we have retries left, regenerate
-            if (retryCount < MAX_RETRIES) {
-              logStep(`🔄 Retrying day ${dayIndex + 1} due to truncated/invalid JSON (attempt ${retryCount + 2})`);
-              retryCount++;
-              
-              // Retry with higher token limit and clearer instruction
-              const retryResponse = await fetch(
-                `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
-                {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({
-                    contents: [{ 
-                      parts: [{ 
-                        text: prompt + `\n\nIMPORTANTE: Retorne um JSON COMPACTO e COMPLETO. Minimize espaços e descrições. Máximo 3 opções por refeição se houver mais de uma.` 
-                      }] 
-                    }],
-                    generationConfig: {
-                      temperature: 0.6, // Menor temperatura para respostas mais consistentes
-                      maxOutputTokens: 16384, // Dobrar limite de tokens
-                    }
-                  }),
-                }
-              );
-              
-              if (retryResponse.ok) {
-                const retryData = await retryResponse.json();
-                content = retryData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-                logStep(`Retry response received`, { contentLength: content.length });
-                continue; // Tentar parsear novamente
-              }
-            }
-            
-            throw parseErr; // Re-throw if no retries left
-          }
+          // Parse JSON
+          const parsedContent: SimpleDayPlan = JSON.parse(content);
           
-          const dayPlan: SimpleDayPlan = parsedContent;
-          
-          // ============= VALIDAÇÃO PÓS-GERAÇÃO =============
-          logStep(`Validating day ${dayIndex + 1} against restrictions (attempt ${retryCount + 1})`);
-          
+          // Validar
           const validationResult = validateMealPlan(
-            dayPlan,
+            parsedContent,
             {
               intolerances: restrictions.intolerances,
               dietaryPreference: restrictions.dietaryPreference,
@@ -1463,69 +1402,88 @@ serve(async (req) => {
             dbSafeKeywords
           );
           
-          // Registrar violações encontradas
-          if (validationResult.violations.length > 0) {
-            logStep(`⚠️ VIOLATIONS FOUND on day ${dayIndex + 1}`, {
-              count: validationResult.violations.length,
-              violations: validationResult.violations,
-              needsRegeneration: validationResult.needsRegeneration,
-            });
-            
-            // Adicionar ao array de todas as violações
-            validationResult.violations.forEach(v => {
-              allViolations.push({
-                day: dayIndex + 1,
-                ...v,
-              });
-            });
-            
-            // ESTRATÉGIA ROBUSTA: Não regenerar por violações - apenas logar e continuar
-            // O plano validado já teve os alimentos problemáticos removidos
-            // O usuário pode usar "Surpreenda-me" para trocar refeições depois
-            if (validationResult.needsRegeneration) {
-              logStep(`⚠️ Day ${dayIndex + 1} has critical violations but continuing without regeneration to avoid timeout`);
-              // NÃO incrementar retryCount - apenas aceitar o plano com as correções aplicadas
-            }
-          } else {
-            logStep(`✓ Day ${dayIndex + 1} passed validation - no violations`);
-          }
-          
-          // Usar o plano validado
-          dayPlanValidated = validationResult.validatedPlan;
-          
-          logStep(`Day ${dayIndex + 1} generated and validated`, { 
+          logStep(`✓ Day ${dayIndex + 1} complete`, { 
             mealsCount: validationResult.validatedPlan.meals?.length,
-            totalCalories: validationResult.validatedPlan.total_calories,
-            violationsRemoved: validationResult.violations.length,
-            retries: retryCount,
+            violations: validationResult.violations.length
           });
+          
+          return {
+            dayIndex,
+            plan: validationResult.validatedPlan,
+            violations: validationResult.violations.map(v => ({ day: dayIndex + 1, ...v }))
+          };
+          
         } catch (parseError) {
-          logStep("JSON parse error", { error: parseError, content: content.substring(0, 500) });
+          logStep(`⚠️ Day ${dayIndex + 1} parse error (attempt ${retryCount + 1})`, { 
+            error: parseError instanceof Error ? parseError.message : 'Unknown' 
+          });
           retryCount++;
+          
           if (retryCount > MAX_RETRIES) {
-            throw new Error(`Failed to parse AI response for day ${dayIndex + 1}`);
+            throw new Error(`Failed to generate day ${dayIndex + 1}`);
           }
         }
       }
       
-      if (dayPlanValidated) {
-        generatedDays.push(dayPlanValidated);
-        
-        // Coletar todas as receitas (títulos) geradas neste dia para evitar repetição
-        // nos próximos dias
-        for (const meal of dayPlanValidated.meals) {
-          for (const option of meal.options) {
-            if (option.title) {
-              previousDaysMeals.push(option.title);
+      throw new Error(`Failed to generate day ${dayIndex + 1} after retries`);
+    }
+    
+    // Processar em batches paralelos
+    const totalBatches = Math.ceil(daysCount / BATCH_SIZE);
+    logStep(`📦 Starting parallel generation`, { 
+      totalDays: daysCount, 
+      batchSize: BATCH_SIZE, 
+      totalBatches 
+    });
+    
+    for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
+      const batchStart = batchNum * BATCH_SIZE;
+      const batchEnd = Math.min(batchStart + BATCH_SIZE, daysCount);
+      const batchDays = [];
+      
+      logStep(`🔄 Processing batch ${batchNum + 1}/${totalBatches}`, { 
+        days: `${batchStart + 1}-${batchEnd}` 
+      });
+      
+      // Criar array de promises para este batch
+      const batchPromises: Promise<{ dayIndex: number; plan: SimpleDayPlan | null; violations: any[] }>[] = [];
+      
+      for (let dayIndex = batchStart; dayIndex < batchEnd; dayIndex++) {
+        // Passar as receitas já geradas dos batches anteriores
+        batchPromises.push(generateSingleDay(dayIndex, [...previousDaysMeals]));
+      }
+      
+      // Executar batch em paralelo
+      const batchResults = await Promise.all(batchPromises);
+      
+      // Processar resultados do batch
+      for (const result of batchResults) {
+        if (result.plan) {
+          generatedDays[result.dayIndex] = result.plan;
+          
+          // Coletar receitas para próximos batches
+          for (const meal of result.plan.meals) {
+            for (const option of meal.options) {
+              if (option.title) {
+                previousDaysMeals.push(option.title);
+              }
             }
           }
+          
+          // Adicionar violações
+          allViolations.push(...result.violations);
         }
-        logStep(`📋 Collected ${previousDaysMeals.length} recipes for anti-repetition`, { 
-          latestRecipes: previousDaysMeals.slice(-6) // Mostrar as 6 últimas
-        });
-      } else {
-        throw new Error(`Failed to generate valid plan for day ${dayIndex + 1} after ${MAX_RETRIES} retries`);
       }
+      
+      logStep(`✅ Batch ${batchNum + 1} complete`, { 
+        recipesCollected: previousDaysMeals.length 
+      });
+    }
+    
+    // Verificar se todos os dias foram gerados
+    const failedDays = generatedDays.map((d, i) => d === null ? i + 1 : null).filter(Boolean);
+    if (failedDays.length > 0) {
+      throw new Error(`Failed to generate days: ${failedDays.join(', ')}`);
     }
 
     // Log summary of all violations

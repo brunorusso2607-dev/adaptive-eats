@@ -862,9 +862,10 @@ export default function Dashboard() {
                   hideModeTabs={true}
                   initialImage={capturedImageBase64 || undefined}
                 />
-              ) : pendingCameraMode ? (
+              ) : pendingCameraMode && (pendingCameraMode === "food" || pendingCameraMode === "label") ? (
                 // Direct camera capture - triggers native camera immediately
                 <DirectCameraCapture
+                  mode={pendingCameraMode}
                   onCapture={(base64) => {
                     setCapturedImageBase64(base64);
                     setSelectedPhotoMode(pendingCameraMode);

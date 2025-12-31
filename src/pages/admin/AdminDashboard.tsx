@@ -105,6 +105,7 @@ const mainMenuItems: SubMenuItem[] = [
           { path: "/admin/webhooks", label: "Webhooks", icon: Webhook },
         ],
       },
+      { path: "/admin/ai-meal-plan-test", label: "Teste de Plano IA", icon: ChefHat },
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/prompt-validation", label: "Validação do Prompt", icon: Shield },
       { path: "/admin/pixels", label: "Pixels", icon: Code2 },

@@ -11,6 +11,37 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[ACTIVATE-ACCOUNT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// Detect country from IP using free API
+async function detectCountryFromIP(req: Request): Promise<string> {
+  try {
+    // Try to get IP from headers (Cloudflare, etc.)
+    const cfCountry = req.headers.get("cf-ipcountry");
+    if (cfCountry && cfCountry !== "XX") {
+      logStep("Country detected from CF header", { country: cfCountry });
+      return cfCountry.toUpperCase();
+    }
+
+    // Fallback: use free IP geolocation API
+    const response = await fetch("https://ipapi.co/json/", {
+      headers: { "User-Agent": "ReceitAI/1.0" }
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      if (data.country_code) {
+        logStep("Country detected from IP API", { country: data.country_code });
+        return data.country_code.toUpperCase();
+      }
+    }
+  } catch (error) {
+    logStep("Error detecting country", { error: String(error) });
+  }
+  
+  // Default to Brazil
+  logStep("Defaulting to BR");
+  return "BR";
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -164,6 +195,15 @@ serve(async (req) => {
 
     const userId = newUser.user.id;
     logStep("New user created", { userId });
+
+    // Detect country from IP and update profile
+    const detectedCountry = await detectCountryFromIP(req);
+    logStep("Updating profile with detected country", { country: detectedCountry });
+    
+    await supabaseAdmin
+      .from("profiles")
+      .update({ country: detectedCountry })
+      .eq("id", userId);
 
     // Generate a magic link for the new user
     const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({

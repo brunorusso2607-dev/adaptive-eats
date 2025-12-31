@@ -7,7 +7,7 @@ import { SafeAreaFooter } from "@/components/ui/safe-area-footer";
 import { 
   User, Crown, Star, Mail, Scale, Ruler, Calendar, 
   Activity, Target, AlertCircle, Utensils, LogOut,
-  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart, Clock, Dumbbell, Sparkles
+  TrendingDown, TrendingUp, Pencil, X, Check, Loader2, Plus, Ban, ArrowLeft, FileText, Shield, ExternalLink, Bell, Heart, Clock, Dumbbell, Sparkles, Globe
 } from "lucide-react";
 import PhysicalDataInputs from "./PhysicalDataInputs";
 import { Link } from "react-router-dom";
@@ -37,7 +37,23 @@ type UserProfile = {
   excluded_ingredients: string[] | null;
   default_meal_times: CustomMealTimes | null;
   enabled_meals: string[] | null;
+  country: string | null;
 };
+
+// Supported countries with their food sources
+const SUPPORTED_COUNTRIES = [
+  { code: "BR", label: "🇧🇷 Brasil", sources: "TBCA, TACO" },
+  { code: "US", label: "🇺🇸 Estados Unidos", sources: "USDA" },
+  { code: "PT", label: "🇵🇹 Portugal", sources: "TBCA, TACO" },
+  { code: "GB", label: "🇬🇧 Reino Unido", sources: "McCance" },
+  { code: "FR", label: "🇫🇷 França", sources: "CIQUAL" },
+  { code: "MX", label: "🇲🇽 México", sources: "BAM" },
+  { code: "ES", label: "🇪🇸 Espanha", sources: "AESAN" },
+  { code: "DE", label: "🇩🇪 Alemanha", sources: "BLS" },
+  { code: "IT", label: "🇮🇹 Itália", sources: "CREA" },
+  { code: "AR", label: "🇦🇷 Argentina", sources: "TBCA" },
+  { code: "CO", label: "🇨🇴 Colômbia", sources: "TBCA" },
+];
 
 type SubscriptionInfo = {
   subscribed: boolean;
@@ -187,7 +203,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
     try {
       const { data, error } = await supabase
         .from("profiles")
-        .select("dietary_preference, goal, strategy_id, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times, enabled_meals")
+        .select("dietary_preference, goal, strategy_id, weight_current, weight_goal, height, age, sex, activity_level, intolerances, excluded_ingredients, default_meal_times, enabled_meals, country")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -197,6 +213,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
           strategy_id: data.strategy_id,
           default_meal_times: data.default_meal_times as CustomMealTimes | null,
           enabled_meals: data.enabled_meals,
+          country: data.country,
         };
         setProfile(profileData);
         setEditedProfile(profileData);
@@ -226,6 +243,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
           activity_level: editedProfile.activity_level,
           intolerances: editedProfile.intolerances,
           excluded_ingredients: editedProfile.excluded_ingredients,
+          country: editedProfile.country,
         })
         .eq("id", user.id);
 
@@ -416,6 +434,35 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
           value={editedProfile.excluded_ingredients || []}
           onChange={(ingredients) => setEditedProfile({ ...editedProfile, excluded_ingredients: ingredients })}
         />
+
+        {/* País / Região para busca de alimentos */}
+        <div className="space-y-3">
+          <h3 className="font-semibold text-sm flex items-center gap-2">
+            <Globe className="w-4 h-4 text-primary" />
+            País / Região
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            A busca de alimentos mostrará ingredientes da base de dados do país selecionado
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            {SUPPORTED_COUNTRIES.map((country) => (
+              <button
+                type="button"
+                key={country.code}
+                onClick={() => setEditedProfile({ ...editedProfile, country: country.code })}
+                className={cn(
+                  "p-3 rounded-lg border text-left transition-all touch-manipulation",
+                  editedProfile.country === country.code 
+                    ? "border-primary bg-primary/10" 
+                    : "border-border hover:border-primary/50"
+                )}
+              >
+                <span className="font-medium text-sm block">{country.label}</span>
+                <span className="text-xs text-muted-foreground">{country.sources}</span>
+              </button>
+            ))}
+          </div>
+        </div>
 
         {/* Validação de conflito de peso */}
         {(() => {
@@ -678,6 +725,24 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
                   {item}
                 </span>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* País / Região */}
+        {profile.country && (
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm flex items-center gap-2">
+              <Globe className="w-4 h-4 text-primary" />
+              País / Região
+            </h3>
+            <div className="p-2 rounded-lg bg-muted/50">
+              <p className="text-sm font-medium">
+                {SUPPORTED_COUNTRIES.find(c => c.code === profile.country)?.label || profile.country}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Base de dados: {SUPPORTED_COUNTRIES.find(c => c.code === profile.country)?.sources || "Padrão"}
+              </p>
             </div>
           </div>
         )}

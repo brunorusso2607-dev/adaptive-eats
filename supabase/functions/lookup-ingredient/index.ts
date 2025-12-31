@@ -308,7 +308,7 @@ serve(async (req) => {
 
     let allFoods: any[] = [];
 
-    // STEP 1: Search "starts with" in preferred sources
+    // STEP 1: Search "starts with" in preferred sources ONLY
     const { data: startsWithPriority } = await supabase
       .from('foods')
       .select('*')
@@ -317,36 +317,15 @@ serve(async (req) => {
       .in('source', preferredSources)
       .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
       .order('name')
-      .limit(limit);
+      .limit(limit * 2);
 
     if (startsWithPriority && startsWithPriority.length > 0) {
       const filtered = startsWithPriority.filter(f => !isPreparedDish(f));
       allFoods = [...allFoods, ...filtered];
-      logStep('Found starts-with in priority sources', { count: filtered.length });
+      logStep('Found starts-with in country sources', { count: filtered.length, sources: preferredSources });
     }
 
-    // STEP 2: If not enough, search "starts with" in ALL sources (no source filter)
-    if (allFoods.length < limit) {
-      const { data: startsWithAll } = await supabase
-        .from('foods')
-        .select('*')
-        .eq('is_verified', true)
-        .eq('is_recipe', false)
-        .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
-        .order('name')
-        .limit(limit * 2);
-
-      if (startsWithAll && startsWithAll.length > 0) {
-        const existingIds = new Set(allFoods.map(f => f.id));
-        const newFoods = startsWithAll
-          .filter(f => !existingIds.has(f.id))
-          .filter(f => !isPreparedDish(f));
-        allFoods = [...allFoods, ...newFoods];
-        logStep('Found starts-with in all sources', { added: newFoods.length });
-      }
-    }
-
-    // STEP 3: If still not enough, try "contains" search in preferred sources
+    // STEP 2: If still not enough, try "contains" search in preferred sources ONLY
     if (allFoods.length < limit) {
       const { data: containsPriority } = await supabase
         .from('foods')
@@ -364,48 +343,28 @@ serve(async (req) => {
           .filter(f => !existingIds.has(f.id))
           .filter(f => !isPreparedDish(f));
         allFoods = [...allFoods, ...newFoods];
-        logStep('Found contains in priority sources', { added: newFoods.length });
+        logStep('Found contains in country sources', { added: newFoods.length });
       }
     }
 
-    // STEP 4: If still not enough, try "contains" in ALL sources
-    if (allFoods.length < limit) {
-      const { data: containsAll } = await supabase
-        .from('foods')
-        .select('*')
-        .eq('is_verified', true)
-        .eq('is_recipe', false)
-        .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
-        .order('name')
-        .limit(limit * 2);
-
-      if (containsAll && containsAll.length > 0) {
-        const existingIds = new Set(allFoods.map(f => f.id));
-        const newFoods = containsAll
-          .filter(f => !existingIds.has(f.id))
-          .filter(f => !isPreparedDish(f));
-        allFoods = [...allFoods, ...newFoods];
-        logStep('Found contains in all sources', { added: newFoods.length });
-      }
-    }
-
-    // STEP 5: Search in ingredient aliases
+    // STEP 3: Search in ingredient aliases (filtered by country sources)
     if (allFoods.length < limit) {
       const { data: aliasResults } = await supabase
         .from('ingredient_aliases')
         .select('food_id, alias, foods!inner(*)')
         .or(`alias.ilike.${normalizedQuery}%,alias.ilike.%${normalizedQuery}%`)
-        .limit(limit);
+        .limit(limit * 2);
 
       if (aliasResults && aliasResults.length > 0) {
         const existingIds = new Set(allFoods.map(f => f.id));
         const aliasFoods = aliasResults
           .map((a: any) => a.foods)
           .filter((f: any) => f && f.is_verified && !existingIds.has(f.id))
+          .filter((f: any) => preferredSources.includes(f.source)) // Filter by country sources
           .filter((f: any) => !isPreparedDish(f));
         
         allFoods = [...allFoods, ...aliasFoods];
-        logStep('Found via alias', { added: aliasFoods.length });
+        logStep('Found via alias (filtered by country)', { added: aliasFoods.length });
       }
     }
 

@@ -1,11 +1,13 @@
+import { useRef } from "react";
 import { Flame, ScanBarcode, Refrigerator, ArrowLeft, Camera } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 
 export type PhotoMode = "food" | "label" | "fridge";
 
 interface PhotoModeSelectorProps {
-  onSelectMode: (mode: PhotoMode) => void;
+  onSelectMode: (mode: PhotoMode, imageBase64?: string) => void;
   onBack?: () => void;
 }
 
@@ -17,6 +19,7 @@ const modes = [
     icon: Flame,
     iconBg: "bg-gradient-to-br from-orange-400 to-red-500",
     emoji: "🍽️",
+    usesCamera: true,
   },
   {
     id: "label" as PhotoMode,
@@ -25,6 +28,7 @@ const modes = [
     icon: ScanBarcode,
     iconBg: "bg-gradient-to-br from-blue-400 to-indigo-500",
     emoji: "🏷️",
+    usesCamera: true,
   },
   {
     id: "fridge" as PhotoMode,
@@ -33,12 +37,75 @@ const modes = [
     icon: Refrigerator,
     iconBg: "bg-gradient-to-br from-cyan-400 to-teal-500",
     emoji: "🧊",
+    usesCamera: false,
   },
 ];
 
 export default function PhotoModeSelector({ onSelectMode, onBack }: PhotoModeSelectorProps) {
+  const foodInputRef = useRef<HTMLInputElement>(null);
+  const labelInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileChange = (mode: PhotoMode, event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    
+    // Reset input to allow selecting the same file again
+    if (event.target) {
+      event.target.value = '';
+    }
+    
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem");
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Imagem muito grande. Máximo 10MB.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      onSelectMode(mode, base64);
+    };
+    reader.onerror = () => {
+      toast.error("Erro ao ler a imagem");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleCardClick = (mode: PhotoMode) => {
+    if (mode === "food") {
+      foodInputRef.current?.click();
+    } else if (mode === "label") {
+      labelInputRef.current?.click();
+    } else {
+      onSelectMode(mode);
+    }
+  };
+
   return (
     <div className="space-y-6">
+      {/* Hidden camera inputs - must be in DOM for click to work */}
+      <input
+        ref={foodInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleFileChange("food", e)}
+      />
+      <input
+        ref={labelInputRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="hidden"
+        onChange={(e) => handleFileChange("label", e)}
+      />
+
       {/* Header */}
       <div className="text-center space-y-3">
         <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 mb-2">
@@ -56,7 +123,7 @@ export default function PhotoModeSelector({ onSelectMode, onBack }: PhotoModeSel
           <Card
             key={mode.id}
             className="cursor-pointer transition-all duration-200 hover:shadow-lg hover:scale-[1.02] active:scale-[0.98] border-border/50 overflow-hidden"
-            onClick={() => onSelectMode(mode.id)}
+            onClick={() => handleCardClick(mode.id)}
           >
             <CardContent className="p-4">
               <div className="flex items-center gap-4">

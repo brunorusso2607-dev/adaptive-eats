@@ -25,7 +25,7 @@ import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
-import DirectCameraCapture from "@/components/DirectCameraCapture";
+
 import PendingMealsList from "@/components/PendingMealsList";
 import FreeFormMealLogger from "@/components/FreeFormMealLogger";
 import MealHistoryPage from "@/components/MealHistoryPage";
@@ -862,28 +862,16 @@ export default function Dashboard() {
                   hideModeTabs={true}
                   initialImage={capturedImageBase64 || undefined}
                 />
-              ) : pendingCameraMode && (pendingCameraMode === "food" || pendingCameraMode === "label") ? (
-                // Direct camera capture - triggers native camera immediately
-                <DirectCameraCapture
-                  mode={pendingCameraMode}
-                  onCapture={(base64) => {
-                    setCapturedImageBase64(base64);
-                    setSelectedPhotoMode(pendingCameraMode);
-                    setPendingCameraMode(null);
-                  }}
-                  onCancel={() => {
-                    setPendingCameraMode(null);
-                  }}
-                />
               ) : (
                 <PhotoModeSelector 
-                  onSelectMode={(mode) => {
-                    if (mode === "fridge") {
-                      // Fridge mode goes directly to FridgeScanner component
+                  onSelectMode={(mode, imageBase64) => {
+                    if (imageBase64) {
+                      // Image captured directly from camera input
+                      setCapturedImageBase64(imageBase64);
                       setSelectedPhotoMode(mode);
                     } else {
-                      // Food and Label modes trigger direct camera capture
-                      setPendingCameraMode(mode);
+                      // Fridge mode goes directly to FridgeScanner component
+                      setSelectedPhotoMode(mode);
                     }
                   }}
                 />

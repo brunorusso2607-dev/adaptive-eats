@@ -32,11 +32,11 @@ interface PendingMealCardProps {
   } | null;
 }
 
-// Status colors (fixed) - Refeições passadas/atrasadas ficam com fundo cinza claro
+// Status colors (fixed)
 const STATUS_STYLES: Record<string, React.CSSProperties> = {
   on_time: { backgroundColor: 'rgba(34, 197, 94, 0.1)', color: 'rgba(34, 197, 94, 1)', borderColor: 'rgba(34, 197, 94, 0.3)' },
-  alert: { backgroundColor: 'hsl(var(--muted) / 0.5)', color: 'rgba(217, 119, 6, 1)', borderColor: 'hsl(var(--border))' },
-  late: { backgroundColor: 'hsl(var(--muted) / 0.5)', color: 'rgba(239, 68, 68, 1)', borderColor: 'hsl(var(--border))' },
+  alert: { backgroundColor: '#FFFFFF', color: 'rgba(217, 119, 6, 1)', borderColor: 'rgba(251, 191, 36, 0.5)' },
+  late: { backgroundColor: '#FFFFFF', color: 'rgba(239, 68, 68, 1)', borderColor: 'rgba(239, 68, 68, 0.5)' },
 };
 
 // Map internal status to style keys

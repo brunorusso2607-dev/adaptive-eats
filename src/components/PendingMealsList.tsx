@@ -39,11 +39,10 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     isMealTimeStartedForMeal,
   } = usePendingMeals();
 
-  // Separar: refeição atual (branca) vs atrasadas (cinza claro)
-  // Lógica: se está dentro da janela de tempo = "atual", se passou da janela = "atrasada"
-  const { nextMeal, overdueMeals, currentMealStatus } = useMemo(() => {
+  // Separar: próxima refeição (verde) vs atrasadas (amarela/vermelha)
+  const { nextMeal, overdueMeals } = useMemo(() => {
     if (pendingMeals.length === 0) {
-      return { nextMeal: null, overdueMeals: [], currentMealStatus: null };
+      return { nextMeal: null, overdueMeals: [] };
     }
 
     // Calcular status para todas as refeições
@@ -52,16 +51,13 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
       status: getMealStatusForMeal(meal.meal_type, meal.actual_date, meal.completed_at),
     }));
 
-    // Próxima refeição = a primeira que está "on_time" (dentro da janela de tempo)
+    // Próxima refeição = a primeira que está "on_time" (já começou mas ainda no prazo)
     // Se não há nenhuma on_time, pegar a primeira da lista (que é ordenada por proximidade no hook)
     const onTimeMeal = mealsWithStatus.find(meal => meal.status === "on_time");
     
-    // Se não encontrou on_time, a próxima refeição é a primeira da lista
+    // Se não encontrou on_time, a próxima refeição é a primeira da lista (pode ser futura)
     // O hook já retorna a refeição mais próxima na primeira posição
     const nextMealCandidate = onTimeMeal || mealsWithStatus[0];
-    
-    // Determina se a próxima refeição está "atual" (dentro da janela) ou é futura
-    const isCurrentMeal = nextMealCandidate?.status === "on_time";
     
     // Atrasadas = delayed ou critical (excluindo a próxima refeição selecionada)
     const delayed = mealsWithStatus.filter(meal => 
@@ -71,7 +67,6 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     return {
       nextMeal: nextMealCandidate,
       overdueMeals: delayed,
-      currentMealStatus: isCurrentMeal ? "current" : "upcoming",
     };
   }, [pendingMeals, getMealStatusForMeal]);
 
@@ -157,20 +152,11 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     <div className="space-y-3">
       {/* Card Unificado - Próxima Refeição + Refeições Pendentes */}
       {nextMeal && (
-        <Card className={cn(
-          "glass-card overflow-hidden",
-          // Refeição atual (dentro da janela) = card branco; Futura = card verde
-          currentMealStatus === "current" 
-            ? "border-primary/30 bg-background" 
-            : "border-emerald-500/30 bg-emerald-500/5"
-        )}>
+        <Card className="glass-card border-emerald-500/30 bg-emerald-500/5 overflow-hidden">
           <CardContent className="p-0">
             {/* Área clicável da próxima refeição */}
             <div 
-              className={cn(
-                "p-4 cursor-pointer transition-colors active:scale-[0.99]",
-                currentMealStatus === "current" ? "hover:bg-muted/30" : "hover:bg-emerald-500/10"
-              )}
+              className="p-4 cursor-pointer hover:bg-emerald-500/10 transition-colors active:scale-[0.99]"
               onClick={() => setIsRecipeSheetOpen(true)}
             >
               <div className="flex items-start justify-between gap-3">
@@ -180,15 +166,9 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-2 h-2 rounded-full",
-                        currentMealStatus === "current" ? "bg-primary animate-pulse" : "bg-emerald-500 animate-pulse"
-                      )} />
-                      <span className={cn(
-                        "text-xs font-medium",
-                        currentMealStatus === "current" ? "text-primary" : "text-emerald-600 dark:text-emerald-400"
-                      )}>
-                        {currentMealStatus === "current" ? "Refeição Atual" : "Próxima Refeição"}
+                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                      <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                        Próxima Refeição
                       </span>
                       <span className="text-xs text-muted-foreground">
                         • {mealLabel} • {mealTimeText}
@@ -219,12 +199,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
             {overdueMeals.length > 0 && (
               <Collapsible open={isOpen} onOpenChange={setIsOpen}>
                 <CollapsibleTrigger asChild>
-                  <div className={cn(
-                    "border-t px-4 py-3 cursor-pointer transition-colors",
-                    currentMealStatus === "current" 
-                      ? "border-border hover:bg-muted/30" 
-                      : "border-emerald-500/20 hover:bg-emerald-500/5"
-                  )}>
+                  <div className="border-t border-emerald-500/20 px-4 py-3 cursor-pointer hover:bg-emerald-500/5 transition-colors">
                     <div className="flex items-center justify-between">
                       <span className="text-sm text-muted-foreground">
                         Refeições pendentes

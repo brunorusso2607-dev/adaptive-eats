@@ -117,6 +117,23 @@ Deno.serve(async (req) => {
     // Gerar batch ID para log
     const batchId = crypto.randomUUID();
 
+    // RETRY AUTOMÁTICO: Resetar itens travados em "processing" há mais de 15 minutos
+    const fifteenMinutesAgo = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+    
+    const { data: stuckItems, error: stuckError } = await supabase
+      .from("usda_import_queue")
+      .update({ 
+        status: "pending",
+        error_message: "Auto-retry: item estava travado em processing"
+      })
+      .eq("status", "processing")
+      .lt("updated_at", fifteenMinutesAgo)
+      .select("id");
+    
+    if (!stuckError && stuckItems && stuckItems.length > 0) {
+      logStep("Reset stuck items", { count: stuckItems.length });
+    }
+
     // Buscar próximos itens da fila
     const { data: queueItems, error: queueError } = await supabase
       .from("usda_import_queue")

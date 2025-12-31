@@ -28,6 +28,10 @@ import {
   calculateRealMacrosForFoods,
   type FoodItem as RealMacrosFoodItem,
 } from "../_shared/calculateRealMacros.ts";
+// Importar injeção de tabela nutricional no prompt
+import {
+  getNutritionalTablePrompt,
+} from "../_shared/nutritionalTableInjection.ts";
 // ============= IMPORTAR CONFIGURAÇÃO COMPARTILHADA =============
 import {
   REGIONAL_CONFIGS,
@@ -106,8 +110,9 @@ function buildSimpleNutritionistPrompt(params: {
   nutritionalContext?: string; // Contexto nutricional enriquecido
   strategyKey?: string; // Chave da estratégia nutricional (dieta_flexivel, cutting, etc.)
   previousDaysMeals?: string[]; // Receitas dos dias anteriores para evitar repetição
+  nutritionalTablePrompt?: string; // Tabela nutricional para cálculo de macros
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext, strategyKey, previousDaysMeals = [] } = params;
+  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext, strategyKey, previousDaysMeals = [], nutritionalTablePrompt = '' } = params;
 
   const restrictionText = getRestrictionText(restrictions, regional.language);
   
@@ -426,9 +431,11 @@ Exemplos INCORRETOS (NÃO FAZER):
 
 Cada opção deve ter: "title" (nome descritivo), "foods" (array), "calories_kcal"`;
 
-  // PROMPT LIMPO: apenas prompt do banco + dados dinâmicos
-  // Removido: globalNutritionPrompt, enrichedNutritionalContext, exemplos conflitantes
+  // PROMPT LIMPO: prompt do banco + dados dinâmicos + tabela nutricional
+  // A tabela nutricional permite que a IA calcule macros diretamente
   return `${systemPromptBase}
+
+${nutritionalTablePrompt}
 
 ${dynamicData}`;
 }
@@ -1230,6 +1237,14 @@ serve(async (req) => {
       safeKeywordsCount: dbSafeKeywords.length 
     });
 
+    // ============= CARREGAR TABELA NUTRICIONAL PARA INJEÇÃO NO PROMPT =============
+    logStep("Loading nutritional table for prompt injection");
+    const nutritionalTablePrompt = await getNutritionalTablePrompt(supabaseClient, userCountry);
+    logStep("Nutritional table loaded for prompt", { 
+      tableLength: nutritionalTablePrompt.length,
+      estimatedTokens: Math.round(nutritionalTablePrompt.length / 4)
+    });
+
     // Buscar prompt do banco de dados
     let aiPromptData: AIPromptData | null = null;
     try {
@@ -1318,6 +1333,7 @@ serve(async (req) => {
         nutritionalContext,
         strategyKey: effectiveStrategyKey, // Usa pool efetivo (emagrecer para dieta_flexivel)
         previousDaysMeals, // Passa receitas anteriores para evitar repetição
+        nutritionalTablePrompt, // Tabela nutricional para cálculo de macros pela IA
       });
 
       // Call Google AI API directly

@@ -61,6 +61,7 @@ type MealPlan = {
 
 type MealPlanSectionProps = {
   onBack?: () => void;
+  onPlanDeleted?: () => void;
 };
 
 // Helper to check if a date is in the same month
@@ -128,7 +129,7 @@ type UserProfile = {
   excluded_ingredients?: string[] | null;
 };
 
-export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
+export default function MealPlanSection({ onBack, onPlanDeleted }: MealPlanSectionProps) {
   const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-custom" | "calendar" | "recipe" | "shopping" | "edit">("list");
   const [isLoading, setIsLoading] = useState(true);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
@@ -274,6 +275,7 @@ export default function MealPlanSection({ onBack }: MealPlanSectionProps) {
 
       setMealPlans(prev => prev.filter(p => p.id !== planId));
       toast.success("Plano excluído com sucesso");
+      onPlanDeleted?.();
     } catch (error) {
       console.error("Error deleting meal plan:", error);
       toast.error("Erro ao excluir plano");

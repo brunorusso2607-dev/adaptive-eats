@@ -3,7 +3,7 @@ import { AlertCircle, Bell, TrendingUp, History, CheckCircle2 } from "lucide-rea
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSymptomTracker } from "@/hooks/useSymptomTracker";
-import { useWellMealsCount } from "@/hooks/useWellMealsCount";
+import { useHealthStats } from "@/hooks/useHealthStats";
 import { SymptomIcon } from "./SymptomIcon";
 import { SymptomCorrelationChart } from "./SymptomCorrelationChart";
 import { MealSymptomHistorySheet } from "./MealSymptomHistorySheet";
@@ -23,7 +23,7 @@ const severityColors = {
 export function SymptomTrackerCard({ pendingCount, onOpenFeedback }: SymptomTrackerCardProps) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const { recentLogs, isLoading, symptomTypes } = useSymptomTracker();
-  const { count: wellMealsCount, isLoading: isLoadingWellMeals } = useWellMealsCount(7);
+  const { wellMealsCount, isLoading: isLoadingWellMeals } = useHealthStats(7);
 
   // Calculate stats
   const totalLogsThisWeek = recentLogs.length;

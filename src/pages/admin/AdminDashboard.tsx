@@ -104,6 +104,7 @@ const mainMenuItems: SubMenuItem[] = [
         ],
       },
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
+      { path: "/admin/prompt-validation", label: "Validação do Prompt", icon: Shield },
       { path: "/admin/pixels", label: "Pixels", icon: Code2 },
       { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
       { path: "/admin/feature-flags", label: "Feature Flags", icon: ToggleLeft },

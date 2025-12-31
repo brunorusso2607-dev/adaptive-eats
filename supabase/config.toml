@@ -164,3 +164,6 @@ verify_jwt = false
 
 [functions.run-protected-modules-tests]
 verify_jwt = false
+
+[functions.test-prompt-validation]
+verify_jwt = false

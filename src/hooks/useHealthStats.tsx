@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { calculateHealthScore } from "@/lib/healthScoreUtils";
 
 export type HealthPeriod = 7 | 14 | 21 | 30;
 
@@ -38,7 +39,7 @@ export function useHealthStats(days: HealthPeriod = 7) {
         .gte("consumed_at", startDate.toISOString());
 
       // Fetch meals with symptoms
-      const { count: symptomsCount } = await supabase
+      const { count: symptomsCountResult } = await supabase
         .from("meal_consumption")
         .select("*", { count: "exact", head: true })
         .eq("user_id", user.id)
@@ -46,11 +47,11 @@ export function useHealthStats(days: HealthPeriod = 7) {
         .gte("consumed_at", startDate.toISOString());
 
       // Total = well + symptoms (excluding pending)
-      const totalEvaluated = (wellCount || 0) + (symptomsCount || 0);
+      const totalEvaluated = (wellCount || 0) + (symptomsCountResult || 0);
 
       setWellMealsCount(wellCount || 0);
       setTotalMealsCount(totalEvaluated);
-      setSymptomsCount(symptomsCount || 0);
+      setSymptomsCount(symptomsCountResult || 0);
     } catch (error) {
       console.error("Error fetching health stats:", error);
     } finally {
@@ -62,18 +63,13 @@ export function useHealthStats(days: HealthPeriod = 7) {
     fetchStats();
   }, [fetchStats]);
 
-  // Calculate score as percentage
+  // Calculate score using shared utility
   const score = useMemo(() => {
-    if (totalMealsCount === 0) return 100;
-    
-    // Base score from well meals ratio
-    const wellRatio = wellMealsCount / totalMealsCount;
-    
-    // Penalty for symptoms (each symptom reduces score)
-    const symptomPenalty = Math.min(symptomsCount * 5, 30); // Max 30% penalty
-    
-    const calculatedScore = Math.round((wellRatio * 100) - symptomPenalty);
-    return Math.max(0, Math.min(100, calculatedScore));
+    return calculateHealthScore({
+      wellMeals: wellMealsCount,
+      totalMeals: totalMealsCount,
+      symptoms: symptomsCount,
+    }).score;
   }, [wellMealsCount, totalMealsCount, symptomsCount]);
 
   return {

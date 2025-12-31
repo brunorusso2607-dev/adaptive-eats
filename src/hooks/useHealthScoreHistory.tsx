@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { startOfDay, subDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { calculateDailyHealthScore } from "@/lib/healthScoreUtils";
 
 export interface DailyScore {
   date: string;
@@ -73,19 +74,14 @@ export function useHealthScoreHistory(days: number = 7) {
         }
       }
 
-      // Calculate scores
+      // Calculate scores using shared utility
       const historyData: DailyScore[] = Object.entries(dailyData).map(([dateKey, data]) => {
         const date = new Date(dateKey);
-        let score = 100;
-        
-        if (data.totalMeals > 0) {
-          const wellRatio = data.wellMeals / data.totalMeals;
-          const symptomPenalty = Math.min(data.symptoms * 10, 30);
-          score = Math.max(0, Math.min(100, Math.round(wellRatio * 100 - symptomPenalty)));
-        } else if (data.symptoms > 0) {
-          // No meals but has symptoms
-          score = Math.max(0, 100 - data.symptoms * 15);
-        }
+        const score = calculateDailyHealthScore({
+          wellMeals: data.wellMeals,
+          totalMeals: data.totalMeals,
+          symptoms: data.symptoms,
+        });
 
         return {
           date: dateKey,

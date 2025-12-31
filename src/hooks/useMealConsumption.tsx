@@ -20,6 +20,7 @@ export interface SaveConsumptionParams {
   totalCarbs: number;
   totalFat: number;
   notes?: string;
+  onSuccess?: () => void; // Callback para refresh de gamificação
 }
 
 export function useMealConsumption() {
@@ -73,6 +74,11 @@ export function useMealConsumption() {
         .eq("id", params.mealPlanItemId);
 
       if (updateError) throw updateError;
+
+      // Trigger gamification refresh callback if provided
+      if (params.onSuccess) {
+        params.onSuccess();
+      }
 
       return { success: true, consumption };
     } catch (error) {

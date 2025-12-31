@@ -43,6 +43,7 @@ import AdminBlockedIngredients from "./pages/admin/AdminBlockedIngredients";
 import AdminAIMealPlanTest from "./pages/admin/AdminAIMealPlanTest";
 import AdminFoods from "./pages/admin/AdminFoods";
 import AdminPromptValidation from "./pages/admin/AdminPromptValidation";
+import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 
 // QueryClient com configurações globais de timeout e retry
 const queryClient = new QueryClient({
@@ -125,6 +126,7 @@ function AppRoutes() {
           <Route path="ai-meal-plan-test" element={<AdminAIMealPlanTest />} />
           <Route path="foods" element={<AdminFoods />} />
           <Route path="prompt-validation" element={<AdminPromptValidation />} />
+          <Route path="system-health" element={<AdminSystemHealth />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

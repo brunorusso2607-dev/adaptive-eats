@@ -170,3 +170,6 @@ verify_jwt = false
 
 [functions.test-timezone-scenarios]
 verify_jwt = false
+
+[functions.health-check-system]
+verify_jwt = false

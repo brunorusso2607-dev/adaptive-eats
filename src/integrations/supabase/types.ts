@@ -723,6 +723,45 @@ export type Database = {
         }
         Relationships: []
       }
+      frontend_error_logs: {
+        Row: {
+          component_name: string | null
+          created_at: string
+          error_message: string
+          error_stack: string | null
+          error_type: string
+          id: string
+          metadata: Json | null
+          page_url: string | null
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          component_name?: string | null
+          created_at?: string
+          error_message: string
+          error_stack?: string | null
+          error_type: string
+          id?: string
+          metadata?: Json | null
+          page_url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          component_name?: string | null
+          created_at?: string
+          error_message?: string
+          error_stack?: string | null
+          error_type?: string
+          id?: string
+          metadata?: Json | null
+          page_url?: string | null
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       ingredient_aliases: {
         Row: {
           alias: string
@@ -1833,6 +1872,42 @@ export type Database = {
           is_active?: boolean
           name?: string
           sort_order?: number
+        }
+        Relationships: []
+      }
+      system_health_logs: {
+        Row: {
+          check_type: string
+          checked_at: string
+          created_at: string
+          error_details: Json | null
+          error_message: string | null
+          id: string
+          response_time_ms: number | null
+          status: string
+          target_name: string
+        }
+        Insert: {
+          check_type: string
+          checked_at?: string
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+          target_name: string
+        }
+        Update: {
+          check_type?: string
+          checked_at?: string
+          created_at?: string
+          error_details?: Json | null
+          error_message?: string | null
+          id?: string
+          response_time_ms?: number | null
+          status?: string
+          target_name?: string
         }
         Relationships: []
       }

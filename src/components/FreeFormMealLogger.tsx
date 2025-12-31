@@ -3,10 +3,9 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Loader2, PenLine, UtensilsCrossed, AlertTriangle } from "lucide-react";
+import { Search, Plus, X, Flame, Loader2, PenLine, UtensilsCrossed, AlertTriangle, Database, Globe, Link2, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
-import { useUserCountry } from "@/hooks/useUserCountry";
+import { useLookupIngredient } from "@/hooks/useLookupIngredient";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
@@ -20,7 +19,25 @@ interface FreeFormMealLoggerProps {
   onSuccess?: () => void;
 }
 
-interface SelectedFood extends Food {
+// Local interface matching the lookup-ingredient response
+interface LookupFood {
+  id: string;
+  name: string;
+  name_normalized: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  fiber_per_100g: number;
+  sodium_per_100g: number;
+  category: string | null;
+  source: string;
+  is_verified: boolean;
+  default_serving_size: number;
+  serving_unit: string;
+}
+
+interface SelectedFood extends LookupFood {
   quantity: number;
   displayQuantity: number;
 }
@@ -35,6 +52,27 @@ interface AISuggestion {
   fat: number;
   confidence: "alta" | "média" | "baixa";
 }
+
+// Source badge component
+const SourceBadge = ({ source }: { source: string }) => {
+  const config = {
+    local: { icon: Database, label: "Local", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+    alias: { icon: Link2, label: "Alias", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+    usda: { icon: Globe, label: "USDA", className: "bg-purple-500/10 text-purple-600 border-purple-500/20" },
+  }[source] || { icon: Database, label: source, className: "bg-muted text-muted-foreground" };
+
+  const Icon = config.icon;
+  
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full border",
+      config.className
+    )}>
+      <Icon className="w-2.5 h-2.5" />
+      {config.label}
+    </span>
+  );
+};
 
 export default function FreeFormMealLogger({
   open,
@@ -62,8 +100,8 @@ export default function FreeFormMealLogger({
   // Registration flow state
   const [showRegistrationFlow, setShowRegistrationFlow] = useState(false);
 
-  const { country: userCountry } = useUserCountry();
-  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch(userCountry);
+  // Use the unified lookup hook (Local + Aliases + USDA)
+  const { lookup, reset, results, source, isLoading } = useLookupIngredient();
   const { checkFood, checkConflict } = useIntoleranceWarning();
 
   // Fetch user profile for conflict checking
@@ -88,14 +126,18 @@ export default function FreeFormMealLogger({
     }
   }, [open]);
 
-  // Debounced search
+  // Debounced search using lookup-ingredient
   useEffect(() => {
     const timer = setTimeout(() => {
-      searchFoods(searchQuery);
+      if (searchQuery.length >= 2) {
+        lookup(searchQuery, 10);
+      } else {
+        reset();
+      }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchFoods]);
+  }, [searchQuery, lookup, reset]);
 
   // Reset on close
   useEffect(() => {
@@ -103,14 +145,14 @@ export default function FreeFormMealLogger({
       setSearchQuery("");
       setSelectedFoods([]);
       setFoodsWithConflicts([]);
-      clearFoods();
+      reset();
       setAiSuggestions([]);
       setShowAISuggestions(false);
       setShowRegistrationFlow(false);
     }
-  }, [open, clearFoods]);
+  }, [open, reset]);
 
-  // Fetch AI suggestions when no results found
+  // Fetch AI suggestions only when lookup returns no results
   const fetchAISuggestions = useCallback(async (query: string) => {
     if (!query || query.length < 2) return;
     
@@ -137,18 +179,18 @@ export default function FreeFormMealLogger({
     }
   }, []);
 
-  // Show AI suggestions alongside database results for better discoverability
+  // Only fetch AI suggestions if lookup returns no results
   useEffect(() => {
-    if (!isLoading && searchQuery.length >= 2) {
+    if (!isLoading && searchQuery.length >= 2 && results.length === 0 && source === 'none') {
       const timer = setTimeout(() => {
         fetchAISuggestions(searchQuery);
       }, 600);
       return () => clearTimeout(timer);
-    } else if (searchQuery.length < 2) {
+    } else if (searchQuery.length < 2 || results.length > 0) {
       setShowAISuggestions(false);
       setAiSuggestions([]);
     }
-  }, [foods, isLoading, searchQuery, fetchAISuggestions]);
+  }, [results, isLoading, searchQuery, source, fetchAISuggestions]);
 
   // Check for intolerance conflicts
   const checkFoodConflicts = useCallback((foodName: string) => {
@@ -170,7 +212,7 @@ export default function FreeFormMealLogger({
   }, [checkConflict, checkFood]);
 
   // Handle adding food - always add, just show warning if conflict
-  const handleAddFood = useCallback(async (food: Food) => {
+  const handleAddFood = useCallback(async (food: LookupFood) => {
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
@@ -186,7 +228,7 @@ export default function FreeFormMealLogger({
     addFoodToList(food);
   }, [checkFoodConflicts]);
 
-  const addFoodToList = (food: Food) => {
+  const addFoodToList = (food: LookupFood) => {
     const isGramUnit = food.serving_unit === 'g' || food.serving_unit === 'ml';
 
     setSelectedFoods((prev) => {
@@ -204,7 +246,7 @@ export default function FreeFormMealLogger({
       return [...prev, { ...food, displayQuantity: 0, quantity: 0 }];
     });
     setSearchQuery("");
-    clearFoods();
+    reset();
     setAiSuggestions([]);
     setShowAISuggestions(false);
   };
@@ -226,14 +268,18 @@ export default function FreeFormMealLogger({
         .eq("name_normalized", normalizedName)
         .maybeSingle();
 
-      let food: Food;
+      let food: LookupFood;
 
       if (existing) {
         food = {
           ...existing,
           serving_unit: existing.serving_unit || 'g',
           default_serving_size: existing.default_serving_size || 100,
-        } as Food;
+          fiber_per_100g: existing.fiber_per_100g || 0,
+          sodium_per_100g: existing.sodium_per_100g || 0,
+          source: 'local',
+          is_verified: existing.is_verified || false,
+        } as LookupFood;
       } else {
         const multiplier = 100 / suggestion.portion_grams;
         const servingSuggestion = suggestServingByName(suggestion.name);
@@ -261,7 +307,11 @@ export default function FreeFormMealLogger({
           ...newFood,
           serving_unit: newFood.serving_unit || 'g',
           default_serving_size: newFood.default_serving_size || suggestion.portion_grams,
-        } as Food;
+          fiber_per_100g: 0,
+          sodium_per_100g: 0,
+          source: 'ai_suggestion',
+          is_verified: false,
+        } as LookupFood;
         toast.success(`${suggestion.name} adicionado ao banco!`);
       }
 
@@ -284,7 +334,7 @@ export default function FreeFormMealLogger({
       });
       
       setSearchQuery("");
-      clearFoods();
+      reset();
       setAiSuggestions([]);
       setShowAISuggestions(false);
 
@@ -302,14 +352,16 @@ export default function FreeFormMealLogger({
   };
 
   const handleManualFoodCreated = (food: { id: string; name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number }) => {
-    const fullFood: Food = {
+    const fullFood: LookupFood = {
       ...food,
       name_normalized: food.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-      fiber_per_100g: null,
-      sodium_per_100g: null,
+      fiber_per_100g: 0,
+      sodium_per_100g: 0,
       category: null,
       serving_unit: 'g',
       default_serving_size: 100,
+      source: 'manual',
+      is_verified: false,
     };
     addFoodToList(fullFood);
   };
@@ -461,28 +513,52 @@ export default function FreeFormMealLogger({
             </div>
             
             {/* Search results dropdown */}
-            {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
+            {searchQuery.length >= 2 && (isLoading || results.length > 0 || showAISuggestions) && (
               <div className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-72 overflow-y-auto">
-                {isLoading && foods.length === 0 ? (
+                {isLoading && results.length === 0 ? (
                   <div className="p-4 text-center text-muted-foreground text-sm">
                     <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
                     Buscando...
                   </div>
                 ) : (
                   <div className="p-2 space-y-1">
+                    {/* Source indicator when results found */}
+                    {results.length > 0 && source && (
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground mb-2 px-1">
+                        <span>Fonte:</span>
+                        <SourceBadge source={source} />
+                        <span className="text-muted-foreground/60">({results.length} resultado{results.length > 1 ? 's' : ''})</span>
+                      </div>
+                    )}
+
                     {/* Database results */}
-                    {foods.map((food) => {
+                    {results.map((food) => {
                       const conflict = checkFoodConflicts(food.name);
                       return (
                         <button
                           key={food.id}
                           onClick={() => handleAddFood(food)}
-                          className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left"
+                          className={cn(
+                            "w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left",
+                            conflict && "border-l-2 border-amber-500"
+                          )}
                         >
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-2">
                               <Plus className="w-4 h-4 text-primary flex-shrink-0" />
                               <span className="text-sm font-medium truncate">{food.name}</span>
+                              {food.is_verified && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-600 border border-emerald-500/20">
+                                  ✓
+                                </span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 ml-6 mt-1 text-xs text-muted-foreground">
+                              <span className="flex items-center gap-1">
+                                <Flame className="w-3 h-3 text-orange-500" />
+                                {food.calories_per_100g} kcal/100g
+                              </span>
+                              <SourceBadge source={food.source} />
                             </div>
                             {conflict && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
@@ -491,52 +567,65 @@ export default function FreeFormMealLogger({
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                            {food.calories_per_100g} kcal/100g
-                          </span>
                         </button>
                       );
                     })}
 
-                    {/* AI suggestions */}
-                    {showAISuggestions && (
+                    {/* AI suggestions - only show when lookup returns nothing */}
+                    {showAISuggestions && searchQuery.length >= 2 && results.length === 0 && (
                       <>
                         {isLoadingAI ? (
-                          <div className="p-3 text-center text-muted-foreground text-sm">
+                          <div className="p-4 text-center text-muted-foreground text-sm border-t mt-2 pt-4">
                             <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
-                            Buscando mais opções...
+                            <span className="flex items-center justify-center gap-1">
+                              <Sparkles className="w-3 h-3" />
+                              Buscando com IA...
+                            </span>
                           </div>
                         ) : aiSuggestions.length > 0 ? (
-                          aiSuggestions.map((suggestion, idx) => {
-                            const conflict = checkFoodConflicts(suggestion.name);
-                            return (
-                              <button
-                                key={`ai-${idx}`}
-                                onClick={() => handleAddAISuggestion(suggestion)}
-                                className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Plus className="w-4 h-4 text-primary flex-shrink-0" />
-                                  <span className="text-sm font-medium">{suggestion.name}</span>
-                                </div>
-                                {conflict && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                  </span>
-                                )}
-                                <p className="text-xs text-muted-foreground ml-6 mt-1">
-                                  {suggestion.portion_description} • {suggestion.calories} kcal
-                                </p>
-                              </button>
-                            );
-                          })
+                          <div className="border-t mt-2 pt-3">
+                            <p className="text-xs text-muted-foreground mb-2 flex items-center gap-1 px-1">
+                              <Sparkles className="w-3 h-3" />
+                              Sugestões da IA
+                            </p>
+                            {aiSuggestions.map((suggestion, idx) => {
+                              const conflict = checkFoodConflicts(suggestion.name);
+                              return (
+                                <button
+                                  key={`ai-${idx}`}
+                                  onClick={() => handleAddAISuggestion(suggestion)}
+                                  className={cn(
+                                    "w-full p-3 hover:bg-muted rounded-md transition-colors text-left",
+                                    conflict && "border-l-2 border-amber-500"
+                                  )}
+                                >
+                                  <div className="flex items-center gap-2">
+                                    <Plus className="w-4 h-4 text-primary flex-shrink-0" />
+                                    <span className="text-sm font-medium">{suggestion.name}</span>
+                                  </div>
+                                  <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6 mt-1">
+                                    <span>{suggestion.portion_description}</span>
+                                    <span className="flex items-center gap-1">
+                                      <Flame className="w-3 h-3 text-orange-500" />
+                                      {suggestion.calories}kcal
+                                    </span>
+                                  </div>
+                                  {conflict && (
+                                    <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                                      <AlertTriangle className="w-3 h-3" />
+                                      Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                    </span>
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         ) : null}
                       </>
                     )}
 
                     {/* Manual add option */}
-                    {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
+                    {results.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
                       <div className="p-3 text-center">
                         <p className="text-sm text-muted-foreground mb-2">
                           Não encontrado? Adicione manualmente
@@ -567,6 +656,9 @@ export default function FreeFormMealLogger({
                 </div>
                 <p className="text-muted-foreground">
                   Busque e adicione os alimentos que você consumiu
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Busca local + USDA + IA
                 </p>
               </div>
             ) : (

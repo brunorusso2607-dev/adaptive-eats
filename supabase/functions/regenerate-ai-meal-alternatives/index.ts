@@ -15,6 +15,8 @@ import {
   shouldAddSugarQualifier,
   getStrategyPromptRules,
 } from "../_shared/mealGenerationConfig.ts";
+import { getNutritionalTablePrompt } from "../_shared/nutritionalTableInjection.ts";
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -259,8 +261,12 @@ serve(async (req) => {
     const { mappings: dbMappings, safeKeywords: dbSafeKeywords } = await fetchIntoleranceMappings(supabaseClient);
     logStep("Intolerance mappings loaded", { mappingsCount: dbMappings.length, safeKeywordsCount: dbSafeKeywords.length });
 
-    // Get regional config from SHARED
+    // ============= INJEÇÃO DE TABELA NUTRICIONAL (CASCATA CAMADA 1) =============
     const userCountry = profile.country || 'BR';
+    const nutritionalTablePrompt = await getNutritionalTablePrompt(supabaseClient, userCountry);
+    logStep("Nutritional table loaded for prompt injection");
+
+    // Get regional config from SHARED
     const regional = getRegionalConfig(userCountry);
     const mealLabel = regional.mealLabels[mealType] || mealType;
 
@@ -333,7 +339,7 @@ serve(async (req) => {
       logStep("🍽️ Dieta Flexível detectada: gerando 3 saudáveis + 2 comfort foods");
 
       // Gerar 3 alternativas saudáveis (usando pool de emagrecer)
-      const healthyPrompt = buildAlternativesPrompt({
+      const healthyBasePrompt = buildAlternativesPrompt({
         mealType,
         mealLabel,
         targetCalories,
@@ -348,6 +354,9 @@ serve(async (req) => {
         strategyKey: 'emagrecer', // Usa pool de emagrecimento
         isFlexibleOption: false,
       });
+      
+      // Inject nutritional table (CASCATA CAMADA 1)
+      const healthyPrompt = `${nutritionalTablePrompt}\n\n${healthyBasePrompt}`;
 
       totalPromptLength += healthyPrompt.length;
       logStep("Building healthy alternatives prompt", { length: healthyPrompt.length });
@@ -369,7 +378,7 @@ serve(async (req) => {
       logStep("Healthy alternatives generated", { count: healthyResult.alternatives.length });
 
       // Gerar 2 alternativas de comfort food
-      const flexiblePrompt = buildAlternativesPrompt({
+      const flexibleBasePrompt = buildAlternativesPrompt({
         mealType,
         mealLabel,
         targetCalories,
@@ -384,6 +393,9 @@ serve(async (req) => {
         strategyKey: 'dieta_flexivel',
         isFlexibleOption: true, // Flag para gerar comfort foods
       });
+      
+      // Inject nutritional table (CASCATA CAMADA 1)
+      const flexiblePrompt = `${nutritionalTablePrompt}\n\n${flexibleBasePrompt}`;
 
       totalPromptLength += flexiblePrompt.length;
       logStep("Building flexible alternatives prompt", { length: flexiblePrompt.length });
@@ -409,7 +421,7 @@ serve(async (req) => {
 
     } else {
       // ============= LÓGICA PADRÃO: 5 OPÇÕES DO MESMO TIPO =============
-      const prompt = buildAlternativesPrompt({
+      const basePrompt = buildAlternativesPrompt({
         mealType,
         mealLabel,
         targetCalories,
@@ -424,9 +436,12 @@ serve(async (req) => {
         strategyKey,
         isFlexibleOption: false,
       });
+      
+      // Inject nutritional table (CASCATA CAMADA 1)
+      const prompt = `${nutritionalTablePrompt}\n\n${basePrompt}`;
 
       totalPromptLength = prompt.length;
-      logStep("Prompt built", { length: prompt.length });
+      logStep("Prompt built with nutritional table", { length: prompt.length });
 
       const result = await generateAlternatives(
         prompt,
@@ -446,6 +461,72 @@ serve(async (req) => {
     }
 
     logStep("All alternatives validated", { total: allAlternatives.length });
+
+    // ============= CALIBRAÇÃO DE MACROS PÓS-GERAÇÃO (CASCATA CAMADA 2) =============
+    const calibratedAlternatives = [];
+    for (const alt of allAlternatives) {
+      try {
+        // Convert ingredients to FoodItem format
+        const ingredients = alt.recipe_ingredients || [];
+        const foodItems = ingredients.map((ing: { item?: string; quantity?: string }) => ({
+          name: ing.item || '',
+          grams: parseFloat(ing.quantity || '100') || 100,
+          calories: 0,
+          protein: 0,
+          carbs: 0,
+          fat: 0,
+        }));
+
+        if (foodItems.length > 0) {
+          const { items: calculatedItems } = await calculateRealMacrosForFoods(
+            supabaseClient,
+            foodItems,
+            userCountry
+          );
+
+          // Sum up calibrated macros
+          let totalCalories = 0;
+          let totalProtein = 0;
+          let totalCarbs = 0;
+          let totalFat = 0;
+
+          for (const item of calculatedItems) {
+            totalCalories += item.calories || 0;
+            totalProtein += item.protein || 0;
+            totalCarbs += item.carbs || 0;
+            totalFat += item.fat || 0;
+          }
+
+          // Only override if we got valid data from database
+          const hasDbData = calculatedItems.some(item => item.source === 'database' || item.source === 'database_global');
+          
+          if (hasDbData && totalCalories > 0) {
+            logStep("Macros calibrated from database", { 
+              recipe: alt.recipe_name,
+              original: { cal: alt.recipe_calories, p: alt.recipe_protein, c: alt.recipe_carbs, f: alt.recipe_fat },
+              calibrated: { cal: Math.round(totalCalories), p: Math.round(totalProtein), c: Math.round(totalCarbs), f: Math.round(totalFat) }
+            });
+            
+            calibratedAlternatives.push({
+              ...alt,
+              recipe_calories: Math.round(totalCalories),
+              recipe_protein: Math.round(totalProtein * 10) / 10,
+              recipe_carbs: Math.round(totalCarbs * 10) / 10,
+              recipe_fat: Math.round(totalFat * 10) / 10,
+            });
+          } else {
+            calibratedAlternatives.push(alt);
+          }
+        } else {
+          calibratedAlternatives.push(alt);
+        }
+      } catch (calibrationError) {
+        logStep("Calibration error, keeping AI values", { recipe: alt.recipe_name, error: String(calibrationError) });
+        calibratedAlternatives.push(alt);
+      }
+    }
+
+    logStep("Calibration complete", { total: calibratedAlternatives.length });
 
     // Log AI usage
     await logAIUsage({
@@ -467,7 +548,7 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({
         success: true,
-        alternatives: allAlternatives,
+        alternatives: calibratedAlternatives,
         mealType,
         mealLabel,
         targetCalories,

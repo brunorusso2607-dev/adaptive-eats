@@ -11,6 +11,7 @@ import {
   getLocaleFromCountry
 } from "../_shared/nutritionPrompt.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+import { getNutritionalTablePrompt } from "../_shared/nutritionalTableInjection.ts";
 // ============= GLOBAL SAFETY ENGINE (CENTRALIZED) =============
 import {
   loadSafetyDatabase,

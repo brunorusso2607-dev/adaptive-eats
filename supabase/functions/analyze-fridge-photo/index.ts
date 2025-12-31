@@ -3,6 +3,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+import { getNutritionalTablePrompt } from "../_shared/nutritionalTableInjection.ts";
 import {
   getGlobalNutritionPrompt,
   getNutritionalSource,

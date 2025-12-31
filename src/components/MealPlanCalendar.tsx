@@ -572,75 +572,69 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
         <label className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
           Dia
         </label>
-        <div className="grid grid-cols-7 gap-1">
-          {currentWeekData?.days.map((day, index) => {
-            // Verificar se o dia é anterior ao start_date do plano - NÃO RENDERIZAR
-            const isDayBeforePlanStart = day.date < planStartDate;
-            
-            // If day is not in month OR before plan start, render empty placeholder
-            if (!day.isInMonth || isDayBeforePlanStart) {
-              return <div key={`empty-${index}`} className="min-h-[60px]" />;
-            }
+        <div className="flex gap-1 flex-wrap">
+          {currentWeekData?.days
+            .map((day, originalIndex) => ({ day, originalIndex }))
+            .filter(({ day }) => day.isInMonth && day.date >= planStartDate)
+            .map(({ day, originalIndex }) => {
+              const dayNumber = day.dayOfMonth;
+              const dayName = DAY_NAMES_SHORT[day.dayOfWeek];
+              const isSelected = selectedDayIndex === originalIndex;
+              const status = getDayStatus(day);
+              const hasMeals = getDayMeals(day).length > 0;
+              const isToday = day.isToday;
+              const isPastDay = day.isPast;
 
-            const dayNumber = day.dayOfMonth;
-            const dayName = DAY_NAMES_SHORT[day.dayOfWeek];
-            const isSelected = selectedDayIndex === index;
-            const status = getDayStatus(day);
-            const hasMeals = getDayMeals(day).length > 0;
-            const isToday = day.isToday;
-
-            const isPastDay = day.isPast;
-
-            return (
-              <button
-                key={`${day.date.toISOString()}`}
-                onClick={() => !isPastDay && setSelectedDayIndex(index)}
-                disabled={isPastDay}
-                className={cn(
-                  "relative flex flex-col items-center py-2 px-1 sm:p-3 rounded-xl transition-all border",
-                  isPastDay 
-                    ? "bg-muted/50 text-muted-foreground border-muted cursor-not-allowed opacity-60"
-                    : isSelected 
-                      ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
-                      : "bg-background hover:bg-muted border-border hover:border-primary/50",
-                  isToday && !isSelected && !isPastDay && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-[0_0_12px_rgba(var(--primary),0.4)]"
-                )}
-              >
-                {/* Today Badge */}
-                {isToday && !isPastDay && (
+              return (
+                <button
+                  key={`${day.date.toISOString()}`}
+                  onClick={() => !isPastDay && setSelectedDayIndex(originalIndex)}
+                  disabled={isPastDay}
+                  className={cn(
+                    "relative flex flex-col items-center py-2 px-3 sm:p-3 rounded-xl transition-all border min-w-[60px]",
+                    isPastDay 
+                      ? "bg-muted/50 text-muted-foreground border-muted cursor-not-allowed opacity-60"
+                      : isSelected 
+                        ? "bg-primary text-primary-foreground border-primary shadow-lg scale-105" 
+                        : "bg-background hover:bg-muted border-border hover:border-primary/50",
+                    isToday && !isSelected && !isPastDay && "ring-2 ring-primary ring-offset-2 ring-offset-background shadow-[0_0_12px_rgba(var(--primary),0.4)]"
+                  )}
+                >
+                  {/* Today Badge */}
+                  {isToday && !isPastDay && (
+                    <span className={cn(
+                      "absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider",
+                      isSelected 
+                        ? "bg-primary-foreground text-primary" 
+                        : "bg-primary text-primary-foreground"
+                    )}>
+                      Hoje
+                    </span>
+                  )}
                   <span className={cn(
-                    "absolute -top-2 left-1/2 -translate-x-1/2 text-[8px] font-bold px-1.5 py-0.5 rounded-full uppercase tracking-wider",
-                    isSelected 
-                      ? "bg-primary-foreground text-primary" 
-                      : "bg-primary text-primary-foreground"
+                    "text-[10px] sm:text-xs font-medium",
+                    isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-muted-foreground"
                   )}>
-                    Hoje
+                    {dayName}
                   </span>
-                )}
-                <span className={cn(
-                  "text-[10px] sm:text-xs font-medium",
-                  isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-muted-foreground"
-                )}>
-                  {dayName}
-                </span>
-                <span className={cn(
-                  "text-sm sm:text-lg font-bold",
-                  isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-foreground"
-                )}>
-                  {dayNumber}
-                </span>
-                {/* Status indicator */}
-                <div className={cn(
-                  "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-0.5 sm:mt-1",
-                  !hasMeals && "bg-muted-foreground/30",
-                  hasMeals && isPastDay && "bg-muted-foreground/30",
-                  hasMeals && !isPastDay && status === 'pending' && "bg-muted-foreground/50",
-                  hasMeals && !isPastDay && status === 'partial' && "bg-yellow-500",
-                  hasMeals && !isPastDay && status === 'complete' && "bg-green-500",
-                )} />
-              </button>
-            );
-          })}
+                  <span className={cn(
+                    "text-sm sm:text-lg font-bold",
+                    isPastDay ? "text-muted-foreground" : isSelected ? "text-primary-foreground" : "text-foreground"
+                  )}>
+                    {dayNumber}
+                  </span>
+                  {/* Status indicator */}
+                  <div className={cn(
+                    "w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full mt-0.5 sm:mt-1",
+                    !hasMeals && "bg-muted-foreground/30",
+                    hasMeals && isPastDay && "bg-muted-foreground/30",
+                    hasMeals && !isPastDay && status === 'pending' && "bg-muted-foreground/50",
+                    hasMeals && !isPastDay && status === 'partial' && "bg-yellow-500",
+                    hasMeals && !isPastDay && status === 'complete' && "bg-green-500",
+                  )} />
+                </button>
+              );
+            })}
         </div>
       </div>
 

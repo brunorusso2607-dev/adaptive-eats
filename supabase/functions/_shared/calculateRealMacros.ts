@@ -416,7 +416,7 @@ async function batchFindFoodsInDatabase(
 
 /**
  * Processa um array de ingredientes e calcula macros reais
- * VERSÃO OTIMIZADA: Usa busca em batch para reduzir latência
+ * VERSÃO HÍBRIDA: Batch (velocidade) → Individual (precisão) → AI (último recurso)
  */
 export async function calculateRealMacrosForFoods(
   supabase: any,
@@ -434,41 +434,109 @@ export async function calculateRealMacrosForFoods(
   // Extrair termos de busca de todos os alimentos
   const allSearchTerms = foods.map(item => item.name);
   
-  // OTIMIZAÇÃO: Busca em batch única
+  // ========================================
+  // FASE 1: Busca em batch (rápida, ~85% match)
+  // ========================================
   const batchResults = await batchFindFoodsInDatabase(supabase, allSearchTerms, prioritySources);
   
-  // Processar resultados
+  // Separar encontrados e não encontrados
+  const notFoundInBatch: FoodItem[] = [];
+  const foundInBatch: Map<string, { item: FoodItem; macros: any }> = new Map();
+  
   for (const item of foods) {
     const match = batchResults.get(item.name);
-    
     if (match) {
-      // ✅ Encontrou no banco de dados (via batch)
       const macros = calculateMacrosForGrams(match.food, item.grams, match.source);
+      foundInBatch.set(item.name, { item, macros });
+    } else {
+      notFoundInBatch.push(item);
+    }
+  }
+  
+  logStep('Batch phase complete', { 
+    found: foundInBatch.size, 
+    notFound: notFoundInBatch.length 
+  });
+  
+  // ========================================
+  // FASE 2: Busca individual para não encontrados (precisa, ~99% match)
+  // ========================================
+  const foundInIndividual: Map<string, { item: FoodItem; macros: any }> = new Map();
+  const notFoundAnywhere: FoodItem[] = [];
+  
+  // Limitar busca individual para evitar timeout (máx 15 itens)
+  const itemsToSearchIndividually = notFoundInBatch.slice(0, 15);
+  const skippedItems = notFoundInBatch.slice(15);
+  
+  for (const item of itemsToSearchIndividually) {
+    const match = await findFoodInDatabase(supabase, item.name, userCountry);
+    if (match) {
+      const macros = calculateMacrosForGrams(match.food, item.grams, match.source);
+      foundInIndividual.set(item.name, { item, macros });
+    } else {
+      notFoundAnywhere.push(item);
+    }
+  }
+  
+  // Adicionar itens pulados diretamente para fallback
+  notFoundAnywhere.push(...skippedItems);
+  
+  logStep('Individual search phase complete', { 
+    found: foundInIndividual.size, 
+    notFound: notFoundAnywhere.length,
+    skipped: skippedItems.length
+  });
+  
+  // ========================================
+  // FASE 3: Montar resultado final na ordem original
+  // ========================================
+  for (const item of foods) {
+    // Primeiro, verificar se encontrou no batch
+    const batchMatch = foundInBatch.get(item.name);
+    if (batchMatch) {
       calculatedItems.push({
         name: item.name,
         grams: item.grams,
-        ...macros,
+        ...batchMatch.macros,
       });
       fromDatabase++;
-    } else {
-      // ❌ Não encontrou - usar fallback de categoria (mais rápido que busca individual)
-      const estimated = getCategoryFallbackMacros(item);
+      continue;
+    }
+    
+    // Segundo, verificar se encontrou na busca individual
+    const individualMatch = foundInIndividual.get(item.name);
+    if (individualMatch) {
       calculatedItems.push({
         name: item.name,
         grams: item.grams,
-        ...estimated,
+        ...individualMatch.macros,
       });
-      fromAI++;
+      fromDatabase++;
+      continue;
     }
+    
+    // Terceiro, usar AI estimation como último recurso
+    const estimated = estimateMacrosFromAI(item);
+    calculatedItems.push({
+      name: item.name,
+      grams: item.grams,
+      ...estimated,
+    });
+    fromAI++;
   }
   
   const matchRate = foods.length > 0 ? Math.round((fromDatabase / foods.length) * 100) : 0;
   
-  logStep('Batch calculation complete', { 
+  logStep('Hybrid calculation complete', { 
     totalItems: foods.length,
     fromDb: fromDatabase, 
-    fromFallback: fromAI,
-    matchRate: `${matchRate}%`
+    fromAI: fromAI,
+    matchRate: `${matchRate}%`,
+    phases: {
+      batch: foundInBatch.size,
+      individual: foundInIndividual.size,
+      fallback: fromAI
+    }
   });
   
   return {

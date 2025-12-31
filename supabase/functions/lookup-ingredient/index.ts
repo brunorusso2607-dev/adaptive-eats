@@ -9,11 +9,12 @@ const corsHeaders = {
 const USDA_API_KEY = Deno.env.get('USDA_API_KEY');
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
 // Country to preferred data sources mapping
 const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
   'BR': ['TBCA', 'taco', 'curated'],
-  'PT': ['TBCA', 'taco', 'curated'], // Portugal uses Brazilian sources
+  'PT': ['TBCA', 'taco', 'curated'],
   'US': ['usda', 'curated'],
   'GB': ['McCance', 'curated'],
   'UK': ['McCance', 'curated'],
@@ -24,23 +25,8 @@ const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
   'IT': ['CREA', 'curated'],
 };
 
-// Country to cuisine_origin mapping
-const COUNTRY_CUISINE_MAP: Record<string, string[]> = {
-  'BR': ['brasileira', 'internacional'],
-  'PT': ['portuguesa', 'brasileira', 'internacional'],
-  'US': ['americana', 'internacional'],
-  'GB': ['britanica', 'internacional'],
-  'UK': ['britanica', 'internacional'],
-  'FR': ['francesa', 'internacional'],
-  'MX': ['mexicana', 'internacional'],
-  'ES': ['espanhola', 'internacional'],
-  'DE': ['alema', 'internacional'],
-  'IT': ['italiana', 'internacional'],
-};
-
 // Patterns that indicate a prepared dish (not a raw ingredient)
 const PREPARED_DISH_PATTERNS = [
-  // Portuguese patterns
   'à grega', 'a grega', 'c/ sal', 's/ sal', 'c/sal', 's/sal',
   'cozido', 'cozida', 'frito', 'frita', 'grelhado', 'grelhada',
   'assado', 'assada', 'refogado', 'refogada', 'temperado', 'temperada',
@@ -50,12 +36,10 @@ const PREPARED_DISH_PATTERNS = [
   'ao alho', 'com alho', 'com cebola', 'com legumes', 'com verduras',
   'recheado', 'recheada', 'preparado', 'preparada', 'pronto', 'pronta',
   'caseiro', 'caseira', 'tradicional', 'típico', 'típica',
-  // English patterns
   'cooked', 'fried', 'grilled', 'baked', 'roasted', 'sauteed', 'seasoned',
   'with sauce', 'with gravy', 'stuffed', 'prepared', 'homemade',
 ];
 
-// Categories that are allowed even if they match prepared patterns (fast food)
 const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
 
 function normalizeText(text: string): string {
@@ -70,12 +54,10 @@ function isPreparedDish(food: any): boolean {
   const nameLower = (food.name || '').toLowerCase();
   const categoryLower = (food.category || '').toLowerCase();
   
-  // Allow fast food items
   if (ALLOWED_PREPARED_CATEGORIES.some(cat => categoryLower.includes(cat))) {
     return false;
   }
   
-  // Check for prepared dish patterns
   return PREPARED_DISH_PATTERNS.some(pattern => nameLower.includes(pattern));
 }
 
@@ -83,157 +65,166 @@ function logStep(step: string, data?: any) {
   console.log(`[lookup-ingredient] ${step}`, data ? JSON.stringify(data) : '');
 }
 
-interface USDAFood {
-  fdcId: number;
-  description: string;
-  dataType: string;
-  foodNutrients: Array<{
-    nutrientId: number;
-    nutrientName: string;
-    nutrientNumber: string;
-    value: number;
-    unitName: string;
-  }>;
-}
-
-interface NutrientData {
+interface AIFoodSuggestion {
   name: string;
   calories_per_100g: number;
   protein_per_100g: number;
   carbs_per_100g: number;
   fat_per_100g: number;
   fiber_per_100g: number;
-  sodium_per_100g: number;
-  source: string;
-  usda_fdc_id?: number;
 }
 
-function extractNutrients(food: USDAFood): NutrientData {
-  const nutrients = food.foodNutrients || [];
-  
-  const findNutrient = (ids: number[]): number => {
-    for (const id of ids) {
-      const nutrient = nutrients.find(n => n.nutrientId === id);
-      if (nutrient && nutrient.value !== undefined) {
-        return nutrient.value;
-      }
-    }
-    return 0;
-  };
-
-  // USDA nutrient IDs:
-  // Energy (kcal): 1008
-  // Protein: 1003
-  // Carbohydrates: 1005
-  // Fat: 1004
-  // Fiber: 1079
-  // Sodium: 1093
-
-  return {
-    name: food.description,
-    calories_per_100g: Math.round(findNutrient([1008])),
-    protein_per_100g: Math.round(findNutrient([1003]) * 10) / 10,
-    carbs_per_100g: Math.round(findNutrient([1005]) * 10) / 10,
-    fat_per_100g: Math.round(findNutrient([1004]) * 10) / 10,
-    fiber_per_100g: Math.round(findNutrient([1079]) * 10) / 10,
-    sodium_per_100g: Math.round(findNutrient([1093])),
-    source: 'usda',
-    usda_fdc_id: food.fdcId,
-  };
-}
-
-async function searchUSDA(query: string): Promise<NutrientData | null> {
-  if (!USDA_API_KEY) {
-    logStep('USDA API key not configured');
-    return null;
+// Generate food suggestions using AI when database has no results
+async function generateAIFoodSuggestions(query: string, country: string): Promise<AIFoodSuggestion[]> {
+  if (!LOVABLE_API_KEY) {
+    logStep('LOVABLE_API_KEY not configured, skipping AI suggestions');
+    return [];
   }
 
   try {
-    logStep('Searching USDA', { query });
+    logStep('Generating AI food suggestions', { query, country });
     
-    const url = new URL('https://api.nal.usda.gov/fdc/v1/foods/search');
-    url.searchParams.set('api_key', USDA_API_KEY);
-    url.searchParams.set('query', query);
-    url.searchParams.set('dataType', 'Foundation,SR Legacy');
-    url.searchParams.set('pageSize', '5');
+    const languageMap: Record<string, string> = {
+      'BR': 'português brasileiro',
+      'PT': 'português',
+      'US': 'English',
+      'GB': 'English',
+      'MX': 'español mexicano',
+      'ES': 'español',
+      'FR': 'français',
+      'DE': 'Deutsch',
+      'IT': 'italiano',
+    };
+    
+    const language = languageMap[country] || 'português brasileiro';
+    
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'google/gemini-2.5-flash-lite',
+        messages: [
+          {
+            role: 'system',
+            content: `Você é um nutricionista especializado em alimentos. Gere variações de ingredientes crus baseados na busca do usuário.
+            
+REGRAS:
+- Retorne APENAS ingredientes CRUS (não pratos prontos)
+- Use o idioma: ${language}
+- Gere de 5 a 8 variações do alimento buscado
+- Inclua valores nutricionais REALISTAS por 100g
+- Formato JSON obrigatório`
+          },
+          {
+            role: 'user',
+            content: `Gere variações do ingrediente "${query}" em ${language}.`
+          }
+        ],
+        tools: [
+          {
+            type: 'function',
+            function: {
+              name: 'suggest_foods',
+              description: 'Retorna sugestões de alimentos com valores nutricionais',
+              parameters: {
+                type: 'object',
+                properties: {
+                  foods: {
+                    type: 'array',
+                    items: {
+                      type: 'object',
+                      properties: {
+                        name: { type: 'string', description: 'Nome do alimento' },
+                        calories_per_100g: { type: 'number' },
+                        protein_per_100g: { type: 'number' },
+                        carbs_per_100g: { type: 'number' },
+                        fat_per_100g: { type: 'number' },
+                        fiber_per_100g: { type: 'number' }
+                      },
+                      required: ['name', 'calories_per_100g', 'protein_per_100g', 'carbs_per_100g', 'fat_per_100g', 'fiber_per_100g']
+                    }
+                  }
+                },
+                required: ['foods']
+              }
+            }
+          }
+        ],
+        tool_choice: { type: 'function', function: { name: 'suggest_foods' } }
+      })
+    });
 
-    const response = await fetch(url.toString());
-    
     if (!response.ok) {
-      logStep('USDA API error', { status: response.status });
-      return null;
+      logStep('AI API error', { status: response.status });
+      return [];
     }
 
     const data = await response.json();
+    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     
-    if (!data.foods || data.foods.length === 0) {
-      logStep('No USDA results found');
-      return null;
+    if (toolCall?.function?.arguments) {
+      const parsed = JSON.parse(toolCall.function.arguments);
+      logStep('AI suggestions generated', { count: parsed.foods?.length || 0 });
+      return parsed.foods || [];
     }
-
-    // Prefer Foundation data over SR Legacy
-    const foundationFood = data.foods.find((f: USDAFood) => f.dataType === 'Foundation');
-    const selectedFood = foundationFood || data.foods[0];
     
-    logStep('USDA food found', { 
-      fdcId: selectedFood.fdcId, 
-      description: selectedFood.description,
-      dataType: selectedFood.dataType 
-    });
-
-    return extractNutrients(selectedFood);
+    return [];
   } catch (error: any) {
-    logStep('USDA search error', { error: error?.message || String(error) });
-    return null;
+    logStep('AI suggestion error', { error: error?.message || String(error) });
+    return [];
   }
 }
 
-async function saveToDatabase(
-  supabase: any, 
-  nutrientData: NutrientData
-): Promise<any> {
-  const nameNormalized = normalizeText(nutrientData.name);
+// Save AI-generated foods to database
+async function saveAIFoodsToDatabase(supabase: any, foods: AIFoodSuggestion[], country: string): Promise<any[]> {
+  const savedFoods: any[] = [];
   
-  const insertData = {
-    name: nutrientData.name,
-    name_normalized: nameNormalized,
-    calories_per_100g: nutrientData.calories_per_100g,
-    protein_per_100g: nutrientData.protein_per_100g,
-    carbs_per_100g: nutrientData.carbs_per_100g,
-    fat_per_100g: nutrientData.fat_per_100g,
-    fiber_per_100g: nutrientData.fiber_per_100g,
-    sodium_per_100g: nutrientData.sodium_per_100g,
-    source: nutrientData.source,
-    is_verified: true,
-    is_recipe: false,
-    category: 'ingrediente',
-  };
-
-  logStep('Saving to database', { name: nutrientData.name });
-
-  const { data, error } = await supabase
-    .from('foods')
-    .insert(insertData)
-    .select()
-    .single();
-
-  if (error) {
-    // Check if it's a duplicate
-    if (error.code === '23505') {
-      logStep('Food already exists, fetching existing');
-      const { data: existing } = await supabase
-        .from('foods')
-        .select('*')
-        .eq('name_normalized', nameNormalized)
-        .single();
-      return existing;
+  for (const food of foods) {
+    const nameNormalized = normalizeText(food.name);
+    
+    // Check if already exists
+    const { data: existing } = await supabase
+      .from('foods')
+      .select('*')
+      .eq('name_normalized', nameNormalized)
+      .maybeSingle();
+    
+    if (existing) {
+      savedFoods.push(existing);
+      continue;
     }
-    logStep('Database insert error', { error });
-    throw error;
-  }
+    
+    const insertData = {
+      name: food.name,
+      name_normalized: nameNormalized,
+      calories_per_100g: food.calories_per_100g,
+      protein_per_100g: food.protein_per_100g,
+      carbs_per_100g: food.carbs_per_100g,
+      fat_per_100g: food.fat_per_100g,
+      fiber_per_100g: food.fiber_per_100g,
+      sodium_per_100g: 0,
+      source: 'ai-generated',
+      is_verified: false,
+      is_recipe: false,
+      category: 'ingrediente',
+    };
 
-  logStep('Saved successfully', { id: data.id });
-  return data;
+    const { data, error } = await supabase
+      .from('foods')
+      .insert(insertData)
+      .select()
+      .single();
+
+    if (!error && data) {
+      savedFoods.push(data);
+    }
+  }
+  
+  logStep('Saved AI foods to database', { count: savedFoods.length });
+  return savedFoods;
 }
 
 serve(async (req) => {
@@ -255,17 +246,14 @@ serve(async (req) => {
     const normalizedQuery = normalizeText(query);
     const upperCountry = country.toUpperCase();
     
-    // Get preferred sources for the user's country
     const preferredSources = COUNTRY_SOURCE_PRIORITY[upperCountry] || COUNTRY_SOURCE_PRIORITY['BR'];
-    const preferredCuisines = COUNTRY_CUISINE_MAP[upperCountry] || COUNTRY_CUISINE_MAP['BR'];
     
     logStep('Starting lookup', { query, normalizedQuery, country: upperCountry, preferredSources });
 
-    // Step 1: Search in verified local foods - prioritize by country sources
-    let localFoods: any[] = [];
-    
-    // First, try to find foods from preferred sources - prioritize "starts with" matches
-    const { data: priorityFoods, error: priorityError } = await supabase
+    let allFoods: any[] = [];
+
+    // STEP 1: Search "starts with" in preferred sources
+    const { data: startsWithPriority } = await supabase
       .from('foods')
       .select('*')
       .eq('is_verified', true)
@@ -275,38 +263,100 @@ serve(async (req) => {
       .order('name')
       .limit(limit);
 
-    if (!priorityError && priorityFoods && priorityFoods.length > 0) {
-      // Filter out prepared dishes
-      localFoods = priorityFoods.filter(f => !isPreparedDish(f));
-      logStep('Found in priority sources', { count: priorityFoods.length, afterFilter: localFoods.length, sources: preferredSources });
+    if (startsWithPriority && startsWithPriority.length > 0) {
+      const filtered = startsWithPriority.filter(f => !isPreparedDish(f));
+      allFoods = [...allFoods, ...filtered];
+      logStep('Found starts-with in priority sources', { count: filtered.length });
     }
-    
-    // If not enough results, also search by cuisine_origin
-    if (localFoods.length < limit) {
-      const { data: cuisineFoods } = await supabase
+
+    // STEP 2: If not enough, search "starts with" in ALL sources (no source filter)
+    if (allFoods.length < limit) {
+      const { data: startsWithAll } = await supabase
         .from('foods')
         .select('*')
         .eq('is_verified', true)
         .eq('is_recipe', false)
-        .in('cuisine_origin', preferredCuisines)
         .or(`name_normalized.ilike.${normalizedQuery}%,name.ilike.${query}%`)
         .order('name')
-        .limit((limit - localFoods.length) * 2); // Fetch more to account for filtering
-      
-      if (cuisineFoods && cuisineFoods.length > 0) {
-        // Merge without duplicates, filtering out prepared dishes
-        const existingIds = new Set(localFoods.map(f => f.id));
-        const newFoods = cuisineFoods
+        .limit(limit * 2);
+
+      if (startsWithAll && startsWithAll.length > 0) {
+        const existingIds = new Set(allFoods.map(f => f.id));
+        const newFoods = startsWithAll
           .filter(f => !existingIds.has(f.id))
           .filter(f => !isPreparedDish(f));
-        localFoods = [...localFoods, ...newFoods];
-        logStep('Added cuisine-based results', { added: newFoods.length });
+        allFoods = [...allFoods, ...newFoods];
+        logStep('Found starts-with in all sources', { added: newFoods.length });
       }
     }
 
-    if (localFoods.length > 0) {
-      const finalResults = localFoods.slice(0, limit);
-      logStep('Returning local results', { count: finalResults.length });
+    // STEP 3: If still not enough, try "contains" search in preferred sources
+    if (allFoods.length < limit) {
+      const { data: containsPriority } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('is_verified', true)
+        .eq('is_recipe', false)
+        .in('source', preferredSources)
+        .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
+        .order('name')
+        .limit(limit * 2);
+
+      if (containsPriority && containsPriority.length > 0) {
+        const existingIds = new Set(allFoods.map(f => f.id));
+        const newFoods = containsPriority
+          .filter(f => !existingIds.has(f.id))
+          .filter(f => !isPreparedDish(f));
+        allFoods = [...allFoods, ...newFoods];
+        logStep('Found contains in priority sources', { added: newFoods.length });
+      }
+    }
+
+    // STEP 4: If still not enough, try "contains" in ALL sources
+    if (allFoods.length < limit) {
+      const { data: containsAll } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('is_verified', true)
+        .eq('is_recipe', false)
+        .or(`name_normalized.ilike.%${normalizedQuery}%,name.ilike.%${query}%`)
+        .order('name')
+        .limit(limit * 2);
+
+      if (containsAll && containsAll.length > 0) {
+        const existingIds = new Set(allFoods.map(f => f.id));
+        const newFoods = containsAll
+          .filter(f => !existingIds.has(f.id))
+          .filter(f => !isPreparedDish(f));
+        allFoods = [...allFoods, ...newFoods];
+        logStep('Found contains in all sources', { added: newFoods.length });
+      }
+    }
+
+    // STEP 5: Search in ingredient aliases
+    if (allFoods.length < limit) {
+      const { data: aliasResults } = await supabase
+        .from('ingredient_aliases')
+        .select('food_id, alias, foods!inner(*)')
+        .or(`alias.ilike.${normalizedQuery}%,alias.ilike.%${normalizedQuery}%`)
+        .limit(limit);
+
+      if (aliasResults && aliasResults.length > 0) {
+        const existingIds = new Set(allFoods.map(f => f.id));
+        const aliasFoods = aliasResults
+          .map((a: any) => a.foods)
+          .filter((f: any) => f && f.is_verified && !existingIds.has(f.id))
+          .filter((f: any) => !isPreparedDish(f));
+        
+        allFoods = [...allFoods, ...aliasFoods];
+        logStep('Found via alias', { added: aliasFoods.length });
+      }
+    }
+
+    // Return results if we have any
+    if (allFoods.length > 0) {
+      const finalResults = allFoods.slice(0, limit);
+      logStep('Returning database results', { count: finalResults.length });
       return new Response(
         JSON.stringify({ 
           results: finalResults, 
@@ -317,69 +367,20 @@ serve(async (req) => {
       );
     }
 
-    // Step 2: Search in ingredient aliases - starts with match
-    const { data: aliasResults } = await supabase
-      .from('ingredient_aliases')
-      .select('food_id, alias, foods!inner(*)')
-      .ilike('alias', `${normalizedQuery}%`)
-      .limit(limit);
-
-    if (aliasResults && aliasResults.length > 0) {
-      // Filter aliases to prefer foods from user's country sources, excluding prepared dishes
-      const foods = aliasResults
-        .map((a: any) => a.foods)
-        .filter((f: any) => f && f.is_verified)
-        .filter((f: any) => !isPreparedDish(f))
-        .filter((f: any) => {
-          // Prioritize foods from preferred sources
-          return preferredSources.includes(f.source) || preferredCuisines.includes(f.cuisine_origin);
-        });
+    // STEP 6: No database results - use AI to generate suggestions
+    logStep('No database results, trying AI suggestions');
+    const aiSuggestions = await generateAIFoodSuggestions(query, upperCountry);
+    
+    if (aiSuggestions.length > 0) {
+      const savedFoods = await saveAIFoodsToDatabase(supabase, aiSuggestions, upperCountry);
       
-      if (foods.length > 0) {
-        logStep('Found via alias', { count: foods.length });
+      if (savedFoods.length > 0) {
+        logStep('Returning AI-generated results', { count: savedFoods.length });
         return new Response(
           JSON.stringify({ 
-            results: foods.slice(0, limit), 
-            source: 'alias',
-            count: Math.min(foods.length, limit)
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      
-      // If no country-specific aliases, return general alias results
-      const generalFoods = aliasResults
-        .map((a: any) => a.foods)
-        .filter((f: any) => f && f.is_verified)
-        .filter((f: any) => !isPreparedDish(f));
-      
-      if (generalFoods.length > 0) {
-        logStep('Found via alias (general)', { count: generalFoods.length });
-        return new Response(
-          JSON.stringify({ 
-            results: generalFoods.slice(0, limit), 
-            source: 'alias',
-            count: Math.min(generalFoods.length, limit)
-          }),
-          { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Step 3: For non-US countries, do NOT fallback to USDA to avoid English results
-    // Only use USDA fallback for US users
-    if (upperCountry === 'US') {
-      logStep('No local results, trying USDA API (US user)');
-      const usdaResult = await searchUSDA(query);
-
-      if (usdaResult) {
-        const savedFood = await saveToDatabase(supabase, usdaResult);
-        logStep('Returning USDA result', { name: savedFood.name });
-        return new Response(
-          JSON.stringify({ 
-            results: [savedFood], 
-            source: 'usda',
-            count: 1 
+            results: savedFoods.slice(0, limit), 
+            source: 'ai',
+            count: Math.min(savedFoods.length, limit)
           }),
           { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );

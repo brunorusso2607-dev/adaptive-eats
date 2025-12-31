@@ -21,21 +21,12 @@ const COUNTRIES = [
   { code: "PT", name: "Portugal", flag: "🇵🇹" },
   { code: "MX", name: "México", flag: "🇲🇽" },
   { code: "AR", name: "Argentina", flag: "🇦🇷" },
-  { code: "JP", name: "Japão", flag: "🇯🇵" },
   { code: "IT", name: "Itália", flag: "🇮🇹" },
   { code: "FR", name: "França", flag: "🇫🇷" },
   { code: "DE", name: "Alemanha", flag: "🇩🇪" },
   { code: "ES", name: "Espanha", flag: "🇪🇸" },
   { code: "GB", name: "Reino Unido", flag: "🇬🇧" },
   { code: "CO", name: "Colômbia", flag: "🇨🇴" },
-  { code: "CL", name: "Chile", flag: "🇨🇱" },
-  { code: "PE", name: "Peru", flag: "🇵🇪" },
-  { code: "IN", name: "Índia", flag: "🇮🇳" },
-  { code: "CN", name: "China", flag: "🇨🇳" },
-  { code: "KR", name: "Coreia do Sul", flag: "🇰🇷" },
-  { code: "TH", name: "Tailândia", flag: "🇹🇭" },
-  { code: "VN", name: "Vietnã", flag: "🇻🇳" },
-  { code: "AU", name: "Austrália", flag: "🇦🇺" },
 ];
 
 export default function Settings() {

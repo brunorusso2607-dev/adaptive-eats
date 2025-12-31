@@ -345,10 +345,23 @@ ${mealPromptRules}
     "carbs": carboidratos_proporcionais_à_gramagem,
     "fat": gordura_proporcional_à_gramagem,
     "reason": "Substituto de ${mealTypeInfo.labelPt}, igualando ${mainMacro}. Gramagem calculada.",
-    "isFlexible": false
+    "isFlexible": false,
+    "instructions": [
+      "Passo 1 do preparo em linguagem natural e humanizada.",
+      "Passo 2 do preparo.",
+      "Passo 3 (se necessário)."
+    ]
   }
 ]
 ${isFlexibleDiet ? '\nIMPORTANTE: As primeiras 3 opções devem ser saudáveis (isFlexible: false).\nAs últimas 2 opções devem ser comfort foods (isFlexible: true).' : ''}
+
+===== REGRAS PARA INSTRUÇÕES DE PREPARO =====
+- Gerar 2-4 passos simples e humanizados para cada substituto
+- Usar linguagem natural e acessível (como uma conversa)
+- Incluir dicas práticas quando relevante
+- Exemplo RUIM: "Grelhar 150g de frango por 8 minutos de cada lado a 180°C"
+- Exemplo BOM: "Grelhe o filé em fogo médio até dourar, cerca de 4 minutos de cada lado."
+- Se for item pronto (fruta, iogurte), usar instrução simples como "Sirva gelado." ou "Descasque e fatie."
 
 ===== VERIFICAÇÃO ANTES DE RETORNAR =====
 Para CADA substituto, verifique:
@@ -358,6 +371,7 @@ Para CADA substituto, verifique:
 □ O name usa medida caseira (SEM "Xg")?
 □ Respeita TODAS as restrições do usuário?
 □ É acessível (custo/disponibilidade similar)?
+□ As instruções são humanizadas e práticas?
 
 Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos que passem em TODAS as verificações.`;
 

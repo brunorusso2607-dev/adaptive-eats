@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ArrowLeft, ShoppingCart, Download, Share2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
+import { useUserCountry } from "@/hooks/useUserCountry";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -43,8 +44,24 @@ type AggregatedIngredient = {
   checked: boolean;
 };
 
+// Country-specific UI text
+const COUNTRY_TEXT: Record<string, { title: string; subtitle: string; progress: string; items: string; copy: string; share: string; tip: string }> = {
+  'BR': { title: 'Lista de Compras', subtitle: 'Toque nos itens para marcá-los como comprados', progress: 'Progresso', items: 'itens', copy: 'Copiar', share: 'Compartilhar', tip: '💡 Toque nos itens para marcá-los como comprados' },
+  'PT': { title: 'Lista de Compras', subtitle: 'Toque nos itens para os marcar como comprados', progress: 'Progresso', items: 'itens', copy: 'Copiar', share: 'Partilhar', tip: '💡 Toque nos itens para os marcar como comprados' },
+  'US': { title: 'Shopping List', subtitle: 'Tap items to mark them as purchased', progress: 'Progress', items: 'items', copy: 'Copy', share: 'Share', tip: '💡 Tap items to mark them as purchased' },
+  'GB': { title: 'Shopping List', subtitle: 'Tap items to mark them as purchased', progress: 'Progress', items: 'items', copy: 'Copy', share: 'Share', tip: '💡 Tap items to mark them as purchased' },
+  'MX': { title: 'Lista de Compras', subtitle: 'Toca los artículos para marcarlos como comprados', progress: 'Progreso', items: 'artículos', copy: 'Copiar', share: 'Compartir', tip: '💡 Toca los artículos para marcarlos como comprados' },
+  'ES': { title: 'Lista de la Compra', subtitle: 'Toca los artículos para marcarlos como comprados', progress: 'Progreso', items: 'artículos', copy: 'Copiar', share: 'Compartir', tip: '💡 Toca los artículos para marcarlos como comprados' },
+  'FR': { title: 'Liste de Courses', subtitle: 'Appuyez sur les articles pour les marquer comme achetés', progress: 'Progression', items: 'articles', copy: 'Copier', share: 'Partager', tip: '💡 Appuyez sur les articles pour les marquer comme achetés' },
+  'DE': { title: 'Einkaufsliste', subtitle: 'Tippen Sie auf Artikel, um sie als gekauft zu markieren', progress: 'Fortschritt', items: 'Artikel', copy: 'Kopieren', share: 'Teilen', tip: '💡 Tippen Sie auf Artikel, um sie als gekauft zu markieren' },
+  'IT': { title: 'Lista della Spesa', subtitle: 'Tocca gli articoli per contrassegnarli come acquistati', progress: 'Progresso', items: 'articoli', copy: 'Copia', share: 'Condividi', tip: '💡 Tocca gli articoli per contrassegnarli come acquistati' },
+};
+
 export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
+  const { country } = useUserCountry();
+  
+  const text = COUNTRY_TEXT[country || 'BR'] || COUNTRY_TEXT['BR'];
 
   // Aggregate ingredients from all meals
   const aggregatedIngredients = useMemo(() => {
@@ -114,16 +131,16 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
   };
 
   const handleExportText = () => {
-    const text = aggregatedIngredients
+    const text_content = aggregatedIngredients
       .map(ing => `${ing.checked ? "✓" : "○"} ${ing.item}: ${formatQuantities(ing.quantities)}`)
       .join("\n");
     
-    navigator.clipboard.writeText(text);
-    toast.success("Lista copiada para a área de transferência!");
+    navigator.clipboard.writeText(text_content);
+    toast.success(country === 'US' || country === 'GB' ? "List copied to clipboard!" : country === 'MX' || country === 'ES' ? "¡Lista copiada!" : country === 'FR' ? "Liste copiée!" : country === 'DE' ? "Liste kopiert!" : country === 'IT' ? "Lista copiata!" : "Lista copiada para a área de transferência!");
   };
 
   const handleShare = async () => {
-    const text = `Lista de Compras - ${mealPlan.name}\n\n` +
+    const shareText = `${text.title} - ${mealPlan.name}\n\n` +
       aggregatedIngredients
         .filter(ing => !ing.checked)
         .map(ing => `• ${ing.item}: ${formatQuantities(ing.quantities)}`)
@@ -131,14 +148,14 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
 
     if (navigator.share) {
       try {
-        await navigator.share({ title: `Lista de Compras - ${mealPlan.name}`, text });
+        await navigator.share({ title: `${text.title} - ${mealPlan.name}`, text: shareText });
       } catch (err) {
-        navigator.clipboard.writeText(text);
-        toast.success("Lista copiada para a área de transferência!");
+        navigator.clipboard.writeText(shareText);
+        toast.success(country === 'US' || country === 'GB' ? "List copied to clipboard!" : country === 'MX' || country === 'ES' ? "¡Lista copiada!" : "Lista copiada!");
       }
     } else {
-      navigator.clipboard.writeText(text);
-      toast.success("Lista copiada para a área de transferência!");
+      navigator.clipboard.writeText(shareText);
+      toast.success(country === 'US' || country === 'GB' ? "List copied to clipboard!" : country === 'MX' || country === 'ES' ? "¡Lista copiada!" : "Lista copiada!");
     }
   };
 
@@ -157,7 +174,7 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
           <div>
             <h2 className="font-display text-2xl font-bold text-foreground flex items-center gap-2">
               <ShoppingCart className="w-6 h-6 text-primary" />
-              Lista de Compras
+              {text.title}
             </h2>
             <p className="text-sm text-muted-foreground">{mealPlan.name}</p>
           </div>
@@ -165,16 +182,30 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={handleExportText}>
             <Download className="w-4 h-4 mr-2" />
-            Copiar
+            {text.copy}
           </Button>
           <Button variant="outline" size="sm" onClick={handleShare}>
             <Share2 className="w-4 h-4 mr-2" />
-            Compartilhar
+            {text.share}
           </Button>
         </div>
       </div>
 
       {/* Progress */}
+      <Card className="glass-card border-primary/20">
+        <CardContent className="p-4">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium">{text.progress}</span>
+            <Badge variant="secondary">{checkedCount} {country === 'DE' ? 'von' : country === 'FR' ? 'sur' : country === 'IT' ? 'di' : country === 'US' || country === 'GB' ? 'of' : 'de'} {totalCount} {text.items}</Badge>
+          </div>
+          <div className="h-3 bg-muted rounded-full overflow-hidden">
+            <div 
+              className="h-full gradient-primary transition-all duration-300"
+              style={{ width: `${progress}%` }}
+            />
+          </div>
+        </CardContent>
+      </Card>
       <Card className="glass-card border-primary/20">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
@@ -226,7 +257,7 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
 
       {/* Info */}
       <p className="text-xs text-center text-muted-foreground">
-        💡 Toque nos itens para marcá-los como comprados
+        {text.tip}
       </p>
     </div>
   );

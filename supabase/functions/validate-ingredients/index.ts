@@ -16,6 +16,19 @@ const normalizeIngredients = (ingredients: string[]): string[] => {
   return [...ingredients].map(i => i.toLowerCase().trim()).sort();
 };
 
+// Country-specific language config for validation messages
+const COUNTRY_VALIDATION_CONFIG: Record<string, { lang: string; invalidMsg: string; validExamples: string }> = {
+  'BR': { lang: 'português brasileiro', invalidMsg: 'Combinação inválida', validExamples: 'Arroz + Feijão + Carne, Iogurte + Frutas + Granola' },
+  'PT': { lang: 'português europeu', invalidMsg: 'Combinação inválida', validExamples: 'Bacalhau + Batatas + Azeite, Iogurte + Fruta + Mel' },
+  'US': { lang: 'English', invalidMsg: 'Invalid combination', validExamples: 'Rice + Beans + Meat, Yogurt + Fruits + Granola' },
+  'GB': { lang: 'British English', invalidMsg: 'Invalid combination', validExamples: 'Potatoes + Beef + Gravy, Porridge + Berries + Honey' },
+  'MX': { lang: 'español mexicano', invalidMsg: 'Combinación inválida', validExamples: 'Arroz + Frijoles + Carne, Yogurt + Frutas + Granola' },
+  'ES': { lang: 'español', invalidMsg: 'Combinación inválida', validExamples: 'Arroz + Pollo + Verduras, Yogur + Frutas + Cereales' },
+  'FR': { lang: 'français', invalidMsg: 'Combinaison invalide', validExamples: 'Riz + Poulet + Légumes, Yaourt + Fruits + Granola' },
+  'DE': { lang: 'Deutsch', invalidMsg: 'Ungültige Kombination', validExamples: 'Reis + Hähnchen + Gemüse, Joghurt + Obst + Müsli' },
+  'IT': { lang: 'italiano', invalidMsg: 'Combinazione non valida', validExamples: 'Riso + Pollo + Verdure, Yogurt + Frutta + Muesli' },
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -23,9 +36,9 @@ serve(async (req) => {
   }
 
   try {
-    const { ingredients, newIngredient } = await req.json();
+    const { ingredients, newIngredient, country: requestCountry } = await req.json();
     
-    logStep('Request received', { ingredients, newIngredient });
+    logStep('Request received', { ingredients, newIngredient, country: requestCountry });
 
     if (!ingredients || !Array.isArray(ingredients)) {
       return new Response(
@@ -55,14 +68,29 @@ serve(async (req) => {
     const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Extrair user_id do token se disponível
+    // Extrair user_id e country do token se disponível
     let userId: string | null = null;
+    let userCountry = requestCountry || 'BR';
     const authHeader = req.headers.get('authorization');
     if (authHeader) {
       const token = authHeader.replace('Bearer ', '');
       const { data: { user } } = await supabase.auth.getUser(token);
       userId = user?.id || null;
+      
+      // Fetch user's country from profile
+      if (userId) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('country')
+          .eq('id', userId)
+          .maybeSingle();
+        if (profile?.country) {
+          userCountry = profile.country;
+        }
+      }
     }
+    
+    const validationConfig = COUNTRY_VALIDATION_CONFIG[userCountry] || COUNTRY_VALIDATION_CONFIG['BR'];
 
     // Buscar no histórico de validações
     const normalizedIngredients = normalizeIngredients(allIngredients);
@@ -109,31 +137,29 @@ serve(async (req) => {
     // Buscar API key do Gemini do banco de dados
     const geminiApiKey = await getGeminiApiKey();
 
-    const systemPrompt = `Você é um chef experiente e crítico que avalia combinações de ingredientes para receitas.
+    const systemPrompt = `You are an experienced and critical chef who evaluates ingredient combinations for recipes.
+Your task is to RIGOROUSLY analyze if a list of ingredients makes sense together to create a real and coherent recipe.
+IMPORTANT: All messages and suggestions MUST be in ${validationConfig.lang}.
 
-Sua tarefa é analisar RIGOROSAMENTE se uma lista de ingredientes faz sentido juntos para criar uma receita real e coerente.
+EVALUATION RULES (be rigorous):
+1. Ingredients must have CLEAR CULINARY COHERENCE - they must form a recognizable real dish
+2. FORBIDDEN to mix sweet with savory inappropriately (e.g., steak with condensed milk = INVALID)
+3. Ingredients from VERY different cuisines that don't combine = INVALID
+4. BEVERAGES like coffee, tea, juice should NOT be mixed as ingredients in dishes that are not beverages
+5. Fruits in savory dishes are valid ONLY when traditional (e.g., pineapple with pork)
+6. If an ingredient seems "out of context" or "random" for the recipe = INVALID
 
-REGRAS DE AVALIAÇÃO (seja rigoroso):
-1. Ingredientes devem ter COERÊNCIA CULINÁRIA CLARA - devem formar um prato real reconhecível
-2. PROIBIDO misturar doce com salgado de forma descabida (ex: picanha com leite condensado = INVÁLIDO)
-3. Ingredientes de culinárias MUITO diferentes que não combinam = INVÁLIDO
-4. BEBIDAS como café, chá, suco NÃO devem ser misturados como ingredientes em pratos que não são bebidas
-5. Frutas em pratos salgados são válidas APENAS quando tradicionais (ex: abacaxi com carne de porco)
-6. Se um ingrediente parece "fora de contexto" ou "aleatório" para a receita = INVÁLIDO
+EXAMPLES OF INVALID COMBINATIONS:
+- Coffee + Yogurt + Fruits (coffee is not a yogurt ingredient)
+- Rice + Chocolate (doesn't make culinary sense)
+- Beans + Strawberry (absurd combination)
+- Pasta + Honey (doesn't combine)
 
-EXEMPLOS DE COMBINAÇÕES INVÁLIDAS:
-- Café + Iogurte + Frutas (café não é ingrediente de iogurte)
-- Arroz + Chocolate (não faz sentido culinário)
-- Feijão + Morango (combinação absurda)
-- Macarrão + Mel de abelha (não combina)
-
-EXEMPLOS DE COMBINAÇÕES VÁLIDAS:
-- Iogurte + Frutas vermelhas + Granola + Mel
-- Arroz + Feijão + Carne + Salada
-- Café + Leite + Açúcar (para uma bebida)
+EXAMPLES OF VALID COMBINATIONS:
+- ${validationConfig.validExamples}
 
 ${historicalSuggestions.length > 0 ? `
-SUGESTÕES POPULARES ANTERIORES (considere usar se relevantes):
+POPULAR PREVIOUS SUGGESTIONS (consider using if relevant):
 ${historicalSuggestions.join(', ')}
 ` : ''}
 

@@ -370,21 +370,23 @@ serve(async (req) => {
       );
     }
 
-    // Get user profiles with timezone
+    // Get user profiles with timezone and country
     const userIds = allSettings.map(s => s.user_id);
     const { data: profiles, error: profilesError } = await supabase
       .from("profiles")
-      .select("id, timezone")
+      .select("id, timezone, country")
       .in("id", userIds);
 
     if (profilesError) {
       console.error("[WATER-REMINDER] Error fetching profiles:", profilesError);
     }
 
-    // Create timezone map (default: America/Sao_Paulo)
+    // Create timezone and country maps
     const timezoneMap = new Map<string, string>();
+    const countryMap = new Map<string, string>();
     profiles?.forEach(p => {
       timezoneMap.set(p.id, p.timezone || 'America/Sao_Paulo');
+      countryMap.set(p.id, p.country || 'BR');
     });
 
     // Filter users based on their timezone and reminder hours
@@ -470,23 +472,91 @@ serve(async (req) => {
       if (!userData) continue;
 
       const userTimezone = timezoneMap.get(sub.user_id) || 'America/Sao_Paulo';
+      const userCountry = countryMap.get(sub.user_id) || 'BR';
       const remaining = Math.round((userData.goal - userData.total) / 1000 * 10) / 10;
       const totalLiters = (userData.total / 1000).toFixed(1);
       const goalLiters = (userData.goal / 1000).toFixed(1);
       
-      const messages = [
-        `Você bebeu ${totalLiters}L de ${goalLiters}L. Faltam ${remaining}L!`,
-        `Hora de se hidratar! Ainda faltam ${remaining}L para sua meta.`,
-        `Lembrete: beba água! Meta de hoje: ${remaining}L restantes.`,
-        `${userData.percentage}% da meta atingida. Beba mais ${remaining}L!`,
-      ];
+      // Country-specific message templates
+      const WATER_MESSAGES: Record<string, { title: string; messages: string[] }> = {
+        'BR': { 
+          title: '💧 Hora de beber água!',
+          messages: [
+            `Você bebeu ${totalLiters}L de ${goalLiters}L. Faltam ${remaining}L!`,
+            `Hora de se hidratar! Ainda faltam ${remaining}L para sua meta.`,
+            `Lembrete: beba água! Meta de hoje: ${remaining}L restantes.`,
+            `${userData.percentage}% da meta atingida. Beba mais ${remaining}L!`,
+          ]
+        },
+        'PT': { 
+          title: '💧 Hora de beber água!',
+          messages: [
+            `Bebeu ${totalLiters}L de ${goalLiters}L. Faltam ${remaining}L!`,
+            `Hora de se hidratar! Ainda faltam ${remaining}L para a sua meta.`,
+            `Lembrete: beba água! Meta de hoje: ${remaining}L restantes.`,
+          ]
+        },
+        'US': { 
+          title: '💧 Time to drink water!',
+          messages: [
+            `You drank ${totalLiters}L of ${goalLiters}L. ${remaining}L to go!`,
+            `Stay hydrated! You still need ${remaining}L to reach your goal.`,
+            `Reminder: drink water! Today's goal: ${remaining}L remaining.`,
+            `${userData.percentage}% of goal reached. Drink ${remaining}L more!`,
+          ]
+        },
+        'GB': { 
+          title: '💧 Time to drink water!',
+          messages: [
+            `You've drunk ${totalLiters}L of ${goalLiters}L. ${remaining}L to go!`,
+            `Stay hydrated! You still need ${remaining}L to reach your goal.`,
+          ]
+        },
+        'MX': { 
+          title: '💧 ¡Hora de beber agua!',
+          messages: [
+            `Bebiste ${totalLiters}L de ${goalLiters}L. ¡Faltan ${remaining}L!`,
+            `¡Hora de hidratarte! Aún faltan ${remaining}L para tu meta.`,
+            `Recordatorio: ¡bebe agua! Meta de hoy: ${remaining}L restantes.`,
+          ]
+        },
+        'ES': { 
+          title: '💧 ¡Hora de beber agua!',
+          messages: [
+            `Has bebido ${totalLiters}L de ${goalLiters}L. ¡Faltan ${remaining}L!`,
+            `¡Hora de hidratarte! Aún faltan ${remaining}L para tu meta.`,
+          ]
+        },
+        'FR': { 
+          title: "💧 C'est l'heure de boire de l'eau!",
+          messages: [
+            `Vous avez bu ${totalLiters}L sur ${goalLiters}L. Il reste ${remaining}L!`,
+            `Restez hydraté! Il vous reste ${remaining}L pour atteindre votre objectif.`,
+          ]
+        },
+        'DE': { 
+          title: '💧 Zeit, Wasser zu trinken!',
+          messages: [
+            `Sie haben ${totalLiters}L von ${goalLiters}L getrunken. Noch ${remaining}L!`,
+            `Bleiben Sie hydratisiert! Sie brauchen noch ${remaining}L für Ihr Ziel.`,
+          ]
+        },
+        'IT': { 
+          title: "💧 È ora di bere acqua!",
+          messages: [
+            `Hai bevuto ${totalLiters}L di ${goalLiters}L. Mancano ${remaining}L!`,
+            `Resta idratato! Ti mancano ancora ${remaining}L per raggiungere il tuo obiettivo.`,
+          ]
+        },
+      };
       
-      const message = messages[Math.floor(Math.random() * messages.length)];
+      const msgConfig = WATER_MESSAGES[userCountry] || WATER_MESSAGES['BR'];
+      const message = msgConfig.messages[Math.floor(Math.random() * msgConfig.messages.length)];
 
       // First, insert the notification to get its ID
       const { data: insertedNotif } = await supabase.from("notifications").insert({
         user_id: sub.user_id,
-        title: "💧 Hora de beber água!",
+        title: msgConfig.title,
         message: message,
         type: "reminder",
         action_url: "/dashboard",
@@ -500,7 +570,7 @@ serve(async (req) => {
         .eq("is_read", false);
 
       const pushPayload = {
-        title: "💧 Hora de beber água!",
+        title: msgConfig.title,
         body: message,
         icon: "/icons/icon-192x192.png",
         badge: "/icons/icon-72x72.png",
@@ -513,7 +583,7 @@ serve(async (req) => {
         },
         actions: [
           { action: "add-water", title: "💧 +250ml" },
-          { action: "dismiss", title: "Depois" },
+          { action: "dismiss", title: userCountry === 'US' || userCountry === 'GB' ? "Later" : userCountry === 'MX' || userCountry === 'ES' ? "Después" : userCountry === 'FR' ? "Plus tard" : userCountry === 'DE' ? "Später" : userCountry === 'IT' ? "Dopo" : "Depois" },
         ],
       };
 

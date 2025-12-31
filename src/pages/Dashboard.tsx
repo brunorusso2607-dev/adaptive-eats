@@ -25,6 +25,7 @@ import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav
 import RecipeCategorySheet from "@/components/RecipeCategorySheet";
 import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
 import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
+import DirectCameraCapture from "@/components/DirectCameraCapture";
 import PendingMealsList from "@/components/PendingMealsList";
 import FreeFormMealLogger from "@/components/FreeFormMealLogger";
 import MealHistoryPage from "@/components/MealHistoryPage";
@@ -133,6 +134,8 @@ export default function Dashboard() {
   const [showCategorySheet, setShowCategorySheet] = useState(false);
   const [showFoodAnalyzer, setShowFoodAnalyzer] = useState(false);
   const [selectedPhotoMode, setSelectedPhotoMode] = useState<PhotoMode | null>(null);
+  const [pendingCameraMode, setPendingCameraMode] = useState<PhotoMode | null>(null);
+  const [capturedImageBase64, setCapturedImageBase64] = useState<string | null>(null);
   const [showPlanSheet, setShowPlanSheet] = useState(false);
   const [showFreeFormLogger, setShowFreeFormLogger] = useState(false);
   const [showMealPlanGenerator, setShowMealPlanGenerator] = useState(false);
@@ -647,6 +650,8 @@ export default function Dashboard() {
     setShowProfileSheet(false);
     setShowFoodAnalyzer(false);
     setSelectedPhotoMode(null);
+    setPendingCameraMode(null);
+    setCapturedImageBase64(null);
   };
 
   // Check if we're in a sub-view that needs a back button
@@ -673,6 +678,8 @@ export default function Dashboard() {
     setShowWeightHistory(false);
     setShowProfileSheet(false);
     setSelectedPhotoMode(null);
+    setPendingCameraMode(null);
+    setCapturedImageBase64(null);
     setShowFoodAnalyzer(false);
     
     if (tab === "meal-plan") {
@@ -848,14 +855,36 @@ export default function Dashboard() {
                 }}
               />
             ) : showFoodAnalyzer ? (
+              // Check if we have a captured image to pass to analyzer
               selectedPhotoMode ? (
                 <FoodPhotoAnalyzer 
                   initialMode={selectedPhotoMode} 
-                  hideModeTabs={true} 
+                  hideModeTabs={true}
+                  initialImage={capturedImageBase64 || undefined}
+                />
+              ) : pendingCameraMode ? (
+                // Direct camera capture - triggers native camera immediately
+                <DirectCameraCapture
+                  onCapture={(base64) => {
+                    setCapturedImageBase64(base64);
+                    setSelectedPhotoMode(pendingCameraMode);
+                    setPendingCameraMode(null);
+                  }}
+                  onCancel={() => {
+                    setPendingCameraMode(null);
+                  }}
                 />
               ) : (
                 <PhotoModeSelector 
-                  onSelectMode={(mode) => setSelectedPhotoMode(mode)}
+                  onSelectMode={(mode) => {
+                    if (mode === "fridge") {
+                      // Fridge mode goes directly to FridgeScanner component
+                      setSelectedPhotoMode(mode);
+                    } else {
+                      // Food and Label modes trigger direct camera capture
+                      setPendingCameraMode(mode);
+                    }
+                  }}
                 />
               )
             ) : showWeightHistory && weightData?.weight_goal ? (

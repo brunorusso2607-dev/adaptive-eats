@@ -587,7 +587,33 @@ OBRIGATÓRIO:
       
       console.log('[PROMPT-VALIDATION] Clean JSON:', cleanJson.substring(0, 300));
       
-      generatedMeal = JSON.parse(cleanJson);
+      let parsedJson = JSON.parse(cleanJson);
+      
+      // ==== EXTRAIR A REFEIÇÃO CORRETA ====
+      // A IA às vezes retorna o formato completo de plano em vez do formato simples
+      // Precisamos extrair a refeição individual em ambos os casos
+      
+      if (parsedJson.meals && Array.isArray(parsedJson.meals)) {
+        // Formato: { day: 1, meals: [{ meal_type, options: [{title, foods}] }] }
+        console.log('[PROMPT-VALIDATION] Detected full plan format, extracting meal...');
+        const targetMeal = parsedJson.meals.find((m: any) => m.meal_type === mealType) || parsedJson.meals[0];
+        if (targetMeal?.options && Array.isArray(targetMeal.options) && targetMeal.options.length > 0) {
+          generatedMeal = targetMeal.options[0];
+          console.log('[PROMPT-VALIDATION] Extracted meal from options:', JSON.stringify(generatedMeal).substring(0, 200));
+        } else if (targetMeal?.title || targetMeal?.nome) {
+          // A refeição está diretamente no objeto
+          generatedMeal = targetMeal;
+        } else {
+          generatedMeal = parsedJson;
+        }
+      } else if (parsedJson.options && Array.isArray(parsedJson.options)) {
+        // Formato: { meal_type, options: [{title, foods}] }
+        console.log('[PROMPT-VALIDATION] Detected meal with options format...');
+        generatedMeal = parsedJson.options[0];
+      } else {
+        // Formato simples esperado: { title, foods, instructions, calories_kcal }
+        generatedMeal = parsedJson;
+      }
       
       // Normalizar campos se necessário (pt -> en)
       if (!generatedMeal.title && generatedMeal.nome) {
@@ -609,7 +635,21 @@ OBRIGATÓRIO:
           name: f.name || f.nome || '',
           grams: f.grams || f.gramas || 0,
         }));
+      } else {
+        generatedMeal.foods = [];
       }
+      
+      // Garantir que instructions seja array
+      if (!Array.isArray(generatedMeal.instructions)) {
+        generatedMeal.instructions = [];
+      }
+      
+      console.log('[PROMPT-VALIDATION] Final meal:', JSON.stringify({
+        title: generatedMeal.title,
+        foodsCount: generatedMeal.foods?.length,
+        instructionsCount: generatedMeal.instructions?.length,
+        calories: generatedMeal.calories_kcal
+      }));
       
     } catch (e) {
       console.error('[PROMPT-VALIDATION] Failed to parse AI response:', rawText);

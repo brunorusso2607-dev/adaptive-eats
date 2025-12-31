@@ -27,17 +27,39 @@ const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
 
 // Patterns that indicate a prepared dish (not a raw ingredient)
 const PREPARED_DISH_PATTERNS = [
-  'à grega', 'a grega', 'c/ sal', 's/ sal', 'c/sal', 's/sal',
-  'cozido', 'cozida', 'frito', 'frita', 'grelhado', 'grelhada',
-  'assado', 'assada', 'refogado', 'refogada', 'temperado', 'temperada',
-  'com molho', 'ao molho', 'gratinado', 'gratinada', 'empanado', 'empanada',
-  'à milanesa', 'a milanesa', 'à parmegiana', 'a parmegiana',
-  'à dorê', 'a dore', 'à romana', 'a romana', 'à bolonhesa', 'a bolonhesa',
-  'ao alho', 'com alho', 'com cebola', 'com legumes', 'com verduras',
+  // Combinações com "com" ou "c/" indicam pratos prontos
+  ' com ', ' c/ ', ' c/', ' s/ ', ' s/',
+  // Preparo
+  'à grega', 'a grega', 'cozido', 'cozida', 'frito', 'frita', 
+  'grelhado', 'grelhada', 'assado', 'assada', 'refogado', 'refogada', 
+  'temperado', 'temperada', 'ao molho', 'gratinado', 'gratinada', 
+  'empanado', 'empanada', 'à milanesa', 'a milanesa', 
+  'à parmegiana', 'a parmegiana', 'à dorê', 'a dore', 
+  'à romana', 'a romana', 'à bolonhesa', 'a bolonhesa',
   'recheado', 'recheada', 'preparado', 'preparada', 'pronto', 'pronta',
-  'caseiro', 'caseira', 'tradicional', 'típico', 'típica',
+  'caseiro', 'caseira', 'tradicional',
+  // Pratos típicos
+  'chop suey', 'chopsuey', 'risoto', 'risotto', 'paella', 'feijoada',
+  'strogonoff', 'stroganoff', 'yakisoba', 'yakissoba', 'carbonara',
+  'lasanha', 'lasagna', 'macarronada', 'espaguete à', 'espaguete a',
+  'moqueca', 'bobó', 'vatapá', 'acarajé', 'escondidinho',
+  'virado', 'tutu', 'tropeiro', 'baião', 'galinhada', 'canjica',
+  'cuscuz paulista', 'cuscuz nordestino', 'torta de',
+  // English patterns
   'cooked', 'fried', 'grilled', 'baked', 'roasted', 'sauteed', 'seasoned',
   'with sauce', 'with gravy', 'stuffed', 'prepared', 'homemade',
+  'casserole', 'stew', 'soup', 'curry', 'stir-fry',
+];
+
+// Ingredients that should NEVER be filtered out even if they match patterns
+const SAFE_RAW_INGREDIENTS = [
+  'arroz', 'arroz integral', 'arroz parboilizado', 'arroz branco',
+  'arroz arbóreo', 'arroz basmati', 'arroz jasmine', 'arroz selvagem',
+  'arroz agulhinha', 'arroz cateto', 'arroz negro', 'arroz vermelho',
+  'feijão', 'feijão preto', 'feijão carioca', 'feijão branco',
+  'feijão vermelho', 'feijão fradinho', 'feijão roxo', 'feijão rajado',
+  'macarrão', 'espaguete', 'penne', 'fusilli', 'farfalle',
+  'carne', 'frango', 'peixe', 'ovo', 'leite', 'queijo',
 ];
 
 const ALLOWED_PREPARED_CATEGORIES = ['fast-food', 'fast food', 'lanche', 'sanduíche'];
@@ -51,14 +73,48 @@ function normalizeText(text: string): string {
 }
 
 function isPreparedDish(food: any): boolean {
-  const nameLower = (food.name || '').toLowerCase();
+  const name = food.name || '';
+  const nameLower = name.toLowerCase();
+  const nameNormalized = normalizeText(name);
   const categoryLower = (food.category || '').toLowerCase();
   
+  // Allow fast-food category
   if (ALLOWED_PREPARED_CATEGORIES.some(cat => categoryLower.includes(cat))) {
     return false;
   }
   
-  return PREPARED_DISH_PATTERNS.some(pattern => nameLower.includes(pattern));
+  // Check if it's a safe raw ingredient (exact match or starts with)
+  for (const safe of SAFE_RAW_INGREDIENTS) {
+    const safeNormalized = normalizeText(safe);
+    if (nameNormalized === safeNormalized || nameNormalized.startsWith(safeNormalized + ' ')) {
+      // But if it has "com" or other combo indicators, it's still a prepared dish
+      if (!nameLower.includes(' com ') && !nameLower.includes(' c/') && !nameLower.includes(', c/')) {
+        return false;
+      }
+    }
+  }
+  
+  // Check for prepared dish patterns
+  for (const pattern of PREPARED_DISH_PATTERNS) {
+    if (nameLower.includes(pattern)) {
+      return true;
+    }
+  }
+  
+  // Check for "ingredient + ingredient" combinations (e.g., "Arroz com Feijão")
+  // This pattern: "Food com Food" or "Food, c/ Food" indicates a prepared dish
+  const comboPatterns = [
+    /\w+\s+com\s+\w+/i,    // "X com Y"
+    /\w+,?\s*c\/\s*\w+/i,  // "X, c/ Y" or "X c/ Y"
+  ];
+  
+  for (const regex of comboPatterns) {
+    if (regex.test(nameLower)) {
+      return true;
+    }
+  }
+  
+  return false;
 }
 
 function logStep(step: string, data?: any) {

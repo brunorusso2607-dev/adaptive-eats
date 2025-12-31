@@ -119,58 +119,56 @@ export default function WeekDaySelector({
         </div>
 
         {/* Day Selector */}
-        {showDaySelector && currentWeekData && (
-          <div>
-            <div className="flex items-center justify-between mb-2">
-              <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                Dia
-              </label>
-              <Badge variant="outline" className="text-[10px]">
-                {availableDaysCount} dias disponíveis
-              </Badge>
+        {showDaySelector && currentWeekData && (() => {
+          // Filtrar dias: apenas os que são do mês, não passaram E são >= minDate
+          const filteredDays = currentWeekData.days
+            .map((day, originalIndex) => ({ day, originalIndex }))
+            .filter(({ day }) => 
+              day.isInMonth && (!day.isPast || day.isToday) && !isDayBeforeMinDate(day)
+            );
+
+          return (
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                  Dia
+                </label>
+                <Badge variant="outline" className="text-[10px]">
+                  {filteredDays.length} dias disponíveis
+                </Badge>
+              </div>
+              <div className="flex gap-1 flex-wrap">
+                {filteredDays.map(({ day, originalIndex }) => {
+                  const isSelected = selectedDay === originalIndex;
+                  
+                  return (
+                    <button
+                      key={originalIndex}
+                      onClick={() => onDayChange(originalIndex)}
+                      className={cn(
+                        "flex flex-col items-center py-2 px-3 rounded-lg transition-all text-center min-w-[48px]",
+                        "hover:bg-muted cursor-pointer",
+                        isSelected && "bg-primary text-primary-foreground",
+                        day.isToday && !isSelected && "ring-2 ring-primary ring-offset-1"
+                      )}
+                    >
+                      <span className="text-[10px] font-medium">{DAY_LABELS[originalIndex]}</span>
+                      <span className="text-sm font-bold">
+                        {day.dayOfMonth}
+                      </span>
+                      {day.isToday && (
+                        <span className={cn(
+                          "w-1.5 h-1.5 rounded-full mt-0.5",
+                          isSelected ? "bg-primary-foreground" : "bg-primary"
+                        )} />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
-            <div className="grid grid-cols-7 gap-1">
-              {currentWeekData.days.map((day, index) => {
-                const isBeforeMinDate = isDayBeforeMinDate(day);
-                const isAvailable = day.isInMonth && (!day.isPast || day.isToday) && !isBeforeMinDate;
-                const isSelected = selectedDay === index;
-                
-                return (
-                  <button
-                    key={index}
-                    onClick={() => isAvailable && onDayChange(index)}
-                    disabled={!isAvailable}
-                    className={cn(
-                      "flex flex-col items-center py-2 px-1 rounded-lg transition-all text-center",
-                      isAvailable 
-                        ? "hover:bg-muted cursor-pointer" 
-                        : "opacity-40 cursor-not-allowed",
-                      isSelected && isAvailable && "bg-primary text-primary-foreground",
-                      day.isToday && !isSelected && isAvailable && "ring-2 ring-primary ring-offset-1"
-                    )}
-                  >
-                    <span className="text-[10px] font-medium">{DAY_LABELS[index]}</span>
-                    <span className={cn(
-                      "text-sm font-bold",
-                      !day.isInMonth && "text-muted-foreground/50"
-                    )}>
-                      {day.dayOfMonth}
-                    </span>
-                    {day.isToday && (
-                      <span className={cn(
-                        "w-1.5 h-1.5 rounded-full mt-0.5",
-                        isSelected ? "bg-primary-foreground" : "bg-primary"
-                      )} />
-                    )}
-                    {!isAvailable && day.isInMonth && (
-                      <span className="text-[8px] text-muted-foreground">passou</span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        )}
+          );
+        })()}
       </CardContent>
     </Card>
   );

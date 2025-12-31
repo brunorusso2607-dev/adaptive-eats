@@ -245,7 +245,9 @@ type CategoryInfo = {
 };
 
 const CATEGORIES: CategoryInfo[] = [
-  { key: "intolerances", label: "Intolerâncias", icon: Wheat, description: "Restrições alimentares dos usuários" },
+  { key: "intolerances", label: "Intolerâncias", icon: Wheat, description: "Restrições alimentares por intolerância" },
+  { key: "allergies", label: "Alergias", icon: AlertTriangle, description: "Alergias alimentares severas" },
+  { key: "sensitivities", label: "Sensibilidades", icon: Shield, description: "Sensibilidades alimentares leves" },
   { key: "excluded_ingredients", label: "Alimentos Excluídos", icon: Ban, description: "Sugestões de alimentos que usuários podem não consumir" },
   { key: "dietary_preferences", label: "Preferências Alimentares", icon: Utensils, description: "Tipos de dieta" },
   { key: "nutritional_strategies", label: "Estratégias Nutricionais", icon: Target, description: "Objetivos nutricionais para cálculo de macros" },

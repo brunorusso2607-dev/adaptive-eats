@@ -325,17 +325,27 @@ function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
 
 // ============= INGREDIENTES ESPECÍFICOS PARA VALIDAÇÃO DE INSTRUÇÕES =============
 const INSTRUCTION_INGREDIENT_KEYWORDS = [
-  'tofu', 'abobora', 'abóbora', 'gengibre', 'leite de coco', 'coco',
-  'frango', 'carne', 'peixe', 'salmao', 'salmão', 'atum', 'sardinha',
-  'ovo', 'ovos', 'clara', 'gema', 'omelete',
-  'arroz', 'feijao', 'feijão', 'lentilha', 'quinoa',
+  // Proteínas
+  'tofu', 'frango', 'carne', 'peixe', 'salmao', 'salmão', 'atum', 'sardinha', 'tilapia', 'tilópia',
+  'ovo', 'ovos', 'clara', 'gema', 'omelete', 'camarao', 'camarão',
+  // Cogumelos e vegetais
+  'cogumelo', 'cogumelos', 'champignon', 'shimeji', 'shiitake',
+  'abobora', 'abóbora', 'gengibre', 'coco', 'leite de coco',
   'batata', 'mandioca', 'inhame', 'cenoura', 'abobrinha', 'berinjela',
-  'brocolis', 'brócolis', 'couve', 'espinafre', 'repolho',
-  'torrada', 'pao', 'pão', 'wrap', 'tortilla',
-  'queijo', 'iogurte', 'leite', 'creme',
-  'aveia', 'granola', 'tapioca', 'fuba', 'fubá',
-  'banana', 'maca', 'maçã', 'morango', 'mamao', 'mamão', 'manga', 'laranja',
-  'tomate', 'pepino', 'alface', 'rucula', 'rúcula',
+  'brocolis', 'brócolis', 'couve', 'espinafre', 'repolho', 'vagem',
+  // Grãos e carboidratos
+  'arroz', 'feijao', 'feijão', 'lentilha', 'quinoa', 'grao de bico', 'grão de bico',
+  'torrada', 'pao', 'pão', 'wrap', 'tortilla', 'macarrao', 'macarrão', 'espaguete',
+  // Laticínios
+  'queijo', 'iogurte', 'leite', 'creme', 'requeijao', 'requeijão',
+  // Cereais
+  'aveia', 'granola', 'tapioca', 'fuba', 'fubá', 'chia', 'linhaça',
+  // Frutas
+  'banana', 'maca', 'maçã', 'morango', 'mamao', 'mamão', 'manga', 'laranja', 'abacate', 'melao', 'melão',
+  // Vegetais/Saladas
+  'tomate', 'pepino', 'alface', 'rucula', 'rúcula', 'cebola', 'alho', 'pimentao', 'pimentão',
+  // Oleaginosas
+  'castanha', 'amendoim', 'nozes', 'amendoas', 'amêndoas',
 ];
 
 // ============= VALIDAR E CORRIGIR INSTRUÇÕES =============

@@ -707,165 +707,102 @@ export function getRestrictionText(
   return parts.join('\n');
 }
 
-// ============= PROMPT RULES (SHARED FORMAT) =============
+// ============= PROMPT RULES (VERSÃO HUMANIZADA) =============
 export function getMealPromptRules(language: string = 'pt-BR'): string {
   const isPortuguese = language.startsWith('pt');
   const isSpanish = language.startsWith('es');
 
   if (isPortuguese) {
     return `
-📐 FORMATO DOS ALIMENTOS (foods):
-Cada item: {"name": "QUANTIDADE + ALIMENTO", "grams": NÚMERO}
-- O campo "name" DEVE incluir APENAS medida caseira qualitativa (NUNCA números de gramas)
-- O campo "grams" DEVE ser um NÚMERO PURO (sem "g"): 120, 150, 100
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📐 FORMATO DOS ALIMENTOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚫 REGRA ANTI-DUPLICAÇÃO DE GRAMAGEM (CRÍTICO):
-- NUNCA inclua números de gramas no campo "name" - a gramagem já aparece no campo "grams"
-- ERRADO: "100g de atum em conserva" ❌
-- CERTO: "1 porção de atum em conserva" ✓
+ESTRUTURA: {"name": "descrição humanizada", "grams": número}
 
-🍳 REGRA DE COMPLETUDE CULINÁRIA (CRÍTICO):
-- Gere refeições PRONTAS e COMPLETAS, não ingredientes isolados
-- ERRADO: "3 claras de ovo" (ingrediente cru) ❌
-- CERTO: "Omelete de claras com ervas" ✓
-- ERRADO: "2 fatias de pão" (incompleto) ❌
-- CERTO: "Sanduíche de pão integral com queijo e tomate" ✓
-- ERRADO: "Ovos cozidos" (ingrediente isolado) ❌
-- CERTO: "Salada com ovos cozidos e vegetais" ✓
+✅ EXEMPLOS CORRETOS:
+• {"name": "Filé de frango grelhado com ervas", "grams": 150}
+• {"name": "Arroz integral", "grams": 120}
+• {"name": "Salada verde com tomate e pepino", "grams": 100}
+• {"name": "1 banana média (sobremesa)", "grams": 120}
+• {"name": "1 xícara de chá de camomila", "grams": 200}
 
-🔴🔴🔴 REGRA DE COERÊNCIA TÍTULO-INGREDIENTES (ABSOLUTO - CRÍTICO):
-O título ("title") DEVE corresponder EXATAMENTE ao conteúdo dos ingredientes ("foods").
-- Se o título menciona "Wrap" → foods DEVE conter wrap/tortilla como ingrediente
-- Se o título menciona "Omelete" → foods DEVE conter ovos/claras
-- Se o título menciona "Salada" → foods DEVE conter vegetais folhosos
-- Se o título menciona "Sanduíche" → foods DEVE conter pão
+❌ NUNCA FAZER:
+• {"name": "150g de frango", "grams": 150} → gramagem duplicada no nome
+• {"name": "Mix de frutas", "grams": 200} → quais frutas? Seja específico!
+• {"name": "1 limão", "grams": 50} → para quê? Dê contexto!
 
-EXEMPLOS DE ERROS GRAVES (NUNCA FAZER):
-❌ title: "Wrap integral de frango" mas foods: [{"name": "1 xícara de chá verde", "grams": 200}]
-   ISSO É INVÁLIDO! O título diz "Wrap" mas não há wrap nos ingredientes!
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📝 REGRAS ESSENCIAIS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-❌ title: "Omelete de queijo" mas foods: [{"name": "1 banana média", "grams": 120}]
-   ISSO É INVÁLIDO! O título diz "Omelete" mas não há ovos nos ingredientes!
+1. MEDIDAS CASEIRAS:
+   • Líquidos: "xícara", "copo", "ml"
+   • Carnes: "filé", "porção", "pedaço"
+   • Grãos: "colher de sopa", "porção" (NÃO "xícara")
+   • Frutas: "unidade" + tamanho ("1 maçã média")
 
-EXEMPLOS CORRETOS:
-✓ title: "Wrap integral de frango com salada" + foods: [{"name": "1 wrap integral recheado com frango e alface", "grams": 200}]
-✓ title: "Chá de camomila com torradas" + foods: [{"name": "1 xícara de chá de camomila", "grams": 200}, {"name": "2 torradas integrais", "grams": 40}]
+2. AGRUPAMENTO:
+   • Ingredientes preparados juntos = UM ITEM
+   • Ex: "Omelete de claras com espinafre" (não separar claras + espinafre)
 
-🌙 REGRA DE ADEQUAÇÃO POR TIPO DE REFEIÇÃO (CRÍTICO):
-**CEIA (lanche noturno) - REGRAS ESTRITAS:**
-- Deve ser ULTRA-LEVE e de fácil digestão
-- ALIMENTOS PROIBIDOS PARA CEIA:
-  * Ovos em qualquer forma (cozidos, mexidos, omelete, etc.)
-  * Carnes (frango, carne bovina, peixe, etc.)
-  * Frituras ou alimentos gordurosos
-  * Refeições pesadas ou completas
-- ALIMENTOS PERMITIDOS PARA CEIA:
-  * Chás (camomila, erva-doce, hortelã)
-  * Iogurtes naturais ou light
-  * Frutas leves (maçã, pera, banana)
-  * Torradas ou biscoitos integrais
-  * Mingaus leves (aveia, tapioca)
-  * Queijos leves em pequena quantidade
-  * Leite morno ou bebidas vegetais
-- Exemplos CORRETOS: "Chá de camomila com 2 torradas integrais", "Iogurte natural com mel", "Mingau de aveia com canela", "Maçã com canela"
-- Exemplos ERRADOS: "Ovos cozidos" ❌, "Omelete" ❌, "Ovos de codorna" ❌, "Frango desfiado" ❌
-**LANCHES (manhã/tarde):**
-- Opções práticas e nutritivas
-- Exemplos: "Mix de castanhas com frutas secas", "Iogurte com granola", "Sanduíche natural de atum"
-**REFEIÇÕES PRINCIPAIS (café, almoço, jantar):**
-- Refeições completas e equilibradas
-- Incluir proteína + carboidrato + vegetais quando apropriado
+3. COERÊNCIA TÍTULO-INGREDIENTES:
+   • O título DEVE refletir o que está em foods
+   • Se diz "Wrap" → precisa ter wrap nos ingredientes
+   • Se diz "Omelete" → precisa ter ovos nos ingredientes
 
-🥪 REGRA DE ALIMENTOS-VEÍCULO (wraps, pães, tortillas):
-- Wraps, pães e tortillas são "veículos" que PRECISAM de recheio
-- SEMPRE apresentar como item COMPOSTO incluindo o recheio principal
-- ERRADO: listar "1 wrap integral" separado do recheio ❌
-- CERTO: "1 wrap integral recheado com atum e alface" ✓
+4. ORDEM DOS INGREDIENTES:
+   • Prato principal → Acompanhamentos → Frutas → Bebidas
 
-⚠️ REGRA DE MEDIDAS CASEIRAS (OBRIGATÓRIO - CRÍTICO):
-- LÍQUIDOS (água, sucos, chás, leite, cafés): usar "xícara", "copo", "ml"
-- PROTEÍNAS (carnes, peixes, frango, tofu): usar "filé", "pedaço", "porção"
-- OVOS: usar "unidade" (ex: "2 ovos cozidos")
-- 🔴 GRÃOS/ARROZ/MASSAS: usar "colher de sopa" ou "porção" (NUNCA "xícara"!)
-  ❌ ERRADO: "1 xícara de arroz integral" 
-  ✓ CERTO: "4 colheres de sopa de arroz integral"
-- VEGETAIS SÓLIDOS: usar "porção", "folhas", "floretes" (NUNCA "xícara" para vegetais!)
-- FRUTAS: usar "unidade" + tamanho (ex: "1 banana média") (NUNCA "xícara"!)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🌙 REGRAS POR TIPO DE REFEIÇÃO
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Exemplos CORRETOS:
-{"name": "1 filé médio de frango grelhado", "grams": 120}
-{"name": "4 colheres de sopa de arroz integral", "grams": 150}
-{"name": "1 porção de brócolis cozido", "grams": 100}
-{"name": "1 banana média", "grams": 120}
-{"name": "1 wrap integral recheado com atum e alface", "grams": 200}
-{"name": "1 xícara de chá de camomila (sem açúcar)", "grams": 200}
+CEIA (noturna):
+✅ Permitido: chás, iogurte, frutas leves, leite morno
+❌ Proibido: ovos, carnes, fritura, refeições pesadas
 
-🔴 REGRA DE CONSISTÊNCIA NOME-INGREDIENTES:
-O campo "title" DEVE ser um nome descritivo que reflete os ingredientes (ex: "Frango grelhado com arroz e salada")
-NUNCA use nomes genéricos como "Opção 1", "Opção 2", etc.
+LANCHES:
+✅ Opções práticas: castanhas, frutas, iogurte, sanduíche leve
 
-🔴🔴🔴 REGRA DE COERÊNCIA INSTRUÇÃO-INGREDIENTES (ABSOLUTO - CRÍTICO):
-As instruções ("instructions") DEVEM mencionar APENAS ingredientes que existem na lista "foods".
-- Se "foods" contém apenas maçã, as instruções NÃO podem falar de abóbora, gengibre, etc.
-- Se "foods" contém apenas pão, as instruções NÃO podem mencionar torradas (são coisas diferentes!)
-
-EXEMPLOS DE ERROS GRAVES (NUNCA FAZER):
-❌ foods: [{"name": "1 maçã média", "grams": 150}] 
-   instructions: ["Refogue a abóbora com gengibre"]
-   ISSO É INVÁLIDO! Maçã não é abóbora!
-
-❌ foods: [{"name": "2 fatias de pão sem glúten", "grams": 60}]
-   instructions: ["Sirva com as torradas"]
-   ISSO É INVÁLIDO! Pão não é torrada!
-
-EXEMPLOS CORRETOS:
-✓ foods: [{"name": "1 maçã média", "grams": 150}]
-   instructions: ["Lave a maçã", "Corte em fatias se preferir", "Sirva naturalmente"]
-
-✓ foods: [{"name": "Sopa cremosa de abóbora", "grams": 300}]
-   instructions: ["Cozinhe a abóbora até ficar macia", "Bata no liquidificador", "Sirva quente"]`;
+REFEIÇÕES PRINCIPAIS (café, almoço, jantar):
+✅ Equilibradas: proteína + carboidrato + vegetais`;
   }
 
   if (isSpanish) {
     return `
-📐 FORMATO DE ALIMENTOS (foods):
-Cada item: {"name": "CANTIDAD + ALIMENTO", "grams": NÚMERO}
-- El campo "name" DEBE incluir SOLO medida casera cualitativa (NUNCA números de gramos)
-- El campo "grams" DEBE ser un NÚMERO PURO (sin "g"): 120, 150, 100
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📐 FORMATO DE ALIMENTOS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚫 REGLA ANTI-DUPLICACIÓN DE GRAMAJE (CRÍTICO):
-- NUNCA incluya números de gramos en el campo "name"
-- INCORRECTO: "100g de atún en conserva" ❌
-- CORRECTO: "1 porción de atún en conserva" ✓
+ESTRUCTURA: {"name": "descripción humanizada", "grams": número}
 
-⚠️ REGLA DE MEDIDAS CASERAS (OBLIGATORIO):
-- LÍQUIDOS: usar "taza", "vaso", "ml"
-- PROTEÍNAS: usar "filete", "porción"
-- HUEVOS: usar "unidad" (ej: "2 huevos cocidos")
-- GRANOS/ARROZ: usar "cucharada", "porción"
-- VEGETALES SÓLIDOS: usar "porción", "hojas" (NUNCA "taza")
-- FRUTAS: usar "unidad" + tamaño (ej: "1 plátano mediano")`;
+✅ EJEMPLOS CORRECTOS:
+• {"name": "Filete de pollo a la plancha con hierbas", "grams": 150}
+• {"name": "Arroz integral", "grams": 120}
+• {"name": "1 plátano mediano (postre)", "grams": 120}
+
+❌ NUNCA HACER:
+• {"name": "150g de pollo", "grams": 150} → gramaje duplicado
+• {"name": "Mix de frutas", "grams": 200} → ¿cuáles frutas?`;
   }
 
   // English default
   return `
-📐 FOOD FORMAT (foods):
-Each item: {"name": "QUANTITY + FOOD", "grams": NUMBER}
-- The "name" field MUST include ONLY qualitative household measure (NEVER gram numbers)
-- The "grams" field MUST be a PURE NUMBER (no "g"): 120, 150, 100
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+📐 FOOD FORMAT
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚫 ANTI-GRAM DUPLICATION RULE (CRITICAL):
-- NEVER include gram numbers in the "name" field
-- WRONG: "100g of canned tuna" ❌
-- CORRECT: "1 portion of canned tuna" ✓
+STRUCTURE: {"name": "humanized description", "grams": number}
 
-⚠️ HOUSEHOLD MEASURE RULE (MANDATORY):
-- LIQUIDS: use "cup", "glass", "ml"
-- PROTEINS: use "fillet", "portion"
-- EGGS: use "unit" (e.g.: "2 boiled eggs")
-- GRAINS/RICE: use "tablespoon", "portion"
-- SOLID VEGETABLES: use "portion", "leaves" (NEVER "cup")
-- FRUITS: use "unit" + size (e.g.: "1 medium banana")`;
+✅ CORRECT EXAMPLES:
+• {"name": "Grilled chicken breast with herbs", "grams": 150}
+• {"name": "Brown rice", "grams": 120}
+• {"name": "1 medium banana (dessert)", "grams": 120}
+
+❌ NEVER DO:
+• {"name": "150g of chicken", "grams": 150} → duplicate grams
+• {"name": "Fruit mix", "grams": 200} → which fruits?`;
 }
 
 // ============= HELPER: CHECK IF SHOULD ADD SUGAR QUALIFIER =============

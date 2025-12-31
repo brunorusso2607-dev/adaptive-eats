@@ -50,11 +50,13 @@ import {
   updateMealTitleIfNeeded,
   sortMealIngredients,
   cleanInstructionsFromFruitsAndBeverages,
+  getMasterMealPromptV5,
   type RegionalConfig,
   type IntoleranceMapping,
   type SafeKeyword,
   type FoodItem,
   type ValidationResult,
+  type MasterPromptParams,
 } from "../_shared/mealGenerationConfig.ts";
 
 const corsHeaders = {
@@ -94,7 +96,8 @@ interface SimpleDayPlan {
 
 // Nota: getRestrictionText importado de mealGenerationConfig.ts
 
-// ============= PROMPT DO NUTRICIONISTA HUMANIZADO (VERSÃO DEFINITIVA) =============
+// ============= PROMPT CENTRALIZADO v5.0 =============
+// Agora usa getMasterMealPromptV5 do mealGenerationConfig.ts
 function buildSimpleNutritionistPrompt(params: {
   dailyCalories: number;
   meals: { type: string; label: string; targetCalories: number; targetProtein?: number; targetCarbs?: number; targetFat?: number }[];
@@ -115,248 +118,24 @@ function buildSimpleNutritionistPrompt(params: {
   previousDaysMeals?: string[];
   nutritionalTablePrompt?: string;
 }): string {
-  const { dailyCalories, meals, optionsPerMeal, restrictions, dayNumber, dayName, regional, countryCode, baseSystemPrompt, nutritionalContext, strategyKey, previousDaysMeals = [], nutritionalTablePrompt = '' } = params;
+  // Usar o PROMPT v5.0 centralizado do mealGenerationConfig
+  const promptParams: MasterPromptParams = {
+    dailyCalories: params.dailyCalories,
+    meals: params.meals.map(m => ({
+      type: m.type,
+      label: m.label,
+      targetCalories: m.targetCalories
+    })),
+    restrictions: params.restrictions,
+    dayNumber: params.dayNumber,
+    dayName: params.dayName,
+    regional: params.regional,
+    strategyKey: params.strategyKey,
+    previousDaysMeals: params.previousDaysMeals,
+    nutritionalTablePrompt: params.nutritionalTablePrompt,
+  };
 
-  const restrictionText = getRestrictionText(restrictions, regional.language);
-  
-  const mealsDescription = meals.map(m => `- ${m.label}: ${m.targetCalories} kcal`).join('\n');
-
-  const mealsJsonTemplate = meals.map(m => `
-    {
-      "meal_type": "${m.type}",
-      "label": "${m.label}",
-      "target_calories": ${m.targetCalories},
-      "options": [
-        {
-          "title": "Nome descritivo e apetitoso",
-          "foods": [{"name": "descrição do alimento", "grams": 100}],
-          "calories_kcal": ${m.targetCalories},
-          "instructions": ["Passo de preparo claro e prático"]
-        }
-      ]
-    }`).join(',');
-
-  const strategyRules = strategyKey ? getStrategyPromptRules(strategyKey, regional.language, {
-    dietaryPreference: restrictions.dietaryPreference,
-    intolerances: restrictions.intolerances,
-    previousMealsToday: [],
-    goal: restrictions.goal,
-  }) : '';
-
-  // ============= PROMPT DEFINITIVO - NUTRICIONISTA HUMANIZADO =============
-  const humanizedPrompt = `
-Você é a DRA. ANA, uma nutricionista brasileira com 20 anos de experiência clínica.
-Você cria cardápios REAIS - como faria para sua própria família ou seus pacientes VIP.
-
-🎯 SUA MISSÃO: Criar o cardápio de ${dayName} (Dia ${dayNumber}) com ${dailyCalories} kcal.
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📋 REFEIÇÕES DO DIA:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${mealsDescription}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🚫 RESTRIÇÕES ABSOLUTAS (NUNCA INCLUIR):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${restrictionText}
-
-${strategyRules ? `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 ESTRATÉGIA NUTRICIONAL:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${strategyRules}
-` : ''}
-
-${previousDaysMeals.length > 0 ? `
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🔄 VARIEDADE (NÃO REPETIR estas receitas já usadas):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${previousDaysMeals.map(m => `• ${m}`).join('\n')}
-` : ''}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🍽️ FILOSOFIA CULINÁRIA (COMO EU PENSO):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-1. CADA REFEIÇÃO É UM PRATO COMPLETO E COERENTE
-   • Almoço/Jantar típico: 1 proteína + 1 carboidrato + vegetais + salada
-   • Café da manhã: combinação equilibrada que sustenta a manhã
-   • Lanches: opções leves e práticas
-   • Ceia: algo leve e reconfortante para dormir bem
-
-2. COERÊNCIA CULINÁRIA (NUNCA MISTURAR):
-   • SOPA é refeição completa → NÃO colocar arroz ou salada separados
-   • FEIJOADA é prato único → NÃO adicionar sopa ou caldo junto
-   • Pratos QUENTES combinam com acompanhamentos quentes/neutros
-   • Pratos SECOS (grelhados) podem ter salada crua
-
-3. PROTEÍNAS VARIAM AO LONGO DO DIA:
-   • Se usou frango no almoço → usar peixe ou carne no jantar
-   • Se usou ovos no café → usar outra proteína no almoço
-   • CEIA não tem proteína pesada (máximo iogurte/leite)
-
-4. BEBIDAS COM PROPÓSITO:
-   • CAFÉ DA MANHÃ: café, chá, leite, suco natural
-   • ALMOÇO/JANTAR: NÃO incluo bebidas (usuário escolhe água, suco, etc.)
-   • LANCHE: chá, café, suco natural
-   • CEIA: chás calmantes (camomila, erva-cidreira, hortelã)
-   • VARIAR chás durante o dia (não repetir chá verde em tudo)
-
-5. FRUTAS COM CONTEXTO:
-   • Fruta como SOBREMESA após refeição principal
-   • Fruta como PARTE do lanche (ex: banana com aveia)
-   • Sempre claro QUANDO e COMO consumir
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 FORMATO DOS ALIMENTOS (foods):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-ESTRUTURA: {"name": "descrição humanizada", "grams": número}
-
-✅ CORRETO:
-• {"name": "Filé de frango grelhado com ervas", "grams": 150}
-• {"name": "Arroz integral", "grams": 120}
-• {"name": "Salada verde com tomate e pepino", "grams": 100}
-• {"name": "1 banana média (sobremesa)", "grams": 120}
-• {"name": "1 xícara de chá de camomila", "grams": 200}
-
-❌ INCORRETO:
-• {"name": "150g de frango", "grams": 150} → gramagem duplicada
-• {"name": "Mix de frutas", "grams": 200} → QUAIS frutas?
-• {"name": "1 limão", "grams": 50} → para quê? Contextualizar!
-• {"name": "Proteínas", "grams": 200} → seja específico!
-
-REGRAS SIMPLES:
-1. LÍQUIDOS (chás, sucos, leite): usar medida caseira (xícara, copo)
-2. PREPARAÇÕES COMPOSTAS: agrupar ingredientes que vão juntos
-   Ex: "Omelete de claras com espinafre e tomate" (não separar)
-3. FRUTAS: especificar quantidade e tamanho + contexto
-   Ex: "1 maçã média (sobremesa)", "2 fatias de mamão"
-4. ORDEM dos alimentos: Prato principal → Acompanhamentos → Frutas → Bebidas
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📖 FORMATO DAS INSTRUÇÕES (instructions):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-As instruções são para o PREPARO do prato principal. Devem ser:
-• Claras e práticas (como se falasse com um amigo)
-• Incluir temperos e técnicas ("tempere com sal e limão", "grelhe em fogo médio")
-• Incluir tempos quando relevante ("asse por 20 min a 180°C")
-
-✅ INCLUIR nas instruções:
-• Preparo da proteína e acompanhamentos cozidos
-• Temperos e finalizações
-• Montagem do prato
-
-❌ NÃO INCLUIR nas instruções:
-• Frutas (são consumidas naturalmente como sobremesa)
-• Bebidas (café, chá - usuário sabe preparar)
-• Itens prontos (pão, iogurte, queijo fatiado)
-
-EXEMPLO COMPLETO:
-title: "Frango grelhado com arroz integral e salada"
-foods: [
-  {"name": "Filé de frango grelhado com ervas", "grams": 150},
-  {"name": "Arroz integral", "grams": 120},
-  {"name": "Salada verde com tomate", "grams": 100},
-  {"name": "1 laranja média (sobremesa)", "grams": 150}
-]
-instructions: [
-  "Tempere o frango com sal, limão, alho e ervas finas.",
-  "Grelhe em fogo médio por 5-6 min de cada lado.",
-  "Sirva sobre o arroz com a salada temperada ao lado."
-]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 EXEMPLOS DE REFEIÇÕES BEM MONTADAS:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-☀️ CAFÉ DA MANHÃ:
-"Tapioca recheada com queijo e tomate"
-foods: [
-  {"name": "Tapioca com queijo branco e tomate", "grams": 150},
-  {"name": "1 xícara de café com leite", "grams": 200},
-  {"name": "1 fatia de mamão", "grams": 100}
-]
-instructions: [
-  "Hidrate a tapioca e espalhe na frigideira quente.",
-  "Adicione queijo branco fatiado e tomate picado.",
-  "Dobre e sirva quente."
-]
-
-🍽️ ALMOÇO:
-"Salmão grelhado com batata-doce e brócolis"
-foods: [
-  {"name": "Filé de salmão grelhado", "grams": 150},
-  {"name": "Batata-doce assada", "grams": 150},
-  {"name": "Brócolis no vapor", "grams": 100},
-  {"name": "Salada de folhas verdes", "grams": 80},
-  {"name": "1 tangerina (sobremesa)", "grams": 100}
-]
-instructions: [
-  "Tempere o salmão com sal, limão e dill. Grelhe por 4 min de cada lado.",
-  "Asse a batata-doce em cubos a 200°C por 25 min.",
-  "Cozinhe o brócolis no vapor por 5 min.",
-  "Monte o prato e tempere a salada com azeite e limão."
-]
-
-🥣 JANTAR COM SOPA (COERENTE):
-"Sopa cremosa de abóbora com gengibre"
-foods: [
-  {"name": "Sopa de abóbora com gengibre", "grams": 350},
-  {"name": "2 fatias de pão integral tostado", "grams": 60},
-  {"name": "1 pera pequena (sobremesa)", "grams": 120}
-]
-instructions: [
-  "Cozinhe a abóbora com cebola, alho e gengibre ralado.",
-  "Bata no liquidificador até ficar cremoso. Tempere com sal e noz-moscada.",
-  "Sirva quente com as torradas."
-]
-
-🌙 CEIA:
-"Iogurte com frutas vermelhas"
-foods: [
-  {"name": "Iogurte natural desnatado", "grams": 150},
-  {"name": "Mix de frutas vermelhas (morango, amora, mirtilo)", "grams": 80},
-  {"name": "1 xícara de chá de camomila", "grams": 200}
-]
-instructions: [
-  "Misture o iogurte com as frutas vermelhas.",
-  "Adoce levemente com mel se desejar."
-]
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ ERROS QUE NUNCA COMETO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-❌ Sopa + Arroz separado (arroz vai DENTRO da sopa se necessário)
-❌ Sopa + Salada crua (incoerência de temperatura)
-❌ Feijoada + Sopa (dois pratos pesados juntos)
-❌ Tofu no café + Tofu no almoço + Tofu no jantar (repetição)
-❌ Chá verde no café + Chá verde no lanche + Chá verde na ceia (variar!)
-❌ "Mix de frutas" sem especificar quais
-❌ "1 limão" solto sem dizer para quê serve
-❌ Bebidas no almoço/jantar (deixo para o usuário escolher)
-❌ Proteína pesada na ceia (máximo iogurte ou leite)
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 TABELA NUTRICIONAL PARA CÁLCULO:
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-${nutritionalTablePrompt}
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📤 RESPOSTA (JSON):
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-{
-  "day": ${dayNumber},
-  "day_name": "${dayName}",
-  "meals": [${mealsJsonTemplate}
-  ],
-  "total_calories": ${dailyCalories}
-}
-`;
-
-  return humanizedPrompt;
+  return getMasterMealPromptV5(promptParams);
 }
 
 // ============= DISTRIBUICAO CALORICA =============

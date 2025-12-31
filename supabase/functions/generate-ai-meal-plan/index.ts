@@ -66,6 +66,7 @@ interface SimpleMealOption {
   foods: FoodItem[];
   calories_kcal: number;
   calculated_calories?: number; // Calculado pelo script
+  instructions?: string[]; // Passos de preparo
 }
 
 interface SimpleMeal {
@@ -480,43 +481,163 @@ function calculateOptionCalories(foods: FoodItem[]): number {
 }
 
 // ============= VALIDAÇÃO ESTRUTURAL: Coerência Título-Ingredientes =============
+// Lista de ingredientes-chave que devem aparecer no título e nos foods
+const TITLE_FOOD_KEYWORDS = [
+  { titleKey: 'tofu', foodKeys: ['tofu'] },
+  { titleKey: 'hamburguer', foodKeys: ['hamburguer', 'burger', 'hambúrguer'] },
+  { titleKey: 'hamburger', foodKeys: ['hamburguer', 'burger', 'hambúrguer'] },
+  { titleKey: 'wrap', foodKeys: ['wrap', 'tortilla'] },
+  { titleKey: 'sanduiche', foodKeys: ['pao', 'sanduiche', 'sanduíche'] },
+  { titleKey: 'omelete', foodKeys: ['ovo', 'clara', 'omelete'] },
+  { titleKey: 'espaguete', foodKeys: ['espaguete', 'macarrao', 'massa', 'abobrinha'] },
+  { titleKey: 'salmao', foodKeys: ['salmao', 'salmão'] },
+  { titleKey: 'frango', foodKeys: ['frango', 'peito de frango', 'coxa'] },
+  { titleKey: 'carne', foodKeys: ['carne', 'bife', 'file', 'filé'] },
+  { titleKey: 'peixe', foodKeys: ['peixe', 'tilapia', 'atum', 'sardinha'] },
+  { titleKey: 'feijao', foodKeys: ['feijao', 'feijão'] },
+  { titleKey: 'arroz', foodKeys: ['arroz'] },
+  { titleKey: 'quinoa', foodKeys: ['quinoa', 'quinua'] },
+  { titleKey: 'ovo', foodKeys: ['ovo', 'ovos', 'clara'] },
+  { titleKey: 'queijo', foodKeys: ['queijo'] },
+  { titleKey: 'iogurte', foodKeys: ['iogurte', 'yogurt'] },
+];
+
 function validateTitleIngredientCoherence(
   title: string,
   foods: FoodItem[]
-): { isCoherent: boolean; issue?: string } {
+): { isCoherent: boolean; issue?: string; missingIngredients: string[] } {
   const normalizedTitle = normalizeText(title);
   const foodNames = foods.map(f => normalizeText(f.name)).join(' ');
+  const missingIngredients: string[] = [];
   
-  // Palavras-chave que indicam tipo de prato no título
-  const titleKeywords = [
-    { keyword: 'wrap', requires: ['wrap', 'tortilla', 'recheado', 'recheio'] },
-    { keyword: 'sanduiche', requires: ['pao', 'sanduiche', 'torrada'] },
-    { keyword: 'omelete', requires: ['ovo', 'clara', 'omelete', 'mexido'] },
-    { keyword: 'salada', requires: ['salada', 'folha', 'alface', 'rúcula', 'agriao'] },
-    { keyword: 'sopa', requires: ['sopa', 'caldo', 'creme'] },
-    { keyword: 'vitamina', requires: ['vitamina', 'smoothie', 'batido', 'leite', 'fruta'] },
-    { keyword: 'mingau', requires: ['mingau', 'aveia', 'tapioca'] },
-    { keyword: 'arroz', requires: ['arroz', 'grao'] },
-    { keyword: 'frango', requires: ['frango', 'peito', 'coxa', 'sobrecoxa'] },
-    { keyword: 'peixe', requires: ['peixe', 'tilapia', 'salmao', 'atum', 'sardinha'] },
-    { keyword: 'carne', requires: ['carne', 'bife', 'file', 'costela', 'picanha'] },
-  ];
-  
-  for (const check of titleKeywords) {
-    if (normalizedTitle.includes(check.keyword)) {
-      const hasRequiredIngredient = check.requires.some(req => 
-        foodNames.includes(req) || normalizedTitle.includes(req)
-      );
-      if (!hasRequiredIngredient) {
-        return { 
-          isCoherent: false, 
-          issue: `Título "${title}" menciona "${check.keyword}" mas ingredientes não correspondem` 
-        };
+  for (const mapping of TITLE_FOOD_KEYWORDS) {
+    if (normalizedTitle.includes(mapping.titleKey)) {
+      const hasIngredient = mapping.foodKeys.some(fk => foodNames.includes(fk));
+      if (!hasIngredient) {
+        missingIngredients.push(mapping.titleKey);
       }
     }
   }
   
-  return { isCoherent: true };
+  if (missingIngredients.length > 0) {
+    return { 
+      isCoherent: false, 
+      issue: `Título menciona [${missingIngredients.join(', ')}] mas não estão nos ingredientes`,
+      missingIngredients,
+    };
+  }
+  
+  return { isCoherent: true, missingIngredients: [] };
+}
+
+// ============= GERAR TÍTULO BASEADO NOS INGREDIENTES REAIS =============
+function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
+  if (foods.length === 0) return 'Refeição';
+  
+  // Encontrar ingredientes principais (excluindo bebidas e frutas)
+  const mainIngredients: string[] = [];
+  const sideIngredients: string[] = [];
+  
+  for (const food of foods) {
+    const normalized = normalizeText(food.name);
+    
+    // Ignorar bebidas simples
+    if (normalized.includes('cha') || normalized.includes('cafe') || normalized.includes('agua')) {
+      continue;
+    }
+    
+    // Classificar como principal ou acompanhamento
+    const isMainIngredient = 
+      normalized.includes('frango') || normalized.includes('carne') || normalized.includes('peixe') ||
+      normalized.includes('tofu') || normalized.includes('ovo') || normalized.includes('omelete') ||
+      normalized.includes('hamburguer') || normalized.includes('salmao') || normalized.includes('atum') ||
+      normalized.includes('feijao') || normalized.includes('wrap') || normalized.includes('sanduiche') ||
+      normalized.includes('espaguete') || normalized.includes('macarrao') || normalized.includes('mingau') ||
+      normalized.includes('iogurte') || normalized.includes('tapioca') || normalized.includes('crepioca');
+    
+    // Extrair nome simplificado (primeira parte significativa)
+    const simpleName = food.name
+      .replace(/^\d+\s*(unidade[s]?|porcao|porcoes|colher[es]?\s*(de\s*sopa)?|fatia[s]?|copo[s]?|xicara[s]?)\s*(de\s*)?/gi, '')
+      .replace(/\s*\(\d+g\)\s*$/g, '')
+      .replace(/^\s*(1\s+)?/g, '')
+      .trim();
+    
+    if (simpleName.length > 2) {
+      if (isMainIngredient) {
+        mainIngredients.push(simpleName);
+      } else if (mainIngredients.length < 3 && sideIngredients.length < 2) {
+        sideIngredients.push(simpleName);
+      }
+    }
+  }
+  
+  // Construir título
+  if (mainIngredients.length > 0) {
+    const main = mainIngredients.slice(0, 2).join(' com ');
+    if (sideIngredients.length > 0) {
+      return `${main} e ${sideIngredients[0]}`;
+    }
+    return main;
+  }
+  
+  // Fallback: usar primeiros 2 ingredientes
+  if (sideIngredients.length > 0) {
+    return sideIngredients.slice(0, 2).join(' com ');
+  }
+  
+  return foods[0]?.name?.substring(0, 50) || 'Refeição';
+}
+
+// ============= VALIDAR E CORRIGIR INSTRUÇÕES =============
+function validateAndFixInstructions(
+  instructions: string[] | undefined,
+  foods: FoodItem[]
+): string[] {
+  if (!instructions || instructions.length === 0) {
+    return [];
+  }
+  
+  const foodNames = foods.map(f => normalizeText(f.name)).join(' ');
+  const validInstructions: string[] = [];
+  
+  for (const instruction of instructions) {
+    const normalizedInstruction = normalizeText(instruction);
+    
+    // Verificar se menciona ingrediente que NÃO está nos foods
+    let mentionsPhantomIngredient = false;
+    
+    for (const mapping of TITLE_FOOD_KEYWORDS) {
+      if (normalizedInstruction.includes(mapping.titleKey)) {
+        const hasIngredient = mapping.foodKeys.some(fk => foodNames.includes(fk));
+        if (!hasIngredient) {
+          mentionsPhantomIngredient = true;
+          logStep(`⚠️ INSTRUÇÃO INVÁLIDA: "${instruction}" menciona ${mapping.titleKey} que não está nos ingredientes`);
+          break;
+        }
+      }
+    }
+    
+    if (!mentionsPhantomIngredient) {
+      validInstructions.push(instruction);
+    }
+  }
+  
+  // Se removemos muitas instruções, gerar instruções genéricas baseadas nos foods
+  if (validInstructions.length === 0 && foods.length > 0) {
+    const mainFoods = foods.filter(f => {
+      const n = normalizeText(f.name);
+      return !n.includes('cha') && !n.includes('cafe') && !n.includes('agua');
+    });
+    
+    if (mainFoods.length > 0) {
+      validInstructions.push(`Prepare ${mainFoods[0].name} conforme preferência.`);
+      if (mainFoods.length > 1) {
+        validInstructions.push(`Sirva acompanhado dos demais ingredientes.`);
+      }
+    }
+  }
+  
+  return validInstructions;
 }
 
 // ============= VALIDAÇÃO: Macros Realistas por Tipo de Alimento =============
@@ -649,17 +770,38 @@ function validateMealPlan(
         }
       }
       
-      // Validação 2: Coerência título-ingredientes
+      // Validação 2: Coerência título-ingredientes - AGORA CORRIGE AUTOMATICAMENTE
       const coherenceCheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
+      let finalTitle = option.title;
+      
       if (!coherenceCheck.isCoherent) {
-        logStep(`⚠️ INCOERÊNCIA TÍTULO-INGREDIENTES: ${coherenceCheck.issue}`, {
-          title: option.title,
+        logStep(`⚠️ INCOERÊNCIA TÍTULO-INGREDIENTES DETECTADA`, {
+          originalTitle: option.title,
+          issue: coherenceCheck.issue,
+          missingIngredients: coherenceCheck.missingIngredients,
           foods: cleanedFoods.map(f => f.name),
         });
-        // Marcar para log mas não bloquear - pode ser ajustado via prompt
+        
+        // CORREÇÃO AUTOMÁTICA: Gerar novo título baseado nos ingredientes reais
+        const correctedTitle = generateTitleFromFoods(cleanedFoods, meal.meal_type);
+        finalTitle = correctedTitle;
+        logStep(`🔧 TÍTULO CORRIGIDO: "${option.title}" → "${correctedTitle}"`);
       }
       
-      // Validação 3: Macros realistas
+      // Validação 3: Corrigir instruções que mencionam ingredientes fantasmas
+      const validatedInstructions = validateAndFixInstructions(
+        option.instructions as string[] | undefined,
+        cleanedFoods
+      );
+      
+      if (option.instructions && validatedInstructions.length !== (option.instructions as string[]).length) {
+        logStep(`🔧 INSTRUÇÕES CORRIGIDAS: ${(option.instructions as string[]).length} → ${validatedInstructions.length} passos`, {
+          original: option.instructions,
+          corrected: validatedInstructions,
+        });
+      }
+      
+      // Validação 4: Macros realistas
       for (const food of cleanedFoods) {
         const macroCheck = validateRealisticMacros(food, option.calories_kcal);
         if (!macroCheck.isRealistic) {
@@ -692,7 +834,8 @@ function validateMealPlan(
         });
       }
       
-      const updatedTitle = updateMealTitleIfNeeded(option.title, groupedTitle, wasGrouped);
+      // Se houve agrupamento e ainda há incoerência, atualizar título novamente
+      const titleAfterGrouping = updateMealTitleIfNeeded(finalTitle, groupedTitle, wasGrouped);
       
       // ============= ORDENAR INGREDIENTES (FRUTAS/SOBREMESAS POR ÚLTIMO) =============
       const sortedFoods = sortMealIngredients(groupedFoods);
@@ -724,8 +867,9 @@ function validateMealPlan(
       
       return {
         ...option,
-        title: updatedTitle,
+        title: titleAfterGrouping,
         foods: sortedFoods.length > 0 ? sortedFoods : option.foods,
+        instructions: validatedInstructions.length > 0 ? validatedInstructions : option.instructions,
         calculated_calories: finalCalories,
         calories_kcal: finalCalories,
       };

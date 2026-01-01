@@ -869,18 +869,24 @@ export type Database = {
           id: string
           ingredient: string
           intolerance_key: string
+          labels: string[] | null
+          severity_level: string | null
         }
         Insert: {
           created_at?: string
           id?: string
           ingredient: string
           intolerance_key: string
+          labels?: string[] | null
+          severity_level?: string | null
         }
         Update: {
           created_at?: string
           id?: string
           ingredient?: string
           intolerance_key?: string
+          labels?: string[] | null
+          severity_level?: string | null
         }
         Relationships: []
       }

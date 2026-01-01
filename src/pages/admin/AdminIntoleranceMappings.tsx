@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X, AlertCircle } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X, AlertCircle, CheckCircle, Filter } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import { FALLBACK_INTOLERANCE_LABELS } from "@/lib/safetyFallbacks";
@@ -56,7 +56,7 @@ type SafeKeyword = {
 export default function AdminIntoleranceMappings() {
   const queryClient = useQueryClient();
   const [selectedIntolerance, setSelectedIntolerance] = useState<string>("lactose");
-  const [activeTab, setActiveTab] = useState<"blocked" | "caution" | "keywords">("blocked");
+  const [activeTab, setActiveTab] = useState<"blocked" | "caution" | "safe" | "neutralizers">("blocked");
   const [searchTerm, setSearchTerm] = useState("");
   
   // Hook para labels do banco de dados
@@ -82,7 +82,7 @@ export default function AdminIntoleranceMappings() {
   const [newIngredient, setNewIngredient] = useState("");
   const [newKeyword, setNewKeyword] = useState("");
   const [bulkIngredients, setBulkIngredients] = useState("");
-  const [newSeverityLevel, setNewSeverityLevel] = useState<"high" | "low">("high");
+  const [newSeverityLevel, setNewSeverityLevel] = useState<"high" | "low" | "safe">("high");
   const [newSafePortion, setNewSafePortion] = useState<string>("");
   const [editingMapping, setEditingMapping] = useState<IntoleranceMapping | null>(null);
   const [editPortion, setEditPortion] = useState<string>("");
@@ -167,13 +167,17 @@ export default function AdminIntoleranceMappings() {
     m.ingredient.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
 
-  // Separate by severity level: high = blocked, low = caution
+  // Separate by severity level: high = blocked, low = caution, safe = safe foods
   const blockedMappings = allMappingsForIntolerance.filter(m => 
     m.severity_level === 'high' || !m.severity_level || m.severity_level === 'unknown'
   );
   
   const cautionMappings = allMappingsForIntolerance.filter(m => 
     m.severity_level === 'low'
+  );
+
+  const safeMappings = allMappingsForIntolerance.filter(m => 
+    m.severity_level === 'safe'
   );
 
   const filteredKeywords = safeKeywords?.filter(k => 
@@ -183,7 +187,7 @@ export default function AdminIntoleranceMappings() {
 
   // Add ingredient mutation
   const addIngredientMutation = useMutation({
-    mutationFn: async ({ ingredients, severityLevel, safePortion }: { ingredients: string[], severityLevel: "high" | "low", safePortion?: number | null }) => {
+    mutationFn: async ({ ingredients, severityLevel, safePortion }: { ingredients: string[], severityLevel: "high" | "low" | "safe", safePortion?: number | null }) => {
       const inserts = ingredients.map(ingredient => ({
         intolerance_key: selectedIntolerance,
         ingredient: ingredient.trim().toLowerCase(),
@@ -487,7 +491,7 @@ export default function AdminIntoleranceMappings() {
           </div>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
-            <TabsList className="mb-4">
+            <TabsList className="mb-4 flex-wrap h-auto gap-1">
               <TabsTrigger value="blocked" className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-red-500" />
                 Bloqueados ({blockedMappings.length})
@@ -496,9 +500,13 @@ export default function AdminIntoleranceMappings() {
                 <AlertCircle className="h-4 w-4 text-yellow-500" />
                 Atenção ({cautionMappings.length})
               </TabsTrigger>
-              <TabsTrigger value="keywords" className="flex items-center gap-2">
-                <Shield className="h-4 w-4 text-green-500" />
-                Seguras ({filteredKeywords.length})
+              <TabsTrigger value="safe" className="flex items-center gap-2">
+                <CheckCircle className="h-4 w-4 text-green-500" />
+                Seguros ({safeMappings.length})
+              </TabsTrigger>
+              <TabsTrigger value="neutralizers" className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-blue-500" />
+                Neutralizadores ({filteredKeywords.length})
               </TabsTrigger>
             </TabsList>
 
@@ -585,7 +593,47 @@ export default function AdminIntoleranceMappings() {
               </p>
             </TabsContent>
 
-            <TabsContent value="keywords">
+            <TabsContent value="safe">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => {
+                  setNewSeverityLevel("safe");
+                  setIsAddIngredientOpen(true);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {safeMappings.map((mapping) => (
+                  <Badge
+                    key={mapping.id}
+                    variant="outline"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
+                  >
+                    {mapping.ingredient}
+                    <button
+                      onClick={() => setDeleteMapping(mapping)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {safeMappings.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    Nenhum alimento seguro cadastrado. Ex: arroz, cenoura, frango.
+                  </p>
+                )}
+              </div>
+              
+              <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+                <CheckCircle className="h-3 w-3" />
+                Alimentos naturalmente seguros para esta condição (padrão Monash LOW).
+              </p>
+            </TabsContent>
+
+            <TabsContent value="neutralizers">
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setIsAddKeywordOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -598,7 +646,7 @@ export default function AdminIntoleranceMappings() {
                   <Badge
                     key={keyword.id}
                     variant="outline"
-                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-blue-500/10 border-blue-500/30 text-blue-700 dark:text-blue-400"
                   >
                     {keyword.keyword}
                     <button
@@ -611,14 +659,14 @@ export default function AdminIntoleranceMappings() {
                 ))}
                 {filteredKeywords.length === 0 && (
                   <p className="text-muted-foreground text-sm">
-                    Nenhuma palavra-chave cadastrada. Palavras como "sem lactose" neutralizam a suspeita.
+                    Nenhum neutralizador cadastrado. Ex: "sem lactose", "low fodmap".
                   </p>
                 )}
               </div>
               
               <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
-                <Shield className="h-3 w-3" />
-                Palavras-chave seguras liberam ingredientes que contenham esses termos.
+                <Filter className="h-3 w-3" />
+                Palavras que neutralizam falsos positivos (ex: "leite sem lactose" → liberado).
               </p>
             </TabsContent>
           </Tabs>
@@ -636,8 +684,8 @@ export default function AdminIntoleranceMappings() {
           <div className="space-y-4">
             {/* Severity Level Selector */}
             <div>
-              <Label>Nível de Severidade</Label>
-              <Select value={newSeverityLevel} onValueChange={(v) => setNewSeverityLevel(v as "high" | "low")}>
+              <Label>Classificação</Label>
+              <Select value={newSeverityLevel} onValueChange={(v) => setNewSeverityLevel(v as "high" | "low" | "safe")}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -645,13 +693,19 @@ export default function AdminIntoleranceMappings() {
                   <SelectItem value="high">
                     <div className="flex items-center gap-2">
                       <AlertTriangle className="h-4 w-4 text-red-500" />
-                      <span>Bloqueado (HIGH) - Nunca aparece</span>
+                      <span>🔴 Bloqueado - Nunca aparece</span>
                     </div>
                   </SelectItem>
                   <SelectItem value="low">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
-                      <span>Atenção (LOW) - Porção limitada</span>
+                      <span>🟡 Atenção - Porção limitada</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="safe">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>🟢 Seguro - Naturalmente seguro</span>
                     </div>
                   </SelectItem>
                 </SelectContent>
@@ -713,18 +767,18 @@ export default function AdminIntoleranceMappings() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>
-              Adicionar Palavra Segura - {getLabel(selectedIntolerance)}
+              Adicionar Neutralizador - {getLabel(selectedIntolerance)}
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
-              Palavras-chave que, quando presentes no nome do ingrediente, indicam que ele é seguro
-              (ex: "sem lactose", "zero lactose", "lactose free").
+              Palavras que neutralizam falsos positivos. Ex: "leite sem lactose" contém "leite" (suspeito), 
+              mas "sem lactose" neutraliza a suspeita.
             </p>
             <div>
-              <Label>Palavra-chave</Label>
+              <Label>Termo Neutralizador</Label>
               <Input
-                placeholder="Ex: sem lactose"
+                placeholder="Ex: sem lactose, low fodmap, gluten free"
                 value={newKeyword}
                 onChange={(e) => setNewKeyword(e.target.value)}
               />

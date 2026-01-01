@@ -46,6 +46,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 export interface IntoleranceMapping {
   intolerance_key: string;
   ingredient: string;
+  severity_level?: string; // 'high' = block, 'low' = caution/warning, 'safe' = allowed
 }
 
 export interface SafeKeyword {
@@ -72,12 +73,13 @@ export interface DietaryProfile {
 }
 
 export interface SafetyDatabase {
-  intoleranceMappings: Map<string, string[]>;
+  intoleranceMappings: Map<string, string[]>; // high severity only (blocked)
+  cautionMappings: Map<string, string[]>; // low severity (warning only)
   safeKeywords: Map<string, string[]>;
   dietaryForbidden: Map<string, string[]>;
   keyNormalization: Map<string, string>;
   keyLabels: Map<string, string>;
-  dietaryLabels: Map<string, string>;  // NEW: from dietary_profiles table
+  dietaryLabels: Map<string, string>;  // from dietary_profiles table
   allIntoleranceKeys: string[];
   allDietaryKeys: string[];
 }
@@ -90,6 +92,7 @@ export interface UserRestrictions {
 
 export interface ValidationResult {
   isValid: boolean;
+  isCaution?: boolean; // true = contains low-severity ingredient (warning only)
   reason?: string;
   restriction?: string;
   matchedIngredient?: string;
@@ -102,11 +105,13 @@ export interface ConflictDetail {
   label: string;
   matchedIngredient: string;
   originalIngredient: string;
+  severity?: 'high' | 'low'; // high = block, low = warning
 }
 
 export interface SafetyCheckResult {
   isSafe: boolean;
-  conflicts: ConflictDetail[];
+  conflicts: ConflictDetail[]; // high severity = blocks
+  warnings: ConflictDetail[]; // low severity = warnings only
   safeReasons: string[];
 }
 
@@ -197,7 +202,7 @@ export async function loadSafetyDatabase(
   ] = await Promise.all([
     supabaseClient
       .from("intolerance_mappings")
-      .select("intolerance_key, ingredient")
+      .select("intolerance_key, ingredient, severity_level")
       .limit(5000),  // Increased limit for full coverage
     supabaseClient
       .from("intolerance_safe_keywords")
@@ -223,15 +228,29 @@ export async function loadSafetyDatabase(
   }
 
   // Organizar dados em Maps para acesso O(1)
+  // Separar por severity: high = blocked, low = caution/warning
   const intoleranceMappings = new Map<string, string[]>();
+  const cautionMappings = new Map<string, string[]>();
   const allIntoleranceKeys = new Set<string>();
 
   for (const row of (mappingsResult.data as IntoleranceMapping[]) || []) {
     allIntoleranceKeys.add(row.intolerance_key);
-    if (!intoleranceMappings.has(row.intolerance_key)) {
-      intoleranceMappings.set(row.intolerance_key, []);
+    const normalizedIngredient = normalizeText(row.ingredient);
+    
+    // Severity 'low' goes to caution, 'high' or undefined goes to blocked
+    if (row.severity_level === 'low') {
+      if (!cautionMappings.has(row.intolerance_key)) {
+        cautionMappings.set(row.intolerance_key, []);
+      }
+      cautionMappings.get(row.intolerance_key)!.push(normalizedIngredient);
+    } else if (row.severity_level !== 'safe') {
+      // 'high', 'unknown', or undefined = blocked
+      if (!intoleranceMappings.has(row.intolerance_key)) {
+        intoleranceMappings.set(row.intolerance_key, []);
+      }
+      intoleranceMappings.get(row.intolerance_key)!.push(normalizedIngredient);
     }
-    intoleranceMappings.get(row.intolerance_key)!.push(normalizeText(row.ingredient));
+    // severity_level === 'safe' is ignored (allowed foods)
   }
 
   const safeKeywords = new Map<string, string[]>();
@@ -268,6 +287,7 @@ export async function loadSafetyDatabase(
 
   cachedDatabase = {
     intoleranceMappings,
+    cautionMappings,
     safeKeywords,
     dietaryForbidden,
     keyNormalization,
@@ -278,7 +298,7 @@ export async function loadSafetyDatabase(
   };
   cacheTimestamp = now;
 
-  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${mappingsResult.data?.length || 0} ingredients`);
+  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types (blocked), ${cautionMappings.size} caution types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${mappingsResult.data?.length || 0} total ingredients`);
 
   return cachedDatabase;
 }
@@ -405,18 +425,33 @@ export function checkIngredientForIntolerance(
     return { isValid: true, reason: safeCheck.reason };
   }
   
-  // Verificar se contém ingredientes proibidos
+  // Verificar se contém ingredientes BLOQUEADOS (severity = high)
   const forbiddenIngredients = database.intoleranceMappings.get(intoleranceKey) || [];
   
   for (const forbidden of forbiddenIngredients) {
-    // Verificar se o ingrediente DO USUÁRIO contém a palavra proibida
-    // MAS NÃO o contrário (evita "maca" matchando com "macaron", "macadamia", etc.)
     if (containsWholeWord(normalizedIngredient, forbidden)) {
       return {
         isValid: false,
+        isCaution: false,
         reason: `Contém ${forbidden} (intolerância: ${getIntoleranceLabel(intoleranceKey, database)})`,
         restriction: `intolerance_${intoleranceKey}`,
         matchedIngredient: forbidden
+      };
+    }
+  }
+  
+  // Verificar se contém ingredientes de ATENÇÃO (severity = low)
+  // Estes NÃO bloqueiam, apenas geram warning
+  const cautionIngredients = database.cautionMappings.get(intoleranceKey) || [];
+  
+  for (const caution of cautionIngredients) {
+    if (containsWholeWord(normalizedIngredient, caution)) {
+      return {
+        isValid: true, // NÃO bloqueia
+        isCaution: true, // Mas gera warning
+        reason: `Contém pequena quantidade de ${getIntoleranceLabel(intoleranceKey, database)} (${caution})`,
+        restriction: `intolerance_${intoleranceKey}`,
+        matchedIngredient: caution
       };
     }
   }
@@ -541,12 +576,14 @@ export function validateIngredientList(
   database: SafetyDatabase
 ): SafetyCheckResult {
   const conflicts: ConflictDetail[] = [];
+  const warnings: ConflictDetail[] = [];
   const safeReasons: string[] = [];
   
   for (const ingredient of ingredients) {
     const result = validateIngredient(ingredient, restrictions, database);
     
     if (!result.isValid && result.restriction && result.matchedIngredient) {
+      // Blocked ingredient (high severity)
       let type: 'intolerance' | 'dietary' | 'excluded' = 'excluded';
       let key = 'excluded';
       let label = 'Ingrediente Excluído';
@@ -566,7 +603,27 @@ export function validateIngredientList(
         key,
         label,
         matchedIngredient: result.matchedIngredient,
-        originalIngredient: ingredient
+        originalIngredient: ingredient,
+        severity: 'high'
+      });
+    } else if (result.isCaution && result.restriction && result.matchedIngredient) {
+      // Caution ingredient (low severity) - warning only, doesn't block
+      let type: 'intolerance' | 'dietary' | 'excluded' = 'intolerance';
+      let key = 'unknown';
+      let label = 'Atenção';
+      
+      if (result.restriction.startsWith('intolerance_')) {
+        key = result.restriction.replace('intolerance_', '');
+        label = getIntoleranceLabel(key, database);
+      }
+      
+      warnings.push({
+        type,
+        key,
+        label,
+        matchedIngredient: result.matchedIngredient,
+        originalIngredient: ingredient,
+        severity: 'low'
       });
     } else if (result.reason) {
       safeReasons.push(result.reason);
@@ -574,8 +631,9 @@ export function validateIngredientList(
   }
   
   return {
-    isSafe: conflicts.length === 0,
+    isSafe: conflicts.length === 0, // Only blocked ingredients affect safety
     conflicts,
+    warnings,
     safeReasons
   };
 }

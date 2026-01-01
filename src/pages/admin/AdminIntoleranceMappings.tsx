@@ -77,6 +77,12 @@ export default function AdminIntoleranceMappings() {
   const [isAddKeywordOpen, setIsAddKeywordOpen] = useState(false);
   const [deleteMapping, setDeleteMapping] = useState<IntoleranceMapping | null>(null);
   const [deleteKeyword, setDeleteKeyword] = useState<SafeKeyword | null>(null);
+  const [moveConfirmDialog, setMoveConfirmDialog] = useState<{
+    ingredients: Array<{ id: string; ingredient: string; currentSeverity: string }>;
+    targetSeverity: "high" | "low" | "safe";
+    newIngredients: string[];
+    safePortion: number | null;
+  } | null>(null);
   
   // Form states
   const [newIngredient, setNewIngredient] = useState("");
@@ -240,7 +246,32 @@ export default function AdminIntoleranceMappings() {
     },
   });
 
-  // Add keyword mutation
+  // Move ingredients mutation (update severity level)
+  const moveIngredientsMutation = useMutation({
+    mutationFn: async ({ ids, severityLevel, safePortion }: { ids: string[], severityLevel: "high" | "low" | "safe", safePortion?: number | null }) => {
+      const updates = ids.map(id => 
+        supabase
+          .from("intolerance_mappings")
+          .update({ 
+            severity_level: severityLevel,
+            safe_portion_grams: severityLevel === 'low' ? safePortion : null,
+          })
+          .eq("id", id)
+      );
+      
+      const results = await Promise.all(updates);
+      const errors = results.filter(r => r.error);
+      if (errors.length > 0) throw new Error(errors[0].error?.message);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["intolerance-mappings"] });
+      toast.success("Ingrediente(s) movido(s) com sucesso!");
+      setMoveConfirmDialog(null);
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro: ${error.message}`);
+    },
+  });
   const addKeywordMutation = useMutation({
     mutationFn: async (keyword: string) => {
       const { error } = await supabase
@@ -310,17 +341,96 @@ export default function AdminIntoleranceMappings() {
   const handleAddIngredient = () => {
     const safePortion = newSafePortion ? parseInt(newSafePortion) : null;
     
+    // Get list of ingredients to add
+    let ingredientsToAdd: string[] = [];
     if (bulkIngredients.trim()) {
-      const ingredients = bulkIngredients
+      ingredientsToAdd = bulkIngredients
         .split(/[,\n]/)
-        .map(i => i.trim())
+        .map(i => i.trim().toLowerCase())
         .filter(i => i.length > 0);
-      
-      if (ingredients.length > 0) {
-        addIngredientMutation.mutate({ ingredients, severityLevel: newSeverityLevel, safePortion });
-      }
     } else if (newIngredient.trim()) {
-      addIngredientMutation.mutate({ ingredients: [newIngredient], severityLevel: newSeverityLevel, safePortion });
+      ingredientsToAdd = [newIngredient.trim().toLowerCase()];
+    }
+    
+    if (ingredientsToAdd.length === 0) return;
+    
+    // Check for existing ingredients in OTHER severity levels
+    const existingInOtherCategories = mappings?.filter(m => 
+      m.intolerance_key === selectedIntolerance &&
+      ingredientsToAdd.includes(m.ingredient.toLowerCase()) &&
+      m.severity_level !== newSeverityLevel
+    ) || [];
+    
+    // Filter out ingredients that already exist in the SAME category
+    const existingInSameCategory = mappings?.filter(m => 
+      m.intolerance_key === selectedIntolerance &&
+      ingredientsToAdd.includes(m.ingredient.toLowerCase()) &&
+      m.severity_level === newSeverityLevel
+    ) || [];
+    
+    if (existingInSameCategory.length > 0) {
+      toast.error(`Ingrediente(s) já existe(m) nesta categoria: ${existingInSameCategory.map(m => m.ingredient).join(", ")}`);
+      return;
+    }
+    
+    if (existingInOtherCategories.length > 0) {
+      // Show confirmation dialog to move
+      const newOnes = ingredientsToAdd.filter(ing => 
+        !existingInOtherCategories.some(m => m.ingredient.toLowerCase() === ing)
+      );
+      
+      setMoveConfirmDialog({
+        ingredients: existingInOtherCategories.map(m => ({
+          id: m.id,
+          ingredient: m.ingredient,
+          currentSeverity: m.severity_level || 'high',
+        })),
+        targetSeverity: newSeverityLevel,
+        newIngredients: newOnes,
+        safePortion,
+      });
+    } else {
+      // No conflicts, proceed with normal insert
+      addIngredientMutation.mutate({ ingredients: ingredientsToAdd, severityLevel: newSeverityLevel, safePortion });
+    }
+  };
+
+  const handleConfirmMove = async () => {
+    if (!moveConfirmDialog) return;
+    
+    const { ingredients, targetSeverity, newIngredients, safePortion } = moveConfirmDialog;
+    
+    // Move existing ingredients
+    if (ingredients.length > 0) {
+      await moveIngredientsMutation.mutateAsync({
+        ids: ingredients.map(i => i.id),
+        severityLevel: targetSeverity,
+        safePortion,
+      });
+    }
+    
+    // Add new ingredients if any
+    if (newIngredients.length > 0) {
+      addIngredientMutation.mutate({
+        ingredients: newIngredients,
+        severityLevel: targetSeverity,
+        safePortion,
+      });
+    }
+    
+    setIsAddIngredientOpen(false);
+    setNewIngredient("");
+    setBulkIngredients("");
+    setNewSeverityLevel("high");
+    setNewSafePortion("");
+  };
+
+  const getSeverityLabel = (severity: string) => {
+    switch (severity) {
+      case 'high': return '🔴 Bloqueado';
+      case 'low': return '🟡 Atenção';
+      case 'safe': return '🟢 Seguro';
+      default: return severity;
     }
   };
 
@@ -881,6 +991,51 @@ export default function AdminIntoleranceMappings() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Move Ingredients Confirmation Dialog */}
+      <AlertDialog open={!!moveConfirmDialog} onOpenChange={() => setMoveConfirmDialog(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-yellow-500" />
+              Ingredientes já cadastrados em outra categoria
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-3">
+                <p>Os seguintes ingredientes já estão cadastrados:</p>
+                <div className="space-y-2">
+                  {moveConfirmDialog?.ingredients.map((ing) => (
+                    <div key={ing.id} className="flex items-center justify-between bg-muted/50 px-3 py-2 rounded-md">
+                      <span className="font-medium">{ing.ingredient}</span>
+                      <div className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">{getSeverityLabel(ing.currentSeverity)}</span>
+                        <span>→</span>
+                        <span className="font-medium">{getSeverityLabel(moveConfirmDialog?.targetSeverity || 'safe')}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                {moveConfirmDialog && moveConfirmDialog.newIngredients.length > 0 && (
+                  <p className="text-sm text-muted-foreground">
+                    Além disso, {moveConfirmDialog.newIngredients.length} novo(s) ingrediente(s) será(ão) adicionado(s).
+                  </p>
+                )}
+                <p className="font-medium pt-2">Deseja mover para a nova categoria?</p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleConfirmMove}
+              disabled={moveIngredientsMutation.isPending}
+            >
+              {moveIngredientsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Mover
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

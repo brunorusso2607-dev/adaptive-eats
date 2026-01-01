@@ -994,46 +994,48 @@ export default function AdminIntoleranceMappings() {
 
       {/* Move Ingredients Confirmation Dialog */}
       <AlertDialog open={!!moveConfirmDialog} onOpenChange={() => setMoveConfirmDialog(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="max-h-[85vh] flex flex-col">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-yellow-500" />
               Ingredientes já cadastrados em outra categoria
             </AlertDialogTitle>
-            <AlertDialogDescription asChild>
-              <div className="space-y-3">
-                <p>Os seguintes ingredientes já estão cadastrados:</p>
-                <div className="space-y-2">
-                  {moveConfirmDialog?.ingredients.map((ing) => (
-                    <div key={ing.id} className="flex items-center justify-between bg-muted/50 px-3 py-2 rounded-md">
-                      <span className="font-medium">{ing.ingredient}</span>
-                      <div className="flex items-center gap-2 text-sm">
-                        <span className="text-muted-foreground">{getSeverityLabel(ing.currentSeverity)}</span>
-                        <span>→</span>
-                        <span className="font-medium">{getSeverityLabel(moveConfirmDialog?.targetSeverity || 'safe')}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-                {moveConfirmDialog && moveConfirmDialog.newIngredients.length > 0 && (
-                  <p className="text-sm text-muted-foreground">
-                    Além disso, {moveConfirmDialog.newIngredients.length} novo(s) ingrediente(s) será(ão) adicionado(s).
-                  </p>
-                )}
-                <p className="font-medium pt-2">Deseja mover para a nova categoria?</p>
-              </div>
-            </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
+          
+          <div className="flex-1 overflow-y-auto space-y-3 py-2">
+            <p className="text-sm text-muted-foreground">Os seguintes ingredientes já estão cadastrados:</p>
+            <div className="space-y-2 max-h-[40vh] overflow-y-auto pr-2">
+              {moveConfirmDialog?.ingredients.map((ing) => (
+                <div key={ing.id} className="flex items-center justify-between bg-muted/50 px-3 py-2 rounded-md text-sm">
+                  <span className="font-medium">{ing.ingredient}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-muted-foreground">{getSeverityLabel(ing.currentSeverity)}</span>
+                    <span>→</span>
+                    <span className="font-medium">{getSeverityLabel(moveConfirmDialog?.targetSeverity || 'safe')}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            {moveConfirmDialog && moveConfirmDialog.newIngredients.length > 0 && (
+              <p className="text-sm text-muted-foreground">
+                Além disso, {moveConfirmDialog.newIngredients.length} novo(s) ingrediente(s) será(ão) adicionado(s).
+              </p>
+            )}
+            <p className="font-medium pt-2">Deseja mover para a nova categoria?</p>
+          </div>
+          
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setMoveConfirmDialog(null)}>
+              Cancelar
+            </Button>
+            <Button
               onClick={handleConfirmMove}
               disabled={moveIngredientsMutation.isPending}
             >
               {moveIngredientsMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
               Mover
-            </AlertDialogAction>
-          </AlertDialogFooter>
+            </Button>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
     </div>

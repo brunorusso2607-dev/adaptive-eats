@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
 import LegalDisclaimer from "./LegalDisclaimer";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -10,6 +10,8 @@ import IngredientSearchSheet from "@/components/IngredientSearchSheet";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Ingredient = { 
   item: string; 
@@ -90,6 +92,29 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
     fat: meal.recipe_fat,
   });
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
+  const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
+
+  // Check which ingredients have conflicts
+  const ingredientConflicts = useMemo(() => {
+    if (!hasAnyRestriction || isLoadingRestrictions) return new Map<string, { message: string; label: string }>();
+    
+    const conflicts = new Map<string, { message: string; label: string }>();
+    localIngredients.forEach(ingredient => {
+      const key = ingredient.item.toLowerCase().trim();
+      if (!conflicts.has(key)) {
+        const warning = checkFood(ingredient.item);
+        if (warning.hasConflict && warning.conflictDetails.length > 0) {
+          conflicts.set(key, {
+            message: warning.conflictDetails[0].message,
+            label: warning.conflictDetails[0].label
+          });
+        }
+      }
+    });
+    return conflicts;
+  }, [localIngredients, checkFood, hasAnyRestriction, isLoadingRestrictions]);
+
+  const hasConflicts = ingredientConflicts.size > 0;
 
   const handleOpenSubstitution = (ingredient: Ingredient) => {
     // Parse grams from quantity string (e.g., "120g" -> 120)
@@ -231,8 +256,23 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
       </Card>
 
       {/* Ingredientes - Estilo Nutricionista */}
-      <Card className="glass-card">
+      <Card className={cn("glass-card", hasConflicts && "border-amber-500/50")}>
         <CardContent className="p-4">
+          {/* Alert banner if there are conflicts */}
+          {hasConflicts && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-600 dark:text-amber-400">
+                  {ingredientConflicts.size} {ingredientConflicts.size === 1 ? 'ingrediente pode conflitar' : 'ingredientes podem conflitar'} com suas restrições
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Considere substituir os itens marcados em amarelo
+                </p>
+              </div>
+            </div>
+          )}
+          
           <h3 className="font-display font-semibold text-lg mb-4 flex items-center gap-2">
             🍽️ Alimentos
             <span className="text-xs text-muted-foreground font-normal ml-auto">
@@ -240,41 +280,70 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
             </span>
           </h3>
           <ul className="space-y-1">
-            {localIngredients.map((ingredient, index) => {
-              // Limpa valor de quantity (remove "g" se já vier incluído para evitar "gg")
-              const cleanQuantity = ingredient.quantity?.toString().replace(/g$/i, '').trim() || '';
-              
-              // Formata quantidade em gramas: "1 filé de salmão (150g)"
-              const quantityDisplay = cleanQuantity 
-                ? `(${cleanQuantity}g)` 
-                : "";
-              
-              return (
-                <li 
-                  key={index} 
-                  className="flex items-start gap-2 py-1.5 hover:bg-muted/30 rounded px-1 transition-colors cursor-pointer group"
-                  onClick={() => handleOpenSubstitution(ingredient)}
-                >
-                  {/* Bullet point */}
-                  <span className="text-primary mt-0.5">•</span>
-                  
-                  {/* Formato com gramas: "Salmão assado (150g)" */}
-                  <span className="flex-1 text-foreground">
-                    {ingredient.item} {quantityDisplay && <span className="text-muted-foreground">{quantityDisplay}</span>}
-                  </span>
-                  
-                  <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
-                </li>
-              );
-            })}
+            <TooltipProvider>
+              {localIngredients.map((ingredient, index) => {
+                // Limpa valor de quantity (remove "g" se já vier incluído para evitar "gg")
+                const cleanQuantity = ingredient.quantity?.toString().replace(/g$/i, '').trim() || '';
+                
+                // Formata quantidade em gramas: "1 filé de salmão (150g)"
+                const quantityDisplay = cleanQuantity 
+                  ? `(${cleanQuantity}g)` 
+                  : "";
+                
+                const itemKey = ingredient.item.toLowerCase().trim();
+                const conflict = ingredientConflicts.get(itemKey);
+                
+                return (
+                  <li 
+                    key={index} 
+                    className={cn(
+                      "flex items-start gap-2 py-1.5 hover:bg-muted/30 rounded px-1 transition-colors cursor-pointer group",
+                      conflict && "bg-amber-500/10 border border-amber-500/30 rounded-lg px-2"
+                    )}
+                    onClick={() => handleOpenSubstitution(ingredient)}
+                  >
+                    {/* Bullet point or warning */}
+                    {conflict ? (
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <p className="text-xs">{conflict.message}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    ) : (
+                      <span className="text-primary mt-0.5">•</span>
+                    )}
+                    
+                    {/* Formato com gramas: "Salmão assado (150g)" */}
+                    <span className={cn(
+                      "flex-1",
+                      conflict ? "text-amber-600 dark:text-amber-400 font-medium" : "text-foreground"
+                    )}>
+                      {ingredient.item} {quantityDisplay && <span className="text-muted-foreground">{quantityDisplay}</span>}
+                    </span>
+                    
+                    <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                  </li>
+                );
+              })}
+            </TooltipProvider>
           </ul>
           
-          {/* Badge de segurança */}
+          {/* Badge de segurança ou alerta */}
           <div className="mt-4 pt-3 border-t border-border/50">
-            <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
-              <CheckCircle className="w-4 h-4" />
-              <span>Seguro para suas restrições</span>
-            </div>
+            {hasConflicts ? (
+              <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+                <AlertTriangle className="w-4 h-4" />
+                <span>Alguns ingredientes conflitam com suas restrições</span>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-emerald-600 dark:text-emerald-400">
+                <CheckCircle className="w-4 h-4" />
+                <span>Seguro para suas restrições</span>
+              </div>
+            )}
           </div>
 
           {/* Dicas de Preparo - Estilo Fridge Scanner */}

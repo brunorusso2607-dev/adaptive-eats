@@ -3,9 +3,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, ShoppingCart, Download, Share2, CheckCircle } from "lucide-react";
+import { ArrowLeft, ShoppingCart, Download, Share2, CheckCircle, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useUserCountry } from "@/hooks/useUserCountry";
+import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -60,8 +63,31 @@ const COUNTRY_TEXT: Record<string, { title: string; subtitle: string; progress: 
 export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
   const [checkedItems, setCheckedItems] = useState<Set<string>>(new Set());
   const { country } = useUserCountry();
+  const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
   
   const text = COUNTRY_TEXT[country || 'BR'] || COUNTRY_TEXT['BR'];
+
+  // Check which ingredients have conflicts
+  const ingredientConflicts = useMemo(() => {
+    if (!hasAnyRestriction || isLoadingRestrictions) return new Map<string, { message: string; label: string }>();
+    
+    const conflicts = new Map<string, { message: string; label: string }>();
+    mealPlan.items.forEach(meal => {
+      meal.recipe_ingredients.forEach(ingredient => {
+        const key = ingredient.item.toLowerCase().trim();
+        if (!conflicts.has(key)) {
+          const warning = checkFood(ingredient.item);
+          if (warning.hasConflict && warning.conflictDetails.length > 0) {
+            conflicts.set(key, {
+              message: warning.conflictDetails[0].message,
+              label: warning.conflictDetails[0].label
+            });
+          }
+        }
+      });
+    });
+    return conflicts;
+  }, [mealPlan.items, checkFood, hasAnyRestriction, isLoadingRestrictions]);
 
   // Aggregate ingredients from all meals
   const aggregatedIngredients = useMemo(() => {
@@ -224,33 +250,73 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
       {/* Shopping List */}
       <Card className="glass-card">
         <CardContent className="p-4">
-          <div className="space-y-2">
-            {aggregatedIngredients.map((ingredient, index) => (
-              <div
-                key={`${ingredient.item}-${index}`}
-                className={`flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer hover:bg-muted/50 ${
-                  ingredient.checked ? "bg-muted/30 opacity-60" : ""
-                }`}
-                onClick={() => toggleItem(ingredient.item)}
-              >
-                <Checkbox
-                  checked={ingredient.checked}
-                  onCheckedChange={() => toggleItem(ingredient.item)}
-                  className="shrink-0"
-                />
-                <div className="flex-1 min-w-0">
-                  <p className={`font-medium ${ingredient.checked ? "line-through text-muted-foreground" : ""}`}>
-                    {ingredient.item}
-                  </p>
-                  <p className="text-sm text-muted-foreground">
-                    {formatQuantities(ingredient.quantities)}
-                  </p>
-                </div>
-                {ingredient.checked && (
-                  <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-                )}
+          {/* Alert banner if there are conflicts */}
+          {ingredientConflicts.size > 0 && (
+            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2">
+              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+              <div className="text-sm">
+                <p className="font-medium text-amber-600 dark:text-amber-400">
+                  {ingredientConflicts.size} {ingredientConflicts.size === 1 ? 'ingrediente pode conflitar' : 'ingredientes podem conflitar'} com suas restrições
+                </p>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Verifique os itens marcados em amarelo antes de comprar
+                </p>
               </div>
-            ))}
+            </div>
+          )}
+          
+          <div className="space-y-2">
+            <TooltipProvider>
+              {aggregatedIngredients.map((ingredient, index) => {
+                const itemKey = ingredient.item.toLowerCase().trim();
+                const conflict = ingredientConflicts.get(itemKey);
+                
+                return (
+                  <div
+                    key={`${ingredient.item}-${index}`}
+                    className={cn(
+                      "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer hover:bg-muted/50",
+                      ingredient.checked && "bg-muted/30 opacity-60",
+                      conflict && !ingredient.checked && "bg-amber-500/10 border border-amber-500/30"
+                    )}
+                    onClick={() => toggleItem(ingredient.item)}
+                  >
+                    <Checkbox
+                      checked={ingredient.checked}
+                      onCheckedChange={() => toggleItem(ingredient.item)}
+                      className="shrink-0"
+                    />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className={cn(
+                          "font-medium",
+                          ingredient.checked && "line-through text-muted-foreground",
+                          conflict && !ingredient.checked && "text-amber-600 dark:text-amber-400"
+                        )}>
+                          {ingredient.item}
+                        </p>
+                        {conflict && !ingredient.checked && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                            </TooltipTrigger>
+                            <TooltipContent>
+                              <p className="text-xs">{conflict.message}</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {formatQuantities(ingredient.quantities)}
+                      </p>
+                    </div>
+                    {ingredient.checked && (
+                      <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                    )}
+                  </div>
+                );
+              })}
+            </TooltipProvider>
           </div>
         </CardContent>
       </Card>

@@ -37,10 +37,10 @@ export default function IngredientConflictDialog({
           <AlertDialogDescription asChild>
             <div className="space-y-3 pt-2">
               <p className="text-sm text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 px-3 py-2 rounded-md">
-                Contém {conflict.restrictionLabel?.toLowerCase()}
+                {conflict.message || `Contém ${conflict.restrictionLabel}`}
               </p>
               <p className="text-sm text-muted-foreground">
-                Você indicou ter restrição a este tipo de ingrediente. Deseja adicionar mesmo assim?
+                Deseja adicionar este ingrediente mesmo assim?
               </p>
             </div>
           </AlertDialogDescription>

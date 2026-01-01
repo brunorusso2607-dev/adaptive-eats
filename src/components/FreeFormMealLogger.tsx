@@ -192,7 +192,7 @@ export default function FreeFormMealLogger({
     }
   }, [results, isLoading, searchQuery, source, fetchAISuggestions]);
 
-  // Check for intolerance conflicts
+  // Check for intolerance conflicts - agora com tipo e mensagem correta
   const checkFoodConflicts = useCallback((foodName: string) => {
     const ingredientConflict = checkConflict(foodName);
     if (ingredientConflict) {
@@ -200,11 +200,14 @@ export default function FreeFormMealLogger({
     }
     
     const intoleranceResult = checkFood(foodName);
-    if (intoleranceResult.hasConflict && intoleranceResult.conflicts.length > 0) {
+    if (intoleranceResult.hasConflict && intoleranceResult.conflictDetails.length > 0) {
+      const firstConflict = intoleranceResult.conflictDetails[0];
       return {
         ingredient: foodName,
         restriction: intoleranceResult.conflicts[0],
-        restrictionLabel: `intolerante a ${intoleranceResult.labels[0]}`,
+        restrictionLabel: firstConflict.label,
+        type: firstConflict.type,
+        message: firstConflict.message,
       };
     }
     
@@ -219,7 +222,7 @@ export default function FreeFormMealLogger({
       addFoodToList(food);
       setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
       toast.warning(
-        `${food.name} contém ${localConflict.restrictionLabel.replace('intolerante a ', '')}`,
+        `${food.name}: ${localConflict.message || `Contém ${localConflict.restrictionLabel}`}`,
         { duration: 4000 }
       );
       return;

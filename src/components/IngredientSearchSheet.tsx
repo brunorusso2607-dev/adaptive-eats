@@ -96,11 +96,14 @@ export default function IngredientSearchSheet({
 
   const checkFoodConflicts = useCallback((foodName: string) => {
     const result = checkFood(foodName);
-    if (result.hasConflict) {
+    if (result.hasConflict && result.conflictDetails.length > 0) {
+      const firstConflict = result.conflictDetails[0];
       return {
         ingredient: foodName,
         restriction: result.conflicts[0],
-        restrictionLabel: `intolerante a ${result.badgeLabel}`,
+        restrictionLabel: firstConflict.label,
+        type: firstConflict.type,
+        message: firstConflict.message,
       };
     }
     return null;
@@ -223,7 +226,7 @@ export default function IngredientSearchSheet({
     
     if (localConflict) {
       toast.warning(
-        `${food.name} contém ${localConflict.restrictionLabel.replace('intolerante a ', '')}`,
+        `${food.name}: ${localConflict.message || `Contém ${localConflict.restrictionLabel}`}`,
         { duration: 4000 }
       );
     } else if (hasIntolerances) {
@@ -327,7 +330,7 @@ export default function IngredientSearchSheet({
 
       if (conflict) {
         toast.warning(
-          `${suggestion.name} contém ${conflict.restrictionLabel.replace('intolerante a ', '')}`,
+          `${suggestion.name}: ${conflict.message || `Contém ${conflict.restrictionLabel}`}`,
           { duration: 4000 }
         );
       }

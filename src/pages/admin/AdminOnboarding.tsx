@@ -10,6 +10,23 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import NutritionalStrategiesTab from "@/components/admin/NutritionalStrategiesTab";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -253,6 +270,104 @@ const CATEGORIES: CategoryInfo[] = [
   { key: "nutritional_strategies", label: "Estratégias Nutricionais", icon: Target, description: "Objetivos nutricionais para cálculo de macros" },
 ];
 
+// Sortable Item Component for DnD
+function SortableOptionItem({ 
+  option, 
+  onEdit, 
+  onDelete, 
+  onToggleActive 
+}: { 
+  option: OnboardingOption; 
+  onEdit: (option: OnboardingOption) => void;
+  onDelete: (option: OnboardingOption) => void;
+  onToggleActive: (id: string, is_active: boolean) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: option.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing"
+      >
+        <GripVertical className="w-4 h-4 text-muted-foreground" />
+      </div>
+      
+      <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
+        {option.icon_name && LUCIDE_ICONS[option.icon_name] ? (
+          (() => {
+            const IconComponent = LUCIDE_ICONS[option.icon_name];
+            return <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />;
+          })()
+        ) : (
+          <span className="text-lg">{option.emoji || "•"}</span>
+        )}
+      </div>
+      
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-medium">{option.label}</span>
+          <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
+            {option.option_id}
+          </span>
+          {!option.is_active && (
+            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
+              Inativo
+            </span>
+          )}
+        </div>
+        {option.description && (
+          <p className="text-sm text-muted-foreground truncate">
+            {option.description}
+          </p>
+        )}
+      </div>
+
+      <Switch
+        checked={option.is_active}
+        onCheckedChange={(checked) => onToggleActive(option.id, checked)}
+        className="data-[state=checked]:bg-foreground"
+      />
+
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={() => onEdit(option)}
+        className="text-muted-foreground hover:text-foreground hover:bg-muted"
+      >
+        <Pencil className="w-4 h-4" />
+      </Button>
+
+      <Button
+        variant="ghost"
+        size="icon"
+        className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+        onClick={() => onDelete(option)}
+      >
+        <Trash2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
+
 export default function AdminOnboarding() {
   const queryClient = useQueryClient();
   const [selectedCategory, setSelectedCategory] = useState("intolerances");
@@ -441,6 +556,55 @@ export default function AdminOnboarding() {
     },
   });
 
+  // Reorder mutation
+  const reorderMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      // Update all items in a single batch
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("onboarding_options")
+          .update({ sort_order: update.sort_order })
+          .eq("id", update.id);
+
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["onboarding-options"] });
+      toast.success("Ordem atualizada!");
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao reordenar: ${error.message}`);
+    },
+  });
+
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = filteredOptions.findIndex((item) => item.id === active.id);
+      const newIndex = filteredOptions.findIndex((item) => item.id === over.id);
+
+      const reordered = arrayMove(filteredOptions, oldIndex, newIndex);
+      
+      // Create updates with new sort_order values
+      const updates = reordered.map((item, index) => ({
+        id: item.id,
+        sort_order: index + 1,
+      }));
+
+      reorderMutation.mutate(updates);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       option_id: "",
@@ -571,72 +735,30 @@ export default function AdminOnboarding() {
                     <p>Nenhuma opção cadastrada</p>
                   </div>
                 ) : (
-                  <div className="space-y-2">
-                    {filteredOptions.map((option) => (
-                      <div
-                        key={option.id}
-                        className="flex items-center gap-4 p-4 bg-muted/30 rounded-xl hover:bg-muted/50 transition-colors"
-                      >
-                        <GripVertical className="w-4 h-4 text-muted-foreground cursor-grab" />
-                        
-                        <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50">
-                          {option.icon_name && LUCIDE_ICONS[option.icon_name] ? (
-                            (() => {
-                              const IconComponent = LUCIDE_ICONS[option.icon_name];
-                              return <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />;
-                            })()
-                          ) : (
-                            <span className="text-lg">{option.emoji || "•"}</span>
-                          )}
-                        </div>
-                        
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{option.label}</span>
-                            <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md font-mono">
-                              {option.option_id}
-                            </span>
-                            {!option.is_active && (
-                              <span className="text-xs bg-muted text-muted-foreground px-2 py-0.5 rounded-md">
-                                Inativo
-                              </span>
-                            )}
-                          </div>
-                          {option.description && (
-                            <p className="text-sm text-muted-foreground truncate">
-                              {option.description}
-                            </p>
-                          )}
-                        </div>
-
-                        <Switch
-                          checked={option.is_active}
-                          onCheckedChange={(checked) =>
-                            toggleActiveMutation.mutate({ id: option.id, is_active: checked })
-                          }
-                          className="data-[state=checked]:bg-foreground"
-                        />
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={() => openEditDialog(option)}
-                          className="text-muted-foreground hover:text-foreground hover:bg-muted"
-                        >
-                          <Pencil className="w-4 h-4" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          onClick={() => setDeleteOption(option)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
+                  <DndContext
+                    sensors={sensors}
+                    collisionDetection={closestCenter}
+                    onDragEnd={handleDragEnd}
+                  >
+                    <SortableContext
+                      items={filteredOptions.map((o) => o.id)}
+                      strategy={verticalListSortingStrategy}
+                    >
+                      <div className="space-y-2">
+                        {filteredOptions.map((option) => (
+                          <SortableOptionItem
+                            key={option.id}
+                            option={option}
+                            onEdit={openEditDialog}
+                            onDelete={setDeleteOption}
+                            onToggleActive={(id, is_active) =>
+                              toggleActiveMutation.mutate({ id, is_active })
+                            }
+                          />
+                        ))}
                       </div>
-                    ))}
-                  </div>
+                    </SortableContext>
+                  </DndContext>
                 )}
               </CardContent>
             </Card>

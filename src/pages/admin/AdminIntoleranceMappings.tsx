@@ -137,8 +137,8 @@ export default function AdminIntoleranceMappings() {
     sensitivities: ['cafeina', 'caffeine', 'histamine', 'salicylate', 'nickel', 'sulfite', 'corn'],
   };
 
-  // Get unique intolerance keys (only from database, deduplicated by canonical key)
-  const allKeys = [...new Set(mappings?.map(m => m.intolerance_key) || [])];
+  // Get ALL intolerance keys from normalization table (not just ones with ingredients)
+  const allKeysFromNormalization = [...new Set(normalizationData?.map(n => n.database_key) || [])];
   
   const sortByLabel = (a: string, b: string) => {
     const labelA = canonicalKeyMap.get(a) || getLabel(a);
@@ -146,11 +146,11 @@ export default function AdminIntoleranceMappings() {
     return labelA.localeCompare(labelB, 'pt-BR');
   };
 
-  // Group keys by category
-  const intoleranceKeysList = allKeys.filter(k => CATEGORY_KEYS.intolerances.includes(k)).sort(sortByLabel);
-  const allergyKeysList = allKeys.filter(k => CATEGORY_KEYS.allergies.includes(k)).sort(sortByLabel);
-  const sensitivityKeysList = allKeys.filter(k => CATEGORY_KEYS.sensitivities.includes(k)).sort(sortByLabel);
-  const otherKeysList = allKeys.filter(k => 
+  // Group keys by category - using ALL keys from normalization, not just ones with ingredients
+  const intoleranceKeysList = allKeysFromNormalization.filter(k => CATEGORY_KEYS.intolerances.includes(k)).sort(sortByLabel);
+  const allergyKeysList = allKeysFromNormalization.filter(k => CATEGORY_KEYS.allergies.includes(k)).sort(sortByLabel);
+  const sensitivityKeysList = allKeysFromNormalization.filter(k => CATEGORY_KEYS.sensitivities.includes(k)).sort(sortByLabel);
+  const otherKeysList = allKeysFromNormalization.filter(k => 
     !CATEGORY_KEYS.intolerances.includes(k) && 
     !CATEGORY_KEYS.allergies.includes(k) && 
     !CATEGORY_KEYS.sensitivities.includes(k)

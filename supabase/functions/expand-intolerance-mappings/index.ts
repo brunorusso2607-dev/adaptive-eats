@@ -12,25 +12,84 @@ const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 // Mapeamento de intolerâncias para contexto da IA
 const INTOLERANCE_CONTEXT: Record<string, string> = {
-  lactose: "Intolerância à lactose - incluir todos os laticínios, derivados do leite, compostos lácteos, aditivos com lactose, nomes industriais, E-numbers europeus relacionados",
-  gluten: "Intolerância ao glúten/doença celíaca - incluir todos os cereais com glúten (trigo, centeio, cevada, aveia contaminada), derivados, malte, amidos modificados, proteínas vegetais hidrolisadas",
-  amendoim: "Alergia a amendoim - incluir amendoim, pasta de amendoim, óleo de amendoim, derivados, nomes em outros idiomas",
-  frutos_do_mar: "Alergia a frutos do mar - incluir camarão, lagosta, caranguejo, siri, crustáceos, derivados",
-  peixe: "Alergia a peixe - incluir todos os tipos de peixe, óleos de peixe, molhos de peixe, derivados",
-  ovos: "Alergia a ovos - incluir ovo, clara, gema, albumina, lecitina de ovo, derivados, nomes industriais",
-  soja: "Alergia a soja - incluir soja, tofu, tempeh, molho shoyu, lecitina de soja, proteína de soja, derivados",
-  sulfitos: "Sensibilidade a sulfitos - incluir todos os compostos sulfurosos, conservantes E220-E228, metabissulfito",
-  castanhas: "Alergia a castanhas/nozes - incluir todas as oleaginosas (amêndoa, noz, castanha, avelã, pistache, macadâmia), derivados, óleos",
-  sesamo: "Alergia a sésamo/gergelim - incluir sésamo, gergelim, tahine, óleo de gergelim, derivados",
-  tremoco: "Alergia a tremoço - incluir tremoço, farinha de tremoço, derivados",
-  mostarda: "Alergia a mostarda - incluir mostarda, sementes de mostarda, óleo de mostarda, derivados",
-  aipo: "Alergia a aipo/salsão - incluir aipo, salsão, sementes de aipo, sal de aipo, derivados",
-  moluscos: "Alergia a moluscos - incluir lula, polvo, mexilhão, ostra, vieira, caracol, derivados",
-  fodmap: "Dieta baixa em FODMAPs - incluir alimentos ricos em oligossacarídeos, dissacarídeos, monossacarídeos e polióis fermentáveis",
-  histamina: "Intolerância à histamina - incluir alimentos ricos em histamina ou liberadores de histamina (queijos curados, embutidos, fermentados, vinhos)",
-  salicilatos: "Sensibilidade a salicilatos - incluir alimentos ricos em salicilatos naturais",
-  niquel: "Alergia/sensibilidade ao níquel - incluir alimentos com alto teor de níquel (cacau, leguminosas, oleaginosas, grãos integrais)",
+  lactose: "Intolerância à lactose - incluir APENAS ingredientes puros: laticínios, derivados do leite, compostos lácteos, proteínas do leite, aditivos com lactose",
+  gluten: "Intolerância ao glúten/doença celíaca - incluir APENAS ingredientes puros: cereais com glúten (trigo, centeio, cevada, aveia), farinhas, malte, amidos, proteínas vegetais",
+  amendoim: "Alergia a amendoim - incluir APENAS: amendoim, pasta de amendoim, óleo de amendoim, derivados puros",
+  frutos_do_mar: "Alergia a frutos do mar - incluir APENAS: camarão, lagosta, caranguejo, siri, crustáceos puros",
+  peixe: "Alergia a peixe - incluir APENAS: tipos de peixe, óleos de peixe, derivados puros",
+  ovos: "Alergia a ovos - incluir APENAS: ovo, clara, gema, albumina, lecitina de ovo, proteínas do ovo",
+  soja: "Alergia a soja - incluir APENAS: soja, tofu, tempeh, proteína de soja, lecitina de soja, derivados puros",
+  sulfitos: "Sensibilidade a sulfitos - incluir APENAS: compostos sulfurosos, conservantes E220-E228, metabissulfito",
+  castanhas: "Alergia a castanhas/nozes - incluir APENAS: oleaginosas puras (amêndoa, noz, castanha, avelã, pistache, macadâmia), óleos de oleaginosas",
+  sesamo: "Alergia a sésamo/gergelim - incluir APENAS: sésamo, gergelim, tahine, óleo de gergelim",
+  tremoco: "Alergia a tremoço - incluir APENAS: tremoço, farinha de tremoço",
+  mostarda: "Alergia a mostarda - incluir APENAS: mostarda, sementes de mostarda, óleo de mostarda",
+  aipo: "Alergia a aipo/salsão - incluir APENAS: aipo, salsão, sementes de aipo, sal de aipo",
+  moluscos: "Alergia a moluscos - incluir APENAS: lula, polvo, mexilhão, ostra, vieira, caracol",
+  fodmap: "Dieta baixa em FODMAPs - incluir APENAS ingredientes ricos em FODMAPs puros",
+  histamina: "Intolerância à histamina - incluir APENAS ingredientes puros ricos em histamina",
+  salicilatos: "Sensibilidade a salicilatos - incluir APENAS ingredientes puros ricos em salicilatos",
+  niquel: "Alergia/sensibilidade ao níquel - incluir APENAS ingredientes puros com alto teor de níquel",
 };
+
+// Lista de padrões para detectar pratos prontos/industrializados (NÃO DEVEM SER INCLUÍDOS)
+const PREPARED_DISH_PATTERNS = [
+  // Pratos brasileiros
+  /beijinho/i, /brigadeiro/i, /coxinha/i, /esfiha/i, /empada/i, /pastel/i,
+  /pizza/i, /lasanha/i, /strogonoff/i, /feijoada/i, /acarajé/i, /tapioca/i,
+  /pão de queijo/i, /quibe/i, /kibe/i, /à milanesa/i, /milanesa/i,
+  /à parmegiana/i, /parmegiana/i, /panqueca/i, /crepe/i, /waffle/i,
+  /torta/i, /bolo/i, /pudim/i, /mousse/i, /sorvete/i, /frozen/i,
+  
+  // Pratos genéricos
+  /sanduíche/i, /sandwich/i, /hambúrguer/i, /burger/i, /hot dog/i,
+  /nugget/i, /empanado/i, /croquete/i, /bolinho/i, /risoto/i,
+  /macarrão/i, /massa$/i, /spaghetti/i, /fettuccine/i, /ravioli/i,
+  /nhoque/i, /gnocchi/i, /cannelloni/i, /cappelletti/i,
+  
+  // Doces/sobremesas
+  /chocolate ao leite/i, /chocolate branco/i, /bombom/i, /trufa/i,
+  /doce de leite/i, /dulce de leche/i, /leite condensado/i,
+  /chantilly/i, /granola/i, /muesli/i, /cereal/i,
+  
+  // Bebidas preparadas
+  /milk shake/i, /milkshake/i, /smoothie/i, /frappuccino/i,
+  /cappuccino/i, /café com leite/i,
+  
+  // Molhos compostos
+  /molho bechamel/i, /molho branco/i, /molho rosa/i, /molho bolonhesa/i,
+  
+  // Pratos internacionais
+  /sushi/i, /temaki/i, /gyoza/i, /ramen/i, /pad thai/i,
+  /burrito/i, /taco/i, /quesadilla/i, /nachos/i,
+  /croissant/i, /brioche/i, /pretzel/i,
+  
+  // Padrões gerais de pratos compostos
+  /com .+/i, // "arroz com feijão", "frango com batata"
+  /à .+/i,   // "à carbonara", "à bolonhesa"
+  /ao .+/i,  // "ao molho", "ao forno"
+];
+
+function isPreparedDish(ingredient: string): boolean {
+  const normalized = ingredient.toLowerCase().trim();
+  
+  // Verificar padrões de pratos prontos
+  for (const pattern of PREPARED_DISH_PATTERNS) {
+    if (pattern.test(normalized)) {
+      return true;
+    }
+  }
+  
+  // Verificar se contém palavras que indicam combinação
+  const combinationWords = [' com ', ' e ', ' c/', ' ao ', ' à ', ' de '];
+  for (const word of combinationWords) {
+    if (normalized.includes(word) && normalized.split(' ').length > 3) {
+      return true;
+    }
+  }
+  
+  return false;
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -38,7 +97,7 @@ serve(async (req) => {
   }
 
   try {
-    const { intolerance_key, language = "pt", batch_size = 500 } = await req.json();
+    const { intolerance_key, language = "pt", batch_size = 100 } = await req.json();
 
     if (!intolerance_key) {
       return new Response(
@@ -81,37 +140,41 @@ serve(async (req) => {
 
     const languageName = languageMap[language] || "português brasileiro";
 
-    const systemPrompt = `Você é um especialista em segurança alimentar e alergias/intolerâncias. 
-Sua tarefa é gerar uma lista EXTENSA e EXAUSTIVA de ingredientes que devem ser evitados por pessoas com determinada restrição alimentar.
+    // PROMPT CORRIGIDO: Foco em ingredientes PUROS apenas
+    const systemPrompt = `Você é um especialista em segurança alimentar e alergias/intolerâncias.
+Sua tarefa é gerar uma lista de INGREDIENTES PUROS que devem ser evitados.
 
-REGRAS IMPORTANTES:
-1. Inclua TODOS os derivados possíveis
-2. Inclua nomes em diferentes idiomas e regionais
-3. Inclua nomes industriais e científicos
-4. Inclua aditivos alimentares (E-numbers europeus)
-5. Inclua compostos químicos relacionados
-6. Inclua variações de escrita (com/sem acento, singular/plural)
-7. Inclua ingredientes ocultos em produtos processados
-8. NÃO inclua explicações, apenas a lista
-9. Um ingrediente por linha
-10. Sem numeração, apenas o nome do ingrediente`;
+REGRAS CRÍTICAS - LEIA COM ATENÇÃO:
+
+✅ INCLUIR APENAS:
+- Ingredientes puros e isolados (ex: leite, queijo mussarela, farinha de trigo)
+- Derivados químicos/biológicos (ex: caseína, lactose, glúten, albumina)
+- Aditivos alimentares (códigos E)
+- Tipos específicos do ingrediente base (ex: queijo brie, queijo cheddar)
+- Proteínas isoladas (ex: proteína do soro, whey)
+
+❌ NUNCA INCLUIR:
+- Pratos prontos (ex: pizza, lasanha, coxinha, brigadeiro, beijinho)
+- Receitas compostas (ex: arroz com leite, pão de queijo)
+- Produtos industrializados de marca
+- Sobremesas (ex: pudim, mousse, sorvete, bolo)
+- Combinações de ingredientes (ex: "frango à milanesa")
+- Alimentos preparados (ex: empanado, à parmegiana)
+
+FORMATO:
+- Um ingrediente por linha
+- Apenas o nome do ingrediente puro
+- Sem numeração, bullets ou explicações`;
 
     const userPrompt = `${context}
 
-Gere uma lista de ${batch_size} ingredientes em ${languageName} que devem ser ABSOLUTAMENTE evitados por pessoas com essa restrição.
+Liste ${batch_size} INGREDIENTES PUROS em ${languageName} que devem ser evitados.
 
-Inclua:
-- Ingredientes diretos
-- Derivados e subprodutos
-- Nomes alternativos e regionais
-- Nomes em outros idiomas comuns
-- Aditivos alimentares (códigos E)
-- Compostos industriais
-- Ingredientes ocultos em produtos processados
+Lembre-se: APENAS ingredientes puros, NUNCA pratos prontos ou receitas.
 
-APENAS a lista, um ingrediente por linha, sem explicações:`;
+Lista:`;
 
-    console.log(`[expand] Chamando Gemini para gerar ${batch_size} ingredientes...`);
+    console.log(`[expand] Chamando Gemini para gerar ${batch_size} ingredientes PUROS...`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -125,8 +188,8 @@ APENAS a lista, um ingrediente por linha, sem explicações:`;
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.7,
-        max_tokens: 8000,
+        temperature: 0.3, // Reduzido para respostas mais consistentes
+        max_tokens: 4000,
       }),
     });
 
@@ -143,17 +206,28 @@ APENAS a lista, um ingrediente por linha, sem explicações:`;
     const generatedText = data.choices?.[0]?.message?.content || "";
 
     // Processar a lista de ingredientes
-    const ingredients = generatedText
+    const rawIngredients = generatedText
       .split("\n")
       .map((line: string) => line.trim())
-      .filter((line: string) => line.length > 1 && line.length < 100)
+      .filter((line: string) => line.length > 1 && line.length < 80)
       .map((line: string) => line.replace(/^[-•*\d.)\s]+/, "").trim())
       .filter((line: string) => line.length > 1);
 
-    console.log(`[expand] Gemini gerou ${ingredients.length} ingredientes`);
+    console.log(`[expand] Gemini gerou ${rawIngredients.length} itens brutos`);
+
+    // FILTRO CRÍTICO: Remover pratos prontos
+    const pureIngredients = rawIngredients.filter((ing: string) => {
+      const isPrepared = isPreparedDish(ing);
+      if (isPrepared) {
+        console.log(`[expand] REJEITADO (prato pronto): ${ing}`);
+      }
+      return !isPrepared;
+    });
+
+    console.log(`[expand] Após filtro de pureza: ${pureIngredients.length} ingredientes puros`);
 
     // Filtrar duplicatas
-    const newIngredients = ingredients.filter(
+    const newIngredients = pureIngredients.filter(
       (ing: string) => !existingSet.has(ing.toLowerCase().trim())
     );
 
@@ -165,8 +239,9 @@ APENAS a lista, um ingrediente por linha, sem explicações:`;
           success: true,
           message: "Nenhum ingrediente novo para adicionar",
           stats: {
-            generated: ingredients.length,
-            duplicates: ingredients.length,
+            generated: rawIngredients.length,
+            filtered_as_prepared_dishes: rawIngredients.length - pureIngredients.length,
+            duplicates: pureIngredients.length,
             inserted: 0,
           },
         }),
@@ -174,8 +249,8 @@ APENAS a lista, um ingrediente por linha, sem explicações:`;
       );
     }
 
-    // Inserir em lotes de 100
-    const batchInsertSize = 100;
+    // Inserir em lotes de 50
+    const batchInsertSize = 50;
     let totalInserted = 0;
     let errors: string[] = [];
 
@@ -197,15 +272,16 @@ APENAS a lista, um ingrediente por linha, sem explicações:`;
       }
     }
 
-    console.log(`[expand] Inseridos ${totalInserted} ingredientes para ${intolerance_key}`);
+    console.log(`[expand] Inseridos ${totalInserted} ingredientes PUROS para ${intolerance_key}`);
 
     return new Response(
       JSON.stringify({
         success: true,
         message: `Expansão concluída para ${intolerance_key}`,
         stats: {
-          generated: ingredients.length,
-          duplicates: ingredients.length - newIngredients.length,
+          generated: rawIngredients.length,
+          filtered_as_prepared_dishes: rawIngredients.length - pureIngredients.length,
+          duplicates: pureIngredients.length - newIngredients.length,
           inserted: totalInserted,
           errors: errors.length > 0 ? errors : undefined,
         },

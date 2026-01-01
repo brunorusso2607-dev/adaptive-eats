@@ -32,7 +32,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X, AlertCircle } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import { FALLBACK_INTOLERANCE_LABELS } from "@/lib/safetyFallbacks";
@@ -41,6 +41,7 @@ type IntoleranceMapping = {
   id: string;
   intolerance_key: string;
   ingredient: string;
+  severity_level: string | null;
   created_at: string;
 };
 
@@ -54,7 +55,7 @@ type SafeKeyword = {
 export default function AdminIntoleranceMappings() {
   const queryClient = useQueryClient();
   const [selectedIntolerance, setSelectedIntolerance] = useState<string>("lactose");
-  const [activeTab, setActiveTab] = useState<"ingredients" | "keywords">("ingredients");
+  const [activeTab, setActiveTab] = useState<"blocked" | "caution" | "keywords">("blocked");
   const [searchTerm, setSearchTerm] = useState("");
   
   // Hook para labels do banco de dados
@@ -80,7 +81,7 @@ export default function AdminIntoleranceMappings() {
   const [newIngredient, setNewIngredient] = useState("");
   const [newKeyword, setNewKeyword] = useState("");
   const [bulkIngredients, setBulkIngredients] = useState("");
-
+  const [newSeverityLevel, setNewSeverityLevel] = useState<"high" | "low">("high");
   // Fetch mappings
   const { data: mappings, isLoading: isLoadingMappings } = useQuery({
     queryKey: ["intolerance-mappings"],
@@ -157,10 +158,19 @@ export default function AdminIntoleranceMappings() {
   ).sort(sortByLabel);
 
   // Filter by selected intolerance and search
-  const filteredMappings = mappings?.filter(m => 
+  const allMappingsForIntolerance = mappings?.filter(m => 
     m.intolerance_key === selectedIntolerance &&
     m.ingredient.toLowerCase().includes(searchTerm.toLowerCase())
   ) || [];
+
+  // Separate by severity level: high = blocked, low = caution
+  const blockedMappings = allMappingsForIntolerance.filter(m => 
+    m.severity_level === 'high' || !m.severity_level || m.severity_level === 'unknown'
+  );
+  
+  const cautionMappings = allMappingsForIntolerance.filter(m => 
+    m.severity_level === 'low'
+  );
 
   const filteredKeywords = safeKeywords?.filter(k => 
     k.intolerance_key === selectedIntolerance &&
@@ -169,10 +179,11 @@ export default function AdminIntoleranceMappings() {
 
   // Add ingredient mutation
   const addIngredientMutation = useMutation({
-    mutationFn: async (ingredients: string[]) => {
+    mutationFn: async ({ ingredients, severityLevel }: { ingredients: string[], severityLevel: "high" | "low" }) => {
       const inserts = ingredients.map(ingredient => ({
         intolerance_key: selectedIntolerance,
         ingredient: ingredient.trim().toLowerCase(),
+        severity_level: severityLevel,
       }));
 
       const { error } = await supabase
@@ -187,6 +198,7 @@ export default function AdminIntoleranceMappings() {
       setIsAddIngredientOpen(false);
       setNewIngredient("");
       setBulkIngredients("");
+      setNewSeverityLevel("high");
     },
     onError: (error: Error) => {
       if (error.message.includes("duplicate")) {
@@ -272,10 +284,10 @@ export default function AdminIntoleranceMappings() {
         .filter(i => i.length > 0);
       
       if (ingredients.length > 0) {
-        addIngredientMutation.mutate(ingredients);
+        addIngredientMutation.mutate({ ingredients, severityLevel: newSeverityLevel });
       }
     } else if (newIngredient.trim()) {
-      addIngredientMutation.mutate([newIngredient]);
+      addIngredientMutation.mutate({ ingredients: [newIngredient], severityLevel: newSeverityLevel });
     }
   };
 
@@ -435,17 +447,21 @@ export default function AdminIntoleranceMappings() {
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
             <TabsList className="mb-4">
-              <TabsTrigger value="ingredients" className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                Ingred. ({filteredMappings.length})
+              <TabsTrigger value="blocked" className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-500" />
+                Bloqueados ({blockedMappings.length})
+              </TabsTrigger>
+              <TabsTrigger value="caution" className="flex items-center gap-2">
+                <AlertCircle className="h-4 w-4 text-yellow-500" />
+                Atenção ({cautionMappings.length})
               </TabsTrigger>
               <TabsTrigger value="keywords" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
+                <Shield className="h-4 w-4 text-green-500" />
                 Seguras ({filteredKeywords.length})
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="ingredients">
+            <TabsContent value="blocked">
               <div className="flex justify-end mb-4">
                 <Button onClick={() => setIsAddIngredientOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
@@ -454,11 +470,11 @@ export default function AdminIntoleranceMappings() {
               </div>
 
               <div className="flex flex-wrap gap-2">
-                {filteredMappings.map((mapping) => (
+                {blockedMappings.map((mapping) => (
                   <Badge
                     key={mapping.id}
                     variant="outline"
-                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-orange-500/10 border-orange-500/30"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-red-500/10 border-red-500/30 text-red-700 dark:text-red-400"
                   >
                     {mapping.ingredient}
                     <button
@@ -469,12 +485,54 @@ export default function AdminIntoleranceMappings() {
                     </button>
                   </Badge>
                 ))}
-                {filteredMappings.length === 0 && (
+                {blockedMappings.length === 0 && (
                   <p className="text-muted-foreground text-sm">
-                    Nenhum ingrediente cadastrado para esta intolerância.
+                    Nenhum ingrediente bloqueado para esta intolerância.
                   </p>
                 )}
               </div>
+              
+              <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Ingredientes bloqueados NUNCA aparecem nos planos alimentares.
+              </p>
+            </TabsContent>
+
+            <TabsContent value="caution">
+              <div className="flex justify-end mb-4">
+                <Button onClick={() => setIsAddIngredientOpen(true)}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Adicionar
+                </Button>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {cautionMappings.map((mapping) => (
+                  <Badge
+                    key={mapping.id}
+                    variant="outline"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
+                  >
+                    {mapping.ingredient}
+                    <button
+                      onClick={() => setDeleteMapping(mapping)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </Badge>
+                ))}
+                {cautionMappings.length === 0 && (
+                  <p className="text-muted-foreground text-sm">
+                    Nenhum ingrediente de atenção para esta intolerância.
+                  </p>
+                )}
+              </div>
+              
+              <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+                <AlertCircle className="h-3 w-3" />
+                Ingredientes de atenção aparecem nos planos com aviso de tolerância individual.
+              </p>
             </TabsContent>
 
             <TabsContent value="keywords">
@@ -490,7 +548,7 @@ export default function AdminIntoleranceMappings() {
                   <Badge
                     key={keyword.id}
                     variant="outline"
-                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-green-500/10 border-green-500/30"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-green-500/10 border-green-500/30 text-green-700 dark:text-green-400"
                   >
                     {keyword.keyword}
                     <button
@@ -507,6 +565,11 @@ export default function AdminIntoleranceMappings() {
                   </p>
                 )}
               </div>
+              
+              <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
+                <Shield className="h-3 w-3" />
+                Palavras-chave seguras liberam ingredientes que contenham esses termos.
+              </p>
             </TabsContent>
           </Tabs>
         </div>
@@ -521,6 +584,30 @@ export default function AdminIntoleranceMappings() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Severity Level Selector */}
+            <div>
+              <Label>Nível de Severidade</Label>
+              <Select value={newSeverityLevel} onValueChange={(v) => setNewSeverityLevel(v as "high" | "low")}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="high">
+                    <div className="flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-red-500" />
+                      <span>Bloqueado (HIGH) - Nunca aparece</span>
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="low">
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-500" />
+                      <span>Atenção (LOW) - Aparece com aviso</span>
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div>
               <Label>Ingrediente único</Label>
               <Input

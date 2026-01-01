@@ -12,6 +12,7 @@ import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { toast } from "sonner";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { FodmapSeasoningAlert } from "@/components/FodmapSeasoningAlert";
 
 type Ingredient = { 
   item: string; 
@@ -254,6 +255,9 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
           </div>
         </CardContent>
       </Card>
+
+      {/* Alerta de temperos FODMAP */}
+      <FodmapSeasoningAlert />
 
       {/* Ingredientes - Estilo Nutricionista */}
       <Card className={cn("glass-card", hasConflicts && "border-amber-500/50")}>

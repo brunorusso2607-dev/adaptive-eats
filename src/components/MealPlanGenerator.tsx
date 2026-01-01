@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2, Sparkles, ArrowLeft, Calendar, CheckCircle2, Ban } from "lucide-react";
+import LegalDisclaimer from "./LegalDisclaimer";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format, endOfMonth, differenceInDays } from "date-fns";
@@ -372,6 +373,9 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
           </div>
         </CardContent>
       </Card>
+
+      {/* Legal Disclaimer */}
+      <LegalDisclaimer className="mt-4" />
     </div>
   );
 }

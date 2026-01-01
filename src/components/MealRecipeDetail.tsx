@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp } from "lucide-react";
+import LegalDisclaimer from "./LegalDisclaimer";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import IngredientSearchSheet from "@/components/IngredientSearchSheet";
@@ -280,6 +281,9 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
           {meal.recipe_instructions && meal.recipe_instructions.length > 0 && meal.recipe_instructions[0] !== "" && (
             <QuickTips instructions={meal.recipe_instructions} />
           )}
+
+          {/* Legal Disclaimer */}
+          <LegalDisclaimer className="mt-4 pt-3 border-t border-border/50" />
         </CardContent>
       </Card>
 

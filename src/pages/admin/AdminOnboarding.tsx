@@ -24,6 +24,7 @@ import {
   sortableKeyboardCoordinates,
   useSortable,
   verticalListSortingStrategy,
+  horizontalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import {
@@ -254,21 +255,77 @@ type OnboardingOption = {
   updated_at: string;
 };
 
-type CategoryInfo = {
-  key: string;
+type OnboardingCategory = {
+  id: string;
+  category_key: string;
   label: string;
-  icon: React.ComponentType<{ className?: string }>;
-  description: string;
+  icon_name: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
 };
 
-const CATEGORIES: CategoryInfo[] = [
-  { key: "intolerances", label: "Intolerâncias", icon: Wheat, description: "Restrições alimentares por intolerância" },
-  { key: "allergies", label: "Alergias", icon: AlertTriangle, description: "Alergias alimentares severas" },
-  { key: "sensitivities", label: "Sensibilidades", icon: Shield, description: "Sensibilidades alimentares leves" },
-  { key: "excluded_ingredients", label: "Alimentos Excluídos", icon: Ban, description: "Sugestões de alimentos que usuários podem não consumir" },
-  { key: "dietary_preferences", label: "Preferências Alimentares", icon: Utensils, description: "Tipos de dieta" },
-  { key: "nutritional_strategies", label: "Estratégias Nutricionais", icon: Target, description: "Objetivos nutricionais para cálculo de macros" },
-];
+// Sortable Tab Item Component for DnD on tabs
+function SortableCategoryTab({ 
+  category, 
+  isSelected,
+  count,
+  onClick 
+}: { 
+  category: OnboardingCategory;
+  isSelected: boolean;
+  count?: number;
+  onClick: () => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: category.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 10 : 'auto',
+  };
+
+  const IconComponent = LUCIDE_ICONS[category.icon_name] || Target;
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className={`flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition-colors select-none ${
+        isSelected 
+          ? 'bg-foreground text-background' 
+          : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+      }`}
+      onClick={onClick}
+    >
+      <div 
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <GripVertical className="w-3 h-3 opacity-50" />
+      </div>
+      <IconComponent className="w-4 h-4" />
+      <span className="hidden sm:inline text-sm font-medium">{category.label}</span>
+      {count !== undefined && (
+        <span className={`text-xs px-1.5 py-0.5 rounded-md font-medium ${
+          isSelected ? 'bg-background/30' : 'bg-background/20'
+        }`}>
+          {count}
+        </span>
+      )}
+    </div>
+  );
+}
 
 // Sortable Item Component for DnD
 function SortableOptionItem({ 
@@ -447,8 +504,22 @@ export default function AdminOnboarding() {
     }
   };
 
+  // Fetch categories from database
+  const { data: categories, isLoading: categoriesLoading } = useQuery({
+    queryKey: ["onboarding-categories"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("onboarding_categories")
+        .select("*")
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+      return data as OnboardingCategory[];
+    },
+  });
+
   // Fetch all options
-  const { data: options, isLoading } = useQuery({
+  const { data: options, isLoading: optionsLoading } = useQuery({
     queryKey: ["onboarding-options"],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -460,6 +531,8 @@ export default function AdminOnboarding() {
       return data as OnboardingOption[];
     },
   });
+
+  const isLoading = categoriesLoading || optionsLoading;
 
   // Create mutation
   const createMutation = useMutation({
@@ -556,7 +629,7 @@ export default function AdminOnboarding() {
     },
   });
 
-  // Reorder mutation
+  // Reorder options mutation
   const reorderMutation = useMutation({
     mutationFn: async (updates: { id: string; sort_order: number }[]) => {
       // Update all items in a single batch
@@ -575,6 +648,27 @@ export default function AdminOnboarding() {
     },
     onError: (error: Error) => {
       toast.error(`Erro ao reordenar: ${error.message}`);
+    },
+  });
+
+  // Reorder categories mutation
+  const reorderCategoriesMutation = useMutation({
+    mutationFn: async (updates: { id: string; sort_order: number }[]) => {
+      for (const update of updates) {
+        const { error } = await supabase
+          .from("onboarding_categories")
+          .update({ sort_order: update.sort_order })
+          .eq("id", update.id);
+
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["onboarding-categories"] });
+      toast.success("Ordem das categorias atualizada!");
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro ao reordenar categorias: ${error.message}`);
     },
   });
 
@@ -602,6 +696,24 @@ export default function AdminOnboarding() {
       }));
 
       reorderMutation.mutate(updates);
+    }
+  };
+
+  const handleCategoryDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id && categories) {
+      const oldIndex = categories.findIndex((item) => item.id === active.id);
+      const newIndex = categories.findIndex((item) => item.id === over.id);
+
+      const reordered = arrayMove(categories, oldIndex, newIndex);
+      
+      const updates = reordered.map((item, index) => ({
+        id: item.id,
+        sort_order: index + 1,
+      }));
+
+      reorderCategoriesMutation.mutate(updates);
     }
   };
 
@@ -660,7 +772,7 @@ export default function AdminOnboarding() {
   };
 
   const filteredOptions = options?.filter(o => o.category === selectedCategory) || [];
-  const currentCategory = CATEGORIES.find(c => c.key === selectedCategory);
+  const currentCategory = categories?.find(c => c.category_key === selectedCategory);
 
   if (isLoading) {
     return (
@@ -675,34 +787,38 @@ export default function AdminOnboarding() {
       <div>
         <h2 className="text-2xl font-bold text-foreground">Onboarding</h2>
         <p className="text-muted-foreground">
-          Gerencie as opções que os usuários veem durante o cadastro
+          Gerencie as opções que os usuários veem durante o cadastro (arraste para reordenar categorias)
         </p>
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <TabsList className="flex-wrap h-auto gap-2 bg-transparent p-0">
-          {CATEGORIES.map((cat) => {
-            const Icon = cat.icon;
-            const count = cat.key === "nutritional_strategies" 
-              ? undefined 
-              : options?.filter(o => o.category === cat.key).length || 0;
-            return (
-              <TabsTrigger
-                key={cat.key}
-                value={cat.key}
-                className="data-[state=active]:bg-foreground data-[state=active]:text-background data-[state=inactive]:bg-muted/50 data-[state=inactive]:text-muted-foreground hover:bg-muted gap-2 px-4 py-2 rounded-xl border-0"
-              >
-                <Icon className="w-4 h-4" />
-                <span className="hidden sm:inline">{cat.label}</span>
-                {count !== undefined && (
-                  <span className="ml-1 text-xs bg-background/20 data-[state=active]:bg-background/30 px-1.5 py-0.5 rounded-md font-medium">
-                    {count}
-                  </span>
-                )}
-              </TabsTrigger>
-            );
-          })}
-        </TabsList>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleCategoryDragEnd}
+        >
+          <SortableContext
+            items={categories?.map((c) => c.id) || []}
+            strategy={horizontalListSortingStrategy}
+          >
+            <div className="flex flex-wrap gap-2">
+              {categories?.map((cat) => {
+                const count = cat.category_key === "nutritional_strategies" 
+                  ? undefined 
+                  : options?.filter(o => o.category === cat.category_key).length || 0;
+                return (
+                  <SortableCategoryTab
+                    key={cat.id}
+                    category={cat}
+                    isSelected={selectedCategory === cat.category_key}
+                    count={count}
+                    onClick={() => setSelectedCategory(cat.category_key)}
+                  />
+                );
+              })}
+            </div>
+          </SortableContext>
+        </DndContext>
 
         {/* Nutritional Strategies Tab - uses separate component */}
         <TabsContent value="nutritional_strategies" className="mt-6">
@@ -710,60 +826,65 @@ export default function AdminOnboarding() {
         </TabsContent>
 
         {/* Other categories - use onboarding_options table */}
-        {CATEGORIES.filter(cat => cat.key !== "nutritional_strategies").map((cat) => (
-          <TabsContent key={cat.key} value={cat.key} className="mt-6">
-            <Card className="border-border/50">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <cat.icon className="w-5 h-5 text-muted-foreground" />
-                    {cat.label}
-                  </CardTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    {cat.description}
-                  </p>
-                </div>
-                <Button onClick={openCreateDialog} className="gap-2 bg-foreground text-background hover:bg-foreground/90">
-                  <Plus className="w-4 h-4" />
-                  Nova Opção
-                </Button>
-              </CardHeader>
-              <CardContent>
-                {filteredOptions.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>Nenhuma opção cadastrada</p>
+        {categories?.filter(cat => cat.category_key !== "nutritional_strategies").map((cat) => {
+          const IconComponent = LUCIDE_ICONS[cat.icon_name] || Target;
+          const categoryOptions = options?.filter(o => o.category === cat.category_key) || [];
+          
+          return (
+            <TabsContent key={cat.category_key} value={cat.category_key} className="mt-6">
+              <Card className="border-border/50">
+                <CardHeader className="flex flex-row items-center justify-between">
+                  <div>
+                    <CardTitle className="flex items-center gap-2">
+                      <IconComponent className="w-5 h-5 text-muted-foreground" />
+                      {cat.label}
+                    </CardTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {cat.description}
+                    </p>
                   </div>
-                ) : (
-                  <DndContext
-                    sensors={sensors}
-                    collisionDetection={closestCenter}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <SortableContext
-                      items={filteredOptions.map((o) => o.id)}
-                      strategy={verticalListSortingStrategy}
+                  <Button onClick={openCreateDialog} className="gap-2 bg-foreground text-background hover:bg-foreground/90">
+                    <Plus className="w-4 h-4" />
+                    Nova Opção
+                  </Button>
+                </CardHeader>
+                <CardContent>
+                  {categoryOptions.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <AlertTriangle className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                      <p>Nenhuma opção cadastrada</p>
+                    </div>
+                  ) : (
+                    <DndContext
+                      sensors={sensors}
+                      collisionDetection={closestCenter}
+                      onDragEnd={handleDragEnd}
                     >
-                      <div className="space-y-2">
-                        {filteredOptions.map((option) => (
-                          <SortableOptionItem
-                            key={option.id}
-                            option={option}
-                            onEdit={openEditDialog}
-                            onDelete={setDeleteOption}
-                            onToggleActive={(id, is_active) =>
-                              toggleActiveMutation.mutate({ id, is_active })
-                            }
-                          />
-                        ))}
-                      </div>
-                    </SortableContext>
-                  </DndContext>
-                )}
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
+                      <SortableContext
+                        items={categoryOptions.map((o) => o.id)}
+                        strategy={verticalListSortingStrategy}
+                      >
+                        <div className="space-y-2">
+                          {categoryOptions.map((option) => (
+                            <SortableOptionItem
+                              key={option.id}
+                              option={option}
+                              onEdit={openEditDialog}
+                              onDelete={setDeleteOption}
+                              onToggleActive={(id, is_active) =>
+                                toggleActiveMutation.mutate({ id, is_active })
+                              }
+                            />
+                          ))}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </CardContent>
+              </Card>
+            </TabsContent>
+          );
+        })}
       </Tabs>
 
       {/* Create/Edit Dialog */}

@@ -176,3 +176,6 @@ verify_jwt = false
 
 [functions.expand-language-terms]
 verify_jwt = false
+
+[functions.decompose-food-for-safety]
+verify_jwt = false

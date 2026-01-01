@@ -64,19 +64,42 @@ type SubMenuItem = {
 
 const mainMenuItems: SubMenuItem[] = [
   {
-    label: "Relatórios",
-    icon: BarChart3,
+    label: "Monitoramento",
+    icon: Activity,
+    subItems: [
+      { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
+      { path: "/admin/system-health", label: "Saúde do Sistema", icon: Activity },
+      { path: "/admin/ai-error-logs", label: "Erros de IA", icon: AlertTriangle },
+      { path: "/admin/ai-usage", label: "Uso de IA", icon: Sparkles },
+    ],
+  },
+  {
+    label: "Usuários",
+    icon: Users,
     subItems: [
       { path: "/admin/users", label: "Clientes", icon: Users },
-      { path: "/admin/analytics", label: "Analytics", icon: BarChart3 },
-      { path: "/admin/ai-usage", label: "Uso de IA", icon: Sparkles },
-      { path: "/admin/ai-error-logs", label: "Erros de IA", icon: AlertTriangle },
-      { path: "/admin/analysis-feedback", label: "Feedbacks de Análise", icon: MessageSquare },
-      { path: "/admin/food-corrections", label: "Correções de Alimentos", icon: Wrench },
-      { path: "/admin/ingredient-validations", label: "Validações Ingredientes", icon: Sparkles },
-      { path: "/admin/blocked-ingredients", label: "Revisão de Bloqueios", icon: Shield },
+      { path: "/admin/system-users", label: "Administradores", icon: Shield },
+    ],
+  },
+  {
+    label: "Conteúdo",
+    icon: Apple,
+    subItems: [
       { path: "/admin/foods", label: "Base de Alimentos", icon: Apple },
-      { path: "/admin/system-health", label: "Saúde do Sistema", icon: Activity },
+      { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
+      { path: "/admin/blocked-ingredients", label: "Revisão de Bloqueios", icon: Shield },
+      { path: "/admin/ingredient-validations", label: "Validações Ingredientes", icon: Sparkles },
+      { path: "/admin/food-corrections", label: "Correções de Alimentos", icon: Wrench },
+      { path: "/admin/analysis-feedback", label: "Feedbacks de Análise", icon: MessageSquare },
+    ],
+  },
+  {
+    label: "Ferramentas IA",
+    icon: ChefHat,
+    subItems: [
+      { path: "/admin/ai-meal-plan-test", label: "Teste de Plano IA", icon: ChefHat },
+      { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
+      { path: "/admin/prompt-validation", label: "Validação do Prompt", icon: Shield },
     ],
   },
   {
@@ -84,20 +107,14 @@ const mainMenuItems: SubMenuItem[] = [
     icon: Settings,
     subItems: [
       { 
-        path: "/admin/system-users",
-        label: "Usuários", 
-        icon: Users,
+        label: "Páginas", 
+        icon: FileText,
+        subItems: [
+          { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
+          { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
+          { path: "/admin/languages", label: "Idiomas", icon: Globe },
+        ],
       },
-        { 
-          label: "Páginas", 
-          icon: FileText,
-          subItems: [
-            { path: "/admin/onboarding", label: "Onboarding", icon: FileText },
-            { path: "/admin/meal-times", label: "Horário das Refeições", icon: Clock },
-            { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
-            { path: "/admin/languages", label: "Idiomas", icon: Globe },
-          ],
-        },
       { 
         label: "Integrações", 
         icon: Plug,
@@ -107,12 +124,9 @@ const mainMenuItems: SubMenuItem[] = [
           { path: "/admin/webhooks", label: "Webhooks", icon: Webhook },
         ],
       },
-      { path: "/admin/ai-meal-plan-test", label: "Teste de Plano IA", icon: ChefHat },
-      { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
-      { path: "/admin/prompt-validation", label: "Validação do Prompt", icon: Shield },
-      { path: "/admin/pixels", label: "Pixels", icon: Code2 },
       { path: "/admin/appearance", label: "Aparência", icon: Paintbrush },
       { path: "/admin/feature-flags", label: "Feature Flags", icon: ToggleLeft },
+      { path: "/admin/pixels", label: "Pixels", icon: Code2 },
     ],
   },
 ];

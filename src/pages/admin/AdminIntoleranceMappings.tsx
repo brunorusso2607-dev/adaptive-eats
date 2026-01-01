@@ -92,24 +92,40 @@ export default function AdminIntoleranceMappings() {
   const [newSafePortion, setNewSafePortion] = useState<string>("");
   const [editingMapping, setEditingMapping] = useState<IntoleranceMapping | null>(null);
   const [editPortion, setEditPortion] = useState<string>("");
-  // Fetch mappings - usando limit alto para buscar todos os registros (acima do limite padrão de 1000)
+  // Fetch mappings - busca TODOS os registros usando paginação para evitar limite de 1000
   const { data: mappings, isLoading: isLoadingMappings, refetch: refetchMappings } = useQuery({
-    queryKey: ["intolerance-mappings", Date.now()], // Força nova query a cada render
+    queryKey: ["intolerance-mappings-all"],
     queryFn: async () => {
-      console.log('[AdminIntoleranceMappings] Fetching all mappings...');
-      const { data, error } = await supabase
-        .from("intolerance_mappings")
-        .select("*")
-        .limit(5000)
-        .order("ingredient", { ascending: true });
+      console.log('[AdminIntoleranceMappings] Fetching ALL mappings with pagination...');
+      
+      let allData: IntoleranceMapping[] = [];
+      let page = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data, error } = await supabase
+          .from("intolerance_mappings")
+          .select("*")
+          .range(page * pageSize, (page + 1) * pageSize - 1)
+          .order("ingredient", { ascending: true });
 
-      if (error) throw error;
-      console.log('[AdminIntoleranceMappings] Total mappings loaded:', data?.length);
-      return data as IntoleranceMapping[];
+        if (error) throw error;
+        
+        if (data && data.length > 0) {
+          allData = [...allData, ...data];
+          page++;
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log('[AdminIntoleranceMappings] Total mappings loaded:', allData.length);
+      return allData as IntoleranceMapping[];
     },
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
+    staleTime: 30000,
+    refetchOnWindowFocus: false,
   });
 
   // Fetch safe keywords

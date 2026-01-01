@@ -3,8 +3,21 @@ import { supabase } from '@/integrations/supabase/client';
 import { useSafetyLabels } from './useSafetyLabels';
 import { FALLBACK_DIETARY_LABELS_WITH_ARTICLE } from '@/lib/safetyFallbacks';
 
-// NOTA: checkUserIntoleranceConflict de intoleranceDetection.ts foi depreciado
-// Agora usamos dados do banco de dados diretamente
+// Tipos de restrição alimentar - classificação global
+export type RestrictionType = 'intolerance' | 'allergy' | 'sensitivity' | 'dietary' | 'excluded';
+
+// Detalhe de cada conflito encontrado
+export interface ConflictDetail {
+  /** Chave da restrição (ex: 'lactose', 'peanut') */
+  restrictionKey: string;
+  /** Tipo da restrição (intolerância, alergia, sensibilidade, dieta, excluído) */
+  type: RestrictionType;
+  /** Label amigável (ex: 'Lactose', 'Amendoim') */
+  label: string;
+  /** Mensagem completa e correta para o tipo */
+  message: string;
+}
+
 export interface IntoleranceWarning {
   hasConflict: boolean;
   conflicts: string[];
@@ -13,6 +26,8 @@ export interface IntoleranceWarning {
   badgeLabel: string | null;
   /** Full description (e.g., "Contém Glúten") */
   fullLabel: string | null;
+  /** Detalhes completos de cada conflito com tipo correto */
+  conflictDetails: ConflictDetail[];
 }
 
 /** Legacy type for compatibility with old useIngredientConflictCheck */
@@ -20,6 +35,10 @@ export type ConflictType = {
   ingredient: string;
   restriction: string;
   restrictionLabel: string;
+  /** Tipo da restrição para mensagem correta */
+  type?: RestrictionType;
+  /** Mensagem correta baseada no tipo */
+  message?: string;
 };
 
 interface IntoleranceMappingItem {
@@ -32,9 +51,10 @@ interface ForbiddenIngredientItem {
   dietary_key: string;
 }
 
-interface DietaryLabelItem {
-  key: string;
-  name: string;
+interface OnboardingOptionItem {
+  option_id: string;
+  category: string;
+  label: string;
 }
 
 /**
@@ -74,6 +94,41 @@ function containsWholeWord(text: string, word: string): boolean {
   return false;
 }
 
+/**
+ * Gera mensagem correta baseada no tipo de restrição
+ * Esta função é a fonte de verdade para todas as mensagens do sistema
+ */
+export function getRestrictionMessage(type: RestrictionType, label: string): string {
+  switch (type) {
+    case 'allergy':
+      return `Você é alérgico a ${label}`;
+    case 'intolerance':
+      return `Você tem intolerância a ${label}`;
+    case 'sensitivity':
+      return `Você tem sensibilidade a ${label}`;
+    case 'dietary':
+      return `Não permitido na dieta ${label}`;
+    case 'excluded':
+      return `${label} está na sua lista de exclusão`;
+  }
+}
+
+/**
+ * Converte categoria do onboarding_options para RestrictionType
+ */
+function categoryToRestrictionType(category: string): RestrictionType {
+  switch (category) {
+    case 'allergies':
+      return 'allergy';
+    case 'intolerances':
+      return 'intolerance';
+    case 'sensitivities':
+      return 'sensitivity';
+    default:
+      return 'intolerance'; // fallback seguro
+  }
+}
+
 export function useIntoleranceWarning() {
   const [intolerances, setIntolerances] = useState<string[]>([]);
   const [excludedIngredients, setExcludedIngredients] = useState<string[]>([]);
@@ -82,6 +137,11 @@ export function useIntoleranceWarning() {
   const [forbiddenIngredients, setForbiddenIngredients] = useState<ForbiddenIngredientItem[]>([]);
   const [dietaryLabels, setDietaryLabels] = useState<Record<string, string>>(FALLBACK_DIETARY_LABELS_WITH_ARTICLE);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Mapeamento de option_id → tipo de restrição (carregado do onboarding_options)
+  const [restrictionTypeMap, setRestrictionTypeMap] = useState<Record<string, RestrictionType>>({});
+  // Mapeamento de option_id → label amigável
+  const [restrictionLabelMap, setRestrictionLabelMap] = useState<Record<string, string>>({});
   
   // Hook para labels de segurança do banco de dados
   const { getIntoleranceLabel: getDbIntoleranceLabel } = useSafetyLabels();
@@ -96,8 +156,8 @@ export function useIntoleranceWarning() {
           return;
         }
 
-        // Fetch all data in parallel
-        const [profileResult, mappingsResult, forbiddenResult, dietaryProfilesResult] = await Promise.all([
+        // Fetch all data in parallel - incluindo onboarding_options para classificação
+        const [profileResult, mappingsResult, forbiddenResult, dietaryProfilesResult, onboardingResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('intolerances, dietary_preference, excluded_ingredients')
@@ -112,8 +172,31 @@ export function useIntoleranceWarning() {
           supabase
             .from('dietary_profiles')
             .select('key, name')
+            .eq('is_active', true),
+          // Buscar categorias do onboarding_options para classificar cada restrição
+          supabase
+            .from('onboarding_options')
+            .select('option_id, category, label')
+            .in('category', ['intolerances', 'allergies', 'sensitivities'])
             .eq('is_active', true)
         ]);
+
+        // Construir mapeamentos de tipo e label a partir do onboarding_options
+        if (onboardingResult.data) {
+          const typeMap: Record<string, RestrictionType> = {};
+          const labelMap: Record<string, string> = {};
+          
+          for (const opt of onboardingResult.data as OnboardingOptionItem[]) {
+            if (opt.option_id && opt.option_id !== 'none' && opt.option_id !== 'Nenhuma') {
+              const normalizedKey = opt.option_id.toLowerCase();
+              typeMap[normalizedKey] = categoryToRestrictionType(opt.category);
+              labelMap[normalizedKey] = opt.label;
+            }
+          }
+          
+          setRestrictionTypeMap(typeMap);
+          setRestrictionLabelMap(labelMap);
+        }
 
         if (profileResult.data) {
           // Set dietary preference
@@ -152,14 +235,20 @@ export function useIntoleranceWarning() {
                   'frutos_do_mar': 'frutos_do_mar',
                   'Amendoim': 'amendoim',
                   'amendoim': 'amendoim',
+                  'peanut': 'peanut',
                   'Soja': 'soja',
                   'soja': 'soja',
+                  'soy': 'soy',
                   'Castanhas': 'castanhas',
                   'castanhas': 'castanhas',
+                  'nuts': 'nuts',
+                  'seafood': 'seafood',
+                  'fish': 'fish',
+                  'eggs': 'eggs',
                 };
                 return mapping[intol] || intol.toLowerCase().replace(/\s+/g, '_');
               })
-              .filter((i: string) => i !== 'nenhuma');
+              .filter((i: string) => i !== 'nenhuma' && i !== 'none');
             setIntolerances(normalizedIntolerances);
           }
         }
@@ -243,10 +332,34 @@ export function useIntoleranceWarning() {
     return { hasConflict: false, restriction: null };
   }, [hasDietaryRestriction, dietaryPreference, forbiddenIngredients]);
 
+  // Função auxiliar para determinar tipo e label de uma restrição
+  const getRestrictionInfo = useCallback((conflictKey: string): { type: RestrictionType; label: string } => {
+    // Ingrediente excluído
+    if (conflictKey.startsWith('excluded:')) {
+      const excludedItem = conflictKey.replace('excluded:', '');
+      return { 
+        type: 'excluded', 
+        label: excludedItem.charAt(0).toUpperCase() + excludedItem.slice(1) 
+      };
+    }
+    
+    // Preferência dietética (vegana, vegetariana, etc)
+    if (dietaryLabels[conflictKey] && dietaryPreference === conflictKey) {
+      return { type: 'dietary', label: dietaryLabels[conflictKey] };
+    }
+    
+    // Buscar tipo do mapeamento carregado do onboarding_options
+    const normalizedKey = conflictKey.toLowerCase();
+    const type = restrictionTypeMap[normalizedKey] || 'intolerance';
+    const label = restrictionLabelMap[normalizedKey] || getDbIntoleranceLabel(conflictKey);
+    
+    return { type, label };
+  }, [dietaryLabels, dietaryPreference, restrictionTypeMap, restrictionLabelMap, getDbIntoleranceLabel]);
+
   // Check a single food/ingredient name for intolerance conflicts
   const checkFood = useCallback((foodName: string): IntoleranceWarning => {
     if (!foodName) {
-      return { hasConflict: false, conflicts: [], labels: [], badgeLabel: null, fullLabel: null };
+      return { hasConflict: false, conflicts: [], labels: [], badgeLabel: null, fullLabel: null, conflictDetails: [] };
     }
 
     const foundConflicts = new Set<string>();
@@ -278,12 +391,19 @@ export function useIntoleranceWarning() {
     }
 
     const conflicts = Array.from(foundConflicts);
-    const labels = conflicts.map(c => {
-      if (c.startsWith('excluded:')) {
-        return c.replace('excluded:', '');
-      }
-      return dietaryLabels[c] || getDbIntoleranceLabel(c);
+    
+    // Construir detalhes completos de cada conflito
+    const conflictDetails: ConflictDetail[] = conflicts.map(c => {
+      const { type, label } = getRestrictionInfo(c);
+      return {
+        restrictionKey: c,
+        type,
+        label,
+        message: getRestrictionMessage(type, label),
+      };
     });
+    
+    const labels = conflictDetails.map(d => d.label);
 
     return {
       hasConflict: conflicts.length > 0,
@@ -291,20 +411,27 @@ export function useIntoleranceWarning() {
       labels,
       badgeLabel: labels.length > 0 ? labels[0] : null,
       fullLabel: labels.length > 0 ? `Contém ${labels.join(', ')}` : null,
+      conflictDetails,
     };
-  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict, checkExcludedConflict, dietaryLabels, getDbIntoleranceLabel]);
+  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict, checkExcludedConflict, getRestrictionInfo]);
 
   // Check a meal with ingredients for conflicts
   const checkMeal = useCallback((mealName: string, ingredients?: any[]): IntoleranceWarning => {
     if (!hasAnyRestriction) {
-      return { hasConflict: false, conflicts: [], labels: [], badgeLabel: null, fullLabel: null };
+      return { hasConflict: false, conflicts: [], labels: [], badgeLabel: null, fullLabel: null, conflictDetails: [] };
     }
 
     const allConflicts = new Set<string>();
+    const allDetails: ConflictDetail[] = [];
 
     // Check meal name
     const nameResult = checkFood(mealName);
     nameResult.conflicts.forEach(c => allConflicts.add(c));
+    nameResult.conflictDetails.forEach(d => {
+      if (!allDetails.find(existing => existing.restrictionKey === d.restrictionKey)) {
+        allDetails.push(d);
+      }
+    });
 
     // Check each ingredient
     if (ingredients && Array.isArray(ingredients)) {
@@ -313,12 +440,17 @@ export function useIntoleranceWarning() {
         if (ingredientName) {
           const ingResult = checkFood(ingredientName);
           ingResult.conflicts.forEach(c => allConflicts.add(c));
+          ingResult.conflictDetails.forEach(d => {
+            if (!allDetails.find(existing => existing.restrictionKey === d.restrictionKey)) {
+              allDetails.push(d);
+            }
+          });
         }
       }
     }
 
     const conflicts = Array.from(allConflicts);
-    const labels = conflicts.map(c => dietaryLabels[c] || getDbIntoleranceLabel(c));
+    const labels = allDetails.map(d => d.label);
 
     return {
       hasConflict: conflicts.length > 0,
@@ -326,8 +458,9 @@ export function useIntoleranceWarning() {
       labels,
       badgeLabel: labels.length > 0 ? labels[0] : null,
       fullLabel: labels.length > 0 ? `Contém ${labels.join(', ')}` : null,
+      conflictDetails: allDetails,
     };
-  }, [hasAnyRestriction, checkFood, dietaryLabels, getDbIntoleranceLabel]);
+  }, [hasAnyRestriction, checkFood]);
 
   // Batch check multiple foods at once (for lists)
   const checkFoodList = useCallback((foods: string[]): Map<string, IntoleranceWarning> => {
@@ -340,16 +473,20 @@ export function useIntoleranceWarning() {
 
   /**
    * Legacy compatibility function - returns ConflictType or null
-   * Use this when migrating from useIngredientConflictCheck
+   * ATUALIZADO: Agora retorna tipo e mensagem correta baseados na classificação
    */
   const checkConflict = useCallback((ingredient: string): ConflictType | null => {
     const result = checkFood(ingredient);
     if (!result.hasConflict) return null;
     
+    const firstDetail = result.conflictDetails[0];
+    
     return {
       ingredient: ingredient.toLowerCase().trim(),
       restriction: result.conflicts[0],
-      restrictionLabel: result.labels[0] || result.conflicts[0],
+      restrictionLabel: firstDetail?.label || result.labels[0] || result.conflicts[0],
+      type: firstDetail?.type || 'intolerance',
+      message: firstDetail?.message || `Contém ${result.labels[0]}`,
     };
   }, [checkFood]);
 

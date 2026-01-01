@@ -95,11 +95,14 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
 
   const checkFoodConflicts = useCallback((foodName: string) => {
     const result = checkFood(foodName);
-    if (result.hasConflict) {
+    if (result.hasConflict && result.conflictDetails.length > 0) {
+      const firstConflict = result.conflictDetails[0];
       return {
         ingredient: foodName,
         restriction: result.conflicts[0],
-        restrictionLabel: `intolerante a ${result.badgeLabel}`,
+        restrictionLabel: firstConflict.label,
+        type: firstConflict.type,
+        message: firstConflict.message,
       };
     }
     return null;
@@ -212,7 +215,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
     
     if (localConflict) {
       toast.warning(
-        `${food.name} contém ${localConflict.restrictionLabel.replace('intolerante a ', '')}`,
+        `${food.name}: ${localConflict.message || `Contém ${localConflict.restrictionLabel}`}`,
         { duration: 4000 }
       );
     } else if (hasIntolerances) {
@@ -311,7 +314,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
 
       if (conflict) {
         toast.warning(
-          `${suggestion.name} contém ${conflict.restrictionLabel.replace('intolerante a ', '')}`,
+          `${suggestion.name}: ${conflict.message || `Contém ${conflict.restrictionLabel}`}`,
           { duration: 4000 }
         );
       }
@@ -445,7 +448,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
                       {conflict && (
                         <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
                           <AlertTriangle className="w-3 h-3" />
-                          Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                          Contém {conflict.restrictionLabel}
                         </span>
                       )}
                     </div>
@@ -575,7 +578,7 @@ export default function FoodSearchPanel({ onSelectFood, className }: FoodSearchP
                           {conflict && (
                             <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
                               <AlertTriangle className="w-3 h-3" />
-                              Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                              Contém {conflict.restrictionLabel}
                             </span>
                           )}
                         </button>

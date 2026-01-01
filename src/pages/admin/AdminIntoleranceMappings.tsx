@@ -42,6 +42,7 @@ type IntoleranceMapping = {
   intolerance_key: string;
   ingredient: string;
   severity_level: string | null;
+  safe_portion_grams: number | null;
   created_at: string;
 };
 
@@ -82,6 +83,9 @@ export default function AdminIntoleranceMappings() {
   const [newKeyword, setNewKeyword] = useState("");
   const [bulkIngredients, setBulkIngredients] = useState("");
   const [newSeverityLevel, setNewSeverityLevel] = useState<"high" | "low">("high");
+  const [newSafePortion, setNewSafePortion] = useState<string>("");
+  const [editingMapping, setEditingMapping] = useState<IntoleranceMapping | null>(null);
+  const [editPortion, setEditPortion] = useState<string>("");
   // Fetch mappings
   const { data: mappings, isLoading: isLoadingMappings } = useQuery({
     queryKey: ["intolerance-mappings"],
@@ -179,11 +183,12 @@ export default function AdminIntoleranceMappings() {
 
   // Add ingredient mutation
   const addIngredientMutation = useMutation({
-    mutationFn: async ({ ingredients, severityLevel }: { ingredients: string[], severityLevel: "high" | "low" }) => {
+    mutationFn: async ({ ingredients, severityLevel, safePortion }: { ingredients: string[], severityLevel: "high" | "low", safePortion?: number | null }) => {
       const inserts = ingredients.map(ingredient => ({
         intolerance_key: selectedIntolerance,
         ingredient: ingredient.trim().toLowerCase(),
         severity_level: severityLevel,
+        safe_portion_grams: severityLevel === 'low' ? safePortion : null,
       }));
 
       const { error } = await supabase
@@ -199,6 +204,7 @@ export default function AdminIntoleranceMappings() {
       setNewIngredient("");
       setBulkIngredients("");
       setNewSeverityLevel("high");
+      setNewSafePortion("");
     },
     onError: (error: Error) => {
       if (error.message.includes("duplicate")) {
@@ -206,6 +212,27 @@ export default function AdminIntoleranceMappings() {
       } else {
         toast.error(`Erro: ${error.message}`);
       }
+    },
+  });
+
+  // Update portion mutation
+  const updatePortionMutation = useMutation({
+    mutationFn: async ({ id, portion }: { id: string, portion: number | null }) => {
+      const { error } = await supabase
+        .from("intolerance_mappings")
+        .update({ safe_portion_grams: portion })
+        .eq("id", id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["intolerance-mappings"] });
+      toast.success("Porção atualizada!");
+      setEditingMapping(null);
+      setEditPortion("");
+    },
+    onError: (error: Error) => {
+      toast.error(`Erro: ${error.message}`);
     },
   });
 
@@ -277,6 +304,8 @@ export default function AdminIntoleranceMappings() {
   });
 
   const handleAddIngredient = () => {
+    const safePortion = newSafePortion ? parseInt(newSafePortion) : null;
+    
     if (bulkIngredients.trim()) {
       const ingredients = bulkIngredients
         .split(/[,\n]/)
@@ -284,10 +313,22 @@ export default function AdminIntoleranceMappings() {
         .filter(i => i.length > 0);
       
       if (ingredients.length > 0) {
-        addIngredientMutation.mutate({ ingredients, severityLevel: newSeverityLevel });
+        addIngredientMutation.mutate({ ingredients, severityLevel: newSeverityLevel, safePortion });
       }
     } else if (newIngredient.trim()) {
-      addIngredientMutation.mutate({ ingredients: [newIngredient], severityLevel: newSeverityLevel });
+      addIngredientMutation.mutate({ ingredients: [newIngredient], severityLevel: newSeverityLevel, safePortion });
+    }
+  };
+
+  const handleEditPortion = (mapping: IntoleranceMapping) => {
+    setEditingMapping(mapping);
+    setEditPortion(mapping.safe_portion_grams?.toString() || "");
+  };
+
+  const handleSavePortion = () => {
+    if (editingMapping) {
+      const portion = editPortion ? parseInt(editPortion) : null;
+      updatePortionMutation.mutate({ id: editingMapping.id, portion });
     }
   };
 
@@ -511,11 +552,20 @@ export default function AdminIntoleranceMappings() {
                   <Badge
                     key={mapping.id}
                     variant="outline"
-                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400"
+                    className="px-3 py-1.5 text-sm flex items-center gap-2 bg-yellow-500/10 border-yellow-500/30 text-yellow-700 dark:text-yellow-400 cursor-pointer hover:bg-yellow-500/20"
+                    onClick={() => handleEditPortion(mapping)}
                   >
-                    {mapping.ingredient}
+                    <span>{mapping.ingredient}</span>
+                    {mapping.safe_portion_grams && (
+                      <span className="text-xs bg-yellow-500/20 px-1.5 py-0.5 rounded">
+                        ≤{mapping.safe_portion_grams}g
+                      </span>
+                    )}
                     <button
-                      onClick={() => setDeleteMapping(mapping)}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteMapping(mapping);
+                      }}
                       className="hover:text-destructive"
                     >
                       <X className="h-3 w-3" />
@@ -531,7 +581,7 @@ export default function AdminIntoleranceMappings() {
               
               <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
                 <AlertCircle className="h-3 w-3" />
-                Ingredientes de atenção aparecem nos planos com aviso de tolerância individual.
+                Ingredientes de atenção aparecem nos planos com limite de porção (padrão Monash). Clique para editar.
               </p>
             </TabsContent>
 
@@ -601,12 +651,28 @@ export default function AdminIntoleranceMappings() {
                   <SelectItem value="low">
                     <div className="flex items-center gap-2">
                       <AlertCircle className="h-4 w-4 text-yellow-500" />
-                      <span>Atenção (LOW) - Aparece com aviso</span>
+                      <span>Atenção (LOW) - Porção limitada</span>
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Safe Portion - only for LOW severity */}
+            {newSeverityLevel === 'low' && (
+              <div>
+                <Label>Porção Segura (gramas) - Padrão Monash</Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 75"
+                  value={newSafePortion}
+                  onChange={(e) => setNewSafePortion(e.target.value)}
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Limite máximo seguro em gramas. Deixe vazio se não houver limite específico.
+                </p>
+              </div>
+            )}
 
             <div>
               <Label>Ingrediente único</Label>
@@ -721,6 +787,46 @@ export default function AdminIntoleranceMappings() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Portion Dialog */}
+      <Dialog open={!!editingMapping} onOpenChange={() => setEditingMapping(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              Editar Porção - {editingMapping?.ingredient}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Defina a porção máxima segura seguindo o padrão da Universidade Monash.
+            </p>
+            <div>
+              <Label>Porção Segura (gramas)</Label>
+              <Input
+                type="number"
+                placeholder="Ex: 75"
+                value={editPortion}
+                onChange={(e) => setEditPortion(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Deixe vazio para remover o limite de porção.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditingMapping(null)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSavePortion}
+              disabled={updatePortionMutation.isPending}
+            >
+              {updatePortionMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -870,6 +870,7 @@ export type Database = {
           ingredient: string
           intolerance_key: string
           labels: string[] | null
+          safe_portion_grams: number | null
           severity_level: string | null
         }
         Insert: {
@@ -878,6 +879,7 @@ export type Database = {
           ingredient: string
           intolerance_key: string
           labels?: string[] | null
+          safe_portion_grams?: number | null
           severity_level?: string | null
         }
         Update: {
@@ -886,6 +888,7 @@ export type Database = {
           ingredient?: string
           intolerance_key?: string
           labels?: string[] | null
+          safe_portion_grams?: number | null
           severity_level?: string | null
         }
         Relationships: []

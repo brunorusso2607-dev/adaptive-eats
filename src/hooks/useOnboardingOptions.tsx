@@ -13,6 +13,16 @@ export type OnboardingOption = {
   sort_order: number;
 };
 
+export type OnboardingCategory = {
+  id: string;
+  category_key: string;
+  label: string;
+  icon_name: string;
+  description: string | null;
+  sort_order: number;
+  is_active: boolean;
+};
+
 export type OnboardingOptionsMap = {
   intolerances: OnboardingOption[];
   allergies: OnboardingOption[];
@@ -64,6 +74,12 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
   ],
 };
 
+const FALLBACK_RESTRICTION_CATEGORIES: OnboardingCategory[] = [
+  { id: "1", category_key: "intolerances", label: "Intolerâncias", icon_name: "alert-triangle", description: "digestivas", sort_order: 1, is_active: true },
+  { id: "2", category_key: "allergies", label: "Alergias", icon_name: "alert-circle", description: "reações imunológicas", sort_order: 2, is_active: true },
+  { id: "3", category_key: "sensitivities", label: "Sensibilidades", icon_name: "activity", description: "metabólicas", sort_order: 3, is_active: true },
+];
+
 export function useOnboardingOptions() {
   return useQuery({
     queryKey: ["onboarding-options-active"],
@@ -108,6 +124,33 @@ export function useOnboardingOptions() {
       });
 
       return organized;
+    },
+    staleTime: 1000 * 60 * 5, // 5 minutes
+  });
+}
+
+// Hook para buscar categorias de restrições ordenadas (intolerances, allergies, sensitivities)
+export function useRestrictionCategories() {
+  return useQuery({
+    queryKey: ["restriction-categories-ordered"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("onboarding_categories")
+        .select("*")
+        .in("category_key", ["intolerances", "allergies", "sensitivities"])
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (error) {
+        console.error("Error fetching restriction categories:", error);
+        return FALLBACK_RESTRICTION_CATEGORIES;
+      }
+
+      if (!data || data.length === 0) {
+        return FALLBACK_RESTRICTION_CATEGORIES;
+      }
+
+      return data as OnboardingCategory[];
     },
     staleTime: 1000 * 60 * 5, // 5 minutes
   });

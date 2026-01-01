@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { useOnboardingOptions, type OnboardingOption } from "@/hooks/useOnboardingOptions";
+import { useOnboardingOptions, useRestrictionCategories, type OnboardingOption, type OnboardingOptionsMap } from "@/hooks/useOnboardingOptions";
 import { getOnboardingIcon } from "@/lib/iconUtils";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useNutritionalStrategies, deriveGoalFromStrategy, type NutritionalStrategy } from "@/hooks/useNutritionalStrategies";
@@ -64,6 +64,7 @@ export default function Onboarding() {
   const [ingredientInput, setIngredientInput] = useState("");
 
   const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
+  const { data: restrictionCategories, isLoading: isLoadingCategories } = useRestrictionCategories();
   const { data: strategies, isLoading: isLoadingStrategies } = useNutritionalStrategies();
   const { 
     isSupported: isPushSupported, 
@@ -172,7 +173,7 @@ export default function Onboarding() {
   };
 
   const renderStepContent = () => {
-    if (isLoadingOptions || !options) {
+    if (isLoadingOptions || isLoadingCategories || !options) {
       return (
         <div className="flex items-center justify-center py-8">
           <Loader2 className="w-6 h-6 animate-spin text-primary" />
@@ -211,112 +212,63 @@ export default function Onboarding() {
         );
 
       case 2:
+        const categoryColors: Record<string, { dot: string; border: string; bg: string; hover: string }> = {
+          intolerances: { dot: "bg-amber-500", border: "border-amber-500", bg: "bg-amber-500/10", hover: "hover:border-amber-500/50" },
+          allergies: { dot: "bg-red-500", border: "border-red-500", bg: "bg-red-500/10", hover: "hover:border-red-500/50" },
+          sensitivities: { dot: "bg-purple-500", border: "border-purple-500", bg: "bg-purple-500/10", hover: "hover:border-purple-500/50" },
+        };
+
         return (
           <div className="space-y-6 max-h-[420px] overflow-y-auto pr-1">
-            {/* Seção 1: Intolerâncias */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-amber-500" />
-                <h3 className="text-sm font-semibold text-foreground">Intolerâncias</h3>
-                <span className="text-xs text-muted-foreground">(digestivas)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {options.intolerances.filter(item => item.option_id !== 'none').map((item) => {
-                  const IconComponent = getOnboardingIcon(item);
-                  return (
-                    <button
-                      key={item.option_id}
-                      onClick={() => toggleIntolerance(item.option_id)}
-                      className={cn(
-                        "p-3 rounded-xl border text-left transition-all",
-                        profile.intolerances.includes(item.option_id)
-                          ? "border-amber-500 bg-amber-500/10"
-                          : "border-border/80 hover:border-amber-500/50 bg-card"
-                      )}
-                    >
-                      <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
-                        {IconComponent ? (
-                          <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                        ) : (
-                          <span className="text-lg">{item.emoji || "•"}</span>
-                        )}
-                      </div>
-                      <span className="font-medium text-xs">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+            {/* Renderizar categorias na ordem do banco */}
+            {restrictionCategories?.map((category) => {
+              const categoryKey = category.category_key as keyof OnboardingOptionsMap;
+              const categoryOptions = options[categoryKey] || [];
+              const colors = categoryColors[categoryKey] || categoryColors.intolerances;
+              
+              // Filtrar a opção "none" para não aparecer nas seções
+              const filteredOptions = categoryOptions.filter(item => item.option_id !== 'none');
+              
+              if (filteredOptions.length === 0) return null;
 
-            {/* Seção 2: Alergias */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-red-500" />
-                <h3 className="text-sm font-semibold text-foreground">Alergias</h3>
-                <span className="text-xs text-muted-foreground">(reações imunológicas)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {options.allergies.map((item) => {
-                  const IconComponent = getOnboardingIcon(item);
-                  return (
-                    <button
-                      key={item.option_id}
-                      onClick={() => toggleIntolerance(item.option_id)}
-                      className={cn(
-                        "p-3 rounded-xl border text-left transition-all",
-                        profile.intolerances.includes(item.option_id)
-                          ? "border-red-500 bg-red-500/10"
-                          : "border-border/80 hover:border-red-500/50 bg-card"
-                      )}
-                    >
-                      <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
-                        {IconComponent ? (
-                          <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                        ) : (
-                          <span className="text-lg">{item.emoji || "•"}</span>
-                        )}
-                      </div>
-                      <span className="font-medium text-xs">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-
-            {/* Seção 3: Sensibilidades */}
-            <div className="space-y-3">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-purple-500" />
-                <h3 className="text-sm font-semibold text-foreground">Sensibilidades</h3>
-                <span className="text-xs text-muted-foreground">(metabólicas)</span>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
-                {options.sensitivities.map((item) => {
-                  const IconComponent = getOnboardingIcon(item);
-                  return (
-                    <button
-                      key={item.option_id}
-                      onClick={() => toggleIntolerance(item.option_id)}
-                      className={cn(
-                        "p-3 rounded-xl border text-left transition-all",
-                        profile.intolerances.includes(item.option_id)
-                          ? "border-purple-500 bg-purple-500/10"
-                          : "border-border/80 hover:border-purple-500/50 bg-card"
-                      )}
-                    >
-                      <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
-                        {IconComponent ? (
-                          <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                        ) : (
-                          <span className="text-lg">{item.emoji || "•"}</span>
-                        )}
-                      </div>
-                      <span className="font-medium text-xs">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
+              return (
+                <div key={category.id} className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-2 h-2 rounded-full", colors.dot)} />
+                    <h3 className="text-sm font-semibold text-foreground">{category.label}</h3>
+                    {category.description && (
+                      <span className="text-xs text-muted-foreground">({category.description})</span>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    {filteredOptions.map((item) => {
+                      const IconComponent = getOnboardingIcon(item);
+                      return (
+                        <button
+                          key={item.option_id}
+                          onClick={() => toggleIntolerance(item.option_id)}
+                          className={cn(
+                            "p-3 rounded-xl border text-left transition-all",
+                            profile.intolerances.includes(item.option_id)
+                              ? cn(colors.border, colors.bg)
+                              : cn("border-border/80 bg-card", colors.hover)
+                          )}
+                        >
+                          <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
+                            {IconComponent ? (
+                              <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
+                            ) : (
+                              <span className="text-lg">{item.emoji || "•"}</span>
+                            )}
+                          </div>
+                          <span className="font-medium text-xs">{item.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
 
             {/* Opção "Nenhuma" */}
             {options.intolerances.filter(item => item.option_id === 'none').map((item) => {

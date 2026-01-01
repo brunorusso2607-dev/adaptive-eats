@@ -6,6 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ⛔ KILL SWITCH - Função desativada temporariamente para evitar re-inserção de termos
+// Mudar para false quando a limpeza manual estiver concluída
+const FUNCTION_DISABLED = true;
+
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -94,6 +98,19 @@ function isPreparedDish(ingredient: string): boolean {
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // ⛔ KILL SWITCH - Função desativada
+  if (FUNCTION_DISABLED) {
+    console.log("[expand] ⛔ Função DESATIVADA - kill switch ativo");
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "Função temporariamente desativada. Limpeza manual em andamento.",
+        disabled: true,
+      }),
+      { status: 503, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {
@@ -252,7 +269,7 @@ Lista:`;
     // Inserir em lotes de 50
     const batchInsertSize = 50;
     let totalInserted = 0;
-    let errors: string[] = [];
+    const errors: string[] = [];
 
     for (let i = 0; i < newIngredients.length; i += batchInsertSize) {
       const batch = newIngredients.slice(i, i + batchInsertSize).map((ingredient: string) => ({
@@ -264,7 +281,7 @@ Lista:`;
         .from("intolerance_mappings")
         .upsert(batch, { onConflict: "intolerance_key,ingredient", ignoreDuplicates: true });
 
-      if (insertError) {
+      if (insertError !== null && insertError !== undefined) {
         console.error(`[expand] Erro ao inserir lote ${i}: ${insertError.message}`);
         errors.push(insertError.message);
       } else {
@@ -288,10 +305,11 @@ Lista:`;
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
-  } catch (error) {
-    console.error(`[expand] Erro geral: ${error}`);
+  } catch (err) {
+    console.error(`[expand] Erro geral: ${err}`);
+    const errorMessage = err instanceof Error ? err.message : "Erro desconhecido";
     return new Response(
-      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      JSON.stringify({ success: false, error: errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

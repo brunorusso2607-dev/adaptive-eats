@@ -7,6 +7,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Clock, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, Check, Loader2, X } from "lucide-react";
+import LegalDisclaimer from "./LegalDisclaimer";
 import type { NextMealData } from "@/hooks/useNextMeal";
 import IngredientSearchSheet from "@/components/IngredientSearchSheet";
 import RecipeRenameDialog from "@/components/RecipeRenameDialog";
@@ -483,6 +484,9 @@ export default function MealDetailSheet({
                   </CardContent>
                 </Card>
               )}
+
+              {/* Legal Disclaimer */}
+              <LegalDisclaimer className="mt-4 pt-3 border-t border-border/50" />
             </div>
           </ScrollArea>
 

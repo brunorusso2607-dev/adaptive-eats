@@ -94,7 +94,7 @@ export default function AdminIntoleranceMappings() {
   const [editPortion, setEditPortion] = useState<string>("");
   // Fetch mappings - usando limit alto para buscar todos os registros (acima do limite padrão de 1000)
   const { data: mappings, isLoading: isLoadingMappings, refetch: refetchMappings } = useQuery({
-    queryKey: ["intolerance-mappings"],
+    queryKey: ["intolerance-mappings", Date.now()], // Força nova query a cada render
     queryFn: async () => {
       console.log('[AdminIntoleranceMappings] Fetching all mappings...');
       const { data, error } = await supabase
@@ -108,6 +108,7 @@ export default function AdminIntoleranceMappings() {
       return data as IntoleranceMapping[];
     },
     staleTime: 0,
+    gcTime: 0,
     refetchOnMount: 'always',
   });
 

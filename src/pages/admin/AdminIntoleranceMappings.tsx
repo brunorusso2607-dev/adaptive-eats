@@ -697,10 +697,16 @@ export default function AdminIntoleranceMappings() {
                 )}
               </div>
               
-              <p className="text-xs text-muted-foreground mt-4 flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Ingredientes de atenção aparecem nos planos com limite de porção (padrão Monash). Clique para editar.
-              </p>
+              <div className="mt-4 p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg">
+                <p className="text-xs text-yellow-700 dark:text-yellow-400 flex items-start gap-2">
+                  <AlertCircle className="h-4 w-4 mt-0.5 shrink-0" />
+                  <span>
+                    <strong>Ingredientes de Atenção</strong> contêm pequenas quantidades da substância, geralmente toleráveis.
+                    Estes ingredientes NÃO são bloqueados nos planos, mas futuramente exibirão um aviso ao usuário.
+                    Ex: Manteiga contém ~0.1g de lactose (tolerável para maioria).
+                  </span>
+                </p>
+              </div>
             </TabsContent>
 
             <TabsContent value="safe">

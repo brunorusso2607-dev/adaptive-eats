@@ -92,13 +92,14 @@ export default function AdminIntoleranceMappings() {
   const [newSafePortion, setNewSafePortion] = useState<string>("");
   const [editingMapping, setEditingMapping] = useState<IntoleranceMapping | null>(null);
   const [editPortion, setEditPortion] = useState<string>("");
-  // Fetch mappings
+  // Fetch mappings - usando range para buscar todos os registros (acima do limite padrão de 1000)
   const { data: mappings, isLoading: isLoadingMappings } = useQuery({
     queryKey: ["intolerance-mappings"],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("intolerance_mappings")
         .select("*")
+        .range(0, 10000)
         .order("ingredient", { ascending: true });
 
       if (error) throw error;

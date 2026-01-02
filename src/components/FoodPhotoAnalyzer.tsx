@@ -1255,69 +1255,146 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
           {/* Food Analysis results */}
           {foodAnalysis && (
             <div className="space-y-4 animate-fade-in">
-              {/* SAFETY STATUS - Compact card with food name */}
-              {perfilAplicado && perfilAplicado.alertas_personalizados.length > 0 && (
-                <Card className={`border shadow-sm animate-reveal animate-reveal-1 ${
-                  perfilAplicado.alertas_personalizados.some(a => a.status === "contem") 
-                    ? "border-destructive/50 bg-destructive/5" 
-                    : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial")
-                    ? "border-yellow-500/50 bg-yellow-500/5"
-                    : "border-green-500/50 bg-green-500/5"
-                }`}>
-                  <CardContent className="px-3 py-2">
-                    <div className="flex items-start gap-2">
-                      {perfilAplicado.alertas_personalizados.some(a => a.status === "contem") ? (
-                        <>
-                          <ShieldX className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-medium text-foreground text-sm">
-                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+              {/* SAFETY STATUS - Compact card with food name - considers both alertas_personalizados and alertas_intolerancia */}
+              {(() => {
+                const hasIntoleranceAlerts = foodAnalysis.alertas_intolerancia && foodAnalysis.alertas_intolerancia.length > 0;
+                const hasHighRiskIntolerance = hasIntoleranceAlerts && foodAnalysis.alertas_intolerancia?.some(a => a.risco === "alto");
+                const hasMediumRiskIntolerance = hasIntoleranceAlerts && foodAnalysis.alertas_intolerancia?.some(a => a.risco === "medio");
+                
+                const hasContainsAlert = perfilAplicado?.alertas_personalizados?.some(a => a.status === "contem");
+                const hasPotentialRiskAlert = perfilAplicado?.alertas_personalizados?.some(a => a.status === "risco_potencial");
+                
+                // Determine overall status: intolerance alerts take priority
+                const isUnsafe = hasContainsAlert || hasHighRiskIntolerance;
+                const isRisky = hasPotentialRiskAlert || hasMediumRiskIntolerance || (hasIntoleranceAlerts && !hasHighRiskIntolerance);
+                const isSafe = !isUnsafe && !isRisky;
+                
+                // Get the restrictions to display
+                const getRestrictionsText = () => {
+                  const restrictions: string[] = [];
+                  if (hasIntoleranceAlerts) {
+                    foodAnalysis.alertas_intolerancia?.forEach(a => {
+                      if (!restrictions.includes(a.intolerancia)) {
+                        restrictions.push(a.intolerancia);
+                      }
+                    });
+                  }
+                  if (perfilAplicado?.alertas_personalizados) {
+                    perfilAplicado.alertas_personalizados.forEach(a => {
+                      if ((a.status === "contem" || a.status === "risco_potencial") && !restrictions.includes(a.restricao)) {
+                        restrictions.push(a.restricao);
+                      }
+                    });
+                  }
+                  return restrictions.join(", ");
+                };
+
+                return (
+                  <Card className={`border shadow-sm animate-reveal animate-reveal-1 ${
+                    isUnsafe
+                      ? "border-destructive/50 bg-destructive/5" 
+                      : isRisky
+                      ? "border-yellow-500/50 bg-yellow-500/5"
+                      : "border-green-500/50 bg-green-500/5"
+                  }`}>
+                    <CardContent className="px-3 py-2">
+                      <div className="flex items-start gap-2">
+                        {isUnsafe ? (
+                          <>
+                            <ShieldX className="w-4 h-4 text-destructive flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                                <p className="font-medium text-foreground text-sm">
+                                  {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                                </p>
+                              )}
+                              <p className="text-xs text-destructive font-medium">Não recomendado</p>
+                              <p className="text-xs text-muted-foreground">
+                                Contém: {getRestrictionsText()}
                               </p>
-                            )}
-                            <p className="text-xs text-destructive font-medium">Não recomendado</p>
-                            <p className="text-xs text-muted-foreground">
-                              Contém: {perfilAplicado.alertas_personalizados.filter(a => a.status === "contem").map(a => a.restricao).join(", ")}
-                            </p>
-                          </div>
-                        </>
-                      ) : perfilAplicado.alertas_personalizados.some(a => a.status === "risco_potencial") ? (
-                        <>
-                          <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-medium text-foreground text-sm">
-                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                            </div>
+                          </>
+                        ) : isRisky ? (
+                          <>
+                            <ShieldAlert className="w-4 h-4 text-yellow-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                                <p className="font-medium text-foreground text-sm">
+                                  {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                                </p>
+                              )}
+                              <p className="text-xs text-yellow-600 font-medium">Atenção</p>
+                              <p className="text-xs text-muted-foreground">
+                                Possível: {getRestrictionsText()}
                               </p>
-                            )}
-                            <p className="text-xs text-yellow-600 font-medium">Verificar antes</p>
-                            <p className="text-xs text-muted-foreground">
-                              Possível: {perfilAplicado.alertas_personalizados.filter(a => a.status === "risco_potencial").map(a => a.restricao).join(", ")}
-                            </p>
-                          </div>
-                        </>
-                      ) : (
-                        <>
-                          <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
-                          <div className="flex-1">
-                            {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
-                              <p className="font-medium text-foreground text-sm">
-                                {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <ShieldCheck className="w-4 h-4 text-green-600 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                                <p className="font-medium text-foreground text-sm">
+                                  {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                                </p>
+                              )}
+                              <p className="text-xs text-green-600 font-medium">Seguro para você</p>
+                              <p className="text-xs text-muted-foreground">
+                                Compatível com suas restrições
                               </p>
-                            )}
-                            <p className="text-xs text-green-600 font-medium">Seguro para você</p>
-                            <p className="text-xs text-muted-foreground">
-                              Compatível com suas restrições
-                            </p>
-                          </div>
-                        </>
-                      )}
-                    </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              {/* ALERTAS DE INTOLERÂNCIA - Position 2, right after safety status */}
+              {foodAnalysis.alertas_intolerancia && foodAnalysis.alertas_intolerancia.length > 0 && (
+                <Card className="glass-card border-red-500/20 animate-reveal animate-reveal-2">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-base flex items-center gap-2 text-red-500">
+                      <AlertTriangle className="w-5 h-5" />
+                      Alertas de Intolerância
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-2">
+                    {foodAnalysis.alertas_intolerancia.map((alert, index) => (
+                      <div
+                        key={index}
+                        className={`p-3 rounded-lg ${
+                          alert.risco === "alto" 
+                            ? "bg-red-500/10 border border-red-500/30" 
+                            : alert.risco === "medio"
+                            ? "bg-yellow-500/10 border border-yellow-500/30"
+                            : "bg-orange-500/10 border border-orange-500/30"
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <span className="font-medium text-foreground">{alert.alimento}</span>
+                          <span className={`text-xs px-2 py-0.5 rounded-full ${
+                            alert.risco === "alto" 
+                              ? "bg-red-500/20 text-red-600" 
+                              : alert.risco === "medio"
+                              ? "bg-yellow-500/20 text-yellow-600"
+                              : "bg-orange-500/20 text-orange-600"
+                          }`}>
+                            {alert.risco === "alto" ? "Alto risco" : alert.risco === "medio" ? "Médio risco" : "Baixo risco"}
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          <strong>Intolerância:</strong> {alert.intolerancia}
+                        </p>
+                        <p className="text-xs text-muted-foreground">{alert.motivo}</p>
+                      </div>
+                    ))}
                   </CardContent>
                 </Card>
               )}
 
-              {/* ALIMENTOS IDENTIFICADOS - Core information, right after safety status */}
+              {/* ALIMENTOS IDENTIFICADOS - Position 3, after intolerance alerts */}
               <Card className="glass-card animate-reveal animate-reveal-2">
                 <CardHeader 
                   className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg"
@@ -1485,47 +1562,6 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
-              {foodAnalysis.alertas_intolerancia && foodAnalysis.alertas_intolerancia.length > 0 && (
-                <Card className="glass-card border-red-500/20">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2 text-red-500">
-                      <AlertTriangle className="w-5 h-5" />
-                      Alertas de Intolerância
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-2">
-                    {foodAnalysis.alertas_intolerancia.map((alert, index) => (
-                      <div
-                        key={index}
-                        className={`p-3 rounded-lg ${
-                          alert.risco === "alto" 
-                            ? "bg-red-500/10 border border-red-500/30" 
-                            : alert.risco === "medio"
-                            ? "bg-yellow-500/10 border border-yellow-500/30"
-                            : "bg-orange-500/10 border border-orange-500/30"
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 mb-1">
-                          <span className="font-medium text-foreground">{alert.alimento}</span>
-                          <span className={`text-xs px-2 py-0.5 rounded-full ${
-                            alert.risco === "alto" 
-                              ? "bg-red-500/20 text-red-600" 
-                              : alert.risco === "medio"
-                              ? "bg-yellow-500/20 text-yellow-600"
-                              : "bg-orange-500/20 text-orange-600"
-                          }`}>
-                            {alert.risco === "alto" ? "Alto risco" : alert.risco === "medio" ? "Médio risco" : "Baixo risco"}
-                          </span>
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          <strong>Intolerância:</strong> {alert.intolerancia}
-                        </p>
-                        <p className="text-xs text-muted-foreground">{alert.motivo}</p>
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-              )}
               {/* Safety questions */}
               {foodAnalysis.perguntas_seguranca && foodAnalysis.perguntas_seguranca.length > 0 && (
                 <Card className="glass-card border-blue-500/20">

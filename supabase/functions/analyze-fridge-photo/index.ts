@@ -948,7 +948,115 @@ function isProcessedFood(name: string): boolean {
   );
 }
 
-// Função para decompor alimento processado em ingredientes base
+// Função para buscar decomposição no banco de dados
+async function getDecompositionFromDatabase(foodName: string, supabaseUrl: string, serviceRoleKey: string): Promise<string[] | null> {
+  try {
+    const serviceClient = createClient(supabaseUrl, serviceRoleKey);
+    const normalized = foodName.toLowerCase().trim();
+    const { data, error } = await serviceClient
+      .from('food_decomposition_mappings')
+      .select('base_ingredients')
+      .eq('is_active', true)
+      .ilike('food_name', `%${normalized}%`)
+      .limit(1)
+      .single();
+    
+    if (!error && data?.base_ingredients?.length > 0) {
+      logStep(`Found decomposition in database for "${foodName}"`, { 
+        ingredients: data.base_ingredients 
+      });
+      return data.base_ingredients;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+// Função para consultar OpenFoodFacts e salvar no cache
+async function getDecompositionFromOpenFoodFacts(foodName: string, country: string): Promise<string[] | null> {
+  try {
+    logStep(`Querying OpenFoodFacts for "${foodName}"`);
+    
+    const response = await fetch(
+      `${Deno.env.get("SUPABASE_URL")}/functions/v1/lookup-openfoodfacts`,
+      {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+        },
+        body: JSON.stringify({ 
+          query: foodName,
+          country: country || 'BR',
+          saveToDatabase: true // Ativa cache progressivo
+        }),
+      }
+    );
+    
+    if (!response.ok) {
+      logStep(`OpenFoodFacts lookup failed for "${foodName}"`, { status: response.status });
+      return null;
+    }
+    
+    const result = await response.json();
+    
+    if (result.success && result.ingredients?.length > 0) {
+      logStep(`OpenFoodFacts found ingredients for "${foodName}"`, { 
+        ingredients: result.ingredients,
+        productName: result.product_name,
+        savedToDatabase: result.saved_to_database
+      });
+      return result.ingredients;
+    }
+    
+    return null;
+  } catch (err) {
+    logStep(`OpenFoodFacts error for "${foodName}"`, { error: String(err) });
+    return null;
+  }
+}
+
+// Função para decompor alimento processado em ingredientes base (com fallback para DB e OpenFoodFacts)
+async function decomposeProcessedFoodAsync(name: string, country?: string): Promise<string[]> {
+  const normalized = name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // 1. Tentar match exato no DECOMPOSITION_MAP local primeiro
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(keyNormalized) || keyNormalized.includes(normalized)) {
+      return ingredients;
+    }
+  }
+  
+  // 2. Tentar match parcial por palavras-chave no mapa local
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const keyWords = keyNormalized.split(' ');
+    if (keyWords.some(word => word.length > 3 && normalized.includes(word))) {
+      return ingredients;
+    }
+  }
+  
+  // 3. Fallback: Consultar banco de dados food_decomposition_mappings
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+  const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+  const dbDecomposition = await getDecompositionFromDatabase(name, supabaseUrl, serviceRoleKey);
+  if (dbDecomposition) {
+    return dbDecomposition;
+  }
+  
+  // 4. Fallback: Consultar OpenFoodFacts API (cache progressivo)
+  const offDecomposition = await getDecompositionFromOpenFoodFacts(name, country || 'BR');
+  if (offDecomposition) {
+    return offDecomposition;
+  }
+  
+  return [name]; // Retorna o nome original se não conseguir decompor
+}
+
+// Função síncrona mantida para compatibilidade (usa apenas mapa local)
 function decomposeProcessedFood(name: string): string[] {
   const normalized = name.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
@@ -1623,13 +1731,13 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
         }
         
         // 5. VERIFICAÇÃO ADICIONAL USANDO GLOBAL SAFETY ENGINE (mesmo sem match em PRODUTOS_CONHECIDOS)
-        // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS
+        // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS + FALLBACK OPENFOODFACTS
         if (normalizedIntolerances.length > 0) {
-          // Verificar se é alimento processado e decompor
+          // Verificar se é alimento processado e decompor (com fallback para DB e OpenFoodFacts)
           let ingredientsToValidate: string[] = [ingrediente.nome];
           
           if (isProcessedFood(ingrediente.nome)) {
-            const decomposed = decomposeProcessedFood(ingrediente.nome);
+            const decomposed = await decomposeProcessedFoodAsync(ingrediente.nome, userCountry);
             ingredientsToValidate = decomposed;
             logStep('Decomposed processed food for safety check', { 
               original: ingrediente.nome, 
@@ -1702,15 +1810,15 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       let foundIngredient = "";
       
       // Verificar em ingredientes identificados usando globalSafetyEngine
-      // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS
+      // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS + FALLBACK OPENFOODFACTS
       if (analysis.ingredientes_identificados) {
         for (const ing of analysis.ingredientes_identificados) {
           const ingName = ing.nome || "";
           
-          // Decompor alimentos processados antes de validar
+          // Decompor alimentos processados antes de validar (com fallback para DB e OpenFoodFacts)
           let ingredientsToCheck: string[] = [ingName];
           if (isProcessedFood(ingName)) {
-            ingredientsToCheck = decomposeProcessedFood(ingName);
+            ingredientsToCheck = await decomposeProcessedFoodAsync(ingName, userCountry);
           }
           
           // Verificar se este ingrediente corresponde à intolerância usando globalSafetyEngine

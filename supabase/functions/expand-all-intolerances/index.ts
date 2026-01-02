@@ -6,6 +6,15 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// ============================================================
+// KILL SWITCH - FUNÇÃO DESATIVADA
+// Esta função foi desativada para preservar a integridade da
+// tabela intolerance_mappings que deve conter APENAS ingredientes puros.
+// A expansão automática por IA foi identificada como fonte de poluição
+// por inserir itens compostos e sem nível de severidade definido.
+// ============================================================
+const FUNCTION_DISABLED = true;
+
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -189,6 +198,21 @@ async function runExpansion(batchSize: number, languages: string[], rounds: numb
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
+  }
+
+  // Kill switch - retorna erro se função desativada
+  if (FUNCTION_DISABLED) {
+    console.log("[expand-all-intolerances] Função DESATIVADA via kill switch");
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "FUNÇÃO DESATIVADA",
+        message: "Esta função foi desativada para preservar a integridade da tabela intolerance_mappings. A expansão automática por IA foi identificada como fonte de poluição. Use apenas inserção manual via painel admin.",
+        disabled_at: "2025-01-02",
+        reason: "Política de ingredientes puros - intolerance_mappings deve conter apenas ingredientes simples, sem compostos ou produtos processados."
+      }),
+      { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
   }
 
   try {

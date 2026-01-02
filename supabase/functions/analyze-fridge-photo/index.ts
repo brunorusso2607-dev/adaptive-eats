@@ -29,6 +29,132 @@ const logStep = (step: string, details?: any) => {
   console.log(`[FRIDGE-ANALYZER] ${step}`, details ? JSON.stringify(details) : '');
 };
 
+// ========== DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS ==========
+// Palavras-chave que indicam alimentos processados que precisam ser decompostos
+const PROCESSED_FOOD_KEYWORDS = [
+  'biscoito', 'bolacha', 'pão', 'bolo', 'torta', 'pizza', 'macarrão', 'massa',
+  'nugget', 'empanado', 'croquete', 'pastel', 'coxinha', 'esfiha', 'salgado',
+  'cereal', 'granola', 'barrinha', 'chocolate', 'doce', 'sobremesa',
+  'sorvete', 'iogurte', 'requeijão', 'cream cheese', 'queijo processado',
+  'salsicha', 'linguiça', 'mortadela', 'presunto', 'peito de peru',
+  'molho', 'tempero', 'caldo', 'shoyu', 'ketchup', 'maionese', 'mostarda',
+  'margarina', 'manteiga', 'creme de leite', 'leite condensado',
+  'refrigerante', 'suco industrializado', 'achocolatado', 'café solúvel',
+  'cookie', 'wafer', 'rosquinha', 'torrada', 'pão de forma', 'brioche',
+  'croissant', 'muffin', 'brownie', 'pudim', 'flan', 'mousse'
+];
+
+// Mapa de decomposição para alimentos processados comuns
+const DECOMPOSITION_MAP: Record<string, string[]> = {
+  // Biscoitos e bolachas
+  'biscoito': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal', 'sal'],
+  'biscoito de maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'gordura vegetal'],
+  'biscoito maria': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal'],
+  'biscoito cream cracker': ['farinha de trigo', 'trigo', 'gordura vegetal', 'sal', 'fermento'],
+  'bolacha': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal'],
+  'bolacha recheada': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal', 'cacau', 'leite'],
+  'cookie': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'ovo', 'chocolate'],
+  'wafer': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal', 'cacau'],
+  
+  // Pães
+  'pão': ['farinha de trigo', 'trigo', 'fermento', 'sal', 'açúcar'],
+  'pão francês': ['farinha de trigo', 'trigo', 'fermento', 'sal'],
+  'pão de forma': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal', 'leite'],
+  'pão integral': ['farinha de trigo integral', 'trigo', 'fermento', 'sal'],
+  'torrada': ['farinha de trigo', 'trigo', 'sal', 'gordura vegetal'],
+  'croissant': ['farinha de trigo', 'trigo', 'manteiga', 'leite', 'ovo'],
+  'brioche': ['farinha de trigo', 'trigo', 'manteiga', 'leite', 'ovo', 'açúcar'],
+  
+  // Massas
+  'macarrão': ['farinha de trigo', 'trigo', 'ovo'],
+  'massa': ['farinha de trigo', 'trigo', 'ovo'],
+  'pizza': ['farinha de trigo', 'trigo', 'fermento', 'queijo', 'tomate'],
+  'lasanha': ['farinha de trigo', 'trigo', 'ovo', 'queijo', 'carne'],
+  
+  // Empanados
+  'nugget': ['frango', 'farinha de trigo', 'trigo', 'amido', 'sal'],
+  'empanado': ['farinha de trigo', 'trigo', 'ovo', 'sal'],
+  'croquete': ['farinha de trigo', 'trigo', 'ovo', 'carne', 'batata'],
+  
+  // Doces e sobremesas
+  'bolo': ['farinha de trigo', 'trigo', 'açúcar', 'ovo', 'leite', 'manteiga'],
+  'torta': ['farinha de trigo', 'trigo', 'manteiga', 'açúcar', 'ovo'],
+  'brownie': ['farinha de trigo', 'trigo', 'chocolate', 'manteiga', 'ovo', 'açúcar'],
+  'muffin': ['farinha de trigo', 'trigo', 'açúcar', 'ovo', 'leite', 'manteiga'],
+  'pudim': ['leite', 'ovo', 'açúcar', 'caramelo'],
+  'mousse': ['leite', 'creme de leite', 'açúcar', 'gelatina'],
+  'sorvete': ['leite', 'creme de leite', 'açúcar'],
+  
+  // Lácteos processados
+  'iogurte': ['leite', 'fermento lácteo', 'açúcar'],
+  'requeijão': ['leite', 'creme de leite', 'sal'],
+  'cream cheese': ['leite', 'creme de leite', 'sal'],
+  
+  // Embutidos
+  'salsicha': ['carne', 'amido', 'sal', 'condimentos'],
+  'linguiça': ['carne suína', 'sal', 'condimentos'],
+  'mortadela': ['carne', 'amido', 'sal', 'condimentos'],
+  'presunto': ['carne suína', 'sal', 'açúcar'],
+  'peito de peru': ['peru', 'sal', 'amido'],
+  
+  // Molhos e condimentos
+  'molho shoyu': ['soja', 'trigo', 'sal'],
+  'shoyu': ['soja', 'trigo', 'sal'],
+  'ketchup': ['tomate', 'açúcar', 'vinagre'],
+  'maionese': ['óleo', 'ovo', 'vinagre', 'sal'],
+  'mostarda': ['mostarda', 'vinagre', 'sal'],
+  'margarina': ['gordura vegetal', 'soro de leite', 'sal'],
+  
+  // Cereais e granolas
+  'cereal': ['trigo', 'milho', 'açúcar', 'malte'],
+  'granola': ['aveia', 'mel', 'castanhas', 'frutas secas'],
+  'barrinha de cereal': ['aveia', 'mel', 'frutas secas', 'açúcar'],
+  
+  // Chocolates
+  'chocolate': ['cacau', 'açúcar', 'leite', 'lecitina de soja'],
+  'chocolate ao leite': ['cacau', 'açúcar', 'leite', 'lecitina de soja'],
+  'chocolate amargo': ['cacau', 'açúcar', 'lecitina de soja'],
+  'achocolatado': ['cacau', 'açúcar', 'leite em pó'],
+  
+  // Bebidas
+  'refrigerante': ['água', 'açúcar', 'cafeína'],
+  'suco industrializado': ['água', 'açúcar', 'fruta'],
+};
+
+// Função para verificar se é alimento processado
+function isProcessedFood(name: string): boolean {
+  const normalized = name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return PROCESSED_FOOD_KEYWORDS.some(keyword => 
+    normalized.includes(keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+}
+
+// Função para decompor alimento processado em ingredientes base
+function decomposeProcessedFood(name: string): string[] {
+  const normalized = name.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // Tentar match exato primeiro
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(keyNormalized) || keyNormalized.includes(normalized)) {
+      return ingredients;
+    }
+  }
+  
+  // Tentar match parcial por palavras-chave
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const keyWords = keyNormalized.split(' ');
+    if (keyWords.some(word => word.length > 3 && normalized.includes(word))) {
+      return ingredients;
+    }
+  }
+  
+  return [name]; // Retorna o nome original se não conseguir decompor
+}
+
 // Conhecimento enciclopédico de produtos industrializados conhecidos
 // (mantido para enriquecimento de produtos por embalagem/marca)
 const PRODUTOS_CONHECIDOS: Record<string, { contem: string[], marcasTipicas: string[] }> = {
@@ -679,16 +805,37 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
         }
         
         // 5. VERIFICAÇÃO ADICIONAL USANDO GLOBAL SAFETY ENGINE (mesmo sem match em PRODUTOS_CONHECIDOS)
+        // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS
         if (normalizedIntolerances.length > 0) {
-          const ingredientCheck = validateIngredientList([ingrediente.nome], userRestrictions, safetyDatabase);
+          // Verificar se é alimento processado e decompor
+          let ingredientsToValidate: string[] = [ingrediente.nome];
           
-          if (!ingredientCheck.isSafe && ingrediente.tipo === 'industrializado' && ingrediente.confianca !== 'alta') {
+          if (isProcessedFood(ingrediente.nome)) {
+            const decomposed = decomposeProcessedFood(ingrediente.nome);
+            ingredientsToValidate = decomposed;
+            logStep('Decomposed processed food for safety check', { 
+              original: ingrediente.nome, 
+              decomposed 
+            });
+          }
+          
+          const ingredientCheck = validateIngredientList(ingredientsToValidate, userRestrictions, safetyDatabase);
+          
+          if (!ingredientCheck.isSafe) {
+            // Se encontrou conflito, adicionar alerta
+            const conflictLabel = ingredientCheck.conflicts.length > 0 
+              ? getIntoleranceLabel(ingredientCheck.conflicts[0].key, safetyDatabase)
+              : '';
+            
+            // Para alimentos processados com conflito, sempre adicionar alerta
             if (!ingrediente.alerta_seguranca) {
-              const conflictLabel = ingredientCheck.conflicts.length > 0 
-                ? getIntoleranceLabel(ingredientCheck.conflicts[0].key, safetyDatabase)
-                : '';
-              const versaoSegura = conflictLabel ? `sem ${conflictLabel.toLowerCase()}` : 'adequada';
-              ingrediente.alerta_seguranca = `⚠️ Verifique se este produto é a versão ${versaoSegura} antes de usar.`;
+              if (isProcessedFood(ingrediente.nome)) {
+                ingrediente.alerta_seguranca = `🔴 CONTÉM ${conflictLabel.toUpperCase()} (produto processado com ingredientes restritos)`;
+                ingrediente.pode_usar_em_receita = false;
+              } else if (ingrediente.tipo === 'industrializado' && ingrediente.confianca !== 'alta') {
+                const versaoSegura = conflictLabel ? `sem ${conflictLabel.toLowerCase()}` : 'adequada';
+                ingrediente.alerta_seguranca = `⚠️ Verifique se este produto é a versão ${versaoSegura} antes de usar.`;
+              }
             }
           }
         }
@@ -737,9 +884,16 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       let foundIngredient = "";
       
       // Verificar em ingredientes identificados usando globalSafetyEngine
+      // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS
       if (analysis.ingredientes_identificados) {
         for (const ing of analysis.ingredientes_identificados) {
           const ingName = ing.nome || "";
+          
+          // Decompor alimentos processados antes de validar
+          let ingredientsToCheck: string[] = [ingName];
+          if (isProcessedFood(ingName)) {
+            ingredientsToCheck = decomposeProcessedFood(ingName);
+          }
           
           // Verificar se este ingrediente corresponde à intolerância usando globalSafetyEngine
           const singleRestriction: UserRestrictions = {
@@ -747,7 +901,7 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
             dietaryPreference: 'comum',
             excludedIngredients: [],
           };
-          const check = validateIngredientList([ingName], singleRestriction, safetyDatabase);
+          const check = validateIngredientList(ingredientsToCheck, singleRestriction, safetyDatabase);
           
           if (!check.isSafe) {
             found = true;

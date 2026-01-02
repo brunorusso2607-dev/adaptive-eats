@@ -1154,8 +1154,76 @@ If any alert exists, set health_bonus to null.
       return PROCESSED_FOOD_KEYWORDS.some(keyword => normalized.includes(keyword));
     };
     
-    // Função para decompor alimento processado em ingredientes base (inline, sem API)
-    const decomposeProcessedFood = (foodName: string): string[] => {
+    // Função para consultar decomposição no banco de dados
+    const getDecompositionFromDatabase = async (foodName: string): Promise<string[] | null> => {
+      try {
+        const normalized = foodName.toLowerCase().trim();
+        const { data, error } = await supabaseClient
+          .from('food_decomposition_mappings')
+          .select('base_ingredients')
+          .eq('is_active', true)
+          .ilike('food_name', `%${normalized}%`)
+          .limit(1)
+          .single();
+        
+        if (!error && data?.base_ingredients?.length > 0) {
+          logStep(`Found decomposition in database for "${foodName}"`, { 
+            ingredients: data.base_ingredients 
+          });
+          return data.base_ingredients;
+        }
+        return null;
+      } catch {
+        return null;
+      }
+    };
+
+    // Função para consultar OpenFoodFacts e salvar no cache
+    const getDecompositionFromOpenFoodFacts = async (foodName: string): Promise<string[] | null> => {
+      try {
+        logStep(`Querying OpenFoodFacts for "${foodName}"`);
+        
+        const response = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/lookup-openfoodfacts`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ 
+              query: foodName,
+              country: profile?.country || 'BR',
+              saveToDatabase: true // Ativa cache progressivo
+            }),
+          }
+        );
+        
+        if (!response.ok) {
+          logStep(`OpenFoodFacts lookup failed for "${foodName}"`, { status: response.status });
+          return null;
+        }
+        
+        const result = await response.json();
+        
+        if (result.success && result.ingredients?.length > 0) {
+          logStep(`OpenFoodFacts found ingredients for "${foodName}"`, { 
+            ingredients: result.ingredients,
+            productName: result.product_name,
+            savedToDatabase: result.saved_to_database
+          });
+          return result.ingredients;
+        }
+        
+        return null;
+      } catch (err) {
+        logStep(`OpenFoodFacts error for "${foodName}"`, { error: String(err) });
+        return null;
+      }
+    };
+
+    // Função para decompor alimento processado em ingredientes base (com fallback para OpenFoodFacts)
+    const decomposeProcessedFood = async (foodName: string): Promise<string[]> => {
       const normalized = foodName.toLowerCase().trim();
       
       // Mapa expandido de decomposição para alimentos processados (~300 alimentos)
@@ -1531,7 +1599,19 @@ If any alert exists, set health_bonus to null.
         }
       }
       
-      // Fallback: se não encontrou decomposição específica, retorna o alimento original
+      // Fallback 1: Consultar banco de dados food_decomposition_mappings
+      const dbDecomposition = await getDecompositionFromDatabase(foodName);
+      if (dbDecomposition) {
+        return dbDecomposition;
+      }
+      
+      // Fallback 2: Consultar OpenFoodFacts API (cache progressivo)
+      const offDecomposition = await getDecompositionFromOpenFoodFacts(foodName);
+      if (offDecomposition) {
+        return offDecomposition;
+      }
+      
+      // Fallback 3: se não encontrou decomposição específica, retorna o alimento original
       // mas também adiciona trigo se parece ser um produto de panificação
       if (normalized.includes('biscoito') || normalized.includes('bolacha') || 
           normalized.includes('pão') || normalized.includes('bolo') ||
@@ -1552,8 +1632,8 @@ If any alert exists, set health_bonus to null.
       if (!food) continue;
       
       if (isProcessedFood(food)) {
-        // Decompor o alimento processado em ingredientes base
-        const decomposedIngredients = decomposeProcessedFood(food);
+        // Decompor o alimento processado em ingredientes base (async - consulta DB e OpenFoodFacts)
+        const decomposedIngredients = await decomposeProcessedFood(food);
         ingredientsToValidate.push(...decomposedIngredients);
         logStep(`Processed food detected and decomposed`, { 
           original: food, 

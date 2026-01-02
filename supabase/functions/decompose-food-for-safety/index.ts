@@ -1,6 +1,15 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+// ARCHITECTURE: Use globalSafetyEngine as single source of truth for food safety
+import {
+  loadSafetyDatabase,
+  normalizeUserIntolerances,
+  validateIngredientList,
+  type UserRestrictions,
+  type SafetyDatabase,
+} from "../_shared/globalSafetyEngine.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -12,6 +21,8 @@ const corsHeaders = {
  * 
  * Exemplo: "Big Mac" → ["pão", "carne bovina", "queijo", "alface", "cebola", "picles", "molho especial"]
  * Exemplo: "pão francês" → ["farinha de trigo", "água", "sal", "fermento"]
+ * 
+ * ARCHITECTURE v2.0: Now uses globalSafetyEngine.ts as single source of truth
  */
 
 serve(async (req) => {
@@ -20,7 +31,7 @@ serve(async (req) => {
   }
 
   try {
-    const { foodName, userIntolerances = [], dietaryPreference = null } = await req.json();
+    const { foodName, userIntolerances = [], dietaryPreference = null, excludedIngredients = [] } = await req.json();
 
     if (!foodName || typeof foodName !== "string") {
       return new Response(
@@ -34,41 +45,24 @@ serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
 
-    // Buscar mapeamentos de intolerâncias do banco
-    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    // Buscar ingredientes bloqueados para as intolerâncias do usuário
-    let blockedIngredients: string[] = [];
-    if (userIntolerances.length > 0) {
-      const { data: mappings } = await supabase
-        .from("intolerance_mappings")
-        .select("ingredient, intolerance_key")
-        .in("intolerance_key", userIntolerances)
-        .eq("severity_level", "blocked");
-
-      if (mappings) {
-        blockedIngredients = mappings.map(m => m.ingredient.toLowerCase());
-      }
-    }
-
-    // Buscar safe keywords para evitar falsos positivos
-    let safeKeywords: { keyword: string; intolerance_key: string }[] = [];
-    if (userIntolerances.length > 0) {
-      const { data: keywords } = await supabase
-        .from("intolerance_safe_keywords")
-        .select("keyword, intolerance_key")
-        .in("intolerance_key", userIntolerances);
-
-      if (keywords) {
-        safeKeywords = keywords;
-      }
-    }
-
     console.log(`[decompose-food] Analisando: "${foodName}"`);
     console.log(`[decompose-food] Intolerâncias do usuário: ${userIntolerances.join(", ") || "nenhuma"}`);
-    console.log(`[decompose-food] Total de ingredientes bloqueados: ${blockedIngredients.length}`);
+    console.log(`[decompose-food] Preferência dietética: ${dietaryPreference || "nenhuma"}`);
+
+    // Load safety database from globalSafetyEngine (with cache)
+    const safetyDatabase: SafetyDatabase = await loadSafetyDatabase();
+    console.log(`[decompose-food] Safety database loaded with ${safetyDatabase.intoleranceMappings.size} mappings`);
+
+    // Normalize user intolerances using globalSafetyEngine
+    const normalizedIntolerances = normalizeUserIntolerances(userIntolerances, safetyDatabase);
+    console.log(`[decompose-food] Normalized intolerances: ${normalizedIntolerances.join(", ")}`);
+
+    // Build user restrictions for validation
+    const userRestrictions: UserRestrictions = {
+      intolerances: normalizedIntolerances,
+      dietaryPreference: dietaryPreference || null,
+      excludedIngredients: excludedIngredients || [],
+    };
 
     // Prompt para decompor o alimento
     const systemPrompt = `Você é um especialista em nutrição e composição de alimentos.
@@ -148,42 +142,32 @@ Responda APENAS com um JSON no formato:
 
     const ingredients: string[] = decomposition.ingredients || [foodName.toLowerCase()];
 
-    // Verificar conflitos com intolerâncias
-    const conflicts: { ingredient: string; intolerance: string; isSafe: boolean }[] = [];
-
-    for (const ingredient of ingredients) {
-      const normalizedIngredient = ingredient.toLowerCase().trim();
-
-      for (const intolerance of userIntolerances) {
-        // Verificar se o ingrediente está na lista de bloqueados
-        const isBlocked = blockedIngredients.some(blocked => {
-          // Match por palavra inteira para evitar falsos positivos
-          const regex = new RegExp(`\\b${blocked.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
-          return regex.test(normalizedIngredient) || normalizedIngredient === blocked;
-        });
-
-        if (isBlocked) {
-          // Verificar se há safe keyword que neutraliza
-          const safeKeyword = safeKeywords.find(sk => 
-            sk.intolerance_key === intolerance && 
-            normalizedIngredient.includes(sk.keyword.toLowerCase())
-          );
-
-          conflicts.push({
-            ingredient: normalizedIngredient,
-            intolerance,
-            isSafe: !!safeKeyword
-          });
-        }
-      }
-    }
-
-    // Filtrar conflitos reais (não neutralizados por safe keywords)
-    const realConflicts = conflicts.filter(c => !c.isSafe);
-    const hasConflict = realConflicts.length > 0;
+    // ========== VALIDATE USING GLOBAL SAFETY ENGINE ==========
+    // This ensures consistent validation with all other modules
+    const validationResult = validateIngredientList(ingredients, userRestrictions, safetyDatabase);
 
     console.log(`[decompose-food] Ingredientes detectados: ${ingredients.join(", ")}`);
-    console.log(`[decompose-food] Conflitos encontrados: ${realConflicts.length}`);
+    console.log(`[decompose-food] Validation result: isSafe=${validationResult.isSafe}, conflicts=${validationResult.conflicts.length}, warnings=${validationResult.warnings.length}`);
+
+    // Build conflicts array from validation result (using correct ConflictDetail interface)
+    const conflicts = validationResult.conflicts.map(c => ({
+      ingredient: c.originalIngredient,
+      intolerance: c.key,
+      type: c.type,
+      severity: c.severity,
+      label: c.label,
+      matchedIngredient: c.matchedIngredient,
+    }));
+
+    // Build warnings array
+    const warnings = validationResult.warnings.map(w => ({
+      ingredient: w.originalIngredient,
+      intolerance: w.key,
+      type: w.type,
+      severity: w.severity,
+      label: w.label,
+      matchedIngredient: w.matchedIngredient,
+    }));
 
     return new Response(
       JSON.stringify({
@@ -192,12 +176,18 @@ Responda APENAS com um JSON no formato:
         ingredients,
         isProcessedFood: decomposition.isProcessedFood || false,
         confidence: decomposition.confidence || "medium",
-        hasConflict,
-        conflicts: realConflicts.map(c => ({
-          ingredient: c.ingredient,
-          intolerance: c.intolerance
-        })),
-        safeToConsume: !hasConflict
+        hasConflict: !validationResult.isSafe,
+        conflicts,
+        warnings,
+        safeToConsume: validationResult.isSafe,
+        // Include validation metadata for debugging
+        validationMetadata: {
+          normalizedIntolerances,
+          dietaryPreference,
+          excludedIngredients,
+          totalConflicts: conflicts.length,
+          totalWarnings: warnings.length,
+        }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

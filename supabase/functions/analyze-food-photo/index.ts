@@ -546,7 +546,8 @@ This meal represents a portion of their daily intake.
     "visual_limitations": ["limitation in ${userLocale}"],
     "recommended_action": "suggestion in ${userLocale} or null"
   },
-  "summary": "Brief meal description in ${userLocale}",
+  "meal_name": "HUMANIZED COMPOSITE MEAL NAME in ${userLocale} - CRITICAL!",
+  "meal_description": "Brief description of the meal in ${userLocale}",
   "detected_cuisine": "Cuisine name in ${userLocale}",
   "items": [
     {
@@ -609,6 +610,34 @@ This meal represents a portion of their daily intake.
   },
   "user_message": "Friendly summary in ${userLocale}"
 }
+
+=== CRITICAL RULE: meal_name FIELD ===
+
+The "meal_name" field is the MOST IMPORTANT field for user experience.
+It MUST be a HUMANIZED, COMPOSITE name that describes the ENTIRE meal, not just one food.
+
+**RULES FOR meal_name:**
+1. If there are multiple food items, COMBINE them naturally
+2. Use connecting words like "com", "e", "acompanhado de" (in ${userLocale})
+3. The name should sound like how a human would describe the meal
+
+**EXAMPLES (in Portuguese):**
+- ❌ WRONG: "Café preto" (when there are also biscuits)
+- ✅ CORRECT: "Café preto com biscoitos"
+
+- ❌ WRONG: "Arroz cozido" (when there's rice, beans, fries, salad)
+- ✅ CORRECT: "Arroz, feijão, batata frita e salada"
+
+- ❌ WRONG: "Filé de frango" (when there's chicken, rice, vegetables)
+- ✅ CORRECT: "Filé de frango com arroz e legumes"
+
+- ❌ WRONG: "Ovos mexidos" (when there's eggs, toast, juice)
+- ✅ CORRECT: "Ovos mexidos com torrada e suco"
+
+**STRUCTURE:**
+- For 2 items: "Item1 com Item2"
+- For 3+ items: "Item1, Item2, Item3 e Item4"
+- If there's a clear main dish: "MainDish com/acompanhado de sides"
 
 === SAFETY SCORE RULES (UNIVERSAL) ===
 
@@ -792,6 +821,34 @@ If any alert exists, set health_bonus to null.
     // Ensure alertas_intolerancia exists
     if (!analysis.alertas_intolerancia) {
       analysis.alertas_intolerancia = [];
+    }
+    
+    // Transform meal_name → prato_identificado with composite humanized name
+    if (!analysis.prato_identificado) {
+      // Use meal_name from AI if available, otherwise generate from items
+      let mealName = analysis.meal_name || "";
+      
+      // If AI didn't provide meal_name, generate composite name from items
+      if (!mealName && analysis.alimentos && analysis.alimentos.length > 0) {
+        const itemNames = analysis.alimentos.map((food: any) => food.item || "").filter(Boolean);
+        if (itemNames.length === 1) {
+          mealName = itemNames[0];
+        } else if (itemNames.length === 2) {
+          mealName = `${itemNames[0]} com ${itemNames[1]}`;
+        } else if (itemNames.length > 2) {
+          const lastItem = itemNames.pop();
+          mealName = `${itemNames.join(", ")} e ${lastItem}`;
+        }
+      }
+      
+      analysis.prato_identificado = {
+        nome: mealName || analysis.summary || "Refeição",
+        culinaria: analysis.detected_cuisine || null,
+        descricao_curta: analysis.meal_description || analysis.summary || null,
+        confianca: analysis.analysis_confidence?.level || "media"
+      };
+      
+      logStep("Generated prato_identificado", { nome: analysis.prato_identificado.nome });
     }
 
     // ========== HYBRID MACRO CALCULATION: Use real data from foods table ==========

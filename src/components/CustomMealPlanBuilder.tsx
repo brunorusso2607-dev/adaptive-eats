@@ -584,7 +584,7 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
         ) : (
           <>
             <CheckCircle2 className="w-5 h-5 mr-2" />
-            Criar Plano ({totalDays} dias)
+            Criar Plano
           </>
         )}
       </Button>

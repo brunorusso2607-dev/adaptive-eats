@@ -419,16 +419,6 @@ export function useIntoleranceWarning() {
     if (hasIntolerances) {
       const normalizedName = foodName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
-      // DEBUG: Log para verificar dados carregados
-      if (foodName.toLowerCase().includes('arroz')) {
-        console.log('[INTOLERANCE DEBUG] Verificando:', { 
-          foodName, 
-          normalizedName,
-          totalMappings: mappings.length,
-          userIntolerances: intolerances 
-        });
-      }
-
       // Check against mappings from database
       for (const mapping of mappings) {
         const normalizedIngredient = mapping.ingredient.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -440,7 +430,6 @@ export function useIntoleranceWarning() {
           containsWholeWord(normalizedName, normalizedIngredient);
         
         if (isMatch && intolerances.includes(mapping.intolerance_key)) {
-          console.log('[INTOLERANCE] Match encontrado:', { food: foodName, ingredient: mapping.ingredient, key: mapping.intolerance_key, normalizedIngredient });
           foundConflicts.add(mapping.intolerance_key);
         }
       }
@@ -460,17 +449,6 @@ export function useIntoleranceWarning() {
     });
     
     const labels = conflictDetails.map(d => d.label);
-
-    // DEBUG: Log resultado final para arroz
-    if (foodName.toLowerCase().includes('arroz')) {
-      console.log('[INTOLERANCE RESULT]', { 
-        foodName, 
-        hasConflict: conflicts.length > 0,
-        conflicts,
-        labels,
-        totalMappingsUsed: mappings.length
-      });
-    }
 
     return {
       hasConflict: conflicts.length > 0,

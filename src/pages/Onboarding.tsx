@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe, Dumbbell, TrendingDown, TrendingUp, Scale, Utensils, Sparkles
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe, Dumbbell, TrendingDown, TrendingUp, Scale, Utensils, Sparkles, Info
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -301,58 +301,18 @@ export default function Onboarding() {
 
       case 6:
         return (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Selecione ou adicione alimentos específicos que você não consome (opcional).
-            </p>
-            
-            {/* Sugestões como chips clicáveis */}
-            {options.excluded_ingredients && options.excluded_ingredients.length > 0 && (
-              <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Sugestões:</p>
-                <div className="flex flex-wrap gap-2">
-                  {options.excluded_ingredients.map((item) => {
-                    const isSelected = profile.excluded_ingredients.includes(item.label.toLowerCase());
-                    const IconComponent = getOnboardingIcon(item);
-                    return (
-                      <button
-                        key={item.option_id}
-                        onClick={() => {
-                          const label = item.label.toLowerCase();
-                          if (isSelected) {
-                            setProfile({
-                              ...profile,
-                              excluded_ingredients: profile.excluded_ingredients.filter(i => i !== label)
-                            });
-                          } else {
-                            setProfile({
-                              ...profile,
-                              excluded_ingredients: [...profile.excluded_ingredients, label]
-                            });
-                          }
-                        }}
-                        className={cn(
-                          "px-3 py-1.5 rounded-full text-sm font-medium transition-all flex items-center gap-1.5",
-                          isSelected
-                            ? "bg-orange-100 text-orange-700 border border-orange-300 dark:bg-orange-950/50 dark:text-orange-400 dark:border-orange-700"
-                            : "bg-muted text-muted-foreground border border-border hover:border-orange-300 hover:bg-orange-50 dark:hover:bg-orange-950/30"
-                        )}
-                      >
-                        {IconComponent && <IconComponent className="w-3.5 h-3.5" />}
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
-            {/* Divisor */}
-            <div className="flex items-center gap-3">
-              <div className="flex-1 h-px bg-border" />
-              <span className="text-xs text-muted-foreground">ou adicione outros</span>
-              <div className="flex-1 h-px bg-border" />
+          <div className="space-y-5">
+            {/* Info callout about automatic exclusions */}
+            <div className="flex gap-3 p-3 rounded-lg bg-primary/5 border border-primary/20">
+              <Info className="w-5 h-5 text-primary flex-shrink-0 mt-0.5" />
+              <p className="text-sm text-foreground/80">
+                O sistema já está excluindo automaticamente todos os ingredientes relacionados às suas intolerâncias, alergias e sensibilidades.
+              </p>
             </div>
+
+            <p className="text-sm text-muted-foreground">
+              Aqui você pode adicionar alimentos que simplesmente não gosta ou prefere evitar por outras razões.
+            </p>
             
             {/* Input para adicionar ingredientes personalizados */}
             <div className="flex gap-2">
@@ -399,7 +359,7 @@ export default function Onboarding() {
             {/* Lista de ingredientes selecionados */}
             {profile.excluded_ingredients.length > 0 && (
               <div className="space-y-2">
-                <p className="text-xs text-muted-foreground font-medium">Selecionados:</p>
+                <p className="text-xs text-muted-foreground font-medium">Adicionados:</p>
                 <div className="flex flex-wrap gap-2">
                   {profile.excluded_ingredients.map((ingredient) => (
                     <Badge
@@ -421,12 +381,6 @@ export default function Onboarding() {
                   ))}
                 </div>
               </div>
-            )}
-
-            {profile.excluded_ingredients.length === 0 && (
-              <p className="text-xs text-muted-foreground/60 text-center py-2">
-                Nenhum alimento adicionado. Você pode pular esta etapa se quiser.
-              </p>
             )}
           </div>
         );

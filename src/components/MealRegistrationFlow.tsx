@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Clock, Flame, Beef, Wheat, Droplets, UtensilsCrossed, Loader2, AlertTriangle } from "lucide-react";
+import { Check, Clock, Flame, Beef, Wheat, Droplets, UtensilsCrossed, Loader2, AlertTriangle, ArrowRightLeft, Plus } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { format, parseISO, differenceInMinutes } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { type PendingMealForReplacement } from "@/hooks/useMealTimeDetection";
 
 export interface MealData {
   name: string;
@@ -54,6 +55,10 @@ interface MealRegistrationFlowProps {
   sourceType: 'photo' | 'manual';
   onSuccess?: () => void;
   onBack?: () => void;
+  // Novas props para fluxo automático
+  autoDetectedMealType?: string;
+  autoDetectedMealLabel?: string;
+  pendingMealToReplace?: PendingMealForReplacement | null;
 }
 
 export default function MealRegistrationFlow({
@@ -64,9 +69,28 @@ export default function MealRegistrationFlow({
   sourceType,
   onSuccess,
   onBack,
+  autoDetectedMealType,
+  autoDetectedMealLabel,
+  pendingMealToReplace,
 }: MealRegistrationFlowProps) {
-  const [step, setStep] = useState<'meal-type' | 'time'>('meal-type');
-  const [selectedMealType, setSelectedMealType] = useState<string | null>(null);
+  // Se temos detecção automática, pular a seleção de meal type
+  const hasAutoDetection = !!autoDetectedMealType && autoDetectedMealType !== 'extra';
+  // Determinar step inicial baseado em detecção automática
+  const [step, setStep] = useState<'meal-type' | 'time' | 'replace-confirm'>(() => {
+    // Se temos refeição pendente para substituir, mostrar confirmação
+    if (hasAutoDetection && pendingMealToReplace) {
+      return 'replace-confirm';
+    }
+    // Se temos detecção automática, pular direto para horário
+    if (hasAutoDetection) {
+      return 'time';
+    }
+    return 'meal-type';
+  });
+  const [selectedMealType, setSelectedMealType] = useState<string | null>(() => {
+    return hasAutoDetection ? autoDetectedMealType : null;
+  });
+  const [replaceChoice, setReplaceChoice] = useState<'replace' | 'extra' | null>(null);
   const [customMealName, setCustomMealName] = useState("");
   const [selectedTime, setSelectedTime] = useState(() => {
     const now = new Date();
@@ -79,11 +103,29 @@ export default function MealRegistrationFlow({
   const mealLabels = getMealLabelsSync();
   const mealOrder = getMealOrderSync();
 
+  // Resetar estado quando abre com novas props
+  useEffect(() => {
+    if (open) {
+      if (hasAutoDetection && pendingMealToReplace) {
+        setStep('replace-confirm');
+        setSelectedMealType(autoDetectedMealType);
+        setReplaceChoice(null);
+      } else if (hasAutoDetection) {
+        setStep('time');
+        setSelectedMealType(autoDetectedMealType);
+      } else {
+        setStep('meal-type');
+        setSelectedMealType(null);
+      }
+    }
+  }, [open, hasAutoDetection, autoDetectedMealType, pendingMealToReplace]);
+
   // Reset on close
   const handleOpenChange = (newOpen: boolean) => {
     if (!newOpen) {
-      setStep('meal-type');
-      setSelectedMealType(null);
+      setStep(hasAutoDetection ? (pendingMealToReplace ? 'replace-confirm' : 'time') : 'meal-type');
+      setSelectedMealType(hasAutoDetection ? autoDetectedMealType : null);
+      setReplaceChoice(null);
       setCustomMealName("");
       const now = new Date();
       setSelectedTime(`${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`);
@@ -108,11 +150,34 @@ export default function MealRegistrationFlow({
 
   const handleBack = () => {
     if (step === 'time') {
-      setStep('meal-type');
+      if (hasAutoDetection && pendingMealToReplace) {
+        setStep('replace-confirm');
+      } else if (!hasAutoDetection) {
+        setStep('meal-type');
+      } else if (onBack) {
+        onBack();
+        handleOpenChange(false);
+      }
+    } else if (step === 'replace-confirm') {
+      if (onBack) {
+        onBack();
+        handleOpenChange(false);
+      }
     } else if (onBack) {
       onBack();
       handleOpenChange(false);
     }
+  };
+
+  // Handlers para escolha de substituição
+  const handleReplaceChoice = (choice: 'replace' | 'extra') => {
+    setReplaceChoice(choice);
+    if (choice === 'extra') {
+      setSelectedMealType('extra');
+    } else {
+      setSelectedMealType(autoDetectedMealType || 'extra');
+    }
+    setStep('time');
   };
 
   // Check for duplicate meals
@@ -214,13 +279,16 @@ export default function MealRegistrationFlow({
         sourceType,
       });
 
+      // Determinar se está substituindo refeição do plano
+      const isReplacingPlanMeal = replaceChoice === 'replace' && pendingMealToReplace;
+
       // Create meal consumption record
       const { data: consumption, error: consumptionError } = await supabase
         .from("meal_consumption")
         .insert({
           user_id: user.id,
-          meal_plan_item_id: null,
-          followed_plan: false,
+          meal_plan_item_id: isReplacingPlanMeal ? pendingMealToReplace.id : null,
+          followed_plan: isReplacingPlanMeal ? false : false,
           total_calories: Math.round(mealData.calories || 0),
           total_protein: Math.round((mealData.protein || 0) * 10) / 10,
           total_carbs: Math.round((mealData.carbs || 0) * 10) / 10,
@@ -229,6 +297,7 @@ export default function MealRegistrationFlow({
           source_type: sourceType,
           custom_meal_name: finalMealName.slice(0, 255),
           meal_time: selectedTime + ':00',
+          detected_meal_type: autoDetectedMealType || selectedMealType,
         })
         .select()
         .single();
@@ -236,6 +305,18 @@ export default function MealRegistrationFlow({
       if (consumptionError) {
         console.error("[MealRegistrationFlow] Consumption insert error:", consumptionError);
         throw new Error(`Erro ao salvar refeição: ${consumptionError.message}`);
+      }
+
+      // Se está substituindo, marcar meal_plan_item como completed
+      if (isReplacingPlanMeal) {
+        const { error: updateError } = await supabase
+          .from("meal_plan_items")
+          .update({ completed_at: new Date().toISOString() })
+          .eq("id", pendingMealToReplace.id);
+
+        if (updateError) {
+          console.warn("[MealRegistrationFlow] Error marking plan item as completed:", updateError);
+        }
       }
 
       // Insert consumption items if provided
@@ -291,6 +372,7 @@ export default function MealRegistrationFlow({
         <SheetHeader className="px-4 pb-3 flex-shrink-0 border-b">
           <SheetTitle className="text-base flex items-center gap-2">
             <UtensilsCrossed className="w-5 h-5 text-primary" />
+            {step === 'replace-confirm' && "Registrar Refeição"}
             {step === 'meal-type' && "Qual refeição?"}
             {step === 'time' && "Que horas foi?"}
           </SheetTitle>
@@ -323,6 +405,44 @@ export default function MealRegistrationFlow({
 
         <ScrollArea className="flex-1 overflow-auto">
           <div className="px-4 py-4">
+            {/* Step: Replace confirmation */}
+            {step === 'replace-confirm' && pendingMealToReplace && (
+              <div className="space-y-4">
+                <div className="p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                  <div className="flex items-start gap-3">
+                    <ArrowRightLeft className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
+                        Substituir refeição planejada?
+                      </p>
+                      <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
+                        Você tem <strong>{pendingMealToReplace.recipe_name}</strong> planejado para {autoDetectedMealLabel}.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Button
+                    onClick={() => handleReplaceChoice('replace')}
+                    className="w-full justify-start"
+                    variant="outline"
+                  >
+                    <ArrowRightLeft className="w-4 h-4 mr-2" />
+                    Substituir pelo que comi
+                  </Button>
+                  <Button
+                    onClick={() => handleReplaceChoice('extra')}
+                    className="w-full justify-start"
+                    variant="ghost"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Registrar como refeição extra
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Step 1: Select meal type */}
             {step === 'meal-type' && (
               <div className="space-y-6">

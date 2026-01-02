@@ -954,6 +954,7 @@ export type Database = {
           consumed_at: string
           created_at: string
           custom_meal_name: string | null
+          detected_meal_type: string | null
           feedback_status: string
           followed_plan: boolean
           id: string
@@ -971,6 +972,7 @@ export type Database = {
           consumed_at?: string
           created_at?: string
           custom_meal_name?: string | null
+          detected_meal_type?: string | null
           feedback_status?: string
           followed_plan?: boolean
           id?: string
@@ -988,6 +990,7 @@ export type Database = {
           consumed_at?: string
           created_at?: string
           custom_meal_name?: string | null
+          detected_meal_type?: string | null
           feedback_status?: string
           followed_plan?: boolean
           id?: string

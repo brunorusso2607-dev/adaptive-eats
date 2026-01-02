@@ -392,9 +392,9 @@ export default function UnifiedFoodSearchBlock({
           />
         </div>
 
-        {/* Results area */}
-        <ScrollArea className={scrollHeight}>
-          <div className="space-y-2 pr-4">
+        {/* Results area - adapts to content */}
+        <div className={cn("overflow-y-auto", scrollHeight)}>
+          <div className="space-y-2">
             {/* Loading state */}
             {isLoading && searchQuery.length >= 2 && results.length === 0 && (
               <div className="text-center py-6 text-muted-foreground">
@@ -624,7 +624,7 @@ export default function UnifiedFoodSearchBlock({
               </div>
             )}
           </div>
-        </ScrollArea>
+        </div>
       </div>
 
       {/* Manual food modal */}

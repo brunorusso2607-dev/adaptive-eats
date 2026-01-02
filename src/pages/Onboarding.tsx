@@ -684,6 +684,20 @@ export default function Onboarding() {
               return categoryLabels[categoryKey];
             }
             
+            // Check if we're on the dietary preference step (step 5) - make it skippable
+            if (origStep === 5) {
+              // "comum" is the default/no preference option
+              if (profile.dietary_preference === "comum") {
+                return "Não tenho preferência específica";
+              }
+              return (
+                <>
+                  Próximo
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              );
+            }
+            
             return (
               <>
                 Próximo

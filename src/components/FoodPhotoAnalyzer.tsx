@@ -55,6 +55,8 @@ type PratoIdentificado = {
   culinaria?: string;
   descricao_curta?: string;
   confianca?: "alta" | "media" | "baixa";
+  motivos_confianca?: string[];
+  limitacoes_visuais?: string[];
 };
 
 type FoodAnalysis = {
@@ -1430,24 +1432,43 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
               {/* Confidence card - Gray neutral card below safety status */}
               {foodAnalysis.prato_identificado && (
-                <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/50 border border-border animate-reveal animate-reveal-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">🔍 Confiança da análise:</span>
-                    <span className={`text-sm font-medium ${
-                      foodAnalysis.prato_identificado.confianca === "baixa" 
-                        ? "text-yellow-600" 
-                        : foodAnalysis.prato_identificado.confianca === "media"
-                        ? "text-blue-600"
-                        : "text-foreground"
-                    }`}>
-                      {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
-                       foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
-                    </span>
+                <div className="px-4 py-3 rounded-lg bg-muted/50 border border-border animate-reveal animate-reveal-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm text-muted-foreground">🔍 Precisão da estimativa:</span>
+                      <span className={`text-sm font-medium ${
+                        foodAnalysis.prato_identificado.confianca === "baixa" 
+                          ? "text-yellow-600" 
+                          : foodAnalysis.prato_identificado.confianca === "media"
+                          ? "text-blue-600"
+                          : "text-foreground"
+                      }`}>
+                        {foodAnalysis.prato_identificado.confianca === "alta" ? "Alta" : 
+                         foodAnalysis.prato_identificado.confianca === "media" ? "Média" : "Baixa"}
+                      </span>
+                    </div>
+                    {foodAnalysis.prato_identificado.culinaria && (
+                      <span className="text-sm text-muted-foreground">
+                        {foodAnalysis.prato_identificado.culinaria}
+                      </span>
+                    )}
                   </div>
-                  {foodAnalysis.prato_identificado.culinaria && (
-                    <span className="text-sm text-muted-foreground">
-                      {foodAnalysis.prato_identificado.culinaria}
-                    </span>
+                  {/* Show reasons when confidence is not high */}
+                  {foodAnalysis.prato_identificado.confianca !== "alta" && (
+                    <>
+                      {(foodAnalysis.prato_identificado.motivos_confianca?.length ?? 0) > 0 && (
+                        <div className="mt-2 text-xs text-muted-foreground">
+                          <span className="font-medium">Motivos: </span>
+                          {foodAnalysis.prato_identificado.motivos_confianca?.join(", ")}
+                        </div>
+                      )}
+                      {(foodAnalysis.prato_identificado.limitacoes_visuais?.length ?? 0) > 0 && (
+                        <div className="mt-1 text-xs text-muted-foreground">
+                          <span className="font-medium">Limitações: </span>
+                          {foodAnalysis.prato_identificado.limitacoes_visuais?.join(", ")}
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}

@@ -652,6 +652,19 @@ export default function Onboarding() {
               );
             }
             
+            // Check if we're on the excluded ingredients step (step 6) - make it skippable
+            if (origStep === 6) {
+              if (profile.excluded_ingredients.length === 0) {
+                return "Pular esta etapa";
+              }
+              return (
+                <>
+                  Continuar
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </>
+              );
+            }
+            
             return (
               <>
                 Próximo

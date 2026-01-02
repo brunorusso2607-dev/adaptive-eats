@@ -167,18 +167,37 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const hasProcessedInitialImage = useRef(false);
 
+  // Reset ref when initialImage changes to allow re-processing
+  useEffect(() => {
+    if (!initialImage) {
+      hasProcessedInitialImage.current = false;
+      console.log('[FoodPhotoAnalyzer] initialImage cleared, resetting ref');
+    }
+  }, [initialImage]);
+
   // Process initial image if provided (from direct camera capture)
   useEffect(() => {
+    console.log('[FoodPhotoAnalyzer] useEffect triggered:', {
+      hasInitialImage: !!initialImage,
+      hasProcessed: hasProcessedInitialImage.current,
+      mode,
+      labelStep,
+      imagePreviewLength: imagePreview?.length || 0
+    });
+    
     if (initialImage && !hasProcessedInitialImage.current) {
       hasProcessedInitialImage.current = true;
+      console.log('[FoodPhotoAnalyzer] Processing initial image for mode:', mode);
       setImagePreview(initialImage);
       
       // Auto-analyze based on mode
       if (mode === "food") {
+        console.log('[FoodPhotoAnalyzer] Starting food analysis...');
         setTimeout(() => {
           analyzeImageWithBase64(initialImage);
         }, 100);
       } else if (mode === "label") {
+        console.log('[FoodPhotoAnalyzer] Starting label analysis, step:', labelStep);
         setTimeout(() => {
           analyzeLabelWithBase64(initialImage, labelStep);
         }, 100);

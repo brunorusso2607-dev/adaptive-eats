@@ -9,6 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import NutritionalStrategiesTab from "@/components/admin/NutritionalStrategiesTab";
+import OnboardingCountriesTab from "@/components/admin/OnboardingCountriesTab";
 import {
   DndContext,
   closestCenter,
@@ -52,6 +53,7 @@ import {
   Trash2,
   GripVertical,
   AlertTriangle,
+  Globe,
   Wheat,
   WheatOff,
   Utensils,
@@ -427,7 +429,7 @@ function SortableOptionItem({
 
 export default function AdminOnboarding() {
   const queryClient = useQueryClient();
-  const [selectedCategory, setSelectedCategory] = useState("intolerances");
+  const [selectedCategory, setSelectedCategory] = useState("regions");
   const [editingOption, setEditingOption] = useState<OnboardingOption | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [deleteOption, setDeleteOption] = useState<OnboardingOption | null>(null);
@@ -792,16 +794,31 @@ export default function AdminOnboarding() {
       </div>
 
       <Tabs value={selectedCategory} onValueChange={setSelectedCategory}>
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragEnd={handleCategoryDragEnd}
-        >
-          <SortableContext
-            items={categories?.map((c) => c.id) || []}
-            strategy={horizontalListSortingStrategy}
+        {/* Regions tab + Category tabs */}
+        <div className="flex flex-wrap gap-2">
+          {/* Fixed Regions Tab */}
+          <div
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl cursor-pointer transition-colors select-none ${
+              selectedCategory === "regions" 
+                ? 'bg-foreground text-background' 
+                : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+            }`}
+            onClick={() => setSelectedCategory("regions")}
           >
-            <div className="flex flex-wrap gap-2">
+            <Globe className="w-4 h-4" />
+            <span className="hidden sm:inline text-sm font-medium">Regiões</span>
+          </div>
+
+          {/* Draggable Category Tabs */}
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragEnd={handleCategoryDragEnd}
+          >
+            <SortableContext
+              items={categories?.map((c) => c.id) || []}
+              strategy={horizontalListSortingStrategy}
+            >
               {categories?.map((cat) => {
                 const count = cat.category_key === "nutritional_strategies" 
                   ? undefined 
@@ -816,9 +833,14 @@ export default function AdminOnboarding() {
                   />
                 );
               })}
-            </div>
-          </SortableContext>
-        </DndContext>
+            </SortableContext>
+          </DndContext>
+        </div>
+
+        {/* Regions Tab Content */}
+        <TabsContent value="regions" className="mt-6">
+          <OnboardingCountriesTab />
+        </TabsContent>
 
         {/* Nutritional Strategies Tab - uses separate component */}
         <TabsContent value="nutritional_strategies" className="mt-6">

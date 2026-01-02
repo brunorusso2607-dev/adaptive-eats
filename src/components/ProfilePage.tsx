@@ -22,6 +22,7 @@ import { CustomMealTimesEditor, type CustomMealTimes } from "@/components/Custom
 import { Json } from "@/integrations/supabase/types";
 import { useNutritionalStrategies, deriveGoalFromStrategy } from "@/hooks/useNutritionalStrategies";
 import { StrategyAccordion } from "@/components/StrategyAccordion";
+import { useActiveOnboardingCountries } from "@/hooks/useOnboardingCountries";
 
 type UserProfile = {
   dietary_preference: string | null;
@@ -40,8 +41,8 @@ type UserProfile = {
   country: string | null;
 };
 
-// Supported countries with their food sources
-const SUPPORTED_COUNTRIES = [
+// Fallback countries with their food sources (used when database is loading)
+const FALLBACK_COUNTRIES = [
   { code: "BR", label: "🇧🇷 Brasil", sources: "TBCA, TACO" },
   { code: "US", label: "🇺🇸 Estados Unidos", sources: "USDA" },
   { code: "PT", label: "🇵🇹 Portugal", sources: "TBCA, TACO" },
@@ -54,6 +55,21 @@ const SUPPORTED_COUNTRIES = [
   { code: "AR", label: "🇦🇷 Argentina", sources: "TBCA" },
   { code: "CO", label: "🇨🇴 Colômbia", sources: "TBCA" },
 ];
+
+// Map nutritional sources to country codes
+const COUNTRY_SOURCES: Record<string, string> = {
+  "BR": "TBCA, TACO",
+  "US": "USDA",
+  "PT": "TBCA, TACO",
+  "GB": "McCance",
+  "FR": "CIQUAL",
+  "MX": "BAM",
+  "ES": "AESAN",
+  "DE": "BLS",
+  "IT": "CREA",
+  "AR": "TBCA",
+  "CO": "TBCA",
+};
 
 type SubscriptionInfo = {
   subscribed: boolean;
@@ -190,6 +206,14 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
 
   const { data: onboardingOptions } = useOnboardingOptions();
   const { data: strategies } = useNutritionalStrategies();
+  const { data: activeCountries, isLoading: isLoadingCountries } = useActiveOnboardingCountries();
+
+  // Merge active countries from DB with fallback for display
+  const displayCountries = activeCountries?.map(c => ({
+    code: c.country_code,
+    label: `${c.flag_emoji} ${c.country_name}`,
+    sources: COUNTRY_SOURCES[c.country_code] || "Padrão"
+  })) || FALLBACK_COUNTRIES;
 
   useEffect(() => {
     if (user) {
@@ -507,7 +531,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
             A busca de alimentos mostrará ingredientes da base de dados do país selecionado
           </p>
           <div className="grid grid-cols-2 gap-2">
-            {SUPPORTED_COUNTRIES.map((country) => (
+            {displayCountries.map((country) => (
               <button
                 type="button"
                 key={country.code}
@@ -823,10 +847,10 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
             </h3>
             <div className="p-2 rounded-lg bg-muted/50">
               <p className="text-sm font-medium">
-                {SUPPORTED_COUNTRIES.find(c => c.code === profile.country)?.label || profile.country}
+                {displayCountries.find(c => c.code === profile.country)?.label || profile.country}
               </p>
               <p className="text-xs text-muted-foreground">
-                Base de dados: {SUPPORTED_COUNTRIES.find(c => c.code === profile.country)?.sources || "Padrão"}
+                Base de dados: {displayCountries.find(c => c.code === profile.country)?.sources || COUNTRY_SOURCES[profile.country || "BR"] || "Padrão"}
               </p>
             </div>
           </div>

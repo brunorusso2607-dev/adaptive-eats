@@ -1317,6 +1317,40 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </Card>
               )}
 
+              {/* ALIMENTOS IDENTIFICADOS - Core information, right after safety status */}
+              <Card className="glass-card animate-reveal animate-reveal-2">
+                <CardHeader 
+                  className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg"
+                  onClick={() => {
+                    const firstDetails = document.querySelector('#food-items-list details');
+                    if (firstDetails) {
+                      (firstDetails as HTMLDetailsElement).open = !(firstDetails as HTMLDetailsElement).open;
+                    }
+                  }}
+                >
+                  <CardTitle className="text-base flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      Alimentos Identificados
+                      <Pencil className="w-3 h-3 text-muted-foreground" />
+                    </span>
+                    <span className="text-xs font-normal text-muted-foreground">
+                      Toque para editar
+                    </span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent id="food-items-list" className="space-y-2">
+                  {foodAnalysis.alimentos.map((food, index) => (
+                    <FoodItemEditor
+                      key={index}
+                      food={food}
+                      index={index}
+                      onSave={handleFoodItemSave}
+                      onSelectAlternative={handleSelectAlternative}
+                    />
+                  ))}
+                </CardContent>
+              </Card>
+
               {/* Confidence card - Gray neutral card below safety status */}
               {foodAnalysis.prato_identificado && (
                 <div className="flex items-center justify-between px-4 py-3 rounded-lg bg-muted/50 border border-border animate-reveal animate-reveal-2">
@@ -1492,43 +1526,6 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   </CardContent>
                 </Card>
               )}
-
-
-              {/* Individual items with confidence levels - Now editable */}
-              <Card className="glass-card">
-                <CardHeader 
-                  className="pb-2 cursor-pointer hover:bg-muted/30 transition-colors rounded-t-lg"
-                  onClick={() => {
-                    // Click the first food item's details element to toggle it
-                    const firstDetails = document.querySelector('#food-items-list details');
-                    if (firstDetails) {
-                      (firstDetails as HTMLDetailsElement).open = !(firstDetails as HTMLDetailsElement).open;
-                    }
-                  }}
-                >
-                  <CardTitle className="text-base flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      Alimentos Identificados
-                      <Pencil className="w-3 h-3 text-muted-foreground" />
-                    </span>
-                    <span className="text-xs font-normal text-muted-foreground">
-                      Toque para editar
-                    </span>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent id="food-items-list" className="space-y-2">
-                  {foodAnalysis.alimentos.map((food, index) => (
-                    <FoodItemEditor
-                      key={index}
-                      food={food}
-                      index={index}
-                      onSave={handleFoodItemSave}
-                      onSelectAlternative={handleSelectAlternative}
-                    />
-                  ))}
-                </CardContent>
-              </Card>
-
               {/* Safety questions */}
               {foodAnalysis.perguntas_seguranca && foodAnalysis.perguntas_seguranca.length > 0 && (
                 <Card className="glass-card border-blue-500/20">

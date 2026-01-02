@@ -488,14 +488,33 @@ serve(async (req) => {
 
     // Return results if we have any
     if (allFoods.length > 0) {
-      // Sort to prioritize simpler base ingredients
+      // Sort to prioritize: 1. Exact match, 2. Starts with query, 3. Shorter names
       const sortedFoods = allFoods.sort((a, b) => {
-        // Prioritize ingredients without commas (simpler names)
+        const nameA = normalizeText(a.name || '');
+        const nameB = normalizeText(b.name || '');
+        
+        // 1. EXACT MATCH first (feijoada === feijoada)
+        const isExactA = nameA === normalizedQuery;
+        const isExactB = nameB === normalizedQuery;
+        if (isExactA !== isExactB) return isExactA ? -1 : 1;
+        
+        // 2. STARTS WITH query (feijoada... before feijão...)
+        const startsWithA = nameA.startsWith(normalizedQuery);
+        const startsWithB = nameB.startsWith(normalizedQuery);
+        if (startsWithA !== startsWithB) return startsWithA ? -1 : 1;
+        
+        // 3. If both start with query, shorter names first (simpler = better)
+        if (startsWithA && startsWithB) {
+          const lenDiff = (a.name?.length || 0) - (b.name?.length || 0);
+          if (lenDiff !== 0) return lenDiff;
+        }
+        
+        // 4. Prioritize ingredients without commas (simpler names)
         const aHasComma = (a.name || '').includes(',') ? 1 : 0;
         const bHasComma = (b.name || '').includes(',') ? 1 : 0;
         if (aHasComma !== bHasComma) return aHasComma - bHasComma;
         
-        // Prioritize certain categories (graos, cereais, ingrediente)
+        // 5. Prioritize certain categories (graos, cereais, ingrediente)
         const priorityCategories = ['graos', 'cereais', 'ingrediente', 'legumes', 'verduras', 'frutas', 'carnes'];
         const aCategory = (a.category || '').toLowerCase();
         const bCategory = (b.category || '').toLowerCase();
@@ -505,11 +524,11 @@ serve(async (req) => {
         const bScore = bPriority >= 0 ? bPriority : 99;
         if (aScore !== bScore) return aScore - bScore;
         
-        // Then by name length (shorter = simpler)
+        // 6. Then by name length (shorter = simpler)
         const lenDiff = (a.name?.length || 0) - (b.name?.length || 0);
         if (lenDiff !== 0) return lenDiff;
         
-        // Then alphabetically
+        // 7. Then alphabetically
         return (a.name || '').localeCompare(b.name || '');
       });
       

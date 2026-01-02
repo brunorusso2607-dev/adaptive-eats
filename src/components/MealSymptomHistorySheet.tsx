@@ -121,15 +121,15 @@ export function MealSymptomHistorySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[80vh] p-6">
-        <SheetHeader className="mb-4">
+      <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0">
+        <SheetHeader className="p-6 pb-0 flex-shrink-0">
           <SheetTitle className="text-lg font-semibold">
             Histórico de Sintomas
           </SheetTitle>
         </SheetHeader>
 
         {/* Filters */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 px-6 py-4 flex-shrink-0">
           <Select
             value={filters.days.toString()}
             onValueChange={(v) =>
@@ -175,36 +175,39 @@ export function MealSymptomHistorySheet({
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-          </div>
-        ) : (
-          <div className="overflow-y-auto h-[calc(80vh-220px)] space-y-3">
-            {meals.length === 0 ? (
-              <div className="text-center py-16">
-                <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
-                <p className="text-sm text-muted-foreground">Nenhum sintoma registrado</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">Continue assim!</p>
-              </div>
-            ) : (
-              meals.map((meal, index) => (
-                <MealCard
-                  key={`${meal.mealId}-${index}`}
-                  meal={meal}
-                  isTrulySuspect={isTrulySuspect}
-                  onExcludeFood={handleExcludeFood}
-                  userIntolerances={userProfile.intolerances}
-                />
-              ))
-            )}
-          </div>
-        )}
+        {/* Scrollable Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+            </div>
+          ) : (
+            <div className="space-y-3 pb-4">
+              {meals.length === 0 ? (
+                <div className="text-center py-16">
+                  <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
+                  <p className="text-sm text-muted-foreground">Nenhum sintoma registrado</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">Continue assim!</p>
+                </div>
+              ) : (
+                meals.map((meal, index) => (
+                  <MealCard
+                    key={`${meal.mealId}-${index}`}
+                    meal={meal}
+                    isTrulySuspect={isTrulySuspect}
+                    onExcludeFood={handleExcludeFood}
+                    userIntolerances={userProfile.intolerances}
+                  />
+                ))
+              )}
+            </div>
+          )}
+        </div>
         
-        {/* Disclaimer */}
-        <div className="pt-3 mt-3 border-t">
+        {/* Disclaimer - Fixed Footer */}
+        <div className="p-4 border-t flex-shrink-0">
           <p className="text-[10px] text-muted-foreground/60 text-center leading-relaxed">
             ⚠️ Este rastreamento é apenas informativo e não substitui orientação médica profissional.
           </p>

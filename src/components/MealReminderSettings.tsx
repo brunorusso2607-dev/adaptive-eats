@@ -140,8 +140,8 @@ export function MealReminderSettings({ open, onOpenChange }: MealReminderSetting
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl">
-        <SheetHeader className="text-left">
+      <SheetContent side="bottom" className="h-[85vh] rounded-t-3xl flex flex-col p-0">
+        <SheetHeader className="text-left p-6 pb-4 flex-shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
             Lembretes de Refeição
@@ -151,7 +151,8 @@ export function MealReminderSettings({ open, onOpenChange }: MealReminderSetting
           </SheetDescription>
         </SheetHeader>
 
-        <div className="mt-6 space-y-6">
+        {/* Scrollable Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 space-y-6">
           {/* Push notification warning */}
           {needsPushPermission && (
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30">
@@ -221,7 +222,7 @@ export function MealReminderSettings({ open, onOpenChange }: MealReminderSetting
           </div>
 
           {/* Individual meal toggles */}
-          <div className="space-y-3">
+          <div className="space-y-3 pb-4">
             <Label>Refeições com lembrete</Label>
             <div className="space-y-2">
               {isLoadingMeals ? (
@@ -252,8 +253,10 @@ export function MealReminderSettings({ open, onOpenChange }: MealReminderSetting
               )}
             </div>
           </div>
+        </div>
 
-          {/* Save button */}
+        {/* Save button - Fixed Footer */}
+        <div className="p-4 border-t flex-shrink-0">
           <Button
             className="w-full"
             onClick={handleSave}

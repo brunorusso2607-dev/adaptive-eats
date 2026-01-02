@@ -6,9 +6,11 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Flame, Loader2, Trash2, UtensilsCrossed, AlertTriangle, Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
+import { useIntoleranceWarning, type ConflictDetail } from "@/hooks/useIntoleranceWarning";
 import UnifiedFoodSearchBlock, { type SelectedFoodItem } from "./UnifiedFoodSearchBlock";
 import MealRegistrationFlow, { MealData, ConsumptionItem } from "./MealRegistrationFlow";
+import IntoleranceConfirmDialog from "./IntoleranceConfirmDialog";
+import IntoleranceBadge from "./IntoleranceBadge";
 
 interface FreeFormMealLoggerProps {
   open: boolean;
@@ -36,8 +38,10 @@ export default function FreeFormMealLogger({
 }: FreeFormMealLoggerProps) {
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
   const [showRegistrationFlow, setShowRegistrationFlow] = useState(false);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [pendingConflicts, setPendingConflicts] = useState<ConflictDetail[]>([]);
 
-  const { checkFood } = useIntoleranceWarning();
+  const { checkFood, checkMeal } = useIntoleranceWarning();
 
   const checkFoodConflicts = useCallback((foodName: string) => {
     const result = checkFood(foodName);
@@ -145,13 +149,48 @@ export default function FreeFormMealLogger({
   const foodsWithZeroQuantity = selectedFoods.filter(f => f.displayQuantity <= 0);
   const hasZeroQuantityFoods = foodsWithZeroQuantity.length > 0;
 
+  // Verificar conflitos de todos os alimentos selecionados
+  const getAllConflicts = useCallback((): ConflictDetail[] => {
+    const allConflicts: ConflictDetail[] = [];
+    for (const food of selectedFoods) {
+      const result = checkFood(food.name);
+      if (result.hasConflict) {
+        result.conflictDetails.forEach(conflict => {
+          if (!allConflicts.find(c => c.restrictionKey === conflict.restrictionKey)) {
+            allConflicts.push(conflict);
+          }
+        });
+      }
+    }
+    return allConflicts;
+  }, [selectedFoods, checkFood]);
+
   const handleContinue = () => {
     if (selectedFoods.length === 0) {
       toast.error("Adicione pelo menos um alimento");
       return;
     }
     if (hasZeroQuantityFoods) return;
+    
+    // Verificar conflitos antes de continuar
+    const conflicts = getAllConflicts();
+    if (conflicts.length > 0) {
+      setPendingConflicts(conflicts);
+      setShowConfirmDialog(true);
+    } else {
+      setShowRegistrationFlow(true);
+    }
+  };
+
+  const handleConfirmWithConflicts = () => {
+    setShowConfirmDialog(false);
+    setPendingConflicts([]);
     setShowRegistrationFlow(true);
+  };
+
+  const handleCancelConfirm = () => {
+    setShowConfirmDialog(false);
+    setPendingConflicts([]);
   };
 
   const handleRegistrationSuccess = () => {
@@ -218,9 +257,11 @@ export default function FreeFormMealLogger({
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-sm">{food.name}</span>
                             {conflict && (
-                              <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
-                                <AlertTriangle className="w-3 h-3" />
-                              </span>
+                              <IntoleranceBadge 
+                                label={conflict.restrictionLabel} 
+                                type={conflict.type}
+                                size="sm"
+                              />
                             )}
                           </div>
                           <button onClick={() => removeFood(food.id)} className="p-1.5 text-muted-foreground hover:text-destructive rounded-md">
@@ -273,6 +314,15 @@ export default function FreeFormMealLogger({
         sourceType="manual"
         onSuccess={handleRegistrationSuccess}
         onBack={() => setShowRegistrationFlow(false)}
+      />
+
+      <IntoleranceConfirmDialog
+        open={showConfirmDialog}
+        onOpenChange={setShowConfirmDialog}
+        conflicts={pendingConflicts}
+        foodName={selectedFoods.length === 1 ? selectedFoods[0].name : `${selectedFoods.length} alimentos`}
+        onConfirm={handleConfirmWithConflicts}
+        onCancel={handleCancelConfirm}
       />
     </>
   );

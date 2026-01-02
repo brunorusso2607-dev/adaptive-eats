@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, Loader2, Sparkles, PenLine, AlertTriangle, Flame, Database, Globe, Link2, Check, ChevronDown, ChevronUp } from "lucide-react";
+import { Search, Plus, Loader2, Sparkles, PenLine, Flame, Database, Globe, Link2, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useLookupIngredient } from "@/hooks/useLookupIngredient";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
@@ -10,6 +10,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
 import { suggestServingByName } from "@/lib/servingSuggestion";
+import IntoleranceBadge from "./IntoleranceBadge";
 
 // ===== INTERFACES =====
 export interface LookupFood {
@@ -463,10 +464,13 @@ export default function UnifiedFoodSearchBlock({
                         <SourceBadge source={food.source} />
                       </div>
                       {conflict && (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
-                          <AlertTriangle className="w-3 h-3" />
-                          Contém {conflict.restrictionLabel}
-                        </span>
+                        <div className="ml-6 mt-1">
+                          <IntoleranceBadge 
+                            label={conflict.restrictionLabel} 
+                            type={conflict.type}
+                            size="sm"
+                          />
+                        </div>
                       )}
                     </div>
                     <div className="flex-shrink-0 ml-2">
@@ -593,10 +597,13 @@ export default function UnifiedFoodSearchBlock({
                             </span>
                           </div>
                           {conflict && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
-                              <AlertTriangle className="w-3 h-3" />
-                              Contém {conflict.restrictionLabel}
-                            </span>
+                            <div className="ml-6 mt-1">
+                              <IntoleranceBadge 
+                                label={conflict.restrictionLabel} 
+                                type={conflict.type}
+                                size="sm"
+                              />
+                            </div>
                           )}
                         </button>
                       );

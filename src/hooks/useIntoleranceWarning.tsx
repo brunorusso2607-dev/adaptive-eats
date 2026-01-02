@@ -61,12 +61,27 @@ interface OnboardingOptionItem {
  * Verifica se uma palavra está contida como palavra completa em outra string
  * Evita falsos positivos como "maçã" matchando "macaron" ou "alho" em "galho"
  * SINCRONIZADO com globalSafetyEngine.ts do backend
+ * 
+ * IMPORTANTE: Para ingredientes compostos como "arroz doce", a função verifica se
+ * TODAS as palavras do termo de busca estão presentes no texto.
  */
 function containsWholeWord(text: string, word: string): boolean {
   if (!text || !word) return false;
   
   // Se são iguais, é match perfeito
   if (text === word) return true;
+  
+  // Se o termo de busca contém múltiplas palavras, TODAS devem estar presentes
+  const searchWords = word.trim().split(/\s+/);
+  if (searchWords.length > 1) {
+    // Para termos compostos como "arroz doce", verifica se TODAS as palavras estão no texto
+    return searchWords.every(w => {
+      const escapedW = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const delimiters = '[\\s,;:()\\[\\]\\-\\/]';
+      const regex = new RegExp(`(^|${delimiters})${escapedW}(${delimiters}|$)`, 'i');
+      return regex.test(text);
+    });
+  }
   
   // Escapar caracteres especiais de regex
   const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -77,21 +92,7 @@ function containsWholeWord(text: string, word: string): boolean {
   // Padrão: (início ou delimitador) + palavra + (fim ou delimitador)
   const regex = new RegExp(`(^|${delimiters})${escapedWord}(${delimiters}|$)`, 'i');
   
-  if (regex.test(text)) {
-    return true;
-  }
-  
-  // Para palavras mais longas (>= 5 chars), permitir match se o texto
-  // COMEÇA com a palavra seguida de espaço (ex: "leite integral" contém "leite")
-  if (word.length >= 5) {
-    const startsWithWord = new RegExp(`^${escapedWord}(${delimiters}|$)`, 'i');
-    const endsWithWord = new RegExp(`(^|${delimiters})${escapedWord}$`, 'i');
-    if (startsWithWord.test(text) || endsWithWord.test(text)) {
-      return true;
-    }
-  }
-  
-  return false;
+  return regex.test(text);
 }
 
 /**
@@ -383,8 +384,14 @@ export function useIntoleranceWarning() {
       // Check against mappings from database
       for (const mapping of mappings) {
         const normalizedIngredient = mapping.ingredient.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        // Usar containsWholeWord para evitar falsos positivos (sincronizado com backend)
-        if (containsWholeWord(normalizedName, normalizedIngredient) && intolerances.includes(mapping.intolerance_key)) {
+        
+        // IMPORTANTE: Verificar se o ingrediente mapeado está contido no nome do alimento
+        // Ex: "leite" deve matchear "leite integral", mas "arroz doce" NÃO deve matchear "arroz branco"
+        // Para isso, o ingrediente mapeado precisa ser encontrado COMO PALAVRA COMPLETA no nome
+        const isMatch = normalizedName === normalizedIngredient || 
+          containsWholeWord(normalizedName, normalizedIngredient);
+        
+        if (isMatch && intolerances.includes(mapping.intolerance_key)) {
           foundConflicts.add(mapping.intolerance_key);
         }
       }

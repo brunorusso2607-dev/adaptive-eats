@@ -1,4 +1,4 @@
-// v2 - Dynamic meal slots from meal_time_settings
+// v3 - Dynamic meal slots from meal_time_settings with multi-food composition
 import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -31,7 +31,7 @@ import { useUserProfileContext } from "@/hooks/useUserProfileContext";
 import { useMealTimeSettings } from "@/hooks/useMealTimeSettings";
 import { getRecipeStyleBadge } from "@/lib/recipeStyleUtils";
 import WeekDaySelector, { getAvailableDaysInPlan } from "./WeekDaySelector";
-import FoodSearchPanel, { type SelectedFoodItem } from "./FoodSearchPanel";
+import MealComposerForPlan from "./MealComposerForPlan";
 
 // Mapeamento de meal_type para ícones
 const MEAL_ICONS: Record<string, string> = {
@@ -392,156 +392,31 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     );
   }
 
-  // Meal selection view
+  // Meal selection view - now with multi-food composition
   if (activeSlot) {
-    const slotLabel = mealSlots.find(s => s.key === activeSlot)?.label;
+    const slotLabel = mealSlots.find(s => s.key === activeSlot)?.label || "Refeição";
     
     return (
-      <div className="space-y-4 animate-fade-in">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => setActiveSlot(null)}>
-            <ArrowLeft className="w-5 h-5" />
-          </Button>
-          <div>
-            <h2 className="font-display text-xl font-bold text-foreground">Escolher {slotLabel}</h2>
-            <p className="text-sm text-muted-foreground">Selecione uma opção abaixo</p>
-          </div>
-        </div>
-
-        <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="search" className="gap-2">
-              <Search className="w-4 h-4" />
-              Buscar Alimentos
-            </TabsTrigger>
-            <TabsTrigger value="favorites" className="gap-2">
-              <Heart className="w-4 h-4" />
-              Favoritos
-            </TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="favorites" className="mt-4">
-            <ScrollArea className="h-[calc(100vh-280px)]">
-              <div className="space-y-2 pr-4">
-                {(() => {
-                  // Ordenar favoritos: por objetivo do usuário primeiro, depois por compatibilidade
-                  const sortedFavorites = [...favorites].sort((a, b) => {
-                    // 1. Ordenar por estilo de receita (objetivo do usuário)
-                    if (recipeStyle === 'fitness') {
-                      // Para fitness: menor caloria primeiro
-                      if (a.calories !== b.calories) return a.calories - b.calories;
-                    } else if (recipeStyle === 'high_calorie') {
-                      // Para ganho de peso: maior caloria primeiro
-                      if (a.calories !== b.calories) return b.calories - a.calories;
-                    }
-                    
-                    // 2. Ordenar por conflito de intolerâncias
-                    const conflictA = checkMeal(a.name, Array.isArray(a.ingredients) ? a.ingredients : undefined);
-                    const conflictB = checkMeal(b.name, Array.isArray(b.ingredients) ? b.ingredients : undefined);
-                    
-                    if (!conflictA.hasConflict && conflictB.hasConflict) return -1;
-                    if (conflictA.hasConflict && !conflictB.hasConflict) return 1;
-                    return 0;
-                  });
-                  
-                  if (sortedFavorites.length === 0) {
-                    return (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Heart className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                        <p>Nenhum favorito encontrado</p>
-                        <p className="text-xs">Favorite receitas para usá-las aqui</p>
-                      </div>
-                    );
-                  }
-                  
-                  return sortedFavorites.map((fav) => {
-                    const conflict = checkMeal(fav.name, Array.isArray(fav.ingredients) ? fav.ingredients : undefined);
-                    const styleBadge = getRecipeStyleBadge(fav.calories, recipeStyle);
-                    const StyleIcon = styleBadge.config?.icon;
-                    
-                    return (
-                      <Card
-                        key={fav.id}
-                        className={cn(
-                          "glass-card cursor-pointer hover:bg-muted/50 transition-colors",
-                          conflict.hasConflict && "border-destructive/50 bg-destructive/5"
-                        )}
-                        onClick={() => handleSelectMeal(fav, "favorite")}
-                      >
-                        <CardContent className="p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2 flex-wrap">
-                                <p className="font-medium text-sm">{fav.name}</p>
-                                {styleBadge.config && StyleIcon && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={cn(
-                                      "text-[10px] px-1.5 py-0 gap-1",
-                                      styleBadge.config.className,
-                                      styleBadge.isRecommended && "ring-1 ring-primary/50"
-                                    )}
-                                  >
-                                    <StyleIcon className="w-2.5 h-2.5" />
-                                    {styleBadge.config.label}
-                                    {styleBadge.isRecommended && <Sparkles className="w-2 h-2" />}
-                                  </Badge>
-                                )}
-                              </div>
-                              <div className="flex items-center gap-2 mt-1 text-xs text-muted-foreground">
-                                <span>{fav.calories} kcal</span>
-                                <span>•</span>
-                                <span>{fav.prep_time} min</span>
-                              </div>
-                              {conflict.hasConflict && (
-                                <div className="flex items-center gap-1 mt-1.5 flex-wrap">
-                                  <AlertTriangle className="w-3 h-3 text-destructive shrink-0" />
-                                  {conflict.labels.map((label) => (
-                                    <Badge 
-                                      key={label} 
-                                      variant="outline" 
-                                      className="text-[10px] px-1.5 py-0 bg-destructive/10 text-destructive border-destructive/30"
-                                    >
-                                      Contém {label}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                            <Plus className="w-5 h-5 text-primary shrink-0" />
-                          </div>
-                        </CardContent>
-                      </Card>
-                    );
-                  });
-                })()}
-              </div>
-            </ScrollArea>
-          </TabsContent>
-
-          <TabsContent value="search" className="mt-4">
-            <FoodSearchPanel 
-              onSelectFood={(food: SelectedFoodItem) => {
-                if (!activeSlot) return;
-                const mealSlot: MealSlot = {
-                  id: food.id,
-                  name: food.name,
-                  source: "simple",
-                  calories: food.calories,
-                  protein: food.protein,
-                  carbs: food.carbs,
-                  fat: food.fat,
-                  prep_time: food.prep_time,
-                  ingredients: food.ingredients,
-                  instructions: food.instructions
-                };
-                setDayPlan(prev => ({ ...prev, [activeSlot]: mealSlot }));
-                setActiveSlot(null);
-              }}
-            />
-          </TabsContent>
-        </Tabs>
-      </div>
+      <MealComposerForPlan
+        slotLabel={slotLabel}
+        onConfirm={(composedMeal) => {
+          const mealSlot: MealSlot = {
+            id: composedMeal.id,
+            name: composedMeal.name,
+            source: "simple",
+            calories: composedMeal.calories,
+            protein: composedMeal.protein,
+            carbs: composedMeal.carbs,
+            fat: composedMeal.fat,
+            prep_time: composedMeal.prep_time,
+            ingredients: composedMeal.ingredients,
+            instructions: composedMeal.instructions
+          };
+          setDayPlan(prev => ({ ...prev, [activeSlot]: mealSlot }));
+          setActiveSlot(null);
+        }}
+        onCancel={() => setActiveSlot(null)}
+      />
     );
   }
 

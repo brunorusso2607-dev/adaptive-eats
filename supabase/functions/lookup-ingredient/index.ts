@@ -162,11 +162,25 @@ function isWrongLanguage(name: string, userCountry: string): boolean {
   return detectedLang !== expectedLang;
 }
 
-function isPreparedDish(food: any): boolean {
+function isPreparedDish(food: any, userQuery?: string): boolean {
   const name = food.name || '';
   const nameLower = name.toLowerCase();
   const nameNormalized = normalizeText(name);
   const categoryLower = (food.category || '').toLowerCase();
+  
+  // CRITICAL: If user is searching EXACTLY for this dish, don't filter it out
+  // e.g., if user types "feijoada" and food is "Feijoada", allow it
+  if (userQuery) {
+    const queryNormalized = normalizeText(userQuery);
+    // Exact match - user wants this specific dish
+    if (nameNormalized === queryNormalized) {
+      return false;
+    }
+    // Starts with query and is short (e.g., "Feijoada" when searching "feijoada")
+    if (nameNormalized.startsWith(queryNormalized) && name.length < queryNormalized.length + 20) {
+      return false;
+    }
+  }
   
   // CRITICAL: Check for combination patterns FIRST - these are ALWAYS prepared dishes
   // Must check BEFORE any category exceptions
@@ -435,7 +449,7 @@ serve(async (req) => {
 
     if (startsWithPriority && startsWithPriority.length > 0) {
       const filtered = startsWithPriority
-        .filter(f => !isPreparedDish(f))
+        .filter(f => !isPreparedDish(f, query))
         .filter(f => !isWrongLanguage(f.name || '', upperCountry));
       allFoods = [...allFoods, ...filtered];
       logStep('Found starts-with in country sources', { count: filtered.length, sources: preferredSources });
@@ -457,7 +471,7 @@ serve(async (req) => {
         const existingIds = new Set(allFoods.map(f => f.id));
         const newFoods = containsPriority
           .filter(f => !existingIds.has(f.id))
-          .filter(f => !isPreparedDish(f))
+          .filter(f => !isPreparedDish(f, query))
           .filter(f => !isWrongLanguage(f.name || '', upperCountry));
         allFoods = [...allFoods, ...newFoods];
         logStep('Found contains in country sources', { added: newFoods.length });
@@ -478,7 +492,7 @@ serve(async (req) => {
           .map((a: any) => a.foods)
           .filter((f: any) => f && f.is_verified && !existingIds.has(f.id))
           .filter((f: any) => preferredSources.includes(f.source))
-          .filter((f: any) => !isPreparedDish(f))
+          .filter((f: any) => !isPreparedDish(f, query))
           .filter((f: any) => !isWrongLanguage(f.name || '', upperCountry));
         
         allFoods = [...allFoods, ...aliasFoods];

@@ -372,6 +372,10 @@ function checkSafeKeywords(
 /**
  * Verifica se uma palavra está contida como palavra completa em outra string
  * Evita falsos positivos como "maçã" matchando "macaron" ou "alho" em "galho"
+ * 
+ * IMPORTANTE: Para ingredientes compostos como "arroz doce", a função verifica se
+ * TODAS as palavras do termo de busca estão presentes no texto.
+ * Ex: "arroz doce" NÃO deve matchear "arroz branco cozido" (falta "doce")
  */
 export function containsWholeWord(text: string, word: string): boolean {
   if (!text || !word) return false;
@@ -379,37 +383,27 @@ export function containsWholeWord(text: string, word: string): boolean {
   // Se são iguais, é match perfeito
   if (text === word) return true;
   
+  // Delimitadores comuns
+  const delimiters = '[\\s,;:()\\[\\]\\-\\/]';
+  
+  // Se o termo de busca contém múltiplas palavras, TODAS devem estar presentes
+  const searchWords = word.trim().split(/\s+/);
+  if (searchWords.length > 1) {
+    // Para termos compostos como "arroz doce", verifica se TODAS as palavras estão no texto
+    return searchWords.every(w => {
+      const escapedW = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const regex = new RegExp(`(^|${delimiters})${escapedW}(${delimiters}|$)`, 'i');
+      return regex.test(text);
+    });
+  }
+  
   // Escapar caracteres especiais de regex
   const escapedWord = word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  
-  // Criar regex que verifica se a palavra aparece como palavra SEPARADA
-  // Usa word boundaries ou delimitadores comuns
-  // \b não funciona bem com acentos, então usamos delimitadores explícitos
-  
-  // A palavra deve estar:
-  // - No início da string seguida de espaço/delimitador
-  // - No final da string precedida de espaço/delimitador
-  // - No meio cercada de espaços/delimitadores
-  const delimiters = '[\\s,;:()\\[\\]\\-\\/]';
   
   // Padrão: (início ou delimitador) + palavra + (fim ou delimitador)
   const regex = new RegExp(`(^|${delimiters})${escapedWord}(${delimiters}|$)`, 'i');
   
-  if (regex.test(text)) {
-    return true;
-  }
-  
-  // Para palavras mais longas (>= 5 chars), permitir match se o texto
-  // COMEÇA com a palavra seguida de espaço (ex: "leite integral" contém "leite")
-  if (word.length >= 5) {
-    const startsWithWord = new RegExp(`^${escapedWord}(${delimiters}|$)`, 'i');
-    const endsWithWord = new RegExp(`(^|${delimiters})${escapedWord}$`, 'i');
-    if (startsWithWord.test(text) || endsWithWord.test(text)) {
-      return true;
-    }
-  }
-  
-  return false;
+  return regex.test(text);
 }
 
 export function checkIngredientForIntolerance(

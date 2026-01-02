@@ -183,8 +183,13 @@ Forneça uma análise completa em formato JSON.`;
     try {
       const cleanContent = content.replace(/```json\n?|\n?```/g, '').trim();
       analysisResult = JSON.parse(cleanContent);
+      
+      // DEBUG: Log o que a IA retornou
+      console.log("[DEBUG] Resposta da IA parseada:", JSON.stringify(analysisResult, null, 2));
+      
     } catch (parseError) {
       console.error("Error parsing AI response:", parseError);
+      console.error("[DEBUG] Raw content:", content);
       analysisResult = {
         ingredientes: [],
         descricao: content
@@ -192,14 +197,34 @@ Forneça uma análise completa em formato JSON.`;
     }
 
     // Validate ingredients using global safety engine
+    // IMPORTANTE: NÃO incluir possiveis_contaminacoes pois são textos descritivos, não ingredientes reais
+    // Eles descrevem riscos teóricos que não fazem parte do alimento real
     const allIngredients = [
       ...(analysisResult.ingredientes || []),
       ...(analysisResult.analise_detalhada?.ingredientes_principais || []),
       ...(analysisResult.analise_detalhada?.ingredientes_secundarios || []),
-      ...(analysisResult.analise_detalhada?.possiveis_contaminacoes || [])
+      // REMOVIDO: possiveis_contaminacoes - são textos explicativos, não ingredientes reais
     ];
 
-    const validationResult = validateIngredientList(allIngredients, userRestrictions, safetyDatabase);
+    // Filtrar ingredientes: remover strings muito longas (provavelmente são descrições, não ingredientes)
+    const filteredIngredients = allIngredients.filter(ing => {
+      const cleanIngredient = ing.trim();
+      // Ingredientes reais não têm mais de 50 caracteres
+      // Se tiver mais, provavelmente é uma descrição/nota
+      return cleanIngredient.length > 0 && cleanIngredient.length <= 50;
+    });
+
+    // DEBUG: Log dos ingredientes que a IA retornou
+    console.log("[DEBUG] Ingredientes filtrados para validação:", JSON.stringify(filteredIngredients));
+
+    const validationResult = validateIngredientList(filteredIngredients, userRestrictions, safetyDatabase);
+
+    // DEBUG: Log do resultado da validação
+    console.log("[DEBUG] Validation result:", JSON.stringify({
+      isSafe: validationResult.isSafe,
+      conflictsCount: validationResult.conflicts?.length || 0,
+      conflicts: validationResult.conflicts?.slice(0, 5) // Apenas os primeiros 5 para debug
+    }));
 
     // Build conflicts array from validation result
     const conflicts: Array<{

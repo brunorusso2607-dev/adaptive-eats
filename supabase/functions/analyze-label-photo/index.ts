@@ -657,7 +657,111 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       (analysis.precisa_tabela_nutricional === true && analysis.confianca_identificacao < 70) ||
       (analysis.e_categoria_duvidosa === true || analysis.categoria_duvidosa === true) && (!analysis.ingredientes_visiveis && !analysis.selos_encontrados?.length);
     
-    if (needsIngredientPhoto) {
+    // ========== FALLBACK OPENFOODFACTS - TENTAR ENRIQUECER COM DADOS DO PRODUTO ==========
+    // Se a IA não conseguiu ver ingredientes, tentar buscar no OpenFoodFacts antes de pedir segunda foto
+    if (needsIngredientPhoto && analysis.produto_identificado) {
+      logStep("Trying OpenFoodFacts fallback before requesting second photo", {
+        produto: analysis.produto_identificado,
+        marca: analysis.marca
+      });
+      
+      try {
+        // Montar query de busca com produto e marca
+        const searchQuery = analysis.marca 
+          ? `${analysis.marca} ${analysis.produto_identificado}` 
+          : analysis.produto_identificado;
+        
+        const offResponse = await fetch(
+          `${Deno.env.get("SUPABASE_URL")}/functions/v1/lookup-openfoodfacts`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ 
+              query: searchQuery,
+              country: userCountry,
+              saveToDatabase: true
+            }),
+          }
+        );
+        
+        if (offResponse.ok) {
+          const offResult = await offResponse.json();
+          
+          if (offResult.success && offResult.ingredients?.length > 0) {
+            logStep("OpenFoodFacts found ingredients", {
+              product: offResult.product_name,
+              ingredientCount: offResult.ingredients.length,
+              savedToDb: offResult.saved_to_database
+            });
+            
+            // Enriquecer análise com ingredientes do OpenFoodFacts
+            analysis.ingredientes_visiveis = true;
+            analysis.encontrou_lista_ingredientes = true;
+            analysis.fonte_informacao = "openfoodfacts";
+            analysis.confianca = "media";
+            analysis.requer_foto_ingredientes = false;
+            
+            // Adicionar ingredientes à análise
+            analysis.ingredientes_analisados = offResult.ingredients.map((ing: string) => {
+              // Verificar se o ingrediente é problemático para o usuário
+              let status: "seguro" | "risco_potencial" | "contem" = "seguro";
+              let restricaoAfetada = "";
+              
+              const ingLower = ing.toLowerCase();
+              for (const intolerance of userIntolerances) {
+                const intoleranceKey = safetyDatabase 
+                  ? (safetyDatabase.keyNormalization.get(intolerance.toLowerCase()) || intolerance.toLowerCase())
+                  : intolerance.toLowerCase();
+                
+                const forbiddenIngredients: string[] = safetyDatabase 
+                  ? (safetyDatabase.intoleranceMappings.get(intoleranceKey) || [])
+                  : [];
+                
+                if (forbiddenIngredients.some((forbidden: string) => ingLower.includes(forbidden) || forbidden.includes(ingLower))) {
+                  status = "contem";
+                  restricaoAfetada = safetyDatabase 
+                    ? getIntoleranceLabel(intoleranceKey, safetyDatabase)
+                    : (INTOLERANCE_LABELS[intoleranceKey] || intolerance);
+                  break;
+                }
+              }
+              
+              return {
+                nome: ing,
+                status,
+                fonte: "openfoodfacts",
+                restricao_afetada: restricaoAfetada || undefined
+              };
+            });
+            
+            // Calcular veredicto baseado nos ingredientes
+            const hasContem = analysis.ingredientes_analisados.some((i: any) => i.status === "contem");
+            const hasRisco = analysis.ingredientes_analisados.some((i: any) => i.status === "risco_potencial");
+            analysis.veredicto = hasContem ? "contem" : (hasRisco ? "risco_potencial" : "seguro");
+            
+            // Adicionar nota sobre fonte
+            analysis.alertas = analysis.alertas || [];
+            analysis.alertas.push(`Ingredientes obtidos do banco de dados OpenFoodFacts (${offResult.product_name})`);
+            
+            // NÃO pedir segunda foto - temos os ingredientes do OpenFoodFacts
+            logStep("Skipping second photo request - got ingredients from OpenFoodFacts");
+          }
+        }
+      } catch (offError) {
+        logStep("OpenFoodFacts fallback failed", { error: String(offError) });
+        // Continuar com o fluxo normal de pedir segunda foto
+      }
+    }
+    
+    // Re-check if we still need ingredient photo after OpenFoodFacts enrichment
+    const stillNeedsIngredientPhoto = 
+      (analysis.requer_foto_ingredientes === true || analysis.requer_foto === true) &&
+      analysis.fonte_informacao !== "openfoodfacts";
+    
+    if (stillNeedsIngredientPhoto) {
       const produtoNome = analysis.produto_identificado || analysis.produto || 'produto';
       const motivoDuvida = analysis.motivo_duvida || analysis.motivo || 
         `Preciso verificar os ingredientes de ${produtoNome} para confirmar se é seguro para você.`;

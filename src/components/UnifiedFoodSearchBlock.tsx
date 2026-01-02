@@ -485,12 +485,21 @@ export default function UnifiedFoodSearchBlock({
                   {/* Expanded section with portion selection */}
                   {isSelected && (
                     <div className="px-3 pb-3 border-t bg-muted/30 space-y-3">
-                      {/* Portion suggestion */}
+                      {/* Portion suggestion - clicking applies AND adds */}
                       {portionSuggestion && (
                         <button
                           onClick={() => {
                             const serving = suggestServingByName(food.name);
-                            setPortionGrams(food.default_serving_size || serving.defaultServingSize);
+                            const grams = food.default_serving_size || serving.defaultServingSize;
+                            // Apply the suggestion AND add the food immediately
+                            onSelectFood(convertFoodToSelectedItem(food, grams));
+                            setSearchQuery("");
+                            reset();
+                            setAiSuggestions([]);
+                            setShowAISuggestions(false);
+                            setSelectedFood(null);
+                            setPortionGrams(100);
+                            setPortionSuggestion("");
                           }}
                           className="w-full flex items-center justify-between p-2 mt-2 rounded-lg bg-primary/5 border border-primary/20 hover:bg-primary/10 transition-colors"
                         >

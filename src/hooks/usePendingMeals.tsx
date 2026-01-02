@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { format } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { 
   getMealTimeRangesSync, 
@@ -310,12 +311,16 @@ export function usePendingMeals() {
       const mergedRanges = getMergedTimeRanges(profileTimes);
       setEffectiveTimeRanges(mergedRanges);
 
-      // Buscar plano ativo com start_date e created_at
+      // Buscar plano ativo com start_date, end_date e created_at
+      // IMPORTANTE: Validar também end_date para não considerar planos expirados
+      const todayStr = format(new Date(), 'yyyy-MM-dd');
+      
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
-        .select("id, start_date, created_at, unlocks_at, custom_meal_times")
+        .select("id, start_date, end_date, created_at, unlocks_at, custom_meal_times")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
+        .gte("end_date", todayStr) // Plano ainda não expirou
         .order("created_at", { ascending: false })
         .limit(1);
 

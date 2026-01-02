@@ -845,7 +845,9 @@ If any alert exists, set health_bonus to null.
         nome: mealName || analysis.summary || "Refeição",
         culinaria: analysis.detected_cuisine || null,
         descricao_curta: analysis.meal_description || analysis.summary || null,
-        confianca: analysis.analysis_confidence?.level || "media"
+        confianca: analysis.analysis_confidence?.level || "media",
+        motivos_confianca: analysis.analysis_confidence?.reasons || [],
+        limitacoes_visuais: analysis.analysis_confidence?.visual_limitations || []
       };
       
       logStep("Generated prato_identificado", { nome: analysis.prato_identificado.nome });

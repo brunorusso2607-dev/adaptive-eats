@@ -311,16 +311,12 @@ export function usePendingMeals() {
       const mergedRanges = getMergedTimeRanges(profileTimes);
       setEffectiveTimeRanges(mergedRanges);
 
-      // Buscar plano ativo com start_date, end_date e created_at
-      // IMPORTANTE: Validar também end_date para não considerar planos expirados
-      const todayStr = format(new Date(), 'yyyy-MM-dd');
-      
+      // Buscar plano ativo (sem filtrar por end_date - queremos mostrar refeições pendentes mesmo de planos expirados)
       const { data: plans, error: plansError } = await supabase
         .from("meal_plans")
         .select("id, start_date, end_date, created_at, unlocks_at, custom_meal_times")
         .eq("user_id", session.user.id)
         .eq("is_active", true)
-        .gte("end_date", todayStr) // Plano ainda não expirou
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -370,6 +366,16 @@ export function usePendingMeals() {
       if (mealsError) throw mealsError;
 
       if (!meals || meals.length === 0) {
+        // Se não há refeições pendentes E o plano expirou, considerar como "sem plano"
+        const today = new Date();
+        const todayStr = format(today, 'yyyy-MM-dd');
+        const planEndDate = activePlan.end_date as string;
+        
+        if (planEndDate < todayStr) {
+          // Plano expirou e sem refeições pendentes = convida a criar novo plano
+          setHasMealPlan(false);
+        }
+        
         setPendingMeals([]);
         setIsLoading(false);
         return;

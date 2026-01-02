@@ -730,6 +730,15 @@ export default function FoodSearchDrawer({
                 )}
               </div>
             )}
+            
+            {/* Manual add button - ALWAYS VISIBLE below search */}
+            <button
+              onClick={() => setShowManualModal(true)}
+              className="w-full mt-3 p-4 border border-dashed border-muted-foreground/30 rounded-lg text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+            >
+              <PenLine className="w-4 h-4" />
+              <span className="text-sm">Não encontrou? Adicionar manualmente</span>
+            </button>
           </div>
 
           {/* Scrollable content area */}
@@ -829,14 +838,6 @@ export default function FoodSearchDrawer({
                 </Button>
               )}
 
-              {/* Manual add button - ALWAYS VISIBLE like FoodSearchPanel */}
-              <button
-                onClick={() => setShowManualModal(true)}
-                className="w-full p-4 border border-dashed border-muted-foreground/30 rounded-lg text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
-              >
-                <PenLine className="w-4 h-4" />
-                <span className="text-sm">Não encontrou? Adicionar manualmente</span>
-              </button>
 
               {/* Totals */}
               {selectedFoods.length > 0 && (

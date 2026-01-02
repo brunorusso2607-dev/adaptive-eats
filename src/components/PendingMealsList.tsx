@@ -11,7 +11,8 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
-
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
@@ -31,6 +32,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     isLoading,
     hasMealPlan,
     isPlanExpired,
+    expiredPlanEndDate,
     skipMeal,
     refetch,
     effectiveTimeRanges,
@@ -39,6 +41,19 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     getMinutesOverdueForMeal,
     isMealTimeStartedForMeal,
   } = usePendingMeals();
+
+  // Calcular nomes dos meses dinamicamente
+  const { expiredMonthName, currentMonthName } = useMemo(() => {
+    const currentMonth = format(new Date(), "MMMM", { locale: ptBR });
+    
+    if (expiredPlanEndDate) {
+      const expiredDate = new Date(expiredPlanEndDate + "T00:00:00");
+      const expiredMonth = format(expiredDate, "MMMM", { locale: ptBR });
+      return { expiredMonthName: expiredMonth, currentMonthName: currentMonth };
+    }
+    
+    return { expiredMonthName: null, currentMonthName: currentMonth };
+  }, [expiredPlanEndDate]);
 
   // Separar: próxima refeição (verde) vs atrasadas (amarela/vermelha)
   // Se o plano expirou, não há "próxima refeição" - todas são atrasadas
@@ -275,11 +290,11 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                   <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-foreground">
-                    Seu plano expirou
+                  <p className="text-sm font-medium text-foreground capitalize">
+                    {expiredMonthName ? `${expiredMonthName} acabou` : "Seu plano expirou"}
                   </p>
-                  <p className="text-xs text-muted-foreground mt-0.5">
-                    Crie um novo plano alimentar
+                  <p className="text-xs text-muted-foreground mt-0.5 capitalize">
+                    Não esqueça de criar seu plano de {currentMonthName}
                   </p>
                 </div>
                 <div className="flex items-center gap-1 text-primary shrink-0">

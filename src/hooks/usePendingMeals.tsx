@@ -290,6 +290,7 @@ export function usePendingMeals() {
   const [isLoading, setIsLoading] = useState(true);
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [isPlanExpired, setIsPlanExpired] = useState(false);
+  const [expiredPlanEndDate, setExpiredPlanEndDate] = useState<string | null>(null);
   const [effectiveTimeRanges, setEffectiveTimeRanges] = useState<MealTimeRanges>(getMealTimeRangesSync());
 
   const fetchPendingMeals = useCallback(async () => {
@@ -361,6 +362,7 @@ export function usePendingMeals() {
       const planEndDate = activePlan.end_date as string;
       const planExpired = planEndDate < todayStr;
       setIsPlanExpired(planExpired);
+      setExpiredPlanEndDate(planExpired ? planEndDate : null);
 
       // Buscar TODAS as refeições não completadas do plano
       const { data: meals, error: mealsError } = await supabase
@@ -636,6 +638,7 @@ export function usePendingMeals() {
     isLoading,
     hasMealPlan,
     isPlanExpired,
+    expiredPlanEndDate,
     markAsComplete,
     skipMeal,
     refetch: fetchPendingMeals,

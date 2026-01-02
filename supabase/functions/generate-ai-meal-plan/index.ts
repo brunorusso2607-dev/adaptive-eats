@@ -1107,7 +1107,7 @@ serve(async (req) => {
       const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
       if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
 
-      const modelName = aiPromptData?.model || 'gemini-2.0-flash-lite';
+      const modelName = aiPromptData?.model || 'gemini-2.5-flash-lite';
 
       let content = "";
       let retryCount = 0;

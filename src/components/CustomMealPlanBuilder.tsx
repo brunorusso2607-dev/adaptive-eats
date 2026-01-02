@@ -16,7 +16,8 @@ import {
   Sparkles,
   Search,
   Plus,
-  X,
+  Pencil,
+  Trash2,
   AlertTriangle
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
@@ -520,14 +521,24 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
                   </div>
 
                   {meal ? (
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      className="shrink-0 h-8 w-8"
-                      onClick={() => handleRemoveMeal(key)}
-                    >
-                      <X className="w-4 h-4" />
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => setActiveSlot(key)}
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleRemoveMeal(key)}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
                   ) : (
                     <Button 
                       variant="outline" 

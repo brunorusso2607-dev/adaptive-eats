@@ -241,10 +241,10 @@ export default function FreeFormMealLogger({
           </SheetHeader>
 
           {/* Search area - compact */}
-          <div className="px-4 py-3 flex-shrink-0">
+          <div className="px-4 py-2 flex-shrink-0">
             <UnifiedFoodSearchBlock
               onSelectFood={handleSelectFood}
-              scrollHeight="max-h-[25vh]"
+              scrollHeight="max-h-[18vh]"
               confirmButtonLabel="Adicionar"
               hasSelectedFoods={selectedFoods.length > 0}
               inputRef={searchInputRef}

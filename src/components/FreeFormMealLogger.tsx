@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Flame, Loader2, Trash2, UtensilsCrossed, AlertTriangle, Check, Plus } from "lucide-react";
+import { Flame, Loader2, Trash2, UtensilsCrossed, AlertTriangle, Check, Plus, Clock, Pencil } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { useIntoleranceWarning, type ConflictDetail } from "@/hooks/useIntoleranceWarning";
@@ -11,6 +11,7 @@ import UnifiedFoodSearchBlock, { type SelectedFoodItem } from "./UnifiedFoodSear
 import MealRegistrationFlow, { MealData, ConsumptionItem } from "./MealRegistrationFlow";
 import IntoleranceConfirmDialog from "./IntoleranceConfirmDialog";
 import IntoleranceBadge from "./IntoleranceBadge";
+import { useMealTimeDetection } from "@/hooks/useMealTimeDetection";
 
 interface FreeFormMealLoggerProps {
   open: boolean;
@@ -37,6 +38,7 @@ export default function FreeFormMealLogger({
   onSuccess,
 }: FreeFormMealLoggerProps) {
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
+  const [customMealName, setCustomMealName] = useState("");
   const [showRegistrationFlow, setShowRegistrationFlow] = useState(false);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingConflicts, setPendingConflicts] = useState<ConflictDetail[]>([]);
@@ -44,6 +46,16 @@ export default function FreeFormMealLogger({
   const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { checkFood, checkMeal } = useIntoleranceWarning();
+  
+  // Detectar automaticamente o tipo de refeição e refeição pendente
+  const {
+    detectedMealType,
+    detectedMealLabel,
+    pendingMeal,
+    hasPendingMeal,
+    isLoading: isDetectionLoading,
+    refresh: refreshDetection,
+  } = useMealTimeDetection();
 
   const checkFoodConflicts = useCallback((foodName: string) => {
     const result = checkFood(foodName);
@@ -64,9 +76,13 @@ export default function FreeFormMealLogger({
   useEffect(() => {
     if (!open) {
       setSelectedFoods([]);
+      setCustomMealName("");
       setShowRegistrationFlow(false);
+    } else {
+      // Refresh detection when opening
+      refreshDetection();
     }
-  }, [open]);
+  }, [open, refreshDetection]);
 
   const handleSelectFood = useCallback((item: SelectedFoodItem) => {
     setSelectedFoods((prev) => {
@@ -200,8 +216,12 @@ export default function FreeFormMealLogger({
     onSuccess?.();
   };
 
+  // Nome da refeição: usar nome personalizado, ou gerar baseado nos alimentos
+  const mealDisplayName = customMealName.trim() || 
+    (selectedFoods.length === 1 ? selectedFoods[0].name : `${selectedFoods.length} alimentos`);
+
   const mealData: MealData = {
-    name: selectedFoods.length === 1 ? selectedFoods[0].name : `${selectedFoods.length} alimentos`,
+    name: mealDisplayName,
     calories: totals.calories,
     protein: totals.protein,
     carbs: totals.carbs,
@@ -242,10 +262,47 @@ export default function FreeFormMealLogger({
 
           {/* Main scrollable content */}
           <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2">
+            {/* Detected meal type badge */}
+            {!isDetectionLoading && (
+              <div className="mb-3 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-sm text-muted-foreground">Detectado como:</span>
+                    <span className="text-sm font-medium text-primary">{detectedMealLabel}</span>
+                  </div>
+                  {hasPendingMeal && (
+                    <span className="text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">
+                      Substituirá plano
+                    </span>
+                  )}
+                </div>
+                {hasPendingMeal && pendingMeal && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Irá substituir: <span className="font-medium">{pendingMeal.recipe_name}</span>
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Meal name input */}
+            <div className="mb-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Pencil className="w-3.5 h-3.5 text-muted-foreground" />
+                <label className="text-xs text-muted-foreground">Nome da refeição (opcional)</label>
+              </div>
+              <Input
+                placeholder="Ex: Café da manhã, Lanche pós-treino..."
+                value={customMealName}
+                onChange={(e) => setCustomMealName(e.target.value)}
+                className="h-9"
+              />
+            </div>
+
             {/* Search area */}
             <UnifiedFoodSearchBlock
               onSelectFood={handleSelectFood}
-              scrollHeight="max-h-[30vh]"
+              scrollHeight="max-h-[25vh]"
               confirmButtonLabel="Adicionar"
               hasSelectedFoods={selectedFoods.length > 0}
               inputRef={searchInputRef}
@@ -365,6 +422,9 @@ export default function FreeFormMealLogger({
         sourceType="manual"
         onSuccess={handleRegistrationSuccess}
         onBack={() => setShowRegistrationFlow(false)}
+        autoDetectedMealType={detectedMealType}
+        autoDetectedMealLabel={detectedMealLabel}
+        pendingMealToReplace={pendingMeal}
       />
 
       <IntoleranceConfirmDialog

@@ -176,6 +176,23 @@ CORE MISSION:
 - Use ${nutritionalSource.sourceName} as primary nutritional source for this user
 ${countryContext}
 
+=== CRITICAL: SUGGESTION ORDER PRIORITY ===
+
+**ALWAYS return suggestions in THIS EXACT ORDER:**
+
+1. **EXACT MATCH / THE DISH ITSELF** - If user types "feijoada", FIRST suggest "Feijoada" (the complete dish), NOT ingredients like "Feijão Preto"
+2. **VARIATIONS of the dish** - Then suggest variations like "Feijoada Light", "Feijoada Completa", "Feijoada Vegetariana"
+3. **RELATED DISHES** - Similar dishes from the same cuisine
+4. **ONLY AS LAST RESORT** - Base ingredients (only if NO dish matches the query)
+
+**EXAMPLES:**
+- User types "feijoada" → 1st: Feijoada (the dish), 2nd: Feijoada Completa, 3rd: Feijoada Light, NOT "Feijão Preto"
+- User types "farofa" → 1st: Farofa (simple), 2nd: Farofa de Bacon, 3rd: Farofa de Ovo, NOT "Farinha de Mandioca"
+- User types "pizza" → 1st: Pizza Margherita, 2nd: Pizza Pepperoni, NOT "Massa de Pizza" or "Molho de Tomate"
+- User types "ramen" → 1st: Ramen (complete dish), 2nd: Shoyu Ramen, 3rd: Miso Ramen, NOT "Macarrão" or "Caldo"
+
+**NEVER suggest raw ingredients when the user clearly typed a dish name!**
+
 === GLOBAL FAST-FOOD CHAINS ===
 
 **McDonald's (worldwide):**
@@ -239,7 +256,7 @@ ${countryContext}
 - Hamburger, Hot Dog, Mac and Cheese, Buffalo Wings, Pancakes, Cheesecake, Apple Pie
 
 **Brazilian:**
-- Feijoada, Pão de Queijo, Coxinha, Açaí, Picanha, Brigadeiro, Tapioca, Moqueca
+- Feijoada, Pão de Queijo, Coxinha, Açaí, Picanha, Brigadeiro, Tapioca, Moqueca, Farofa
 
 **Middle Eastern:**
 - Falafel, Hummus, Shawarma, Kebab, Tabbouleh, Baklava, Fattoush
@@ -290,11 +307,13 @@ ${countryContext}
 - "タコス" or "taco" → Tacos
 - "فلافل" or "falafel" → Falafel
 - "crois" → Croissant
-- "gyro" or "γύρος" → Gyros`;
+- "gyro" or "γύρος" → Gyros
+- "feijoada" → Feijoada (complete dish), NOT "Feijão Preto"
+- "farofa" → Farofa (side dish), NOT "Farinha de Mandioca"`;
 
     const userPrompt = `${systemPrompt}
 
-O usuário digitou: "${query}". Identifique o alimento e sugira opções com valores nutricionais.`;
+O usuário digitou: "${query}". Identifique o alimento COMPLETO (prato/receita) que ele quer, NÃO ingredientes base. Sugira o prato primeiro, depois variações.`;
 
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${GOOGLE_AI_API_KEY}`,

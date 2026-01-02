@@ -157,17 +157,47 @@ export function useIntoleranceWarning() {
           return;
         }
 
+        // Função para carregar todos os mapeamentos com paginação explícita
+        const fetchAllMappings = async () => {
+          const pageSize = 1000;
+          let allMappings: { ingredient: string; intolerance_key: string }[] = [];
+          let page = 0;
+          let hasMore = true;
+          
+          while (hasMore) {
+            const from = page * pageSize;
+            const to = from + pageSize - 1;
+            
+            const { data, error } = await supabase
+              .from('intolerance_mappings')
+              .select('ingredient, intolerance_key')
+              .range(from, to);
+            
+            if (error) {
+              console.error('[INTOLERANCE] Erro ao carregar mapeamentos:', error);
+              break;
+            }
+            
+            if (data && data.length > 0) {
+              allMappings = [...allMappings, ...data];
+              hasMore = data.length === pageSize;
+              page++;
+            } else {
+              hasMore = false;
+            }
+          }
+          
+          return allMappings;
+        };
+
         // Fetch all data in parallel - incluindo onboarding_options para classificação
-        const [profileResult, mappingsResult, forbiddenResult, dietaryProfilesResult, onboardingResult] = await Promise.all([
+        const [profileResult, allMappings, forbiddenResult, dietaryProfilesResult, onboardingResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('intolerances, dietary_preference, excluded_ingredients')
             .eq('id', session.user.id)
             .single(),
-          supabase
-            .from('intolerance_mappings')
-            .select('ingredient, intolerance_key')
-            .range(0, 9999), // Carregar todos os mapeamentos (bypass default 1000 limit)
+          fetchAllMappings(),
           supabase
             .from('dietary_forbidden_ingredients')
             .select('ingredient, dietary_key'),
@@ -255,15 +285,15 @@ export function useIntoleranceWarning() {
           }
         }
 
-        if (mappingsResult.data) {
-          console.log('[INTOLERANCE] Mapeamentos carregados:', mappingsResult.data.length);
+        if (allMappings && allMappings.length > 0) {
+          console.log('[INTOLERANCE] Mapeamentos carregados:', allMappings.length);
           
           // Log de amostra para peanut e lactose
-          const peanutMappings = mappingsResult.data.filter((m: any) => m.intolerance_key === 'peanut');
-          const lactoseMappings = mappingsResult.data.filter((m: any) => m.intolerance_key === 'lactose');
+          const peanutMappings = allMappings.filter((m: any) => m.intolerance_key === 'peanut');
+          const lactoseMappings = allMappings.filter((m: any) => m.intolerance_key === 'lactose');
           console.log('[INTOLERANCE] Peanut mappings:', peanutMappings.length, 'Lactose mappings:', lactoseMappings.length);
           
-          setMappings(mappingsResult.data);
+          setMappings(allMappings);
         }
 
         // Set forbidden ingredients from database

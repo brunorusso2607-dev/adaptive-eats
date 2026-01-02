@@ -182,3 +182,12 @@ verify_jwt = false
 
 [functions.decompose-food-for-safety]
 verify_jwt = false
+
+[functions.test-all-prompts-validation]
+verify_jwt = false
+
+[functions.lookup-openfoodfacts]
+verify_jwt = false
+
+[functions.run-false-positive-tests]
+verify_jwt = false

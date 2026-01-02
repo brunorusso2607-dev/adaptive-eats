@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useAdmin } from "@/hooks/useAdmin";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -20,9 +20,14 @@ import {
   FileCode,
   ListChecks,
   Utensils,
-  AlertCircle,
   Info,
-  RefreshCw
+  RefreshCw,
+  Camera,
+  Tag,
+  Refrigerator,
+  ChefHat,
+  MessageSquare,
+  RotateCcw
 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -44,13 +49,72 @@ interface ValidationResult {
   passedRules: number;
   failedRules: number;
   rules: ValidationRule[];
-  generatedMeal: any;
+  generatedMeal?: any;
+  generatedOutput?: any;
   promptPreview: string;
   rawAIResponse?: string;
   timestamp: string;
   error?: string;
   categories: Record<string, { total: number; passed: number; failed: number }>;
+  moduleId?: string;
+  moduleName?: string;
 }
+
+// =============================================================================
+// MODULE DEFINITIONS
+// =============================================================================
+
+const AI_MODULES = [
+  { 
+    id: 'generate-ai-meal-plan', 
+    name: 'Gerador de Plano Alimentar', 
+    icon: Utensils,
+    description: 'Gera refeições personalizadas com 24+ regras de validação',
+    requiresImage: false,
+  },
+  { 
+    id: 'analyze-food-photo', 
+    name: 'Análise de Foto de Alimento', 
+    icon: Camera,
+    description: 'Identifica alimentos, calcula macros e valida segurança',
+    requiresImage: true,
+  },
+  { 
+    id: 'analyze-label-photo', 
+    name: 'Análise de Rótulo', 
+    icon: Tag,
+    description: 'Extrai ingredientes e detecta alérgenos em rótulos',
+    requiresImage: true,
+  },
+  { 
+    id: 'analyze-fridge-photo', 
+    name: 'Análise de Geladeira', 
+    icon: Refrigerator,
+    description: 'Identifica ingredientes e sugere receitas seguras',
+    requiresImage: true,
+  },
+  { 
+    id: 'generate-recipe', 
+    name: 'Gerador de Receitas', 
+    icon: ChefHat,
+    description: 'Cria receitas personalizadas com ingredientes do usuário',
+    requiresImage: false,
+  },
+  { 
+    id: 'regenerate-meal', 
+    name: 'Regeneração de Refeição', 
+    icon: RotateCcw,
+    description: 'Substitui refeições mantendo restrições do usuário',
+    requiresImage: false,
+  },
+  { 
+    id: 'chat-assistant', 
+    name: 'Assistente de Chat', 
+    icon: MessageSquare,
+    description: 'Responde perguntas sobre alimentação e saúde',
+    requiresImage: false,
+  },
+];
 
 const MEAL_TYPES = [
   { value: 'all', label: '🔄 Testar Todas' },
@@ -74,6 +138,15 @@ const COUNTRIES = [
   { value: 'CO', label: '🇨🇴 Colômbia' },
 ];
 
+const INTOLERANCES = [
+  { value: 'lactose', label: 'Lactose' },
+  { value: 'gluten', label: 'Glúten' },
+  { value: 'egg', label: 'Ovo' },
+  { value: 'peanut', label: 'Amendoim' },
+  { value: 'shellfish', label: 'Frutos do Mar' },
+  { value: 'soy', label: 'Soja' },
+];
+
 const SEVERITY_CONFIG = {
   critical: { icon: XCircle, color: 'text-destructive', bg: 'bg-destructive/10', label: 'Crítico' },
   warning: { icon: AlertTriangle, color: 'text-orange-500', bg: 'bg-orange-500/10', label: 'Aviso' },
@@ -86,10 +159,69 @@ interface AllMealsResult {
   result: ValidationResult;
 }
 
+// =============================================================================
+// VALIDATION RULES BY MODULE (for display only)
+// =============================================================================
+
+const MODULE_RULES_INFO: Record<string, { categories: { name: string; severity: string; rules: string[] }[] }> = {
+  'generate-ai-meal-plan': {
+    categories: [
+      { name: 'Estrutura Obrigatória', severity: 'critical', rules: ['JSON válido', 'Foods é array', 'Cada food tem name/grams', 'Calorias definidas'] },
+      { name: 'Qualidade do Conteúdo', severity: 'warning', rules: ['Título descritivo', 'Sem condimentos soltos', 'Pratos consolidados', 'Mínimo 2 dicas'] },
+      { name: 'Ordenação e Formato', severity: 'info', rules: ['Proteína primeiro', 'Bebidas por último', 'Frutas antes de bebidas'] },
+      { name: 'Segurança Alimentar', severity: 'critical', rules: ['Sem ingredientes fantasma', 'Calorias realistas', 'Gramagens válidas'] },
+    ],
+  },
+  'analyze-food-photo': {
+    categories: [
+      { name: 'Detecção', severity: 'critical', rules: ['Itens identificados', 'Nome e gramagem em cada item'] },
+      { name: 'Nutrição', severity: 'warning', rules: ['Calorias estimadas', 'Macros calculados'] },
+      { name: 'Segurança', severity: 'critical', rules: ['Status de segurança', 'Alertas de intolerância'] },
+      { name: 'Qualidade', severity: 'info', rules: ['Nome humanizado da refeição', 'Confiança informada', 'Gramagens realistas'] },
+    ],
+  },
+  'analyze-label-photo': {
+    categories: [
+      { name: 'Extração', severity: 'critical', rules: ['Ingredientes extraídos', 'Nome do produto identificado'] },
+      { name: 'Segurança', severity: 'critical', rules: ['Veredito de segurança', 'Alertas de alérgenos'] },
+      { name: 'Qualidade', severity: 'info', rules: ['Selos identificados', 'Confiança da análise'] },
+    ],
+  },
+  'analyze-fridge-photo': {
+    categories: [
+      { name: 'Detecção', severity: 'critical', rules: ['Ingredientes identificados'] },
+      { name: 'Sugestões', severity: 'warning', rules: ['Receitas sugeridas', 'Sugestões seguras'] },
+      { name: 'Segurança', severity: 'warning', rules: ['Ingredientes validados contra intolerâncias'] },
+    ],
+  },
+  'generate-recipe': {
+    categories: [
+      { name: 'Conteúdo', severity: 'critical', rules: ['Nome da receita', 'Lista de ingredientes', 'Modo de preparo'] },
+      { name: 'Nutrição', severity: 'warning', rules: ['Informações nutricionais', 'Calorias por porção'] },
+      { name: 'Qualidade', severity: 'info', rules: ['Tempo de preparo', 'Porções/rendimento', 'Quantidades definidas'] },
+    ],
+  },
+  'regenerate-meal': {
+    categories: [
+      { name: 'Formato', severity: 'critical', rules: ['Estrutura JSON válida', 'Nome da refeição'] },
+      { name: 'Conteúdo', severity: 'critical', rules: ['Lista de alimentos', 'Calorias definidas'] },
+      { name: 'Qualidade', severity: 'info', rules: ['Refeição diferente da original'] },
+    ],
+  },
+  'chat-assistant': {
+    categories: [
+      { name: 'Resposta', severity: 'critical', rules: ['Resposta gerada', 'Resposta não é erro'] },
+      { name: 'Qualidade', severity: 'info', rules: ['Mantém contexto', 'Idioma correto'] },
+    ],
+  },
+};
+
 export default function AdminPromptValidation() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
+  const [selectedModule, setSelectedModule] = useState('generate-ai-meal-plan');
   const [mealType, setMealType] = useState('almoco');
   const [countryCode, setCountryCode] = useState('BR');
+  const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
@@ -97,8 +229,20 @@ export default function AdminPromptValidation() {
   const [currentTestingMeal, setCurrentTestingMeal] = useState<string | null>(null);
   const [promptPreview, setPromptPreview] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  const [showMeal, setShowMeal] = useState(true);
+  const [showOutput, setShowOutput] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
+  
+  const currentModuleInfo = AI_MODULES.find(m => m.id === selectedModule);
+  const moduleRulesInfo = MODULE_RULES_INFO[selectedModule];
+
+  // Reset results when module changes
+  useEffect(() => {
+    setResult(null);
+    setAllMealsResults([]);
+    setPromptPreview(null);
+    setShowPrompt(false);
+  }, [selectedModule]);
+
   if (adminLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -115,11 +259,29 @@ export default function AdminPromptValidation() {
     );
   }
 
-  const runSingleValidation = async (targetMealType: string): Promise<ValidationResult> => {
+  // =============================================================================
+  // VALIDATION FUNCTIONS
+  // =============================================================================
+
+  const runMealPlanValidation = async (targetMealType: string): Promise<ValidationResult> => {
     const { data, error } = await supabase.functions.invoke('test-prompt-validation', {
       body: { mealType: targetMealType, countryCode, testMode: 'full' }
     });
-    
+    if (error) throw error;
+    return data as ValidationResult;
+  };
+
+  const runModuleValidation = async (): Promise<ValidationResult> => {
+    const { data, error } = await supabase.functions.invoke('test-all-prompts-validation', {
+      body: { 
+        moduleId: selectedModule, 
+        testMode: 'full',
+        testParams: {
+          countryCode,
+          intolerances: selectedIntolerances,
+        }
+      }
+    });
     if (error) throw error;
     return data as ValidationResult;
   };
@@ -130,22 +292,21 @@ export default function AdminPromptValidation() {
     setAllMealsResults([]);
     
     try {
-      if (mealType === 'all') {
-        // Testar todas as refeições em sequência
+      // Special handling for meal plan module with "all" option
+      if (selectedModule === 'generate-ai-meal-plan' && mealType === 'all') {
         const results: AllMealsResult[] = [];
         
         for (const meal of INDIVIDUAL_MEAL_TYPES) {
           setCurrentTestingMeal(meal.label);
           
           try {
-            const mealResult = await runSingleValidation(meal.value);
+            const mealResult = await runMealPlanValidation(meal.value);
             results.push({
               mealType: meal.value,
               mealLabel: meal.label,
               result: mealResult
             });
           } catch (error) {
-            console.error(`Error testing ${meal.label}:`, error);
             results.push({
               mealType: meal.value,
               mealLabel: meal.label,
@@ -155,7 +316,6 @@ export default function AdminPromptValidation() {
                 passedRules: 0,
                 failedRules: 1,
                 rules: [],
-                generatedMeal: null,
                 promptPreview: '',
                 timestamp: new Date().toISOString(),
                 error: error instanceof Error ? error.message : 'Erro desconhecido',
@@ -171,35 +331,31 @@ export default function AdminPromptValidation() {
         const totalPassed = results.filter(r => r.result.success).length;
         const totalFailed = results.length - totalPassed;
         
-        if (totalFailed === 0) {
-          toast({
-            title: "✅ Todas as refeições passaram!",
-            description: `${totalPassed}/${results.length} refeições aprovadas`,
-          });
-        } else {
-          toast({
-            title: "⚠️ Algumas refeições falharam",
-            description: `${totalFailed} refeições com falhas`,
-            variant: "destructive",
-          });
-        }
-      } else {
-        // Teste individual
-        const data = await runSingleValidation(mealType);
+        toast({
+          title: totalFailed === 0 ? "✅ Todas as refeições passaram!" : "⚠️ Algumas refeições falharam",
+          description: `${totalPassed}/${results.length} refeições aprovadas`,
+          variant: totalFailed === 0 ? "default" : "destructive",
+        });
+      } else if (selectedModule === 'generate-ai-meal-plan') {
+        // Single meal type for meal plan
+        const data = await runMealPlanValidation(mealType);
         setResult(data);
         
-        if (data.success) {
-          toast({
-            title: "✅ Validação passou!",
-            description: `${data.passedRules}/${data.totalRules} regras aprovadas`,
-          });
-        } else {
-          toast({
-            title: "⚠️ Validação com falhas",
-            description: `${data.failedRules} regras falharam`,
-            variant: "destructive",
-          });
-        }
+        toast({
+          title: data.success ? "✅ Validação passou!" : "⚠️ Validação com falhas",
+          description: `${data.passedRules}/${data.totalRules} regras aprovadas`,
+          variant: data.success ? "default" : "destructive",
+        });
+      } else {
+        // Other modules
+        const data = await runModuleValidation();
+        setResult(data);
+        
+        toast({
+          title: data.success ? "✅ Validação passou!" : "⚠️ Validação com falhas",
+          description: `${data.passedRules}/${data.totalRules} regras aprovadas`,
+          variant: data.success ? "default" : "destructive",
+        });
       }
     } catch (error) {
       console.error('Validation error:', error);
@@ -218,11 +374,21 @@ export default function AdminPromptValidation() {
     setIsLoadingPreview(true);
     
     try {
-      const { data, error } = await supabase.functions.invoke('test-prompt-validation', {
-        body: { mealType, countryCode, testMode: 'preview' }
-      });
+      let data;
       
-      if (error) throw error;
+      if (selectedModule === 'generate-ai-meal-plan') {
+        const response = await supabase.functions.invoke('test-prompt-validation', {
+          body: { mealType, countryCode, testMode: 'preview' }
+        });
+        if (response.error) throw response.error;
+        data = response.data;
+      } else {
+        const response = await supabase.functions.invoke('test-all-prompts-validation', {
+          body: { moduleId: selectedModule, testMode: 'preview' }
+        });
+        if (response.error) throw response.error;
+        data = response.data;
+      }
       
       setPromptPreview(data.promptPreview);
       setShowPrompt(true);
@@ -250,6 +416,8 @@ export default function AdminPromptValidation() {
   const criticalFailed = result?.rules.filter(r => !r.passed && r.severity === 'critical').length || 0;
   const warningsFailed = result?.rules.filter(r => !r.passed && r.severity === 'warning').length || 0;
 
+  const generatedOutput = result?.generatedMeal || result?.generatedOutput;
+
   return (
     <div className="min-h-screen bg-background p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
@@ -261,40 +429,100 @@ export default function AdminPromptValidation() {
             </Button>
           </Link>
           <div>
-            <h1 className="text-2xl font-bold">Validação do Prompt</h1>
-            <p className="text-muted-foreground">Teste automatizado com 24+ regras de conformidade</p>
+            <h1 className="text-2xl font-bold">Validação de Prompts</h1>
+            <p className="text-muted-foreground">Teste automatizado de todos os módulos de IA</p>
           </div>
         </div>
 
-        {/* Controles */}
+        {/* Module Selector */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <ListChecks className="w-5 h-5" />
+              Selecione o Módulo
+            </CardTitle>
+            <CardDescription>
+              Escolha qual módulo de IA deseja validar
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+              {AI_MODULES.map(module => {
+                const Icon = module.icon;
+                const isSelected = selectedModule === module.id;
+                
+                return (
+                  <button
+                    key={module.id}
+                    onClick={() => setSelectedModule(module.id)}
+                    className={`p-3 rounded-lg border text-left transition-all ${
+                      isSelected 
+                        ? 'border-primary bg-primary/10 ring-2 ring-primary/20' 
+                        : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 mb-1">
+                      <Icon className={`w-4 h-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+                      {module.requiresImage && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0">IMG</Badge>
+                      )}
+                    </div>
+                    <p className={`text-sm font-medium ${isSelected ? 'text-primary' : ''}`}>
+                      {module.name.split(' ').slice(0, 2).join(' ')}
+                    </p>
+                  </button>
+                );
+              })}
+            </div>
+            
+            {currentModuleInfo && (
+              <p className="text-sm text-muted-foreground mt-3 p-2 bg-muted/50 rounded">
+                {currentModuleInfo.description}
+                {currentModuleInfo.requiresImage && (
+                  <span className="block mt-1 text-orange-500">
+                    ⚠️ Este módulo requer imagem. Validação usa dados de exemplo.
+                  </span>
+                )}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Test Configuration */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              {currentModuleInfo && <currentModuleInfo.icon className="w-5 h-5" />}
               Configuração do Teste
             </CardTitle>
             <CardDescription>
-              Selecione o tipo de refeição e país para testar a geração de IA
+              {selectedModule === 'generate-ai-meal-plan' 
+                ? 'Selecione o tipo de refeição e país para testar a geração de IA'
+                : 'Configure os parâmetros de teste para este módulo'}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-sm font-medium mb-2 block">Tipo de Refeição</label>
-                <Select value={mealType} onValueChange={setMealType}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {MEAL_TYPES.map(type => (
-                      <SelectItem key={type.value} value={type.value}>
-                        {type.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {/* Meal Type selector - only for meal plan module */}
+              {selectedModule === 'generate-ai-meal-plan' && (
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Tipo de Refeição</label>
+                  <Select value={mealType} onValueChange={setMealType}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {MEAL_TYPES.map(type => (
+                        <SelectItem key={type.value} value={type.value}>
+                          {type.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
               
+              {/* Country selector - always visible */}
               <div>
                 <label className="text-sm font-medium mb-2 block">País</label>
                 <Select value={countryCode} onValueChange={setCountryCode}>
@@ -310,16 +538,41 @@ export default function AdminPromptValidation() {
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Intolerances - for modules that use safety validation */}
+              {['analyze-food-photo', 'analyze-label-photo', 'analyze-fridge-photo', 'generate-recipe', 'regenerate-meal'].includes(selectedModule) && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium mb-2 block">Intolerâncias de Teste</label>
+                  <div className="flex flex-wrap gap-2">
+                    {INTOLERANCES.map(intol => (
+                      <Badge
+                        key={intol.value}
+                        variant={selectedIntolerances.includes(intol.value) ? "default" : "outline"}
+                        className="cursor-pointer"
+                        onClick={() => {
+                          setSelectedIntolerances(prev =>
+                            prev.includes(intol.value)
+                              ? prev.filter(i => i !== intol.value)
+                              : [...prev, intol.value]
+                          );
+                        }}
+                      >
+                        {intol.label}
+                      </Badge>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Progress indicator for all meals */}
-            {isRunning && mealType === 'all' && currentTestingMeal && (
+            {isRunning && selectedModule === 'generate-ai-meal-plan' && mealType === 'all' && currentTestingMeal && (
               <div className="bg-muted/50 p-3 rounded-lg">
                 <p className="text-sm text-muted-foreground">
                   Testando: <span className="font-medium text-foreground">{currentTestingMeal}</span>
                 </p>
                 <div className="flex gap-1 mt-2">
-                  {INDIVIDUAL_MEAL_TYPES.map((meal, index) => {
+                  {INDIVIDUAL_MEAL_TYPES.map((meal) => {
                     const tested = allMealsResults.find(r => r.mealType === meal.value);
                     const isCurrent = currentTestingMeal === meal.label;
                     return (
@@ -350,12 +603,16 @@ export default function AdminPromptValidation() {
                 {isRunning ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    {mealType === 'all' ? 'Testando todas...' : 'Gerando e validando...'}
+                    {selectedModule === 'generate-ai-meal-plan' && mealType === 'all' 
+                      ? 'Testando todas...' 
+                      : 'Validando...'}
                   </>
                 ) : (
                   <>
                     <Play className="w-4 h-4 mr-2" />
-                    {mealType === 'all' ? 'Rodar Todas as Validações' : 'Rodar Validação Completa'}
+                    {selectedModule === 'generate-ai-meal-plan' && mealType === 'all'
+                      ? 'Rodar Todas as Validações'
+                      : 'Rodar Validação'}
                   </>
                 )}
               </Button>
@@ -378,7 +635,7 @@ export default function AdminPromptValidation() {
           </CardContent>
         </Card>
 
-        {/* Resultado de Todas as Refeições */}
+        {/* All Meals Results (for meal plan "all" option) */}
         {allMealsResults.length > 0 && (
           <Card>
             <CardHeader>
@@ -460,7 +717,7 @@ export default function AdminPromptValidation() {
           </Card>
         )}
 
-        {/* Resultado da Validação Individual */}
+        {/* Single Validation Result */}
         {result && (
           <Card className={result.success ? 'border-green-500/50' : 'border-destructive/50'}>
             <CardHeader>
@@ -471,13 +728,16 @@ export default function AdminPromptValidation() {
                   <AlertTriangle className="w-5 h-5 text-destructive" />
                 )}
                 Resultado da Validação
+                {result.moduleName && (
+                  <Badge variant="outline" className="ml-2">{result.moduleName}</Badge>
+                )}
               </CardTitle>
               <CardDescription>
                 {result.passedRules}/{result.totalRules} regras aprovadas • {new Date(result.timestamp).toLocaleString('pt-BR')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {/* Resumo com severidades */}
+              {/* Summary with severities */}
               <div className="flex flex-wrap gap-2">
                 <Badge variant={result.success ? "default" : "destructive"} className="text-sm">
                   {result.success ? '✓ APROVADO' : '✗ REPROVADO'}
@@ -497,7 +757,7 @@ export default function AdminPromptValidation() {
                 )}
               </div>
 
-              {/* Resumo por Categoria */}
+              {/* Category Summary */}
               {Object.keys(categories).length > 0 && (
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {Object.entries(categories).map(([cat, stats]) => (
@@ -516,7 +776,7 @@ export default function AdminPromptValidation() {
                 </div>
               )}
 
-              {/* Tabs para filtrar regras */}
+              {/* Tabs for filtering rules */}
               <Tabs value={activeTab} onValueChange={setActiveTab}>
                 <TabsList className="w-full flex-wrap h-auto gap-1">
                   <TabsTrigger value="all" className="text-xs">
@@ -573,7 +833,7 @@ export default function AdminPromptValidation() {
                 </TabsContent>
               </Tabs>
 
-              {/* Botão de retry */}
+              {/* Retry button */}
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -585,57 +845,24 @@ export default function AdminPromptValidation() {
                 Rodar Novamente
               </Button>
 
-              {/* Refeição Gerada */}
-              {result.generatedMeal && (
-                <Collapsible open={showMeal} onOpenChange={setShowMeal}>
+              {/* Generated Output */}
+              {generatedOutput && (
+                <Collapsible open={showOutput} onOpenChange={setShowOutput}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" className="w-full justify-between">
                       <span className="flex items-center gap-2">
                         <Utensils className="w-4 h-4" />
-                        Ver Refeição Gerada
+                        Ver Output Gerado
                       </span>
-                      {showMeal ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                      {showOutput ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2">
-                    <div className="bg-muted/50 p-4 rounded-lg space-y-3">
-                      <div>
-                        <span className="text-xs text-muted-foreground">Título:</span>
-                        <p className="font-medium">{result.generatedMeal.title || '(undefined)'}</p>
-                      </div>
-                      
-                      <div>
-                        <span className="text-xs text-muted-foreground">Alimentos ({result.generatedMeal.foods?.length || 0}):</span>
-                        <ul className="list-disc list-inside text-sm mt-1">
-                          {(result.generatedMeal.foods || []).map((food: any, i: number) => (
-                            <li key={i}>{food.name} ({food.grams}g)</li>
-                          ))}
-                        </ul>
-                      </div>
-                      
-                      <div>
-                        <span className="text-xs text-muted-foreground">Dicas ({result.generatedMeal.instructions?.length || 0}):</span>
-                        <ol className="list-decimal list-inside text-sm mt-1 space-y-1">
-                          {(result.generatedMeal.instructions || []).map((inst: string, i: number) => (
-                            <li key={i} className="text-muted-foreground">{inst}</li>
-                          ))}
-                        </ol>
-                      </div>
-                      
-                      <div className="flex gap-4 text-sm">
-                        <span>🔥 {result.generatedMeal.calories_kcal || 0} kcal</span>
-                      </div>
-
-                      {/* Raw AI Response */}
-                      {result.rawAIResponse && (
-                        <div className="mt-2 pt-2 border-t">
-                          <span className="text-xs text-muted-foreground">Resposta bruta da IA:</span>
-                          <pre className="text-xs font-mono bg-muted p-2 rounded mt-1 overflow-auto max-h-20">
-                            {result.rawAIResponse}
-                          </pre>
-                        </div>
-                      )}
-                    </div>
+                    <ScrollArea className="h-64">
+                      <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/50 p-4 rounded-lg">
+                        {JSON.stringify(generatedOutput, null, 2)}
+                      </pre>
+                    </ScrollArea>
                   </CollapsibleContent>
                 </Collapsible>
               )}
@@ -643,7 +870,7 @@ export default function AdminPromptValidation() {
           </Card>
         )}
 
-        {/* Preview do Prompt */}
+        {/* Prompt Preview */}
         {promptPreview && showPrompt && (
           <Card>
             <CardHeader>
@@ -671,70 +898,43 @@ export default function AdminPromptValidation() {
           </Card>
         )}
 
-        {/* Categorias de Validação */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Categorias de Validação (24+ regras)</CardTitle>
-            <CardDescription>
-              O que é verificado em cada refeição gerada
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 md:grid-cols-2">
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Badge variant="outline" className="bg-destructive/10 text-destructive">Crítico</Badge>
-                  Estrutura Obrigatória
-                </h4>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
-                  <li>• JSON válido com campos corretos</li>
-                  <li>• Foods é array de objetos</li>
-                  <li>• Cada food tem name e grams</li>
-                  <li>• Calorias definidas</li>
-                </ul>
+        {/* Validation Rules Info */}
+        {moduleRulesInfo && (
+          <Card>
+            <CardHeader>
+              <CardTitle>Regras de Validação - {currentModuleInfo?.name}</CardTitle>
+              <CardDescription>
+                O que é verificado neste módulo
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid gap-4 md:grid-cols-2">
+                {moduleRulesInfo.categories.map((cat, idx) => (
+                  <div key={idx} className="space-y-2">
+                    <h4 className="font-medium text-sm flex items-center gap-2">
+                      <Badge 
+                        variant="outline" 
+                        className={
+                          cat.severity === 'critical' ? 'bg-destructive/10 text-destructive' :
+                          cat.severity === 'warning' ? 'bg-orange-500/10 text-orange-500' :
+                          'bg-blue-500/10 text-blue-500'
+                        }
+                      >
+                        {cat.severity === 'critical' ? 'Crítico' : cat.severity === 'warning' ? 'Aviso' : 'Info'}
+                      </Badge>
+                      {cat.name}
+                    </h4>
+                    <ul className="text-xs text-muted-foreground space-y-1 pl-4">
+                      {cat.rules.map((rule, i) => (
+                        <li key={i}>• {rule}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
               </div>
-
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Badge variant="outline" className="bg-orange-500/10 text-orange-500">Aviso</Badge>
-                  Qualidade do Conteúdo
-                </h4>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
-                  <li>• Título descritivo (não lista)</li>
-                  <li>• Sem condimentos soltos</li>
-                  <li>• Pratos únicos consolidados</li>
-                  <li>• Mínimo 2 dicas de preparo</li>
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Badge variant="outline" className="bg-blue-500/10 text-blue-500">Info</Badge>
-                  Ordenação e Formato
-                </h4>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
-                  <li>• Proteína primeiro</li>
-                  <li>• Bebidas por último</li>
-                  <li>• Frutas antes das bebidas</li>
-                  <li>• Sem frutas nas dicas</li>
-                </ul>
-              </div>
-
-              <div className="space-y-2">
-                <h4 className="font-medium text-sm flex items-center gap-2">
-                  <Badge variant="outline" className="bg-green-500/10 text-green-500">Segurança</Badge>
-                  Validações de Segurança
-                </h4>
-                <ul className="text-xs text-muted-foreground space-y-1 pl-4">
-                  <li>• Sem ingredientes fantasma</li>
-                  <li>• Calorias realistas por refeição</li>
-                  <li>• Gramagens válidas (5g-1000g)</li>
-                  <li>• Refeição composta completa</li>
-                </ul>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </div>
   );

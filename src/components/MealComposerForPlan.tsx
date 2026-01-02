@@ -177,9 +177,9 @@ export default function MealComposerForPlan({
   }, []);
 
   return (
-    <div className="space-y-4 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center gap-4">
+    <div className="flex flex-col h-full min-h-0 animate-fade-in">
+      {/* Header - fixed */}
+      <div className="flex items-center gap-4 flex-shrink-0 pb-4">
         <Button variant="ghost" size="icon" onClick={onCancel}>
           <ArrowLeft className="w-5 h-5" />
         </Button>
@@ -189,84 +189,87 @@ export default function MealComposerForPlan({
         </div>
       </div>
 
-      {/* Search area */}
-      <UnifiedFoodSearchBlock
-        onSelectFood={handleSelectFood}
-        scrollHeight="max-h-[25vh]"
-        confirmButtonLabel="Adicionar"
-        hasSelectedFoods={selectedFoods.length > 0}
-        inputRef={searchInputRef}
-      />
+      {/* Scrollable content */}
+      <div className="flex-1 min-h-0 overflow-y-auto space-y-4">
+        {/* Search area */}
+        <UnifiedFoodSearchBlock
+          onSelectFood={handleSelectFood}
+          scrollHeight="max-h-[25vh]"
+          confirmButtonLabel="Adicionar"
+          hasSelectedFoods={selectedFoods.length > 0}
+          inputRef={searchInputRef}
+        />
 
-      {/* Selected foods list */}
-      {selectedFoods.length > 0 && (
-        <div className="space-y-2">
-          <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Alimentos ({selectedFoods.length})
-          </h4>
-          <div className="space-y-1.5 max-h-[30vh] overflow-y-auto">
-            {selectedFoods.map((food) => {
-              const macros = calculateMacros(food);
-              const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
-              const conflict = checkFoodConflicts(food.name);
-              return (
-                <div 
-                  key={food.id} 
-                  className={cn(
-                    "bg-card border rounded-lg p-2.5 transition-all",
-                    conflict && "border-amber-200 bg-amber-50/30"
-                  )}
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="font-medium text-sm truncate">{food.name}</span>
-                      {conflict && (
-                        <span className="flex items-center gap-0.5 text-[9px] text-amber-600 bg-amber-100 px-1 py-0.5 rounded flex-shrink-0">
-                          <AlertTriangle className="w-2.5 h-2.5" />
+        {/* Selected foods list */}
+        {selectedFoods.length > 0 && (
+          <div className="space-y-2">
+            <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Alimentos ({selectedFoods.length})
+            </h4>
+            <div className="space-y-1.5">
+              {selectedFoods.map((food) => {
+                const macros = calculateMacros(food);
+                const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
+                const conflict = checkFoodConflicts(food.name);
+                return (
+                  <div 
+                    key={food.id} 
+                    className={cn(
+                      "bg-card border rounded-lg p-2.5 transition-all",
+                      conflict && "border-amber-200 bg-amber-50/30"
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <span className="font-medium text-sm truncate">{food.name}</span>
+                        {conflict && (
+                          <span className="flex items-center gap-0.5 text-[9px] text-amber-600 bg-amber-100 px-1 py-0.5 rounded flex-shrink-0">
+                            <AlertTriangle className="w-2.5 h-2.5" />
+                          </span>
+                        )}
+                      </div>
+                      
+                      <div className="flex items-center gap-1.5 flex-shrink-0">
+                        <Input 
+                          type="number" 
+                          value={food.displayQuantity} 
+                          onChange={(e) => updateDisplayQuantity(food.id, e.target.value)} 
+                          className="w-14 h-7 text-center text-xs px-1" 
+                          min="0" 
+                        />
+                        <span className="text-xs text-muted-foreground w-6">{unitLabel}</span>
+                        <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                          <Flame className="w-3 h-3 text-orange-500" />
+                          {macros.calories}
                         </span>
-                      )}
-                    </div>
-                    
-                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                      <Input 
-                        type="number" 
-                        value={food.displayQuantity} 
-                        onChange={(e) => updateDisplayQuantity(food.id, e.target.value)} 
-                        className="w-14 h-7 text-center text-xs px-1" 
-                        min="0" 
-                      />
-                      <span className="text-xs text-muted-foreground w-6">{unitLabel}</span>
-                      <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                        <Flame className="w-3 h-3 text-orange-500" />
-                        {macros.calories}
-                      </span>
-                      <button 
-                        onClick={() => removeFood(food.id)} 
-                        className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
+                        <button 
+                          onClick={() => removeFood(food.id)} 
+                          className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
+
+            {/* Add more button */}
+            <button
+              onClick={focusSearchInput}
+              className="w-full flex items-center justify-center gap-2 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg border border-dashed border-primary/30 transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              Adicionar mais
+            </button>
           </div>
+        )}
+      </div>
 
-          {/* Add more button */}
-          <button
-            onClick={focusSearchInput}
-            className="w-full flex items-center justify-center gap-2 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg border border-dashed border-primary/30 transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            Adicionar mais
-          </button>
-        </div>
-      )}
-
-      {/* Bottom section - Macro summary + Confirm button */}
+      {/* Bottom section - Macro summary + Confirm button - fixed */}
       {selectedFoods.length > 0 && (
-        <div className="space-y-3 pt-2 border-t">
+        <div className="flex-shrink-0 space-y-3 pt-4 border-t mt-4">
           {/* Macro summary */}
           <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-2.5">
             <div className="grid grid-cols-4 gap-3 text-center">

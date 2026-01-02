@@ -241,7 +241,7 @@ export default function FreeFormMealLogger({
           </SheetHeader>
 
           {/* Main scrollable content */}
-          <div className="flex-1 overflow-auto px-4 py-2">
+          <div className="flex-1 min-h-0 overflow-y-auto px-4 py-2">
             {/* Search area */}
             <UnifiedFoodSearchBlock
               onSelectFood={handleSelectFood}

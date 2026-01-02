@@ -190,9 +190,9 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
   const progress = totalCount > 0 ? (checkedCount / totalCount) * 100 : 0;
 
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col h-full min-h-0 animate-fade-in">
+      {/* Header - fixed */}
+      <div className="flex items-center justify-between flex-shrink-0 pb-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="w-5 h-5" />
@@ -217,8 +217,8 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
         </div>
       </div>
 
-      {/* Progress */}
-      <Card className="glass-card border-primary/20">
+      {/* Progress Card - fixed */}
+      <Card className="glass-card border-primary/20 flex-shrink-0 mb-4">
         <CardContent className="p-4">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium">{text.progress}</span>
@@ -232,97 +232,85 @@ export default function ShoppingList({ mealPlan, onBack }: ShoppingListProps) {
           </div>
         </CardContent>
       </Card>
-      <Card className="glass-card border-primary/20">
-        <CardContent className="p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Progresso</span>
-            <Badge variant="secondary">{checkedCount} de {totalCount} itens</Badge>
-          </div>
-          <div className="h-3 bg-muted rounded-full overflow-hidden">
-            <div 
-              className="h-full gradient-primary transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* Shopping List */}
-      <Card className="glass-card">
-        <CardContent className="p-4">
-          {/* Alert banner if there are conflicts */}
-          {ingredientConflicts.size > 0 && (
-            <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2">
-              <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
-              <div className="text-sm">
-                <p className="font-medium text-amber-600 dark:text-amber-400">
-                  {ingredientConflicts.size} {ingredientConflicts.size === 1 ? 'ingrediente pode conflitar' : 'ingredientes podem conflitar'} com suas restrições
-                </p>
-                <p className="text-muted-foreground text-xs mt-1">
-                  Verifique os itens marcados em amarelo antes de comprar
-                </p>
+      {/* Scrollable Shopping List */}
+      <div className="flex-1 min-h-0 overflow-y-auto">
+        <Card className="glass-card">
+          <CardContent className="p-4">
+            {/* Alert banner if there are conflicts */}
+            {ingredientConflicts.size > 0 && (
+              <div className="mb-4 p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 flex items-start gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+                <div className="text-sm">
+                  <p className="font-medium text-amber-600 dark:text-amber-400">
+                    {ingredientConflicts.size} {ingredientConflicts.size === 1 ? 'ingrediente pode conflitar' : 'ingredientes podem conflitar'} com suas restrições
+                  </p>
+                  <p className="text-muted-foreground text-xs mt-1">
+                    Verifique os itens marcados em amarelo antes de comprar
+                  </p>
+                </div>
               </div>
-            </div>
-          )}
-          
-          <div className="space-y-2">
-            <TooltipProvider>
-              {aggregatedIngredients.map((ingredient, index) => {
-                const itemKey = ingredient.item.toLowerCase().trim();
-                const conflict = ingredientConflicts.get(itemKey);
-                
-                return (
-                  <div
-                    key={`${ingredient.item}-${index}`}
-                    className={cn(
-                      "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer hover:bg-muted/50",
-                      ingredient.checked && "bg-muted/30 opacity-60",
-                      conflict && !ingredient.checked && "bg-amber-500/10 border border-amber-500/30"
-                    )}
-                    onClick={() => toggleItem(ingredient.item)}
-                  >
-                    <Checkbox
-                      checked={ingredient.checked}
-                      onCheckedChange={() => toggleItem(ingredient.item)}
-                      className="shrink-0"
-                    />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <p className={cn(
-                          "font-medium",
-                          ingredient.checked && "line-through text-muted-foreground",
-                          conflict && !ingredient.checked && "text-amber-600 dark:text-amber-400"
-                        )}>
-                          {ingredient.item}
+            )}
+            
+            <div className="space-y-2">
+              <TooltipProvider>
+                {aggregatedIngredients.map((ingredient, index) => {
+                  const itemKey = ingredient.item.toLowerCase().trim();
+                  const conflict = ingredientConflicts.get(itemKey);
+                  
+                  return (
+                    <div
+                      key={`${ingredient.item}-${index}`}
+                      className={cn(
+                        "flex items-center gap-3 p-3 rounded-lg transition-all cursor-pointer hover:bg-muted/50",
+                        ingredient.checked && "bg-muted/30 opacity-60",
+                        conflict && !ingredient.checked && "bg-amber-500/10 border border-amber-500/30"
+                      )}
+                      onClick={() => toggleItem(ingredient.item)}
+                    >
+                      <Checkbox
+                        checked={ingredient.checked}
+                        onCheckedChange={() => toggleItem(ingredient.item)}
+                        className="shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className={cn(
+                            "font-medium",
+                            ingredient.checked && "line-through text-muted-foreground",
+                            conflict && !ingredient.checked && "text-amber-600 dark:text-amber-400"
+                          )}>
+                            {ingredient.item}
+                          </p>
+                          {conflict && !ingredient.checked && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p className="text-xs">{conflict.message}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {formatQuantities(ingredient.quantities)}
                         </p>
-                        {conflict && !ingredient.checked && (
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <AlertTriangle className="w-4 h-4 text-amber-500 shrink-0" />
-                            </TooltipTrigger>
-                            <TooltipContent>
-                              <p className="text-xs">{conflict.message}</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        {formatQuantities(ingredient.quantities)}
-                      </p>
+                      {ingredient.checked && (
+                        <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
+                      )}
                     </div>
-                    {ingredient.checked && (
-                      <CheckCircle className="w-5 h-5 text-green-500 shrink-0" />
-                    )}
-                  </div>
-                );
-              })}
-            </TooltipProvider>
-          </div>
-        </CardContent>
-      </Card>
+                  );
+                })}
+              </TooltipProvider>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
-      {/* Info */}
-      <p className="text-xs text-center text-muted-foreground">
+      {/* Footer tip - fixed */}
+      <p className="text-xs text-center text-muted-foreground flex-shrink-0 pt-4">
         {text.tip}
       </p>
     </div>

@@ -256,6 +256,13 @@ export function useIntoleranceWarning() {
         }
 
         if (mappingsResult.data) {
+          console.log('[INTOLERANCE] Mapeamentos carregados:', mappingsResult.data.length);
+          
+          // Log de amostra para peanut e lactose
+          const peanutMappings = mappingsResult.data.filter((m: any) => m.intolerance_key === 'peanut');
+          const lactoseMappings = mappingsResult.data.filter((m: any) => m.intolerance_key === 'lactose');
+          console.log('[INTOLERANCE] Peanut mappings:', peanutMappings.length, 'Lactose mappings:', lactoseMappings.length);
+          
           setMappings(mappingsResult.data);
         }
 
@@ -382,6 +389,16 @@ export function useIntoleranceWarning() {
     if (hasIntolerances) {
       const normalizedName = foodName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
+      // DEBUG: Log para verificar dados carregados
+      if (foodName.toLowerCase().includes('arroz')) {
+        console.log('[INTOLERANCE DEBUG] Verificando:', { 
+          foodName, 
+          normalizedName,
+          totalMappings: mappings.length,
+          userIntolerances: intolerances 
+        });
+      }
+
       // Check against mappings from database
       for (const mapping of mappings) {
         const normalizedIngredient = mapping.ingredient.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
@@ -393,6 +410,7 @@ export function useIntoleranceWarning() {
           containsWholeWord(normalizedName, normalizedIngredient);
         
         if (isMatch && intolerances.includes(mapping.intolerance_key)) {
+          console.log('[INTOLERANCE] Match encontrado:', { food: foodName, ingredient: mapping.ingredient, key: mapping.intolerance_key, normalizedIngredient });
           foundConflicts.add(mapping.intolerance_key);
         }
       }

@@ -192,18 +192,47 @@ export async function loadSafetyDatabase(
     auth: { persistSession: false }
   });
 
-  // Buscar todos os dados em paralelo
+  // Helper function to fetch all records with explicit pagination
+  // Supabase has a default limit of 1000 rows per request
+  async function fetchAllMappings(): Promise<IntoleranceMapping[]> {
+    const pageSize = 1000;
+    let allData: IntoleranceMapping[] = [];
+    let from = 0;
+    let hasMore = true;
+
+    while (hasMore) {
+      const { data, error } = await supabaseClient
+        .from("intolerance_mappings")
+        .select("intolerance_key, ingredient, severity_level")
+        .range(from, from + pageSize - 1);
+
+      if (error) {
+        console.error("[GlobalSafetyEngine] Error fetching mappings page:", error);
+        throw new Error(`Failed to load intolerance mappings: ${error.message}`);
+      }
+
+      if (data && data.length > 0) {
+        allData = allData.concat(data as IntoleranceMapping[]);
+        from += pageSize;
+        // If we got less than pageSize, we've reached the end
+        hasMore = data.length === pageSize;
+      } else {
+        hasMore = false;
+      }
+    }
+
+    return allData;
+  }
+
+  // Fetch mappings with pagination, other tables in parallel
   const [
-    mappingsResult,
+    allMappings,
     safeKeywordsResult,
     dietaryResult,
     normalizationResult,
     dietaryProfilesResult
   ] = await Promise.all([
-    supabaseClient
-      .from("intolerance_mappings")
-      .select("intolerance_key, ingredient, severity_level")
-      .range(0, 9999),  // Use range to bypass default 1000 limit
+    fetchAllMappings(),
     supabaseClient
       .from("intolerance_safe_keywords")
       .select("intolerance_key, keyword")
@@ -221,19 +250,13 @@ export async function loadSafetyDatabase(
       .eq("is_active", true)
   ]);
 
-  // Processar erros
-  if (mappingsResult.error) {
-    console.error("[GlobalSafetyEngine] Error loading mappings:", mappingsResult.error);
-    throw new Error(`Failed to load intolerance mappings: ${mappingsResult.error.message}`);
-  }
-
   // Organizar dados em Maps para acesso O(1)
   // Separar por severity: high = blocked, low = caution/warning
   const intoleranceMappings = new Map<string, string[]>();
   const cautionMappings = new Map<string, string[]>();
   const allIntoleranceKeys = new Set<string>();
 
-  for (const row of (mappingsResult.data as IntoleranceMapping[]) || []) {
+  for (const row of allMappings) {
     allIntoleranceKeys.add(row.intolerance_key);
     const normalizedIngredient = normalizeText(row.ingredient);
     
@@ -298,7 +321,7 @@ export async function loadSafetyDatabase(
   };
   cacheTimestamp = now;
 
-  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types (blocked), ${cautionMappings.size} caution types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${mappingsResult.data?.length || 0} total ingredients`);
+  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types (blocked), ${cautionMappings.size} caution types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${allMappings.length} total ingredients`);
 
   return cachedDatabase;
 }

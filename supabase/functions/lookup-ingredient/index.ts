@@ -172,12 +172,9 @@ function isPreparedDish(food: any, userQuery?: string): boolean {
   // e.g., if user types "feijoada" and food is "Feijoada", allow it
   if (userQuery) {
     const queryNormalized = normalizeText(userQuery);
-    // Exact match - user wants this specific dish
+    // Exact match only - user wants this specific dish
+    // Do NOT use startsWith as it allows "Arroz com Feijão" when searching "arroz"
     if (nameNormalized === queryNormalized) {
-      return false;
-    }
-    // Starts with query and is short (e.g., "Feijoada" when searching "feijoada")
-    if (nameNormalized.startsWith(queryNormalized) && name.length < queryNormalized.length + 20) {
       return false;
     }
   }

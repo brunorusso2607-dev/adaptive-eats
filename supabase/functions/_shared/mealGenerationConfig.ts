@@ -3949,12 +3949,14 @@ function getPhilosophyHeader(language: string): string {
 }
 
 // =============================================================================
-// PROMPT v6.0 GLOBAL - NUTRICIONISTA HUMANIZADO + COMPORTAMENTAL
+// PROMPT v7.0 GLOBAL - 100% ENGLISH MASTER + REGIONAL INJECTION
 // =============================================================================
-// Este é o prompt mestre utilizado por:
+// This is the master prompt used by:
 // - generate-ai-meal-plan
 // - suggest-smart-substitutes
 // - regenerate-ai-meal-alternatives
+//
+// ARCHITECTURE: Master rules in English for AI precision, regional examples injected dynamically
 // =============================================================================
 
 export interface MasterPromptParams {
@@ -3969,10 +3971,308 @@ export interface MasterPromptParams {
   dayNumber: number;
   dayName: string;
   regional: RegionalConfig;
-  countryCode?: string; // Código do país para prompt comportamental
+  countryCode?: string;
   strategyKey?: string;
   previousDaysMeals?: string[];
   nutritionalTablePrompt?: string;
+}
+
+// =============================================================================
+// REGIONAL EXAMPLES GENERATOR - Localized examples per country
+// =============================================================================
+function getRegionalExamples(countryCode: string, language: string): {
+  breakfast: string;
+  snack: string;
+  lunch: string;
+  dinner: string;
+  supper: string;
+  consolidatedDishes: string;
+  beverageExamples: string;
+  badSnackExamples: string;
+  goodSnackExamples: string;
+} {
+  const config = getRegionalConfig(countryCode);
+  const structure = config.mealStructure;
+  
+  // Default examples based on country
+  const examples: Record<string, any> = {
+    'BR': {
+      breakfast: `{
+  "title": "Tapioca com queijo e café com leite",
+  "foods": [
+    {"name": "Tapioca recheada com queijo branco", "grams": 120},
+    {"name": "1 xícara de café com leite", "grams": 200},
+    {"name": "1 fatia de mamão (sobremesa)", "grams": 100}
+  ],
+  "instructions": [
+    "Ingredientes: goma de tapioca (80g), queijo branco (40g).",
+    "Hidrate a goma e espalhe na frigideira quente até formar disco.",
+    "Adicione o queijo, dobre e sirva quente."
+  ]
+}`,
+      snack: `{
+  "title": "Iogurte com granola e morangos",
+  "foods": [{"name": "Bowl de iogurte com granola e morangos", "grams": 250}],
+  "instructions": [
+    "Ingredientes: iogurte natural (170g), granola sem açúcar (30g), morangos (50g).",
+    "Monte em camadas no bowl.",
+    "Sirva gelado."
+  ]
+}`,
+      lunch: `{
+  "title": "Frango grelhado com arroz, feijão e salada",
+  "foods": [
+    {"name": "Filé de frango grelhado ao limão", "grams": 150},
+    {"name": "Arroz integral", "grams": 100},
+    {"name": "Feijão carioca", "grams": 80},
+    {"name": "Salada verde com azeite", "grams": 80},
+    {"name": "1 laranja média (sobremesa)", "grams": 150},
+    {"name": "1 copo de água (opcional)", "grams": 200}
+  ],
+  "instructions": [
+    "Tempere o frango com sal, alho e limão. Marine por 10 min.",
+    "Grelhe por 5-6 min de cada lado.",
+    "Monte: arroz, feijão, salada e frango."
+  ]
+}`,
+      dinner: `{
+  "title": "Sopa de lentilha com tofu e legumes",
+  "foods": [
+    {"name": "Sopa de lentilha com tofu e legumes", "grams": 380},
+    {"name": "1 copo de água (opcional)", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredientes: lentilha (100g), tofu (80g), cenoura (50g), aipo (30g), cebola (20g).",
+    "Refogue cebola e aipo. Adicione cenoura, lentilha e água. Cozinhe 15 min.",
+    "Adicione tofu nos últimos minutos e sirva quente."
+  ]
+}`,
+      supper: `{
+  "title": "Banana com chia e chá de camomila",
+  "foods": [
+    {"name": "Banana com chia e canela", "grams": 75},
+    {"name": "1 xícara de chá de camomila", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredientes: 1/2 banana (60g), chia (10g), canela (5g).",
+    "Fatie a banana e polvilhe chia e canela.",
+    "Acompanhe com chá morno."
+  ]
+}`,
+      consolidatedDishes: "Sopas, Caldos, Feijoada, Moqueca, Omeletes, Tapiocas recheadas, Açaí bowl, Vitaminas",
+      beverageExamples: '"1 copo de água (opcional)", "1 copo de refrigerante zero (opcional)", "1 copo de suco zero açúcar (opcional)"',
+      badSnackExamples: '"Tomate com pepino", "Pepino com rúcula", "Cenoura crua"',
+      goodSnackExamples: '"Maçã com pasta de amendoim", "Iogurte com frutas", "Mix de castanhas", "Banana com chia", "Queijo cottage com tomate cereja"'
+    },
+    'US': {
+      breakfast: `{
+  "title": "Scrambled eggs with toast and berries",
+  "foods": [
+    {"name": "Scrambled eggs with cheese", "grams": 150},
+    {"name": "Whole wheat toast", "grams": 60},
+    {"name": "1 cup of coffee with milk", "grams": 200},
+    {"name": "Mixed berries (dessert)", "grams": 100}
+  ],
+  "instructions": [
+    "Ingredients: 2 eggs, cheese (30g), butter (5g), bread (60g), berries (100g).",
+    "Scramble eggs with cheese in butter until fluffy.",
+    "Toast bread and serve with berries on the side."
+  ]
+}`,
+      snack: `{
+  "title": "Greek yogurt with granola and strawberries",
+  "foods": [{"name": "Greek yogurt parfait with granola and strawberries", "grams": 250}],
+  "instructions": [
+    "Ingredients: Greek yogurt (170g), granola (30g), strawberries (50g).",
+    "Layer yogurt, granola, and sliced strawberries.",
+    "Serve chilled."
+  ]
+}`,
+      lunch: `{
+  "title": "Grilled chicken with rice and vegetables",
+  "foods": [
+    {"name": "Grilled chicken breast with herbs", "grams": 150},
+    {"name": "Brown rice", "grams": 100},
+    {"name": "Steamed broccoli", "grams": 80},
+    {"name": "Mixed green salad", "grams": 80},
+    {"name": "1 medium apple (dessert)", "grams": 150},
+    {"name": "1 glass of water (optional)", "grams": 200}
+  ],
+  "instructions": [
+    "Season chicken with salt, pepper, and herbs. Marinate 10 min.",
+    "Grill for 5-6 min each side until done.",
+    "Plate with rice, broccoli, salad, and chicken."
+  ]
+}`,
+      dinner: `{
+  "title": "Lentil soup with vegetables",
+  "foods": [
+    {"name": "Lentil soup with carrots and celery", "grams": 380},
+    {"name": "1 glass of water (optional)", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredients: lentils (100g), carrots (50g), celery (30g), onion (20g), olive oil (5g).",
+    "Sauté onion and celery. Add carrots, lentils, and water. Cook 15 min.",
+    "Season and serve hot."
+  ]
+}`,
+      supper: `{
+  "title": "Banana with almond butter and chamomile tea",
+  "foods": [
+    {"name": "Banana with almond butter", "grams": 75},
+    {"name": "1 cup of chamomile tea", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredients: 1/2 banana (60g), almond butter (15g).",
+    "Slice banana and drizzle with almond butter.",
+    "Serve with warm tea."
+  ]
+}`,
+      consolidatedDishes: "Soups, Stews, Salads with protein, Wraps, Sandwiches, Burgers, Pasta dishes, Stir-fries, Smoothie bowls",
+      beverageExamples: '"1 glass of water (optional)", "1 glass of diet soda (optional)", "1 glass of sugar-free juice (optional)"',
+      badSnackExamples: '"Tomato with cucumber", "Raw carrots", "Plain celery sticks"',
+      goodSnackExamples: '"Apple with peanut butter", "Greek yogurt with berries", "Almonds with dried cranberries", "Cheese stick with grapes", "Hummus with carrot sticks"'
+    },
+    'ES': {
+      breakfast: `{
+  "title": "Tostada con tomate y café con leche",
+  "foods": [
+    {"name": "Tostada con tomate y aceite de oliva", "grams": 100},
+    {"name": "1 taza de café con leche", "grams": 200},
+    {"name": "1 naranja (postre)", "grams": 150}
+  ],
+  "instructions": [
+    "Ingredientes: pan integral (60g), tomate rallado (30g), aceite de oliva (10g).",
+    "Tuesta el pan y añade el tomate rallado y el aceite.",
+    "Sirve con café y naranja."
+  ]
+}`,
+      snack: `{
+  "title": "Yogur natural con nueces",
+  "foods": [{"name": "Yogur natural con nueces y miel", "grams": 200}],
+  "instructions": [
+    "Ingredientes: yogur natural (150g), nueces (30g), miel (20g).",
+    "Mezcla el yogur con las nueces.",
+    "Añade la miel y sirve."
+  ]
+}`,
+      lunch: `{
+  "title": "Pollo asado con patatas y ensalada",
+  "foods": [
+    {"name": "Pechuga de pollo asada con hierbas", "grams": 150},
+    {"name": "Patatas asadas", "grams": 100},
+    {"name": "Ensalada mediterránea", "grams": 80},
+    {"name": "1 manzana (postre)", "grams": 150},
+    {"name": "1 vaso de agua (opcional)", "grams": 200}
+  ],
+  "instructions": [
+    "Sazona el pollo con sal, pimienta y hierbas. Marina 10 min.",
+    "Asa en el horno a 200°C por 25 min.",
+    "Sirve con patatas asadas y ensalada."
+  ]
+}`,
+      dinner: `{
+  "title": "Crema de calabacín",
+  "foods": [
+    {"name": "Crema de calabacín con queso", "grams": 350},
+    {"name": "1 vaso de agua (opcional)", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredientes: calabacín (200g), patata (50g), cebolla (30g), queso fresco (30g).",
+    "Cuece las verduras y tritura hasta obtener crema.",
+    "Añade queso y sirve caliente."
+  ]
+}`,
+      supper: `{
+  "title": "Plátano con yogur y té de manzanilla",
+  "foods": [
+    {"name": "Plátano con yogur", "grams": 75},
+    {"name": "1 taza de té de manzanilla", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredientes: 1/2 plátano (60g), yogur natural (50g).",
+    "Corta el plátano y mezcla con yogur.",
+    "Acompaña con té caliente."
+  ]
+}`,
+      consolidatedDishes: "Sopas, Gazpachos, Cremas, Tortillas, Ensaladas completas, Revueltos, Guisos",
+      beverageExamples: '"1 vaso de agua (opcional)", "1 vaso de refresco zero (opcional)", "1 vaso de zumo sin azúcar (opcional)"',
+      badSnackExamples: '"Tomate con pepino", "Zanahoria cruda", "Apio solo"',
+      goodSnackExamples: '"Yogur con nueces", "Manzana con mantequilla de almendras", "Frutos secos variados", "Queso fresco con membrillo"'
+    },
+    'MX': {
+      breakfast: `{
+  "title": "Huevos rancheros con frijoles",
+  "foods": [
+    {"name": "Huevos rancheros con salsa", "grams": 180},
+    {"name": "Frijoles refritos", "grams": 80},
+    {"name": "1 taza de café", "grams": 200},
+    {"name": "1 porción de papaya (postre)", "grams": 100}
+  ],
+  "instructions": [
+    "Ingredientes: 2 huevos, salsa roja (30g), tortilla (30g), frijoles (80g).",
+    "Fríe los huevos y sirve sobre tortilla con salsa.",
+    "Acompaña con frijoles y papaya."
+  ]
+}`,
+      snack: `{
+  "title": "Manzana con crema de cacahuate",
+  "foods": [{"name": "Manzana con crema de cacahuate", "grams": 175}],
+  "instructions": [
+    "Ingredientes: 1 manzana (150g), crema de cacahuate (25g).",
+    "Corta la manzana en rebanadas.",
+    "Unta con crema de cacahuate y sirve."
+  ]
+}`,
+      lunch: `{
+  "title": "Pollo a la plancha con arroz y ensalada",
+  "foods": [
+    {"name": "Pechuga de pollo a la plancha", "grams": 150},
+    {"name": "Arroz rojo", "grams": 100},
+    {"name": "Frijoles negros", "grams": 80},
+    {"name": "Ensalada de nopal", "grams": 80},
+    {"name": "1 naranja (postre)", "grams": 150},
+    {"name": "1 vaso de agua (opcional)", "grams": 200}
+  ],
+  "instructions": [
+    "Sazona el pollo con sal, pimienta y limón. Marina 10 min.",
+    "Cocina a la plancha 5-6 min por lado.",
+    "Sirve con arroz, frijoles y ensalada de nopal."
+  ]
+}`,
+      dinner: `{
+  "title": "Sopa de tortilla",
+  "foods": [
+    {"name": "Sopa de tortilla con aguacate", "grams": 350},
+    {"name": "1 vaso de agua (opcional)", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredientes: caldo de pollo (250ml), tortilla (30g), aguacate (30g), queso (20g).",
+    "Calienta el caldo con tiras de tortilla.",
+    "Sirve con aguacate y queso fresco."
+  ]
+}`,
+      supper: `{
+  "title": "Plátano con chia y té de manzanilla",
+  "foods": [
+    {"name": "Plátano con chia", "grams": 75},
+    {"name": "1 taza de té de manzanilla", "grams": 200}
+  ],
+  "instructions": [
+    "Ingredientes: 1/2 plátano (60g), chia (10g), canela (5g).",
+    "Corta el plátano y espolvorea chia y canela.",
+    "Acompaña con té caliente."
+  ]
+}`,
+      consolidatedDishes: "Sopas, Caldos, Tacos, Quesadillas, Enchiladas, Burritos, Pozole, Ensaladas completas",
+      beverageExamples: '"1 vaso de agua (opcional)", "1 vaso de refresco zero (opcional)", "1 vaso de agua de jamaica sin azúcar (opcional)"',
+      badSnackExamples: '"Pepino con limón solo", "Jícama sola", "Zanahoria cruda"',
+      goodSnackExamples: '"Manzana con crema de cacahuate", "Yogurt con mango", "Nueces mixtas", "Jícama con limón y chile", "Guacamole con verduras"'
+    }
+  };
+  
+  // Return examples for the specified country, fallback to US for non-configured countries
+  return examples[countryCode] || examples['US'];
 }
 
 export function getMasterMealPromptV5(params: MasterPromptParams): string {
@@ -3999,10 +4299,10 @@ export function getMasterMealPromptV5(params: MasterPromptParams): string {
       "target_calories": ${m.targetCalories},
       "options": [
         {
-          "title": "Nome descritivo",
-          "foods": [{"name": "alimento", "grams": 100}],
+          "title": "Descriptive name in ${regional.language}",
+          "foods": [{"name": "food name in ${regional.language}", "grams": 100}],
           "calories_kcal": ${m.targetCalories},
-          "instructions": ["Passo de preparo"]
+          "instructions": ["Preparation step in ${regional.language}"]
         }
       ]
     }`).join(',');
@@ -4014,14 +4314,17 @@ export function getMasterMealPromptV5(params: MasterPromptParams): string {
     goal: restrictions.goal,
   }) : '';
 
-  // Gerar o prompt comportamental baseado no país
+  // Get regional behavioral prompt
   const countryBehavioralPrompt = getCountryBehavioralPrompt(countryCode);
   
-  // Determinar o nome/persona do nutricionista baseado no país
+  // Get nutritionist persona
   const nutritionistPersona = getNutritionistPersona(countryCode, regional.language);
+  
+  // Get localized examples for this country
+  const regionalExamples = getRegionalExamples(countryCode, regional.language);
 
   // =============================================================================
-  // PROMPT v6.0 GLOBAL - COMPORTAMENTAL POR PAÍS
+  // PROMPT v7.0 GLOBAL - 100% ENGLISH MASTER WITH REGIONAL INJECTION
   // =============================================================================
   return `${nutritionistPersona}
 
@@ -4042,315 +4345,187 @@ ${previousDaysMeals.length > 0 ? `\n━━━ ${getNoRepeatHeader(regional.langu
 ${countryBehavioralPrompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🍽️ ${getPhilosophyHeader(regional.language)}:
+🍽️ REAL MEAL PHILOSOPHY (CRITICAL RULES):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-1️⃣ COERÊNCIA CULINÁRIA:
-   • Sopa = prato único (NÃO adicionar arroz/salada separados)
-   • Feijoada = prato completo (NÃO adicionar sopa junto)
-   • Pratos quentes combinam com acompanhamentos quentes
-   • Se é grelhado, pode ter salada crua
+1️⃣ CULINARY COHERENCE:
+   • Soup = single dish (DO NOT add rice/salad separately)
+   • One-pot meals = complete dish (DO NOT add separate components)
+   • Hot dishes pair with hot sides
+   • Grilled items can have raw salad
 
-2️⃣ PROTEÍNAS VARIAM NO DIA:
-   • Almoço: frango → Jantar: peixe OU carne
-   • Café: ovos → Almoço: outra proteína
-   • Ceia: SEM proteína pesada (máximo iogurte/leite)
+2️⃣ PROTEIN VARIETY THROUGHOUT THE DAY:
+   • Lunch: chicken → Dinner: fish OR beef
+   • Breakfast: eggs → Lunch: different protein
+   • Supper: NO heavy protein (max yogurt/milk)
 
-3️⃣ 🚨🚨🚨 ORDEM DOS ITENS NO ARRAY foods - OBRIGATÓRIO 🚨🚨🚨:
-   ⚠️ REGRA ABSOLUTA: BEBIDAS SEMPRE NA ÚLTIMA POSIÇÃO DO ARRAY!
-   ⚠️ REGRA ABSOLUTA: PRATO PRINCIPAL SEMPRE NA PRIMEIRA POSIÇÃO!
+3️⃣ 🚨🚨🚨 FOODS ARRAY ORDER - MANDATORY 🚨🚨🚨:
+   ⚠️ ABSOLUTE RULE: BEVERAGES ALWAYS IN LAST POSITION!
+   ⚠️ ABSOLUTE RULE: MAIN DISH ALWAYS IN FIRST POSITION!
    
-   ORDEM CORRETA (seguir EXATAMENTE):
-   1º POSIÇÃO: Prato principal / Proteína (frango, omelete, tapioca, etc.)
-   2º POSIÇÃO: Acompanhamentos (arroz, feijão, salada - se houver)
-   3º POSIÇÃO: Condimentos (azeite para finalização - se necessário)
-   4º POSIÇÃO: Fruta/Sobremesa (se houver)
-   5º POSIÇÃO (ÚLTIMA): Bebida (SEMPRE por último - nunca antes!)
+   CORRECT ORDER (follow EXACTLY):
+   1st POSITION: Main dish / Protein (chicken, omelet, etc.)
+   2nd POSITION: Side dishes (rice, beans, salad - if applicable)
+   3rd POSITION: Condiments (olive oil for finishing - if necessary)
+   4th POSITION: Fruit/Dessert (if applicable)
+   5th POSITION (LAST): Beverage (ALWAYS last - never before!)
    
-   ✅ CORRETO: [Proteína, Arroz, Feijão, Fruta, Bebida]
-   ❌ ERRADO: [Bebida, Proteína, Arroz] ← Bebida NÃO pode ser primeiro!
-   ❌ ERRADO: [Proteína, Bebida, Fruta] ← Bebida NÃO pode vir antes de fruta!
+   ✅ CORRECT: [Protein, Rice, Beans, Fruit, Beverage]
+   ❌ WRONG: [Beverage, Protein, Rice] ← Beverage CANNOT be first!
+   ❌ WRONG: [Protein, Beverage, Fruit] ← Beverage CANNOT come before fruit!
 
-4️⃣ BEBIDAS OBRIGATÓRIAS NO ALMOÇO E JANTAR:
-   • Almoço/Jantar: SEMPRE incluir 1 bebida ZERO como ÚLTIMO item:
-     - "1 copo de água (opcional)" (200g)
-     - "1 copo de refrigerante zero (opcional)" (200g)
-     - "1 copo de suco zero açúcar (opcional)" (200g)
-   • NUNCA usar suco como fonte de calorias
-   • Café: café com leite, chá ou suco natural
-   • Ceia: chás calmantes (camomila, erva-cidreira)
+4️⃣ MANDATORY BEVERAGES FOR LUNCH AND DINNER:
+   • Lunch/Dinner: ALWAYS include 1 ZERO beverage as LAST item:
+     - ${regionalExamples.beverageExamples}
+   • NEVER use juice as calorie source
+   • Breakfast: coffee with milk, tea, or natural juice
+   • Supper: calming teas (chamomile, etc.)
 
-5️⃣ 🚨 LIMITES CALÓRICOS POR TIPO DE REFEIÇÃO (OBRIGATÓRIO):
-   • Café da manhã: 300-450 kcal (nunca mais de 500 kcal)
-   • Lanche da manhã: 80-200 kcal (MÁXIMO 250 kcal - é LANCHE, não refeição!)
-   • Almoço: 450-700 kcal (refeição principal)
-   • Lanche da tarde: 80-200 kcal (MÁXIMO 250 kcal - é LANCHE, não refeição!)
-   • Jantar: 400-650 kcal (refeição principal)
-   • Ceia: 50-180 kcal (MÁXIMO 200 kcal - refeição leve!)
+5️⃣ 🚨 CALORIC LIMITS BY MEAL TYPE (MANDATORY):
+   • Breakfast: 300-450 kcal (never more than 500 kcal)
+   • Morning snack: 80-200 kcal (MAX 250 kcal - it's a SNACK, not a meal!)
+   • Lunch: 450-700 kcal (main meal)
+   • Afternoon snack: 80-200 kcal (MAX 250 kcal - it's a SNACK, not a meal!)
+   • Dinner: 400-650 kcal (main meal)
+   • Supper: 50-180 kcal (MAX 200 kcal - light meal!)
    
-   ⚠️ SE o target_calories for MAIOR que o máximo, IGNORE o target e use o máximo!
-   ⚠️ Lanches com 600kcal são ERRO GRAVE - parecem almoço completo!
+   ⚠️ IF target_calories is HIGHER than max, IGNORE target and use max!
+   ⚠️ Snacks with 600kcal are SERIOUS ERROR - they look like a full lunch!
 
-6️⃣ LANCHES DEVEM SER APETITOSOS E SATISFATÓRIOS:
-   🚨 REGRA CRÍTICA: Lanches NÃO podem ser apenas vegetais crus sem proteína/gordura!
+6️⃣ SNACKS MUST BE APPETIZING AND SATISFYING:
+   🚨 CRITICAL RULE: Snacks CANNOT be just raw vegetables without protein/fat!
    
-   ❌ PROIBIDO PARA LANCHES:
-   • "Tomate com pepino" → SEM GRAÇA, não satisfaz!
-   • "Pepino com tomate e rúcula" → parece sobra, não lanche!
-   • "Cenoura crua" → muito restritivo, não é refeição!
-   • Vegetais crus sozinhos sem acompanhamento
+   ❌ FORBIDDEN FOR SNACKS:
+   • ${regionalExamples.badSnackExamples} ← BORING, not satisfying!
+   • Raw vegetables alone without accompaniment
    
-   ✅ LANCHES CORRETOS (sempre ter proteína OU gordura):
-   • "Maçã com pasta de amendoim" → fruta + gordura boa
-   • "Iogurte com frutas vermelhas" → proteína + fruta
-   • "Mix de castanhas com frutas secas" → gordura + carb
-   • "Banana com chia e canela" → fruta + semente
-   • "Queijo cottage com tomate cereja" → proteína + vegetal
-   • "Wrap de alface com atum" → proteína + vegetal
-   • "Smoothie de frutas com whey" → proteína + fruta
-   • "Torrada integral com abacate" → carb + gordura
+   ✅ CORRECT SNACKS (always have protein OR fat):
+   • ${regionalExamples.goodSnackExamples}
    
-   REGRA: Lanche = Fruta/Vegetal + Proteína OU Gordura saudável
+   RULE: Snack = Fruit/Vegetable + Protein OR Healthy fat
 
-7️⃣ FRUTAS COM CONTEXTO:
-   • Sempre especificar: "1 banana média (sobremesa)"
-   • Nunca "mix de frutas" vago - especificar QUAIS
+7️⃣ FRUITS WITH CONTEXT:
+   • Always specify: "1 medium banana (dessert)"
+   • Never "mixed fruits" vaguely - specify WHICH fruits
 
-8️⃣ TEMPEROS NÃO SÃO ALIMENTOS SEPARADOS:
-   • Suco de limão, azeite, sal, pimenta = TEMPEROS que vão DENTRO da preparação
-   • ❌ ERRADO: "Suco de limão (15g)" como item separado
-   • ✅ CERTO: "Filé de frango grelhado ao limão" (já inclui o tempero)
-   • Azeite pode aparecer separado APENAS para finalização de saladas
+8️⃣ SEASONINGS ARE NOT SEPARATE FOODS:
+   • Lemon juice, olive oil, salt, pepper = SEASONINGS that go INSIDE the preparation
+   • ❌ WRONG: "Lemon juice (15g)" as separate item
+   • ✅ CORRECT: "Grilled chicken with lemon" (seasoning included in name)
+   • Olive oil can appear separate ONLY for salad finishing
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📝 FORMATO DOS ALIMENTOS (foods) - REGRA ABSOLUTA:
+📝 FOODS FORMAT (foods array) - ABSOLUTE RULE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚨🚨🚨 REGRA CRÍTICA: PRATOS ÚNICOS vs COMPOSTOS 🚨🚨🚨
+🚨🚨🚨 CRITICAL RULE: SINGLE DISHES vs COMPOSED MEALS 🚨🚨🚨
 
-▶️ TIPO 1 - PRATOS ÚNICOS (CONSOLIDAR EM 1 ITEM):
-SE a refeição é: Sopa, Caldo, Creme, Omelete, Fritata, Salada com proteína,
-Wrap, Sanduíche, Taco, Burrito, Bowl, Smoothie, Vitamina, Mingau, Porridge,
-Feijoada, Moqueca, Paella, Risotto, Curry, Stir-fry...
+▶️ TYPE 1 - SINGLE DISHES (CONSOLIDATE INTO 1 ITEM):
+If the meal is: ${regionalExamples.consolidatedDishes}...
 
-→ CONSOLIDAR TODOS os ingredientes em 1 ÚNICO item no array foods!
+→ CONSOLIDATE ALL ingredients into 1 SINGLE item in the foods array!
 
-✅ CERTO: [{"name": "Sopa de lentilha com tofu e legumes", "grams": 350}]
-✅ CERTO: [{"name": "Omelete de claras com espinafre e queijo", "grams": 180}]
-✅ CERTO: [{"name": "Salada caesar com frango grelhado", "grams": 280}]
+✅ CORRECT: [{"name": "Lentil soup with vegetables", "grams": 350}]
+✅ CORRECT: [{"name": "Egg white omelet with spinach and cheese", "grams": 180}]
+✅ CORRECT: [{"name": "Caesar salad with grilled chicken", "grams": 280}]
 
-❌ PROIBIDO: 
+❌ FORBIDDEN: 
 [
-  {"name": "Tofu amassado", "grams": 50},
-  {"name": "Tomate seco picado", "grams": 20},
-  {"name": "Sal", "grams": 2}
+  {"name": "Mashed tofu", "grams": 50},
+  {"name": "Chopped sun-dried tomato", "grams": 20},
+  {"name": "Salt", "grams": 2}
 ]
-→ Isso NÃO é cardápio, é lista de compras! ERRO GRAVE!
+→ This is NOT a menu, it's a shopping list! SERIOUS ERROR!
 
-▶️ TIPO 2 - REFEIÇÃO COMPOSTA (LISTA SEPARADA):
-SE a refeição é: Almoço/Jantar tradicional com Proteína + Base + Acompanhamento
+▶️ TYPE 2 - COMPOSED MEAL (SEPARATE LIST):
+If the meal is: Traditional lunch/dinner with Protein + Base + Side dish
 
-→ LISTAR cada componente separado (são servidos ao lado, não misturados)
+→ LIST each component separately (served side by side, not mixed)
 
-✅ CERTO:
-[
-  {"name": "Filé de frango grelhado ao limão", "grams": 150},
-  {"name": "Arroz integral", "grams": 100},
-  {"name": "Feijão carioca", "grams": 80},
-  {"name": "Salada verde com azeite", "grams": 80},
-  {"name": "1 laranja média (sobremesa)", "grams": 150},
-  {"name": "1 copo de água (opcional)", "grams": 200}
-]
+EXAMPLE for ${countryCode}:
+${regionalExamples.lunch}
 
-⚠️ REGRAS DE SEPARAÇÃO:
-• Arroz/Feijão = sempre separados (servidos ao lado)
-• Fruta de sobremesa = sempre separada
-• Bebida = sempre separada (último item)
-• Temperos/condimentos = NUNCA separados (vão DENTRO do nome do prato)
+⚠️ SEPARATION RULES:
+• Rice/Beans = always separate (served on the side)
+• Dessert fruit = always separate
+• Beverage = always separate (last item)
+• Seasonings/condiments = NEVER separate (go INSIDE the dish name)
 
-❌ NUNCA FAZER (ingredientes soltos sem contexto):
-• {"name": "Tofu amassado", "grams": 50} → SOLTO! Cadê o prato?
-• {"name": "Sal", "grams": 2} → TEMPERO! Não é item!
-• {"name": "Azeite de oliva", "grams": 5} → TEMPERO! Não é item!
-• {"name": "Tomate seco picado", "grams": 20} → SOLTO! Faz parte de qual prato?
+❌ NEVER DO (loose ingredients without context):
+• {"name": "Mashed tofu", "grams": 50} → LOOSE! Where's the dish?
+• {"name": "Salt", "grams": 2} → SEASONING! Not an item!
+• {"name": "Olive oil", "grams": 5} → SEASONING! Not an item!
+• {"name": "Chopped sun-dried tomato", "grams": 20} → LOOSE! Part of which dish?
 
-ORDEM NO ARRAY foods:
-1. Prato principal (consolidado OU proteína do prato composto)
-2. Acompanhamentos (arroz, feijão - se prato composto)
-3. Condimentos (azeite para finalização - APENAS se necessário)
-4. Fruta de sobremesa
-5. Bebida zero/opcional (almoço/jantar)
+ORDER IN foods ARRAY:
+1. Main dish (consolidated OR protein of composed meal)
+2. Side dishes (rice, beans - if composed meal)
+3. Condiments (olive oil for finishing - ONLY if necessary)
+4. Dessert fruit
+5. Zero/optional beverage (lunch/dinner)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📖 FORMATO DAS DICAS (instructions) - COMO PREPARAR:
+📖 INSTRUCTIONS FORMAT (instructions array) - HOW TO PREPARE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚨 DICAS ensinam a MONTAR o prato, detalhando os ingredientes! 🚨
+🚨 Instructions teach HOW TO ASSEMBLE the dish, detailing the ingredients! 🚨
 
-As "dicas" devem explicar COMO preparar o prato, mencionando os ingredientes
-que compõem a refeição. É um guia prático, NÃO uma receita formal.
+The "instructions" should explain HOW to prepare the dish, mentioning the ingredients
+that make up the meal. It's a practical guide, NOT a formal recipe.
 
-✅ FORMATO CORRETO (dica rica e detalhada):
-[
-  "Use lentilha cozida (100g), cenoura em cubos (50g), cebola picada (20g), tofu em cubos (80g), aipo (30g) e um fio de azeite.",
-  "Refogue a cebola e o aipo no azeite até dourar. Adicione a cenoura e a lentilha com água.",
-  "Cozinhe por 15 minutos, adicione o tofu nos últimos 5 minutos. Tempere com sal e sirva quente."
-]
+IDEAL INSTRUCTION STRUCTURE:
+1️⃣ FIRST STEP: List ingredients with gram weights
+2️⃣ SECOND STEP: Explain main preparation (how to cook/assemble)
+3️⃣ THIRD STEP: Finishing touches and serving tips
 
-❌ FORMATO ERRADO (instrução vaga):
-[
-  "Refogue a cebola e o aipo no azeite.",
-  "Adicione o tofu e a salsa."
-]
-
-ESTRUTURA IDEAL DA DICA:
-1️⃣ PRIMEIRO PASSO: Listar os ingredientes que compõem o prato com gramagens
-2️⃣ SEGUNDO PASSO: Explicar o preparo principal (como cozinhar/montar)
-3️⃣ TERCEIRO PASSO: Finalização e dicas de servir
-
-EXEMPLOS DE DICAS BEM ESCRITAS:
-
-🍲 Para SOPA:
-[
-  "Ingredientes: lentilha cozida (100g), cenoura picada (50g), cebola (20g), tofu em cubos (80g), aipo (30g) e azeite (5g).",
-  "Refogue cebola e aipo no azeite. Adicione cenoura, lentilha e água. Cozinhe 15 min.",
-  "Acrescente o tofu nos últimos minutos. Tempere e sirva bem quente."
-]
-
-🍳 Para OMELETE:
-[
-  "Ingredientes: 2 claras de ovo, espinafre picado (30g), tomate em cubos (40g), queijo cottage (30g).",
-  "Bata as claras, adicione os vegetais e despeje na frigideira antiaderente quente.",
-  "Cozinhe em fogo baixo, adicione o queijo e dobre. Sirva quente."
-]
-
-🥗 Para SALADA COMPOSTA:
-[
-  "Ingredientes: grão-de-bico (80g), atum em água (60g), tomate cereja (50g), pepino (40g), azeite (5g).",
-  "Misture o grão-de-bico com atum escorrido, tomate e pepino em cubos.",
-  "Tempere com azeite, limão e sal. Sirva fria."
-]
-
-⛔ DICAS PROIBIDAS (NUNCA GERAR):
-• "Enrole e ." → INCOMPLETO!
-• "Adicione a canela." → MUITO CURTO!
-• "Misture tudo." → VAGO!
-• Qualquer dica que NÃO mencione os ingredientes do prato!
+⛔ FORBIDDEN INSTRUCTIONS (NEVER GENERATE):
+• "Roll and ." → INCOMPLETE!
+• "Add cinnamon." → TOO SHORT!
+• "Mix everything." → VAGUE!
+• Any instruction that DOESN'T mention the dish's ingredients!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🎯 EXEMPLOS COMPLETOS (6 REFEIÇÕES):
+🎯 COMPLETE EXAMPLES (Use these as reference for ${countryCode}):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-☕ CAFÉ DA MANHÃ:
-{
-  "title": "Tapioca com queijo e café com leite",
-  "foods": [
-    {"name": "Tapioca recheada com queijo branco", "grams": 120},
-    {"name": "1 xícara de café com leite", "grams": 200},
-    {"name": "1 fatia de mamão (sobremesa)", "grams": 100}
-  ],
-  "instructions": [
-    "Ingredientes da tapioca: goma de tapioca (80g) e queijo branco fatiado (40g).",
-    "Hidrate a goma e espalhe na frigideira antiaderente quente até formar disco.",
-    "Adicione o queijo no centro, dobre ao meio e sirva quente."
-  ]
-}
+☕ BREAKFAST:
+${regionalExamples.breakfast}
 
-🥐 LANCHE DA MANHÃ:
-{
-  "title": "Iogurte com granola e morangos",
-  "foods": [
-    {"name": "Bowl de iogurte com granola e morangos", "grams": 250}
-  ],
-  "instructions": [
-    "Ingredientes: iogurte natural (170g), granola sem açúcar (30g), morangos frescos (50g).",
-    "Coloque o iogurte em um bowl, cubra com a granola e finalize com morangos fatiados.",
-    "Sirva gelado para melhor sabor e textura crocante."
-  ]
-}
+🥐 MORNING SNACK:
+${regionalExamples.snack}
 
-🍽️ ALMOÇO:
-{
-  "title": "Frango grelhado com arroz, feijão e salada",
-  "foods": [
-    {"name": "Filé de frango grelhado ao limão", "grams": 150},
-    {"name": "Arroz integral", "grams": 100},
-    {"name": "Feijão carioca", "grams": 80},
-    {"name": "Salada verde com tomate e azeite", "grams": 80},
-    {"name": "1 laranja média (sobremesa)", "grams": 150},
-    {"name": "1 copo de água (opcional)", "grams": 200}
-  ],
-  "instructions": [
-    "Para o frango: tempere com sal, alho picado e suco de 1/2 limão. Marine por 10 min.",
-    "Grelhe em frigideira quente por 5-6 min de cada lado até dourar bem.",
-    "Monte o prato: arroz, feijão, salada temperada com azeite e limão, e o frango por cima."
-  ]
-}
+🍽️ LUNCH:
+${regionalExamples.lunch}
 
-🍎 LANCHE DA TARDE:
-{
-  "title": "Maçã com pasta de amendoim e canela",
-  "foods": [
-    {"name": "Maçã fatiada com pasta de amendoim", "grams": 175}
-  ],
-  "instructions": [
-    "Ingredientes: 1 maçã média (150g), pasta de amendoim natural (20g), canela em pó (5g).",
-    "Fatie a maçã em gomos finos e disponha no prato em leque.",
-    "Regue com a pasta de amendoim e polvilhe canela por cima. Sirva imediatamente."
-  ]
-}
+🌙 DINNER:
+${regionalExamples.dinner}
 
-🌙 JANTAR:
-{
-  "title": "Sopa de lentilha com tofu e legumes",
-  "foods": [
-    {"name": "Sopa de lentilha com tofu e legumes", "grams": 380},
-    {"name": "1 copo de água (opcional)", "grams": 200}
-  ],
-  "instructions": [
-    "Ingredientes: lentilha cozida (100g), tofu em cubos (80g), cenoura (50g), aipo (30g), cebola (20g), salsinha (5g), azeite (5g).",
-    "Refogue cebola e aipo no azeite. Adicione cenoura, lentilha e 500ml de água. Cozinhe 15 min.",
-    "Acrescente o tofu nos últimos 5 min, tempere com sal e finalize com salsinha. Sirva bem quente."
-  ]
-}
-
-🌙 CEIA:
-{
-  "title": "Banana com chia e chá de camomila",
-  "foods": [
-    {"name": "Banana com chia e canela", "grams": 75},
-    {"name": "1 xícara de chá de camomila", "grams": 200}
-  ],
-  "instructions": [
-    "Ingredientes: 1/2 banana (60g), chia (10g), canela em pó (5g).",
-    "Fatie a banana em rodelas e disponha em prato pequeno.",
-    "Polvilhe chia e canela por cima. Acompanhe com chá de camomila morno."
-  ]
-}
+🌙 SUPPER:
+${regionalExamples.supper}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-⚠️ ERROS QUE NUNCA COMETO:
+⚠️ ERRORS I NEVER MAKE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-❌ Listar ingredientes soltos ao invés de prato consolidado
-❌ Dicas que não mencionam os ingredientes do prato
-❌ Sopa + Arroz separado (arroz vai DENTRO se necessário)
-❌ Mesma proteína no almoço e jantar
-❌ "Mix de frutas" sem especificar quais
-❌ Proteína pesada na ceia (máximo iogurte)
-❌ Bebida com açúcar para diabéticos
-❌ Suco de limão/temperos como item separado
-❌ Suco com calorias no almoço/jantar
-❌ Instruções com apenas 1 frase curta (mínimo 2-3 passos!)
-❌ Título menciona ingrediente que NÃO está nos foods
-❌ Instruções mencionam ingrediente que NÃO está nos foods
+❌ Listing loose ingredients instead of consolidated dish
+❌ Instructions that don't mention the dish's ingredients
+❌ Soup + Rice separately (rice goes INSIDE if needed)
+❌ Same protein for lunch and dinner
+❌ "Mixed fruits" without specifying which
+❌ Heavy protein at supper (max yogurt)
+❌ Sugary beverage for diabetics
+❌ Lemon juice/seasonings as separate item
+❌ Caloric juice for lunch/dinner
+❌ Instructions with only 1 short phrase (minimum 2-3 steps!)
+❌ Title mentions ingredient NOT in foods
+❌ Instructions mention ingredient NOT in foods
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 TABELA NUTRICIONAL:
+📊 NUTRITIONAL TABLE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 ${nutritionalTablePrompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📤 RESPOSTA (JSON PURO):
+📤 RESPONSE (PURE JSON):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {
   "day": ${dayNumber},
@@ -4358,5 +4533,5 @@ ${nutritionalTablePrompt}
   "meals": [${mealsJsonTemplate}
   ],
   "total_calories": ${dailyCalories}
-}`;
+}`
 }

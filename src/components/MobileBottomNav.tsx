@@ -26,10 +26,10 @@ export default function MobileBottomNav({
   return (
     <nav 
       className={cn(
-        "fixed left-0 right-0 z-50 md:hidden",
+        "fixed bottom-0 left-0 right-0 z-50 md:hidden",
         "bg-white/95 dark:bg-card/95 backdrop-blur-xl border-t border-border"
       )}
-      style={{ bottom: "env(safe-area-inset-bottom, 0px)" }}
+      style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}
     >
       <div className="flex items-center justify-around h-16 px-2">
         {navItems.map((item) => {

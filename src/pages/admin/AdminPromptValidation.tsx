@@ -53,6 +53,7 @@ interface ValidationResult {
 }
 
 const MEAL_TYPES = [
+  { value: 'all', label: '🔄 Testar Todas' },
   { value: 'cafe_manha', label: 'Café da Manhã' },
   { value: 'lanche_manha', label: 'Lanche da Manhã' },
   { value: 'almoco', label: 'Almoço' },
@@ -60,6 +61,8 @@ const MEAL_TYPES = [
   { value: 'jantar', label: 'Jantar' },
   { value: 'ceia', label: 'Ceia' },
 ];
+
+const INDIVIDUAL_MEAL_TYPES = MEAL_TYPES.filter(m => m.value !== 'all');
 
 const COUNTRIES = [
   { value: 'BR', label: '🇧🇷 Brasil' },
@@ -77,6 +80,12 @@ const SEVERITY_CONFIG = {
   info: { icon: Info, color: 'text-blue-500', bg: 'bg-blue-500/10', label: 'Info' },
 };
 
+interface AllMealsResult {
+  mealType: string;
+  mealLabel: string;
+  result: ValidationResult;
+}
+
 export default function AdminPromptValidation() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const [mealType, setMealType] = useState('almoco');
@@ -84,11 +93,12 @@ export default function AdminPromptValidation() {
   const [isRunning, setIsRunning] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
+  const [allMealsResults, setAllMealsResults] = useState<AllMealsResult[]>([]);
+  const [currentTestingMeal, setCurrentTestingMeal] = useState<string | null>(null);
   const [promptPreview, setPromptPreview] = useState<string | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showMeal, setShowMeal] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
-
   if (adminLoading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -105,30 +115,91 @@ export default function AdminPromptValidation() {
     );
   }
 
+  const runSingleValidation = async (targetMealType: string): Promise<ValidationResult> => {
+    const { data, error } = await supabase.functions.invoke('test-prompt-validation', {
+      body: { mealType: targetMealType, countryCode, testMode: 'full' }
+    });
+    
+    if (error) throw error;
+    return data as ValidationResult;
+  };
+
   const runValidation = async () => {
     setIsRunning(true);
     setResult(null);
+    setAllMealsResults([]);
     
     try {
-      const { data, error } = await supabase.functions.invoke('test-prompt-validation', {
-        body: { mealType, countryCode, testMode: 'full' }
-      });
-      
-      if (error) throw error;
-      
-      setResult(data as ValidationResult);
-      
-      if (data.success) {
-        toast({
-          title: "✅ Validação passou!",
-          description: `${data.passedRules}/${data.totalRules} regras aprovadas`,
-        });
+      if (mealType === 'all') {
+        // Testar todas as refeições em sequência
+        const results: AllMealsResult[] = [];
+        
+        for (const meal of INDIVIDUAL_MEAL_TYPES) {
+          setCurrentTestingMeal(meal.label);
+          
+          try {
+            const mealResult = await runSingleValidation(meal.value);
+            results.push({
+              mealType: meal.value,
+              mealLabel: meal.label,
+              result: mealResult
+            });
+          } catch (error) {
+            console.error(`Error testing ${meal.label}:`, error);
+            results.push({
+              mealType: meal.value,
+              mealLabel: meal.label,
+              result: {
+                success: false,
+                totalRules: 0,
+                passedRules: 0,
+                failedRules: 1,
+                rules: [],
+                generatedMeal: null,
+                promptPreview: '',
+                timestamp: new Date().toISOString(),
+                error: error instanceof Error ? error.message : 'Erro desconhecido',
+                categories: {}
+              }
+            });
+          }
+        }
+        
+        setCurrentTestingMeal(null);
+        setAllMealsResults(results);
+        
+        const totalPassed = results.filter(r => r.result.success).length;
+        const totalFailed = results.length - totalPassed;
+        
+        if (totalFailed === 0) {
+          toast({
+            title: "✅ Todas as refeições passaram!",
+            description: `${totalPassed}/${results.length} refeições aprovadas`,
+          });
+        } else {
+          toast({
+            title: "⚠️ Algumas refeições falharam",
+            description: `${totalFailed} refeições com falhas`,
+            variant: "destructive",
+          });
+        }
       } else {
-        toast({
-          title: "⚠️ Validação com falhas",
-          description: `${data.failedRules} regras falharam`,
-          variant: "destructive",
-        });
+        // Teste individual
+        const data = await runSingleValidation(mealType);
+        setResult(data);
+        
+        if (data.success) {
+          toast({
+            title: "✅ Validação passou!",
+            description: `${data.passedRules}/${data.totalRules} regras aprovadas`,
+          });
+        } else {
+          toast({
+            title: "⚠️ Validação com falhas",
+            description: `${data.failedRules} regras falharam`,
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       console.error('Validation error:', error);
@@ -139,6 +210,7 @@ export default function AdminPromptValidation() {
       });
     } finally {
       setIsRunning(false);
+      setCurrentTestingMeal(null);
     }
   };
 
@@ -240,6 +312,35 @@ export default function AdminPromptValidation() {
               </div>
             </div>
 
+            {/* Progress indicator for all meals */}
+            {isRunning && mealType === 'all' && currentTestingMeal && (
+              <div className="bg-muted/50 p-3 rounded-lg">
+                <p className="text-sm text-muted-foreground">
+                  Testando: <span className="font-medium text-foreground">{currentTestingMeal}</span>
+                </p>
+                <div className="flex gap-1 mt-2">
+                  {INDIVIDUAL_MEAL_TYPES.map((meal, index) => {
+                    const tested = allMealsResults.find(r => r.mealType === meal.value);
+                    const isCurrent = currentTestingMeal === meal.label;
+                    return (
+                      <div
+                        key={meal.value}
+                        className={`h-2 flex-1 rounded ${
+                          tested 
+                            ? tested.result.success 
+                              ? 'bg-green-500' 
+                              : 'bg-destructive'
+                            : isCurrent 
+                              ? 'bg-primary animate-pulse' 
+                              : 'bg-muted-foreground/20'
+                        }`}
+                      />
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="flex gap-3">
               <Button 
                 onClick={runValidation} 
@@ -249,12 +350,12 @@ export default function AdminPromptValidation() {
                 {isRunning ? (
                   <>
                     <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                    Gerando e validando...
+                    {mealType === 'all' ? 'Testando todas...' : 'Gerando e validando...'}
                   </>
                 ) : (
                   <>
                     <Play className="w-4 h-4 mr-2" />
-                    Rodar Validação Completa
+                    {mealType === 'all' ? 'Rodar Todas as Validações' : 'Rodar Validação Completa'}
                   </>
                 )}
               </Button>
@@ -277,7 +378,89 @@ export default function AdminPromptValidation() {
           </CardContent>
         </Card>
 
-        {/* Resultado da Validação */}
+        {/* Resultado de Todas as Refeições */}
+        {allMealsResults.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ListChecks className="w-5 h-5" />
+                Resultado de Todas as Refeições
+              </CardTitle>
+              <CardDescription>
+                {allMealsResults.filter(r => r.result.success).length}/{allMealsResults.length} refeições aprovadas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {allMealsResults.map((item) => {
+                const criticalCount = item.result.rules.filter(r => !r.passed && r.severity === 'critical').length;
+                const warningCount = item.result.rules.filter(r => !r.passed && r.severity === 'warning').length;
+                
+                return (
+                  <Collapsible key={item.mealType}>
+                    <CollapsibleTrigger asChild>
+                      <div 
+                        className={`flex items-center justify-between p-3 rounded-lg cursor-pointer hover:opacity-90 transition-opacity ${
+                          item.result.success 
+                            ? 'bg-green-500/10 border border-green-500/30' 
+                            : 'bg-destructive/10 border border-destructive/30'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3">
+                          {item.result.success ? (
+                            <CheckCircle2 className="w-5 h-5 text-green-500" />
+                          ) : (
+                            <XCircle className="w-5 h-5 text-destructive" />
+                          )}
+                          <span className="font-medium">{item.mealLabel}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">
+                            {item.result.passedRules}/{item.result.totalRules} ✓
+                          </Badge>
+                          {criticalCount > 0 && (
+                            <Badge variant="destructive" className="text-xs">
+                              {criticalCount} crítico
+                            </Badge>
+                          )}
+                          {warningCount > 0 && (
+                            <Badge variant="outline" className="text-xs bg-orange-500/10 text-orange-600 border-orange-500/30">
+                              {warningCount} aviso
+                            </Badge>
+                          )}
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        </div>
+                      </div>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="mt-2 ml-8 space-y-2">
+                      {item.result.error && (
+                        <p className="text-sm text-destructive">{item.result.error}</p>
+                      )}
+                      {item.result.rules.filter(r => !r.passed).map(rule => (
+                        <div 
+                          key={rule.id}
+                          className="flex items-start gap-2 p-2 rounded bg-muted/50 text-sm"
+                        >
+                          <XCircle className="w-4 h-4 text-destructive shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium">{rule.name}</span>
+                            {rule.details && (
+                              <p className="text-xs text-muted-foreground mt-0.5 font-mono">{rule.details}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                      {item.result.success && (
+                        <p className="text-sm text-muted-foreground">Todas as regras passaram ✓</p>
+                      )}
+                    </CollapsibleContent>
+                  </Collapsible>
+                );
+              })}
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Resultado da Validação Individual */}
         {result && (
           <Card className={result.success ? 'border-green-500/50' : 'border-destructive/50'}>
             <CardHeader>

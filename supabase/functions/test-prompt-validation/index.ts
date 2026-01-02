@@ -278,20 +278,33 @@ function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationR
     severity: 'warning',
   });
 
-  // Regra 16: Dicas não mencionam frutas/bebidas
+  // Regra 16: Dicas não mencionam frutas/bebidas ISOLADAS
+  // Frutas/bebidas que fazem parte de uma preparação (ex: "Vitamina de banana") são permitidas
   const instructionText = instructions.join(' ').toLowerCase();
-  const mentionsFruitBeverage = 
-    (/\b(banana|maçã|laranja|mamão|melancia|morango)\b/.test(instructionText) ||
-    /\b(café|chá|suco de \w+|refrigerante)\b/.test(instructionText)) &&
-    !title.toLowerCase().includes('vitamina') &&
-    !title.toLowerCase().includes('smoothie');
+  const titleLower = title.toLowerCase();
+  
+  // Lista de frutas/bebidas que não devem aparecer isoladamente nas dicas
+  const fruitPatterns = ['banana', 'maçã', 'maca', 'laranja', 'mamão', 'mamao', 'melancia', 'morango', 'abacaxi', 'manga', 'pera', 'kiwi'];
+  const beveragePatterns = ['café', 'cafe', 'chá', 'cha', 'suco de'];
+  
+  // Verificar se frutas/bebidas aparecem em contexto de preparo (OK) ou isoladas (não OK)
+  const hasFruitBeverageIssue = (
+    // Padrões problemáticos: frutas/bebidas mencionadas em dicas finais
+    /\b(acompanhe|sirva|finalize|tome|beba)\s+(com\s+)?(a\s+)?(banana|maçã|mamão|laranja|café|chá|suco)/i.test(instructionText) ||
+    // Ou menção a fruta isolada no fim de uma dica
+    /,\s*(e\s+)?(a\s+)?(banana|maçã|mamão|laranja)\s*\.?$/i.test(instructionText)
+  );
+  
+  // Exceções: Se o título indica que fruta é ingrediente principal, não é problema
+  const isFruitRecipe = /vitamina|smoothie|shake|açaí|acai|bowl|mingau.*banana/i.test(titleLower);
+  
   rules.push({
     id: 'no_fruits_in_instructions',
     name: 'Sem frutas/bebidas nas dicas',
-    description: 'Frutas e bebidas não devem ser mencionadas nas instruções de preparo',
+    description: 'Frutas e bebidas não devem ser mencionadas nas instruções de preparo como acompanhamento',
     category: RULE_CATEGORIES.INSTRUCTIONS,
-    passed: !mentionsFruitBeverage,
-    details: mentionsFruitBeverage ? 'Fruta/bebida mencionada nas dicas' : 'OK',
+    passed: !hasFruitBeverageIssue || isFruitRecipe,
+    details: hasFruitBeverageIssue && !isFruitRecipe ? 'Fruta/bebida mencionada isoladamente nas dicas' : 'OK',
     severity: 'info',
   });
 
@@ -390,45 +403,75 @@ function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationR
     });
   }
 
-  // Regra 22: Bebidas por último
+  // Regra 22: Bebidas por último (se houver bebida)
+  // NOTA: Nem toda refeição precisa ter bebida - a regra só valida SE houver bebida
   if (foods.length >= 2) {
     const lastFoodName = ((foods[foods.length - 1]?.name || foods[foods.length - 1]?.nome) || '').toLowerCase();
-    const hasBeverage = foods.some((f: any) => {
+    
+    // Detectar bebidas (excluindo vitaminas/shakes que são pratos)
+    const beverageRegex = /\b(café|cafe|chá|cha|suco|água|agua|refrigerante|leite(?!.*coco))\b/i;
+    const mainDishBeverageRegex = /vitamina|shake|smoothie/i;
+    
+    const beverageIndices: number[] = [];
+    foods.forEach((f: any, idx: number) => {
       const name = ((f.name || f.nome) || '').toLowerCase();
-      return /\b(café|chá|suco|água|refrigerante|leite)\b/i.test(name) &&
-             !/vitamina|shake|smoothie/i.test(name);
+      if (beverageRegex.test(name) && !mainDishBeverageRegex.test(name)) {
+        beverageIndices.push(idx);
+      }
     });
-    const beverageIsLast = !hasBeverage || 
-      /\b(café|chá|suco|água|refrigerante|leite)\b/i.test(lastFoodName);
+    
+    const hasBeverage = beverageIndices.length > 0;
+    // Bebida está OK se: não há bebida OU última bebida é o último item
+    const beverageIsLast = !hasBeverage || beverageIndices[beverageIndices.length - 1] === foods.length - 1;
+    
     rules.push({
       id: 'beverage_last',
       name: 'Bebidas por último',
-      description: 'Bebidas devem aparecer ao final da lista de alimentos',
+      description: 'Bebidas (se presentes) devem aparecer ao final da lista de alimentos',
       category: RULE_CATEGORIES.SORTING,
       passed: beverageIsLast,
-      details: hasBeverage ? `Último item: "${lastFoodName}"` : 'Sem bebidas',
+      details: hasBeverage 
+        ? `Último item: "${lastFoodName}", Bebidas nas posições: ${beverageIndices.join(', ')}`
+        : 'Sem bebidas (OK)',
       severity: 'info',
     });
   }
 
-  // Regra 23: Frutas antes das bebidas
-  const fruitIndex = foods.findIndex((f: any) => {
+  // Regra 23: Frutas antes das bebidas (se ambos existirem)
+  // Detectar posição da ÚLTIMA fruta e da PRIMEIRA bebida
+  const fruitRegex = /\b(banana|maçã|maca|laranja|mamão|mamao|melancia|morango|abacaxi|manga|pera|kiwi|fruta|sobremesa)\b/i;
+  const bevRegex = /\b(café|cafe|chá|cha|suco|água|agua|refrigerante)\b/i;
+  const vitaminaRegex = /vitamina|smoothie|shake/i;
+  
+  let lastFruitIndex = -1;
+  let firstBeverageIndex = -1;
+  
+  foods.forEach((f: any, idx: number) => {
     const name = ((f.name || f.nome) || '').toLowerCase();
-    return /\b(banana|maçã|laranja|mamão|melancia|morango|fruta|sobremesa)\b/i.test(name);
+    
+    // Detectar frutas (exceto se faz parte de vitamina/smoothie)
+    if (fruitRegex.test(name) && !vitaminaRegex.test(name)) {
+      lastFruitIndex = idx;
+    }
+    
+    // Detectar bebidas (primeira ocorrência)
+    if (bevRegex.test(name) && !vitaminaRegex.test(name) && firstBeverageIndex === -1) {
+      firstBeverageIndex = idx;
+    }
   });
-  const beverageIndex = foods.findIndex((f: any) => {
-    const name = ((f.name || f.nome) || '').toLowerCase();
-    return /\b(café|chá|suco|água|refrigerante)\b/i.test(name) && !/vitamina/i.test(name);
-  });
+  
+  // Regra passa se: não há fruta, não há bebida, ou fruta vem antes da bebida
+  const fruitBeforeBeverageOK = lastFruitIndex === -1 || firstBeverageIndex === -1 || lastFruitIndex < firstBeverageIndex;
+  
   rules.push({
     id: 'fruits_before_beverages',
     name: 'Frutas antes das bebidas',
-    description: 'Frutas/sobremesas devem vir antes das bebidas',
+    description: 'Frutas/sobremesas devem vir antes das bebidas na ordenação',
     category: RULE_CATEGORIES.SORTING,
-    passed: fruitIndex === -1 || beverageIndex === -1 || fruitIndex < beverageIndex,
-    details: fruitIndex >= 0 && beverageIndex >= 0 
-      ? `Fruta: posição ${fruitIndex}, Bebida: posição ${beverageIndex}`
-      : 'OK',
+    passed: fruitBeforeBeverageOK,
+    details: lastFruitIndex >= 0 && firstBeverageIndex >= 0 
+      ? `Última fruta: posição ${lastFruitIndex}, Primeira bebida: posição ${firstBeverageIndex}`
+      : 'OK (fruta ou bebida ausente)',
     severity: 'info',
   });
 

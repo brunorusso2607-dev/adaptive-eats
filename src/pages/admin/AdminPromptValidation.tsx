@@ -27,8 +27,12 @@ import {
   Refrigerator,
   ChefHat,
   MessageSquare,
-  RotateCcw
+  RotateCcw,
+  Upload,
+  ImageIcon,
+  X
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -232,6 +236,9 @@ export default function AdminPromptValidation() {
   const [showOutput, setShowOutput] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
   
+  // Image upload state for modules that require images
+  const [uploadedImages, setUploadedImages] = useState<{ file: File; preview: string }[]>([]);
+  
   const currentModuleInfo = AI_MODULES.find(m => m.id === selectedModule);
   const moduleRulesInfo = MODULE_RULES_INFO[selectedModule];
 
@@ -241,7 +248,56 @@ export default function AdminPromptValidation() {
     setAllMealsResults([]);
     setPromptPreview(null);
     setShowPrompt(false);
+    // Clear uploaded images when module changes
+    uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
+    setUploadedImages([]);
   }, [selectedModule]);
+
+  // Get required image count for module
+  const getRequiredImageCount = () => {
+    if (selectedModule === 'analyze-fridge-photo') return 2;
+    if (['analyze-food-photo', 'analyze-label-photo'].includes(selectedModule)) return 1;
+    return 0;
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+
+    const maxImages = getRequiredImageCount();
+    const newImages: { file: File; preview: string }[] = [];
+
+    for (let i = 0; i < Math.min(files.length, maxImages - uploadedImages.length); i++) {
+      const file = files[i];
+      if (file.type.startsWith('image/')) {
+        newImages.push({
+          file,
+          preview: URL.createObjectURL(file),
+        });
+      }
+    }
+
+    setUploadedImages(prev => [...prev, ...newImages].slice(0, maxImages));
+    e.target.value = ''; // Reset input
+  };
+
+  const removeImage = (index: number) => {
+    setUploadedImages(prev => {
+      const newImages = [...prev];
+      URL.revokeObjectURL(newImages[index].preview);
+      newImages.splice(index, 1);
+      return newImages;
+    });
+  };
+
+  const convertImageToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  };
 
   if (adminLoading) {
     return (
@@ -272,6 +328,12 @@ export default function AdminPromptValidation() {
   };
 
   const runModuleValidation = async (): Promise<ValidationResult> => {
+    // Convert uploaded images to base64 for modules that need them
+    let imageData: string[] = [];
+    if (currentModuleInfo?.requiresImage && uploadedImages.length > 0) {
+      imageData = await Promise.all(uploadedImages.map(img => convertImageToBase64(img.file)));
+    }
+
     const { data, error } = await supabase.functions.invoke('test-all-prompts-validation', {
       body: { 
         moduleId: selectedModule, 
@@ -279,6 +341,7 @@ export default function AdminPromptValidation() {
         testParams: {
           countryCode,
           intolerances: selectedIntolerances,
+          images: imageData,
         }
       }
     });
@@ -479,8 +542,8 @@ export default function AdminPromptValidation() {
               <p className="text-sm text-muted-foreground mt-3 p-2 bg-muted/50 rounded">
                 {currentModuleInfo.description}
                 {currentModuleInfo.requiresImage && (
-                  <span className="block mt-1 text-orange-500">
-                    ⚠️ Este módulo requer imagem. Validação usa dados de exemplo.
+                  <span className="block mt-1 text-blue-500">
+                    📸 Faça upload da(s) imagem(ns) na seção de configuração abaixo para testar este módulo.
                   </span>
                 )}
               </p>
@@ -561,6 +624,67 @@ export default function AdminPromptValidation() {
                       </Badge>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* Image upload - for modules that require images */}
+              {currentModuleInfo?.requiresImage && (
+                <div className="col-span-2">
+                  <label className="text-sm font-medium mb-2 block">
+                    {selectedModule === 'analyze-fridge-photo' 
+                      ? 'Fotos da Geladeira (Interior + Portas)' 
+                      : selectedModule === 'analyze-label-photo'
+                        ? 'Foto do Rótulo'
+                        : 'Foto do Alimento'}
+                    <span className="text-muted-foreground ml-2">
+                      ({uploadedImages.length}/{getRequiredImageCount()})
+                    </span>
+                  </label>
+                  
+                  <div className="flex flex-wrap gap-3 mt-2">
+                    {/* Preview uploaded images */}
+                    {uploadedImages.map((img, index) => (
+                      <div key={index} className="relative group">
+                        <img 
+                          src={img.preview} 
+                          alt={`Preview ${index + 1}`}
+                          className="w-24 h-24 object-cover rounded-lg border"
+                        />
+                        <button
+                          onClick={() => removeImage(index)}
+                          className="absolute -top-2 -right-2 bg-destructive text-destructive-foreground rounded-full p-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                        {selectedModule === 'analyze-fridge-photo' && (
+                          <span className="absolute bottom-1 left-1 text-[10px] bg-background/80 px-1 rounded">
+                            {index === 0 ? 'Interior' : 'Portas'}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    
+                    {/* Upload button */}
+                    {uploadedImages.length < getRequiredImageCount() && (
+                      <label className="w-24 h-24 flex flex-col items-center justify-center border-2 border-dashed rounded-lg cursor-pointer hover:border-primary hover:bg-muted/50 transition-colors">
+                        <Upload className="w-6 h-6 text-muted-foreground mb-1" />
+                        <span className="text-xs text-muted-foreground">Upload</span>
+                        <Input
+                          type="file"
+                          accept="image/*"
+                          onChange={handleImageUpload}
+                          className="hidden"
+                          multiple={selectedModule === 'analyze-fridge-photo'}
+                        />
+                      </label>
+                    )}
+                  </div>
+                  
+                  {selectedModule === 'analyze-fridge-photo' && uploadedImages.length < 2 && (
+                    <p className="text-xs text-muted-foreground mt-2">
+                      📷 Envie 2 fotos: uma do interior e outra das portas da geladeira
+                    </p>
+                  )}
                 </div>
               )}
             </div>

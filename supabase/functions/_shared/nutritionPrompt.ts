@@ -1,11 +1,11 @@
 /**
- * PROMPT NUTRICIONAL GLOBAL - NÍVEL CLÍNICO
+ * GLOBAL NUTRITIONAL PROMPT - CLINICAL LEVEL
  * 
- * Este arquivo centraliza as regras nutricionais para todas as funções de IA do ReceitAI.
- * Deve ser usado em: generate-ai-meal-plan, generate-recipe, analyze-food-photo, suggest-food-ai
+ * This file centralizes nutritional rules for all ReceitAI AI functions.
+ * Should be used in: generate-ai-meal-plan, generate-recipe, analyze-food-photo, suggest-food-ai
  */
 
-// Configuração de fontes nutricionais por país
+// Nutritional data sources configuration by country
 export interface NutritionalSource {
   country: string;
   sourceKey: string;
@@ -14,22 +14,22 @@ export interface NutritionalSource {
 }
 
 export const NUTRITIONAL_SOURCES: Record<string, NutritionalSource> = {
-  BR: { country: "Brasil", sourceKey: "tbca", sourceName: "TBCA", flag: "🇧🇷" },
-  FR: { country: "França", sourceKey: "ciqual", sourceName: "CIQUAL", flag: "🇫🇷" },
-  GB: { country: "Reino Unido", sourceKey: "mccance", sourceName: "McCance & Widdowson", flag: "🇬🇧" },
-  DE: { country: "Alemanha", sourceKey: "bls", sourceName: "BLS", flag: "🇩🇪" },
-  ES: { country: "Espanha", sourceKey: "aesan", sourceName: "AESAN", flag: "🇪🇸" },
-  IT: { country: "Itália", sourceKey: "crea", sourceName: "CREA", flag: "🇮🇹" },
-  MX: { country: "México", sourceKey: "bam", sourceName: "BAM", flag: "🇲🇽" },
-  US: { country: "Estados Unidos", sourceKey: "usda", sourceName: "USDA", flag: "🇺🇸" },
+  BR: { country: "Brazil", sourceKey: "tbca", sourceName: "TBCA", flag: "🇧🇷" },
+  FR: { country: "France", sourceKey: "ciqual", sourceName: "CIQUAL", flag: "🇫🇷" },
+  GB: { country: "United Kingdom", sourceKey: "mccance", sourceName: "McCance & Widdowson", flag: "🇬🇧" },
+  DE: { country: "Germany", sourceKey: "bls", sourceName: "BLS", flag: "🇩🇪" },
+  ES: { country: "Spain", sourceKey: "aesan", sourceName: "AESAN", flag: "🇪🇸" },
+  IT: { country: "Italy", sourceKey: "crea", sourceName: "CREA", flag: "🇮🇹" },
+  MX: { country: "Mexico", sourceKey: "bam", sourceName: "BAM", flag: "🇲🇽" },
+  US: { country: "United States", sourceKey: "usda", sourceName: "USDA", flag: "🇺🇸" },
   PT: { country: "Portugal", sourceKey: "insa", sourceName: "INSA", flag: "🇵🇹" },
   AR: { country: "Argentina", sourceKey: "tbca", sourceName: "TBCA (fallback)", flag: "🇦🇷" },
   CL: { country: "Chile", sourceKey: "tbca", sourceName: "TBCA (fallback)", flag: "🇨🇱" },
-  CO: { country: "Colômbia", sourceKey: "tbca", sourceName: "TBCA (fallback)", flag: "🇨🇴" },
+  CO: { country: "Colombia", sourceKey: "tbca", sourceName: "TBCA (fallback)", flag: "🇨🇴" },
   PE: { country: "Peru", sourceKey: "tbca", sourceName: "TBCA (fallback)", flag: "🇵🇪" },
 };
 
-// Formato de exibição de porções por país
+// Portion display format by country
 export interface PortionFormat {
   system: 'metric' | 'imperial';
   examples: string[];
@@ -49,8 +49,8 @@ export const PORTION_FORMATS: Record<string, PortionFormat> = {
   },
   BR: {
     system: 'metric',
-    examples: ['100g', '1 colher de sopa', '1 fatia', '1 unidade média'],
-    domesticUnits: 'g, ml, colher de sopa, colher de chá, fatia, unidade, porção, concha'
+    examples: ['100g', '1 tablespoon', '1 slice', '1 medium unit'],
+    domesticUnits: 'g, ml, tablespoon, teaspoon, slice, unit, portion, ladle'
   },
   DEFAULT: {
     system: 'metric',
@@ -67,7 +67,7 @@ export function getNutritionalSource(countryCode: string): NutritionalSource {
   return NUTRITIONAL_SOURCES[countryCode] || NUTRITIONAL_SOURCES.US;
 }
 
-// Mapeamento de país para locale
+// Country to locale mapping
 const COUNTRY_TO_LOCALE: Record<string, string> = {
   BR: 'pt-BR',
   PT: 'pt-PT',
@@ -92,9 +92,9 @@ export function getLocaleFromCountry(countryCode: string): string {
 }
 
 /**
- * Gera o prompt de sistema nutricional global
- * @param countryCode - Código do país do usuário (BR, US, FR, etc.)
- * @param options - Opções adicionais para customização
+ * Generates the global nutritional system prompt
+ * @param countryCode - User's country code (BR, US, FR, etc.)
+ * @param options - Additional options for customization
  */
 export function getGlobalNutritionPrompt(countryCode: string, options?: {
   includePortionGuidelines?: boolean;
@@ -111,111 +111,111 @@ export function getGlobalNutritionPrompt(countryCode: string, options?: {
 
   let prompt = `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🌍 SISTEMA NUTRICIONAL GLOBAL - NÍVEL CLÍNICO
+🌍 GLOBAL NUTRITIONAL SYSTEM - CLINICAL LEVEL
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-REGRA ABSOLUTA DE UNIDADES:
-- TODO cálculo nutricional INTERNO: exclusivamente em GRAMAS (g)
-- Peso corporal interno: sempre em QUILOGRAMAS (kg)
-- Líquidos: sempre em MILILITROS (ml)
-- O sistema métrico é o padrão universal (95% do mundo)
+ABSOLUTE UNIT RULE:
+- ALL INTERNAL nutritional calculations: exclusively in GRAMS (g)
+- Body weight internally: always in KILOGRAMS (kg)
+- Liquids: always in MILLILITERS (ml)
+- The metric system is the universal standard (95% of the world)
 `;
 
   if (includeConversionRules && portionFormat.system === 'imperial') {
     prompt += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📐 CONVERSÃO PARA USUÁRIOS DOS EUA
+📐 CONVERSION FOR US USERS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-O usuário está nos EUA. EXIBA porções no formato americano:
+User is in the USA. DISPLAY portions in American format:
 - 1 lb = 453.592 g
 - 1 oz = 28.3495 g  
-- 1 cup = 240 ml (líquidos) / varia para sólidos
+- 1 cup = 240 ml (liquids) / varies for solids
 
-PROTOCOLO DE CONVERSÃO:
-1. Calcule TUDO internamente em gramas
-2. Armazene portion_grams com o valor em gramas
-3. Exiba portion_display no formato local: "${portionFormat.examples.join('", "')}"
-4. NUNCA calcule macros diretamente em oz/lb
+CONVERSION PROTOCOL:
+1. Calculate EVERYTHING internally in grams
+2. Store portion_grams with the value in grams
+3. Display portion_display in local format: "${portionFormat.examples.join('", "')}"
+4. NEVER calculate macros directly in oz/lb
 
-Unidades domésticas permitidas: ${portionFormat.domesticUnits}
+Allowed domestic units: ${portionFormat.domesticUnits}
 `;
   }
 
   if (includeSourceHierarchy) {
     prompt += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📊 FONTE NUTRICIONAL DO USUÁRIO
+📊 USER'S NUTRITIONAL SOURCE
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-País: ${source.flag} ${source.country}
-Fonte Primária: ${source.sourceName} (source_key: "${source.sourceKey}")
+Country: ${source.flag} ${source.country}
+Primary Source: ${source.sourceName} (source_key: "${source.sourceKey}")
 
-HIERARQUIA DE FONTES (use nesta ordem):
-1. ${source.sourceName} (${source.country}) ← PRIORIDADE
-2. Fonte regional mais próxima
-3. USDA (fallback global FINAL)
+SOURCE HIERARCHY (use in this order):
+1. ${source.sourceName} (${source.country}) ← PRIORITY
+2. Closest regional source
+3. USDA (global FINAL fallback)
 
-❌ NUNCA misture fontes de países diferentes na mesma refeição.
-❌ NUNCA invente valores nutricionais - use apenas dados reais.
+❌ NEVER mix sources from different countries in the same meal.
+❌ NEVER invent nutritional values - use only real data.
 `;
   }
 
   if (includePortionGuidelines) {
     prompt += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📏 FORMATO DE PORÇÃO (${source.country})
+📏 PORTION FORMAT (${source.country})
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Sistema de medidas: ${portionFormat.system === 'imperial' ? 'IMPERIAL (oz, lb, cups)' : 'MÉTRICO (g, ml)'}
+Measurement system: ${portionFormat.system === 'imperial' ? 'IMPERIAL (oz, lb, cups)' : 'METRIC (g, ml)'}
 
-Exemplos de porções aceitáveis:
+Acceptable portion examples:
 ${portionFormat.examples.map(ex => `- "${ex}"`).join('\n')}
 
-Unidades domésticas permitidas: ${portionFormat.domesticUnits}
+Allowed domestic units: ${portionFormat.domesticUnits}
 
-⚠️ SEMPRE inclua portion_grams com o valor em GRAMAS para cálculo interno.
+⚠️ ALWAYS include portion_grams with the value in GRAMS for internal calculation.
 `;
   }
 
   prompt += `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧮 PROTOCOLO DE CÁLCULO (OBRIGATÓRIO)
+🧮 CALCULATION PROTOCOL (MANDATORY)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Para CADA alimento:
-Valor_real = (valor_por_100g / 100) × gramagem_real_em_g
+For EACH food:
+Real_value = (value_per_100g / 100) × real_grams
 
-- Use valores reais por 100g das bases oficiais
-- NÃO arredonde resultados intermediários
-- Some apenas no final
-
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🛑 BLOQUEIOS ABSOLUTOS
-━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-❌ Calcular macros em libras/onças
-❌ Usar medidas vagas ("1 porção", "1 prato", "um pouco")
-❌ Inventar valores nutricionais
-❌ Ajustar calorias para "bater" meta
-❌ Misturar fontes de países diferentes
-❌ Arredondar para facilitar
+- Use real values per 100g from official databases
+- DO NOT round intermediate results
+- Sum only at the end
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-🧠 REGRA FINAL DE SEGURANÇA
+🛑 ABSOLUTE BLOCKS
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Se houver QUALQUER dúvida sobre unidade, conversão, fonte ou gramagem:
-➜ Use GRAMAS + BASE OFICIAL MAIS CONSERVADORA
+❌ Calculating macros in pounds/ounces
+❌ Using vague measurements ("1 portion", "1 plate", "a little")
+❌ Inventing nutritional values
+❌ Adjusting calories to "hit" target
+❌ Mixing sources from different countries
+❌ Rounding for convenience
 
-A VERDADE DOS DADOS SEMPRE SOBREPÕE A APRESENTAÇÃO.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🧠 FINAL SAFETY RULE
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+If there is ANY doubt about unit, conversion, source, or gram weight:
+➜ Use GRAMS + MOST CONSERVATIVE OFFICIAL DATABASE
+
+DATA TRUTH ALWAYS OVERRIDES PRESENTATION.
 `;
 
   return prompt;
 }
 
 /**
- * Gera instrução específica para formato de saída JSON
+ * Generates specific instruction for JSON output format
  */
 export function getJSONOutputInstruction(countryCode: string): string {
   const source = getNutritionalSource(countryCode);
@@ -223,12 +223,12 @@ export function getJSONOutputInstruction(countryCode: string): string {
 
   return `
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-📦 FORMATO DE SAÍDA JSON (OBRIGATÓRIO)
+📦 JSON OUTPUT FORMAT (MANDATORY)
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Cada alimento DEVE incluir:
+Each food MUST include:
 {
-  "name": "Nome do alimento",
+  "name": "Food name",
   "portion_display": "${isImperial ? '3 oz' : '100g'}",
   ${isImperial ? '"portion_display_local": "3 oz",' : ''}
   "portion_grams": 85,
@@ -239,9 +239,9 @@ Cada alimento DEVE incluir:
   "nutritional_source": "${source.sourceKey}"
 }
 
-Campos obrigatórios:
-- portion_grams: SEMPRE em gramas (número)
-- portion_display: formato natural do país
-- nutritional_source: chave da fonte usada
+Mandatory fields:
+- portion_grams: ALWAYS in grams (number)
+- portion_display: natural format for the country
+- nutritional_source: source key used
 `;
 }

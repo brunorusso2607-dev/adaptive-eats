@@ -484,16 +484,15 @@ export default function UnifiedFoodSearchBlock({
                     </div>
                   </button>
 
-                  {/* Expanded section with portion selection */}
+                  {/* Expanded section with portion selection - compact */}
                   {isSelected && (
-                    <div className="px-3 pb-3 border-t bg-muted/30 space-y-3">
+                    <div className="px-3 pb-2 border-t bg-muted/30 space-y-2">
                       {/* Portion suggestion - clicking applies AND adds */}
                       {portionSuggestion && (
                         <button
                           onClick={() => {
                             const serving = suggestServingByName(food.name);
                             const grams = food.default_serving_size || serving.defaultServingSize;
-                            // Apply the suggestion AND add the food immediately
                             onSelectFood(convertFoodToSelectedItem(food, grams));
                             setSearchQuery("");
                             reset();
@@ -514,55 +513,26 @@ export default function UnifiedFoodSearchBlock({
                         </button>
                       )}
 
-                      {/* Portion input */}
-                      <div className="flex items-center gap-3">
-                        <div className="flex-1">
-                          <label className="text-xs text-muted-foreground mb-1 block">Quantidade</label>
-                          <div className="flex items-center gap-2">
-                            <Input
-                              type="number"
-                              value={portionGrams}
-                              onChange={(e) => setPortionGrams(Number(e.target.value) || 0)}
-                              className="h-9 text-center"
-                              min={1}
-                            />
-                            <span className="text-sm text-muted-foreground">{food.serving_unit || 'g'}</span>
-                          </div>
-                        </div>
+                      {/* Portion input + Add button inline */}
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Quantidade</span>
+                        <Input
+                          type="number"
+                          value={portionGrams}
+                          onChange={(e) => setPortionGrams(Number(e.target.value) || 0)}
+                          className="h-8 w-20 text-center text-sm"
+                          min={1}
+                        />
+                        <span className="text-xs text-muted-foreground">{food.serving_unit || 'g'}</span>
+                        <Button
+                          size="sm"
+                          onClick={handleConfirmAddition}
+                          className="h-8 px-3 ml-auto"
+                        >
+                          <Check className="w-3.5 h-3.5 mr-1" />
+                          {confirmButtonLabel}
+                        </Button>
                       </div>
-
-                      {/* Macro preview + Add button inline */}
-                      {macros && (
-                        <div className="flex items-center gap-3">
-                          <div className="flex-1 grid grid-cols-4 gap-1 text-center">
-                            <div className="p-1.5 rounded-lg bg-background border">
-                              <div className="text-[10px] text-muted-foreground">Cal</div>
-                              <div className="font-semibold text-xs text-orange-500">{macros.calories}</div>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-background border">
-                              <div className="text-[10px] text-muted-foreground">P</div>
-                              <div className="font-semibold text-xs text-blue-500">{macros.protein}g</div>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-background border">
-                              <div className="text-[10px] text-muted-foreground">C</div>
-                              <div className="font-semibold text-xs text-amber-500">{macros.carbs}g</div>
-                            </div>
-                            <div className="p-1.5 rounded-lg bg-background border">
-                              <div className="text-[10px] text-muted-foreground">G</div>
-                              <div className="font-semibold text-xs text-red-500">{macros.fat}g</div>
-                            </div>
-                          </div>
-                          {/* Confirm button - now inline with macros for visibility */}
-                          <Button 
-                            onClick={handleConfirmAddition}
-                            className="flex-shrink-0"
-                            size="sm"
-                          >
-                            <Check className="w-4 h-4 mr-1" />
-                            {confirmButtonLabel}
-                          </Button>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>

@@ -125,52 +125,52 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
 
   // No meal plan state - convida a criar plano
   if (!hasMealPlan) {
-    const handleNavigate = () => {
-      if (onNavigateToMealPlan) {
-        onNavigateToMealPlan();
-      }
-    };
-
-    // Gerar mensagem dinâmica com base no mês
-    const today = new Date();
-    const currentMonthName = today.toLocaleDateString('pt-BR', { month: 'long' });
-    const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+    // Gerar mensagem dinâmica com base no mês usando timezone do usuário
+    const nowInTimezone = toZonedTime(new Date(), timezone);
+    const dayOfMonth = parseInt(format(nowInTimezone, 'd'));
+    const currentMonth = format(nowInTimezone, 'MMMM', { locale: ptBR });
+    const capitalizedCurrentMonth = currentMonth.charAt(0).toUpperCase() + currentMonth.slice(1);
     
     // Verificar se estamos no início do mês (primeiros 7 dias)
-    const dayOfMonth = today.getDate();
-    const previousMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
-    const previousMonthName = previousMonthDate.toLocaleDateString('pt-BR', { month: 'long' });
-    const capitalizedPreviousMonth = previousMonthName.charAt(0).toUpperCase() + previousMonthName.slice(1);
+    const previousMonthDate = new Date(nowInTimezone.getFullYear(), nowInTimezone.getMonth() - 1, 1);
+    const previousMonth = format(previousMonthDate, 'MMMM', { locale: ptBR });
+    const capitalizedPreviousMonth = previousMonth.charAt(0).toUpperCase() + previousMonth.slice(1);
     
     const isStartOfMonth = dayOfMonth <= 7;
     
-    const dynamicMessage = isStartOfMonth 
-      ? `${capitalizedPreviousMonth} acabou, crie seu plano de ${capitalizedMonth}!`
-      : `Crie seu plano alimentar de ${capitalizedMonth}`;
+    const titleMessage = isStartOfMonth 
+      ? `${capitalizedPreviousMonth} acabou`
+      : "Você não tem um plano ativo";
+      
+    const subtitleMessage = isStartOfMonth
+      ? `Não esqueça de criar seu plano de ${capitalizedCurrentMonth}`
+      : `Crie seu plano alimentar de ${capitalizedCurrentMonth}`;
 
     return (
-      <Card 
-        className="glass-card border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors active:scale-[0.98]"
-        onClick={handleNavigate}
-        role="button"
-        tabIndex={0}
-      >
-        <CardContent className="p-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shrink-0">
-              <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground">
-                Você não tem um plano ativo
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {dynamicMessage}
-              </p>
-            </div>
-            <div className="flex items-center gap-1 text-primary shrink-0">
-              <span className="text-sm font-medium">Criar Plano</span>
-              <ChevronRight className="w-4 h-4" />
+      <Card className="glass-card border-primary/30 bg-primary/5 overflow-hidden">
+        <CardContent className="p-0">
+          <div 
+            className="p-4 cursor-pointer hover:bg-primary/10 transition-colors active:scale-[0.99]"
+            onClick={() => onNavigateToMealPlan?.()}
+            role="button"
+            tabIndex={0}
+          >
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+                <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  {titleMessage}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {subtitleMessage}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-primary shrink-0">
+                <span className="text-sm font-medium">Criar Plano</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
             </div>
           </div>
         </CardContent>

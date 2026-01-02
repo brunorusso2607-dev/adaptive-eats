@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/ui/drawer";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -49,6 +49,8 @@ export default function FoodSearchDrawer({
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   const [removingFoodIds, setRemovingFoodIds] = useState<Set<string>>(new Set());
+  
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const { saveConsumption } = useMealConsumption();
   const { checkFood } = useIntoleranceWarning();
@@ -237,34 +239,40 @@ export default function FoodSearchDrawer({
     return unit;
   };
 
+  const focusSearchInput = useCallback(() => {
+    searchInputRef.current?.focus();
+  }, []);
+
   return (
     <Drawer open={open} onOpenChange={onOpenChange}>
       <DrawerContent className="h-[95vh] max-h-[95vh] flex flex-col">
-        <DrawerHeader className="pb-1 pt-2 flex-shrink-0">
+        <DrawerHeader className="pb-2 pt-3 flex-shrink-0">
           <DrawerTitle className="text-base">
             {mealType ? `${MEAL_TYPE_LABELS[mealType] || mealType} - O que você comeu?` : "Registrar o que você comeu"}
           </DrawerTitle>
         </DrawerHeader>
 
-        {/* Search area with unified block */}
-        <div className="px-4 pb-3 flex-shrink-0">
+        {/* Search area - compact, always at top */}
+        <div className="px-4 pb-2 flex-shrink-0">
           <UnifiedFoodSearchBlock
             onSelectFood={handleSelectFood}
-            scrollHeight="max-h-[35vh]"
-            confirmButtonLabel="Adicionar à lista"
+            scrollHeight="max-h-[30vh]"
+            confirmButtonLabel="Adicionar"
+            hasSelectedFoods={selectedFoods.length > 0}
+            inputRef={searchInputRef}
           />
         </div>
 
         {/* Scrollable content area - selected foods list */}
         <ScrollArea className="flex-1 px-4">
-          <div className="space-y-4 pb-4">
-            {/* Selected foods */}
+          <div className="space-y-3 pb-4">
+            {/* Selected foods - compact list */}
             {selectedFoods.length > 0 && (
-              <div className="space-y-3">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Alimentos selecionados
+              <div className="space-y-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Alimentos ({selectedFoods.length})
                 </h4>
-                <div className="space-y-2">
+                <div className="space-y-1.5">
                   {selectedFoods.map((food) => {
                     const macros = calculateMacros(food);
                     const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
@@ -273,111 +281,105 @@ export default function FoodSearchDrawer({
                       <div
                         key={food.id}
                         className={cn(
-                          "bg-card border rounded-lg p-3 space-y-2 transition-all duration-300",
+                          "bg-card border rounded-lg p-2.5 transition-all duration-300",
                           conflict && "border-amber-200 bg-amber-50/30",
                           removingFoodIds.has(food.id) && "opacity-0 scale-95 -translate-x-4"
                         )}
                       >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium text-sm">{food.name}</span>
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="font-medium text-sm truncate">{food.name}</span>
                             {conflict && (
-                              <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
-                                <AlertTriangle className="w-3 h-3" />
-                                {conflict.restrictionLabel.replace('intolerante a ', '')}
+                              <span className="flex items-center gap-0.5 text-[9px] text-amber-600 bg-amber-100 px-1 py-0.5 rounded flex-shrink-0">
+                                <AlertTriangle className="w-2.5 h-2.5" />
                               </span>
                             )}
                           </div>
-                          <button
-                            onClick={() => removeFood(food.id, food.name)}
-                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                            title="Remover alimento"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {/* Quantity input */}
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
+                          
+                          {/* Quantity input inline */}
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
                             <Input
                               type="number"
                               value={food.displayQuantity}
                               onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
-                              className="w-20 h-8 text-center text-sm"
+                              className="w-14 h-7 text-center text-xs px-1"
                               min="0"
                               step={food.serving_unit === 'g' || food.serving_unit === 'ml' ? "10" : "1"}
                             />
-                            <span className="text-sm text-muted-foreground">
+                            <span className="text-xs text-muted-foreground w-6">
                               {unitLabel}
                             </span>
-                            {(food.serving_unit === 'un' || food.serving_unit === 'fatia') && (
-                              <span className="text-xs text-muted-foreground">
-                                ({Math.round(food.quantity)}g)
-                              </span>
-                            )}
-                          </div>
-
-                          {/* Macros display */}
-                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
                               <Flame className="w-3 h-3 text-orange-500" />
                               {macros.calories}
                             </span>
-                            <span>P: {macros.protein}g</span>
-                            <span>C: {macros.carbs}g</span>
-                            <span>G: {macros.fat}g</span>
+                            <button
+                              onClick={() => removeFood(food.id, food.name)}
+                              className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                              title="Remover"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
-            )}
 
-            {/* Totals */}
-            {selectedFoods.length > 0 && (
-              <div className="bg-primary/10 rounded-lg p-4">
-                <h4 className="text-sm font-medium mb-2">Total</h4>
-                <div className="grid grid-cols-4 gap-2 text-center">
-                  <div>
-                    <p className="text-lg font-bold text-primary">{totals.calories}</p>
-                    <p className="text-xs text-muted-foreground">kcal</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-blue-500">{totals.protein.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Proteína</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-amber-500">{totals.carbs.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Carbos</p>
-                  </div>
-                  <div>
-                    <p className="text-lg font-bold text-red-500">{totals.fat.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">Gordura</p>
-                  </div>
-                </div>
+                {/* Add more button */}
+                <button
+                  onClick={focusSearchInput}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded-lg border border-dashed border-primary/30 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar mais
+                </button>
               </div>
             )}
           </div>
         </ScrollArea>
 
-        {/* Save button */}
-        <div className="px-4 py-4 border-t flex-shrink-0 bg-background">
-          <Button
-            className="w-full gradient-primary"
-            onClick={handleSave}
-            disabled={selectedFoods.length === 0 || isSaving}
-          >
-            {isSaving ? (
-              <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            ) : (
-              <Check className="w-4 h-4 mr-2" />
-            )}
-            Registrar Consumo ({selectedFoods.length} {selectedFoods.length === 1 ? 'item' : 'itens'})
-          </Button>
-        </div>
+        {/* Bottom section - Macro summary + Save button */}
+        {selectedFoods.length > 0 && (
+          <div className="px-4 py-3 border-t flex-shrink-0 bg-background space-y-3">
+            {/* Macro summary - compact bar */}
+            <div className="bg-emerald-50 dark:bg-emerald-900/20 rounded-lg px-4 py-2.5">
+              <div className="grid grid-cols-4 gap-3 text-center">
+                <div>
+                  <p className="text-base font-bold text-orange-500">{totals.calories}</p>
+                  <p className="text-[10px] text-muted-foreground">kcal</p>
+                </div>
+                <div>
+                  <p className="text-base font-bold text-blue-500">{totals.protein.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">Prot</p>
+                </div>
+                <div>
+                  <p className="text-base font-bold text-amber-500">{totals.carbs.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">Carbs</p>
+                </div>
+                <div>
+                  <p className="text-base font-bold text-red-500">{totals.fat.toFixed(1)}</p>
+                  <p className="text-[10px] text-muted-foreground">Gord</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Save button */}
+            <Button
+              className="w-full gradient-primary"
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Check className="w-4 h-4 mr-2" />
+              )}
+              Continuar
+            </Button>
+          </div>
+        )}
       </DrawerContent>
     </Drawer>
   );

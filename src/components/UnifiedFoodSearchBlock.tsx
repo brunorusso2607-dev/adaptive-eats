@@ -58,6 +58,8 @@ export interface UnifiedFoodSearchBlockProps {
   scrollHeight?: string;
   autoFocus?: boolean;
   confirmButtonLabel?: string;
+  hasSelectedFoods?: boolean; // Hide empty state when foods are already selected
+  inputRef?: React.RefObject<HTMLInputElement>; // Ref to focus input from parent
 }
 
 // ===== SOURCE BADGE =====
@@ -90,7 +92,9 @@ export default function UnifiedFoodSearchBlock({
   className,
   scrollHeight = "h-[calc(100vh-340px)]",
   autoFocus = false,
-  confirmButtonLabel = "Adicionar"
+  confirmButtonLabel = "Adicionar",
+  hasSelectedFoods = false,
+  inputRef
 }: UnifiedFoodSearchBlockProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
@@ -374,20 +378,18 @@ export default function UnifiedFoodSearchBlock({
 
   return (
     <>
-      <div className={cn("space-y-4", className)}>
-        {/* Search input */}
+      <div className={cn("space-y-3", className)}>
+        {/* Search input - compact */}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
+            ref={inputRef}
             placeholder={searchPlaceholder.placeholder}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
+            className="pl-9 h-10"
             autoFocus={autoFocus}
           />
-          <p className="text-xs text-muted-foreground mt-1.5 ml-1">
-            {searchPlaceholder.hint}
-          </p>
         </div>
 
         {/* Results area */}
@@ -395,18 +397,18 @@ export default function UnifiedFoodSearchBlock({
           <div className="space-y-2 pr-4">
             {/* Loading state */}
             {isLoading && searchQuery.length >= 2 && results.length === 0 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+              <div className="text-center py-6 text-muted-foreground">
+                <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
                 <p className="text-sm">Buscando alimentos...</p>
               </div>
             )}
 
-            {/* Initial state */}
-            {searchQuery.length < 2 && (
-              <div className="text-center py-8 text-muted-foreground">
-                <Search className="w-10 h-10 mx-auto mb-2 opacity-50" />
-                <p>Digite para buscar alimentos</p>
-                <p className="text-xs">Busca local + USDA + IA</p>
+            {/* Initial state - only show if no foods selected yet */}
+            {searchQuery.length < 2 && !hasSelectedFoods && (
+              <div className="text-center py-6 text-muted-foreground">
+                <Search className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">Digite para buscar alimentos</p>
+                <p className="text-xs opacity-70">Busca local + USDA + IA</p>
               </div>
             )}
 

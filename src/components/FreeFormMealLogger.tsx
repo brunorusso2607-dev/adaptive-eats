@@ -269,7 +269,8 @@ export default function FreeFormMealLogger({
         open={showRegistrationFlow}
         onOpenChange={setShowRegistrationFlow}
         mealData={mealData}
-        consumptionItems={consumptionItems}
+        items={consumptionItems}
+        sourceType="manual"
         onSuccess={handleRegistrationSuccess}
         onBack={() => setShowRegistrationFlow(false)}
       />

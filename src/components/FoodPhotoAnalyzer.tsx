@@ -1661,11 +1661,14 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               {/* Legal Disclaimer */}
               <LegalDisclaimer className="mt-2" />
 
-              {/* Spacer for fixed footer + bottom nav */}
-              <div className="h-32 md:h-24" />
+              {/* Spacer for fixed footer + bottom nav + safe area */}
+              <div className="h-32 md:h-24" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }} />
 
-              {/* Fixed Footer with Calories Info + Actions - positioned above mobile nav */}
-              <div className="fixed bottom-16 md:bottom-0 left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 z-40">
+              {/* Fixed Footer with Calories Info + Actions - positioned above mobile nav + safe area */}
+              <div 
+                className="fixed left-0 right-0 bg-background/95 backdrop-blur-sm border-t border-border p-3 z-40 md:bottom-0"
+                style={{ bottom: "calc(4rem + env(safe-area-inset-bottom, 0px))" }}
+              >
                 <div className="max-w-lg mx-auto space-y-2">
                   {/* Calories info + Report problem */}
                   <div className="flex items-center justify-center gap-2 text-muted-foreground">

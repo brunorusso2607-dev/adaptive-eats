@@ -458,6 +458,12 @@ export default function Onboarding() {
         );
 
       case 8:
+        // Helper to complete onboarding from this step
+        const handleCompleteFromNotifications = async () => {
+          localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
+          await handleComplete();
+        };
+
         return (
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -471,49 +477,87 @@ export default function Onboarding() {
             </div>
 
             {!isPushSupported ? (
-              <div className="bg-muted/50 rounded-lg p-4 text-center">
-                <BellOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">
-                  Notificações não são suportadas neste navegador
-                </p>
+              <div className="space-y-4">
+                <div className="bg-muted/50 rounded-lg p-4 text-center">
+                  <BellOff className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-muted-foreground">
+                    Notificações não são suportadas neste navegador
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="w-full h-14"
+                  onClick={handleCompleteFromNotifications}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                  Concluir
+                </Button>
               </div>
             ) : pushPermission === "denied" ? (
-              <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
-                <p className="text-sm text-destructive text-center">
-                  Notificações foram bloqueadas. Para ativar, vá nas configurações do navegador.
-                </p>
+              <div className="space-y-4">
+                <div className="bg-destructive/10 border border-destructive/20 rounded-lg p-4">
+                  <p className="text-sm text-destructive text-center">
+                    Notificações foram bloqueadas. Para ativar, vá nas configurações do navegador.
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="w-full h-14"
+                  onClick={handleCompleteFromNotifications}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                  Concluir
+                </Button>
               </div>
             ) : isPushSubscribed ? (
-              <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
-                <p className="text-sm text-primary text-center flex items-center justify-center gap-2">
-                  <Check className="w-4 h-4" />
-                  Notificações ativadas!
-                </p>
+              <div className="space-y-4">
+                <div className="bg-primary/10 border border-primary/20 rounded-lg p-4">
+                  <p className="text-sm text-primary text-center flex items-center justify-center gap-2">
+                    <Check className="w-4 h-4" />
+                    Notificações ativadas!
+                  </p>
+                </div>
+                <Button
+                  size="lg"
+                  className="w-full h-14"
+                  onClick={handleCompleteFromNotifications}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Check className="w-4 h-4 mr-2" />}
+                  Concluir
+                </Button>
               </div>
             ) : (
-              <Button
-                size="lg"
-                className="w-full h-14"
-                onClick={async () => {
-                  const success = await subscribePush();
-                  if (success) {
-                    localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
-                  }
-                }}
-              >
-                <Bell className="w-5 h-5 mr-2" />
-                Ativar Notificações
-              </Button>
-            )}
+              <div className="space-y-4">
+                <Button
+                  size="lg"
+                  className="w-full h-14"
+                  onClick={async () => {
+                    const success = await subscribePush();
+                    if (success) {
+                      localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
+                      await handleComplete();
+                    }
+                  }}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Bell className="w-5 h-5 mr-2" />}
+                  Ativar Notificações
+                </Button>
 
-            <button
-              onClick={() => {
-                localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, new Date().toISOString());
-              }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors w-full text-center"
-            >
-              Agora não
-            </button>
+                <Button
+                  variant="ghost"
+                  size="lg"
+                  className="w-full h-12 text-muted-foreground hover:text-foreground"
+                  onClick={handleCompleteFromNotifications}
+                  disabled={isLoading}
+                >
+                  Pular
+                </Button>
+              </div>
+            )}
           </div>
         );
 
@@ -584,43 +628,59 @@ export default function Onboarding() {
         </Card>
       </main>
 
-      {/* Footer Navigation */}
-      <footer className="p-5 flex gap-3">
-        {currentStep > 1 && (
-          <Button variant="outline" size="lg" onClick={handleBack} className="flex-1 h-12">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Voltar
-          </Button>
-        )}
-        <Button 
-          size="lg" 
-          onClick={handleNext} 
-          disabled={isLoading}
-          className="flex-1 h-12 bg-primary hover:bg-primary/90"
-        >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === totalSteps ? (
-            <Check className="w-4 h-4 mr-2" />
-          ) : null}
-          {(() => {
-            // Dynamic button text for restriction steps
-            const getOriginalStep = () => showCountrySelection ? currentStep : currentStep + 1;
-            const origStep = getOriginalStep();
-            
-            if (currentStep === totalSteps) {
-              return "Concluir";
-            }
-            
-            // Check if we're on a restriction category step (2, 3, 4)
-            if (origStep >= 2 && origStep <= 4) {
-              const categoryKey = origStep === 2 ? "intolerances" : origStep === 3 ? "allergies" : "sensitivities";
-              const categoryOptions = options?.[categoryKey as keyof typeof options] || [];
-              const hasSelectedInCategory = profile.intolerances.some(
-                id => categoryOptions.some((opt: OnboardingOption) => opt.option_id === id && opt.option_id !== 'none')
-              );
+      {/* Footer Navigation - Hidden on last step (notifications) */}
+      {currentStep < totalSteps && (
+        <footer className="p-5 flex gap-3">
+          {currentStep > 1 && (
+            <Button variant="outline" size="lg" onClick={handleBack} className="flex-1 h-12">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Voltar
+            </Button>
+          )}
+          <Button 
+            size="lg" 
+            onClick={handleNext} 
+            disabled={isLoading}
+            className="flex-1 h-12 bg-primary hover:bg-primary/90"
+          >
+            {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
+            {(() => {
+              // Dynamic button text for restriction steps
+              const getOriginalStep = () => showCountrySelection ? currentStep : currentStep + 1;
+              const origStep = getOriginalStep();
               
-              if (hasSelectedInCategory) {
+              // Check if we're on a restriction category step (2, 3, 4)
+              if (origStep >= 2 && origStep <= 4) {
+                const categoryKey = origStep === 2 ? "intolerances" : origStep === 3 ? "allergies" : "sensitivities";
+                const categoryOptions = options?.[categoryKey as keyof typeof options] || [];
+                const hasSelectedInCategory = profile.intolerances.some(
+                  id => categoryOptions.some((opt: OnboardingOption) => opt.option_id === id && opt.option_id !== 'none')
+                );
+                
+                if (hasSelectedInCategory) {
+                  return (
+                    <>
+                      Próximo
+                      <ArrowRight className="w-4 h-4 ml-2" />
+                    </>
+                  );
+                }
+                
+                // No selection - show "Não tenho nenhuma [categoria]"
+                const categoryLabels: Record<string, string> = {
+                  intolerances: "Não tenho nenhuma intolerância",
+                  allergies: "Não tenho nenhuma alergia",
+                  sensitivities: "Não tenho nenhuma sensibilidade",
+                };
+                return categoryLabels[categoryKey];
+              }
+              
+              // Check if we're on the dietary preference step (step 5) - make it skippable
+              if (origStep === 5) {
+                // "comum" is the default/no preference option
+                if (profile.dietary_preference === "comum") {
+                  return "Não tenho preferência específica";
+                }
                 return (
                   <>
                     Próximo
@@ -629,51 +689,29 @@ export default function Onboarding() {
                 );
               }
               
-              // No selection - show "Não tenho nenhuma [categoria]"
-              const categoryLabels: Record<string, string> = {
-                intolerances: "Não tenho nenhuma intolerância",
-                allergies: "Não tenho nenhuma alergia",
-                sensitivities: "Não tenho nenhuma sensibilidade",
-              };
-              return categoryLabels[categoryKey];
-            }
-            
-            // Check if we're on the dietary preference step (step 5) - make it skippable
-            if (origStep === 5) {
-              // "comum" is the default/no preference option
-              if (profile.dietary_preference === "comum") {
-                return "Não tenho preferência específica";
+              // Check if we're on the excluded ingredients step (step 6) - make it skippable
+              if (origStep === 6) {
+                if (profile.excluded_ingredients.length === 0) {
+                  return "Pular esta etapa";
+                }
+                return (
+                  <>
+                    Continuar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                );
               }
+              
               return (
                 <>
                   Próximo
                   <ArrowRight className="w-4 h-4 ml-2" />
                 </>
               );
-            }
-            
-            // Check if we're on the excluded ingredients step (step 6) - make it skippable
-            if (origStep === 6) {
-              if (profile.excluded_ingredients.length === 0) {
-                return "Pular esta etapa";
-              }
-              return (
-                <>
-                  Continuar
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </>
-              );
-            }
-            
-            return (
-              <>
-                Próximo
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </>
-            );
-          })()}
-        </Button>
-      </footer>
+            })()}
+          </Button>
+        </footer>
+      )}
     </div>
   );
 }

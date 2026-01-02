@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/collapsible";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
+import { toZonedTime } from "date-fns-tz";
 import { ptBR } from "date-fns/locale";
+import { useUserTimezone } from "@/hooks/useUserTimezone";
 
 interface PendingMealsListProps {
   onStreakRefresh?: () => void;
@@ -27,6 +29,7 @@ interface PendingMealsListProps {
 export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan, userProfile }: PendingMealsListProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isRecipeSheetOpen, setIsRecipeSheetOpen] = useState(false);
+  const { timezone } = useUserTimezone();
   const {
     pendingMeals,
     isLoading,
@@ -42,18 +45,21 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     isMealTimeStartedForMeal,
   } = usePendingMeals();
 
-  // Calcular nomes dos meses dinamicamente
+  // Calcular nomes dos meses dinamicamente com timezone do usuário
   const { expiredMonthName, currentMonthName } = useMemo(() => {
-    const currentMonth = format(new Date(), "MMMM", { locale: ptBR });
+    // Usar timezone do usuário para obter o mês atual corretamente
+    const nowInTimezone = toZonedTime(new Date(), timezone);
+    const currentMonth = format(nowInTimezone, "MMMM", { locale: ptBR });
     
     if (expiredPlanEndDate) {
-      const expiredDate = new Date(expiredPlanEndDate + "T00:00:00");
+      // A data do plano é uma string YYYY-MM-DD, criar Date e converter para timezone
+      const expiredDate = toZonedTime(new Date(expiredPlanEndDate + "T12:00:00Z"), timezone);
       const expiredMonth = format(expiredDate, "MMMM", { locale: ptBR });
       return { expiredMonthName: expiredMonth, currentMonthName: currentMonth };
     }
     
     return { expiredMonthName: null, currentMonthName: currentMonth };
-  }, [expiredPlanEndDate]);
+  }, [expiredPlanEndDate, timezone]);
 
   // Separar: próxima refeição (verde) vs atrasadas (amarela/vermelha)
   // Se o plano expirou, não há "próxima refeição" - todas são atrasadas

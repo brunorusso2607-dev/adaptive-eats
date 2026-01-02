@@ -1108,12 +1108,146 @@ If any alert exists, set health_bonus to null.
     // Coletar todos os alimentos identificados para validação centralizada
     const identifiedFoods = analysis.alimentos?.map((food: { item?: string }) => food.item || "") || [];
     
+    // ========== DECOMPOSIÇÃO DE INGREDIENTES PARA ALIMENTOS PROCESSADOS ==========
+    // Alimentos como "biscoito", "pão", "macarrão" são produtos finais que contêm ingredientes ocultos
+    // Precisamos decompor esses alimentos em ingredientes base para validação correta
+    
+    const PROCESSED_FOOD_KEYWORDS = [
+      'biscoito', 'bolacha', 'pão', 'bolo', 'torta', 'pizza', 'macarrão', 'massa', 
+      'salgado', 'pastel', 'empada', 'coxinha', 'esfiha', 'croissant', 'wafer',
+      'cookie', 'cracker', 'muffin', 'brownie', 'donut', 'rosquinha', 'pretzel',
+      'sanduíche', 'hambúrguer', 'hot dog', 'cachorro quente', 'wrap', 'tapioca',
+      'lasanha', 'nhoque', 'ravioli', 'cappelletti', 'ravióli', 'canelone',
+      'panqueca', 'crepe', 'waffle', 'churros', 'sonho', 'bomba', 'éclair',
+      'panetone', 'colomba', 'brioche', 'focaccia', 'ciabatta', 'baguete',
+      'cereal', 'granola', 'muesli', 'barra de cereal', 'snack', 'chips',
+      'sorvete', 'picolé', 'açaí', 'pudim', 'mousse', 'cheesecake',
+    ];
+    
+    // Função para detectar se é alimento processado
+    const isProcessedFood = (foodName: string): boolean => {
+      const normalized = foodName.toLowerCase().trim();
+      return PROCESSED_FOOD_KEYWORDS.some(keyword => normalized.includes(keyword));
+    };
+    
+    // Função para decompor alimento processado em ingredientes base (inline, sem API)
+    const decomposeProcessedFood = (foodName: string): string[] => {
+      const normalized = foodName.toLowerCase().trim();
+      
+      // Mapa de decomposição para alimentos comuns
+      const DECOMPOSITION_MAP: Record<string, string[]> = {
+        // Biscoitos e bolachas
+        'biscoito': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'leite'],
+        'bolacha': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga'],
+        'biscoito de maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'manteiga', 'leite'],
+        'biscoito maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'manteiga', 'leite'],
+        'maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'manteiga', 'leite'],
+        'cookie': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'ovo', 'chocolate'],
+        'wafer': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal'],
+        'cracker': ['farinha de trigo', 'trigo', 'sal', 'gordura vegetal'],
+        
+        // Pães
+        'pão': ['farinha de trigo', 'trigo', 'fermento', 'sal', 'açúcar'],
+        'pão de forma': ['farinha de trigo', 'trigo', 'fermento', 'açúcar', 'leite'],
+        'pão francês': ['farinha de trigo', 'trigo', 'fermento', 'sal'],
+        'torrada': ['farinha de trigo', 'trigo', 'manteiga'],
+        'croissant': ['farinha de trigo', 'trigo', 'manteiga', 'leite', 'ovo'],
+        'brioche': ['farinha de trigo', 'trigo', 'manteiga', 'leite', 'ovo', 'açúcar'],
+        
+        // Massas
+        'macarrão': ['farinha de trigo', 'trigo', 'ovo'],
+        'massa': ['farinha de trigo', 'trigo', 'ovo'],
+        'lasanha': ['farinha de trigo', 'trigo', 'ovo', 'queijo', 'leite'],
+        'pizza': ['farinha de trigo', 'trigo', 'queijo', 'tomate'],
+        'nhoque': ['batata', 'farinha de trigo', 'trigo', 'ovo'],
+        
+        // Bolos e doces
+        'bolo': ['farinha de trigo', 'trigo', 'açúcar', 'ovo', 'leite', 'manteiga'],
+        'torta': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'ovo'],
+        'brownie': ['farinha de trigo', 'trigo', 'chocolate', 'açúcar', 'ovo', 'manteiga'],
+        'muffin': ['farinha de trigo', 'trigo', 'açúcar', 'ovo', 'leite'],
+        'panqueca': ['farinha de trigo', 'trigo', 'leite', 'ovo'],
+        'crepe': ['farinha de trigo', 'trigo', 'leite', 'ovo'],
+        'waffle': ['farinha de trigo', 'trigo', 'leite', 'ovo', 'açúcar'],
+        
+        // Salgados
+        'coxinha': ['farinha de trigo', 'trigo', 'frango', 'leite'],
+        'pastel': ['farinha de trigo', 'trigo', 'gordura'],
+        'empada': ['farinha de trigo', 'trigo', 'manteiga', 'ovo'],
+        'esfiha': ['farinha de trigo', 'trigo', 'carne'],
+        
+        // Sanduíches
+        'sanduíche': ['pão', 'farinha de trigo', 'trigo'],
+        'hambúrguer': ['pão', 'farinha de trigo', 'trigo', 'carne bovina'],
+        'hot dog': ['pão', 'farinha de trigo', 'trigo', 'salsicha'],
+        
+        // Cereais
+        'cereal': ['trigo', 'aveia', 'milho', 'açúcar'],
+        'granola': ['aveia', 'mel', 'castanhas'],
+        
+        // Sorvetes
+        'sorvete': ['leite', 'açúcar', 'creme de leite'],
+        'picolé': ['açúcar', 'água'],
+        'açaí': ['açaí', 'guaraná', 'açúcar'],
+      };
+      
+      // Procurar decomposição específica
+      for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+        if (normalized.includes(key)) {
+          logStep(`Decomposed processed food "${foodName}"`, { ingredients });
+          return ingredients;
+        }
+      }
+      
+      // Fallback: se não encontrou decomposição específica, retorna o alimento original
+      // mas também adiciona trigo se parece ser um produto de panificação
+      if (normalized.includes('biscoito') || normalized.includes('bolacha') || 
+          normalized.includes('pão') || normalized.includes('bolo') ||
+          normalized.includes('torta') || normalized.includes('massa')) {
+        logStep(`Generic processed food decomposition for "${foodName}"`, { 
+          ingredients: ['farinha de trigo', 'trigo', foodName] 
+        });
+        return ['farinha de trigo', 'trigo', foodName];
+      }
+      
+      return [foodName];
+    };
+    
+    // Coletar ingredientes para validação (incluindo decomposição de processados)
+    let ingredientsToValidate: string[] = [];
+    
+    for (const food of identifiedFoods) {
+      if (!food) continue;
+      
+      if (isProcessedFood(food)) {
+        // Decompor o alimento processado em ingredientes base
+        const decomposedIngredients = decomposeProcessedFood(food);
+        ingredientsToValidate.push(...decomposedIngredients);
+        logStep(`Processed food detected and decomposed`, { 
+          original: food, 
+          decomposed: decomposedIngredients 
+        });
+      } else {
+        // Alimento simples, adicionar diretamente
+        ingredientsToValidate.push(food);
+      }
+    }
+    
+    // Remover duplicatas
+    ingredientsToValidate = [...new Set(ingredientsToValidate)].filter(Boolean);
+    
+    logStep("Ingredients prepared for validation", { 
+      originalFoods: identifiedFoods,
+      ingredientsToValidate,
+      count: ingredientsToValidate.length
+    });
+    
     // Variável para armazenar resultado fora do escopo do if
     let validationResult: SafetyCheckResult | null = null;
     
-    if (identifiedFoods.length > 0) {
-      // Usar validateIngredientList do globalSafetyEngine
-      validationResult = validateIngredientList(identifiedFoods, userRestrictionsForEngine, safetyDatabase);
+    if (ingredientsToValidate.length > 0) {
+      // Usar validateIngredientList do globalSafetyEngine com ingredientes decompostos
+      validationResult = validateIngredientList(ingredientsToValidate, userRestrictionsForEngine, safetyDatabase);
       
       logStep("Global safety validation complete", { 
         isSafe: validationResult.isSafe,

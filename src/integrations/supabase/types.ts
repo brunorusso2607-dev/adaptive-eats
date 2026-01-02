@@ -686,6 +686,36 @@ export type Database = {
         }
         Relationships: []
       }
+      food_decomposition_mappings: {
+        Row: {
+          base_ingredients: string[]
+          created_at: string
+          food_name: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          base_ingredients?: string[]
+          created_at?: string
+          food_name: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          base_ingredients?: string[]
+          created_at?: string
+          food_name?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       foods: {
         Row: {
           aliases: string[] | null

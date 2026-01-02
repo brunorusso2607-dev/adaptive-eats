@@ -529,37 +529,38 @@ export default function UnifiedFoodSearchBlock({
                         </div>
                       </div>
 
-                      {/* Macro preview */}
+                      {/* Macro preview + Add button inline */}
                       {macros && (
-                        <div className="grid grid-cols-4 gap-2 text-center">
-                          <div className="p-2 rounded-lg bg-background border">
-                            <div className="text-xs text-muted-foreground">Calorias</div>
-                            <div className="font-semibold text-sm text-orange-500">{macros.calories}</div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex-1 grid grid-cols-4 gap-1 text-center">
+                            <div className="p-1.5 rounded-lg bg-background border">
+                              <div className="text-[10px] text-muted-foreground">Cal</div>
+                              <div className="font-semibold text-xs text-orange-500">{macros.calories}</div>
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-background border">
+                              <div className="text-[10px] text-muted-foreground">P</div>
+                              <div className="font-semibold text-xs text-blue-500">{macros.protein}g</div>
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-background border">
+                              <div className="text-[10px] text-muted-foreground">C</div>
+                              <div className="font-semibold text-xs text-amber-500">{macros.carbs}g</div>
+                            </div>
+                            <div className="p-1.5 rounded-lg bg-background border">
+                              <div className="text-[10px] text-muted-foreground">G</div>
+                              <div className="font-semibold text-xs text-red-500">{macros.fat}g</div>
+                            </div>
                           </div>
-                          <div className="p-2 rounded-lg bg-background border">
-                            <div className="text-xs text-muted-foreground">Prot</div>
-                            <div className="font-semibold text-sm text-blue-500">{macros.protein}g</div>
-                          </div>
-                          <div className="p-2 rounded-lg bg-background border">
-                            <div className="text-xs text-muted-foreground">Carbs</div>
-                            <div className="font-semibold text-sm text-amber-500">{macros.carbs}g</div>
-                          </div>
-                          <div className="p-2 rounded-lg bg-background border">
-                            <div className="text-xs text-muted-foreground">Gord</div>
-                            <div className="font-semibold text-sm text-red-500">{macros.fat}g</div>
-                          </div>
+                          {/* Confirm button - now inline with macros for visibility */}
+                          <Button 
+                            onClick={handleConfirmAddition}
+                            className="flex-shrink-0"
+                            size="sm"
+                          >
+                            <Check className="w-4 h-4 mr-1" />
+                            {confirmButtonLabel}
+                          </Button>
                         </div>
                       )}
-
-                      {/* Confirm button */}
-                      <Button 
-                        onClick={handleConfirmAddition}
-                        className="w-full"
-                        size="sm"
-                      >
-                        <Check className="w-4 h-4 mr-2" />
-                        {confirmButtonLabel}
-                      </Button>
                     </div>
                   )}
                 </div>

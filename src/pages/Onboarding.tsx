@@ -16,6 +16,7 @@ import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useNutritionalStrategies, deriveGoalFromStrategy, type NutritionalStrategy } from "@/hooks/useNutritionalStrategies";
 import { useActiveOnboardingCountries } from "@/hooks/useOnboardingCountries";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
+import { RestrictionCategoryStep } from "@/components/onboarding/RestrictionCategoryStep";
 
 const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
@@ -29,13 +30,16 @@ type ProfileData = {
 };
 
 // Base steps - step 1 (country) may be skipped based on feature flag
+// Steps 2, 3, 4 are now separate pages for each restriction category
 const BASE_STEPS = [
   { id: 1, title: "Sua região", description: "De qual país você é?", skippable: true },
-  { id: 2, title: "Restrições", description: "Intolerâncias, alergias e sensibilidades", skippable: false },
-  { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?", skippable: false },
-  { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?", skippable: false },
-  { id: 5, title: "Objetivo", description: "Qual sua estratégia nutricional?", skippable: false },
-  { id: 6, title: "Notificações", description: "Receba lembretes importantes", skippable: false },
+  { id: 2, title: "Intolerâncias", description: "Você tem alguma intolerância?", skippable: false, categoryKey: "intolerances" },
+  { id: 3, title: "Alergias", description: "Você tem alguma alergia?", skippable: false, categoryKey: "allergies" },
+  { id: 4, title: "Sensibilidades", description: "Você tem alguma sensibilidade?", skippable: false, categoryKey: "sensitivities" },
+  { id: 5, title: "Preferência", description: "Qual sua preferência alimentar?", skippable: false },
+  { id: 6, title: "Alimentos", description: "Tem algum alimento que você não consome?", skippable: false },
+  { id: 7, title: "Objetivo", description: "Qual sua estratégia nutricional?", skippable: false },
+  { id: 8, title: "Notificações", description: "Receba lembretes importantes", skippable: false },
 ];
 
 export default function Onboarding() {
@@ -237,93 +241,32 @@ export default function Onboarding() {
         );
 
       case 2:
+      case 3:
+      case 4:
+        // Restriction category steps (Intolerances, Allergies, Sensitivities)
         const categoryColors: Record<string, { dot: string; border: string; bg: string; hover: string }> = {
           intolerances: { dot: "bg-amber-500", border: "border-amber-500", bg: "bg-amber-500/10", hover: "hover:border-amber-500/50" },
           allergies: { dot: "bg-red-500", border: "border-red-500", bg: "bg-red-500/10", hover: "hover:border-red-500/50" },
           sensitivities: { dot: "bg-purple-500", border: "border-purple-500", bg: "bg-purple-500/10", hover: "hover:border-purple-500/50" },
         };
 
+        const currentCategoryKey = originalStep === 2 ? "intolerances" : originalStep === 3 ? "allergies" : "sensitivities";
+        const categoryOptions = options[currentCategoryKey as keyof OnboardingOptionsMap] || [];
+        const colors = categoryColors[currentCategoryKey];
+        const categoryInfo = restrictionCategories?.find(c => c.category_key === currentCategoryKey);
+
         return (
-          <div className="space-y-6 max-h-[420px] overflow-y-auto pr-1">
-            {/* Renderizar categorias na ordem do banco */}
-            {restrictionCategories?.map((category) => {
-              const categoryKey = category.category_key as keyof OnboardingOptionsMap;
-              const categoryOptions = options[categoryKey] || [];
-              const colors = categoryColors[categoryKey] || categoryColors.intolerances;
-              
-              // Filtrar a opção "none" para não aparecer nas seções
-              const filteredOptions = categoryOptions.filter(item => item.option_id !== 'none');
-              
-              if (filteredOptions.length === 0) return null;
-
-              return (
-                <div key={category.id} className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", colors.dot)} />
-                    <h3 className="text-sm font-semibold text-foreground">{category.label}</h3>
-                    {category.description && (
-                      <span className="text-xs text-muted-foreground">({category.description})</span>
-                    )}
-                  </div>
-                  <div className="grid grid-cols-2 gap-2">
-                    {filteredOptions.map((item) => {
-                      const IconComponent = getOnboardingIcon(item);
-                      return (
-                        <button
-                          key={item.option_id}
-                          onClick={() => toggleIntolerance(item.option_id)}
-                          className={cn(
-                            "p-3 rounded-xl border text-left transition-all",
-                            profile.intolerances.includes(item.option_id)
-                              ? cn(colors.border, colors.bg)
-                              : cn("border-border/80 bg-card", colors.hover)
-                          )}
-                        >
-                          <div className="w-6 h-6 mb-1.5 flex items-center justify-center">
-                            {IconComponent ? (
-                              <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                            ) : (
-                              <span className="text-lg">{item.emoji || "•"}</span>
-                            )}
-                          </div>
-                          <span className="font-medium text-xs">{item.label}</span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            })}
-
-            {/* Opção "Nenhuma" */}
-            {options.intolerances.filter(item => item.option_id === 'none').map((item) => {
-              const IconComponent = getOnboardingIcon(item);
-              return (
-                <button
-                  key={item.option_id}
-                  onClick={() => toggleIntolerance(item.option_id)}
-                  className={cn(
-                    "w-full p-3 rounded-xl border text-center transition-all",
-                    profile.intolerances.includes(item.option_id)
-                      ? "border-primary bg-primary/10"
-                      : "border-border/80 hover:border-primary/50 bg-card"
-                  )}
-                >
-                  <div className="flex items-center justify-center gap-2">
-                    {IconComponent ? (
-                      <IconComponent className="w-5 h-5 text-foreground stroke-[1.5]" />
-                    ) : (
-                      <span className="text-lg">{item.emoji || "✅"}</span>
-                    )}
-                    <span className="font-medium text-sm">{item.label}</span>
-                  </div>
-                </button>
-              );
-            })}
-          </div>
+          <RestrictionCategoryStep
+            categoryLabel={categoryInfo?.label || ""}
+            categoryDescription={categoryInfo?.description || undefined}
+            options={categoryOptions}
+            selectedItems={profile.intolerances}
+            onToggle={toggleIntolerance}
+            colorScheme={colors}
+          />
         );
 
-      case 3:
+      case 5:
         return (
           <div className="grid grid-cols-2 gap-3">
             {options.dietary_preferences.map((item) => {
@@ -356,7 +299,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 4:
+      case 6:
         return (
           <div className="space-y-4">
             <p className="text-sm text-muted-foreground">
@@ -488,7 +431,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 5:
+      case 7:
         const getStrategyIcon = (key: string) => {
           switch (key) {
             case "emagrecer": return TrendingDown;
@@ -560,7 +503,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 6:
+      case 8:
         return (
           <div className="space-y-6">
             <div className="text-center py-4">
@@ -706,8 +649,48 @@ export default function Onboarding() {
           ) : currentStep === totalSteps ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === totalSteps ? "Concluir" : "Próximo"}
-          {currentStep < totalSteps && <ArrowRight className="w-4 h-4 ml-2" />}
+          {(() => {
+            // Dynamic button text for restriction steps
+            const getOriginalStep = () => showCountrySelection ? currentStep : currentStep + 1;
+            const origStep = getOriginalStep();
+            
+            if (currentStep === totalSteps) {
+              return "Concluir";
+            }
+            
+            // Check if we're on a restriction category step (2, 3, 4)
+            if (origStep >= 2 && origStep <= 4) {
+              const categoryKey = origStep === 2 ? "intolerances" : origStep === 3 ? "allergies" : "sensitivities";
+              const categoryOptions = options?.[categoryKey as keyof typeof options] || [];
+              const hasSelectedInCategory = profile.intolerances.some(
+                id => categoryOptions.some((opt: OnboardingOption) => opt.option_id === id && opt.option_id !== 'none')
+              );
+              
+              if (hasSelectedInCategory) {
+                return (
+                  <>
+                    Próximo
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                );
+              }
+              
+              // No selection - show "Não tenho nenhuma [categoria]"
+              const categoryLabels: Record<string, string> = {
+                intolerances: "Não tenho nenhuma intolerância",
+                allergies: "Não tenho nenhuma alergia",
+                sensitivities: "Não tenho nenhuma sensibilidade",
+              };
+              return categoryLabels[categoryKey];
+            }
+            
+            return (
+              <>
+                Próximo
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </>
+            );
+          })()}
         </Button>
       </footer>
     </div>

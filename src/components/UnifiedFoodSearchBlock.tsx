@@ -100,7 +100,7 @@ export default function UnifiedFoodSearchBlock({
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [showAISuggestions, setShowAISuggestions] = useState(false);
-  const [isAnalyzingIntolerance, setIsAnalyzingIntolerance] = useState(false);
+  const [analyzingFoodId, setAnalyzingFoodId] = useState<string | null>(null);
   const [showManualModal, setShowManualModal] = useState(false);
 
   // Estado para seleção de porção (fluxo em 2 passos)
@@ -233,9 +233,9 @@ export default function UnifiedFoodSearchBlock({
         { duration: 4000 }
       );
     } else if (hasIntolerances) {
-      setIsAnalyzingIntolerance(true);
+      setAnalyzingFoodId(food.id);
       const aiResult = await analyzeWithAI(food.name);
-      setIsAnalyzingIntolerance(false);
+      setAnalyzingFoodId(null);
       
       if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
         const conflictLabels = aiResult.conflicts.map((c: any) => c.intoleranceLabel).join(', ');
@@ -439,12 +439,12 @@ export default function UnifiedFoodSearchBlock({
                   {/* Header - clickable to expand */}
                   <button
                     onClick={() => handleSelectFoodForPortion(food)}
-                    disabled={isAnalyzingIntolerance}
+                    disabled={analyzingFoodId !== null}
                     className="w-full flex items-center justify-between p-3 hover:bg-muted/50 transition-colors text-left"
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        {isAnalyzingIntolerance ? (
+                        {analyzingFoodId === food.id ? (
                           <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
                         ) : isSelected ? (
                           <Check className="w-4 h-4 text-primary flex-shrink-0" />

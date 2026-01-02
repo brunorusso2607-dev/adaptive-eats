@@ -131,6 +131,23 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
       }
     };
 
+    // Gerar mensagem dinâmica com base no mês
+    const today = new Date();
+    const currentMonthName = today.toLocaleDateString('pt-BR', { month: 'long' });
+    const capitalizedMonth = currentMonthName.charAt(0).toUpperCase() + currentMonthName.slice(1);
+    
+    // Verificar se estamos no início do mês (primeiros 7 dias)
+    const dayOfMonth = today.getDate();
+    const previousMonthDate = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    const previousMonthName = previousMonthDate.toLocaleDateString('pt-BR', { month: 'long' });
+    const capitalizedPreviousMonth = previousMonthName.charAt(0).toUpperCase() + previousMonthName.slice(1);
+    
+    const isStartOfMonth = dayOfMonth <= 7;
+    
+    const dynamicMessage = isStartOfMonth 
+      ? `${capitalizedPreviousMonth} acabou, crie seu plano de ${capitalizedMonth}!`
+      : `Crie seu plano alimentar de ${capitalizedMonth}`;
+
     return (
       <Card 
         className="glass-card border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors active:scale-[0.98]"
@@ -148,7 +165,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                 Você não tem um plano ativo
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Crie seu plano alimentar personalizado
+                {dynamicMessage}
               </p>
             </div>
             <div className="flex items-center gap-1 text-primary shrink-0">

@@ -456,7 +456,7 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
 
     logStep("Calling Google Gemini API with image");
 
-    // Função para fazer a chamada Gemini
+    // Função para fazer a chamada Gemini com response_mime_type para forçar JSON
     const callGemini = async () => {
       const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${promptConfig.model}:generateContent?key=${GOOGLE_AI_API_KEY}`, {
         method: "POST",
@@ -479,7 +479,8 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
           ],
           generationConfig: {
             temperature: 0.1,
-            maxOutputTokens: 8192, // Aumentado de 4096 para evitar respostas truncadas
+            maxOutputTokens: 8192,
+            responseMimeType: "application/json", // Força resposta JSON estruturada
           }
         }),
       });
@@ -495,8 +496,8 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       throw new Error("No JSON found in response");
     };
 
-    // Função principal com retry para erros 503 E erros de parse JSON
-    const callGeminiWithRetry = async (maxRetries = 3, delayMs = 2000) => {
+    // Função principal com retry para erros 503 E erros de parse JSON (reduzido para 2 tentativas)
+    const callGeminiWithRetry = async (maxRetries = 2, delayMs = 2000) => {
       let lastError: Error | null = null;
       
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -553,9 +554,9 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
               continue;
             }
             
-            // Última tentativa falhou
+            // Última tentativa falhou - mensagem mais amigável
             logStep("Parse error - all retries exhausted", { error: String(parseError), content: content.slice(0, 500) });
-            throw new Error("Não foi possível analisar o rótulo. Tente com uma foto mais clara.");
+            throw new Error("A análise demorou muito. Por favor, tente novamente com uma foto mais clara ou em melhor iluminação.");
           }
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));

@@ -392,8 +392,8 @@ export default function UnifiedFoodSearchBlock({
           />
         </div>
 
-        {/* Results area - adapts to content */}
-        <div className={cn("overflow-y-auto", scrollHeight)}>
+        {/* Results area - adapts to content, no height limit when food is selected */}
+        <div className={cn("overflow-y-auto", selectedFood ? "" : scrollHeight)}>
           <div className="space-y-2">
             {/* Loading state */}
             {isLoading && searchQuery.length >= 2 && results.length === 0 && (

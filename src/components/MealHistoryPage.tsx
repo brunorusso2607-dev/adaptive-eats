@@ -317,6 +317,12 @@ function MealCard({ meal }: { meal: MealHistoryItem }) {
                     <span className="text-amber-600">Pulada</span>
                   </>
                 )}
+                {(meal.feedbackStatus === "well" || meal.feedbackStatus === "auto_well") && (
+                  <>
+                    <span className="opacity-50">•</span>
+                    <span className="text-green-600">Concluída</span>
+                  </>
+                )}
               </div>
             </div>
 

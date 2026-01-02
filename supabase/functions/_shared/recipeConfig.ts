@@ -222,92 +222,93 @@ export function getGoalContext(profile: UserProfile): GoalContext {
 }
 
 /**
- * Gera instruções para o prompt de IA baseado no contexto do objetivo
+ * Generates AI prompt instructions based on goal context
+ * ARCHITECTURE: Reason in English, output will be localized by outer prompt
  */
 export function buildGoalContextInstructions(profile: UserProfile): string {
   const context = getGoalContext(profile);
   
   if (profile.goal === "manter") {
     return `
-🎯 OBJETIVO: MANUTENÇÃO DE PESO
-- Receitas balanceadas e nutritivas
-- Calorias equilibradas para manter peso atual
-- Proporção padrão de macronutrientes`;
+🎯 GOAL: WEIGHT MAINTENANCE
+- Balanced and nutritious recipes
+- Calories balanced to maintain current weight
+- Standard macronutrient ratio`;
   }
 
   if (profile.goal === "emagrecer") {
     const intensityLabel = {
-      light: "LEVE (até 5kg)",
-      moderate: "MODERADO (5-15kg)", 
-      aggressive: "INTENSIVO (mais de 15kg)"
+      light: "LIGHT (up to 5kg)",
+      moderate: "MODERATE (5-15kg)", 
+      aggressive: "INTENSIVE (more than 15kg)"
     }[context.goalIntensity];
 
     return `
-🏃 OBJETIVO: EMAGRECIMENTO - ${intensityLabel}
-- Meta de perda: ${context.weightDifference}kg
-- Déficit calórico: ${Math.abs(context.calorieAdjustment)} kcal/dia
-- Proteína: ${context.proteinMultiplier}g por kg de peso
-- PRIORIZAR: Vegetais volumosos, proteínas magras, fibras
-- EVITAR: Carboidratos refinados, açúcares, frituras
-- PREFERIR: Grelhados, assados, cozidos no vapor
-- ESTILO: RECEITAS FITNESS - baixa caloria, alto valor nutricional`;
+🏃 GOAL: WEIGHT LOSS - ${intensityLabel}
+- Loss target: ${context.weightDifference}kg
+- Caloric deficit: ${Math.abs(context.calorieAdjustment)} kcal/day
+- Protein: ${context.proteinMultiplier}g per kg of body weight
+- PRIORITIZE: Voluminous vegetables, lean proteins, fiber
+- AVOID: Refined carbohydrates, sugars, fried foods
+- PREFER: Grilled, baked, steamed
+- STYLE: FITNESS RECIPES - low calorie, high nutritional value`;
   }
 
   if (profile.goal === "cutting") {
     const intensityLabel = {
-      light: "LEVE (até 5kg)",
-      moderate: "MODERADO (5-10kg)", 
-      aggressive: "INTENSIVO (mais de 10kg)"
+      light: "LIGHT (up to 5kg)",
+      moderate: "MODERATE (5-10kg)", 
+      aggressive: "INTENSIVE (more than 10kg)"
     }[context.goalIntensity];
 
     return `
-🔪 OBJETIVO: CUTTING - ${intensityLabel}
-- Meta de definição: ${context.weightDifference}kg
-- Déficit calórico: ${Math.abs(context.calorieAdjustment)} kcal/dia
-- Proteína: ${context.proteinMultiplier}g por kg de peso (ALTA para preservar massa)
-- PRIORIZAR: Proteínas de alta qualidade, vegetais fibrosos, baixa caloria
-- EVITAR: Carboidratos refinados, açúcares, gorduras saturadas
-- PREFERIR: Carnes magras, peixes, ovos, vegetais verdes
-- ESTILO: RECEITAS CUTTING - máxima proteína, mínima caloria`;
+🔪 GOAL: CUTTING - ${intensityLabel}
+- Definition target: ${context.weightDifference}kg
+- Caloric deficit: ${Math.abs(context.calorieAdjustment)} kcal/day
+- Protein: ${context.proteinMultiplier}g per kg of body weight (HIGH to preserve mass)
+- PRIORITIZE: High quality proteins, fibrous vegetables, low calorie
+- AVOID: Refined carbohydrates, sugars, saturated fats
+- PREFER: Lean meats, fish, eggs, green vegetables
+- STYLE: CUTTING RECIPES - maximum protein, minimum calorie`;
   }
 
   if (profile.goal === "fitness") {
     return `
-💪 OBJETIVO: FITNESS / RECOMPOSIÇÃO
-- Foco em massa magra sem alterar peso
-- Calorias equilibradas (manutenção)
-- Proteína: ${context.proteinMultiplier}g por kg de peso (ELEVADA)
-- PRIORIZAR: Proteínas magras, carboidratos complexos, gorduras saudáveis
-- INCLUIR: Alimentos funcionais, alto valor proteico
-- PREFERIR: Refeições balanceadas e nutritivas
-- ESTILO: RECEITAS FITNESS - foco em qualidade e proteína`;
+💪 GOAL: FITNESS / BODY RECOMPOSITION
+- Focus on lean mass without changing weight
+- Balanced calories (maintenance)
+- Protein: ${context.proteinMultiplier}g per kg of body weight (HIGH)
+- PRIORITIZE: Lean proteins, complex carbohydrates, healthy fats
+- INCLUDE: Functional foods, high protein value
+- PREFER: Balanced and nutritious meals
+- STYLE: FITNESS RECIPES - focus on quality and protein`;
   }
 
   if (profile.goal === "ganhar_peso") {
     const intensityLabel = {
-      light: "LEVE (até 5kg)",
-      moderate: "MODERADO (5-10kg)",
-      aggressive: "INTENSIVO (mais de 10kg)"
+      light: "LIGHT (up to 5kg)",
+      moderate: "MODERATE (5-10kg)",
+      aggressive: "INTENSIVE (more than 10kg)"
     }[context.goalIntensity];
 
     return `
-📈 OBJETIVO: GANHO DE MASSA - ${intensityLabel}
-- Meta de ganho: ${context.weightDifference}kg
-- Superávit calórico: +${context.calorieAdjustment} kcal/dia
-- Proteína: ${context.proteinMultiplier}g por kg de peso
-- PRIORIZAR: Proteínas de qualidade, carboidratos complexos, gorduras saudáveis
-- INCLUIR: Porções generosas, alimentos densos em nutrientes
-- PREFERIR: Combinações calóricas nutritivas
-- ESTILO: RECEITAS ALTA CALORIA - densidade nutricional, calorias adequadas`;
+📈 GOAL: MASS GAIN - ${intensityLabel}
+- Gain target: ${context.weightDifference}kg
+- Caloric surplus: +${context.calorieAdjustment} kcal/day
+- Protein: ${context.proteinMultiplier}g per kg of body weight
+- PRIORITIZE: Quality proteins, complex carbohydrates, healthy fats
+- INCLUDE: Generous portions, nutrient-dense foods
+- PREFER: Nutritious caloric combinations
+- STYLE: HIGH CALORIE RECIPES - nutritional density, adequate calories`;
   }
 
   if (profile.goal === "dieta_flexivel") {
     return `
-🎯 OBJETIVO: DIETA FLEXÍVEL
-- Usuário define suas próprias metas calóricas
-- Flexibilidade nas escolhas alimentares
-- Respeitar as restrições e intolerâncias
-- ESTILO: RECEITAS VARIADAS - foco na variedade e prazer`;
+🎯 GOAL: FLEXIBLE DIET
+- User defines their own caloric goals
+- Flexibility in food choices
+- Respect restrictions and intolerances
+- STYLE: VARIED RECIPES - focus on variety and pleasure`;
   }
 
   return "";

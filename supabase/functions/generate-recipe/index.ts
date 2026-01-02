@@ -24,6 +24,15 @@ import {
 } from "../_shared/nutritionalCalculations.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 
+// ARCHITECTURE: Import globalSafetyEngine for post-generation validation
+import {
+  loadSafetyDatabase,
+  normalizeUserIntolerances,
+  validateIngredientList,
+  type UserRestrictions,
+  type SafetyDatabase,
+} from "../_shared/globalSafetyEngine.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -351,6 +360,60 @@ ${baseSystemPrompt}`;
         hasChefTip: !!recipe.chef_tip,
         hasSafetyStatus: !!recipe.safety_status
       });
+
+      // ========== POST-AI SAFETY VALIDATION USING GLOBAL SAFETY ENGINE ==========
+      // This ensures consistent validation with all other modules
+      try {
+        const safetyDatabase: SafetyDatabase = await loadSafetyDatabase();
+        const normalizedIntolerances = normalizeUserIntolerances(profile.intolerances || [], safetyDatabase);
+        
+        const userRestrictions: UserRestrictions = {
+          intolerances: normalizedIntolerances,
+          dietaryPreference: profile.dietary_preference || null,
+          excludedIngredients: profile.excluded_ingredients || [],
+        };
+
+        // Extract ingredient names for validation
+        const ingredientNames = recipe.ingredients.map((ing: any) => 
+          typeof ing === 'string' ? ing : (ing.item || ing.name || '')
+        ).filter((name: string) => name.length > 0);
+
+        const validationResult = validateIngredientList(ingredientNames, userRestrictions, safetyDatabase);
+        
+        logStep("Post-AI safety validation", {
+          isSafe: validationResult.isSafe,
+          conflicts: validationResult.conflicts.length,
+          warnings: validationResult.warnings.length
+        });
+
+        // Add safety metadata to recipe
+        recipe.safety_validated = true;
+        recipe.safety_is_safe = validationResult.isSafe;
+        recipe.safety_conflicts = validationResult.conflicts.map(c => ({
+          ingredient: c.originalIngredient,
+          matchedTerm: c.matchedIngredient,
+          restriction: c.key,
+          label: c.label,
+          type: c.type
+        }));
+        recipe.safety_warnings = validationResult.warnings.map(w => ({
+          ingredient: w.originalIngredient,
+          matchedTerm: w.matchedIngredient,
+          restriction: w.key,
+          label: w.label,
+          type: w.type
+        }));
+
+        // If there are conflicts, log a warning (but still return the recipe)
+        if (!validationResult.isSafe) {
+          logStep("⚠️ Recipe has safety conflicts - user will be warned", {
+            conflicts: validationResult.conflicts
+          });
+        }
+      } catch (safetyError) {
+        logStep("⚠️ Error in safety validation, proceeding without validation", { error: String(safetyError) });
+        recipe.safety_validated = false;
+      }
 
       // ========== HYBRID MACRO CALCULATION: Use real data from foods table ==========
       if (recipe.ingredients && Array.isArray(recipe.ingredients)) {

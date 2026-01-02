@@ -61,36 +61,18 @@ export default function HealthMilestonesSheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[85vh] p-6">
-        <SheetHeader className="pb-4">
+      <SheetContent side="bottom" className="h-[85vh] flex flex-col p-0">
+        <SheetHeader className="p-6 pb-4 flex-shrink-0">
           <SheetTitle className="text-lg font-semibold text-foreground">
             Seu Progresso
           </SheetTitle>
         </SheetHeader>
 
         <div 
-          className="overflow-y-auto h-[calc(100%-4rem)] pb-8 space-y-6"
+          className="flex-1 min-h-0 overflow-y-auto px-6 pb-8 space-y-6"
           style={{
             WebkitOverflowScrolling: 'touch',
             overscrollBehavior: 'contain',
-          }}
-          onTouchStart={(e) => {
-            const el = e.currentTarget;
-            (el as any)._startY = e.touches[0].clientY;
-          }}
-          onTouchMove={(e) => {
-            const el = e.currentTarget;
-            const startY = (el as any)._startY || 0;
-            const currentY = e.touches[0].clientY;
-            const deltaY = startY - currentY;
-            const isScrollingDown = deltaY > 0;
-            const isScrollingUp = deltaY < 0;
-            const isAtTop = el.scrollTop <= 0;
-            const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-            if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
-              e.preventDefault();
-            }
-            e.stopPropagation();
           }}
         >
           {/* Level & XP Section */}

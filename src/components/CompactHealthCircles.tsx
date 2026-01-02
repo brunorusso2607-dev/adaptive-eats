@@ -307,15 +307,15 @@ export function CompactHealthCircles({
 
       {/* Water Tracker Sheet */}
       <Sheet open={waterSheetOpen} onOpenChange={setWaterSheetOpen}>
-        <SheetContent side="bottom" className="h-[80vh] p-6">
-          <SheetHeader className="mb-4">
+        <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0">
+          <SheetHeader className="p-6 pb-4 flex-shrink-0">
             <SheetTitle className="flex items-center gap-2">
               <Droplets className="h-5 w-5 text-blue-500" />
               Hidratação
             </SheetTitle>
           </SheetHeader>
           
-          <div className="overflow-y-auto h-[calc(80vh-100px)]">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
             <WaterTracker />
           </div>
         </SheetContent>
@@ -323,8 +323,8 @@ export function CompactHealthCircles({
 
       {/* Weight Sheet */}
       <Sheet open={weightSheetOpen} onOpenChange={setWeightSheetOpen}>
-        <SheetContent side="bottom" className="h-[80vh] p-6">
-          <SheetHeader className="mb-4">
+        <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0">
+          <SheetHeader className="p-6 pb-4 flex-shrink-0">
             <SheetTitle className="flex items-center gap-2">
               {userGoal === "ganhar_peso" 
                 ? <TrendingUp className="h-5 w-5 text-primary" />
@@ -340,7 +340,7 @@ export function CompactHealthCircles({
             </SheetTitle>
           </SheetHeader>
           
-          <div className="overflow-y-auto h-[calc(85vh-80px)]">
+          <div className="flex-1 min-h-0 overflow-y-auto px-6 pb-6">
           {hasWeightGoal && calcs ? (
             <div className="space-y-4 pb-6">
               {/* Header info */}

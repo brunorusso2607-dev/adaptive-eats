@@ -230,15 +230,16 @@ function EditSheet({
 }) {
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[70vh] p-6">
-        <SheetHeader className="mb-4">
+      <SheetContent side="bottom" className="h-[70vh] flex flex-col p-0">
+        <SheetHeader className="p-6 pb-4 flex-shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <ShieldCheck className="h-5 w-5 text-emerald-500" />
             Editar Intolerâncias
           </SheetTitle>
         </SheetHeader>
         
-        <div className="overflow-y-auto h-[calc(70vh-140px)] space-y-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 space-y-4 pb-4">
           {optionsLoading ? (
             <div className="flex items-center justify-center py-8">
               <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -298,7 +299,8 @@ function EditSheet({
           )}
         </div>
         
-        <div className="pt-4 border-t border-border/50">
+        {/* Fixed Footer */}
+        <div className="p-4 border-t border-border/50 flex-shrink-0">
           <Button 
             onClick={onSave} 
             className="w-full"

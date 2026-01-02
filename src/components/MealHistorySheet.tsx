@@ -145,8 +145,8 @@ export function MealHistorySheet({
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
-      <SheetContent side="bottom" className="h-[80vh] p-6">
-        <SheetHeader className="mb-4">
+      <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0">
+        <SheetHeader className="p-6 pb-0 flex-shrink-0">
           <SheetTitle className="text-lg font-semibold">
             {isWellnessDiary ? "Diário de Bem-estar" : "Histórico de Refeições"}
           </SheetTitle>
@@ -170,7 +170,7 @@ export function MealHistorySheet({
         </SheetHeader>
 
         {/* Filters */}
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 px-6 py-4 flex-shrink-0">
           <Select
             value={filters.days.toString()}
             onValueChange={(v) =>
@@ -220,52 +220,55 @@ export function MealHistorySheet({
           </Button>
         </div>
 
-        {isLoading ? (
-          <div className="space-y-3">
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-            <Skeleton className="h-16 w-full rounded-xl" />
-          </div>
-        ) : (
-          <div className="overflow-y-auto h-[calc(80vh-200px)] space-y-4">
-            {meals.length === 0 ? (
-              <div className="text-center py-16">
-                <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
-                <p className="text-sm text-muted-foreground">Nenhuma refeição encontrada</p>
-                <p className="text-xs text-muted-foreground/70 mt-1">
-                  {filters.status !== "all" ? "Tente outro filtro" : "Registre suas refeições"}
-                </p>
-              </div>
-            ) : (
-              Object.entries(groupedMeals)
-                .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
-                .map(([dateKey, dateMeals]) => (
-                  <div key={dateKey}>
-                    {/* Date header */}
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="text-xs font-medium text-muted-foreground capitalize">
-                        {getDateLabel(dateKey)}
-                      </span>
-                      <div className="flex-1 h-px bg-border" />
-                      <span className="text-xs text-muted-foreground">
-                        {dateMeals.length} refeição{dateMeals.length > 1 ? 'ões' : ''}
-                      </span>
-                    </div>
+        {/* Content - Scrollable */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6">
+          {isLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+              <Skeleton className="h-16 w-full rounded-xl" />
+            </div>
+          ) : (
+            <div className="space-y-4 pb-4">
+              {meals.length === 0 ? (
+                <div className="text-center py-16">
+                  <Leaf className="h-12 w-12 mx-auto mb-3 text-primary/40" />
+                  <p className="text-sm text-muted-foreground">Nenhuma refeição encontrada</p>
+                  <p className="text-xs text-muted-foreground/70 mt-1">
+                    {filters.status !== "all" ? "Tente outro filtro" : "Registre suas refeições"}
+                  </p>
+                </div>
+              ) : (
+                Object.entries(groupedMeals)
+                  .sort(([a], [b]) => new Date(b).getTime() - new Date(a).getTime())
+                  .map(([dateKey, dateMeals]) => (
+                    <div key={dateKey}>
+                      {/* Date header */}
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-xs font-medium text-muted-foreground capitalize">
+                          {getDateLabel(dateKey)}
+                        </span>
+                        <div className="flex-1 h-px bg-border" />
+                        <span className="text-xs text-muted-foreground">
+                          {dateMeals.length} refeição{dateMeals.length > 1 ? 'ões' : ''}
+                        </span>
+                      </div>
 
-                    {/* Meals for this date */}
-                    <div className="space-y-2">
-                      {dateMeals.map((meal) => (
-                        <MealCard key={meal.id} meal={meal} isWellnessMode={isWellnessDiary} />
-                      ))}
+                      {/* Meals for this date */}
+                      <div className="space-y-2">
+                        {dateMeals.map((meal) => (
+                          <MealCard key={meal.id} meal={meal} isWellnessMode={isWellnessDiary} />
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))
-            )}
-          </div>
-        )}
+                  ))
+              )}
+            </div>
+          )}
+        </div>
         
-        {/* Disclaimer */}
-        <div className="pt-3 mt-3 border-t">
+        {/* Disclaimer - Fixed Footer */}
+        <div className="p-4 border-t flex-shrink-0">
           <p className="text-[10px] text-muted-foreground/60 text-center leading-relaxed">
             ⚠️ Este rastreamento é apenas informativo e não substitui orientação médica profissional.
           </p>

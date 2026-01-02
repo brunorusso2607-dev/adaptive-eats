@@ -89,8 +89,8 @@ export function SymptomLogSheet({
 
   return (
     <Sheet open={open} onOpenChange={handleClose}>
-      <SheetContent side="bottom" className="h-[80vh] p-6">
-        <SheetHeader className="mb-4">
+      <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0">
+        <SheetHeader className="p-6 pb-4 flex-shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <AlertCircle className="h-5 w-5 text-orange-500" />
             Como você está se sentindo?
@@ -100,7 +100,8 @@ export function SymptomLogSheet({
           </SheetDescription>
         </SheetHeader>
 
-        <div className="overflow-y-auto h-[calc(85vh-180px)] space-y-6 pb-4">
+        {/* Scrollable Content */}
+        <div className="flex-1 min-h-0 overflow-y-auto px-6 space-y-6 pb-4">
           {/* Symptoms Selection */}
           {Object.entries(groupedSymptoms).map(([category, symptoms]) => (
             <div key={category}>
@@ -175,8 +176,8 @@ export function SymptomLogSheet({
           </div>
         </div>
 
-        {/* Submit Button */}
-        <div className="pt-4 border-t">
+        {/* Submit Button - Fixed Footer */}
+        <div className="p-4 border-t flex-shrink-0">
           <Button
             onClick={handleSubmit}
             disabled={selectedSymptoms.length === 0 || isSaving}

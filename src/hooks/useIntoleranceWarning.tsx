@@ -166,7 +166,8 @@ export function useIntoleranceWarning() {
             .single(),
           supabase
             .from('intolerance_mappings')
-            .select('ingredient, intolerance_key'),
+            .select('ingredient, intolerance_key')
+            .range(0, 9999), // Carregar todos os mapeamentos (bypass default 1000 limit)
           supabase
             .from('dietary_forbidden_ingredients')
             .select('ingredient, dietary_key'),

@@ -80,9 +80,35 @@ export function useFoodsSearch(userCountry?: string) {
       const sourcePriority = COUNTRY_SOURCE_PRIORITY[country] || COUNTRY_SOURCE_PRIORITY['DEFAULT'];
       const cuisinePriority = COUNTRY_CUISINE_PRIORITY[country] || COUNTRY_CUISINE_PRIORITY['DEFAULT'];
 
-      // Ordenar resultados por prioridade
+      // Ordenar resultados por prioridade inteligente
       const sortedResults = data.sort((a, b) => {
-        // 1. Prioridade por source (fonte do dado)
+        const nameA = (a.name_normalized || a.name.toLowerCase()).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        const nameB = (b.name_normalized || b.name.toLowerCase()).normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+        
+        // 1. MATCH EXATO primeiro (ex: "farofa" === "farofa")
+        const isExactA = nameA === normalizedQuery;
+        const isExactB = nameB === normalizedQuery;
+        if (isExactA !== isExactB) {
+          return isExactA ? -1 : 1;
+        }
+        
+        // 2. Começa com a query
+        const startsWithA = nameA.startsWith(normalizedQuery);
+        const startsWithB = nameB.startsWith(normalizedQuery);
+        if (startsWithA !== startsWithB) {
+          return startsWithA ? -1 : 1;
+        }
+        
+        // 3. Se ambos começam com a query, priorizar nomes mais curtos (mais simples/puros)
+        // Ex: "Farofa" (6 chars) antes de "Farofa de Cebola" (16 chars)
+        if (startsWithA && startsWithB) {
+          const lengthDiff = a.name.length - b.name.length;
+          if (lengthDiff !== 0) {
+            return lengthDiff;
+          }
+        }
+        
+        // 4. Prioridade por source (fonte do dado)
         const sourceIndexA = sourcePriority.indexOf(a.source || '');
         const sourceIndexB = sourcePriority.indexOf(b.source || '');
         const sourcePriorityA = sourceIndexA === -1 ? 999 : sourceIndexA;
@@ -92,7 +118,7 @@ export function useFoodsSearch(userCountry?: string) {
           return sourcePriorityA - sourcePriorityB;
         }
 
-        // 2. Prioridade por cuisine_origin (origem culinária)
+        // 5. Prioridade por cuisine_origin (origem culinária)
         const cuisineIndexA = cuisinePriority.findIndex(c => 
           a.cuisine_origin?.toLowerCase().includes(c)
         );
@@ -106,22 +132,12 @@ export function useFoodsSearch(userCountry?: string) {
           return cuisinePriorityA - cuisinePriorityB;
         }
 
-        // 3. Prioridade por verificação
+        // 6. Prioridade por verificação
         if (a.is_verified !== b.is_verified) {
           return a.is_verified ? -1 : 1;
         }
 
-        // 4. Match exato do nome primeiro
-        const nameA = a.name_normalized || '';
-        const nameB = b.name_normalized || '';
-        const startsWithA = nameA.startsWith(normalizedQuery);
-        const startsWithB = nameB.startsWith(normalizedQuery);
-
-        if (startsWithA !== startsWithB) {
-          return startsWithA ? -1 : 1;
-        }
-
-        // 5. Ordenação alfabética
+        // 7. Ordenação alfabética como último critério
         return a.name.localeCompare(b.name, 'pt-BR');
       });
 

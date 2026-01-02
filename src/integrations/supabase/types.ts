@@ -278,6 +278,41 @@ export type Database = {
         }
         Relationships: []
       }
+      auto_skip_notifications: {
+        Row: {
+          created_at: string
+          id: string
+          meal_plan_item_id: string
+          notified_at: string | null
+          skipped_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          meal_plan_item_id: string
+          notified_at?: string | null
+          skipped_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          meal_plan_item_id?: string
+          notified_at?: string | null
+          skipped_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_skip_notifications_meal_plan_item_id_fkey"
+            columns: ["meal_plan_item_id"]
+            isOneToOne: true
+            referencedRelation: "meal_plan_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       blocked_ingredients_review: {
         Row: {
           ai_analysis: string | null

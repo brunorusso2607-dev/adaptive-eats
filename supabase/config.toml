@@ -1,5 +1,8 @@
 project_id = "upnqkxrvtimtlqsuuvci"
 
+[functions.auto-skip-overdue-meals]
+verify_jwt = false
+
 [functions.convert-mccance-excel]
 verify_jwt = false
 

@@ -203,7 +203,7 @@ export async function loadSafetyDatabase(
     supabaseClient
       .from("intolerance_mappings")
       .select("intolerance_key, ingredient, severity_level")
-      .limit(5000),  // Increased limit for full coverage
+      .range(0, 9999),  // Use range to bypass default 1000 limit
     supabaseClient
       .from("intolerance_safe_keywords")
       .select("intolerance_key, keyword")

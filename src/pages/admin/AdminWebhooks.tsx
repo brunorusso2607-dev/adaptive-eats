@@ -123,7 +123,7 @@ export default function AdminWebhooks() {
   const checkWebhookStatus = async () => {
     setWebhookStatus("checking");
     try {
-      // Test the webhook endpoint - any response means it exists
+      // Test the webhook endpoint with a ping request
       const response = await fetch(stripeWebhookUrl, {
         method: "POST",
         headers: {
@@ -132,21 +132,22 @@ export default function AdminWebhooks() {
         body: JSON.stringify({ test: true }),
       });
       
-      // If we get any response (even 400/500), the function exists and is deployed
-      // A 400 or 500 error means the function is running but rejecting our test request (expected behavior)
-      setWebhookStatus("configured");
-      setLastCheck(new Date());
+      const data = await response.json().catch(() => ({}));
       
-      // Check if secret is configured by analyzing the response
-      // If we get a 401 with "Webhook secret not configured", it means the secret is missing
-      const responseText = await response.text().catch(() => "");
-      if (responseText.includes("Webhook secret not configured")) {
-        setIsSecretConfigured(false);
-      } else {
-        // Any other error (like signature validation failure) means secret is configured
+      // If we get a 200 with status: "ok", the function is working
+      if (response.ok && data.status === "ok") {
+        setWebhookStatus("configured");
         setIsSecretConfigured(true);
         setSecretStatus("configured");
+      } else if (response.status === 400 || response.status === 500) {
+        // Function exists but returned an error (still configured, just needs secret)
+        setWebhookStatus("configured");
+        setIsSecretConfigured(false);
+      } else {
+        setWebhookStatus("not_configured");
       }
+      
+      setLastCheck(new Date());
     } catch (error) {
       // Network error - function might not exist or CORS issue
       // Try OPTIONS as fallback

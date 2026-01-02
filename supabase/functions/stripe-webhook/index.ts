@@ -21,6 +21,35 @@ serve(async (req) => {
   try {
     logStep("Webhook received");
 
+    // Handle connectivity test (ping) from admin panel
+    const signature = req.headers.get("stripe-signature");
+    if (!signature) {
+      // Check if this is a connectivity test
+      try {
+        const body = await req.clone().json();
+        if (body?.test === true || body?.action === "ping") {
+          logStep("Connectivity test received");
+          return new Response(JSON.stringify({ 
+            status: "ok", 
+            message: "Webhook endpoint is reachable",
+            timestamp: new Date().toISOString()
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+      } catch {
+        // Not a JSON body or not a test request
+      }
+      
+      // Real webhook without signature - reject
+      logStep("Missing stripe-signature header");
+      return new Response(JSON.stringify({ error: "Missing stripe-signature header" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+        status: 400,
+      });
+    }
+
     const stripeKey = Deno.env.get("STRIPE_SECRET_KEY");
     const webhookSecret = Deno.env.get("STRIPE_WEBHOOK_SECRET");
     
@@ -29,11 +58,6 @@ serve(async (req) => {
     }
 
     const stripe = new Stripe(stripeKey, { apiVersion: "2023-10-16" });
-    const signature = req.headers.get("stripe-signature");
-    
-    if (!signature) {
-      throw new Error("No stripe-signature header");
-    }
 
     const body = await req.text();
     let event: Stripe.Event;

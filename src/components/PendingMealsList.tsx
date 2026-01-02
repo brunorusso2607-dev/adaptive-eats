@@ -30,6 +30,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     pendingMeals,
     isLoading,
     hasMealPlan,
+    isPlanExpired,
     skipMeal,
     refetch,
     effectiveTimeRanges,
@@ -40,6 +41,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
   } = usePendingMeals();
 
   // Separar: próxima refeição (verde) vs atrasadas (amarela/vermelha)
+  // Se o plano expirou, não há "próxima refeição" - todas são atrasadas
   const { nextMeal, overdueMeals } = useMemo(() => {
     if (pendingMeals.length === 0) {
       return { nextMeal: null, overdueMeals: [] };
@@ -50,6 +52,15 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
       ...meal,
       status: getMealStatusForMeal(meal.meal_type, meal.actual_date, meal.completed_at),
     }));
+
+    // Se o plano expirou, todas as refeições são consideradas atrasadas
+    // Não há "próxima refeição" porque o plano acabou
+    if (isPlanExpired) {
+      return {
+        nextMeal: null,
+        overdueMeals: mealsWithStatus,
+      };
+    }
 
     // Próxima refeição = a primeira que está "on_time" (já começou mas ainda no prazo)
     // Se não há nenhuma on_time, pegar a primeira da lista (que é ordenada por proximidade no hook)
@@ -68,7 +79,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
       nextMeal: nextMealCandidate,
       overdueMeals: delayed,
     };
-  }, [pendingMeals, getMealStatusForMeal]);
+  }, [pendingMeals, getMealStatusForMeal, isPlanExpired]);
 
   // Loading state
   if (isLoading) {
@@ -244,6 +255,36 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
                 </CollapsibleContent>
               </Collapsible>
             )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Se o plano expirou e não tem próxima refeição - mostrar card Criar Plano */}
+      {isPlanExpired && !nextMeal && (
+        <Card 
+          className="glass-card border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors active:scale-[0.98]"
+          onClick={() => onNavigateToMealPlan?.()}
+          role="button"
+          tabIndex={0}
+        >
+          <CardContent className="p-4">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+                <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium text-foreground">
+                  Seu plano expirou
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Crie um novo plano alimentar
+                </p>
+              </div>
+              <div className="flex items-center gap-1 text-primary shrink-0">
+                <span className="text-sm font-medium">Criar Plano</span>
+                <ChevronRight className="w-4 h-4" />
+              </div>
+            </div>
           </CardContent>
         </Card>
       )}

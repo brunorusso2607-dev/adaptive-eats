@@ -379,6 +379,10 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setCategoryError(null);
     setPackagedProductError(null);
     
+    // AbortController para timeout de 45 segundos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
+    
     try {
       // Get current user session to ensure authentication
       const { data: { session } } = await supabase.auth.getSession();
@@ -460,8 +464,16 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       }
     } catch (error) {
       console.error("Error analyzing image:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao analisar imagem");
+      // Handle timeout/abort errors with friendly message
+      if (error instanceof Error && error.name === "AbortError") {
+        toast.error("A análise demorou muito. Tente novamente com uma foto mais clara.", {
+          duration: 5000,
+        });
+      } else {
+        toast.error(error instanceof Error ? error.message : "Erro ao analisar imagem");
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsAnalyzing(false);
     }
   };
@@ -471,6 +483,10 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setIsAnalyzing(true);
     setNotFoodError(null);
     setCategoryError(null);
+    
+    // AbortController para timeout de 45 segundos
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 45000);
     
     try {
       // Get current user session to ensure authentication
@@ -552,8 +568,16 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       toast.success("Verificação concluída!");
     } catch (error) {
       console.error("Error analyzing label:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao analisar rótulo");
+      // Handle timeout/abort errors with friendly message
+      if (error instanceof Error && error.name === "AbortError") {
+        toast.error("A análise demorou muito. Tente novamente com uma foto mais clara.", {
+          duration: 5000,
+        });
+      } else {
+        toast.error(error instanceof Error ? error.message : "Erro ao analisar rótulo");
+      }
     } finally {
+      clearTimeout(timeoutId);
       setIsAnalyzing(false);
     }
   };

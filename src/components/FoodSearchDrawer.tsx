@@ -3,15 +3,12 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangle, Trash2, Database, Globe, Bot } from "lucide-react";
+import { Plus, X, Flame, Check, Loader2, PenLine, AlertTriangle, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useLookupIngredient } from "@/hooks/useLookupIngredient";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import ManualFoodModal from "./ManualFoodModal";
-import { suggestServingByName } from "@/lib/servingSuggestion";
+import UnifiedFoodSearchBlock, { type SelectedFoodItem, type LookupFood } from "./UnifiedFoodSearchBlock";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   cafe_da_manha: "Café da Manhã",
@@ -21,33 +18,6 @@ const MEAL_TYPE_LABELS: Record<string, string> = {
   ceia: "Ceia",
 };
 
-const UNIT_LABELS: Record<string, string> = {
-  g: "g",
-  ml: "ml",
-  un: "un",
-  fatia: "fatia(s)",
-};
-
-// Source badge component - same as FoodSearchPanel
-function SourceBadge({ source }: { source: string }) {
-  const config = {
-    local: { icon: Database, label: "Local", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-    taco: { icon: Database, label: "taco", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
-    usda: { icon: Globe, label: "USDA", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
-    ai: { icon: Bot, label: "IA", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
-  };
-  
-  const sourceKey = source?.toLowerCase() || 'local';
-  const { icon: Icon, label, className } = config[sourceKey as keyof typeof config] || config.local;
-  
-  return (
-    <span className={cn("inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded", className)}>
-      <Icon className="w-3 h-3" />
-      {label}
-    </span>
-  );
-}
-
 interface FoodSearchDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -56,37 +26,17 @@ interface FoodSearchDrawerProps {
   onSuccess: () => void;
 }
 
-interface LookupFood {
+interface SelectedFood {
   id: string;
   name: string;
-  name_normalized: string;
   calories_per_100g: number;
   protein_per_100g: number;
   carbs_per_100g: number;
   fat_per_100g: number;
-  fiber_per_100g: number;
-  sodium_per_100g: number;
-  category: string | null;
-  source: string;
-  is_verified: boolean;
-  default_serving_size: number;
-  serving_unit: string;
-}
-
-interface SelectedFood extends LookupFood {
   quantity: number;
   displayQuantity: number;
-}
-
-interface AISuggestion {
-  name: string;
-  portion_description: string;
-  portion_grams: number;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-  confidence: "alta" | "média" | "baixa";
+  serving_unit: string;
+  default_serving_size: number;
 }
 
 export default function FoodSearchDrawer({
@@ -96,39 +46,14 @@ export default function FoodSearchDrawer({
   mealType,
   onSuccess,
 }: FoodSearchDrawerProps) {
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
-  const [foodsWithConflicts, setFoodsWithConflicts] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
-  
-  // AI suggestions state
-  const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
-  const [isLoadingAI, setIsLoadingAI] = useState(false);
-  const [showAISuggestions, setShowAISuggestions] = useState(false);
-  
-  // AI intolerance analysis state
-  const [isAnalyzingIntolerance, setIsAnalyzingIntolerance] = useState(false);
-  
-  // Manual food modal state
-  const [showManualModal, setShowManualModal] = useState(false);
-  
-  // Removing animation state
   const [removingFoodIds, setRemovingFoodIds] = useState<Set<string>>(new Set());
 
-  // Use unified lookup hook - same as FoodSearchPanel
-  const { 
-    lookup, 
-    reset: resetLookup, 
-    results: foods, 
-    source: lookupSource, 
-    isLoading, 
-    searchPlaceholder 
-  } = useLookupIngredient();
-  
   const { saveConsumption } = useMealConsumption();
-  const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
+  const { checkFood } = useIntoleranceWarning();
 
-  // Helper to convert new hook format to legacy format for dialogs
+  // Check food conflicts
   const checkFoodConflicts = useCallback((foodName: string) => {
     const result = checkFood(foodName);
     if (result.hasConflict && result.conflictDetails.length > 0) {
@@ -144,286 +69,48 @@ export default function FoodSearchDrawer({
     return null;
   }, [checkFood]);
 
-  // Debounced search using useLookupIngredient
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (searchQuery.trim().length >= 2) {
-        lookup(searchQuery);
-      } else {
-        resetLookup();
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [searchQuery, lookup, resetLookup]);
-
   // Reset on close
   useEffect(() => {
     if (!open) {
-      setSearchQuery("");
       setSelectedFoods([]);
-      setFoodsWithConflicts([]);
       setRemovingFoodIds(new Set());
-      resetLookup();
-      setAiSuggestions([]);
-      setShowAISuggestions(false);
     }
-  }, [open, resetLookup]);
+  }, [open]);
 
-  // Fetch AI suggestions when no results found
-  const fetchAISuggestions = useCallback(async (query: string) => {
-    if (!query || query.length < 2) return;
-    
-    setIsLoadingAI(true);
-    setShowAISuggestions(true);
-    
-    try {
-      const { data, error } = await supabase.functions.invoke('suggest-food-ai', {
-        body: { query }
-      });
-
-      if (error) throw error;
-
-      if (data?.suggestions && data.suggestions.length > 0) {
-        setAiSuggestions(data.suggestions);
-      } else {
-        setAiSuggestions([]);
-      }
-    } catch (error) {
-      console.error("Error fetching AI suggestions:", error);
-      setAiSuggestions([]);
-    } finally {
-      setIsLoadingAI(false);
-    }
-  }, []);
-
-  // Show AI suggestions alongside database results for better discoverability
-  useEffect(() => {
-    if (!isLoading && searchQuery.length >= 2) {
-      const timer = setTimeout(() => {
-        fetchAISuggestions(searchQuery);
-      }, 600);
-      return () => clearTimeout(timer);
-    } else if (searchQuery.length < 2) {
-      setShowAISuggestions(false);
-      setAiSuggestions([]);
-    }
-  }, [foods, isLoading, searchQuery, fetchAISuggestions]);
-
-  // AI-powered intolerance analysis
-  const analyzeWithAI = useCallback(async (foodName: string): Promise<{
-    hasConflicts: boolean;
-    conflicts: Array<{ intolerance: string; intoleranceLabel: string; foundIngredients: string[] }>;
-    ingredients: string[];
-  } | null> => {
-    if (!hasIntolerances || intolerances.length === 0) {
-      return null;
-    }
-
-    try {
-      const { data, error } = await supabase.functions.invoke('analyze-food-intolerances', {
-        body: { 
-          foodName, 
-          userIntolerances: intolerances
-        }
-      });
-
-      if (error) {
-        console.error("Erro na análise de IA:", error);
-        return null;
-      }
-
-      return {
-        hasConflicts: data.hasConflicts,
-        conflicts: data.conflicts || [],
-        ingredients: data.ingredients || [],
-      };
-    } catch (err) {
-      console.error("Erro ao chamar análise de IA:", err);
-      return null;
-    }
-  }, [hasIntolerances, intolerances]);
-
-  // Handle adding food - always add, just show warning if conflict
-  const handleAddFood = useCallback(async (food: LookupFood) => {
-    const localConflict = checkFoodConflicts(food.name);
-    
-    if (localConflict) {
-      addFoodToList(food);
-      setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
-      toast.warning(
-        `${food.name}: ${localConflict.message || `Contém ${localConflict.restrictionLabel}`}`,
-        { duration: 4000 }
-      );
-      return;
-    }
-
-    if (hasIntolerances) {
-      setIsAnalyzingIntolerance(true);
-      
-      const aiResult = await analyzeWithAI(food.name);
-      
-      setIsAnalyzingIntolerance(false);
-      
-      if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
-        addFoodToList(food);
-        setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
-        const conflictLabels = aiResult.conflicts.map(c => c.intoleranceLabel).join(', ');
-        toast.warning(
-          `${food.name} contém ${conflictLabels}`,
-          { duration: 4000 }
-        );
-        return;
-      }
-    }
-
-    addFoodToList(food);
-  }, [checkFoodConflicts, hasIntolerances, analyzeWithAI]);
-
-  const addFoodToList = (food: LookupFood) => {
-    const defaultServing = food.default_serving_size || 100;
-    const displayQty = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : 1;
-    const actualGrams = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : defaultServing;
-
-    setRemovingFoodIds((prev) => {
-      if (prev.has(food.id)) {
-        const next = new Set(prev);
-        next.delete(food.id);
-        return next;
-      }
-      return prev;
-    });
-
+  // Handle food selection from unified search block
+  const handleSelectFood = useCallback((item: SelectedFoodItem) => {
     setSelectedFoods((prev) => {
-      const existing = prev.find((f) => f.id === food.id);
+      const existing = prev.find((f) => f.id === item.id);
       if (existing) {
-        const newDisplayQty = existing.displayQuantity + displayQty;
-        const newQuantity = food.serving_unit === 'g' || food.serving_unit === 'ml' 
-          ? newDisplayQty 
-          : newDisplayQty * (food.default_serving_size || 100);
+        // If already exists, add the quantity
         return prev.map((f) =>
-          f.id === food.id ? { ...f, displayQuantity: newDisplayQty, quantity: newQuantity } : f
+          f.id === item.id
+            ? { 
+                ...f, 
+                quantity: f.quantity + item.quantity_grams,
+                displayQuantity: f.displayQuantity + (item.food.serving_unit === 'g' || item.food.serving_unit === 'ml' 
+                  ? item.quantity_grams 
+                  : item.quantity_grams / (item.food.default_serving_size || 100))
+              }
+            : f
         );
       }
-      return [...prev, { ...food, displayQuantity: displayQty, quantity: actualGrams }];
+      // Add new food
+      const isGramUnit = item.food.serving_unit === 'g' || item.food.serving_unit === 'ml';
+      return [...prev, {
+        id: item.id,
+        name: item.name,
+        calories_per_100g: item.food.calories_per_100g,
+        protein_per_100g: item.food.protein_per_100g,
+        carbs_per_100g: item.food.carbs_per_100g,
+        fat_per_100g: item.food.fat_per_100g,
+        quantity: item.quantity_grams,
+        displayQuantity: isGramUnit ? item.quantity_grams : item.quantity_grams / (item.food.default_serving_size || 100),
+        serving_unit: item.food.serving_unit,
+        default_serving_size: item.food.default_serving_size,
+      }];
     });
-    setSearchQuery("");
-    resetLookup();
-    setAiSuggestions([]);
-    setShowAISuggestions(false);
-  };
-
-  // Add AI suggestion as food
-  const handleAddAISuggestion = async (suggestion: AISuggestion) => {
-    const conflict = checkFoodConflicts(suggestion.name);
-    const hasLocalConflict = !!conflict;
-
-    try {
-      const normalizedName = suggestion.name
-        .toLowerCase()
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "");
-
-      const { data: existing } = await supabase
-        .from("foods")
-        .select("*")
-        .eq("name_normalized", normalizedName)
-        .maybeSingle();
-
-      let food: LookupFood;
-
-      if (existing) {
-        food = {
-          ...existing,
-          serving_unit: existing.serving_unit || 'g',
-          default_serving_size: existing.default_serving_size || 100,
-        } as LookupFood;
-      } else {
-        const multiplier = 100 / suggestion.portion_grams;
-        const servingSuggestion = suggestServingByName(suggestion.name);
-        const suggestedUnit = servingSuggestion.servingUnit;
-        const suggestedSize = servingSuggestion.defaultServingSize;
-        const finalServingSize = suggestion.portion_grams || suggestedSize;
-        const finalServingUnit = suggestion.portion_grams && suggestion.portion_grams !== 100 ? 'un' : suggestedUnit;
-        
-        const { data: newFood, error } = await supabase
-          .from("foods")
-          .insert({
-            name: suggestion.name,
-            name_normalized: normalizedName,
-            calories_per_100g: Math.round(suggestion.calories * multiplier),
-            protein_per_100g: Math.round(suggestion.protein * multiplier * 10) / 10,
-            carbs_per_100g: Math.round(suggestion.carbs * multiplier * 10) / 10,
-            fat_per_100g: Math.round(suggestion.fat * multiplier * 10) / 10,
-            source: "ai_suggestion",
-            verified: false,
-            confidence: suggestion.confidence === "alta" ? 0.9 : suggestion.confidence === "média" ? 0.7 : 0.5,
-            serving_unit: finalServingUnit,
-            default_serving_size: finalServingSize,
-          })
-          .select()
-          .single();
-
-        if (error) throw error;
-        food = {
-          ...newFood,
-          serving_unit: newFood.serving_unit || 'un',
-          default_serving_size: newFood.default_serving_size || suggestion.portion_grams,
-        } as LookupFood;
-        toast.success(`${suggestion.name} adicionado ao banco de dados!`);
-      }
-
-      setSelectedFoods((prev) => {
-        const existing = prev.find((f) => f.id === food.id);
-        if (existing) {
-          return prev.map((f) =>
-            f.id === food.id ? { 
-              ...f, 
-              displayQuantity: f.displayQuantity + 1, 
-              quantity: f.quantity + (food.default_serving_size || 100) 
-            } : f
-          );
-        }
-        return [...prev, { 
-          ...food, 
-          displayQuantity: 1, 
-          quantity: food.default_serving_size || 100 
-        }];
-      });
-      
-      setSearchQuery("");
-      resetLookup();
-      setAiSuggestions([]);
-      setShowAISuggestions(false);
-
-      if (hasLocalConflict && conflict) {
-        setFoodsWithConflicts(prev => [...new Set([...prev, suggestion.name])]);
-        toast.warning(
-          `${suggestion.name} contém ${conflict.restrictionLabel.replace('intolerante a ', '')}`,
-          { duration: 4000 }
-        );
-      }
-    } catch (error) {
-      console.error("Error adding AI suggestion:", error);
-      toast.error("Erro ao adicionar alimento");
-    }
-  };
-
-  const handleManualFoodCreated = (food: { id: string; name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number }) => {
-    const fullFood: LookupFood = {
-      ...food,
-      name_normalized: food.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-      fiber_per_100g: 0,
-      sodium_per_100g: 0,
-      category: null,
-      serving_unit: 'g',
-      default_serving_size: 100,
-      source: 'manual',
-      is_verified: false,
-    };
-    addFoodToList(fullFood);
-  };
-
+  }, []);
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
     const numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
@@ -540,357 +227,158 @@ export default function FoodSearchDrawer({
     }
   };
 
-  const getConfidenceBadge = (confidence: string) => {
-    const colors = {
-      alta: "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400",
-      média: "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400",
-      baixa: "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400",
-    };
-    return colors[confidence as keyof typeof colors] || colors.baixa;
-  };
-
   const getUnitLabel = (unit: string, quantity: number) => {
     if (unit === 'fatia') {
       return quantity === 1 ? 'fatia' : 'fatias';
     }
     if (unit === 'un') {
-      return quantity === 1 ? 'un' : 'un';
+      return 'un';
     }
     return unit;
   };
 
   return (
-    <>
-      <Drawer open={open} onOpenChange={onOpenChange}>
-        <DrawerContent className="h-[95vh] max-h-[95vh] flex flex-col">
-          <DrawerHeader className="pb-1 pt-2 flex-shrink-0">
-            <DrawerTitle className="text-base">
-              {mealType ? `${MEAL_TYPE_LABELS[mealType] || mealType} - O que você comeu?` : "Registrar o que você comeu"}
-            </DrawerTitle>
-          </DrawerHeader>
+    <Drawer open={open} onOpenChange={onOpenChange}>
+      <DrawerContent className="h-[95vh] max-h-[95vh] flex flex-col">
+        <DrawerHeader className="pb-1 pt-2 flex-shrink-0">
+          <DrawerTitle className="text-base">
+            {mealType ? `${MEAL_TYPE_LABELS[mealType] || mealType} - O que você comeu?` : "Registrar o que você comeu"}
+          </DrawerTitle>
+        </DrawerHeader>
 
-          {/* Search input with dropdown results */}
-          <div className="px-4 pb-3 flex-shrink-0 relative z-20">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-              <Input
-                placeholder={searchPlaceholder.placeholder}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            
-            {/* Hint text - same as FoodSearchPanel */}
-            {searchQuery.length > 0 && searchQuery.length < 3 && (
-              <p className="text-xs text-muted-foreground mt-1 ml-1">
-                {searchPlaceholder.hint}
-              </p>
-            )}
-            
-            {/* Search results dropdown */}
-            {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
-              <div 
-                className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-80 overflow-y-auto"
-                style={{
-                  WebkitOverflowScrolling: 'touch',
-                  overscrollBehavior: 'contain',
-                }}
-                onTouchStart={(e) => {
-                  const el = e.currentTarget;
-                  (el as any)._startY = e.touches[0].clientY;
-                }}
-                onTouchMove={(e) => {
-                  const el = e.currentTarget;
-                  const startY = (el as any)._startY || 0;
-                  const currentY = e.touches[0].clientY;
-                  const deltaY = startY - currentY;
-                  const isScrollingDown = deltaY > 0;
-                  const isScrollingUp = deltaY < 0;
-                  const isAtTop = el.scrollTop <= 0;
-                  const isAtBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 1;
-                  if ((isAtTop && isScrollingUp) || (isAtBottom && isScrollingDown)) {
-                    e.preventDefault();
-                  }
-                  e.stopPropagation();
-                }}
-              >
-                {isLoading && foods.length === 0 ? (
-                  <div className="p-4 text-center text-muted-foreground text-sm">
-                    <Loader2 className="w-4 h-4 animate-spin mx-auto mb-2" />
-                    Buscando...
-                  </div>
-                ) : (
-                  <div className="p-2 space-y-1">
-                    {/* Source indicator - same as FoodSearchPanel */}
-                    {foods.length > 0 && lookupSource && (
-                      <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
-                        <span>Fonte:</span>
-                        <SourceBadge source={lookupSource} />
-                        <span>({foods.length} resultado{foods.length !== 1 ? 's' : ''})</span>
-                      </div>
-                    )}
-                    
-                    {/* Database results */}
-                    {foods.map((food) => {
-                      const conflict = checkFoodConflicts(food.name);
-                      return (
-                        <button
-                          key={food.id}
-                          onClick={() => handleAddFood(food)}
-                          disabled={isAnalyzingIntolerance}
-                          className="w-full flex items-center justify-between p-3 hover:bg-muted rounded-md transition-colors text-left disabled:opacity-50"
-                        >
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              {isAnalyzingIntolerance ? (
-                                <Loader2 className="w-4 h-4 text-primary animate-spin flex-shrink-0" />
-                              ) : (
-                                <Plus className="w-4 h-4 text-primary flex-shrink-0" />
-                              )}
-                              <span className="text-sm font-medium truncate">{food.name}</span>
-                              {food.is_verified && (
-                                <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
-                              )}
-                            </div>
+        {/* Search area with unified block */}
+        <div className="px-4 pb-3 flex-shrink-0">
+          <UnifiedFoodSearchBlock
+            onSelectFood={handleSelectFood}
+            scrollHeight="max-h-[35vh]"
+            confirmButtonLabel="Adicionar à lista"
+          />
+        </div>
+
+        {/* Scrollable content area - selected foods list */}
+        <ScrollArea className="flex-1 px-4">
+          <div className="space-y-4 pb-4">
+            {/* Selected foods */}
+            {selectedFoods.length > 0 && (
+              <div className="space-y-3">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  Alimentos selecionados
+                </h4>
+                <div className="space-y-2">
+                  {selectedFoods.map((food) => {
+                    const macros = calculateMacros(food);
+                    const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
+                    const conflict = checkFoodConflicts(food.name);
+                    return (
+                      <div
+                        key={food.id}
+                        className={cn(
+                          "bg-card border rounded-lg p-3 space-y-2 transition-all duration-300",
+                          conflict && "border-amber-200 bg-amber-50/30",
+                          removingFoodIds.has(food.id) && "opacity-0 scale-95 -translate-x-4"
+                        )}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{food.name}</span>
                             {conflict && (
-                              <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
+                              <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
                                 <AlertTriangle className="w-3 h-3" />
-                                Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
+                                {conflict.restrictionLabel.replace('intolerante a ', '')}
                               </span>
                             )}
                           </div>
-                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                            <span className="text-xs text-muted-foreground">
-                              {food.calories_per_100g} kcal/100g
+                          <button
+                            onClick={() => removeFood(food.id, food.name)}
+                            className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
+                            title="Remover alimento"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Quantity input */}
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Input
+                              type="number"
+                              value={food.displayQuantity}
+                              onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
+                              className="w-20 h-8 text-center text-sm"
+                              min="0"
+                              step={food.serving_unit === 'g' || food.serving_unit === 'ml' ? "10" : "1"}
+                            />
+                            <span className="text-sm text-muted-foreground">
+                              {unitLabel}
                             </span>
-                            <SourceBadge source={food.source} />
-                          </div>
-                        </button>
-                      );
-                    })}
-
-                    {/* AI suggestions */}
-                    {showAISuggestions && (
-                      <>
-                        {isLoadingAI ? (
-                          <div className="p-3 text-center text-muted-foreground text-sm">
-                            <Loader2 className="w-4 h-4 animate-spin mx-auto mb-1" />
-                            Buscando mais opções...
-                          </div>
-                        ) : aiSuggestions.length > 0 ? (
-                          aiSuggestions.map((suggestion, idx) => {
-                            const conflict = checkFoodConflicts(suggestion.name);
-                            return (
-                              <button
-                                key={`ai-${idx}`}
-                                onClick={() => handleAddAISuggestion(suggestion)}
-                                className="w-full p-3 hover:bg-muted rounded-md transition-colors text-left"
-                              >
-                                <div className="flex items-center gap-2">
-                                  <Plus className="w-4 h-4 text-primary flex-shrink-0" />
-                                  <span className="text-sm font-medium">{suggestion.name}</span>
-                                </div>
-                                {conflict && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
-                                    <AlertTriangle className="w-3 h-3" />
-                                    Contém {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                  </span>
-                                )}
-                                <div className="flex items-center gap-3 text-xs text-muted-foreground ml-6 mt-1">
-                                  <span>{suggestion.portion_description}</span>
-                                  <span className="flex items-center gap-1">
-                                    <Flame className="w-3 h-3 text-orange-500" />
-                                    {suggestion.calories}kcal
-                                  </span>
-                                </div>
-                              </button>
-                            );
-                          })
-                        ) : null}
-                      </>
-                    )}
-
-                    {/* Manual entry option when no results */}
-                    {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
-                      <div className="p-3 text-center">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          Nenhuma sugestão encontrada
-                        </p>
-                        <button
-                          onClick={() => setShowManualModal(true)}
-                          className="flex items-center gap-2 mx-auto text-sm text-primary hover:underline"
-                        >
-                          <PenLine className="w-4 h-4" />
-                          Cadastrar "{searchQuery}" manualmente
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Manual add button - ALWAYS VISIBLE below search */}
-            <button
-              onClick={() => setShowManualModal(true)}
-              className="w-full mt-3 p-4 border border-dashed border-muted-foreground/30 rounded-lg text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
-            >
-              <PenLine className="w-4 h-4" />
-              <span className="text-sm">Não encontrou? Adicionar manualmente</span>
-            </button>
-          </div>
-
-          {/* Scrollable content area */}
-          <ScrollArea className="flex-1 px-4">
-            <div className="space-y-4 pb-4">
-
-              {/* Selected foods */}
-              {selectedFoods.length > 0 && (
-                <div className="space-y-3">
-                  <h4 className="text-sm font-medium text-muted-foreground">
-                    Alimentos selecionados
-                  </h4>
-                  <div className="space-y-2">
-                    {selectedFoods.map((food) => {
-                      const macros = calculateMacros(food);
-                      const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
-                      const conflict = checkFoodConflicts(food.name);
-                      return (
-                        <div
-                          key={food.id}
-                          className={cn(
-                            "bg-card border rounded-lg p-3 space-y-2 transition-all duration-300",
-                            conflict && "border-amber-200 bg-amber-50/30",
-                            removingFoodIds.has(food.id) && "opacity-0 scale-95 -translate-x-4"
-                          )}
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-sm">{food.name}</span>
-                              {conflict && (
-                                <span className="flex items-center gap-1 text-[10px] text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">
-                                  <AlertTriangle className="w-3 h-3" />
-                                  {conflict.restrictionLabel.replace('intolerante a ', '')}
-                                </span>
-                              )}
-                            </div>
-                            <button
-                              onClick={() => removeFood(food.id, food.name)}
-                              className="p-1.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-md transition-colors"
-                              title="Remover alimento"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </button>
-                          </div>
-
-                          {/* Quantity input */}
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <Input
-                                type="number"
-                                value={food.displayQuantity}
-                                onChange={(e) => updateDisplayQuantity(food.id, e.target.value)}
-                                className="w-20 h-8 text-center text-sm"
-                                min="0"
-                                step={food.serving_unit === 'g' || food.serving_unit === 'ml' ? "10" : "1"}
-                              />
-                              <span className="text-sm text-muted-foreground">
-                                {unitLabel}
+                            {(food.serving_unit === 'un' || food.serving_unit === 'fatia') && (
+                              <span className="text-xs text-muted-foreground">
+                                ({Math.round(food.quantity)}g)
                               </span>
-                              {(food.serving_unit === 'un' || food.serving_unit === 'fatia') && (
-                                <span className="text-xs text-muted-foreground">
-                                  ({Math.round(food.quantity)}g)
-                                </span>
-                              )}
-                            </div>
+                            )}
+                          </div>
 
-                            {/* Macros display */}
-                            <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                              <span className="flex items-center gap-1">
-                                <Flame className="w-3 h-3 text-orange-500" />
-                                {macros.calories}
-                              </span>
-                              <span>P: {macros.protein}g</span>
-                              <span>C: {macros.carbs}g</span>
-                              <span>G: {macros.fat}g</span>
-                            </div>
+                          {/* Macros display */}
+                          <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                            <span className="flex items-center gap-1">
+                              <Flame className="w-3 h-3 text-orange-500" />
+                              {macros.calories}
+                            </span>
+                            <span>P: {macros.protein}g</span>
+                            <span>C: {macros.carbs}g</span>
+                            <span>G: {macros.fat}g</span>
                           </div>
                         </div>
-                      );
-                    })}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Totals */}
+            {selectedFoods.length > 0 && (
+              <div className="bg-primary/10 rounded-lg p-4">
+                <h4 className="text-sm font-medium mb-2">Total</h4>
+                <div className="grid grid-cols-4 gap-2 text-center">
+                  <div>
+                    <p className="text-lg font-bold text-primary">{totals.calories}</p>
+                    <p className="text-xs text-muted-foreground">kcal</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-blue-500">{totals.protein.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Proteína</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-amber-500">{totals.carbs.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Carbos</p>
+                  </div>
+                  <div>
+                    <p className="text-lg font-bold text-red-500">{totals.fat.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">Gordura</p>
                   </div>
                 </div>
-              )}
-
-              {/* Add more foods button */}
-              {selectedFoods.length > 0 && (
-                <Button
-                  variant="outline"
-                  className="w-full border-dashed"
-                  onClick={() => {
-                    const input = document.querySelector<HTMLInputElement>(`input[placeholder="${searchPlaceholder.placeholder}"]`);
-                    input?.focus();
-                  }}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Adicionar alimento
-                </Button>
-              )}
-
-
-              {/* Totals */}
-              {selectedFoods.length > 0 && (
-                <div className="bg-primary/10 rounded-lg p-4">
-                  <h4 className="text-sm font-medium mb-2">Total</h4>
-                  <div className="grid grid-cols-4 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-bold text-primary">{totals.calories}</p>
-                      <p className="text-xs text-muted-foreground">kcal</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-blue-500">{totals.protein.toFixed(1)}</p>
-                      <p className="text-xs text-muted-foreground">Proteína</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-amber-500">{totals.carbs.toFixed(1)}</p>
-                      <p className="text-xs text-muted-foreground">Carbos</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold text-red-500">{totals.fat.toFixed(1)}</p>
-                      <p className="text-xs text-muted-foreground">Gordura</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </ScrollArea>
-
-          {/* Save button */}
-          <div className="px-4 py-4 border-t flex-shrink-0 bg-background">
-            <Button
-              className="w-full gradient-primary"
-              onClick={handleSave}
-              disabled={selectedFoods.length === 0 || isSaving}
-            >
-              {isSaving ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Check className="w-4 h-4 mr-2" />
-              )}
-              Salvar consumo
-            </Button>
+              </div>
+            )}
           </div>
-        </DrawerContent>
-      </Drawer>
+        </ScrollArea>
 
-      {/* Manual Food Modal */}
-      <ManualFoodModal
-        open={showManualModal}
-        onOpenChange={setShowManualModal}
-        initialName={searchQuery}
-        onFoodCreated={handleManualFoodCreated}
-      />
-    </>
+        {/* Save button */}
+        <div className="px-4 py-4 border-t flex-shrink-0 bg-background">
+          <Button
+            className="w-full gradient-primary"
+            onClick={handleSave}
+            disabled={selectedFoods.length === 0 || isSaving}
+          >
+            {isSaving ? (
+              <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            ) : (
+              <Check className="w-4 h-4 mr-2" />
+            )}
+            Registrar Consumo ({selectedFoods.length} {selectedFoods.length === 1 ? 'item' : 'itens'})
+          </Button>
+        </div>
+      </DrawerContent>
+    </Drawer>
   );
 }

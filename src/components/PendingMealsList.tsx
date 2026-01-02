@@ -91,7 +91,7 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
     );
   }
 
-  // No meal plan state
+  // No meal plan state - convida a criar plano
   if (!hasMealPlan) {
     const handleNavigate = () => {
       if (onNavigateToMealPlan) {
@@ -101,22 +101,29 @@ export default function PendingMealsList({ onStreakRefresh, onNavigateToMealPlan
 
     return (
       <Card 
-        className="glass-card border-border cursor-pointer hover:bg-muted/50 transition-colors active:scale-[0.98]"
+        className="glass-card border-primary/30 bg-primary/5 cursor-pointer hover:bg-primary/10 transition-colors active:scale-[0.98]"
         onClick={handleNavigate}
         role="button"
         tabIndex={0}
       >
-        <CardContent className="p-6 text-center">
-          <div className="w-16 h-16 rounded-full bg-muted/50 flex items-center justify-center mx-auto mb-4">
-            <UtensilsCrossed className="w-8 h-8 text-muted-foreground" />
+        <CardContent className="p-4">
+          <div className="flex items-center gap-4">
+            <div className="w-12 h-12 rounded-xl gradient-primary flex items-center justify-center shrink-0">
+              <UtensilsCrossed className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground">
+                Você não tem um plano ativo
+              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Crie seu plano alimentar personalizado
+              </p>
+            </div>
+            <div className="flex items-center gap-1 text-primary shrink-0">
+              <span className="text-sm font-medium">Criar Plano</span>
+              <ChevronRight className="w-4 h-4" />
+            </div>
           </div>
-          <p className="text-sm text-muted-foreground">
-            Nenhum plano de refeições ativo
-          </p>
-          <p className="text-xs text-primary mt-1 flex items-center justify-center gap-1">
-            Crie seu primeiro plano alimentar
-            <ChevronRight className="w-3 h-3" />
-          </p>
         </CardContent>
       </Card>
     );

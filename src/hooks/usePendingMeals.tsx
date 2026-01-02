@@ -408,16 +408,38 @@ export function usePendingMeals() {
         ? getMergedTimeRanges(planCustomTimes)
         : mergedRanges;
 
-      // Verificar se uma refeição existia quando o plano foi criado
-      // Refeições do mesmo dia sempre são válidas (para permitir registro retroativo)
-      // Refeições de dias anteriores à criação do plano são excluídas
+      // Verificar se uma refeição é válida desde a criação do plano
+      // Para o mesmo dia: só mostra refeições cujo start_hour >= hora de criação do plano
+      // Para dias anteriores: exclui
+      // Para dias futuros: sempre válida
       const isMealValidSinceCreation = (mealType: string, actualDate: Date): boolean => {
         const createdDate = new Date(planCreatedAt.getFullYear(), planCreatedAt.getMonth(), planCreatedAt.getDate());
         const mealDate = new Date(actualDate.getFullYear(), actualDate.getMonth(), actualDate.getDate());
         
-        // Se a refeição é do mesmo dia ou posterior à criação do plano, é válida
-        // Isso permite que refeições "atrasadas" do mesmo dia apareçam para registro
-        return mealDate >= createdDate;
+        // Se a refeição é de dias anteriores à criação do plano, é inválida
+        if (mealDate < createdDate) {
+          return false;
+        }
+        
+        // Se a refeição é de dias posteriores à criação do plano, é válida
+        if (mealDate > createdDate) {
+          return true;
+        }
+        
+        // Se é o mesmo dia, verificar se o start_hour da refeição >= hora de criação do plano
+        const range = currentRanges[mealType];
+        if (!range) return false;
+        
+        // Hora de criação do plano (considerando timezone dinâmico já aplicado ao planCreatedAt)
+        const createdHour = planCreatedAt.getHours();
+        const createdMinutes = planCreatedAt.getMinutes();
+        const createdTimeInMinutes = createdHour * 60 + createdMinutes;
+        
+        // Hora de início da refeição
+        const mealStartTimeInMinutes = range.start * 60;
+        
+        // Só é válida se a refeição começar APÓS (ou no mesmo momento) a criação do plano
+        return mealStartTimeInMinutes >= createdTimeInMinutes;
       };
 
       // Verificar se uma refeição já passou (start_hour + tolerância ultrapassado)

@@ -1113,6 +1113,7 @@ If any alert exists, set health_bonus to null.
     // Precisamos decompor esses alimentos em ingredientes base para validação correta
     
     const PROCESSED_FOOD_KEYWORDS = [
+      // Padaria e massas
       'biscoito', 'bolacha', 'pão', 'bolo', 'torta', 'pizza', 'macarrão', 'massa', 
       'salgado', 'pastel', 'empada', 'coxinha', 'esfiha', 'croissant', 'wafer',
       'cookie', 'cracker', 'muffin', 'brownie', 'donut', 'rosquinha', 'pretzel',
@@ -1122,6 +1123,29 @@ If any alert exists, set health_bonus to null.
       'panetone', 'colomba', 'brioche', 'focaccia', 'ciabatta', 'baguete',
       'cereal', 'granola', 'muesli', 'barra de cereal', 'snack', 'chips',
       'sorvete', 'picolé', 'açaí', 'pudim', 'mousse', 'cheesecake',
+      // Doces brasileiros
+      'brigadeiro', 'beijinho', 'cajuzinho', 'paçoca', 'pé de moleque',
+      'canjica', 'arroz doce', 'mingau', 'manjar', 'quindim', 'romeu e julieta',
+      // Bebidas
+      'vitamina', 'milk shake', 'milkshake', 'cappuccino', 'café com leite',
+      'achocolatado', 'yakult', 'leite fermentado', 'petit suisse', 'danoninho',
+      'cerveja', 'refrigerante',
+      // Pratos regionais
+      'strogonoff', 'strogonofe', 'escondidinho', 'bobó', 'moqueca', 'vatapá',
+      'acarajé', 'pão de queijo', 'cuscuz', 'polenta', 'purê',
+      // Oriental
+      'sushi', 'tempurá', 'tempura', 'yakisoba', 'rolinho primavera', 'guioza',
+      'dumpling', 'miojo', 'lámen', 'lamen', 'ramen',
+      // Sobremesas internacionais
+      'tiramisù', 'tiramisu', 'panna cotta', 'creme brulee', 'crème brûlée',
+      'petit gateau', 'pastel de nata', 'quiche', 'pão de mel',
+      // Embutidos e processados
+      'salsicha', 'linguiça', 'mortadela', 'presunto', 'nugget', 'empanado',
+      // Salgadinhos
+      'doritos', 'cheetos', 'salgadinho', 'pipoca',
+      // Cremes e pastas
+      'nutella', 'creme de avelã', 'requeijão', 'cream cheese',
+      'creme de milho', 'shoyu', 'molho',
     ];
     
     // Função para detectar se é alimento processado
@@ -1134,34 +1158,51 @@ If any alert exists, set health_bonus to null.
     const decomposeProcessedFood = (foodName: string): string[] => {
       const normalized = foodName.toLowerCase().trim();
       
-      // Mapa de decomposição para alimentos comuns
+      // Mapa expandido de decomposição para alimentos processados
       const DECOMPOSITION_MAP: Record<string, string[]> = {
-        // Biscoitos e bolachas
+        // ========== BISCOITOS E BOLACHAS ==========
         'biscoito': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'leite'],
         'bolacha': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga'],
         'biscoito de maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'manteiga', 'leite'],
         'biscoito maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'manteiga', 'leite'],
         'maisena': ['farinha de trigo', 'trigo', 'amido de milho', 'açúcar', 'manteiga', 'leite'],
+        'biscoito maria': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal'],
+        'biscoito cream cracker': ['farinha de trigo', 'trigo', 'gordura vegetal', 'sal'],
+        'bolacha recheada': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal', 'cacau', 'leite'],
         'cookie': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'ovo', 'chocolate'],
-        'wafer': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal'],
+        'wafer': ['farinha de trigo', 'trigo', 'açúcar', 'gordura vegetal', 'cacau'],
         'cracker': ['farinha de trigo', 'trigo', 'sal', 'gordura vegetal'],
         
-        // Pães
+        // ========== PÃES ==========
         'pão': ['farinha de trigo', 'trigo', 'fermento', 'sal', 'açúcar'],
         'pão de forma': ['farinha de trigo', 'trigo', 'fermento', 'açúcar', 'leite'],
         'pão francês': ['farinha de trigo', 'trigo', 'fermento', 'sal'],
+        'pão integral': ['farinha de trigo integral', 'trigo', 'fermento', 'sal'],
+        'pão de queijo': ['polvilho', 'queijo', 'leite', 'ovo'],
         'torrada': ['farinha de trigo', 'trigo', 'manteiga'],
         'croissant': ['farinha de trigo', 'trigo', 'manteiga', 'leite', 'ovo'],
         'brioche': ['farinha de trigo', 'trigo', 'manteiga', 'leite', 'ovo', 'açúcar'],
+        'focaccia': ['farinha de trigo', 'trigo', 'azeite', 'sal'],
+        'ciabatta': ['farinha de trigo', 'trigo', 'azeite', 'sal'],
+        'baguete': ['farinha de trigo', 'trigo', 'fermento', 'sal'],
+        'pão de mel': ['farinha de trigo', 'trigo', 'mel', 'chocolate', 'leite'],
         
-        // Massas
+        // ========== MASSAS ==========
         'macarrão': ['farinha de trigo', 'trigo', 'ovo'],
         'massa': ['farinha de trigo', 'trigo', 'ovo'],
         'lasanha': ['farinha de trigo', 'trigo', 'ovo', 'queijo', 'leite'],
         'pizza': ['farinha de trigo', 'trigo', 'queijo', 'tomate'],
         'nhoque': ['batata', 'farinha de trigo', 'trigo', 'ovo'],
+        'ravioli': ['farinha de trigo', 'trigo', 'ovo', 'queijo'],
+        'ravióli': ['farinha de trigo', 'trigo', 'ovo', 'queijo'],
+        'cappelletti': ['farinha de trigo', 'trigo', 'ovo', 'carne'],
+        'canelone': ['farinha de trigo', 'trigo', 'ovo', 'queijo', 'leite'],
+        'miojo': ['farinha de trigo', 'trigo', 'glutamato'],
+        'lámen': ['farinha de trigo', 'trigo', 'ovo'],
+        'lamen': ['farinha de trigo', 'trigo', 'ovo'],
+        'ramen': ['farinha de trigo', 'trigo', 'ovo'],
         
-        // Bolos e doces
+        // ========== BOLOS E DOCES ==========
         'bolo': ['farinha de trigo', 'trigo', 'açúcar', 'ovo', 'leite', 'manteiga'],
         'torta': ['farinha de trigo', 'trigo', 'açúcar', 'manteiga', 'ovo'],
         'brownie': ['farinha de trigo', 'trigo', 'chocolate', 'açúcar', 'ovo', 'manteiga'],
@@ -1169,26 +1210,134 @@ If any alert exists, set health_bonus to null.
         'panqueca': ['farinha de trigo', 'trigo', 'leite', 'ovo'],
         'crepe': ['farinha de trigo', 'trigo', 'leite', 'ovo'],
         'waffle': ['farinha de trigo', 'trigo', 'leite', 'ovo', 'açúcar'],
+        'churros': ['farinha de trigo', 'trigo', 'açúcar', 'chocolate'],
+        'sonho': ['farinha de trigo', 'trigo', 'leite', 'ovo', 'creme'],
+        'éclair': ['farinha de trigo', 'trigo', 'manteiga', 'ovo', 'creme', 'chocolate'],
+        'bomba': ['farinha de trigo', 'trigo', 'manteiga', 'ovo', 'creme'],
+        'donut': ['farinha de trigo', 'trigo', 'açúcar', 'leite', 'ovo'],
+        'rosquinha': ['farinha de trigo', 'trigo', 'açúcar', 'ovo'],
+        'panetone': ['farinha de trigo', 'trigo', 'manteiga', 'ovo', 'frutas cristalizadas'],
+        'colomba': ['farinha de trigo', 'trigo', 'manteiga', 'ovo', 'açúcar'],
         
-        // Salgados
+        // ========== DOCES BRASILEIROS ==========
+        'brigadeiro': ['leite condensado', 'leite', 'chocolate', 'cacau', 'manteiga'],
+        'beijinho': ['leite condensado', 'leite', 'coco', 'manteiga'],
+        'cajuzinho': ['amendoim', 'leite condensado', 'leite'],
+        'paçoca': ['amendoim', 'açúcar'],
+        'pé de moleque': ['amendoim', 'açúcar', 'mel'],
+        'canjica': ['milho', 'leite', 'coco', 'açúcar'],
+        'arroz doce': ['arroz', 'leite', 'açúcar', 'canela'],
+        'mingau': ['leite', 'açúcar', 'amido'],
+        'manjar': ['leite de coco', 'leite', 'açúcar'],
+        'quindim': ['ovo', 'açúcar', 'coco'],
+        'romeu e julieta': ['queijo', 'leite', 'goiabada'],
+        
+        // ========== SOBREMESAS ==========
+        'pudim': ['leite', 'ovo', 'açúcar', 'caramelo'],
+        'mousse': ['leite', 'creme de leite', 'açúcar', 'gelatina'],
+        'cheesecake': ['cream cheese', 'leite', 'biscoito', 'trigo', 'açúcar'],
+        'tiramisù': ['café', 'mascarpone', 'leite', 'biscoito', 'trigo', 'cacau'],
+        'tiramisu': ['café', 'mascarpone', 'leite', 'biscoito', 'trigo', 'cacau'],
+        'panna cotta': ['creme de leite', 'leite', 'gelatina', 'açúcar'],
+        'creme brulee': ['leite', 'creme de leite', 'ovo', 'açúcar'],
+        'crème brûlée': ['leite', 'creme de leite', 'ovo', 'açúcar'],
+        'petit gateau': ['farinha de trigo', 'trigo', 'chocolate', 'ovo', 'manteiga'],
+        'pastel de nata': ['farinha de trigo', 'trigo', 'leite', 'ovo', 'açúcar'],
+        'sorvete': ['leite', 'açúcar', 'creme de leite'],
+        'picolé': ['açúcar', 'água'],
+        'açaí': ['açaí', 'guaraná', 'açúcar'],
+        
+        // ========== SALGADOS ==========
         'coxinha': ['farinha de trigo', 'trigo', 'frango', 'leite'],
         'pastel': ['farinha de trigo', 'trigo', 'gordura'],
         'empada': ['farinha de trigo', 'trigo', 'manteiga', 'ovo'],
         'esfiha': ['farinha de trigo', 'trigo', 'carne'],
+        'quiche': ['farinha de trigo', 'trigo', 'leite', 'ovo', 'creme de leite'],
+        'tapioca': ['mandioca'],
         
-        // Sanduíches
+        // ========== SANDUÍCHES ==========
         'sanduíche': ['pão', 'farinha de trigo', 'trigo'],
-        'hambúrguer': ['pão', 'farinha de trigo', 'trigo', 'carne bovina'],
+        'hambúrguer': ['pão', 'farinha de trigo', 'trigo', 'carne bovina', 'queijo'],
         'hot dog': ['pão', 'farinha de trigo', 'trigo', 'salsicha'],
+        'cachorro quente': ['pão', 'farinha de trigo', 'trigo', 'salsicha'],
+        'wrap': ['farinha de trigo', 'trigo'],
         
-        // Cereais
+        // ========== PRATOS REGIONAIS BRASILEIROS ==========
+        'strogonoff': ['creme de leite', 'leite', 'cogumelo', 'carne'],
+        'strogonofe': ['creme de leite', 'leite', 'cogumelo', 'carne'],
+        'escondidinho': ['purê de batata', 'leite', 'manteiga', 'queijo'],
+        'bobó': ['leite de coco', 'camarão', 'mandioca'],
+        'bobó de camarão': ['leite de coco', 'camarão', 'mandioca'],
+        'moqueca': ['leite de coco', 'peixe', 'azeite de dendê'],
+        'vatapá': ['amendoim', 'castanha de caju', 'camarão', 'leite de coco'],
+        'acarajé': ['feijão fradinho', 'camarão', 'azeite de dendê'],
+        'cuscuz': ['milho', 'fubá'],
+        'polenta': ['milho', 'fubá', 'queijo'],
+        'purê': ['batata', 'leite', 'manteiga'],
+        'purê de batata': ['batata', 'leite', 'manteiga'],
+        'creme de milho': ['milho', 'leite', 'creme de leite'],
+        
+        // ========== COMIDA ORIENTAL ==========
+        'sushi': ['arroz', 'peixe', 'alga', 'vinagre'],
+        'tempurá': ['farinha de trigo', 'trigo', 'frutos do mar'],
+        'tempura': ['farinha de trigo', 'trigo', 'frutos do mar'],
+        'yakisoba': ['macarrão', 'farinha de trigo', 'trigo', 'shoyu', 'soja'],
+        'rolinho primavera': ['farinha de trigo', 'trigo', 'vegetais'],
+        'guioza': ['farinha de trigo', 'trigo', 'carne'],
+        'dumpling': ['farinha de trigo', 'trigo', 'carne'],
+        'shoyu': ['soja', 'trigo', 'sal'],
+        'molho shoyu': ['soja', 'trigo', 'sal'],
+        
+        // ========== BEBIDAS ==========
+        'vitamina': ['leite', 'frutas'],
+        'milk shake': ['leite', 'sorvete', 'açúcar'],
+        'milkshake': ['leite', 'sorvete', 'açúcar'],
+        'cappuccino': ['café', 'leite'],
+        'café com leite': ['café', 'leite'],
+        'achocolatado': ['leite', 'cacau', 'açúcar'],
+        'yakult': ['leite', 'fermento lácteo'],
+        'leite fermentado': ['leite', 'fermento lácteo'],
+        'petit suisse': ['leite', 'açúcar', 'frutas'],
+        'danoninho': ['leite', 'açúcar', 'frutas'],
+        'cerveja': ['cevada', 'trigo', 'lúpulo', 'glúten'],
+        'refrigerante': ['água', 'açúcar'],
+        
+        // ========== CEREAIS E GRANOLAS ==========
         'cereal': ['trigo', 'aveia', 'milho', 'açúcar'],
         'granola': ['aveia', 'mel', 'castanhas'],
+        'muesli': ['aveia', 'frutas secas', 'castanhas'],
+        'barra de cereal': ['aveia', 'mel', 'açúcar', 'frutas secas'],
         
-        // Sorvetes
-        'sorvete': ['leite', 'açúcar', 'creme de leite'],
-        'picolé': ['açúcar', 'água'],
-        'açaí': ['açaí', 'guaraná', 'açúcar'],
+        // ========== SALGADINHOS ==========
+        'doritos': ['milho', 'queijo', 'leite'],
+        'cheetos': ['milho', 'queijo', 'leite'],
+        'salgadinho': ['milho', 'queijo', 'leite'],
+        'chips': ['batata', 'sal'],
+        'pipoca': ['milho'],
+        'pipoca de micro-ondas': ['milho', 'manteiga', 'leite'],
+        
+        // ========== EMBUTIDOS ==========
+        'salsicha': ['carne', 'amido', 'sal', 'condimentos'],
+        'linguiça': ['carne suína', 'sal', 'condimentos'],
+        'mortadela': ['carne', 'amido', 'sal', 'condimentos'],
+        'presunto': ['carne suína', 'sal', 'açúcar'],
+        'nugget': ['frango', 'farinha de trigo', 'trigo', 'amido'],
+        'empanado': ['farinha de trigo', 'trigo', 'ovo'],
+        
+        // ========== CREMES E PASTAS ==========
+        'nutella': ['avelã', 'cacau', 'leite', 'açúcar'],
+        'creme de avelã': ['avelã', 'cacau', 'leite', 'açúcar'],
+        'requeijão': ['leite', 'creme de leite'],
+        'cream cheese': ['leite', 'creme de leite'],
+        'margarina': ['gordura vegetal', 'soro de leite'],
+        'maionese': ['ovo', 'óleo', 'vinagre'],
+        
+        // ========== LÁCTEOS ==========
+        'iogurte': ['leite', 'fermento lácteo'],
+        'queijo': ['leite'],
+        'manteiga': ['leite'],
+        'creme de leite': ['leite'],
+        'leite condensado': ['leite', 'açúcar'],
       };
       
       // Procurar decomposição específica

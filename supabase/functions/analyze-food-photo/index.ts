@@ -807,21 +807,22 @@ If any alert exists, set health_bonus to null.
       logStep("Transformed totals → total_geral", analysis.total_geral);
     }
     
-    // Transform intolerance_alerts → alertas_intolerancia
-    if (analysis.intolerance_alerts && !analysis.alertas_intolerancia) {
-      analysis.alertas_intolerancia = analysis.intolerance_alerts.map((alert: any) => ({
-        alimento: alert.ingredient,
-        intolerancia: alert.intolerance,
-        risco: alert.severity === 'high' ? 'alto' : alert.severity === 'medium' ? 'medio' : 'baixo',
-        motivo: alert.alert_source || '',
-      }));
+    // ========== ALERTAS DE INTOLERÂNCIA - GERADO VIA GLOBAL SAFETY ENGINE ==========
+    // IMPORTANTE: NÃO usamos os alertas da IA (intolerance_alerts) diretamente!
+    // A IA pode inventar alertas falsos (ex: "FODMAP" em biscoito de maisena).
+    // Em vez disso, validamos cada ingrediente contra o banco de dados real.
+    // Isso será feito mais abaixo após processar os alimentos.
+    
+    // Descartar alertas da IA - serão regenerados via globalSafetyEngine
+    if (analysis.intolerance_alerts) {
+      logStep("Discarding AI intolerance_alerts - will validate via database", { 
+        count: analysis.intolerance_alerts.length 
+      });
       delete analysis.intolerance_alerts;
     }
-
-    // Ensure alertas_intolerancia exists
-    if (!analysis.alertas_intolerancia) {
-      analysis.alertas_intolerancia = [];
-    }
+    
+    // Inicializar como array vazio - será preenchido pela validação do globalSafetyEngine
+    analysis.alertas_intolerancia = [];
     
     // Transform meal_name → prato_identificado with composite humanized name
     if (!analysis.prato_identificado) {
@@ -1119,10 +1120,12 @@ If any alert exists, set health_bonus to null.
         conflictCount: validationResult.conflicts.length 
       });
       
-      // Converter conflicts para alertasPersonalizados
+      // Converter conflicts para alertasPersonalizados E alertas_intolerancia
+      // Isso garante que APENAS conflitos VALIDADOS contra o banco de dados sejam exibidos
       for (const conflict of validationResult.conflicts) {
         const restricaoLabel = conflict.label;
         
+        // Adicionar ao alertasPersonalizados (usado na UI)
         alertasPersonalizados.push({
           ingrediente: conflict.originalIngredient,
           restricao: restricaoLabel,
@@ -1130,7 +1133,21 @@ If any alert exists, set health_bonus to null.
           mensagem: `⚠️ ATENÇÃO: "${conflict.originalIngredient}" contém ${restricaoLabel.toUpperCase()}, que está na sua lista de restrições`,
           icone: "🔴"
         });
+        
+        // Adicionar ao alertas_intolerancia (formato legado para compatibilidade)
+        // Este é o formato esperado pelo frontend para análises anteriores
+        analysis.alertas_intolerancia.push({
+          alimento: conflict.originalIngredient,
+          intolerancia: restricaoLabel,
+          risco: conflict.severity === 'low' ? 'baixo' : 'alto',
+          motivo: `Ingrediente "${conflict.matchedIngredient}" detectado via validação de segurança`,
+          validado_banco: true // Flag para indicar que foi validado contra o banco
+        });
       }
+      
+      logStep("Populated alertas_intolerancia from validated conflicts", {
+        count: analysis.alertas_intolerancia.length
+      });
       
       // Se não houve conflitos, adicionar alertas de segurança para cada restrição
       if (validationResult.isSafe) {

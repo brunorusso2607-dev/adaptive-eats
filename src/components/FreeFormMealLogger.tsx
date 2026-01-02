@@ -228,97 +228,95 @@ export default function FreeFormMealLogger({
   return (
     <>
       <Sheet open={open && !showRegistrationFlow} onOpenChange={onOpenChange}>
-        <SheetContent side="bottom" className="h-[85vh] max-h-[85vh] flex flex-col p-0">
+        <SheetContent side="bottom" className="h-[85vh] max-h-[85vh] flex flex-col p-0 overflow-hidden">
           <div className="flex justify-center pt-3 pb-1 flex-shrink-0">
             <div className="w-10 h-1 rounded-full bg-muted-foreground/30" />
           </div>
           
-          <SheetHeader className="px-4 pb-3 flex-shrink-0 border-b">
+          <SheetHeader className="px-4 pb-2 flex-shrink-0 border-b">
             <SheetTitle className="text-base flex items-center gap-2">
               <UtensilsCrossed className="w-5 h-5 text-primary" />
               Registrar Refeição Livre
             </SheetTitle>
           </SheetHeader>
 
-          {/* Search area - compact */}
-          <div className="px-4 py-2 flex-shrink-0">
+          {/* Main scrollable content */}
+          <div className="flex-1 overflow-auto px-4 py-2">
+            {/* Search area */}
             <UnifiedFoodSearchBlock
               onSelectFood={handleSelectFood}
-              scrollHeight="max-h-[18vh]"
+              scrollHeight="max-h-[30vh]"
               confirmButtonLabel="Adicionar"
               hasSelectedFoods={selectedFoods.length > 0}
               inputRef={searchInputRef}
             />
-          </div>
 
-          <ScrollArea className="flex-1 px-4">
-            <div className="space-y-3 pb-4">
-              {selectedFoods.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                    Alimentos ({selectedFoods.length})
-                  </h4>
-                  <div className="space-y-1.5">
-                    {selectedFoods.map((food) => {
-                      const macros = calculateMacros(food);
-                      const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
-                      const conflict = checkFoodConflicts(food.name);
-                      return (
-                        <div 
-                          key={food.id} 
-                          className={cn(
-                            "bg-card border rounded-lg p-2.5 transition-all",
-                            conflict && "border-amber-200 bg-amber-50/30"
-                          )}
-                        >
-                          <div className="flex items-center justify-between gap-2">
-                            <div className="flex items-center gap-2 flex-1 min-w-0">
-                              <span className="font-medium text-sm truncate">{food.name}</span>
-                              {conflict && (
-                                <span className="flex items-center gap-0.5 text-[9px] text-amber-600 bg-amber-100 px-1 py-0.5 rounded flex-shrink-0">
-                                  <AlertTriangle className="w-2.5 h-2.5" />
-                                </span>
-                              )}
-                            </div>
-                            
-                            <div className="flex items-center gap-1.5 flex-shrink-0">
-                              <Input 
-                                type="number" 
-                                value={food.displayQuantity} 
-                                onChange={(e) => updateDisplayQuantity(food.id, e.target.value)} 
-                                className="w-14 h-7 text-center text-xs px-1" 
-                                min="0" 
-                              />
-                              <span className="text-xs text-muted-foreground w-6">{unitLabel}</span>
-                              <span className="text-xs text-muted-foreground flex items-center gap-0.5">
-                                <Flame className="w-3 h-3 text-orange-500" />
-                                {macros.calories}
+            {/* Selected foods list */}
+            {selectedFoods.length > 0 && (
+              <div className="mt-3 space-y-2">
+                <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Alimentos ({selectedFoods.length})
+                </h4>
+                <div className="space-y-1.5">
+                  {selectedFoods.map((food) => {
+                    const macros = calculateMacros(food);
+                    const unitLabel = getUnitLabel(food.serving_unit, food.displayQuantity);
+                    const conflict = checkFoodConflicts(food.name);
+                    return (
+                      <div 
+                        key={food.id} 
+                        className={cn(
+                          "bg-card border rounded-lg p-2.5 transition-all",
+                          conflict && "border-amber-200 bg-amber-50/30"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="font-medium text-sm truncate">{food.name}</span>
+                            {conflict && (
+                              <span className="flex items-center gap-0.5 text-[9px] text-amber-600 bg-amber-100 px-1 py-0.5 rounded flex-shrink-0">
+                                <AlertTriangle className="w-2.5 h-2.5" />
                               </span>
-                              <button 
-                                onClick={() => removeFood(food.id)} 
-                                className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
+                            )}
+                          </div>
+                          
+                          <div className="flex items-center gap-1.5 flex-shrink-0">
+                            <Input 
+                              type="number" 
+                              value={food.displayQuantity} 
+                              onChange={(e) => updateDisplayQuantity(food.id, e.target.value)} 
+                              className="w-14 h-7 text-center text-xs px-1" 
+                              min="0" 
+                            />
+                            <span className="text-xs text-muted-foreground w-6">{unitLabel}</span>
+                            <span className="text-xs text-muted-foreground flex items-center gap-0.5">
+                              <Flame className="w-3 h-3 text-orange-500" />
+                              {macros.calories}
+                            </span>
+                            <button 
+                              onClick={() => removeFood(food.id)} 
+                              className="p-1 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded transition-colors"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
-
-                  {/* Add more button */}
-                  <button
-                    onClick={focusSearchInput}
-                    className="w-full flex items-center justify-center gap-2 py-2.5 text-sm text-primary hover:bg-primary/5 rounded-lg border border-dashed border-primary/30 transition-colors"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Adicionar mais
-                  </button>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
-            </div>
-          </ScrollArea>
+
+                {/* Add more button */}
+                <button
+                  onClick={focusSearchInput}
+                  className="w-full flex items-center justify-center gap-2 py-2 text-sm text-primary hover:bg-primary/5 rounded-lg border border-dashed border-primary/30 transition-colors"
+                >
+                  <Plus className="w-4 h-4" />
+                  Adicionar mais
+                </button>
+              </div>
+            )}
+          </div>
 
           {/* Bottom section - Macro summary + Continue button */}
           {selectedFoods.length > 0 && (

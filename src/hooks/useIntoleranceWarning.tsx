@@ -461,6 +461,17 @@ export function useIntoleranceWarning() {
     
     const labels = conflictDetails.map(d => d.label);
 
+    // DEBUG: Log resultado final para arroz
+    if (foodName.toLowerCase().includes('arroz')) {
+      console.log('[INTOLERANCE RESULT]', { 
+        foodName, 
+        hasConflict: conflicts.length > 0,
+        conflicts,
+        labels,
+        totalMappingsUsed: mappings.length
+      });
+    }
+
     return {
       hasConflict: conflicts.length > 0,
       conflicts,

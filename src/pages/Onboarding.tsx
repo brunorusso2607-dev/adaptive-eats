@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -14,31 +14,10 @@ import { useOnboardingOptions, useRestrictionCategories, type OnboardingOption, 
 import { getOnboardingIcon } from "@/lib/iconUtils";
 import { usePushSubscription } from "@/hooks/usePushSubscription";
 import { useNutritionalStrategies, deriveGoalFromStrategy, type NutritionalStrategy } from "@/hooks/useNutritionalStrategies";
+import { useActiveOnboardingCountries } from "@/hooks/useOnboardingCountries";
+import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 
 const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
-
-const STEPS = [
-  { id: 1, title: "Sua região", description: "De qual país você é?" },
-  { id: 2, title: "Restrições", description: "Intolerâncias, alergias e sensibilidades" },
-  { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?" },
-  { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?" },
-  { id: 5, title: "Objetivo", description: "Qual sua estratégia nutricional?" },
-  { id: 6, title: "Notificações", description: "Receba lembretes importantes" },
-];
-
-const COUNTRIES = [
-  { code: "BR", name: "Brasil", flag: "🇧🇷" },
-  { code: "US", name: "Estados Unidos", flag: "🇺🇸" },
-  { code: "PT", name: "Portugal", flag: "🇵🇹" },
-  { code: "MX", name: "México", flag: "🇲🇽" },
-  { code: "AR", name: "Argentina", flag: "🇦🇷" },
-  { code: "IT", name: "Itália", flag: "🇮🇹" },
-  { code: "FR", name: "França", flag: "🇫🇷" },
-  { code: "DE", name: "Alemanha", flag: "🇩🇪" },
-  { code: "ES", name: "Espanha", flag: "🇪🇸" },
-  { code: "GB", name: "Reino Unido", flag: "🇬🇧" },
-  { code: "CO", name: "Colômbia", flag: "🇨🇴" },
-];
 
 type ProfileData = {
   country: string;
@@ -48,6 +27,16 @@ type ProfileData = {
   goal: string;
   strategy_id: string | null;
 };
+
+// Base steps - step 1 (country) may be skipped based on feature flag
+const BASE_STEPS = [
+  { id: 1, title: "Sua região", description: "De qual país você é?", skippable: true },
+  { id: 2, title: "Restrições", description: "Intolerâncias, alergias e sensibilidades", skippable: false },
+  { id: 3, title: "Preferência", description: "Qual sua preferência alimentar?", skippable: false },
+  { id: 4, title: "Alimentos", description: "Tem algum alimento que você não consome?", skippable: false },
+  { id: 5, title: "Objetivo", description: "Qual sua estratégia nutricional?", skippable: false },
+  { id: 6, title: "Notificações", description: "Receba lembretes importantes", skippable: false },
+];
 
 export default function Onboarding() {
   const navigate = useNavigate();
@@ -66,12 +55,28 @@ export default function Onboarding() {
   const { data: options, isLoading: isLoadingOptions } = useOnboardingOptions();
   const { data: restrictionCategories, isLoading: isLoadingCategories } = useRestrictionCategories();
   const { data: strategies, isLoading: isLoadingStrategies } = useNutritionalStrategies();
+  const { data: activeCountries, isLoading: isLoadingCountries } = useActiveOnboardingCountries();
+  const { isEnabled: showCountrySelection, isLoading: isLoadingFlag } = useFeatureFlag("show_country_selection");
   const { 
     isSupported: isPushSupported, 
     isSubscribed: isPushSubscribed, 
     permission: pushPermission,
     subscribe: subscribePush 
   } = usePushSubscription();
+
+  // Compute visible steps based on country selection visibility
+  const STEPS = useMemo(() => {
+    if (showCountrySelection) {
+      return BASE_STEPS;
+    }
+    // Skip country step - renumber remaining steps
+    return BASE_STEPS.filter(s => !s.skippable).map((s, idx) => ({
+      ...s,
+      id: idx + 1,
+    }));
+  }, [showCountrySelection]);
+
+  const totalSteps = STEPS.length;
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -112,7 +117,7 @@ export default function Onboarding() {
   };
 
   const handleNext = () => {
-    if (currentStep < 6) {
+    if (currentStep < totalSteps) {
       setCurrentStep(currentStep + 1);
     } else {
       handleComplete();
@@ -181,8 +186,22 @@ export default function Onboarding() {
       );
     }
 
-    switch (currentStep) {
+    // Map current step to original step logic based on whether country selection is shown
+    const getOriginalStepNumber = () => {
+      if (showCountrySelection) {
+        return currentStep;
+      }
+      // If country selection is hidden, step 1 becomes step 2, etc.
+      return currentStep + 1;
+    };
+
+    const originalStep = getOriginalStepNumber();
+
+    switch (originalStep) {
       case 1:
+        // Country selection - only shown if flag is enabled
+        if (!showCountrySelection) return null;
+        
         return (
           <div className="space-y-4">
             <div className="text-center py-2">
@@ -191,23 +210,29 @@ export default function Onboarding() {
                 Isso nos ajuda a sugerir alimentos e receitas populares na sua região.
               </p>
             </div>
-            <div className="grid grid-cols-2 gap-2 max-h-[320px] overflow-y-auto">
-              {COUNTRIES.map((country) => (
-                <button
-                  key={country.code}
-                  onClick={() => setProfile({ ...profile, country: country.code })}
-                  className={cn(
-                    "p-3 rounded-xl border text-left transition-all flex items-center gap-3",
-                    profile.country === country.code
-                      ? "border-primary bg-primary/5"
-                      : "border-border/80 hover:border-primary/50 bg-card"
-                  )}
-                >
-                  <span className="text-2xl">{country.flag}</span>
-                  <span className="font-medium text-sm">{country.name}</span>
-                </button>
-              ))}
-            </div>
+            {isLoadingCountries ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="w-6 h-6 animate-spin text-primary" />
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 gap-2 max-h-[320px] overflow-y-auto">
+                {activeCountries?.map((country) => (
+                  <button
+                    key={country.country_code}
+                    onClick={() => setProfile({ ...profile, country: country.country_code })}
+                    className={cn(
+                      "p-3 rounded-xl border text-left transition-all flex items-center gap-3",
+                      profile.country === country.country_code
+                        ? "border-primary bg-primary/5"
+                        : "border-border/80 hover:border-primary/50 bg-card"
+                    )}
+                  >
+                    <span className="text-2xl">{country.flag_emoji}</span>
+                    <span className="font-medium text-sm">{country.country_name}</span>
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         );
 
@@ -678,11 +703,11 @@ export default function Onboarding() {
         >
           {isLoading ? (
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
-          ) : currentStep === 6 ? (
+          ) : currentStep === totalSteps ? (
             <Check className="w-4 h-4 mr-2" />
           ) : null}
-          {currentStep === 6 ? "Concluir" : "Próximo"}
-          {currentStep < 6 && <ArrowRight className="w-4 h-4 ml-2" />}
+          {currentStep === totalSteps ? "Concluir" : "Próximo"}
+          {currentStep < totalSteps && <ArrowRight className="w-4 h-4 ml-2" />}
         </Button>
       </footer>
     </div>

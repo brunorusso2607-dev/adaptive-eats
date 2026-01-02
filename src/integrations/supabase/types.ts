@@ -1441,6 +1441,39 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_countries: {
+        Row: {
+          country_code: string
+          country_name: string
+          created_at: string
+          flag_emoji: string
+          id: string
+          is_active: boolean
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          country_code: string
+          country_name: string
+          created_at?: string
+          flag_emoji?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          country_code?: string
+          country_name?: string
+          created_at?: string
+          flag_emoji?: string
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       onboarding_options: {
         Row: {
           category: string

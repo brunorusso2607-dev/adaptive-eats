@@ -1,4 +1,5 @@
 import MealRegistrationFlow, { MealData, ConsumptionItem } from "./MealRegistrationFlow";
+import { useMealTimeDetection } from "@/hooks/useMealTimeDetection";
 
 interface FoodItem {
   item: string;
@@ -37,6 +38,13 @@ export default function RegisterMealFromPhotoSheet({
   foodAnalysis,
   onSuccess,
 }: RegisterMealFromPhotoSheetProps) {
+  // Usar detecção automática de tipo de refeição
+  const {
+    detectedMealType,
+    detectedMealLabel,
+    pendingMeal,
+  } = useMealTimeDetection();
+
   // Convert food analysis to MealData format
   const mealData: MealData = {
     name: foodAnalysis.prato_identificado?.nome || 
@@ -79,6 +87,9 @@ export default function RegisterMealFromPhotoSheet({
       items={items}
       sourceType="photo"
       onSuccess={onSuccess}
+      autoDetectedMealType={detectedMealType}
+      autoDetectedMealLabel={detectedMealLabel}
+      pendingMealToReplace={pendingMeal}
     />
   );
 }

@@ -3,12 +3,11 @@ import { Drawer, DrawerContent, DrawerHeader, DrawerTitle } from "@/components/u
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangle, Trash2 } from "lucide-react";
+import { Search, Plus, X, Flame, Check, Loader2, Sparkles, PenLine, AlertTriangle, Trash2, Database, Globe, Bot } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useFoodsSearch, type Food } from "@/hooks/useFoodsSearch";
+import { useLookupIngredient } from "@/hooks/useLookupIngredient";
 import { useMealConsumption, type ConsumedItem } from "@/hooks/useMealConsumption";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
-import { useUserCountry } from "@/hooks/useUserCountry";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ManualFoodModal from "./ManualFoodModal";
@@ -29,6 +28,26 @@ const UNIT_LABELS: Record<string, string> = {
   fatia: "fatia(s)",
 };
 
+// Source badge component - same as FoodSearchPanel
+function SourceBadge({ source }: { source: string }) {
+  const config = {
+    local: { icon: Database, label: "Local", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+    taco: { icon: Database, label: "taco", className: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400" },
+    usda: { icon: Globe, label: "USDA", className: "bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400" },
+    ai: { icon: Bot, label: "IA", className: "bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400" },
+  };
+  
+  const sourceKey = source?.toLowerCase() || 'local';
+  const { icon: Icon, label, className } = config[sourceKey as keyof typeof config] || config.local;
+  
+  return (
+    <span className={cn("inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded", className)}>
+      <Icon className="w-3 h-3" />
+      {label}
+    </span>
+  );
+}
+
 interface FoodSearchDrawerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -37,9 +56,26 @@ interface FoodSearchDrawerProps {
   onSuccess: () => void;
 }
 
-interface SelectedFood extends Food {
-  quantity: number; // Em gramas/ml para cálculo
-  displayQuantity: number; // Quantidade exibida (unidades, fatias, etc.)
+interface LookupFood {
+  id: string;
+  name: string;
+  name_normalized: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  fiber_per_100g: number;
+  sodium_per_100g: number;
+  category: string | null;
+  source: string;
+  is_verified: boolean;
+  default_serving_size: number;
+  serving_unit: string;
+}
+
+interface SelectedFood extends LookupFood {
+  quantity: number;
+  displayQuantity: number;
 }
 
 interface AISuggestion {
@@ -62,7 +98,6 @@ export default function FoodSearchDrawer({
 }: FoodSearchDrawerProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedFoods, setSelectedFoods] = useState<SelectedFood[]>([]);
-  // Track foods with conflicts for display
   const [foodsWithConflicts, setFoodsWithConflicts] = useState<string[]>([]);
   const [isSaving, setIsSaving] = useState(false);
   
@@ -80,8 +115,16 @@ export default function FoodSearchDrawer({
   // Removing animation state
   const [removingFoodIds, setRemovingFoodIds] = useState<Set<string>>(new Set());
 
-  const { country: userCountry } = useUserCountry();
-  const { foods, isLoading, searchFoods, clearFoods } = useFoodsSearch(userCountry);
+  // Use unified lookup hook - same as FoodSearchPanel
+  const { 
+    lookup, 
+    reset: resetLookup, 
+    results: foods, 
+    source: lookupSource, 
+    isLoading, 
+    searchPlaceholder 
+  } = useLookupIngredient();
+  
   const { saveConsumption } = useMealConsumption();
   const { checkFood, hasIntolerances, intolerances } = useIntoleranceWarning();
 
@@ -101,14 +144,18 @@ export default function FoodSearchDrawer({
     return null;
   }, [checkFood]);
 
-  // Debounced search
+  // Debounced search using useLookupIngredient
   useEffect(() => {
     const timer = setTimeout(() => {
-      searchFoods(searchQuery);
+      if (searchQuery.trim().length >= 2) {
+        lookup(searchQuery);
+      } else {
+        resetLookup();
+      }
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchQuery, searchFoods]);
+  }, [searchQuery, lookup, resetLookup]);
 
   // Reset on close
   useEffect(() => {
@@ -116,12 +163,12 @@ export default function FoodSearchDrawer({
       setSearchQuery("");
       setSelectedFoods([]);
       setFoodsWithConflicts([]);
-      setRemovingFoodIds(new Set()); // Reset animation state
-      clearFoods();
+      setRemovingFoodIds(new Set());
+      resetLookup();
       setAiSuggestions([]);
       setShowAISuggestions(false);
     }
-  }, [open, clearFoods]);
+  }, [open, resetLookup]);
 
   // Fetch AI suggestions when no results found
   const fetchAISuggestions = useCallback(async (query: string) => {
@@ -153,10 +200,9 @@ export default function FoodSearchDrawer({
   // Show AI suggestions alongside database results for better discoverability
   useEffect(() => {
     if (!isLoading && searchQuery.length >= 2) {
-      // Always fetch AI suggestions when user has a query, regardless of DB results
       const timer = setTimeout(() => {
         fetchAISuggestions(searchQuery);
-      }, 600); // Slightly longer delay to let DB results show first
+      }, 600);
       return () => clearTimeout(timer);
     } else if (searchQuery.length < 2) {
       setShowAISuggestions(false);
@@ -199,12 +245,10 @@ export default function FoodSearchDrawer({
   }, [hasIntolerances, intolerances]);
 
   // Handle adding food - always add, just show warning if conflict
-  const handleAddFood = useCallback(async (food: Food) => {
-    // First, quick local check
+  const handleAddFood = useCallback(async (food: LookupFood) => {
     const localConflict = checkFoodConflicts(food.name);
     
     if (localConflict) {
-      // Add food and show informative toast
       addFoodToList(food);
       setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
       toast.warning(
@@ -214,7 +258,6 @@ export default function FoodSearchDrawer({
       return;
     }
 
-    // For foods not in local mapping, use AI analysis
     if (hasIntolerances) {
       setIsAnalyzingIntolerance(true);
       
@@ -223,7 +266,6 @@ export default function FoodSearchDrawer({
       setIsAnalyzingIntolerance(false);
       
       if (aiResult?.hasConflicts && aiResult.conflicts.length > 0) {
-        // Add food and show informative toast with details
         addFoodToList(food);
         setFoodsWithConflicts(prev => [...new Set([...prev, food.name])]);
         const conflictLabels = aiResult.conflicts.map(c => c.intoleranceLabel).join(', ');
@@ -238,12 +280,11 @@ export default function FoodSearchDrawer({
     addFoodToList(food);
   }, [checkFoodConflicts, hasIntolerances, analyzeWithAI]);
 
-  const addFoodToList = (food: Food) => {
+  const addFoodToList = (food: LookupFood) => {
     const defaultServing = food.default_serving_size || 100;
     const displayQty = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : 1;
     const actualGrams = food.serving_unit === 'g' || food.serving_unit === 'ml' ? defaultServing : defaultServing;
 
-    // Ensure food is not in removing state (in case it was being removed)
     setRemovingFoodIds((prev) => {
       if (prev.has(food.id)) {
         const next = new Set(prev);
@@ -267,14 +308,13 @@ export default function FoodSearchDrawer({
       return [...prev, { ...food, displayQuantity: displayQty, quantity: actualGrams }];
     });
     setSearchQuery("");
-    clearFoods();
+    resetLookup();
     setAiSuggestions([]);
     setShowAISuggestions(false);
   };
 
-  // Add AI suggestion as food (first save to database, then add to list)
+  // Add AI suggestion as food
   const handleAddAISuggestion = async (suggestion: AISuggestion) => {
-    // Check for intolerance conflicts - add anyway but show warning
     const conflict = checkFoodConflicts(suggestion.name);
     const hasLocalConflict = !!conflict;
 
@@ -284,31 +324,25 @@ export default function FoodSearchDrawer({
         .normalize("NFD")
         .replace(/[\u0300-\u036f]/g, "");
 
-      // Check if already exists
       const { data: existing } = await supabase
         .from("foods")
         .select("*")
         .eq("name_normalized", normalizedName)
         .maybeSingle();
 
-      let food: Food;
+      let food: LookupFood;
 
       if (existing) {
         food = {
           ...existing,
           serving_unit: existing.serving_unit || 'g',
           default_serving_size: existing.default_serving_size || 100,
-        } as Food;
+        } as LookupFood;
       } else {
-        // Calculate per 100g if portion is different
         const multiplier = 100 / suggestion.portion_grams;
-        
-        // Use auto-suggestion for serving unit based on food name
         const servingSuggestion = suggestServingByName(suggestion.name);
         const suggestedUnit = servingSuggestion.servingUnit;
         const suggestedSize = servingSuggestion.defaultServingSize;
-        
-        // Use AI portion if it's more specific, otherwise use category-based suggestion
         const finalServingSize = suggestion.portion_grams || suggestedSize;
         const finalServingUnit = suggestion.portion_grams && suggestion.portion_grams !== 100 ? 'un' : suggestedUnit;
         
@@ -335,11 +369,10 @@ export default function FoodSearchDrawer({
           ...newFood,
           serving_unit: newFood.serving_unit || 'un',
           default_serving_size: newFood.default_serving_size || suggestion.portion_grams,
-        } as Food;
+        } as LookupFood;
         toast.success(`${suggestion.name} adicionado ao banco de dados!`);
       }
 
-      // Add to selected list with portion size
       setSelectedFoods((prev) => {
         const existing = prev.find((f) => f.id === food.id);
         if (existing) {
@@ -359,11 +392,10 @@ export default function FoodSearchDrawer({
       });
       
       setSearchQuery("");
-      clearFoods();
+      resetLookup();
       setAiSuggestions([]);
       setShowAISuggestions(false);
 
-      // Show warning toast if there was a conflict
       if (hasLocalConflict && conflict) {
         setFoodsWithConflicts(prev => [...new Set([...prev, suggestion.name])]);
         toast.warning(
@@ -378,21 +410,22 @@ export default function FoodSearchDrawer({
   };
 
   const handleManualFoodCreated = (food: { id: string; name: string; calories_per_100g: number; protein_per_100g: number; carbs_per_100g: number; fat_per_100g: number }) => {
-    const fullFood: Food = {
+    const fullFood: LookupFood = {
       ...food,
       name_normalized: food.name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""),
-      fiber_per_100g: null,
-      sodium_per_100g: null,
+      fiber_per_100g: 0,
+      sodium_per_100g: 0,
       category: null,
       serving_unit: 'g',
       default_serving_size: 100,
+      source: 'manual',
+      is_verified: false,
     };
     addFoodToList(fullFood);
   };
 
 
   const updateDisplayQuantity = (foodId: string, newValue: string) => {
-    // Allow empty string during typing - don't remove items until save
     const numValue = newValue === '' ? 0 : parseFloat(newValue) || 0;
     setSelectedFoods((prev) =>
       prev.map((f) => {
@@ -408,14 +441,11 @@ export default function FoodSearchDrawer({
   };
 
   const removeFood = (foodId: string, foodName: string) => {
-    // Find and store the food before removing
     const foodToRemove = selectedFoods.find((f) => f.id === foodId);
     if (!foodToRemove) return;
 
-    // Start fade-out animation
     setRemovingFoodIds((prev) => new Set(prev).add(foodId));
 
-    // Wait for animation to complete, then remove
     setTimeout(() => {
       setSelectedFoods((prev) => prev.filter((f) => f.id !== foodId));
       setRemovingFoodIds((prev) => {
@@ -425,18 +455,15 @@ export default function FoodSearchDrawer({
       });
     }, 300);
 
-    // Show toast with undo option
     toast(`"${foodName}" removido`, {
       action: {
         label: "Desfazer",
         onClick: () => {
-          // Remove from removing set if still animating
           setRemovingFoodIds((prev) => {
             const next = new Set(prev);
             next.delete(foodId);
             return next;
           });
-          // Restore food if not already in list
           setSelectedFoods((prev) => {
             if (prev.find((f) => f.id === foodId)) return prev;
             return [...prev, foodToRemove];
@@ -547,14 +574,21 @@ export default function FoodSearchDrawer({
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar alimento..."
+                placeholder={searchPlaceholder.placeholder}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-9"
               />
             </div>
             
-            {/* Search results dropdown - positioned absolutely */}
+            {/* Hint text - same as FoodSearchPanel */}
+            {searchQuery.length > 0 && searchQuery.length < 3 && (
+              <p className="text-xs text-muted-foreground mt-1 ml-1">
+                {searchPlaceholder.hint}
+              </p>
+            )}
+            
+            {/* Search results dropdown */}
             {searchQuery.length >= 2 && (isLoading || foods.length > 0 || showAISuggestions) && (
               <div 
                 className="absolute left-4 right-4 top-full mt-1 bg-background rounded-lg border shadow-lg z-50 max-h-80 overflow-y-auto"
@@ -588,6 +622,15 @@ export default function FoodSearchDrawer({
                   </div>
                 ) : (
                   <div className="p-2 space-y-1">
+                    {/* Source indicator - same as FoodSearchPanel */}
+                    {foods.length > 0 && lookupSource && (
+                      <div className="flex items-center gap-2 px-2 py-1 text-xs text-muted-foreground">
+                        <span>Fonte:</span>
+                        <SourceBadge source={lookupSource} />
+                        <span>({foods.length} resultado{foods.length !== 1 ? 's' : ''})</span>
+                      </div>
+                    )}
+                    
                     {/* Database results */}
                     {foods.map((food) => {
                       const conflict = checkFoodConflicts(food.name);
@@ -606,6 +649,9 @@ export default function FoodSearchDrawer({
                                 <Plus className="w-4 h-4 text-primary flex-shrink-0" />
                               )}
                               <span className="text-sm font-medium truncate">{food.name}</span>
+                              {food.is_verified && (
+                                <Check className="w-3 h-3 text-emerald-500 flex-shrink-0" />
+                              )}
                             </div>
                             {conflict && (
                               <span className="inline-flex items-center gap-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 mt-1 ml-6">
@@ -614,9 +660,12 @@ export default function FoodSearchDrawer({
                               </span>
                             )}
                           </div>
-                          <span className="text-xs text-muted-foreground flex-shrink-0 ml-2">
-                            {food.calories_per_100g} kcal/100g
-                          </span>
+                          <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                            <span className="text-xs text-muted-foreground">
+                              {food.calories_per_100g} kcal/100g
+                            </span>
+                            <SourceBadge source={food.source} />
+                          </div>
                         </button>
                       );
                     })}
@@ -662,7 +711,7 @@ export default function FoodSearchDrawer({
                       </>
                     )}
 
-                    {/* Manual entry option - show when no results at all */}
+                    {/* Manual entry option when no results */}
                     {foods.length === 0 && !isLoadingAI && aiSuggestions.length === 0 && (
                       <div className="p-3 text-center">
                         <p className="text-sm text-muted-foreground mb-2">
@@ -726,7 +775,7 @@ export default function FoodSearchDrawer({
                             </button>
                           </div>
 
-                          {/* Quantity input - editable field */}
+                          {/* Quantity input */}
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Input
@@ -771,7 +820,7 @@ export default function FoodSearchDrawer({
                   variant="outline"
                   className="w-full border-dashed"
                   onClick={() => {
-                    const input = document.querySelector<HTMLInputElement>('input[placeholder="Buscar alimento..."]');
+                    const input = document.querySelector<HTMLInputElement>(`input[placeholder="${searchPlaceholder.placeholder}"]`);
                     input?.focus();
                   }}
                 >
@@ -779,6 +828,15 @@ export default function FoodSearchDrawer({
                   Adicionar alimento
                 </Button>
               )}
+
+              {/* Manual add button - ALWAYS VISIBLE like FoodSearchPanel */}
+              <button
+                onClick={() => setShowManualModal(true)}
+                className="w-full p-4 border border-dashed border-muted-foreground/30 rounded-lg text-muted-foreground hover:border-primary hover:text-primary transition-colors flex items-center justify-center gap-2"
+              >
+                <PenLine className="w-4 h-4" />
+                <span className="text-sm">Não encontrou? Adicionar manualmente</span>
+              </button>
 
               {/* Totals */}
               {selectedFoods.length > 0 && (
@@ -807,7 +865,7 @@ export default function FoodSearchDrawer({
             </div>
           </ScrollArea>
 
-          {/* Save button - fixed at bottom */}
+          {/* Save button */}
           <div className="px-4 py-4 border-t flex-shrink-0 bg-background">
             <Button
               className="w-full gradient-primary"
@@ -824,7 +882,6 @@ export default function FoodSearchDrawer({
           </div>
         </DrawerContent>
       </Drawer>
-
 
       {/* Manual Food Modal */}
       <ManualFoodModal

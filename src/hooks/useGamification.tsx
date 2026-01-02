@@ -188,10 +188,11 @@ export function useGamification() {
         mealPlanItemsResult,
         gamificationResult,
         achievementsResult,
+        profileResult,
       ] = await Promise.all([
         supabase
           .from("meal_consumption")
-          .select("consumed_at, followed_plan")
+          .select("consumed_at, followed_plan, source_type")
           .eq("user_id", userId)
           .order("consumed_at", { ascending: false }),
         supabase
@@ -216,6 +217,11 @@ export function useGamification() {
           .from("user_achievements")
           .select("achievement_key")
           .eq("user_id", userId),
+        supabase
+          .from("profiles")
+          .select("enabled_meals")
+          .eq("id", userId)
+          .single(),
       ]);
 
       const consumptions = consumptionsResult.data || [];
@@ -224,27 +230,61 @@ export function useGamification() {
       );
       const gamification = gamificationResult.data;
       const achievements = (achievementsResult.data || []).map((a: any) => a.achievement_key);
+      const enabledMealsCount = profileResult.data?.enabled_meals?.length || 5;
 
+      // Filter consumptions: exclude auto_skipped for XP calculation, but include for streak
+      const validConsumptions = consumptions.filter(
+        (c: any) => c.source_type !== "auto_skipped"
+      );
+      
       let currentStreak = 0;
       let longestStreak = gamification?.longest_streak || 0;
-      const totalMealsCompleted = consumptions.length;
+      const totalMealsCompleted = validConsumptions.length; // Only count real meals for XP
 
       if (consumptions.length > 0) {
-        const consumptionsByDate = new Map<string, boolean>();
-        consumptions.forEach(c => {
+        // Group ALL consumptions (including auto_skipped) by date for streak calculation
+        const consumptionsByDate = new Map<string, { completed: number; skipped: number }>();
+        
+        consumptions.forEach((c: any) => {
           const dateKey = format(parseISO(c.consumed_at), "yyyy-MM-dd");
-          consumptionsByDate.set(dateKey, true);
+          const existing = consumptionsByDate.get(dateKey) || { completed: 0, skipped: 0 };
+          
+          if (c.source_type === "auto_skipped") {
+            existing.skipped++;
+          } else {
+            existing.completed++;
+          }
+          
+          consumptionsByDate.set(dateKey, existing);
         });
 
+        // NEW STREAK LOGIC: Streak maintains if ≥50% of enabled meals were completed
         const todayKey = format(today, "yyyy-MM-dd");
         const yesterdayKey = format(subDays(today, 1), "yyyy-MM-dd");
-        const streakActive = consumptionsByDate.has(todayKey) || consumptionsByDate.has(yesterdayKey);
+        
+        // Check if streak is active (today or yesterday had valid activity)
+        const todayData = consumptionsByDate.get(todayKey);
+        const yesterdayData = consumptionsByDate.get(yesterdayKey);
+        
+        const isDayValid = (data: { completed: number; skipped: number } | undefined): boolean => {
+          if (!data) return false;
+          const total = data.completed + data.skipped;
+          if (total === 0) return false;
+          // Streak maintains if completed ≥50% of meals that day
+          return data.completed / total >= 0.5;
+        };
+        
+        const isTodayValid = isDayValid(todayData);
+        const isYesterdayValid = isDayValid(yesterdayData);
+        const streakActive = isTodayValid || isYesterdayValid;
 
         if (streakActive) {
-          let checkDate = consumptionsByDate.has(todayKey) ? today : subDays(today, 1);
+          let checkDate = isTodayValid ? today : subDays(today, 1);
           while (true) {
             const dateKey = format(checkDate, "yyyy-MM-dd");
-            if (consumptionsByDate.has(dateKey)) {
+            const dayData = consumptionsByDate.get(dateKey);
+            
+            if (isDayValid(dayData)) {
               currentStreak++;
               checkDate = subDays(checkDate, 1);
             } else {
@@ -253,12 +293,23 @@ export function useGamification() {
           }
         }
 
+        // Calculate longest streak with new logic
         const sortedDates = Array.from(consumptionsByDate.keys()).sort();
         let tempStreak = 0;
         let prevDate: Date | null = null;
         
         sortedDates.forEach(dateStr => {
           const currentDate = parseISO(dateStr);
+          const dayData = consumptionsByDate.get(dateStr);
+          
+          if (!isDayValid(dayData)) {
+            // Invalid day breaks streak
+            longestStreak = Math.max(longestStreak, tempStreak);
+            tempStreak = 0;
+            prevDate = null;
+            return;
+          }
+          
           if (prevDate === null) {
             tempStreak = 1;
           } else {
@@ -275,8 +326,31 @@ export function useGamification() {
         longestStreak = Math.max(longestStreak, tempStreak, currentStreak);
       }
 
+      // Weekly adherence calculation: include auto_skipped as "not completed" for accurate %
+      // mealsPlannedThisWeek = all items in the week
+      // mealsCompletedThisWeek = items with completed_at AND NOT auto_skipped
       const mealsPlannedThisWeek = mealPlanItems.length;
-      const mealsCompletedThisWeek = mealPlanItems.filter((item: any) => item.completed_at !== null).length;
+      
+      // Get meal IDs that were completed this week
+      const completedItemIds = mealPlanItems
+        .filter((item: any) => item.completed_at !== null)
+        .map((item: any) => item.id);
+      
+      // Check which of these were auto_skipped (should not count as completed for adherence)
+      let mealsCompletedThisWeek = completedItemIds.length;
+      
+      if (completedItemIds.length > 0) {
+        // Count auto_skipped meals in this week's consumption
+        const autoSkippedCount = consumptions.filter((c: any) => {
+          if (c.source_type !== "auto_skipped") return false;
+          const consumedDate = parseISO(c.consumed_at);
+          return consumedDate >= weekStart && consumedDate <= weekEnd;
+        }).length;
+        
+        // Subtract auto_skipped from completed count
+        mealsCompletedThisWeek = Math.max(0, completedItemIds.length - autoSkippedCount);
+      }
+      
       const weeklyAdherence = mealsPlannedThisWeek > 0
         ? Math.round((mealsCompletedThisWeek / mealsPlannedThisWeek) * 100)
         : 0;

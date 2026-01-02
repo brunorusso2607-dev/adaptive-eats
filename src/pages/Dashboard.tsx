@@ -51,6 +51,7 @@ import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
+import { useAutoSkipNotifications } from "@/hooks/useAutoSkipNotifications";
 
 type Recipe = {
   name: string;
@@ -168,6 +169,9 @@ export default function Dashboard() {
   
   // Daily consumption hook
   const { consumption: dailyConsumption, refetch: refetchDailyConsumption } = useDailyConsumption();
+  
+  // Auto-skip notifications hook - shows toast when meals are auto-marked as lost
+  useAutoSkipNotifications();
   
   // Symptom feedback hook
   const symptomFeedback = usePendingSymptomFeedback();

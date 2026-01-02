@@ -390,8 +390,9 @@ function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationR
   // Regra 21: Proteína primeiro
   if (foods.length >= 3) {
     const firstFoodName = ((foods[0]?.name || foods[0]?.nome) || '').toLowerCase();
-    const isProteinFirst = /frango|carne|peixe|ovo|tofu|filé|bife|peito|coxa|salmão|atum|camarão/i.test(firstFoodName) ||
-      /omelete|sopa|caldo|vitamina|wrap|sanduíche/i.test(firstFoodName);
+    // Proteínas incluem: carnes, ovos, laticínios proteicos, leguminosas
+    const isProteinFirst = /frango|carne|peixe|ovo|tofu|filé|bife|peito|coxa|salmão|atum|camarão|iogurte|queijo|cottage|ricota|whey|grão-de-bico|lentilha|feijão/i.test(firstFoodName) ||
+      /omelete|sopa|caldo|vitamina|wrap|sanduíche|tapioca|bowl|açaí|mingau|aveia/i.test(firstFoodName);
     rules.push({
       id: 'protein_first',
       name: 'Proteína/Prato principal primeiro',
@@ -460,13 +461,15 @@ function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationR
     }
   });
   
-  // Regra passa se: não há fruta, não há bebida, ou fruta vem antes da bebida
-  const fruitBeforeBeverageOK = lastFruitIndex === -1 || firstBeverageIndex === -1 || lastFruitIndex < firstBeverageIndex;
+  // Regra passa se: não há fruta, não há bebida, mesma posição (último item é ambos), ou fruta vem antes da bebida
+  // lastFruitIndex === firstBeverageIndex significa que são o mesmo item (ex: "suco de laranja") - OK
+  const fruitBeforeBeverageOK = lastFruitIndex === -1 || firstBeverageIndex === -1 || 
+    lastFruitIndex <= firstBeverageIndex;
   
   rules.push({
     id: 'fruits_before_beverages',
     name: 'Frutas antes das bebidas',
-    description: 'Frutas/sobremesas devem vir antes das bebidas na ordenação',
+    description: 'Frutas/sobremesas devem vir antes ou junto das bebidas na ordenação',
     category: RULE_CATEGORIES.SORTING,
     passed: fruitBeforeBeverageOK,
     details: lastFruitIndex >= 0 && firstBeverageIndex >= 0 
@@ -525,12 +528,24 @@ serve(async (req) => {
     
     // Gerar o prompt que será usado
     const regional = getRegionalConfig(countryCode);
+    
+    // Calorias alvo realistas por tipo de refeição
+    const mealTypeCalories: Record<string, number> = {
+      'cafe_manha': 400,
+      'lanche_manha': 150,
+      'almoco': 600,
+      'lanche_tarde': 150,
+      'jantar': 550,
+      'ceia': 120,
+    };
+    const targetCalories = mealTypeCalories[mealType] || 500;
+    
     const promptParams: MasterPromptParams = {
       dailyCalories: 2000,
       meals: [{ 
         type: mealType, 
         label: regional.mealLabels[mealType] || 'Almoço', 
-        targetCalories: 600 
+        targetCalories: targetCalories 
       }],
       restrictions: {
         intolerances: intolerances,

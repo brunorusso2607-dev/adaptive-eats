@@ -264,15 +264,20 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
 
           {/* Custom Meal Times Editor - pass loaded template and enabled meals */}
           {isProfileLoaded && (
-            <CustomMealTimesEditor
-              customTimes={customMealTimes}
-              enabledMeals={enabledMeals}
-              onChange={setCustomMealTimes}
-              onEnabledMealsChange={setEnabledMeals}
-              disabled={isGenerating}
-              compact
-              showEnableToggle
-            />
+            <div className="space-y-1">
+              <CustomMealTimesEditor
+                customTimes={customMealTimes}
+                enabledMeals={enabledMeals}
+                onChange={setCustomMealTimes}
+                onEnabledMealsChange={setEnabledMeals}
+                disabled={isGenerating}
+                compact
+                showEnableToggle
+              />
+              <p className="text-xs text-muted-foreground text-center">
+                Toque para personalizar os horários de cada refeição
+              </p>
+            </div>
           )}
 
           {/* Dynamic Info Message */}

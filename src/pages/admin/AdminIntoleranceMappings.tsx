@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -36,6 +36,7 @@ import { Loader2, Plus, Trash2, Search, AlertTriangle, Shield, X, AlertCircle, C
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useSafetyLabels } from "@/hooks/useSafetyLabels";
 import { FALLBACK_INTOLERANCE_LABELS } from "@/lib/safetyFallbacks";
+import { useOnboardingCountriesAdmin } from "@/hooks/useOnboardingCountries";
 
 type IntoleranceMapping = {
   id: string;
@@ -43,6 +44,7 @@ type IntoleranceMapping = {
   ingredient: string;
   severity_level: string | null;
   safe_portion_grams: number | null;
+  language: string;
   created_at: string;
 };
 
@@ -58,6 +60,30 @@ export default function AdminIntoleranceMappings() {
   const [selectedIntolerance, setSelectedIntolerance] = useState<string>("lactose");
   const [activeTab, setActiveTab] = useState<"blocked" | "caution" | "safe" | "neutralizers">("blocked");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("all");
+  
+  // Fetch ALL countries from onboarding (admin view shows all, not just active)
+  const { data: onboardingCountries } = useOnboardingCountriesAdmin();
+
+  // Build country config from onboarding countries
+  const countryConfig = useMemo(() => {
+    const config: Record<string, { flag: string; label: string }> = {
+      pt: { flag: "🇧🇷", label: "Português (Brasil)" },
+      en: { flag: "🇺🇸", label: "English (Global)" },
+    };
+    
+    onboardingCountries?.forEach((country) => {
+      const langCode = country.country_code.toLowerCase();
+      if (langCode !== 'br') { // BR já está como 'pt'
+        config[langCode] = {
+          flag: country.flag_emoji,
+          label: country.country_name,
+        };
+      }
+    });
+    
+    return config;
+  }, [onboardingCountries]);
   
   // Hook para labels do banco de dados
   const { getIntoleranceLabel } = useSafetyLabels();
@@ -189,11 +215,17 @@ export default function AdminIntoleranceMappings() {
     !CATEGORY_KEYS.sensitivities.includes(k)
   ).sort(sortByLabel);
 
-  // Filter by selected intolerance and search
+  // Filter by selected intolerance, language and search
   const allMappingsForIntolerance = mappings?.filter(m => 
     m.intolerance_key === selectedIntolerance &&
-    m.ingredient.toLowerCase().includes(searchTerm.toLowerCase())
+    m.ingredient.toLowerCase().includes(searchTerm.toLowerCase()) &&
+    (selectedLanguage === "all" || m.language === selectedLanguage)
   ) || [];
+
+  // Get unique languages from mappings for this intolerance
+  const uniqueLanguages = [...new Set(
+    mappings?.filter(m => m.intolerance_key === selectedIntolerance).map(m => m.language || 'pt') || []
+  )];
 
   // Separate by severity level: high = blocked, low = caution, safe = safe foods
   const blockedMappings = allMappingsForIntolerance.filter(m => 
@@ -215,12 +247,13 @@ export default function AdminIntoleranceMappings() {
 
   // Add ingredient mutation
   const addIngredientMutation = useMutation({
-    mutationFn: async ({ ingredients, severityLevel, safePortion }: { ingredients: string[], severityLevel: "high" | "low" | "safe", safePortion?: number | null }) => {
+    mutationFn: async ({ ingredients, severityLevel, safePortion, language }: { ingredients: string[], severityLevel: "high" | "low" | "safe", safePortion?: number | null, language: string }) => {
       const inserts = ingredients.map(ingredient => ({
         intolerance_key: selectedIntolerance,
         ingredient: ingredient.trim().toLowerCase(),
         severity_level: severityLevel,
         safe_portion_grams: severityLevel === 'low' ? safePortion : null,
+        language: language,
       }));
 
       const { error } = await supabase
@@ -413,7 +446,8 @@ export default function AdminIntoleranceMappings() {
       });
     } else {
       // No conflicts, proceed with normal insert
-      addIngredientMutation.mutate({ ingredients: ingredientsToAdd, severityLevel: newSeverityLevel, safePortion });
+      const languageToUse = selectedLanguage === "all" ? "pt" : selectedLanguage;
+      addIngredientMutation.mutate({ ingredients: ingredientsToAdd, severityLevel: newSeverityLevel, safePortion, language: languageToUse });
     }
   };
 
@@ -433,10 +467,12 @@ export default function AdminIntoleranceMappings() {
     
     // Add new ingredients if any
     if (newIngredients.length > 0) {
+      const languageToUse = selectedLanguage === "all" ? "pt" : selectedLanguage;
       addIngredientMutation.mutate({
         ingredients: newIngredients,
         severityLevel: targetSeverity,
         safePortion,
+        language: languageToUse,
       });
     }
     
@@ -612,14 +648,36 @@ export default function AdminIntoleranceMappings() {
             {getLabel(selectedIntolerance)}
           </h3>
           
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-9 max-w-md"
-            />
+          <div className="flex flex-col sm:flex-row gap-4 mb-4">
+            {/* Search */}
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            
+            {/* Country Filter */}
+            <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+              <SelectTrigger className="w-[200px]">
+                <SelectValue placeholder="Filtrar por país" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">🌍 Todos os países</SelectItem>
+                {onboardingCountries?.map((country) => {
+                  const langCode = country.country_code.toLowerCase() === 'br' ? 'pt' : country.country_code.toLowerCase();
+                  return (
+                    <SelectItem key={country.id} value={langCode}>
+                      {country.flag_emoji} {country.country_name}
+                    </SelectItem>
+                  );
+                })}
+                <SelectItem value="en">🇺🇸 English (Global)</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>

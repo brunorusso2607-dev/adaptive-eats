@@ -218,6 +218,47 @@ export async function getNutritionalTablePrompt(
 // LOOKUP RÁPIDO NA TABELA EM MEMÓRIA
 // ============================================
 
+// Palavras genéricas que NÃO devem ser usadas para match parcial
+// Evita falsos positivos como "chá com erva-doce" → "Batata Doce"
+const GENERIC_WORDS_TO_IGNORE = [
+  'doce', 'salgado', 'salgada', 'cozido', 'cozida', 'frito', 'frita',
+  'assado', 'assada', 'grelhado', 'grelhada', 'natural', 'integral',
+  'com', 'sem', 'light', 'diet', 'zero', 'tradicional', 'caseiro', 'caseira',
+  'grande', 'pequeno', 'pequena', 'medio', 'media', 'especial',
+  'simples', 'cremoso', 'cremosa', 'suave', 'forte', 'leve', 'pesado',
+  'fresco', 'fresca', 'maduro', 'madura', 'verde', 'preto', 'branco', 'branca',
+  'amarelo', 'amarela', 'vermelho', 'vermelha', 'roxo', 'roxa',
+];
+
+// Categorias de bebidas para validação de compatibilidade
+const BEVERAGE_KEYWORDS = [
+  'cha', 'tea', 'te', 'cafe', 'coffee', 'agua', 'water', 
+  'suco', 'juice', 'leite', 'milk', 'bebida', 'infusao',
+  'camomila', 'hortela', 'mate', 'refrigerante', 'soda'
+];
+
+// Categorias de alimentos sólidos para validação
+const SOLID_FOOD_KEYWORDS = [
+  'batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe',
+  'pao', 'massa', 'ovo', 'queijo', 'legume', 'vegetal', 'fruta'
+];
+
+/**
+ * Detecta se o termo é uma bebida
+ */
+function isBeverageTerm(text: string): boolean {
+  const normalized = normalizeForLookup(text);
+  return BEVERAGE_KEYWORDS.some(kw => normalized.includes(kw));
+}
+
+/**
+ * Detecta se o alimento é um sólido (não bebida)
+ */
+function isSolidFood(text: string): boolean {
+  const normalized = normalizeForLookup(text);
+  return SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw));
+}
+
 /**
  * Normaliza texto para comparação (remove acentos, lowercase)
  */
@@ -293,6 +334,7 @@ export function lookupFromNutritionalTable(
   }
   
   const searchTerms = extractSearchTerms(foodName);
+  const isBeverageSearch = isBeverageTerm(foodName);
   
   // Criar índice normalizado da tabela (cache local)
   const normalizedTable = table.map(f => ({
@@ -319,13 +361,22 @@ export function lookupFromNutritionalTable(
     }
   }
   
-  // FASE 2: Match parcial (contém)
+  // FASE 2: Match parcial (contém) com validação de categoria
   for (const term of searchTerms) {
     if (term.length < 3) continue;
     
-    const partialMatch = normalizedTable.find(f => 
-      f.normalized.includes(term) || term.includes(f.normalized)
-    );
+    const partialMatch = normalizedTable.find(f => {
+      const matches = f.normalized.includes(term) || term.includes(f.normalized);
+      if (!matches) return false;
+      
+      // Validar compatibilidade de categoria
+      // Se busca é bebida, resultado não pode ser sólido
+      if (isBeverageSearch && isSolidFood(f.name)) {
+        return false;
+      }
+      
+      return true;
+    });
     
     if (partialMatch) {
       const factor = grams / 100;
@@ -343,12 +394,20 @@ export function lookupFromNutritionalTable(
     }
   }
   
-  // FASE 3: Match por palavra principal
-  const words = searchTerms.flatMap(t => t.split(' ')).filter(w => w.length >= 4);
+  // FASE 3: Match por palavra principal (MAIS RESTRITIVO - ignora palavras genéricas)
+  const words = searchTerms
+    .flatMap(t => t.split(' '))
+    .filter(w => w.length >= 4 && !GENERIC_WORDS_TO_IGNORE.includes(w));
+  
   for (const word of words) {
-    const wordMatch = normalizedTable.find(f => 
-      f.normalized.split(' ').some(fw => fw === word || fw.includes(word))
-    );
+    const wordMatch = normalizedTable.find(f => {
+      // Verificar compatibilidade de categoria
+      if (isBeverageSearch && isSolidFood(f.name)) {
+        return false;
+      }
+      
+      return f.normalized.split(' ').some(fw => fw === word || fw.includes(word));
+    });
     
     if (wordMatch) {
       const factor = grams / 100;

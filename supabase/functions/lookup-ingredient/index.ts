@@ -129,6 +129,39 @@ function normalizeText(text: string): string {
     .trim();
 }
 
+// ============= PROTEÇÃO ANTI-FALSO MATCH =============
+// Palavras genéricas que causam falsos positivos
+const GENERIC_MATCH_WORDS = new Set([
+  'doce', 'erva', 'verde', 'natural', 'integral', 'light', 'zero',
+  'com', 'sem', 'de', 'em', 'ao', 'a', 'e', 'ou', 'para',
+]);
+
+// Categorias de alimentos para validação cruzada
+const BEVERAGE_SEARCH_TERMS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante'];
+const SOLID_FOOD_SEARCH_TERMS = ['batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao', 'bolo', 'queijo', 'macarrao'];
+
+function isBeverageQuery(query: string): boolean {
+  const normalized = normalizeText(query);
+  return BEVERAGE_SEARCH_TERMS.some(b => normalized.includes(b));
+}
+
+function isSolidFoodResult(foodName: string): boolean {
+  const normalized = normalizeText(foodName);
+  return SOLID_FOOD_SEARCH_TERMS.some(s => normalized.includes(s));
+}
+
+/**
+ * Verifica se o resultado é compatível com a busca em termos de categoria
+ * Previne falsos matches como "chá de camomila" → "Batata Doce"
+ */
+function isCategoryMismatch(query: string, foodName: string): boolean {
+  // Se busca é bebida e resultado é sólido, é falso match
+  if (isBeverageQuery(query) && isSolidFoodResult(foodName)) {
+    return true;
+  }
+  return false;
+}
+
 // Detect the language of a food name
 function detectFoodLanguage(name: string): string | null {
   const nameLower = name.toLowerCase();
@@ -447,7 +480,8 @@ serve(async (req) => {
     if (startsWithPriority && startsWithPriority.length > 0) {
       const filtered = startsWithPriority
         .filter(f => !isPreparedDish(f, query))
-        .filter(f => !isWrongLanguage(f.name || '', upperCountry));
+        .filter(f => !isWrongLanguage(f.name || '', upperCountry))
+        .filter(f => !isCategoryMismatch(query, f.name || '')); // PROTEÇÃO ANTI-FALSO MATCH
       allFoods = [...allFoods, ...filtered];
       logStep('Found starts-with in country sources', { count: filtered.length, sources: preferredSources });
     }
@@ -469,7 +503,8 @@ serve(async (req) => {
         const newFoods = containsPriority
           .filter(f => !existingIds.has(f.id))
           .filter(f => !isPreparedDish(f, query))
-          .filter(f => !isWrongLanguage(f.name || '', upperCountry));
+          .filter(f => !isWrongLanguage(f.name || '', upperCountry))
+          .filter(f => !isCategoryMismatch(query, f.name || '')); // PROTEÇÃO ANTI-FALSO MATCH
         allFoods = [...allFoods, ...newFoods];
         logStep('Found contains in country sources', { added: newFoods.length });
       }
@@ -490,7 +525,8 @@ serve(async (req) => {
           .filter((f: any) => f && f.is_verified && !existingIds.has(f.id))
           .filter((f: any) => preferredSources.includes(f.source))
           .filter((f: any) => !isPreparedDish(f, query))
-          .filter((f: any) => !isWrongLanguage(f.name || '', upperCountry));
+          .filter((f: any) => !isWrongLanguage(f.name || '', upperCountry))
+          .filter((f: any) => !isCategoryMismatch(query, f.name || '')); // PROTEÇÃO ANTI-FALSO MATCH
         
         allFoods = [...allFoods, ...aliasFoods];
         logStep('Found via alias (filtered by country)', { added: aliasFoods.length });

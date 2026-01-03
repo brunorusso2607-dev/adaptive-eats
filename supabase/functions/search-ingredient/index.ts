@@ -134,6 +134,27 @@ function normalizeText(text: string | undefined | null): string {
     .trim();
 }
 
+// ============= PROTEÇÃO ANTI-FALSO MATCH =============
+const BEVERAGE_TERMS_SEARCH = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante'];
+const SOLID_FOOD_TERMS_SEARCH = ['batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao', 'bolo', 'queijo', 'macarrao'];
+
+function isBeverageQuerySearch(query: string): boolean {
+  const normalized = normalizeText(query);
+  return BEVERAGE_TERMS_SEARCH.some(b => normalized.includes(b));
+}
+
+function isSolidFoodResultSearch(foodName: string): boolean {
+  const normalized = normalizeText(foodName);
+  return SOLID_FOOD_TERMS_SEARCH.some(s => normalized.includes(s));
+}
+
+function filterCategoryMismatch(results: any[], query: string): any[] {
+  const isBeverage = isBeverageQuerySearch(query);
+  if (!isBeverage) return results; // Sem filtro se não for bebida
+  
+  return results.filter(food => !isSolidFoodResultSearch(food.name || ''));
+}
+
 // Calculate similarity between two strings (Levenshtein-based)
 function calculateSimilarity(str1: string, str2: string): number {
   const s1 = normalizeText(str1);
@@ -390,19 +411,25 @@ serve(async (req) => {
     if (exactMatches && exactMatches.length > 0) {
       logStep('Found in database', { count: exactMatches.length, source: 'database' });
       
-      // Increment search count for the first result
-      await supabase
-        .from('foods')
-        .update({ search_count: (exactMatches[0].search_count || 0) + 1 })
-        .eq('id', exactMatches[0].id);
+      // PROTEÇÃO ANTI-FALSO MATCH
+      exactMatches = filterCategoryMismatch(exactMatches, query);
+      
+      if (exactMatches.length === 0) {
+        logStep('All matches filtered due to category mismatch');
+      } else {
+        // Increment search count for the first result
+        await supabase
+          .from('foods')
+          .update({ search_count: (exactMatches[0].search_count || 0) + 1 })
+          .eq('id', exactMatches[0].id);
 
-      // Sort by country priority first, then by similarity
-      let sortedMatches = sortByCountryPriority(exactMatches, userCountry);
-      sortedMatches.sort((a, b) => {
-        const simA = calculateSimilarity(query, a.name);
-        const simB = calculateSimilarity(query, b.name);
-        return simB - simA;
-      });
+        // Sort by country priority first, then by similarity
+        let sortedMatches = sortByCountryPriority(exactMatches, userCountry);
+        sortedMatches.sort((a, b) => {
+          const simA = calculateSimilarity(query, a.name);
+          const simB = calculateSimilarity(query, b.name);
+          return simB - simA;
+        });
 
       return new Response(
         JSON.stringify({
@@ -423,6 +450,7 @@ serve(async (req) => {
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+      }
     }
 
     // 2. Search in aliases table (filter by allowed categories)

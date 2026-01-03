@@ -1076,8 +1076,8 @@ serve(async (req) => {
     const previousDaysMeals: string[] = [];
     
     // Configuração de paralelismo
-    const BATCH_SIZE = 4; // Gerar 4 dias simultaneamente
-    const MAX_RETRIES = 1;
+    const BATCH_SIZE = 2; // Reduzir para 2 dias simultaneamente para evitar rate limit
+    const MAX_RETRIES = 3; // Aumentar retries para lidar com erros internos
     
     // Função para gerar um único dia
     async function generateSingleDay(
@@ -1135,9 +1135,11 @@ serve(async (req) => {
             const errorText = await aiResponse.text();
             logStep(`Google AI error (status ${aiResponse.status})`, { error: errorText.substring(0, 200) });
             
-            if (aiResponse.status === 429 || aiResponse.status === 503) {
-              // Rate limit ou serviço indisponível - esperar e tentar novamente
-              await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+            if (aiResponse.status === 429 || aiResponse.status === 503 || aiResponse.status === 500) {
+              // Rate limit, serviço indisponível ou erro interno - esperar com backoff exponencial
+              const waitTime = Math.min(5000 * Math.pow(2, retryCount), 30000);
+              logStep(`Waiting ${waitTime}ms before retry ${retryCount + 1}`);
+              await new Promise(r => setTimeout(r, waitTime));
               retryCount++;
               continue;
             }
@@ -1147,13 +1149,26 @@ serve(async (req) => {
           const aiData = await aiResponse.json();
           content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
           
+          // Verificar se há blocked content ou safety filters
+          const finishReason = aiData.candidates?.[0]?.finishReason;
+          if (finishReason === 'SAFETY' || finishReason === 'BLOCKED') {
+            logStep(`Content blocked by safety filter (attempt ${retryCount + 1})`, { finishReason });
+            await new Promise(r => setTimeout(r, 3000));
+            retryCount++;
+            continue;
+          }
+          
           // Verificar se o content é válido antes de processar
-          if (!content || content.startsWith('[INTERNAL') || content.length < 50) {
+          if (!content || content.startsWith('[INTERNAL') || content.includes('[INTERNAL') || content.length < 50) {
             logStep(`Invalid AI response (attempt ${retryCount + 1})`, { 
               contentStart: content?.substring(0, 100) || 'empty',
-              length: content?.length || 0
+              length: content?.length || 0,
+              finishReason
             });
-            await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+            // Espera maior para erros internos (indica sobrecarga do servidor)
+            const waitTime = Math.min(5000 * Math.pow(2, retryCount), 30000);
+            logStep(`Waiting ${waitTime}ms before retry due to internal error`);
+            await new Promise(r => setTimeout(r, waitTime));
             retryCount++;
             continue;
           }

@@ -409,15 +409,17 @@ export default function AdminIntoleranceMappings() {
     
     if (ingredientsToAdd.length === 0) return;
     
-    // Check for existing ingredients in OTHER severity levels
+    const languageToCheck = selectedLanguage === "all" ? "pt" : selectedLanguage;
+    
+    // Check for existing ingredients in OTHER severity levels (same language only)
     const existingInOtherCategories = mappings?.filter(m => 
       m.intolerance_key === selectedIntolerance &&
       ingredientsToAdd.includes(m.ingredient.toLowerCase()) &&
-      m.severity_level !== newSeverityLevel
+      m.severity_level !== newSeverityLevel &&
+      m.language === languageToCheck
     ) || [];
     
     // Filter out ingredients that already exist in the SAME category AND SAME language
-    const languageToCheck = selectedLanguage === "all" ? "pt" : selectedLanguage;
     const existingInSameCategory = mappings?.filter(m => 
       m.intolerance_key === selectedIntolerance &&
       ingredientsToAdd.includes(m.ingredient.toLowerCase()) &&
@@ -425,7 +427,7 @@ export default function AdminIntoleranceMappings() {
       m.language === languageToCheck
     ) || [];
     
-    // Allow duplicates - just skip the ones that already exist in this language
+    // Allow duplicates across languages - just skip the ones that already exist in this language
     const filteredIngredientsToAdd = ingredientsToAdd.filter(ing => 
       !existingInSameCategory.some(m => m.ingredient.toLowerCase() === ing)
     );

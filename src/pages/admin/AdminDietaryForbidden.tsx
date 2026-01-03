@@ -221,7 +221,29 @@ export default function AdminDietaryForbidden() {
     
     if (ingredientsToAdd.length === 0) return;
     
-    addMutation.mutate(ingredientsToAdd);
+    // Remove duplicates from the list itself
+    const uniqueIngredients = [...new Set(ingredientsToAdd)];
+    
+    // Also filter out ingredients that already exist in the database for this diet+language
+    const languageToUse = selectedLanguage === "all" ? "en" : selectedLanguage;
+    const existingInDb = ingredients?.filter(i => 
+      i.dietary_key === selectedDiet && 
+      i.language === languageToUse
+    ).map(i => i.ingredient.toLowerCase()) || [];
+    
+    const filteredIngredients = uniqueIngredients.filter(ing => !existingInDb.includes(ing));
+    
+    if (filteredIngredients.length === 0) {
+      toast.error("Todos os ingredientes já existem para este perfil dietético");
+      return;
+    }
+    
+    if (filteredIngredients.length < uniqueIngredients.length) {
+      const skipped = uniqueIngredients.length - filteredIngredients.length;
+      toast.info(`${skipped} ingrediente(s) já existente(s) foram ignorados`);
+    }
+    
+    addMutation.mutate(filteredIngredients);
   };
 
   if (isLoading) {

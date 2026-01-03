@@ -160,7 +160,7 @@ export default function FloatingChefIA() {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   
   // Drag state
-  const [position, setPosition] = useState({ x: 24, y: 24 }); // Distance from bottom-right
+  const [position, setPosition] = useState({ x: 16, y: 80 }); // Distance from bottom-right, above mobile nav
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const chatRef = useRef<HTMLDivElement>(null);
@@ -527,7 +527,7 @@ export default function FloatingChefIA() {
         onClick={() => setIsOpen(true)}
         style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
         className={cn(
-          "fixed z-50 w-14 h-14 rounded-full shadow-lg",
+          "fixed z-[60] w-14 h-14 rounded-full shadow-lg",
           "bg-gradient-to-br from-primary to-primary/80 text-primary-foreground",
           "flex items-center justify-center transition-all duration-300",
           "hover:scale-110 hover:shadow-xl active:scale-95",
@@ -549,7 +549,7 @@ export default function FloatingChefIA() {
     return (
       <div 
         style={{ right: `${position.x}px`, bottom: `${position.y}px` }}
-        className="fixed z-50 flex items-center gap-2 bg-card border border-border rounded-full shadow-lg px-4 py-2"
+        className="fixed z-[60] flex items-center gap-2 bg-card border border-border rounded-full shadow-lg px-4 py-2"
       >
         <div 
           onMouseDown={handleMouseDown}
@@ -590,7 +590,7 @@ export default function FloatingChefIA() {
       ref={chatRef}
       style={isMaximized ? { inset: '1rem' } : { right: `${position.x}px`, bottom: `${position.y}px` }}
       className={cn(
-        "fixed z-50 bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300",
+        "fixed z-[60] bg-card border border-border rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300",
         isMaximized 
           ? "w-auto h-auto" 
           : "w-[400px] max-w-[calc(100vw-3rem)] h-[600px] max-h-[calc(100vh-6rem)]",

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -33,6 +33,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Search, Leaf, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { useActiveOnboardingCountries } from "@/hooks/useOnboardingCountries";
 
 type DietaryForbiddenIngredient = {
   id: string;
@@ -47,16 +48,6 @@ type DietaryProfile = {
   key: string;
   name: string;
   icon: string;
-};
-
-// Mapeamento de idiomas para bandeiras e labels
-const LANGUAGE_CONFIG: Record<string, { flag: string; label: string }> = {
-  en: { flag: "🇺🇸", label: "English" },
-  pt: { flag: "🇧🇷", label: "Português" },
-  es: { flag: "🇪🇸", label: "Español" },
-  fr: { flag: "🇫🇷", label: "Français" },
-  de: { flag: "🇩🇪", label: "Deutsch" },
-  it: { flag: "🇮🇹", label: "Italiano" },
 };
 
 // Mapeamento de categorias para emojis
@@ -84,6 +75,27 @@ export default function AdminDietaryForbidden() {
   // Form states
   const [newIngredient, setNewIngredient] = useState("");
   const [bulkIngredients, setBulkIngredients] = useState("");
+
+  // Fetch countries from onboarding
+  const { data: onboardingCountries } = useActiveOnboardingCountries();
+
+  // Build country config from onboarding countries
+  const countryConfig = useMemo(() => {
+    const config: Record<string, { flag: string; label: string }> = {
+      en: { flag: "🇺🇸", label: "English (Global)" },
+    };
+    
+    onboardingCountries?.forEach((country) => {
+      // Map country_code to language code (simplified mapping)
+      const langCode = country.country_code.toLowerCase();
+      config[langCode] = {
+        flag: country.flag_emoji,
+        label: country.country_name,
+      };
+    });
+    
+    return config;
+  }, [onboardingCountries]);
 
   // Fetch dietary profiles from database
   const { data: dietaryProfiles } = useQuery({
@@ -315,7 +327,7 @@ export default function AdminDietaryForbidden() {
                       <SelectItem value="all">🌍 Todos</SelectItem>
                       {uniqueLanguages.map((lang) => (
                         <SelectItem key={lang} value={lang}>
-                          {LANGUAGE_CONFIG[lang]?.flag || "🏳️"} {LANGUAGE_CONFIG[lang]?.label || lang}
+                          {countryConfig[lang]?.flag || "🏳️"} {countryConfig[lang]?.label || lang.toUpperCase()}
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -362,7 +374,7 @@ export default function AdminDietaryForbidden() {
                             </Badge>
                           )}
                           <Badge variant="outline" className="text-xs">
-                            {LANGUAGE_CONFIG[item.language]?.flag || "🏳️"} {LANGUAGE_CONFIG[item.language]?.label || item.language}
+                            {countryConfig[item.language]?.flag || "🏳️"} {countryConfig[item.language]?.label || item.language.toUpperCase()}
                           </Badge>
                           <Button
                             variant="ghost"
@@ -405,7 +417,7 @@ export default function AdminDietaryForbidden() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    {Object.entries(LANGUAGE_CONFIG).map(([code, config]) => (
+                    {Object.entries(countryConfig).map(([code, config]) => (
                       <SelectItem key={code} value={code}>
                         {config.flag} {config.label}
                       </SelectItem>

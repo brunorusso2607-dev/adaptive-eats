@@ -50,13 +50,13 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const { email, sessionId } = await req.json();
+    const { email, sessionId, firstName } = await req.json();
 
     if (!email) {
       throw new Error("Email is required");
     }
 
-    logStep("Activating account", { email, sessionId });
+    logStep("Activating account", { email, sessionId, firstName });
 
     // Create Supabase admin client
     const supabaseAdmin = createClient(
@@ -134,6 +134,15 @@ serve(async (req) => {
 
     // If user exists and has valid subscription OR if user exists (allow login for existing users)
     if (existingUser) {
+      // Update first_name if provided (user may be updating their name on re-login)
+      if (firstName) {
+        await supabaseAdmin
+          .from("profiles")
+          .update({ first_name: firstName })
+          .eq("id", existingUser.id);
+        logStep("Updated first_name for existing user", { userId: existingUser.id, firstName });
+      }
+
       // User already exists - generate login link
       const { data: linkData, error: linkError } = await supabaseAdmin.auth.admin.generateLink({
         type: "magiclink",
@@ -196,13 +205,16 @@ serve(async (req) => {
     const userId = newUser.user.id;
     logStep("New user created", { userId });
 
-    // Detect country from IP and update profile
+    // Detect country from IP and update profile with first_name
     const detectedCountry = await detectCountryFromIP(req);
-    logStep("Updating profile with detected country", { country: detectedCountry });
+    logStep("Updating profile with detected country and first_name", { country: detectedCountry, firstName });
     
     await supabaseAdmin
       .from("profiles")
-      .update({ country: detectedCountry })
+      .update({ 
+        country: detectedCountry,
+        first_name: firstName || null,
+      })
       .eq("id", userId);
 
     // Generate a magic link for the new user

@@ -1,7 +1,7 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
-import { getAIPrompt } from "../_shared/getAIPrompt.ts";
+// NOTA: Não usa mais getAIPrompt - sistema 100% hardcoded
 import {
   loadSafetyDatabase,
   normalizeUserIntolerances,
@@ -1001,30 +1001,54 @@ serve(async (req) => {
           );
         }
       } catch (err) {
-        console.warn('[test-all-prompts] Failed to fetch hardcoded prompt, falling back to database:', err);
+        console.error('[test-all-prompts] Failed to fetch hardcoded prompt:', err);
+        return new Response(
+          JSON.stringify({ 
+            error: `Prompt hardcoded não encontrado para "${moduleId}". Verifique get-hardcoded-prompts.`,
+            availableModules: Object.keys(AI_MODULES)
+          }),
+          { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
-      
-      // Fallback para banco de dados se a função hardcoded falhar
-      const promptConfig = await getAIPrompt(moduleId);
-      return new Response(
-        JSON.stringify({ 
-          promptPreview: promptConfig?.system_prompt || 'Prompt não encontrado',
-          model: promptConfig?.model || 'Não configurado',
-          userPromptExample: promptConfig?.user_prompt_example || '',
-          isHardcoded: false,
-          note: '⚠️ Este prompt vem do BANCO DE DADOS (ai_prompts) - pode não ser o usado em produção!'
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
-    // Buscar configuração do prompt
-    const promptConfig = await getAIPrompt(moduleId);
+    // ========== EXECUÇÃO REAL: USAR 100% HARDCODED ==========
+    // Buscar prompt hardcoded (NUNCA do banco de dados)
+    let promptConfig: { systemPrompt: string; model: string; description: string } | null = null;
+    
+    try {
+      const hardcodedResponse = await fetch(
+        `${Deno.env.get('SUPABASE_URL')}/functions/v1/get-hardcoded-prompts`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${Deno.env.get('SUPABASE_ANON_KEY')}`
+          },
+          body: JSON.stringify({ moduleId })
+        }
+      );
+      
+      if (hardcodedResponse.ok) {
+        const data = await hardcodedResponse.json();
+        if (data.systemPrompt) {
+          promptConfig = {
+            systemPrompt: data.systemPrompt,
+            model: data.model,
+            description: data.description
+          };
+          console.log(`[test-all-prompts] ✅ Using HARDCODED prompt for ${moduleId}`);
+        }
+      }
+    } catch (err) {
+      console.error('[test-all-prompts] Failed to fetch hardcoded prompt:', err);
+    }
     
     if (!promptConfig) {
       return new Response(
         JSON.stringify({ 
-          error: `Módulo "${moduleId}" não encontrado na tabela ai_prompts` 
+          error: `Prompt hardcoded não encontrado para "${moduleId}". Adicione em get-hardcoded-prompts.`,
+          note: '⚠️ Sistema configurado para usar APENAS prompts hardcoded (não banco de dados)'
         }),
         { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -1064,14 +1088,14 @@ serve(async (req) => {
       const userPrompt = buildUserPrompt(moduleId, testParams);
       
       console.log(`[test-all-prompts] Testing module: ${moduleId}`);
-      console.log(`[test-all-prompts] System prompt length: ${promptConfig.system_prompt.length}`);
+      console.log(`[test-all-prompts] System prompt length: ${promptConfig.systemPrompt.length}`);
       console.log(`[test-all-prompts] User prompt: ${userPrompt.substring(0, 200)}...`);
       
-      // Chamar Gemini API com o prompt real do banco de dados
+      // Chamar Gemini API com o prompt HARDCODED (não do banco)
       const { response, rawResponse } = await callGeminiAPI(
         apiKey,
         promptConfig.model,
-        promptConfig.system_prompt,
+        promptConfig.systemPrompt,
         userPrompt,
         imageBase64
       );
@@ -1089,11 +1113,12 @@ serve(async (req) => {
         JSON.stringify({
           success: false,
           error: `Erro na chamada à IA: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`,
-          promptPreview: promptConfig.system_prompt?.substring(0, 500) + '...',
+          promptPreview: promptConfig.systemPrompt?.substring(0, 500) + '...',
           model: promptConfig.model,
           moduleId,
           moduleName: moduleInfo?.name || moduleId,
-          timestamp: new Date().toISOString()
+          timestamp: new Date().toISOString(),
+          isHardcoded: true
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
@@ -1179,7 +1204,7 @@ serve(async (req) => {
       failedRules,
       rules,
       generatedOutput,
-      promptPreview: promptConfig.system_prompt?.substring(0, 500) + '...',
+      promptPreview: promptConfig.systemPrompt?.substring(0, 500) + '...',
       rawAIResponse,
       timestamp: new Date().toISOString(),
       categories,

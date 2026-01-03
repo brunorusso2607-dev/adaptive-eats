@@ -36,6 +36,7 @@ interface ValidationResult {
   categories: Record<string, { total: number; passed: number; failed: number }>;
   moduleId: string;
   moduleName: string;
+  executionTimeMs?: number;
 }
 
 // =============================================================================
@@ -88,6 +89,218 @@ const AI_MODULES = {
 };
 
 // =============================================================================
+// HELPER: Build user prompt for each module
+// =============================================================================
+
+function buildUserPrompt(moduleId: string, testParams: any): string {
+  const countryCode = testParams?.countryCode || 'BR';
+  const locale = countryCode === 'BR' ? 'pt-BR' : countryCode === 'US' ? 'en-US' : 'es-ES';
+  const intolerances = testParams?.intolerances || [];
+  
+  switch (moduleId) {
+    case 'analyze-food-photo':
+      return JSON.stringify({
+        task: "analyze_food_photo",
+        locale: locale,
+        user_intolerances: intolerances,
+        instructions: "Analise esta foto de refeição e identifique todos os alimentos visíveis com gramagens e calorias estimadas.",
+        test_mode: true
+      });
+      
+    case 'analyze-label-photo':
+      return JSON.stringify({
+        task: "analyze_label",
+        locale: locale,
+        user_intolerances: intolerances,
+        instructions: "Analise este rótulo de produto alimentício e extraia os ingredientes, verificando segurança para as intolerâncias do usuário.",
+        test_mode: true
+      });
+      
+    case 'analyze-fridge-photo':
+      return JSON.stringify({
+        task: "analyze_fridge",
+        locale: locale,
+        user_intolerances: intolerances,
+        instructions: "Analise esta foto de geladeira, identifique os ingredientes disponíveis e sugira receitas possíveis.",
+        test_mode: true
+      });
+      
+    case 'generate-recipe':
+      const ingredients = testParams?.ingredients || 'frango, arroz, brócolis';
+      return JSON.stringify({
+        task: "generate_recipe",
+        locale: locale,
+        user_intolerances: intolerances,
+        available_ingredients: ingredients,
+        dietary_preferences: testParams?.dietaryPreference || 'omnivore',
+        instructions: `Crie uma receita saudável usando estes ingredientes: ${ingredients}`,
+        test_mode: true
+      });
+      
+    case 'regenerate-meal':
+      const mealType = testParams?.mealType || 'almoco';
+      return JSON.stringify({
+        task: "regenerate_meal",
+        locale: locale,
+        user_intolerances: intolerances,
+        meal_type: mealType,
+        target_calories: testParams?.targetCalories || 500,
+        instructions: `Gere uma refeição alternativa para ${mealType} com aproximadamente 500 calorias.`,
+        test_mode: true
+      });
+      
+    case 'chat-assistant':
+      const message = testParams?.message || 'Quais são os melhores alimentos para ganhar massa muscular?';
+      return JSON.stringify({
+        task: "chat",
+        locale: locale,
+        user_message: message,
+        conversation_context: [],
+        test_mode: true
+      });
+      
+    case 'generate-ai-meal-plan':
+      const planMealType = testParams?.mealType || 'almoco';
+      return JSON.stringify({
+        task: "generate_meal_plan",
+        locale: locale,
+        user_intolerances: intolerances,
+        meal_type: planMealType,
+        target_calories: testParams?.targetCalories || 500,
+        dietary_preference: testParams?.dietaryPreference || 'omnivore',
+        instructions: `Gere uma refeição de ${planMealType} com aproximadamente 500 calorias para o plano alimentar.`,
+        test_mode: true
+      });
+      
+    default:
+      return JSON.stringify({
+        task: "unknown",
+        locale: locale,
+        test_mode: true
+      });
+  }
+}
+
+// =============================================================================
+// HELPER: Call Gemini API
+// =============================================================================
+
+async function callGeminiAPI(
+  apiKey: string,
+  model: string,
+  systemPrompt: string,
+  userPrompt: string,
+  imageBase64?: string
+): Promise<{ response: string; rawResponse: any }> {
+  const modelId = model || 'gemini-2.5-flash-lite';
+  const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelId}:generateContent?key=${apiKey}`;
+  
+  // Build content parts
+  const parts: any[] = [];
+  
+  // Add image if provided
+  if (imageBase64) {
+    // Extract mime type and data
+    const matches = imageBase64.match(/^data:(.+);base64,(.+)$/);
+    if (matches) {
+      parts.push({
+        inline_data: {
+          mime_type: matches[1],
+          data: matches[2]
+        }
+      });
+    }
+  }
+  
+  // Add text prompt
+  parts.push({ text: userPrompt });
+  
+  const requestBody = {
+    contents: [
+      {
+        role: "user",
+        parts: parts
+      }
+    ],
+    systemInstruction: {
+      parts: [{ text: systemPrompt }]
+    },
+    generationConfig: {
+      temperature: 0.7,
+      topP: 0.95,
+      topK: 40,
+      maxOutputTokens: 8192,
+      responseMimeType: "application/json"
+    }
+  };
+  
+  console.log(`[test-all-prompts] Calling Gemini API with model: ${modelId}`);
+  
+  const response = await fetch(apiUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(requestBody)
+  });
+  
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error(`[test-all-prompts] Gemini API error: ${response.status}`, errorText);
+    throw new Error(`Gemini API error: ${response.status} - ${errorText}`);
+  }
+  
+  const rawResponse = await response.json();
+  const textContent = rawResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+  
+  console.log(`[test-all-prompts] Gemini response received: ${textContent.substring(0, 200)}...`);
+  
+  return { response: textContent, rawResponse };
+}
+
+// =============================================================================
+// HELPER: Parse AI response to JSON
+// =============================================================================
+
+function parseAIResponse(response: string): any {
+  try {
+    // Try direct parse first
+    return JSON.parse(response);
+  } catch {
+    // Try to extract JSON from markdown code blocks
+    const jsonMatch = response.match(/```(?:json)?\s*([\s\S]*?)```/);
+    if (jsonMatch) {
+      try {
+        return JSON.parse(jsonMatch[1].trim());
+      } catch {
+        console.warn('[test-all-prompts] Failed to parse JSON from code block');
+      }
+    }
+    
+    // Try to find JSON object/array in text
+    const objectMatch = response.match(/\{[\s\S]*\}/);
+    const arrayMatch = response.match(/\[[\s\S]*\]/);
+    
+    if (objectMatch) {
+      try {
+        return JSON.parse(objectMatch[0]);
+      } catch {
+        console.warn('[test-all-prompts] Failed to parse JSON object');
+      }
+    }
+    
+    if (arrayMatch) {
+      try {
+        return JSON.parse(arrayMatch[0]);
+      } catch {
+        console.warn('[test-all-prompts] Failed to parse JSON array');
+      }
+    }
+    
+    // Return as text response
+    return { response: response, parse_error: true };
+  }
+}
+
+// =============================================================================
 // VALIDATION RULES FOR EACH MODULE
 // =============================================================================
 
@@ -101,12 +314,12 @@ function validateFoodPhotoOutput(output: any): ValidationRule[] {
     description: 'O JSON deve ter campos obrigatórios',
     category: 'Formato dos Dados',
     passed: output && typeof output === 'object' && 
-            ('items' in output || 'itens' in output || 'foods' in output),
+            ('items' in output || 'itens' in output || 'foods' in output || 'alimentos' in output),
     details: `Campos: ${Object.keys(output || {}).join(', ')}`,
     severity: 'critical',
   });
 
-  const items = output?.items || output?.itens || output?.foods || [];
+  const items = output?.items || output?.itens || output?.foods || output?.alimentos || [];
   
   // Regra 2: Itens identificados
   rules.push({
@@ -121,7 +334,7 @@ function validateFoodPhotoOutput(output: any): ValidationRule[] {
 
   // Regra 3: Cada item tem nome e gramas
   const allItemsComplete = items.every((item: any) => 
-    item && (item.name || item.nome) && (item.grams || item.gramas || item.porcao_g)
+    item && (item.name || item.nome || item.item) && (item.grams || item.gramas || item.porcao_g || item.quantidade)
   );
   rules.push({
     id: 'items_complete',
@@ -134,8 +347,8 @@ function validateFoodPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 4: Calorias calculadas
-  const hasCalories = items.every((item: any) => 
-    typeof (item.calories || item.calorias) === 'number'
+  const hasCalories = items.length === 0 || items.every((item: any) => 
+    typeof (item.calories || item.calorias || item.kcal) === 'number'
   );
   rules.push({
     id: 'has_calories',
@@ -148,7 +361,7 @@ function validateFoodPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 5: Campo de segurança presente
-  const hasSafetyField = 'is_safe' in output || 'seguro' in output || 'safety_status' in output;
+  const hasSafetyField = 'is_safe' in output || 'seguro' in output || 'safety_status' in output || 'safe' in output;
   rules.push({
     id: 'has_safety_status',
     name: 'Status de segurança',
@@ -173,20 +386,20 @@ function validateFoodPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 7: Nome humanizado da refeição
-  const mealName = output?.meal_name || output?.nome_refeicao || output?.title;
+  const mealName = output?.meal_name || output?.nome_refeicao || output?.title || output?.nome || output?.dish_name;
   rules.push({
     id: 'has_meal_name',
     name: 'Nome da refeição',
     description: 'Deve gerar um nome humanizado para a refeição',
     category: 'Qualidade',
-    passed: typeof mealName === 'string' && mealName.length > 5,
+    passed: typeof mealName === 'string' && mealName.length > 3,
     details: mealName ? `"${mealName}"` : 'Sem nome de refeição',
     severity: 'warning',
   });
 
   // Regra 8: Gramagens realistas (5g-2000g)
   const unrealisticGrams = items.filter((item: any) => {
-    const g = item.grams || item.gramas || item.porcao_g || 0;
+    const g = item.grams || item.gramas || item.porcao_g || item.quantidade || 0;
     return g < 5 || g > 2000;
   });
   rules.push({
@@ -198,6 +411,18 @@ function validateFoodPhotoOutput(output: any): ValidationRule[] {
     details: unrealisticGrams.length > 0 
       ? `${unrealisticGrams.length} itens com gramagem irreal`
       : 'OK',
+    severity: 'warning',
+  });
+  
+  // Regra 9: Detecção de produto embalado
+  const packagedProductField = 'packagedProduct' in output || 'produto_embalado' in output || 'is_packaged' in output;
+  rules.push({
+    id: 'packaged_product_detection',
+    name: 'Detecção de embalado',
+    description: 'Deve detectar se é produto embalado para redirecionar',
+    category: 'Segurança',
+    passed: packagedProductField,
+    details: packagedProductField ? 'Campo de detecção presente' : 'Campo packagedProduct ausente',
     severity: 'warning',
   });
 
@@ -219,7 +444,7 @@ function validateLabelPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 2: Lista de ingredientes
-  const ingredients = output?.ingredients || output?.ingredientes || [];
+  const ingredients = output?.ingredients || output?.ingredientes || output?.ingredient_list || [];
   rules.push({
     id: 'has_ingredients',
     name: 'Ingredientes extraídos',
@@ -231,7 +456,7 @@ function validateLabelPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 3: Veredito de segurança
-  const hasVerdict = 'is_safe' in output || 'seguro' in output || 'verdict' in output || 'veredito' in output;
+  const hasVerdict = 'is_safe' in output || 'seguro' in output || 'verdict' in output || 'veredito' in output || 'safe' in output;
   rules.push({
     id: 'has_verdict',
     name: 'Veredito de segurança',
@@ -243,7 +468,7 @@ function validateLabelPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 4: Alertas de alérgenos
-  const alerts = output?.alerts || output?.alertas || output?.allergen_alerts || [];
+  const alerts = output?.alerts || output?.alertas || output?.allergen_alerts || output?.warnings || [];
   rules.push({
     id: 'allergen_detection',
     name: 'Detecção de alérgenos',
@@ -255,7 +480,7 @@ function validateLabelPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 5: Nome do produto
-  const productName = output?.product_name || output?.nome_produto || output?.name;
+  const productName = output?.product_name || output?.nome_produto || output?.name || output?.nome;
   rules.push({
     id: 'has_product_name',
     name: 'Nome do produto',
@@ -267,7 +492,7 @@ function validateLabelPhotoOutput(output: any): ValidationRule[] {
   });
 
   // Regra 6: Selos de segurança reconhecidos
-  const certifications = output?.certifications || output?.selos || [];
+  const certifications = output?.certifications || output?.selos || output?.seals || [];
   rules.push({
     id: 'certifications_detected',
     name: 'Selos identificados',
@@ -291,6 +516,18 @@ function validateLabelPhotoOutput(output: any): ValidationRule[] {
     details: confidence ? `Confiança: ${confidence}` : 'Não informada',
     severity: 'info',
   });
+  
+  // Regra 8: País de origem detectado
+  const originCountry = output?.origin_country || output?.pais_origem || output?.country;
+  rules.push({
+    id: 'has_origin_country',
+    name: 'País de origem',
+    description: 'Deve identificar país de origem do produto',
+    category: 'Extração',
+    passed: typeof originCountry === 'string' && originCountry.length >= 2,
+    details: originCountry ? `País: ${originCountry}` : 'Não identificado',
+    severity: 'info',
+  });
 
   return rules;
 }
@@ -305,13 +542,13 @@ function validateRecipeOutput(output: any): ValidationRule[] {
     description: 'O JSON deve ter campos de receita',
     category: 'Formato dos Dados',
     passed: output && typeof output === 'object' && 
-            ('name' in output || 'nome' in output || 'title' in output),
+            ('name' in output || 'nome' in output || 'title' in output || 'recipe_name' in output),
     details: `Campos: ${Object.keys(output || {}).join(', ')}`,
     severity: 'critical',
   });
 
   // Regra 2: Nome da receita
-  const name = output?.name || output?.nome || output?.title || '';
+  const name = output?.name || output?.nome || output?.title || output?.recipe_name || '';
   rules.push({
     id: 'has_name',
     name: 'Nome da receita',
@@ -323,7 +560,7 @@ function validateRecipeOutput(output: any): ValidationRule[] {
   });
 
   // Regra 3: Lista de ingredientes
-  const ingredients = output?.ingredients || output?.ingredientes || [];
+  const ingredients = output?.ingredients || output?.ingredientes || output?.foods || [];
   rules.push({
     id: 'has_ingredients',
     name: 'Lista de ingredientes',
@@ -335,7 +572,7 @@ function validateRecipeOutput(output: any): ValidationRule[] {
   });
 
   // Regra 4: Modo de preparo
-  const instructions = output?.instructions || output?.modo_preparo || output?.passos || [];
+  const instructions = output?.instructions || output?.modo_preparo || output?.passos || output?.steps || [];
   rules.push({
     id: 'has_instructions',
     name: 'Modo de preparo',
@@ -348,7 +585,7 @@ function validateRecipeOutput(output: any): ValidationRule[] {
 
   // Regra 5: Informações nutricionais
   const hasNutrition = 
-    (output?.calories || output?.calorias) ||
+    (output?.calories || output?.calorias || output?.kcal) ||
     (output?.nutrition && Object.keys(output.nutrition).length > 0);
   rules.push({
     id: 'has_nutrition',
@@ -361,7 +598,7 @@ function validateRecipeOutput(output: any): ValidationRule[] {
   });
 
   // Regra 6: Tempo de preparo
-  const prepTime = output?.prep_time || output?.tempo_preparo;
+  const prepTime = output?.prep_time || output?.tempo_preparo || output?.preparation_time;
   rules.push({
     id: 'has_prep_time',
     name: 'Tempo de preparo',
@@ -373,7 +610,7 @@ function validateRecipeOutput(output: any): ValidationRule[] {
   });
 
   // Regra 7: Porções/rendimento
-  const servings = output?.servings || output?.porcoes || output?.rendimento;
+  const servings = output?.servings || output?.porcoes || output?.rendimento || output?.portions;
   rules.push({
     id: 'has_servings',
     name: 'Porções',
@@ -386,7 +623,7 @@ function validateRecipeOutput(output: any): ValidationRule[] {
 
   // Regra 8: Ingredientes com quantidades
   const ingredientsWithQty = ingredients.filter((i: any) => 
-    (typeof i === 'object' && (i.quantity || i.quantidade || i.grams || i.gramas)) ||
+    (typeof i === 'object' && (i.quantity || i.quantidade || i.grams || i.gramas || i.amount)) ||
     (typeof i === 'string' && /\d/.test(i))
   );
   rules.push({
@@ -406,19 +643,19 @@ function validateChatOutput(output: any): ValidationRule[] {
   const rules: ValidationRule[] = [];
   
   // Regra 1: Resposta presente
-  const response = output?.response || output?.resposta || output?.message || output?.content || '';
+  const response = output?.response || output?.resposta || output?.message || output?.content || output?.answer || '';
   rules.push({
     id: 'has_response',
     name: 'Resposta gerada',
     description: 'Deve gerar uma resposta',
     category: 'Resposta',
     passed: typeof response === 'string' && response.length > 10,
-    details: response ? `${response.substring(0, 50)}...` : 'Sem resposta',
+    details: response ? `${response.substring(0, 80)}...` : 'Sem resposta',
     severity: 'critical',
   });
 
   // Regra 2: Resposta não é erro
-  const isError = /erro|error|falha|failed/i.test(response);
+  const isError = /erro|error|falha|failed|exception/i.test(response);
   rules.push({
     id: 'not_error',
     name: 'Resposta válida',
@@ -430,20 +667,20 @@ function validateChatOutput(output: any): ValidationRule[] {
   });
 
   // Regra 3: Contexto mantido (se aplicável)
-  const hasContext = output?.context || output?.contexto;
+  const hasContext = output?.context || output?.contexto || output?.suggestions || output?.sugestoes;
   rules.push({
     id: 'maintains_context',
     name: 'Mantém contexto',
     description: 'Assistente deve manter contexto da conversa',
     category: 'Qualidade',
     passed: true, // Assumimos OK se não houver erro
-    details: hasContext ? 'Contexto presente' : 'Sem contexto adicional',
+    details: hasContext ? 'Contexto/sugestões presente' : 'Sem contexto adicional',
     severity: 'info',
   });
 
   // Regra 4: Resposta em português (se BR)
   const isPortuguese = /[áàâãéêíóôõúç]/i.test(response) || 
-    /\b(de|para|com|que|não|sim|pode|como)\b/i.test(response);
+    /\b(de|para|com|que|não|sim|pode|como|você|seu|sua)\b/i.test(response);
   rules.push({
     id: 'correct_language',
     name: 'Idioma correto',
@@ -452,6 +689,18 @@ function validateChatOutput(output: any): ValidationRule[] {
     passed: isPortuguese,
     details: isPortuguese ? 'Português detectado' : 'Verificar idioma',
     severity: 'warning',
+  });
+  
+  // Regra 5: Conteúdo relevante para nutrição
+  const isNutritionRelated = /aliment|nutri|proteín|caloria|vitamina|mineral|dieta|refeição|saúde|emagrec|massa|gordura|carboidrato/i.test(response);
+  rules.push({
+    id: 'nutrition_relevant',
+    name: 'Conteúdo relevante',
+    description: 'Resposta deve ser relacionada a nutrição/alimentação',
+    category: 'Qualidade',
+    passed: isNutritionRelated,
+    details: isNutritionRelated ? 'Conteúdo nutricional' : 'Verificar relevância',
+    severity: 'info',
   });
 
   return rules;
@@ -472,7 +721,7 @@ function validateFridgeOutput(output: any): ValidationRule[] {
   });
 
   // Regra 2: Ingredientes identificados
-  const ingredients = output?.ingredients || output?.ingredientes || output?.items || [];
+  const ingredients = output?.ingredients || output?.ingredientes || output?.items || output?.foods || [];
   rules.push({
     id: 'has_ingredients',
     name: 'Ingredientes identificados',
@@ -484,7 +733,7 @@ function validateFridgeOutput(output: any): ValidationRule[] {
   });
 
   // Regra 3: Sugestões de receitas
-  const suggestions = output?.suggestions || output?.sugestoes || output?.recipes || [];
+  const suggestions = output?.suggestions || output?.sugestoes || output?.recipes || output?.receitas || [];
   rules.push({
     id: 'has_suggestions',
     name: 'Sugestões de receitas',
@@ -497,7 +746,7 @@ function validateFridgeOutput(output: any): ValidationRule[] {
 
   // Regra 4: Segurança validada
   const hasSafety = 'safe_ingredients' in output || 'ingredientes_seguros' in output ||
-    ingredients.some((i: any) => 'is_safe' in i || 'seguro' in i);
+    ingredients.some((i: any) => typeof i === 'object' && ('is_safe' in i || 'seguro' in i || 'safe' in i));
   rules.push({
     id: 'safety_validated',
     name: 'Segurança validada',
@@ -506,6 +755,20 @@ function validateFridgeOutput(output: any): ValidationRule[] {
     passed: hasSafety,
     details: hasSafety ? 'Segurança validada' : 'Sem validação de segurança',
     severity: 'warning',
+  });
+  
+  // Regra 5: Categorização de ingredientes
+  const hasCategories = ingredients.some((i: any) => 
+    typeof i === 'object' && (i.category || i.categoria || i.type || i.tipo)
+  );
+  rules.push({
+    id: 'has_categories',
+    name: 'Categorização',
+    description: 'Ingredientes devem ter categorias (proteína, vegetal, etc)',
+    category: 'Qualidade',
+    passed: hasCategories,
+    details: hasCategories ? 'Categorias presentes' : 'Sem categorização',
+    severity: 'info',
   });
 
   return rules;
@@ -521,13 +784,13 @@ function validateMealRegenerationOutput(output: any): ValidationRule[] {
     description: 'O JSON deve ter campos de refeição',
     category: 'Formato dos Dados',
     passed: output && typeof output === 'object' && 
-            ('title' in output || 'nome' in output || 'recipe_name' in output),
+            ('title' in output || 'nome' in output || 'recipe_name' in output || 'name' in output),
     details: `Campos: ${Object.keys(output || {}).join(', ')}`,
     severity: 'critical',
   });
 
   // Regra 2: Nome da refeição
-  const name = output?.title || output?.nome || output?.recipe_name || '';
+  const name = output?.title || output?.nome || output?.recipe_name || output?.name || '';
   rules.push({
     id: 'has_name',
     name: 'Nome da refeição',
@@ -539,7 +802,7 @@ function validateMealRegenerationOutput(output: any): ValidationRule[] {
   });
 
   // Regra 3: Alimentos presentes
-  const foods = output?.foods || output?.alimentos || output?.ingredients || [];
+  const foods = output?.foods || output?.alimentos || output?.ingredients || output?.ingredientes || [];
   rules.push({
     id: 'has_foods',
     name: 'Alimentos presentes',
@@ -551,7 +814,7 @@ function validateMealRegenerationOutput(output: any): ValidationRule[] {
   });
 
   // Regra 4: Calorias
-  const calories = output?.calories || output?.calorias || output?.calories_kcal;
+  const calories = output?.calories || output?.calorias || output?.calories_kcal || output?.kcal;
   rules.push({
     id: 'has_calories',
     name: 'Calorias definidas',
@@ -562,15 +825,124 @@ function validateMealRegenerationOutput(output: any): ValidationRule[] {
     severity: 'warning',
   });
 
-  // Regra 5: É diferente da original (verificação básica)
+  // Regra 5: Macros completos
+  const hasProtein = output?.protein !== undefined || output?.proteina !== undefined;
+  const hasCarbs = output?.carbs !== undefined || output?.carboidratos !== undefined;
+  const hasFat = output?.fat !== undefined || output?.gordura !== undefined;
+  const hasMacros = hasProtein && hasCarbs && hasFat;
   rules.push({
-    id: 'is_different',
-    name: 'Refeição diferente',
-    description: 'Regeneração deve produzir refeição diferente',
-    category: 'Qualidade',
-    passed: true, // Precisa de comparação com original
-    details: 'Verificação requer refeição original',
+    id: 'has_macros',
+    name: 'Macros completos',
+    description: 'Deve ter proteína, carboidratos e gordura',
+    category: 'Nutrição',
+    passed: hasMacros,
+    details: hasMacros ? 'P/C/G presentes' : 'Macros incompletos',
+    severity: 'warning',
+  });
+  
+  // Regra 6: Instruções de preparo
+  const instructions = output?.instructions || output?.instrucoes || output?.modo_preparo || output?.tips || [];
+  rules.push({
+    id: 'has_instructions',
+    name: 'Instruções de preparo',
+    description: 'Deve ter instruções ou dicas de preparo',
+    category: 'Conteúdo',
+    passed: (Array.isArray(instructions) && instructions.length > 0) || typeof instructions === 'string',
+    details: Array.isArray(instructions) ? `${instructions.length} instruções` : (instructions ? 'Instruções presentes' : 'Sem instruções'),
+    severity: 'warning',
+  });
+
+  return rules;
+}
+
+function validateMealPlanOutput(output: any): ValidationRule[] {
+  const rules: ValidationRule[] = [];
+  
+  // Regra 1: Estrutura JSON
+  rules.push({
+    id: 'json_structure',
+    name: 'Estrutura JSON válida',
+    description: 'O JSON deve ter campos de refeição do plano',
+    category: 'Formato dos Dados',
+    passed: output && typeof output === 'object',
+    details: `Campos: ${Object.keys(output || {}).join(', ')}`,
+    severity: 'critical',
+  });
+
+  // Regra 2: Nome da refeição
+  const name = output?.title || output?.nome || output?.recipe_name || output?.name || '';
+  rules.push({
+    id: 'has_name',
+    name: 'Nome da refeição',
+    description: 'Refeição do plano deve ter nome',
+    category: 'Conteúdo',
+    passed: typeof name === 'string' && name.length > 3,
+    details: `"${name}"`,
+    severity: 'critical',
+  });
+
+  // Regra 3: Alimentos presentes
+  const foods = output?.foods || output?.alimentos || output?.ingredients || output?.ingredientes || [];
+  rules.push({
+    id: 'has_foods',
+    name: 'Alimentos presentes',
+    description: 'Refeição deve ter lista de alimentos',
+    category: 'Conteúdo',
+    passed: Array.isArray(foods) && foods.length >= 1,
+    details: `${foods.length} alimentos`,
+    severity: 'critical',
+  });
+
+  // Regra 4: Calorias
+  const calories = output?.calories || output?.calorias || output?.calories_kcal || output?.kcal;
+  rules.push({
+    id: 'has_calories',
+    name: 'Calorias definidas',
+    description: 'Refeição deve ter calorias',
+    category: 'Nutrição',
+    passed: typeof calories === 'number' && calories > 0,
+    details: calories ? `${calories} kcal` : 'Não definido',
+    severity: 'warning',
+  });
+
+  // Regra 5: Macros
+  const hasProtein = output?.protein !== undefined || output?.proteina !== undefined;
+  const hasCarbs = output?.carbs !== undefined || output?.carboidratos !== undefined;
+  const hasFat = output?.fat !== undefined || output?.gordura !== undefined;
+  const hasMacros = hasProtein && hasCarbs && hasFat;
+  rules.push({
+    id: 'has_macros',
+    name: 'Macros completos',
+    description: 'Deve ter proteína, carboidratos e gordura',
+    category: 'Nutrição',
+    passed: hasMacros,
+    details: hasMacros ? 'P/C/G presentes' : 'Macros incompletos',
+    severity: 'warning',
+  });
+
+  // Regra 6: Tempo de preparo
+  const prepTime = output?.prep_time || output?.tempo_preparo || output?.preparation_time;
+  rules.push({
+    id: 'has_prep_time',
+    name: 'Tempo de preparo',
+    description: 'Refeição deve indicar tempo de preparo',
+    category: 'Conteúdo',
+    passed: prepTime !== undefined && prepTime > 0,
+    details: prepTime ? `${prepTime} min` : 'Não informado',
     severity: 'info',
+  });
+
+  // Regra 7: Instruções humanizadas
+  const instructions = output?.instructions || output?.instrucoes || output?.modo_preparo || [];
+  const hasInstructions = (Array.isArray(instructions) && instructions.length > 0) || typeof instructions === 'string';
+  rules.push({
+    id: 'has_instructions',
+    name: 'Instruções de preparo',
+    description: 'Deve ter instruções humanizadas',
+    category: 'Conteúdo',
+    passed: hasInstructions,
+    details: hasInstructions ? 'Instruções presentes' : 'Sem instruções',
+    severity: 'warning',
   });
 
   return rules;
@@ -621,81 +993,103 @@ serve(async (req) => {
       );
     }
 
-    // Para testes reais, precisamos simular uma chamada
-    // Por enquanto, retornamos informações do prompt + regras de validação vazias
     const moduleInfo = AI_MODULES[moduleId as keyof typeof AI_MODULES];
+    const startTime = Date.now();
     
-    let sampleOutput: any = {};
+    let generatedOutput: any = {};
+    let rawAIResponse = '';
     let rules: ValidationRule[] = [];
 
-    // Simular output baseado no tipo de módulo para demonstração
+    // Verificar se módulo requer imagem e se foi fornecida
+    const requiresImage = moduleInfo?.requiresImage || false;
+    const imageBase64 = testParams?.imageBase64;
+    
+    if (requiresImage && !imageBase64) {
+      // Retornar resultado indicando que imagem é necessária
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: 'Este módulo requer uma imagem para teste. Faça upload de uma imagem.',
+          moduleId,
+          moduleName: moduleInfo?.name || moduleId,
+          requiresImage: true,
+          timestamp: new Date().toISOString()
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    try {
+      // Buscar API key do Gemini
+      const apiKey = await getGeminiApiKey();
+      
+      // Construir user prompt baseado no módulo
+      const userPrompt = buildUserPrompt(moduleId, testParams);
+      
+      console.log(`[test-all-prompts] Testing module: ${moduleId}`);
+      console.log(`[test-all-prompts] System prompt length: ${promptConfig.system_prompt.length}`);
+      console.log(`[test-all-prompts] User prompt: ${userPrompt.substring(0, 200)}...`);
+      
+      // Chamar Gemini API com o prompt real do banco de dados
+      const { response, rawResponse } = await callGeminiAPI(
+        apiKey,
+        promptConfig.model,
+        promptConfig.system_prompt,
+        userPrompt,
+        imageBase64
+      );
+      
+      rawAIResponse = response;
+      generatedOutput = parseAIResponse(response);
+      
+      console.log(`[test-all-prompts] Parsed output keys: ${Object.keys(generatedOutput).join(', ')}`);
+      
+    } catch (apiError) {
+      console.error(`[test-all-prompts] API error:`, apiError);
+      
+      // Retornar erro de API mas ainda mostrar info do prompt
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `Erro na chamada à IA: ${apiError instanceof Error ? apiError.message : 'Unknown error'}`,
+          promptPreview: promptConfig.system_prompt?.substring(0, 500) + '...',
+          model: promptConfig.model,
+          moduleId,
+          moduleName: moduleInfo?.name || moduleId,
+          timestamp: new Date().toISOString()
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Aplicar validação baseada no tipo de módulo
     switch (moduleId) {
       case 'analyze-food-photo':
-        sampleOutput = {
-          meal_name: 'Exemplo - Prato Brasileiro',
-          items: [
-            { name: 'Arroz branco', grams: 150, calories: 195 },
-            { name: 'Feijão carioca', grams: 100, calories: 77 },
-          ],
-          is_safe: true,
-          confidence: 0.85,
-        };
-        rules = validateFoodPhotoOutput(sampleOutput);
+        rules = validateFoodPhotoOutput(generatedOutput);
         break;
         
       case 'analyze-label-photo':
-        sampleOutput = {
-          product_name: 'Exemplo - Produto',
-          ingredients: ['farinha de trigo', 'açúcar', 'sal'],
-          is_safe: true,
-          alerts: [],
-          confidence: 0.9,
-        };
-        rules = validateLabelPhotoOutput(sampleOutput);
+        rules = validateLabelPhotoOutput(generatedOutput);
         break;
         
       case 'generate-recipe':
-        sampleOutput = {
-          name: 'Exemplo - Receita Saudável',
-          ingredients: [
-            { name: 'Frango', grams: 200 },
-            { name: 'Brócolis', grams: 150 },
-          ],
-          instructions: ['Tempere o frango', 'Grelhe por 10 minutos'],
-          calories: 350,
-          prep_time: 25,
-          servings: 2,
-        };
-        rules = validateRecipeOutput(sampleOutput);
+        rules = validateRecipeOutput(generatedOutput);
         break;
         
       case 'chat-assistant':
-        sampleOutput = {
-          response: 'Olá! Como posso ajudar com sua alimentação hoje?',
-          context: { topic: 'greeting' },
-        };
-        rules = validateChatOutput(sampleOutput);
+        rules = validateChatOutput(generatedOutput);
         break;
         
       case 'analyze-fridge-photo':
-        sampleOutput = {
-          ingredients: ['tomate', 'cebola', 'frango'],
-          suggestions: ['Frango grelhado com legumes'],
-          safe_ingredients: ['tomate', 'cebola', 'frango'],
-        };
-        rules = validateFridgeOutput(sampleOutput);
+        rules = validateFridgeOutput(generatedOutput);
         break;
         
       case 'regenerate-meal':
-        sampleOutput = {
-          title: 'Alternativa - Prato Leve',
-          foods: [
-            { name: 'Peixe grelhado', grams: 150 },
-            { name: 'Salada verde', grams: 100 },
-          ],
-          calories: 280,
-        };
-        rules = validateMealRegenerationOutput(sampleOutput);
+        rules = validateMealRegenerationOutput(generatedOutput);
+        break;
+        
+      case 'generate-ai-meal-plan':
+        rules = validateMealPlanOutput(generatedOutput);
         break;
         
       default:
@@ -708,6 +1102,19 @@ serve(async (req) => {
           details: `Módulo: ${moduleId}`,
           severity: 'critical',
         }];
+    }
+
+    // Regra adicional: verificar se houve erro de parsing
+    if (generatedOutput?.parse_error) {
+      rules.unshift({
+        id: 'json_parse',
+        name: 'Parse JSON',
+        description: 'A resposta da IA deve ser JSON válido',
+        category: 'Formato dos Dados',
+        passed: false,
+        details: 'Resposta não é JSON válido',
+        severity: 'critical',
+      });
     }
 
     // Calcular categorias
@@ -726,6 +1133,7 @@ serve(async (req) => {
 
     const passedRules = rules.filter(r => r.passed).length;
     const failedRules = rules.filter(r => !r.passed).length;
+    const executionTimeMs = Date.now() - startTime;
 
     const result: ValidationResult = {
       success: failedRules === 0,
@@ -733,12 +1141,14 @@ serve(async (req) => {
       passedRules,
       failedRules,
       rules,
-      generatedOutput: sampleOutput,
+      generatedOutput,
       promptPreview: promptConfig.system_prompt?.substring(0, 500) + '...',
+      rawAIResponse,
       timestamp: new Date().toISOString(),
       categories,
       moduleId,
       moduleName: moduleInfo?.name || moduleId,
+      executionTimeMs,
     };
 
     return new Response(

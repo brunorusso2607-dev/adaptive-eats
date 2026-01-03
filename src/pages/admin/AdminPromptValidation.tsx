@@ -232,6 +232,7 @@ export default function AdminPromptValidation() {
   const [allMealsResults, setAllMealsResults] = useState<AllMealsResult[]>([]);
   const [currentTestingMeal, setCurrentTestingMeal] = useState<string | null>(null);
   const [promptPreview, setPromptPreview] = useState<string | null>(null);
+  const [promptMeta, setPromptMeta] = useState<{ isHardcoded?: boolean; note?: string; model?: string } | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [showOutput, setShowOutput] = useState(true);
   const [activeTab, setActiveTab] = useState('all');
@@ -247,6 +248,7 @@ export default function AdminPromptValidation() {
     setResult(null);
     setAllMealsResults([]);
     setPromptPreview(null);
+    setPromptMeta(null);
     setShowPrompt(false);
     // Clear uploaded images when module changes
     uploadedImages.forEach(img => URL.revokeObjectURL(img.preview));
@@ -454,6 +456,11 @@ export default function AdminPromptValidation() {
       }
       
       setPromptPreview(data.promptPreview);
+      setPromptMeta({
+        isHardcoded: data.isHardcoded,
+        note: data.note,
+        model: data.model
+      });
       setShowPrompt(true);
     } catch (error) {
       console.error('Preview error:', error);
@@ -996,12 +1003,21 @@ export default function AdminPromptValidation() {
 
         {/* Prompt Preview */}
         {promptPreview && showPrompt && (
-          <Card>
+          <Card className={promptMeta?.isHardcoded ? 'border-green-500/50' : 'border-orange-500/50'}>
             <CardHeader>
               <CardTitle className="flex items-center justify-between">
                 <span className="flex items-center gap-2">
                   <FileCode className="w-5 h-5" />
                   Preview do Prompt
+                  {promptMeta?.isHardcoded ? (
+                    <Badge className="bg-green-500/20 text-green-600 border-green-500/30">
+                      ✓ Hardcoded Real
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="bg-orange-500/20 text-orange-600 border-orange-500/30">
+                      ⚠️ Banco de Dados
+                    </Badge>
+                  )}
                 </span>
                 <Button 
                   variant="ghost" 
@@ -1011,6 +1027,16 @@ export default function AdminPromptValidation() {
                   <XCircle className="w-4 h-4" />
                 </Button>
               </CardTitle>
+              {promptMeta?.note && (
+                <CardDescription className={promptMeta?.isHardcoded ? 'text-green-600' : 'text-orange-600'}>
+                  {promptMeta.note}
+                </CardDescription>
+              )}
+              {promptMeta?.model && (
+                <Badge variant="outline" className="w-fit mt-1">
+                  Modelo: {promptMeta.model}
+                </Badge>
+              )}
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-96 w-full">

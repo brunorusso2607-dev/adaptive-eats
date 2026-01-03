@@ -194,15 +194,46 @@ Return a JSON array: [{ "original": "...", "translated": "...", "type": "global|
       }
 
       if (!dry_run && updates.length > 0) {
-        // Executar updates
+        // Executar updates - primeiro buscar o registro original para verificar intolerance_key
+        const originalRecords = ingredientsToTranslate.reduce((acc, ing) => {
+          acc[ing.id] = ing;
+          return acc;
+        }, {} as Record<string, typeof ingredientsToTranslate[0]>);
+
         for (const update of updates) {
-          const { error: updateError } = await supabase
+          const original = originalRecords[update.id];
+          if (!original) continue;
+
+          // Verificar se já existe um registro com o mesmo intolerance_key e ingredient traduzido
+          const { data: existing } = await supabase
             .from('intolerance_mappings')
-            .update({ ingredient: update.ingredient, language: update.language })
-            .eq('id', update.id);
-          
-          if (updateError) {
-            console.error(`Error updating ${update.id}:`, updateError);
+            .select('id')
+            .eq('intolerance_key', original.intolerance_key)
+            .eq('ingredient', update.ingredient)
+            .neq('id', update.id)
+            .limit(1);
+
+          if (existing && existing.length > 0) {
+            // Já existe - deletar o registro duplicado em PT
+            console.log(`Duplicate found: deleting ${update.id} (${original.ingredient} -> ${update.ingredient})`);
+            const { error: deleteError } = await supabase
+              .from('intolerance_mappings')
+              .delete()
+              .eq('id', update.id);
+            
+            if (deleteError) {
+              console.error(`Error deleting duplicate ${update.id}:`, deleteError);
+            }
+          } else {
+            // Não existe - fazer update normalmente
+            const { error: updateError } = await supabase
+              .from('intolerance_mappings')
+              .update({ ingredient: update.ingredient, language: update.language })
+              .eq('id', update.id);
+            
+            if (updateError) {
+              console.error(`Error updating ${update.id}:`, updateError);
+            }
           }
         }
       }

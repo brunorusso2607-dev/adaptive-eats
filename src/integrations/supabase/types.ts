@@ -935,6 +935,7 @@ export type Database = {
           ingredient: string
           intolerance_key: string
           labels: string[] | null
+          language: string
           safe_portion_grams: number | null
           severity_level: string | null
         }
@@ -944,6 +945,7 @@ export type Database = {
           ingredient: string
           intolerance_key: string
           labels?: string[] | null
+          language?: string
           safe_portion_grams?: number | null
           severity_level?: string | null
         }
@@ -953,6 +955,7 @@ export type Database = {
           ingredient?: string
           intolerance_key?: string
           labels?: string[] | null
+          language?: string
           safe_portion_grams?: number | null
           severity_level?: string | null
         }

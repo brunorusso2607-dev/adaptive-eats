@@ -67,18 +67,26 @@ serve(async (req) => {
     
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { table, batch_size = 50, offset = 0, dry_run = true } = await req.json();
+    const { table, batch_size = 50, offset = 0, dry_run = true, reanalyze = false } = await req.json();
 
-    console.log(`Processing table: ${table}, batch_size: ${batch_size}, offset: ${offset}, dry_run: ${dry_run}`);
+    console.log(`Processing table: ${table}, batch_size: ${batch_size}, offset: ${offset}, dry_run: ${dry_run}, reanalyze: ${reanalyze}`);
 
     if (table === 'intolerance_mappings') {
-      // Buscar ingredientes para processar - apenas os que ainda estão em 'pt'
-      const { data: ingredients, error } = await supabase
+      // Se reanalyze=true, processar itens 'br' que podem ser globais
+      // Senão, processar apenas os que ainda estão em 'pt'
+      let query = supabase
         .from('intolerance_mappings')
         .select('id, ingredient, intolerance_key, severity_level, language')
-        .eq('language', 'pt')
-        .order('ingredient')
-        .range(offset, offset + batch_size - 1);
+        .order('ingredient');
+      
+      if (reanalyze) {
+        // Reprocessar itens BR que parecem ser globais
+        query = query.eq('language', 'br');
+      } else {
+        query = query.eq('language', 'pt');
+      }
+      
+      const { data: ingredients, error } = await query.range(offset, offset + batch_size - 1);
 
       if (error) throw error;
 
@@ -113,22 +121,37 @@ serve(async (req) => {
       // Usar IA para classificar e traduzir
       const ingredientNames = ingredientsToTranslate.map(i => i.ingredient);
       
-      const systemPrompt = `You are a food ingredient translator and classifier. Your task is to:
-1. Classify each ingredient as either "global" (internationally recognized) or "regional_br" (specifically Brazilian/Portuguese)
-2. If "global", translate to English
-3. If "regional_br", keep in Portuguese
+      const systemPrompt = `You are a food ingredient translator and classifier. IMPORTANT: Be STRICT about what is global vs regional.
 
-Rules:
-- Global ingredients: rice, sugar, milk, butter, cheese, egg, wheat, flour, soy, peanut, fish (generic), shrimp, crab, etc.
-- Regional BR ingredients: catupiry, requeijão, pão de queijo, queijo minas, leite condensado, brigadeiro, açaí, etc.
-- Any ingredient with "queijo" prefix is Brazilian regional
-- Any ingredient with "leite de/em/longa vida/uht" etc is Brazilian regional
-- Generic cheese names (camembert, gorgonzola, brie) without "queijo" prefix are global
-- Brazilian fish species (tambaqui, pintado, tucunaré) are regional
+CLASSIFICATION RULES:
 
-Return a JSON array with objects: { "original": "...", "translated": "...", "type": "global|regional_br", "language": "en|br" }`;
+GLOBAL (translate to English, language: "en"):
+- ALL basic vegetables: carrot, onion, garlic, broccoli, cabbage, beet, kale, lettuce, spinach, tomato, potato, beans, peas, lentils, chickpeas
+- ALL basic fruits: apple, pear, peach, grape, mango, papaya, watermelon, melon, orange, banana, strawberry, cherry, plum, fig, date, tamarind
+- ALL grains/cereals: wheat, rice, oat, corn, barley, rye, quinoa, millet, buckwheat
+- ALL nuts/seeds: peanut, walnut, almond, cashew, pistachio, hazelnut, sesame, sunflower
+- ALL proteins: chicken, beef, pork, lamb, fish (generic), shrimp, crab, lobster, salmon, tuna, cod, squid, octopus
+- ALL dairy: milk, butter, cheese (generic), cream, yogurt, whey, casein, lactose
+- ALL flours: wheat flour, chickpea flour, rice flour, corn flour
+- ALL cooking items: oil, vinegar, salt, pepper, sugar, honey
+- ALL international items: wasabi, bok choy, pak choi, shiitake, tofu, tempeh, miso, soy sauce
+- ALL food additives: sorbitol, xylitol, inulin, mannitol, maltitol
+- Generic terms even if written in Portuguese: alho=garlic, cebola=onion, cenoura=carrot, feijão=beans, etc.
 
-      const userPrompt = `Classify and translate these ingredients:\n${JSON.stringify(ingredientNames)}`;
+REGIONAL_BR (keep in Portuguese, language: "br"):
+- Brazilian cheeses with "queijo" prefix: queijo minas, queijo coalho, queijo canastra
+- Brazilian specialty products: catupiry, requeijão, brigadeiro, paçoca, rapadura, goiabada
+- Brazilian drinks: chimarrão, tereré, guaraná (the fruit), açaí
+- Brazilian fish species: tambaqui, pintado, tucunaré, pacu, dourado amazônico, pirarucu
+- Brazilian prepared dishes: feijoada, moqueca, vatapá, acarajé
+- Products specifically named in Brazilian style: leite condensado (when meaning the BR product)
+
+CRITICAL: Most food ingredients are GLOBAL! When in doubt, classify as GLOBAL.
+Even if written in Portuguese, if it's a common ingredient worldwide, it's GLOBAL and should be translated.
+
+Return a JSON array: [{ "original": "...", "translated": "...", "type": "global|regional_br", "language": "en|br" }]`;
+
+      const userPrompt = `Classify and translate these ingredients. Remember: most common food ingredients are GLOBAL and should be translated to English:\n${JSON.stringify(ingredientNames)}`;
 
       const content = await callAIWithRetry(lovableApiKey!, systemPrompt, userPrompt);
       

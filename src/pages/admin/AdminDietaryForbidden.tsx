@@ -33,7 +33,7 @@ import {
 import { toast } from "sonner";
 import { Loader2, Plus, Trash2, Search, Leaf, X } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useActiveOnboardingCountries } from "@/hooks/useOnboardingCountries";
+import { useOnboardingCountriesAdmin } from "@/hooks/useOnboardingCountries";
 
 type DietaryForbiddenIngredient = {
   id: string;
@@ -76,8 +76,8 @@ export default function AdminDietaryForbidden() {
   const [newIngredient, setNewIngredient] = useState("");
   const [bulkIngredients, setBulkIngredients] = useState("");
 
-  // Fetch countries from onboarding
-  const { data: onboardingCountries } = useActiveOnboardingCountries();
+  // Fetch ALL countries from onboarding (admin view shows all, not just active)
+  const { data: onboardingCountries } = useOnboardingCountriesAdmin();
 
   // Build country config from onboarding countries
   const countryConfig = useMemo(() => {

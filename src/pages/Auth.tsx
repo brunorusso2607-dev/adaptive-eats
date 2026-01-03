@@ -139,7 +139,11 @@ export default function Auth() {
                     type="text"
                     placeholder="Como você gostaria de ser chamado?"
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => {
+                      const value = e.target.value;
+                      const capitalized = value.charAt(0).toUpperCase() + value.slice(1);
+                      setFirstName(capitalized);
+                    }}
                     className="pl-11"
                     disabled={isLoading}
                     required

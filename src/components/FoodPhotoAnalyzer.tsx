@@ -32,6 +32,9 @@ type FoodItem = {
   correcao_aplicada?: boolean; // Auto-correction was applied from saved corrections
   correcao_tipo?: "exact" | "fuzzy"; // Type of correction match
   correcao_similaridade?: number; // Similarity percentage for fuzzy matches
+  // Unidentified food item - needs user correction
+  nao_identificado?: boolean;
+  descricao_visual?: string; // Visual description when unidentified (e.g., "substância cremosa branca")
 };
 
 type IntoleranceAlert = {

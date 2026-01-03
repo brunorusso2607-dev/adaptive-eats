@@ -842,6 +842,135 @@ const calculateDailyCalories = (profile: any): number => {
   return Math.round(tdee);
 }
 
+// ============= INTELLIGENT IMAGE ANALYSIS FUNCTION =============
+// Analyzes images using the same logic as dedicated photo modules
+const analyzeImageIntelligently = async (
+  imageBase64: string,
+  userProfile: any,
+  safetyDatabase: SafetyDatabase,
+  supabase: any
+): Promise<string> => {
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY not configured");
+  }
+
+  // Get user restrictions
+  const userIntolerances = userProfile?.intolerances || [];
+  const dietaryPreference = userProfile?.dietary_preference || "comum";
+  const excludedIngredients = userProfile?.excluded_ingredients || [];
+  const userName = userProfile?.first_name || "";
+  const userCountry = userProfile?.country || "BR";
+  
+  // Normalize intolerances
+  const normalizedIntolerances = normalizeUserIntolerances(userIntolerances, safetyDatabase);
+  const intoleranceLabels = normalizedIntolerances.map((i: string) => getIntoleranceLabel(i, safetyDatabase)).join(", ");
+  const dietaryLabel = getDietaryLabel(dietaryPreference, safetyDatabase);
+  
+  // Build restrictions context
+  let restrictionsContext = "";
+  if (normalizedIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "comum") {
+    restrictionsContext = `
+RESTRIÇÕES ALIMENTARES DO USUÁRIO:
+${normalizedIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${intoleranceLabels}` : ""}
+${excludedIngredients.length > 0 ? `- Ingredientes Excluídos: ${excludedIngredients.join(", ")}` : ""}
+${dietaryPreference !== "comum" ? `- Dieta: ${dietaryLabel}` : ""}
+`;
+  }
+
+  const analysisPrompt = `Você é um especialista em análise de alimentos e segurança alimentar.
+
+ANALISE A IMAGEM E CLASSIFIQUE:
+
+1. **PRATO/REFEIÇÃO** → Analise os alimentos, calorias estimadas e segurança
+2. **RÓTULO/EMBALAGEM** → Analise os ingredientes visíveis e alertas
+3. **GELADEIRA/DESPENSA** → Liste os itens visíveis e sugira receitas
+4. **NÃO É COMIDA** → Informe gentilmente que a imagem não contém alimentos
+
+${restrictionsContext}
+
+RESPONDA EM FORMATO ESTRUTURADO:
+
+**TIPO**: [prato|rotulo|geladeira|nao_comida]
+
+SE FOR PRATO:
+- **Identificação**: Nome do prato/alimentos identificados
+- **Calorias Estimadas**: XX kcal (margem: ±20%)
+- **Macros Estimados**: Proteína: Xg | Carbs: Xg | Gordura: Xg
+- **Segurança**: ✅ Seguro / ⚠️ ALERTA (detalhe)
+- **Detalhes de Alerta**: [se houver ingredientes problemáticos]
+
+SE FOR RÓTULO:
+- **Produto**: Nome do produto identificado
+- **Ingredientes Visíveis**: Lista dos ingredientes que consegue ler
+- **Segurança**: ✅ Seguro / ⚠️ ALERTA / ❓ Inconclusivo (precisa de mais fotos)
+- **Alertas**: [ingredientes problemáticos encontrados]
+
+SE FOR GELADEIRA:
+- **Itens Identificados**: Lista dos alimentos visíveis
+- **Sugestão de Receita**: Uma ideia rápida com os ingredientes
+- **Itens com Alerta**: [se algum item for problemático]
+
+SE NÃO FOR COMIDA:
+- **Detectado**: O que você vê na imagem
+- **Mensagem**: Explicação gentil
+
+IMPORTANTE:
+- Priorize SEGURANÇA acima de tudo
+- Se não tiver certeza se um ingrediente é seguro, ALERTE
+- Seja direto e objetivo na resposta
+- Use emojis moderadamente (✅ ⚠️ 🍽️)`;
+
+  try {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: analysisPrompt },
+          { 
+            role: "user", 
+            content: [
+              { type: "text", text: "Analise esta imagem:" },
+              { 
+                type: "image_url", 
+                image_url: { url: imageBase64 } 
+              }
+            ]
+          }
+        ],
+        max_tokens: 1500,
+        temperature: 0.3,
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`AI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const analysisResult = data.choices?.[0]?.message?.content || "";
+    
+    // Post-process: validate safety with Veto Layer
+    const userRestrictions: UserRestrictions = {
+      intolerances: normalizedIntolerances,
+      dietaryPreference: dietaryPreference || "comum",
+      excludedIngredients: excludedIngredients || [],
+    };
+    
+    logStep("Image analyzed by AI", { resultPreview: analysisResult.substring(0, 100) });
+    
+    return analysisResult;
+  } catch (error) {
+    logStep("analyzeImageIntelligently error", { error: String(error) });
+    throw error;
+  }
+};
+
 // ============= MAIN HANDLER =============
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -973,22 +1102,59 @@ serve(async (req) => {
       }
     }
 
-    // If images are provided, add them to the last user message
-    if (images && images.length > 0 && aiMessages.length > 1) {
+    // ============= INTELLIGENT IMAGE ANALYSIS =============
+    // If images are provided, perform specialized food analysis
+    let imageAnalysisResult: string | null = null;
+    
+    if (images && images.length > 0) {
+      logStep("Image detected, performing intelligent analysis");
+      
+      try {
+        imageAnalysisResult = await analyzeImageIntelligently(
+          images[0], // Use first image
+          userProfile,
+          safetyDatabase,
+          supabase
+        );
+        logStep("Image analysis completed", { resultLength: imageAnalysisResult?.length || 0 });
+      } catch (analysisError) {
+        logStep("Image analysis failed, falling back to generic", { error: String(analysisError) });
+      }
+    }
+
+    // If we have a specialized image analysis, inject it into the conversation
+    if (imageAnalysisResult && aiMessages.length > 1) {
       const lastMessage = aiMessages[aiMessages.length - 1];
       if (lastMessage.role === "user") {
-        // Format for multimodal
+        // Add the analysis result as context for the AI to format nicely
+        const userContent = lastMessage.content || "";
+        lastMessage.content = [
+          { type: "text", text: `${userContent}\n\n[ANÁLISE DA IMAGEM - Use estas informações para responder de forma natural e amigável]\n${imageAnalysisResult}` },
+        ];
+        
+        // Also add the image for visual context
+        for (const base64Image of images) {
+          const matches = base64Image.match(/^data:(.+);base64,(.+)$/);
+          if (matches) {
+            (lastMessage.content as any[]).push({
+              type: "image_url",
+              image_url: { url: base64Image }
+            });
+          }
+        }
+      }
+    } else if (images && images.length > 0 && aiMessages.length > 1) {
+      // Fallback: just add images without specialized analysis
+      const lastMessage = aiMessages[aiMessages.length - 1];
+      if (lastMessage.role === "user") {
         const parts: any[] = [{ type: "text", text: lastMessage.content || "Analise esta imagem:" }];
         
         for (const base64Image of images) {
-          // Extract mime type and data
           const matches = base64Image.match(/^data:(.+);base64,(.+)$/);
           if (matches) {
             parts.push({
               type: "image_url",
-              image_url: {
-                url: base64Image
-              }
+              image_url: { url: base64Image }
             });
           }
         }

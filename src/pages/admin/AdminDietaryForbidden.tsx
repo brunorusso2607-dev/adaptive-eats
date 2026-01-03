@@ -425,16 +425,20 @@ export default function AdminDietaryForbidden() {
       <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Adicionar Ingrediente Proibido</DialogTitle>
+            <DialogTitle className="flex items-center gap-2">
+              Adicionar Ingrediente Proibido
+              <Badge variant="default" className="text-sm">
+                {getDietaryLabel(selectedDiet)}
+              </Badge>
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
+            <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-md">
+              <p className="text-sm text-amber-700 dark:text-amber-400">
+                ⚠️ Os ingredientes serão adicionados para: <strong>{getDietaryLabel(selectedDiet)}</strong>
+              </p>
+            </div>
             <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label>Perfil Dietético</Label>
-                <div className="mt-1 p-2 bg-muted rounded-md text-sm">
-                  {getDietaryLabel(selectedDiet)}
-                </div>
-              </div>
               
               <div>
                 <Label>País/Idioma</Label>

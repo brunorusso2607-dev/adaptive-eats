@@ -43,10 +43,10 @@ type DietaryForbiddenIngredient = {
   created_at: string;
 };
 
-const DIETARY_LABELS: Record<string, string> = {
-  vegana: "🌱 Vegano",
-  vegetariana: "🥬 Vegetariano",
-  pescetariana: "🐟 Pescetariano",
+type DietaryProfile = {
+  key: string;
+  name: string;
+  icon: string;
 };
 
 const CATEGORY_LABELS: Record<string, string> = {
@@ -84,6 +84,27 @@ export default function AdminDietaryForbidden() {
   const [bulkIngredients, setBulkIngredients] = useState("");
   const [newCategory, setNewCategory] = useState<string>("meat");
   const [newLanguage, setNewLanguage] = useState<string>("pt");
+
+  // Fetch dietary profiles from database
+  const { data: dietaryProfiles } = useQuery({
+    queryKey: ["dietary-profiles"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("dietary_profiles")
+        .select("key, name, icon")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+
+      if (error) throw error;
+      return data as DietaryProfile[];
+    },
+  });
+
+  // Create labels map from profiles
+  const getDietaryLabel = (key: string) => {
+    const profile = dietaryProfiles?.find(p => p.key === key);
+    return profile ? `${profile.icon} ${profile.name}` : key;
+  };
 
   // Fetch all dietary forbidden ingredients
   const { data: ingredients, isLoading } = useQuery({
@@ -235,20 +256,20 @@ export default function AdminDietaryForbidden() {
             <CardTitle className="text-sm font-medium">Perfis Dietéticos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            {(dietaryKeys.length > 0 ? dietaryKeys : Object.keys(DIETARY_LABELS)).map((key) => (
+            {(dietaryProfiles || []).map((profile) => (
               <Button
-                key={key}
-                variant={selectedDiet === key ? "default" : "ghost"}
+                key={profile.key}
+                variant={selectedDiet === profile.key ? "default" : "ghost"}
                 className="w-full justify-between text-left"
                 onClick={() => {
-                  setSelectedDiet(key);
+                  setSelectedDiet(profile.key);
                   setSelectedCategory("all");
                   setSelectedLanguage("all");
                 }}
               >
-                <span>{DIETARY_LABELS[key] || key}</span>
+                <span>{profile.icon} {profile.name}</span>
                 <Badge variant="secondary" className="ml-2">
-                  {getCountByDiet(key)}
+                  {getCountByDiet(profile.key)}
                 </Badge>
               </Button>
             ))}
@@ -335,7 +356,7 @@ export default function AdminDietaryForbidden() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center justify-between">
                 <span>
-                  {DIETARY_LABELS[selectedDiet] || selectedDiet} - Ingredientes Proibidos
+                  {getDietaryLabel(selectedDiet)} - Ingredientes Proibidos
                 </span>
                 <Badge variant="outline">{filteredIngredients.length} itens</Badge>
               </CardTitle>
@@ -394,7 +415,7 @@ export default function AdminDietaryForbidden() {
             <div>
               <Label>Perfil Dietético</Label>
               <div className="mt-1 p-2 bg-muted rounded-md">
-                {DIETARY_LABELS[selectedDiet] || selectedDiet}
+                {getDietaryLabel(selectedDiet)}
               </div>
             </div>
             
@@ -469,7 +490,7 @@ export default function AdminDietaryForbidden() {
           <AlertDialogHeader>
             <AlertDialogTitle>Confirmar Exclusão</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja remover o ingrediente <strong>"{deleteItem?.ingredient}"</strong> do perfil {DIETARY_LABELS[deleteItem?.dietary_key || ""] || deleteItem?.dietary_key}?
+              Tem certeza que deseja remover o ingrediente <strong>"{deleteItem?.ingredient}"</strong> do perfil {getDietaryLabel(deleteItem?.dietary_key || "")}?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

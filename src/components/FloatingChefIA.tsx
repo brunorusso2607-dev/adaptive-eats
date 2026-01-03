@@ -422,6 +422,9 @@ export default function FloatingChefIA() {
         }
       }
 
+      // Check if this is the first user message in the conversation (no previous assistant responses)
+      const hasAssistantResponse = messages.some(m => m.role === "assistant");
+      
       const { data, error } = await supabase.functions.invoke("chat-assistant", {
         body: {
           messages: [...messages, userMessage].map(m => ({
@@ -433,7 +436,8 @@ export default function FloatingChefIA() {
             path: currentPath,
             name: pageContext.name,
             description: pageContext.description
-          }
+          },
+          isFirstMessage: !hasAssistantResponse
         }
       });
 

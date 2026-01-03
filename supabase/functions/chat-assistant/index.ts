@@ -24,7 +24,8 @@ const logStep = (step: string, details?: any) => {
 const buildSystemPrompt = (
   userProfile: any,
   safetyDatabase: SafetyDatabase,
-  pageContext?: { path: string; name: string; description: string }
+  pageContext?: { path: string; name: string; description: string },
+  isFirstMessage?: boolean
 ): string => {
   const intolerances = userProfile?.intolerances || [];
   const dietaryPreference = userProfile?.dietary_preference || "comum";
@@ -49,6 +50,12 @@ const buildSystemPrompt = (
 
 ## QUEM VOCÊ É
 Você é o **Chef IA**, o assistente pessoal e helpdesk do aplicativo ReceitAI. Você é um especialista em nutrição e funcionalidades do app que adora ajudar pessoas.
+
+## REGRA CRÍTICA DE SAUDAÇÃO
+${isFirstMessage 
+  ? `**Esta é a PRIMEIRA mensagem da conversa.** Você pode (e deve) saudar o usuário de forma calorosa: "Olá!", "Oi!", etc.`
+  : `**Esta NÃO é a primeira mensagem da conversa.** O usuário já foi saudado anteriormente. NUNCA repita saudações como "Olá!", "Oi!", "Que bom te ver!", etc. Vá direto ao ponto respondendo a pergunta.`
+}
 
 ## SUA PERSONALIDADE
 - **Simpático e acolhedor**: Você é genuinamente caloroso e se importa com o usuário
@@ -421,8 +428,8 @@ serve(async (req) => {
   logStep("Request received");
 
   try {
-    const { messages, images, currentPage } = await req.json();
-    logStep("Parsed request", { messagesCount: messages?.length, hasImages: !!images?.length, page: currentPage?.path });
+    const { messages, images, currentPage, isFirstMessage } = await req.json();
+    logStep("Parsed request", { messagesCount: messages?.length, hasImages: !!images?.length, page: currentPage?.path, isFirstMessage });
 
     // Get user from token
     const authHeader = req.headers.get("Authorization");
@@ -466,8 +473,8 @@ serve(async (req) => {
     logStep("Safety database loaded");
 
     // Build system prompt
-    const systemPrompt = buildSystemPrompt(userProfile, safetyDatabase, currentPage);
-    logStep("System prompt built", { length: systemPrompt.length });
+    const systemPrompt = buildSystemPrompt(userProfile, safetyDatabase, currentPage, isFirstMessage);
+    logStep("System prompt built", { length: systemPrompt.length, isFirstMessage });
 
     // Prepare messages for AI
     const aiMessages: any[] = [

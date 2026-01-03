@@ -968,14 +968,51 @@ serve(async (req) => {
       );
     }
 
-    // Se for apenas preview do prompt
+    // Se for apenas preview do prompt - buscar prompt HARDCODED real
     if (testMode === 'preview') {
+      try {
+        // Buscar do get-hardcoded-prompts para mostrar o prompt REAL
+        const supabaseUrl = Deno.env.get("SUPABASE_URL");
+        const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        
+        const hardcodedResponse = await fetch(
+          `${supabaseUrl}/functions/v1/get-hardcoded-prompts`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${supabaseServiceKey}`,
+            },
+            body: JSON.stringify({ moduleId })
+          }
+        );
+        
+        if (hardcodedResponse.ok) {
+          const hardcodedData = await hardcodedResponse.json();
+          return new Response(
+            JSON.stringify({ 
+              promptPreview: hardcodedData.systemPrompt || 'Prompt não encontrado',
+              model: hardcodedData.model || 'gemini-2.0-flash-lite',
+              description: hardcodedData.description || '',
+              isHardcoded: true,
+              note: '⚠️ Este é o prompt REAL hardcoded na edge function, não o do banco de dados.'
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      } catch (err) {
+        console.warn('[test-all-prompts] Failed to fetch hardcoded prompt, falling back to database:', err);
+      }
+      
+      // Fallback para banco de dados se a função hardcoded falhar
       const promptConfig = await getAIPrompt(moduleId);
       return new Response(
         JSON.stringify({ 
           promptPreview: promptConfig?.system_prompt || 'Prompt não encontrado',
           model: promptConfig?.model || 'Não configurado',
-          userPromptExample: promptConfig?.user_prompt_example || ''
+          userPromptExample: promptConfig?.user_prompt_example || '',
+          isHardcoded: false,
+          note: '⚠️ Este prompt vem do BANCO DE DADOS (ai_prompts) - pode não ser o usado em produção!'
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );

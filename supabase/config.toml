@@ -191,3 +191,6 @@ verify_jwt = false
 
 [functions.run-false-positive-tests]
 verify_jwt = false
+
+[functions.get-hardcoded-prompts]
+verify_jwt = false

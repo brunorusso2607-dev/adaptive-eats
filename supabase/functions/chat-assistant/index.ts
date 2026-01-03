@@ -25,7 +25,24 @@ const buildSystemPrompt = (
   userProfile: any,
   safetyDatabase: SafetyDatabase,
   pageContext?: { path: string; name: string; description: string },
-  isFirstMessage?: boolean
+  isFirstMessage?: boolean,
+  activeMealPlanContext?: {
+    planName: string;
+    nextMeal: {
+      type: string;
+      label: string;
+      recipeName: string;
+      calories: number;
+      scheduledTime: string;
+    } | null;
+    todayMeals: Array<{
+      type: string;
+      label: string;
+      recipeName: string;
+      calories: number;
+      isCompleted: boolean;
+    }>;
+  }
 ): string => {
   const intolerances = userProfile?.intolerances || [];
   const dietaryPreference = userProfile?.dietary_preference || "comum";
@@ -105,6 +122,28 @@ ${pageContext ? `**Página atual**: ${pageContext.name}
 **O que faz**: ${pageContext.description}
 
 ${pageHelp}` : "O usuário está navegando pelo app."}
+
+---
+
+## 🍽️ PLANO ALIMENTAR ATIVO DO USUÁRIO
+
+${activeMealPlanContext ? `**Plano**: ${activeMealPlanContext.planName}
+
+${activeMealPlanContext.nextMeal ? `### ▶️ PRÓXIMA REFEIÇÃO (INFORMAÇÃO CRÍTICA)
+- **Tipo**: ${activeMealPlanContext.nextMeal.label}
+- **Receita**: ${activeMealPlanContext.nextMeal.recipeName}
+- **Calorias**: ${activeMealPlanContext.nextMeal.calories} kcal
+- **Horário**: ${activeMealPlanContext.nextMeal.scheduledTime}
+
+**REGRA**: Se o usuário perguntar "o que devo comer agora?", "qual minha próxima refeição?" ou algo similar, responda com esta refeição específica.` : "Nenhuma refeição pendente para hoje."}
+
+### 📋 REFEIÇÕES DE HOJE
+${activeMealPlanContext.todayMeals.length > 0 
+  ? activeMealPlanContext.todayMeals.map(meal => 
+      `- ${meal.isCompleted ? "✅" : "⏳"} **${meal.label}**: ${meal.recipeName} (${meal.calories} kcal)`
+    ).join("\n")
+  : "Nenhuma refeição planejada para hoje."}
+` : "O usuário não possui um plano alimentar ativo no momento."}
 
 ---
 
@@ -429,6 +468,182 @@ Explique como tirar fotos melhores para análise se tiverem dificuldade.`
   return "";
 };
 
+// ============= FETCH ACTIVE MEAL PLAN =============
+const fetchActiveMealPlanContext = async (
+  supabase: any,
+  userId: string,
+  userTimezone: string
+): Promise<{
+  planName: string;
+  nextMeal: {
+    type: string;
+    label: string;
+    recipeName: string;
+    calories: number;
+    scheduledTime: string;
+  } | null;
+  todayMeals: Array<{
+    type: string;
+    label: string;
+    recipeName: string;
+    calories: number;
+    isCompleted: boolean;
+  }>;
+} | null> => {
+  try {
+    // Get user's current date/time in their timezone
+    const now = new Date();
+    const userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone || "America/Sao_Paulo" }));
+    const currentHour = userNow.getHours();
+    const currentMinutes = userNow.getMinutes();
+    const currentTimeDecimal = currentHour + currentMinutes / 60;
+    
+    // Format today's date
+    const todayStr = userNow.toISOString().split('T')[0];
+    
+    logStep("Fetching meal plan context", { 
+      userId, 
+      userTimezone, 
+      todayStr, 
+      currentTime: `${currentHour}:${currentMinutes.toString().padStart(2, '0')}` 
+    });
+
+    // Fetch active meal plan
+    const { data: activePlan, error: planError } = await supabase
+      .from("meal_plans")
+      .select("id, name, start_date, end_date")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .gte("end_date", todayStr)
+      .lte("start_date", todayStr)
+      .single();
+
+    if (planError || !activePlan) {
+      logStep("No active meal plan found", { error: planError?.message });
+      return null;
+    }
+
+    logStep("Active plan found", { planId: activePlan.id, planName: activePlan.name });
+
+    // Fetch meal time settings
+    const { data: mealTimeSettings } = await supabase
+      .from("meal_time_settings")
+      .select("meal_type, label, start_hour, sort_order")
+      .order("sort_order", { ascending: true });
+
+    const mealTimeMap = new Map<string, { label: string; startHour: number; sortOrder: number }>();
+    if (mealTimeSettings) {
+      for (const setting of mealTimeSettings) {
+        mealTimeMap.set(setting.meal_type, {
+          label: setting.label,
+          startHour: setting.start_hour,
+          sortOrder: setting.sort_order
+        });
+      }
+    }
+
+    // Calculate day_of_week for today
+    const startDate = new Date(activePlan.start_date + 'T00:00:00');
+    const diffTime = userNow.getTime() - startDate.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    const dayOfWeek = diffDays;
+
+    logStep("Calculating day_of_week", { startDate: activePlan.start_date, diffDays, dayOfWeek });
+
+    // Fetch today's meal plan items
+    const { data: todayItems, error: itemsError } = await supabase
+      .from("meal_plan_items")
+      .select("id, meal_type, recipe_name, recipe_calories, completed_at")
+      .eq("meal_plan_id", activePlan.id)
+      .eq("day_of_week", dayOfWeek);
+
+    if (itemsError) {
+      logStep("Error fetching meal items", { error: itemsError.message });
+      return null;
+    }
+
+    if (!todayItems || todayItems.length === 0) {
+      logStep("No meals found for today", { dayOfWeek });
+      return {
+        planName: activePlan.name,
+        nextMeal: null,
+        todayMeals: []
+      };
+    }
+
+    logStep("Today's meals found", { count: todayItems.length });
+
+    // Build today meals list with labels
+    const todayMeals = todayItems.map((item: any) => {
+      const mealInfo = mealTimeMap.get(item.meal_type);
+      return {
+        type: item.meal_type,
+        label: mealInfo?.label || item.meal_type,
+        recipeName: item.recipe_name,
+        calories: item.recipe_calories,
+        isCompleted: !!item.completed_at,
+        startHour: mealInfo?.startHour || 0,
+        sortOrder: mealInfo?.sortOrder || 0
+      };
+    }).sort((a: any, b: any) => a.sortOrder - b.sortOrder);
+
+    // Find next pending meal (not completed, and time hasn't passed)
+    let nextMeal = null;
+    for (const meal of todayMeals) {
+      if (!meal.isCompleted && meal.startHour >= currentTimeDecimal - 2) { // Allow 2 hour window
+        const hours = Math.floor(meal.startHour);
+        const minutes = Math.round((meal.startHour - hours) * 60);
+        nextMeal = {
+          type: meal.type,
+          label: meal.label,
+          recipeName: meal.recipeName,
+          calories: meal.calories,
+          scheduledTime: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        };
+        break;
+      }
+    }
+
+    // If no next meal found, use the last pending meal (user might be late)
+    if (!nextMeal) {
+      const pendingMeals = todayMeals.filter((m: any) => !m.isCompleted);
+      if (pendingMeals.length > 0) {
+        const lastPending = pendingMeals[pendingMeals.length - 1];
+        const hours = Math.floor(lastPending.startHour);
+        const minutes = Math.round((lastPending.startHour - hours) * 60);
+        nextMeal = {
+          type: lastPending.type,
+          label: lastPending.label,
+          recipeName: lastPending.recipeName,
+          calories: lastPending.calories,
+          scheduledTime: `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`
+        };
+      }
+    }
+
+    logStep("Meal plan context built", { 
+      planName: activePlan.name, 
+      nextMeal: nextMeal?.label, 
+      todayMealsCount: todayMeals.length 
+    });
+
+    return {
+      planName: activePlan.name,
+      nextMeal,
+      todayMeals: todayMeals.map((m: any) => ({
+        type: m.type,
+        label: m.label,
+        recipeName: m.recipeName,
+        calories: m.calories,
+        isCompleted: m.isCompleted
+      }))
+    };
+  } catch (error) {
+    logStep("Error fetching meal plan context", { error: error instanceof Error ? error.message : "Unknown" });
+    return null;
+  }
+};
+
 // ============= MAIN HANDLER =============
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -483,9 +698,49 @@ serve(async (req) => {
     const safetyDatabase = await loadSafetyDatabase(supabaseUrl, supabaseKey);
     logStep("Safety database loaded");
 
+    // Fetch active meal plan context if user is authenticated
+    let activeMealPlanContext: {
+      planName: string;
+      nextMeal: {
+        type: string;
+        label: string;
+        recipeName: string;
+        calories: number;
+        scheduledTime: string;
+      } | null;
+      todayMeals: Array<{
+        type: string;
+        label: string;
+        recipeName: string;
+        calories: number;
+        isCompleted: boolean;
+      }>;
+    } | undefined = undefined;
+    
+    if (userId && userProfile) {
+      const mealPlanResult = await fetchActiveMealPlanContext(
+        supabase, 
+        userId, 
+        userProfile.timezone || "America/Sao_Paulo"
+      );
+      if (mealPlanResult) {
+        activeMealPlanContext = mealPlanResult;
+      }
+      logStep("Meal plan context fetched", { 
+        hasPlan: !!activeMealPlanContext, 
+        nextMeal: activeMealPlanContext?.nextMeal?.label 
+      });
+    }
+
     // Build system prompt
-    const systemPrompt = buildSystemPrompt(userProfile, safetyDatabase, currentPage, isFirstMessage);
-    logStep("System prompt built", { length: systemPrompt.length, isFirstMessage });
+    const systemPrompt = buildSystemPrompt(
+      userProfile, 
+      safetyDatabase, 
+      currentPage, 
+      isFirstMessage,
+      activeMealPlanContext
+    );
+    logStep("System prompt built", { length: systemPrompt.length, isFirstMessage, hasActivePlan: !!activeMealPlanContext });
 
     // Prepare messages for AI
     const aiMessages: any[] = [

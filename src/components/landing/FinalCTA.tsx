@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Heart, Utensils } from "lucide-react";
@@ -6,7 +7,7 @@ interface FinalCTAProps {
   onCtaClick: () => void;
 }
 
-export function FinalCTA({ onCtaClick }: FinalCTAProps) {
+export const FinalCTA = forwardRef<HTMLElement, FinalCTAProps>(({ onCtaClick }, ref) => {
   return (
     <section className="py-24 px-6 gradient-primary relative overflow-hidden">
       {/* Background Pattern */}
@@ -92,4 +93,6 @@ export function FinalCTA({ onCtaClick }: FinalCTAProps) {
       </div>
     </section>
   );
-}
+});
+
+FinalCTA.displayName = "FinalCTA";

@@ -156,35 +156,55 @@ export default function AdminDietaryForbidden() {
     return ingredients?.filter(i => i.dietary_key === key).length || 0;
   };
 
-  // Add ingredient mutation
+  // Add ingredient mutation - inserts one by one to handle duplicates gracefully
   const addMutation = useMutation({
     mutationFn: async (ingredientList: string[]) => {
-      const inserts = ingredientList.map(ingredient => ({
-        dietary_key: selectedDiet,
-        ingredient: ingredient.trim().toLowerCase(),
-        category: null,
-        language: selectedLanguage === "all" ? "en" : selectedLanguage,
-      }));
-
-      const { error } = await supabase
-        .from("dietary_forbidden_ingredients")
-        .insert(inserts);
-
-      if (error) throw error;
+      const languageToUse = selectedLanguage === "all" ? "en" : selectedLanguage;
+      
+      let successCount = 0;
+      let skipCount = 0;
+      
+      // Insert one by one to handle duplicates gracefully
+      for (const ingredient of ingredientList) {
+        const { error } = await supabase
+          .from("dietary_forbidden_ingredients")
+          .insert({
+            dietary_key: selectedDiet,
+            ingredient: ingredient.trim().toLowerCase(),
+            category: null,
+            language: languageToUse,
+          });
+        
+        if (error) {
+          if (error.message.includes("duplicate") || error.code === "23505") {
+            skipCount++;
+          } else {
+            throw error;
+          }
+        } else {
+          successCount++;
+        }
+      }
+      
+      return { successCount, skipCount };
     },
-    onSuccess: () => {
+    onSuccess: ({ successCount, skipCount }) => {
       queryClient.invalidateQueries({ queryKey: ["dietary-forbidden-ingredients"] });
-      toast.success("Ingrediente(s) adicionado(s)!");
+      
+      if (successCount > 0 && skipCount > 0) {
+        toast.success(`${successCount} ingrediente(s) adicionado(s), ${skipCount} já existia(m)`);
+      } else if (successCount > 0) {
+        toast.success(`${successCount} ingrediente(s) adicionado(s)!`);
+      } else if (skipCount > 0) {
+        toast.info(`Todos os ${skipCount} ingrediente(s) já existiam`);
+      }
+      
       setIsAddOpen(false);
       setNewIngredient("");
       setBulkIngredients("");
     },
     onError: (error: Error) => {
-      if (error.message.includes("duplicate")) {
-        toast.error("Este ingrediente já existe para este perfil dietético");
-      } else {
-        toast.error(`Erro: ${error.message}`);
-      }
+      toast.error(`Erro: ${error.message}`);
     },
   });
 
@@ -221,29 +241,12 @@ export default function AdminDietaryForbidden() {
     
     if (ingredientsToAdd.length === 0) return;
     
-    // Remove duplicates from the list itself
-    const uniqueIngredients = [...new Set(ingredientsToAdd)];
+    // Remove duplicates from the list itself (case-insensitive)
+    const uniqueIngredients = [...new Set(ingredientsToAdd.map(i => i.toLowerCase()))];
     
-    // Also filter out ingredients that already exist in the database for this diet+language
-    const languageToUse = selectedLanguage === "all" ? "en" : selectedLanguage;
-    const existingInDb = ingredients?.filter(i => 
-      i.dietary_key === selectedDiet && 
-      i.language === languageToUse
-    ).map(i => i.ingredient.toLowerCase()) || [];
-    
-    const filteredIngredients = uniqueIngredients.filter(ing => !existingInDb.includes(ing));
-    
-    if (filteredIngredients.length === 0) {
-      toast.error("Todos os ingredientes já existem para este perfil dietético");
-      return;
-    }
-    
-    if (filteredIngredients.length < uniqueIngredients.length) {
-      const skipped = uniqueIngredients.length - filteredIngredients.length;
-      toast.info(`${skipped} ingrediente(s) já existente(s) foram ignorados`);
-    }
-    
-    addMutation.mutate(filteredIngredients);
+    // Filter duplicates - no need to check existing since we handle errors in mutation
+    // Just send the unique list directly
+    addMutation.mutate(uniqueIngredients);
   };
 
   if (isLoading) {

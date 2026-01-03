@@ -1107,90 +1107,45 @@ serve(async (req) => {
       const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
       if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
 
-      const modelName = aiPromptData?.model || 'gemini-2.5-flash-lite';
+      // Usar sempre gemini-2.5-flash-lite diretamente via Google API
+      const modelName = 'gemini-2.5-flash-lite';
 
       let content = "";
       let retryCount = 0;
       
-      // Tentar Lovable AI Gateway primeiro, fallback para Google API direto
-      const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-      const useLovableGateway = !!LOVABLE_API_KEY;
-      
       while (retryCount <= MAX_RETRIES) {
         try {
-          let aiData: any;
-          
-          if (useLovableGateway) {
-            // Usar Lovable AI Gateway (preferido)
-            const aiResponse = await fetch(
-              "https://ai.gateway.lovable.dev/v1/chat/completions",
-              {
-                method: "POST",
-                headers: { 
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-                },
-                body: JSON.stringify({
-                  model: "google/gemini-2.5-flash-lite",
-                  messages: [
-                    { 
-                      role: "user", 
-                      content: prompt + (retryCount > 0 ? '\n\nIMPORTANTE: JSON COMPACTO e COMPLETO.' : '') 
-                    }
-                  ],
-                  max_tokens: 16384,
+          // Google Gemini API direta
+          const aiResponse = await fetch(
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt + (retryCount > 0 ? '\n\nIMPORTANTE: JSON COMPACTO e COMPLETO.' : '') }] }],
+                generationConfig: {
                   temperature: 0.6,
-                }),
-              }
-            );
-
-            if (!aiResponse.ok) {
-              const errorText = await aiResponse.text();
-              logStep(`Lovable AI error (status ${aiResponse.status})`, { error: errorText.substring(0, 200) });
-              
-              if (aiResponse.status === 429 || aiResponse.status === 503) {
-                // Rate limit ou serviço indisponível - esperar e tentar novamente
-                await new Promise(r => setTimeout(r, 3000 * (retryCount + 1)));
-                retryCount++;
-                continue;
-              }
-              if (aiResponse.status === 402) {
-                throw new Error("Limite de créditos do AI Gateway atingido");
-              }
-              throw new Error(`Lovable AI error: ${aiResponse.status}`);
+                  maxOutputTokens: 16384,
+                }
+              }),
             }
+          );
 
-            aiData = await aiResponse.json();
-            content = aiData.choices?.[0]?.message?.content || "";
-          } else {
-            // Fallback para Google API direto
-            const aiResponse = await fetch(
-              `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
-              {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                  contents: [{ parts: [{ text: prompt + (retryCount > 0 ? '\n\nIMPORTANTE: JSON COMPACTO e COMPLETO.' : '') }] }],
-                  generationConfig: {
-                    temperature: 0.6,
-                    maxOutputTokens: 16384,
-                  }
-                }),
-              }
-            );
-
-            if (!aiResponse.ok) {
-              if (aiResponse.status === 429) {
-                await new Promise(r => setTimeout(r, 2000));
-                retryCount++;
-                continue;
-              }
-              throw new Error(`Google AI API error: ${aiResponse.status}`);
+          if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            logStep(`Google AI error (status ${aiResponse.status})`, { error: errorText.substring(0, 200) });
+            
+            if (aiResponse.status === 429 || aiResponse.status === 503) {
+              // Rate limit ou serviço indisponível - esperar e tentar novamente
+              await new Promise(r => setTimeout(r, 2000 * (retryCount + 1)));
+              retryCount++;
+              continue;
             }
-
-            aiData = await aiResponse.json();
-            content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            throw new Error(`Google AI API error: ${aiResponse.status}`);
           }
+
+          const aiData = await aiResponse.json();
+          content = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
           
           // Verificar se o content é válido antes de processar
           if (!content || content.startsWith('[INTERNAL') || content.length < 50) {

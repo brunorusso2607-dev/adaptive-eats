@@ -1042,34 +1042,37 @@ async function getDecompositionFromOpenFoodFacts(foodName: string, country: stri
   }
 }
 
-// Função para decompor alimento processado em ingredientes base (com fallback para DB e OpenFoodFacts)
+// Função para decompor alimento processado em ingredientes base (PRIORIZA banco de dados)
 async function decomposeProcessedFoodAsync(name: string, country?: string): Promise<string[]> {
   const normalized = name.toLowerCase()
     .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
   
-  // 1. Tentar match exato no DECOMPOSITION_MAP local primeiro
-  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
-    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    if (normalized.includes(keyNormalized) || keyNormalized.includes(normalized)) {
-      return ingredients;
-    }
-  }
-  
-  // 2. Tentar match parcial por palavras-chave no mapa local
-  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
-    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-    const keyWords = keyNormalized.split(' ');
-    if (keyWords.some(word => word.length > 3 && normalized.includes(word))) {
-      return ingredients;
-    }
-  }
-  
-  // 3. Fallback: Consultar banco de dados food_decomposition_mappings (com suporte multilíngue)
+  // 1. PRIORIDADE: Consultar banco de dados food_decomposition_mappings primeiro
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
   const dbDecomposition = await getDecompositionFromDatabase(name, supabaseUrl, serviceRoleKey, country);
   if (dbDecomposition) {
+    logStep(`Using DB decomposition for "${name}"`, { ingredients: dbDecomposition });
     return dbDecomposition;
+  }
+  
+  // 2. Fallback local: Tentar match exato no DECOMPOSITION_MAP
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(keyNormalized) || keyNormalized.includes(normalized)) {
+      logStep(`Using local fallback for "${name}" → matched "${key}"`);
+      return ingredients;
+    }
+  }
+  
+  // 3. Fallback local: Tentar match parcial por palavras-chave
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const keyWords = keyNormalized.split(' ');
+    if (keyWords.some(word => word.length > 3 && normalized.includes(word))) {
+      logStep(`Using local partial match for "${name}" → "${key}"`);
+      return ingredients;
+    }
   }
   
   // 4. Fallback: Consultar OpenFoodFacts API (cache progressivo)

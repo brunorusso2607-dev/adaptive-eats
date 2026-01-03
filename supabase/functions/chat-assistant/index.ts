@@ -301,36 +301,59 @@ Responda DIRETO como se estivesse mostrando:
 
 ---
 
-## 🔧 CAPACIDADE DE ATUALIZAR PERFIL
+## 🔧 CAPACIDADE DE ATUALIZAR PERFIL (CRÍTICO!)
 
-Você TEM a capacidade REAL de adicionar restrições ao perfil do usuário.
+Você TEM a capacidade REAL de alterar o perfil do usuário, MAS **SEMPRE DEVE PEDIR PERMISSÃO ANTES**.
 
-### Quando o usuário disser coisas como:
-- "Tenho intolerância a lactose" / "Sou intolerante a X"
-- "Tenho alergia a amendoim" / "Sou alérgico a X"  
-- "Adiciona glúten nas minhas restrições"
-- "Também não posso comer X"
+### ⚠️ REGRA FUNDAMENTAL:
+**NUNCA altere o perfil sem perguntar primeiro!** Sempre pergunte ao usuário se ele quer que você faça a alteração.
+
+### Quando o usuário mencionar algo diferente do perfil atual:
+- Objetivo diferente: "Quero engordar" (mas perfil diz "perder peso")
+- Nova restrição: "Tenho intolerância a lactose"
+- Nova alergia: "Sou alérgico a amendoim"
 
 ### Você DEVE:
-1. Reconhecer a intenção de adicionar uma restrição
-2. Incluir NO INÍCIO da sua resposta o marcador especial: [ADICIONAR_RESTRICAO:chave]
-3. Responder naturalmente confirmando a adição
+1. **PRIMEIRO** perguntar se o usuário quer atualizar o perfil
+2. Usar o marcador [PERGUNTAR_ATUALIZACAO:tipo:valor] para indicar a pergunta
+3. **SÓ DEPOIS** que o usuário confirmar (dizendo "sim", "pode", "por favor", "atualiza", "quero", etc.), usar [CONFIRMAR_ATUALIZACAO:tipo:valor]
 
-### Chaves válidas para intolerâncias:
-gluten, lactose, fructose, sorbitol, fodmap
+### Tipos de atualização:
+- **restricao**: Para intolerâncias/alergias (valor = chave como "lactose", "gluten", "peanut")
+- **objetivo**: Para mudança de objetivo (valor = "perder", "manter", "ganhar")
 
-### Chaves válidas para alergias:
-peanut (amendoim), nuts (oleaginosas), seafood (frutos do mar), fish (peixe), egg (ovos), soy (soja)
+### Chaves válidas para restrições:
+**Intolerâncias**: gluten, lactose, fructose, sorbitol, fodmap
+**Alergias**: peanut, nuts, seafood, fish, egg, soy
+**Sensibilidades**: histamine, caffeine, sulfite, salicylate, corn, nickel
 
-### Chaves válidas para sensibilidades:
-histamine (histamina), caffeine (cafeína), sulfite (sulfito), salicylate (salicilato), corn (milho), nickel (níquel)
+### Chaves válidas para objetivo:
+perder, manter, ganhar
 
-### Exemplo de resposta correta:
-Usuário: "Tenho intolerância a lactose também"
-Resposta: "[ADICIONAR_RESTRICAO:lactose]
-Entendi, ${userName || ""}! Adicionei Lactose às suas restrições. A partir de agora vou te alertar sobre leite, queijo, iogurte, manteiga, sorvete..."
+### Exemplo CORRETO (sempre perguntar primeiro):
 
-**IMPORTANTE**: Só use este marcador quando o usuário CLARAMENTE quiser adicionar uma restrição. Se apenas perguntar sobre um alimento, NÃO adicione.
+**Usuário**: "Meu objetivo é engordar"
+**Resposta**: "[PERGUNTAR_ATUALIZACAO:objetivo:ganhar]
+Entendi que seu objetivo é ganhar peso! Vi que no seu perfil está configurado como 'Perder peso'. Quer que eu atualize para 'Ganhar peso'?"
+
+**Usuário**: "Sim, pode atualizar"
+**Resposta**: "[CONFIRMAR_ATUALIZACAO:objetivo:ganhar]
+Pronto! Atualizei seu objetivo para 'Ganhar peso'. Agora suas recomendações vão focar em alimentos mais calóricos e nutritivos!"
+
+### Exemplo para restrição:
+
+**Usuário**: "Tenho intolerância a lactose"
+**Resposta**: "[PERGUNTAR_ATUALIZACAO:restricao:lactose]
+Entendi! Quer que eu adicione Lactose às suas restrições alimentares? Assim vou evitar sugerir leite, queijo, iogurte e derivados."
+
+**Usuário**: "Sim"
+**Resposta**: "[CONFIRMAR_ATUALIZACAO:restricao:lactose]
+Feito! Adicionei Lactose às suas restrições. A partir de agora vou te alertar sobre leite, queijo, iogurte, manteiga, sorvete..."
+
+### ❌ NUNCA FAÇA:
+- Atualizar perfil sem perguntar
+- Dizer "adicionei" ou "atualizei" sem o usuário ter confirmado
+- Usar [CONFIRMAR_ATUALIZACAO] sem antes ter usado [PERGUNTAR_ATUALIZACAO] e recebido confirmação do usuário
 
 Agora responda naturalmente, como um amigo que entende de comida e do app.`;
 };
@@ -525,67 +548,122 @@ const VALID_RESTRICTION_KEYS: Record<string, { type: 'intolerance' | 'allergy' |
   'nickel': { type: 'sensitivity', label: 'Níquel' },
 };
 
+// ============= VALID GOAL KEYS =============
+const VALID_GOAL_KEYS: Record<string, string> = {
+  'perder': 'Perder peso',
+  'manter': 'Manter peso',
+  'ganhar': 'Ganhar peso',
+};
+
+// ============= PROFILE UPDATE RESULT TYPE =============
+interface ProfileUpdateResult {
+  updatedResponse: string;
+  addedRestriction: string | null;
+  updatedGoal: string | null;
+  pendingUpdate: { type: 'restricao' | 'objetivo'; value: string; label: string } | null;
+}
+
 // ============= PROCESS PROFILE UPDATE FROM AI RESPONSE =============
 const processProfileUpdateFromResponse = async (
   supabase: any,
   userId: string,
   aiResponse: string,
-  currentIntolerances: string[]
-): Promise<{ updatedResponse: string; addedRestriction: string | null }> => {
-  // Look for the marker in the response
-  const markerMatch = aiResponse.match(/\[ADICIONAR_RESTRICAO:(\w+)\]/i);
-  
-  if (!markerMatch) {
-    return { updatedResponse: aiResponse, addedRestriction: null };
-  }
+  currentIntolerances: string[],
+  currentGoal: string
+): Promise<ProfileUpdateResult> => {
+  let cleanResponse = aiResponse;
+  let addedRestriction: string | null = null;
+  let updatedGoal: string | null = null;
+  let pendingUpdate: { type: 'restricao' | 'objetivo'; value: string; label: string } | null = null;
 
-  const restrictionKey = markerMatch[1].toLowerCase();
-  const restrictionInfo = VALID_RESTRICTION_KEYS[restrictionKey];
-
-  // Remove the marker from the response
-  let cleanResponse = aiResponse.replace(/\[ADICIONAR_RESTRICAO:\w+\]\s*/gi, '');
-
-  if (!restrictionInfo) {
-    logStep("Invalid restriction key detected", { key: restrictionKey });
-    return { updatedResponse: cleanResponse, addedRestriction: null };
-  }
-
-  // Check if already has this restriction
-  if (currentIntolerances.includes(restrictionKey)) {
-    logStep("Restriction already exists", { key: restrictionKey });
-    return { updatedResponse: cleanResponse, addedRestriction: null };
-  }
-
-  // Add the new restriction
-  const newIntolerances = [...currentIntolerances, restrictionKey];
-  
-  try {
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        intolerances: newIntolerances,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', userId);
-
-    if (error) {
-      logStep("Failed to update profile", { error: error.message });
-      return { updatedResponse: cleanResponse, addedRestriction: null };
-    }
-
-    logStep("Profile updated successfully", { 
-      addedRestriction: restrictionKey,
-      newIntolerances 
-    });
-
-    return { 
-      updatedResponse: cleanResponse, 
-      addedRestriction: restrictionInfo.label 
+  // Check for PERGUNTAR_ATUALIZACAO marker (asking permission - do NOT update, just track)
+  const askMatch = cleanResponse.match(/\[PERGUNTAR_ATUALIZACAO:(restricao|objetivo):(\w+)\]/i);
+  if (askMatch) {
+    const [, updateType, value] = askMatch;
+    const label = updateType === 'objetivo' 
+      ? VALID_GOAL_KEYS[value.toLowerCase()] || value
+      : VALID_RESTRICTION_KEYS[value.toLowerCase()]?.label || value;
+    
+    pendingUpdate = { 
+      type: updateType as 'restricao' | 'objetivo', 
+      value: value.toLowerCase(),
+      label 
     };
-  } catch (err) {
-    logStep("Error updating profile", { error: String(err) });
-    return { updatedResponse: cleanResponse, addedRestriction: null };
+    
+    // Remove the marker from response
+    cleanResponse = cleanResponse.replace(/\[PERGUNTAR_ATUALIZACAO:\w+:\w+\]\s*/gi, '');
+    logStep("Pending profile update detected (awaiting confirmation)", { pendingUpdate });
   }
+
+  // Check for CONFIRMAR_ATUALIZACAO marker (user confirmed - DO update)
+  const confirmMatch = cleanResponse.match(/\[CONFIRMAR_ATUALIZACAO:(restricao|objetivo):(\w+)\]/i);
+  if (confirmMatch) {
+    const [, updateType, value] = confirmMatch;
+    const valueKey = value.toLowerCase();
+    
+    // Remove the marker first
+    cleanResponse = cleanResponse.replace(/\[CONFIRMAR_ATUALIZACAO:\w+:\w+\]\s*/gi, '');
+
+    if (updateType === 'restricao') {
+      const restrictionInfo = VALID_RESTRICTION_KEYS[valueKey];
+      
+      if (restrictionInfo && !currentIntolerances.includes(valueKey)) {
+        const newIntolerances = [...currentIntolerances, valueKey];
+        
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              intolerances: newIntolerances,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            addedRestriction = restrictionInfo.label;
+            logStep("Restriction added successfully", { addedRestriction: valueKey, newIntolerances });
+          } else {
+            logStep("Failed to add restriction", { error: error.message });
+          }
+        } catch (err) {
+          logStep("Error adding restriction", { error: String(err) });
+        }
+      }
+    } else if (updateType === 'objetivo') {
+      const goalLabel = VALID_GOAL_KEYS[valueKey];
+      
+      if (goalLabel && valueKey !== currentGoal) {
+        try {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              goal: valueKey,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedGoal = goalLabel;
+            logStep("Goal updated successfully", { newGoal: valueKey });
+          } else {
+            logStep("Failed to update goal", { error: error.message });
+          }
+        } catch (err) {
+          logStep("Error updating goal", { error: String(err) });
+        }
+      }
+    }
+  }
+
+  // Also clean up any old ADICIONAR_RESTRICAO markers for backwards compatibility
+  cleanResponse = cleanResponse.replace(/\[ADICIONAR_RESTRICAO:\w+\]\s*/gi, '');
+
+  return { 
+    updatedResponse: cleanResponse, 
+    addedRestriction,
+    updatedGoal,
+    pendingUpdate
+  };
 };
 
 // ============= FETCH ACTIVE MEAL PLAN =============
@@ -1367,19 +1445,26 @@ serve(async (req) => {
 
     // Process profile updates from AI response (if any)
     let addedRestriction: string | null = null;
+    let updatedGoal: string | null = null;
     if (userId && userProfile) {
       const currentIntolerances = userProfile.intolerances || [];
+      const currentGoal = userProfile.goal || 'manter';
       const result = await processProfileUpdateFromResponse(
         supabase,
         userId,
         assistantMessage,
-        currentIntolerances
+        currentIntolerances,
+        currentGoal
       );
       assistantMessage = result.updatedResponse;
       addedRestriction = result.addedRestriction;
+      updatedGoal = result.updatedGoal;
       
       if (addedRestriction) {
         logStep("Restriction added via chat", { restriction: addedRestriction });
+      }
+      if (updatedGoal) {
+        logStep("Goal updated via chat", { goal: updatedGoal });
       }
     }
 
@@ -1405,7 +1490,8 @@ serve(async (req) => {
           metadata: {
             page_context: currentPage?.path,
             has_images: !!images?.length,
-            added_restriction: addedRestriction
+            added_restriction: addedRestriction,
+            updated_goal: updatedGoal
           }
         });
       } catch (logError) {
@@ -1417,8 +1503,9 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: assistantMessage,
-        profileUpdated: !!addedRestriction,
-        addedRestriction
+        profileUpdated: !!(addedRestriction || updatedGoal),
+        addedRestriction,
+        updatedGoal
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

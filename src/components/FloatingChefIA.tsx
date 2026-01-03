@@ -463,6 +463,13 @@ export default function FloatingChefIA() {
           });
         }
 
+        // Show toast if goal was updated
+        if (data.profileUpdated && data.updatedGoal) {
+          toast.success(`Objetivo atualizado para: ${data.updatedGoal}`, {
+            description: "Suas recomendações agora focam nesse objetivo."
+          });
+        }
+
         // Show notification if chat is closed
         if (!isOpen) {
           setHasNewMessage(true);

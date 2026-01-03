@@ -347,6 +347,48 @@ function estimateMacrosFromAI(item: FoodItem): Omit<CalculatedFoodItem, 'name' |
   };
 }
 
+// Palavras genéricas que NÃO devem ser usadas para match parcial
+// Evita falsos positivos como "chá com erva-doce" → "Batata Doce"
+const GENERIC_WORDS_TO_IGNORE = [
+  'doce', 'salgado', 'salgada', 'cozido', 'cozida', 'frito', 'frita',
+  'assado', 'assada', 'grelhado', 'grelhada', 'natural', 'integral',
+  'com', 'sem', 'light', 'diet', 'zero', 'tradicional', 'caseiro', 'caseira',
+  'grande', 'pequeno', 'pequena', 'medio', 'media', 'especial',
+  'simples', 'cremoso', 'cremosa', 'suave', 'forte', 'leve', 'pesado',
+  'fresco', 'fresca', 'maduro', 'madura', 'verde', 'preto', 'branco', 'branca',
+  'amarelo', 'amarela', 'vermelho', 'vermelha', 'roxo', 'roxa',
+];
+
+/**
+ * Verifica se a categoria do termo de busca é compatível com o alimento encontrado
+ * Evita matches como "chá de camomila" → "Batata Doce"
+ */
+function isCategoryCompatible(searchTerm: string, foodName: string): boolean {
+  const searchCategory = detectFoodCategory(searchTerm);
+  const foodCategory = detectFoodCategory(foodName);
+  
+  // Se ambas categorias são identificadas e são diferentes, é incompatível
+  // Exceto para 'default' que é categoria genérica
+  if (searchCategory !== 'default' && foodCategory !== 'default') {
+    // Categorias de bebidas devem só matchear com bebidas
+    const beverageCategories = ['cha', 'cafe', 'agua', 'suco', 'leite', 'leite_vegetal', 'refrigerante', 'refrigerante_zero'];
+    const searchIsBeverage = beverageCategories.includes(searchCategory);
+    const foodIsBeverage = beverageCategories.includes(foodCategory);
+    
+    // Se busca é bebida, resultado deve ser bebida
+    if (searchIsBeverage && !foodIsBeverage) {
+      return false;
+    }
+    
+    // Se busca não é bebida mas resultado é bebida diferente
+    if (!searchIsBeverage && foodIsBeverage) {
+      return false;
+    }
+  }
+  
+  return true;
+}
+
 /**
  * OTIMIZAÇÃO: Busca em batch para reduzir queries ao banco
  * Carrega todos os alimentos de uma vez e faz matching local
@@ -394,26 +436,54 @@ async function batchFindFoodsInDatabase(
     // Tentar match exato primeiro
     let matched = allFoods.find((f: any) => f.name_normalized === normalizedOriginal);
     
-    // Tentar match parcial
+    // Tentar match parcial - nome completo contido
     if (!matched) {
-      // Priorizar fontes do país
+      // Priorizar fontes do país E verificar compatibilidade de categoria
       matched = allFoods.find((f: any) => 
         prioritySources.includes(f.source) && 
-        (f.name_normalized.includes(normalizedOriginal) || normalizedOriginal.includes(f.name_normalized))
+        (f.name_normalized.includes(normalizedOriginal) || normalizedOriginal.includes(f.name_normalized)) &&
+        isCategoryCompatible(originalTerm, f.name)
       );
     }
     
-    // Qualquer match parcial
+    // Match parcial com qualquer fonte (mantendo validação de categoria)
     if (!matched) {
-      const words = normalizedOriginal.split(/\s+/).filter(w => w.length > 2);
       matched = allFoods.find((f: any) => 
-        words.some(word => f.name_normalized.includes(word))
+        (f.name_normalized.includes(normalizedOriginal) || normalizedOriginal.includes(f.name_normalized)) &&
+        isCategoryCompatible(originalTerm, f.name)
       );
+    }
+    
+    // Match por palavras-chave (MAIS RESTRITIVO - ignora palavras genéricas)
+    if (!matched) {
+      const words = normalizedOriginal
+        .split(/\s+/)
+        .filter(w => w.length > 2 && !GENERIC_WORDS_TO_IGNORE.includes(w));
+      
+      // Requer pelo menos 2 palavras significativas no match ou palavra principal > 4 caracteres
+      if (words.length > 0) {
+        matched = allFoods.find((f: any) => {
+          // Verificar compatibilidade de categoria ANTES de fazer match
+          if (!isCategoryCompatible(originalTerm, f.name)) {
+            return false;
+          }
+          
+          // Match por múltiplas palavras (mais seguro)
+          if (words.length >= 2) {
+            return words.filter(word => f.name_normalized.includes(word)).length >= 2;
+          }
+          
+          // Match por palavra única apenas se for específica (>4 caracteres) e não genérica
+          const mainWord = words[0];
+          return mainWord.length > 4 && f.name_normalized.includes(mainWord);
+        });
+      }
     }
     
     if (matched) {
       const source = prioritySources.includes(matched.source) ? 'database' : 'database_global';
       results.set(originalTerm, { food: matched, source });
+      logStep('Batch match found', { search: originalTerm, matched: matched.name, source });
     }
   }
   

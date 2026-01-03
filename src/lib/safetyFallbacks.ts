@@ -14,29 +14,61 @@
 // INTOLERANCE LABELS
 // ============================================================================
 
+/**
+ * Labels de fallback para intolerâncias.
+ * 
+ * SINCRONIZADO com onboarding_options (jan/2026):
+ * - Intolerâncias: gluten, lactose, fructose, sorbitol, fodmap
+ * - Alergias: egg, nuts, seafood, soy, peanut, fish
+ * - Sensibilidades: corn, histamine, caffeine, sulfite, salicylate, nickel
+ * 
+ * Também inclui mapeamentos legados para compatibilidade.
+ */
 export const FALLBACK_INTOLERANCE_LABELS: Record<string, string> = {
-  lactose: "Lactose",
+  // === CHAVES CANÔNICAS DO ONBOARDING (inglês) ===
+  // Intolerâncias
   gluten: "Glúten",
+  lactose: "Lactose",
+  fructose: "Frutose",
+  sorbitol: "Sorbitol",
+  fodmap: "FODMAP",
+  // Alergias
+  egg: "Ovos",
+  nuts: "Oleaginosas",
+  tree_nuts: "Oleaginosas", // alias do banco
+  seafood: "Frutos do Mar",
+  soy: "Soja",
+  peanut: "Amendoim",
+  fish: "Peixe",
+  // Sensibilidades
+  corn: "Milho",
+  histamine: "Histamina",
+  caffeine: "Cafeína",
+  sulfite: "Sulfito",
+  salicylate: "Salicilato",
+  nickel: "Níquel",
+  
+  // === ALIASES LEGADOS (português) para compatibilidade ===
   amendoim: "Amendoim",
-  castanhas: "Castanhas",
+  castanhas: "Oleaginosas",
   frutos_do_mar: "Frutos do Mar",
   frutos_mar: "Frutos do Mar",
   peixe: "Peixe",
   ovo: "Ovo",
   ovos: "Ovos",
+  eggs: "Ovos",
   soja: "Soja",
   acucar: "Açúcar",
+  sugar: "Açúcar",
   cafeina: "Cafeína",
   histamina: "Histamina",
-  fodmap: "FODMAP",
   sulfitos: "Sulfitos",
+  sulfito: "Sulfito",
   salicilatos: "Salicilatos",
+  salicilato: "Salicilato",
   niquel: "Níquel",
-  sesamo: "Sésamo",
-  tremoco: "Tremoço",
-  mostarda: "Mostarda",
-  aipo: "Aipo",
-  moluscos: "Moluscos",
+  frutose: "Frutose",
+  milho: "Milho",
 };
 
 // ============================================================================

@@ -122,28 +122,44 @@ let cacheTimestamp: number = 0;
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes - reduced for faster updates
 
 // ============= LABELS AMIGÁVEIS =============
+// SINCRONIZADO com onboarding_options (jan/2026)
+// 17 restrições ativas: 5 intolerâncias + 6 alergias + 6 sensibilidades
 
 export const INTOLERANCE_LABELS: Record<string, string> = {
-  lactose: "Lactose",
+  // === CHAVES CANÔNICAS DO ONBOARDING ===
+  // Intolerâncias (5)
   gluten: "Glúten",
-  peanut: "Amendoim",
-  tree_nuts: "Oleaginosas/Castanhas",
-  seafood: "Frutos do Mar",
-  shellfish: "Mariscos", // Added for expanded mapping
-  fish: "Peixe",
-  egg: "Ovos",
-  soy: "Soja",
-  sugar: "Açúcar",
-  corn: "Milho",
-  caffeine: "Cafeína",
-  sorbitol: "Sorbitol",
-  sulfite: "Sulfito",
+  lactose: "Lactose",
   fructose: "Frutose",
-  histamine: "Histamina",
-  nickel: "Níquel",
-  salicylate: "Salicilato",
+  sorbitol: "Sorbitol",
   fodmap: "FODMAP",
-  none: "Nenhuma"
+  // Alergias (6)
+  egg: "Ovos",
+  nuts: "Oleaginosas",
+  tree_nuts: "Oleaginosas", // alias do banco para 'nuts'
+  seafood: "Frutos do Mar",
+  soy: "Soja",
+  peanut: "Amendoim",
+  fish: "Peixe",
+  // Sensibilidades (6)
+  corn: "Milho",
+  histamine: "Histamina",
+  caffeine: "Cafeína",
+  sulfite: "Sulfito",
+  salicylate: "Salicilato",
+  nickel: "Níquel",
+  // Especial
+  none: "Nenhuma",
+  
+  // === ALIASES LEGADOS para compatibilidade ===
+  sugar: "Açúcar",
+  milk: "Leite", // intolerance_mappings tem 'milk' separado de 'lactose'
+  wheat: "Trigo", // intolerance_mappings tem 'wheat' separado de 'gluten'
+  alcohol: "Álcool",
+  sesame: "Sésamo",
+  mustard: "Mostarda",
+  celery: "Aipo",
+  lupin: "Tremoço",
 };
 
 export const DIETARY_LABELS: Record<string, string> = {

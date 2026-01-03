@@ -2,75 +2,40 @@ import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChefHat, Sparkles, Clock, Heart, Camera, Check, ArrowRight, X, Crown, Star, Quote, Loader2 } from "lucide-react";
+import { ChefHat, Check, X, Crown, Star, Quote, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+
+// Landing page components
+import { PainPointHero } from "@/components/landing/PainPointHero";
+import { TechProofSection } from "@/components/landing/TechProofSection";
+import { FeatureShowcase } from "@/components/landing/FeatureShowcase";
+import { FinalCTA } from "@/components/landing/FinalCTA";
 
 // Testimonial images
 import testimonial1 from "@/assets/testimonial-1.jpg";
 import testimonial2 from "@/assets/testimonial-2.jpg";
 import testimonial3 from "@/assets/testimonial-3.jpg";
 
-const features = [
-  { 
-    icon: Camera, 
-    title: "Foto dos Ingredientes", 
-    description: "Tire uma foto da sua geladeira e nossa IA identifica tudo automaticamente." 
-  },
-  { 
-    icon: Sparkles, 
-    title: "Receitas com IA", 
-    description: "Receitas personalizadas criadas especialmente para você em segundos." 
-  },
-  { 
-    icon: Clock, 
-    title: "Rápido e Fácil", 
-    description: "Passo a passo detalhado com tempo estimado para cada receita." 
-  },
-  { 
-    icon: Heart, 
-    title: "Suas Favoritas", 
-    description: "Salve receitas favoritas e acesse seu histórico a qualquer momento." 
-  },
-];
-
-const steps = [
-  {
-    number: "1",
-    title: "Diga o que você tem",
-    description: "Fotografe seus ingredientes ou digite manualmente o que tem disponível na cozinha."
-  },
-  {
-    number: "2", 
-    title: "Configure suas preferências",
-    description: "Informe restrições alimentares, tempo disponível e tipo de refeição desejada."
-  },
-  {
-    number: "3",
-    title: "Receba receitas perfeitas",
-    description: "Nossa IA cria receitas personalizadas usando exatamente o que você tem em casa."
-  },
-];
-
 const testimonials = [
   {
     name: "Carolina M.",
-    role: "Mãe de 2 filhos",
+    role: "Intolerante à Lactose",
     image: testimonial1,
-    quote: "O ReceitAI mudou completamente minha rotina! Agora consigo fazer jantares saudáveis usando o que tenho em casa, sem precisar ir ao mercado toda hora."
+    quote: "Pela primeira vez em anos, comi em um restaurante sem medo. O scanner detectou leite em pó no molho que o garçom jurou ser sem lactose."
   },
   {
     name: "Rafael S.",
-    role: "Personal Trainer",
+    role: "Celíaco",
     image: testimonial2,
-    quote: "Adoro que posso configurar minhas metas nutricionais e o app sugere receitas que se encaixam perfeitamente na minha dieta. Os macros detalhados são incríveis!"
+    quote: "Escaneei um rótulo que dizia 'sem glúten' e o app alertou sobre contaminação cruzada por malte. Isso salvou meu dia."
   },
   {
     name: "Fernanda L.",
-    role: "Empreendedora",
+    role: "FODMAP",
     image: testimonial3,
-    quote: "A rotina semanal automática é genial! Economizo horas de planejamento e ainda reduzi muito o desperdício de alimentos."
+    quote: "Finalmente entendi que o mel no meu açaí era o vilão das minhas crises. O app detectou em segundos o que médicos demoraram meses."
   },
 ];
 
@@ -79,32 +44,31 @@ const plans = {
     name: "Essencial",
     price: "19,90",
     priceId: "price_1Sg9N6Ch4FnxqOQFbN0RhBzy",
-    tagline: "Para quem quer decidir o que cozinhar",
+    tagline: "Segurança básica no dia a dia",
     features: [
-      { text: "5 receitas por dia", included: true },
-      { text: "Geração de receitas com IA", included: true },
-      { text: "Calorias por receita", included: true },
-      { text: "Respeito às intolerâncias", included: true },
-      { text: "Aceitar / gerar nova", included: true },
-      { text: "Rotina semanal automática", included: false },
-      { text: "Estimativa de emagrecimento", included: false },
+      { text: "5 análises de fotos por dia", included: true },
+      { text: "Scanner de rótulos ilimitado", included: true },
+      { text: "18 intolerâncias cobertas", included: true },
+      { text: "Veto Layer ativo", included: true },
+      { text: "Planos semanais automáticos", included: false },
+      { text: "Histórico de sintomas", included: false },
     ],
   },
   premium: {
     name: "Premium",
     price: "29,90",
     priceId: "price_1Sg9ODCh4FnxqOQFkKsIJZOX",
-    tagline: "Para quem quer resultado e organização",
-    badge: "Mais completo",
+    tagline: "Proteção completa + planejamento",
+    badge: "Mais popular",
     features: [
-      { text: "Receitas ilimitadas", included: true, highlight: true },
-      { text: "Rotina semanal automática", included: true, highlight: true },
-      { text: "Semanas não repetitivas", included: true },
-      { text: "Estimativa de emagrecimento", included: true, highlight: true },
-      { text: "Macros detalhados", included: true },
-      { text: "Ajuste inteligente de porções", included: true },
-      { text: "Favoritas + histórico completo", included: true },
-      { text: "Modo Kids", included: true, highlight: true },
+      { text: "Análises ilimitadas", included: true, highlight: true },
+      { text: "Planos semanais personalizados", included: true, highlight: true },
+      { text: "Scanner de geladeira", included: true },
+      { text: "Correlação sintoma-alimento", included: true, highlight: true },
+      { text: "Chat com IA nutricional", included: true },
+      { text: "Macros e metas de peso", included: true },
+      { text: "Modo Kids", included: true },
+      { text: "Suporte prioritário", included: true },
     ],
   },
 };
@@ -145,7 +109,6 @@ export default function Index() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      // Redirect to checkout
       window.location.href = data.url;
     } catch (error) {
       const message = error instanceof Error ? error.message : "Erro ao iniciar checkout";
@@ -153,6 +116,10 @@ export default function Index() {
     } finally {
       setLoadingPlan(null);
     }
+  };
+
+  const scrollToPricing = () => {
+    document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
@@ -168,7 +135,7 @@ export default function Index() {
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Funcionalidades</a>
-            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Como Funciona</a>
+            <a href="#tech" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Tecnologia</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Preços</a>
           </nav>
           <div className="flex items-center gap-3">
@@ -186,100 +153,31 @@ export default function Index() {
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="pt-32 pb-24 px-6 gradient-hero">
-        <div className="container mx-auto max-w-4xl text-center">
-          <div className="space-y-8">
-            <Badge variant="secondary" className="px-4 py-2 rounded-full text-sm font-medium">
-              ✨ 7 dias grátis em todos os planos
-            </Badge>
-            
-            <h1 className="font-display text-5xl md:text-7xl font-bold text-foreground leading-[1.1] tracking-tight">
-              Cozinhe o que Você <span className="text-gradient-primary">Deseja</span>
-            </h1>
-            
-            <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
-              Descubra receitas personalizadas baseadas nos ingredientes que você tem em casa. 
-              ReceitAI torna cozinhar intuitivo, saudável e delicioso.
-            </p>
-            
-            <div className="pt-4">
-              <Button 
-                size="lg" 
-                className="gradient-primary border-0 rounded-full px-10 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-                onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-              >
-                Começar Gratuitamente
-                <ArrowRight className="ml-2 w-5 h-5" />
-              </Button>
-            </div>
-          </div>
-        </div>
+      {/* Hero Section - Pain Point Focus */}
+      <PainPointHero onCtaClick={scrollToPricing} />
+
+      {/* Feature Showcase */}
+      <section id="features">
+        <FeatureShowcase />
       </section>
 
-      {/* Features Section */}
-      <section id="features" className="py-24 px-6">
-        <div className="container mx-auto max-w-6xl">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Por que escolher o ReceitAI?
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
-              Nossa plataforma inteligente combina seus ingredientes e preferências para criar a experiência culinária perfeita.
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {features.map((feature) => (
-              <Card key={feature.title} className="glass-card card-hover border-0">
-                <CardContent className="p-8 text-center space-y-4">
-                  <div className="w-14 h-14 mx-auto gradient-soft rounded-2xl flex items-center justify-center">
-                    <feature.icon className="w-7 h-7 text-primary" />
-                  </div>
-                  <h3 className="font-display text-xl font-semibold text-foreground">{feature.title}</h3>
-                  <p className="text-muted-foreground text-sm leading-relaxed">{feature.description}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* How It Works Section */}
-      <section id="how-it-works" className="py-24 px-6 gradient-soft">
-        <div className="container mx-auto max-w-5xl">
-          <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Como Funciona
-            </h2>
-            <p className="text-muted-foreground text-lg">
-              Receitas personalizadas em 3 passos simples
-            </p>
-          </div>
-          
-          <div className="grid md:grid-cols-3 gap-8">
-            {steps.map((step, index) => (
-              <div key={step.number} className="text-center space-y-4">
-                <div className="w-16 h-16 mx-auto gradient-primary rounded-full flex items-center justify-center text-2xl font-bold text-primary-foreground shadow-glow">
-                  {step.number}
-                </div>
-                <h3 className="font-display text-xl font-semibold text-foreground">{step.title}</h3>
-                <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
+      {/* Tech Proof Section */}
+      <section id="tech">
+        <TechProofSection />
       </section>
 
       {/* Testimonials Section */}
       <section className="py-24 px-6">
         <div className="container mx-auto max-w-6xl">
           <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              O que nossos usuários dizem
+            <span className="text-primary font-medium text-sm uppercase tracking-wider">
+              Histórias Reais
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mt-4 mb-4">
+              Quem Vive com Intolerância Entende
             </h2>
             <p className="text-muted-foreground text-lg">
-              Milhares de pessoas já transformaram sua forma de cozinhar
+              Veja como o ReceitAI mudou a vida de quem sofria com as mesmas dores que você
             </p>
           </div>
           
@@ -305,7 +203,7 @@ export default function Index() {
                     />
                     <div>
                       <p className="font-semibold text-foreground">{testimonial.name}</p>
-                      <p className="text-sm text-muted-foreground">{testimonial.role}</p>
+                      <p className="text-sm text-primary">{testimonial.role}</p>
                     </div>
                   </div>
                 </CardContent>
@@ -319,8 +217,11 @@ export default function Index() {
       <section id="pricing" className="py-24 px-6 gradient-soft">
         <div className="container mx-auto max-w-5xl">
           <div className="text-center mb-16">
-            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-4">
-              Escolha seu plano
+            <span className="text-primary font-medium text-sm uppercase tracking-wider">
+              Planos
+            </span>
+            <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mt-4 mb-4">
+              Invista na Sua Segurança Alimentar
             </h2>
             <p className="text-muted-foreground text-lg">
               7 dias grátis em todos os planos. Cancele quando quiser.
@@ -419,10 +320,10 @@ export default function Index() {
                 <ul className="space-y-3">
                   {plans.premium.features.map((feature) => (
                     <li key={feature.text} className="flex items-center gap-3">
-                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${feature.highlight ? 'gradient-primary' : 'bg-primary/10'}`}>
-                        <Check className={`w-3 h-3 ${feature.highlight ? 'text-primary-foreground' : 'text-primary'}`} />
+                      <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 ${feature.highlight ? "bg-primary" : "bg-primary/10"}`}>
+                        <Check className={`w-3 h-3 ${feature.highlight ? "text-primary-foreground" : "text-primary"}`} />
                       </div>
-                      <span className={`text-sm ${feature.highlight ? "font-medium text-foreground" : "text-foreground"}`}>
+                      <span className={`text-sm ${feature.highlight ? "text-foreground font-medium" : "text-foreground"}`}>
                         {feature.text}
                       </span>
                     </li>
@@ -442,10 +343,7 @@ export default function Index() {
                         Carregando...
                       </>
                     ) : (
-                      <>
-                        Começar 7 dias grátis
-                        <ArrowRight className="ml-2 w-4 h-4" />
-                      </>
+                      "Começar 7 dias grátis"
                     )}
                   </Button>
                 </div>
@@ -455,38 +353,36 @@ export default function Index() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 px-6">
-        <div className="container mx-auto max-w-3xl text-center">
-          <h2 className="font-display text-3xl md:text-4xl font-bold text-foreground mb-6">
-            Pronto para transformar sua cozinha?
-          </h2>
-          <p className="text-muted-foreground text-lg mb-8">
-            Junte-se a milhares de pessoas que já descobriram a alegria de cozinhar com inteligência artificial
-          </p>
-          <Button 
-            size="lg" 
-            className="gradient-primary border-0 rounded-full px-12 py-6 text-lg font-medium shadow-glow hover:shadow-lg transition-all duration-300 hover:scale-[1.02]"
-            onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            Começar Gratuitamente
-            <ArrowRight className="ml-2 w-5 h-5" />
-          </Button>
-        </div>
-      </section>
+      {/* Final CTA */}
+      <FinalCTA onCtaClick={scrollToPricing} />
 
       {/* Footer */}
-      <footer className="py-12 px-6 border-t border-border/50">
-        <div className="container mx-auto text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
-              <ChefHat className="w-4 h-4 text-primary-foreground" />
+      <footer className="py-12 px-6 border-t border-border">
+        <div className="container mx-auto max-w-6xl">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
+                <ChefHat className="w-4 h-4 text-primary-foreground" />
+              </div>
+              <span className="font-display text-lg font-semibold text-foreground">ReceitAI</span>
             </div>
-            <span className="font-display text-lg font-semibold text-foreground">ReceitAI</span>
+            
+            <nav className="flex items-center gap-6 text-sm text-muted-foreground">
+              <Link to="/privacy-policy" className="hover:text-foreground transition-colors">
+                Privacidade
+              </Link>
+              <Link to="/terms-of-use" className="hover:text-foreground transition-colors">
+                Termos de Uso
+              </Link>
+              <a href="mailto:contato@receitai.com" className="hover:text-foreground transition-colors">
+                Contato
+              </a>
+            </nav>
+            
+            <p className="text-sm text-muted-foreground">
+              © 2025 ReceitAI. Todos os direitos reservados.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground">
-            © 2024 ReceitAI. Todos os direitos reservados.
-          </p>
         </div>
       </footer>
     </div>

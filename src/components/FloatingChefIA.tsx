@@ -160,7 +160,7 @@ export default function FloatingChefIA() {
   const [hasNewMessage, setHasNewMessage] = useState(false);
   
   // Drag state
-  const [position, setPosition] = useState({ x: 16, y: 80 }); // Distance from bottom-right, above mobile nav
+  const [position, setPosition] = useState({ x: 16, y: 110 }); // Distance from bottom-right, above mobile nav
   const [isDragging, setIsDragging] = useState(false);
   const dragStartRef = useRef({ x: 0, y: 0, posX: 0, posY: 0 });
   const chatRef = useRef<HTMLDivElement>(null);

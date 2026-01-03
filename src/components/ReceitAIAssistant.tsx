@@ -380,6 +380,13 @@ export default function ReceitAIAssistant() {
           });
         }
 
+        // Show toast if goal was updated
+        if (data.profileUpdated && data.updatedGoal) {
+          toast.success(`Objetivo atualizado para: ${data.updatedGoal}`, {
+            description: "Suas recomendações agora focam nesse objetivo."
+          });
+        }
+
         // Save assistant message
         if (activeConvId && userId) {
           await saveMessage(assistantMessage, activeConvId);

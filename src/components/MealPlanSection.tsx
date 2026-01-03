@@ -395,8 +395,42 @@ export default function MealPlanSection({ onBack, onPlanDeleted }: MealPlanSecti
     return (
       <MealPlanGenerator
         onClose={() => setView("list")}
-        onPlanGenerated={() => {
-          console.log("[MealPlanSection] onPlanGenerated called - fetching plans and setting view to list");
+        onPlanGenerated={async () => {
+          console.log("[MealPlanSection] onPlanGenerated called - fetching plans and navigating to calendar");
+          // Fetch plans and auto-select the newest one to navigate directly to calendar
+          const { data: { session } } = await supabase.auth.getSession();
+          if (session) {
+            const { data: latestPlan } = await supabase
+              .from("meal_plans")
+              .select("id, name, start_date, end_date, is_active, status, completion_percentage, unlocks_at, source_plan_id")
+              .eq("user_id", session.user.id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .single();
+            
+            if (latestPlan) {
+              // Fetch plan items
+              const { data: items } = await supabase
+                .from("meal_plan_items")
+                .select("*")
+                .eq("meal_plan_id", latestPlan.id);
+              
+              const fullPlan: MealPlan = {
+                ...latestPlan,
+                items: (items || []).map(item => ({
+                  ...item,
+                  recipe_ingredients: item.recipe_ingredients as unknown as Ingredient[],
+                  recipe_instructions: item.recipe_instructions as unknown as string[]
+                })) as MealPlanItem[]
+              };
+              
+              setSelectedPlan(fullPlan);
+              setView("calendar");
+              fetchMealPlans(); // Update the list in background
+              return;
+            }
+          }
+          // Fallback to list if something fails
           fetchMealPlans();
           setView("list");
         }}

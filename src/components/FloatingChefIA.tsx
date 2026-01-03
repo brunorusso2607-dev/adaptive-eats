@@ -22,6 +22,49 @@ import {
 
 // Mapeamento de rotas para contexto amigável
 const PAGE_CONTEXT_MAP: Record<string, { name: string; description: string; quickActions: string[] }> = {
+  // ============ PÁGINAS DO USUÁRIO ============
+  "/dashboard": {
+    name: "Página Inicial",
+    description: "Dashboard principal com próxima refeição, progresso diário e acompanhamento de metas",
+    quickActions: ["O que devo comer agora?", "Como está meu progresso?", "Dicas para hoje"]
+  },
+  "/settings": {
+    name: "Configurações",
+    description: "Configurações do app, notificações e preferências",
+    quickActions: ["Como mudar minhas notificações?", "Como funciona o lembrete de água?"]
+  },
+  "/perfil": {
+    name: "Meu Perfil",
+    description: "Dados pessoais, objetivo, restrições alimentares e preferências",
+    quickActions: ["Como atualizar meu peso?", "Posso mudar minhas intolerâncias?", "Como funciona a estratégia nutricional?"]
+  },
+  "/historico": {
+    name: "Histórico de Refeições",
+    description: "Todas as refeições consumidas, sintomas registrados e progresso",
+    quickActions: ["Mostre meu histórico de hoje", "Quais sintomas registrei?", "Exportar meus dados"]
+  },
+  "/plano": {
+    name: "Plano Alimentar",
+    description: "Calendário do plano de refeições semanal/mensal",
+    quickActions: ["Como gerar um novo plano?", "Posso trocar uma refeição?", "O que é o Surpreenda-me?"]
+  },
+  "/receitas": {
+    name: "Receitas",
+    description: "Biblioteca de receitas salvas e favoritas",
+    quickActions: ["Sugira uma receita rápida", "Receitas para meu perfil", "Como adicionar favoritos?"]
+  },
+  "/agua": {
+    name: "Controle de Água",
+    description: "Acompanhamento de consumo de água diário",
+    quickActions: ["Quanto devo beber por dia?", "Como configurar lembretes?"]
+  },
+  "/scanner": {
+    name: "Scanner de Alimentos",
+    description: "Análise de fotos de alimentos, geladeira e rótulos",
+    quickActions: ["Como analisar um alimento?", "O que o scanner detecta?", "Como funciona a análise de rótulo?"]
+  },
+  
+  // ============ PÁGINAS DO ADMIN ============
   "/admin": {
     name: "Dashboard Admin",
     description: "Visão geral do painel administrativo",
@@ -130,7 +173,11 @@ export default function FloatingChefIA() {
 
   // Detecta a página atual
   const currentPath = location.pathname;
-  const pageContext = PAGE_CONTEXT_MAP[currentPath] || PAGE_CONTEXT_MAP["/admin"];
+  const pageContext = PAGE_CONTEXT_MAP[currentPath] || {
+    name: "Página Atual",
+    description: "Estou aqui para ajudar com qualquer dúvida",
+    quickActions: ["Como posso ajudar?", "Tire uma dúvida"]
+  };
 
   // Callback para quando mensagens são carregadas do histórico
   const handleMessagesLoaded = useCallback((loadedMessages: Message[]) => {

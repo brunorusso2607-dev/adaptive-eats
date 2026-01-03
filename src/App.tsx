@@ -9,6 +9,7 @@ import { useAuthSession } from "@/hooks/useAuthSession";
 import { useNetworkStatus } from "@/hooks/useNetworkStatus";
 import { NotificationHandler } from "@/components/NotificationHandler";
 import { ErrorBoundary } from "@/components/ErrorBoundary";
+import AuthenticatedChefIA from "@/components/AuthenticatedChefIA";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -93,6 +94,10 @@ function AppRoutes() {
       <NotificationHandler />
       <Toaster />
       <Sonner />
+      
+      {/* Chef IA - aparece apenas em páginas autenticadas */}
+      <AuthenticatedChefIA />
+      
       <Routes>
         <Route path="/" element={<Index />} />
         <Route path="/landingpage" element={<Index />} />

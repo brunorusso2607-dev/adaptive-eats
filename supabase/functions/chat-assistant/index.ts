@@ -866,6 +866,7 @@ serve(async (req) => {
         if (profile) {
           userProfile = profile;
           logStep("Profile loaded", { 
+            firstName: profile.first_name,
             intolerances: profile.intolerances?.length || 0,
             dietary: profile.dietary_preference,
             country: profile.country

@@ -501,6 +501,93 @@ Explique como tirar fotos melhores para análise se tiverem dificuldade.`
   return "";
 };
 
+// ============= VALID RESTRICTION KEYS =============
+const VALID_RESTRICTION_KEYS: Record<string, { type: 'intolerance' | 'allergy' | 'sensitivity', label: string }> = {
+  // Intolerances
+  'gluten': { type: 'intolerance', label: 'Glúten' },
+  'lactose': { type: 'intolerance', label: 'Lactose' },
+  'fructose': { type: 'intolerance', label: 'Frutose' },
+  'sorbitol': { type: 'intolerance', label: 'Sorbitol' },
+  'fodmap': { type: 'intolerance', label: 'FODMAP' },
+  // Allergies
+  'peanut': { type: 'allergy', label: 'Amendoim' },
+  'nuts': { type: 'allergy', label: 'Oleaginosas' },
+  'seafood': { type: 'allergy', label: 'Frutos do Mar' },
+  'fish': { type: 'allergy', label: 'Peixe' },
+  'egg': { type: 'allergy', label: 'Ovos' },
+  'soy': { type: 'allergy', label: 'Soja' },
+  // Sensitivities
+  'histamine': { type: 'sensitivity', label: 'Histamina' },
+  'caffeine': { type: 'sensitivity', label: 'Cafeína' },
+  'sulfite': { type: 'sensitivity', label: 'Sulfito' },
+  'salicylate': { type: 'sensitivity', label: 'Salicilato' },
+  'corn': { type: 'sensitivity', label: 'Milho' },
+  'nickel': { type: 'sensitivity', label: 'Níquel' },
+};
+
+// ============= PROCESS PROFILE UPDATE FROM AI RESPONSE =============
+const processProfileUpdateFromResponse = async (
+  supabase: any,
+  userId: string,
+  aiResponse: string,
+  currentIntolerances: string[]
+): Promise<{ updatedResponse: string; addedRestriction: string | null }> => {
+  // Look for the marker in the response
+  const markerMatch = aiResponse.match(/\[ADICIONAR_RESTRICAO:(\w+)\]/i);
+  
+  if (!markerMatch) {
+    return { updatedResponse: aiResponse, addedRestriction: null };
+  }
+
+  const restrictionKey = markerMatch[1].toLowerCase();
+  const restrictionInfo = VALID_RESTRICTION_KEYS[restrictionKey];
+
+  // Remove the marker from the response
+  let cleanResponse = aiResponse.replace(/\[ADICIONAR_RESTRICAO:\w+\]\s*/gi, '');
+
+  if (!restrictionInfo) {
+    logStep("Invalid restriction key detected", { key: restrictionKey });
+    return { updatedResponse: cleanResponse, addedRestriction: null };
+  }
+
+  // Check if already has this restriction
+  if (currentIntolerances.includes(restrictionKey)) {
+    logStep("Restriction already exists", { key: restrictionKey });
+    return { updatedResponse: cleanResponse, addedRestriction: null };
+  }
+
+  // Add the new restriction
+  const newIntolerances = [...currentIntolerances, restrictionKey];
+  
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        intolerances: newIntolerances,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) {
+      logStep("Failed to update profile", { error: error.message });
+      return { updatedResponse: cleanResponse, addedRestriction: null };
+    }
+
+    logStep("Profile updated successfully", { 
+      addedRestriction: restrictionKey,
+      newIntolerances 
+    });
+
+    return { 
+      updatedResponse: cleanResponse, 
+      addedRestriction: restrictionInfo.label 
+    };
+  } catch (err) {
+    logStep("Error updating profile", { error: String(err) });
+    return { updatedResponse: cleanResponse, addedRestriction: null };
+  }
+};
+
 // ============= FETCH ACTIVE MEAL PLAN =============
 const fetchActiveMealPlanContext = async (
   supabase: any,

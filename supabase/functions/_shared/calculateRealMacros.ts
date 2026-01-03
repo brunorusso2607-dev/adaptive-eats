@@ -125,6 +125,22 @@ function extractBaseName(ingredientName: string): string[] {
   return [...new Set(variations)].filter(v => v.length >= 2);
 }
 
+// ============================================
+// PROTEÇÃO ANTI-FALSO MATCH (CATEGORIA)
+// ============================================
+const BEVERAGE_TERMS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante'];
+const SOLID_FOOD_TERMS = ['batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao', 'bolo', 'queijo', 'macarrao'];
+
+function isBeverageTerm(text: string): boolean {
+  const normalized = normalizeText(text);
+  return BEVERAGE_TERMS.some(b => normalized.includes(b));
+}
+
+function isSolidFood(text: string): boolean {
+  const normalized = normalizeText(text);
+  return SOLID_FOOD_TERMS.some(s => normalized.includes(s));
+}
+
 /**
  * Busca o alimento na tabela foods com priorização por país
  */
@@ -134,10 +150,11 @@ async function findFoodInDatabase(
   userCountry?: string
 ): Promise<{ food: any; matchType: string; source: 'database' | 'database_global' } | null> {
   const searchTerms = extractBaseName(ingredientName);
+  const originalSearchTerm = ingredientName; // Preservar termo original para validação
   const prioritySources = userCountry ? COUNTRY_SOURCE_PRIORITY[userCountry] || [] : [];
   
   logStep('Searching for ingredient', { ingredientName, searchTerms, userCountry, prioritySources });
-  
+
   // ========================================
   // FASE 1: Busca por fonte do país do usuário
   // ========================================
@@ -168,10 +185,21 @@ async function findFoodInDatabase(
         .limit(5);
       
       if (partialMatches && partialMatches.length > 0) {
-        const verified = partialMatches.find((f: any) => f.is_verified);
-        const selected = verified || partialMatches[0];
-        logStep('Partial match found (country source)', { term, name: selected.name, source: selected.source });
-        return { food: selected, matchType: 'partial_country', source: 'database' };
+        // PROTEÇÃO: Filtrar matches com validação de categoria
+        const isBeverageSearch = isBeverageTerm(originalSearchTerm);
+        const validMatches = partialMatches.filter((f: any) => {
+          if (isBeverageSearch && isSolidFood(f.name)) {
+            return false; // Rejeitar sólido quando busca é bebida
+          }
+          return true;
+        });
+        
+        if (validMatches.length > 0) {
+          const verified = validMatches.find((f: any) => f.is_verified);
+          const selected = verified || validMatches[0];
+          logStep('Partial match found (country source)', { term, name: selected.name, source: selected.source });
+          return { food: selected, matchType: 'partial_country', source: 'database' };
+        }
       }
     }
   }
@@ -205,9 +233,20 @@ async function findFoodInDatabase(
       .limit(5);
     
     if (partialMatches && partialMatches.length > 0) {
-      const selected = partialMatches[0];
-      logStep('Partial match found (global)', { term, name: selected.name, source: selected.source });
-      return { food: selected, matchType: 'partial_global', source: 'database_global' };
+      // PROTEÇÃO: Filtrar matches com validação de categoria
+      const isBeverageSearch = isBeverageTerm(originalSearchTerm);
+      const validMatches = partialMatches.filter((f: any) => {
+        if (isBeverageSearch && isSolidFood(f.name)) {
+          return false;
+        }
+        return true;
+      });
+      
+      if (validMatches.length > 0) {
+        const selected = validMatches[0];
+        logStep('Partial match found (global)', { term, name: selected.name, source: selected.source });
+        return { food: selected, matchType: 'partial_global', source: 'database_global' };
+      }
     }
   }
   

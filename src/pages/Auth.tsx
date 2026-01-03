@@ -8,8 +8,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChefHat, Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { User } from "lucide-react";
 
-const emailSchema = z.string().email("Email inválido");
+const loginSchema = z.object({
+  firstName: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(50, "Nome muito longo"),
+  email: z.string().email("Email inválido"),
+});
 
 const checkIsAdmin = async (userId: string): Promise<boolean> => {
   const { data } = await supabase
@@ -25,6 +29,7 @@ export default function Auth() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
@@ -50,10 +55,10 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      emailSchema.parse(email);
-    } catch {
-      toast.error("Por favor, insira um email válido");
+    const validation = loginSchema.safeParse({ firstName: firstName.trim(), email });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
       return;
     }
 
@@ -62,7 +67,7 @@ export default function Auth() {
     try {
       // Call the activate-account function to verify payment and get login link
       const { data, error } = await supabase.functions.invoke("activate-account", {
-        body: { email },
+        body: { email, firstName: firstName.trim() },
       });
 
       if (error) {
@@ -126,6 +131,23 @@ export default function Auth() {
           <CardContent className="pt-2">
             <form onSubmit={handleLogin} className="space-y-5">
               <div className="space-y-2">
+                <Label htmlFor="firstName" className="text-sm font-medium">Seu nome</Label>
+                <div className="relative">
+                  <User className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                  <Input
+                    id="firstName"
+                    type="text"
+                    placeholder="Como você gostaria de ser chamado?"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    className="pl-11"
+                    disabled={isLoading}
+                    required
+                    autoFocus
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
                 <Label htmlFor="email" className="text-sm font-medium">Email</Label>
                 <div className="relative">
                   <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -138,7 +160,6 @@ export default function Auth() {
                     className="pl-11"
                     disabled={isLoading}
                     required
-                    autoFocus
                   />
                 </div>
                 <p className="text-xs text-muted-foreground">

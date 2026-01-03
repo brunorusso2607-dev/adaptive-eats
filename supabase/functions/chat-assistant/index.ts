@@ -889,16 +889,37 @@ ANALISE A IMAGEM E CLASSIFIQUE:
 
 ${restrictionsContext}
 
+## REGRAS CRÍTICAS DE ANÁLISE VISUAL:
+
+### EVITAR FALSOS POSITIVOS:
+- **DISTINGA elementos do AMBIENTE (mesa, fundo, superfície) do CONTEÚDO REAL do alimento**
+- Reflexos, mesa branca, toalha ou outros objetos ao fundo NÃO são contaminação
+- Em bebidas gaseificadas, bolhas e espuma são NORMAIS - não alertar sobre isso
+- Foque APENAS no conteúdo interno real do alimento/bebida
+
+### CARACTERÍSTICAS NORMAIS (NÃO SÃO PROBLEMAS):
+- Refrigerantes: bolhas, espuma, gás carbonatado = NORMAL
+- Cerveja: espuma/colarinho = NORMAL  
+- Sucos: sedimentação, polpa = NORMAL
+- Café: crema, espuma = NORMAL
+- Comida: vapor, condensação no recipiente = NORMAL
+
+### O QUE SERIA REALMENTE SUSPEITO:
+- Mofo visível no alimento
+- Coloração completamente alterada do produto original
+- Objetos estranhos claramente DENTRO do alimento
+- Embalagem estufada ou danificada
+
 RESPONDA EM FORMATO ESTRUTURADO:
 
 **TIPO**: [prato|rotulo|geladeira|nao_comida]
 
-SE FOR PRATO:
-- **Identificação**: Nome do prato/alimentos identificados
+SE FOR PRATO/BEBIDA:
+- **Identificação**: Nome do prato/bebida identificado
 - **Calorias Estimadas**: XX kcal (margem: ±20%)
 - **Macros Estimados**: Proteína: Xg | Carbs: Xg | Gordura: Xg
-- **Segurança**: ✅ Seguro / ⚠️ ALERTA (detalhe)
-- **Detalhes de Alerta**: [se houver ingredientes problemáticos]
+- **Segurança para suas restrições**: ✅ Seguro / ⚠️ ALERTA (detalhe ingredientes problemáticos)
+- **Nota**: [apenas se houver ingredientes que conflitem com as restrições do usuário]
 
 SE FOR RÓTULO:
 - **Produto**: Nome do produto identificado
@@ -916,8 +937,9 @@ SE NÃO FOR COMIDA:
 - **Mensagem**: Explicação gentil
 
 IMPORTANTE:
-- Priorize SEGURANÇA acima de tudo
-- Se não tiver certeza se um ingrediente é seguro, ALERTE
+- Foque na SEGURANÇA ALIMENTAR baseada nas INTOLERÂNCIAS/ALERGIAS do usuário
+- NÃO invente problemas visuais que não existem
+- Mesa, fundo, superfície = AMBIENTE, não alimento
 - Seja direto e objetivo na resposta
 - Use emojis moderadamente (✅ ⚠️ 🍽️)`;
 

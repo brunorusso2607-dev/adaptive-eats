@@ -49,12 +49,33 @@ type DietaryProfile = {
   icon: string;
 };
 
-// Idioma fixo como inglês (termos canônicos)
+// Mapeamento de idiomas para bandeiras e labels
+const LANGUAGE_CONFIG: Record<string, { flag: string; label: string }> = {
+  en: { flag: "🇺🇸", label: "English" },
+  pt: { flag: "🇧🇷", label: "Português" },
+  es: { flag: "🇪🇸", label: "Español" },
+  fr: { flag: "🇫🇷", label: "Français" },
+  de: { flag: "🇩🇪", label: "Deutsch" },
+  it: { flag: "🇮🇹", label: "Italiano" },
+};
+
+// Mapeamento de categorias para emojis
+const CATEGORY_EMOJIS: Record<string, string> = {
+  fish: "🐟",
+  meat: "🥩",
+  honey: "🍯",
+  animal: "🦴",
+  dairy: "🥛",
+  seafood: "🦐",
+  eggs: "🥚",
+};
 
 export default function AdminDietaryForbidden() {
   const queryClient = useQueryClient();
-  const [selectedDiet, setSelectedDiet] = useState<string>("vegana");
+  const [selectedDiet, setSelectedDiet] = useState<string>("vegano");
   const [searchTerm, setSearchTerm] = useState("");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("all");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   
   // Dialog states
   const [isAddOpen, setIsAddOpen] = useState(false);
@@ -101,12 +122,20 @@ export default function AdminDietaryForbidden() {
 
   // Get unique dietary keys
   const dietaryKeys = [...new Set(ingredients?.map(i => i.dietary_key) || [])];
+  
+  // Get unique categories from current data
+  const uniqueCategories = [...new Set(ingredients?.map(i => i.category).filter(Boolean) || [])];
+  
+  // Get unique languages from current data
+  const uniqueLanguages = [...new Set(ingredients?.map(i => i.language) || [])];
 
   // Filter ingredients
   const filteredIngredients = ingredients?.filter(i => {
     const matchesDiet = i.dietary_key === selectedDiet;
     const matchesSearch = i.ingredient.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesDiet && matchesSearch;
+    const matchesLanguage = selectedLanguage === "all" || i.language === selectedLanguage;
+    const matchesCategory = selectedCategory === "all" || i.category === selectedCategory;
+    return matchesDiet && matchesSearch && matchesLanguage && matchesCategory;
   }) || [];
 
 
@@ -122,7 +151,7 @@ export default function AdminDietaryForbidden() {
         dietary_key: selectedDiet,
         ingredient: ingredient.trim().toLowerCase(),
         category: null,
-        language: "en",
+        language: selectedLanguage === "all" ? "en" : selectedLanguage,
       }));
 
       const { error } = await supabase
@@ -234,7 +263,7 @@ export default function AdminDietaryForbidden() {
             <CardContent className="pt-4">
               <div className="flex flex-wrap gap-3 items-end">
                 {/* Search */}
-                <div className="flex-1 min-w-[200px]">
+                <div className="flex-1 min-w-[150px]">
                   <Label className="text-xs text-muted-foreground mb-1 block">Buscar</Label>
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -255,6 +284,42 @@ export default function AdminDietaryForbidden() {
                       </Button>
                     )}
                   </div>
+                </div>
+
+                {/* Category filter */}
+                <div className="w-[140px]">
+                  <Label className="text-xs text-muted-foreground mb-1 block">Categoria</Label>
+                  <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {uniqueCategories.map((cat) => (
+                        <SelectItem key={cat} value={cat!}>
+                          {CATEGORY_EMOJIS[cat!] || "📦"} {cat}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Language filter */}
+                <div className="w-[140px]">
+                  <Label className="text-xs text-muted-foreground mb-1 block">País</Label>
+                  <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Todos" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">🌍 Todos</SelectItem>
+                      {uniqueLanguages.map((lang) => (
+                        <SelectItem key={lang} value={lang}>
+                          {LANGUAGE_CONFIG[lang]?.flag || "🏳️"} {LANGUAGE_CONFIG[lang]?.label || lang}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 {/* Add button */}
@@ -287,17 +352,27 @@ export default function AdminDietaryForbidden() {
                     {filteredIngredients.map((item) => (
                       <div
                         key={item.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors gap-2"
                       >
-                        <span className="font-medium">{item.ingredient}</span>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8 text-destructive hover:text-destructive"
-                          onClick={() => setDeleteItem(item)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                        <span className="font-medium flex-shrink-0">{item.ingredient}</span>
+                        <div className="flex items-center gap-2 flex-wrap justify-end">
+                          {item.category && (
+                            <Badge variant="secondary" className="text-xs">
+                              {CATEGORY_EMOJIS[item.category] || "📦"} {item.category}
+                            </Badge>
+                          )}
+                          <Badge variant="outline" className="text-xs">
+                            {LANGUAGE_CONFIG[item.language]?.flag || "🏳️"} {LANGUAGE_CONFIG[item.language]?.label || item.language}
+                          </Badge>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-destructive hover:text-destructive flex-shrink-0"
+                            onClick={() => setDeleteItem(item)}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -315,17 +390,35 @@ export default function AdminDietaryForbidden() {
             <DialogTitle>Adicionar Ingrediente Proibido</DialogTitle>
           </DialogHeader>
           <div className="space-y-4 py-4">
-            <div>
-              <Label>Perfil Dietético</Label>
-              <div className="mt-1 p-2 bg-muted rounded-md">
-                {getDietaryLabel(selectedDiet)}
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label>Perfil Dietético</Label>
+                <div className="mt-1 p-2 bg-muted rounded-md text-sm">
+                  {getDietaryLabel(selectedDiet)}
+                </div>
+              </div>
+              
+              <div>
+                <Label>País/Idioma</Label>
+                <Select value={selectedLanguage === "all" ? "en" : selectedLanguage} onValueChange={setSelectedLanguage}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(LANGUAGE_CONFIG).map(([code, config]) => (
+                      <SelectItem key={code} value={code}>
+                        {config.flag} {config.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             
             <div>
               <Label>Ingrediente</Label>
               <Input
-                placeholder="Ex: bacon"
+                placeholder="Ex: bacon, requeijão"
                 value={newIngredient}
                 onChange={(e) => setNewIngredient(e.target.value)}
                 className="mt-1"
@@ -341,7 +434,10 @@ export default function AdminDietaryForbidden() {
                 onChange={(e) => setBulkIngredients(e.target.value)}
               />
               <p className="text-xs text-muted-foreground mt-1">
-                Use termos em inglês (ex: beef, milk, egg)
+                {selectedLanguage === "pt" 
+                  ? "Use termos em português (ex: carne, leite, ovo, requeijão)"
+                  : "Use termos em inglês (ex: beef, milk, egg)"
+                }
               </p>
             </div>
           </div>

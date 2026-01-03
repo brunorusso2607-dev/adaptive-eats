@@ -77,7 +77,7 @@ export interface SafetyDatabase {
   cautionMappings: Map<string, string[]>; // low severity (warning only)
   safeKeywords: Map<string, string[]>;
   dietaryForbidden: Map<string, string[]>;
-  keyNormalization: Map<string, string>;
+  keyNormalization: Map<string, string[]>; // CHANGED: now maps to ARRAY of database keys
   keyLabels: Map<string, string>;
   dietaryLabels: Map<string, string>;  // from dietary_profiles table
   allIntoleranceKeys: string[];
@@ -129,6 +129,7 @@ export const INTOLERANCE_LABELS: Record<string, string> = {
   peanut: "Amendoim",
   tree_nuts: "Oleaginosas/Castanhas",
   seafood: "Frutos do Mar",
+  shellfish: "Mariscos", // Added for expanded mapping
   fish: "Peixe",
   egg: "Ovos",
   soy: "Soja",
@@ -294,10 +295,17 @@ export async function loadSafetyDatabase(
     dietaryForbidden.get(row.dietary_key)!.push(normalizeText(row.ingredient));
   }
 
-  const keyNormalization = new Map<string, string>();
+  // CHANGED: Now supports MULTIPLE database_keys per onboarding_key
+  // This allows "seafood" to map to both "seafood" AND "shellfish"
+  const keyNormalization = new Map<string, string[]>();
   const keyLabels = new Map<string, string>();
   for (const row of (normalizationResult.data as KeyNormalization[]) || []) {
-    keyNormalization.set(row.onboarding_key, row.database_key);
+    // Append to array instead of overwrite
+    const existingKeys = keyNormalization.get(row.onboarding_key) || [];
+    if (!existingKeys.includes(row.database_key)) {
+      existingKeys.push(row.database_key);
+    }
+    keyNormalization.set(row.onboarding_key, existingKeys);
     keyLabels.set(row.onboarding_key, row.label);
     keyLabels.set(row.database_key, row.label);
   }
@@ -327,25 +335,31 @@ export async function loadSafetyDatabase(
 }
 
 /**
- * Normaliza uma key de intolerância do onboarding para a key do banco de dados
+ * Normaliza uma key de intolerância do onboarding para as keys do banco de dados
+ * CHANGED: Now returns ARRAY of keys (one onboarding key can map to multiple DB keys)
+ * E.g., "seafood" maps to ["seafood", "shellfish"]
  */
 export function normalizeIntoleranceKey(
   onboardingKey: string,
   database: SafetyDatabase
-): string {
-  return database.keyNormalization.get(onboardingKey) || onboardingKey;
+): string[] {
+  return database.keyNormalization.get(onboardingKey) || [onboardingKey];
 }
 
 /**
  * Normaliza uma lista de intolerâncias do usuário
+ * CHANGED: Now flattens array of arrays since one key can map to multiple DB keys
  */
 export function normalizeUserIntolerances(
   userIntolerances: string[],
   database: SafetyDatabase
 ): string[] {
-  return userIntolerances
+  const expanded = userIntolerances
     .filter(i => i && i !== "none" && i !== "nenhuma")
-    .map(i => normalizeIntoleranceKey(i, database));
+    .flatMap(i => normalizeIntoleranceKey(i, database));
+  
+  // Remove duplicates
+  return [...new Set(expanded)];
 }
 
 /**

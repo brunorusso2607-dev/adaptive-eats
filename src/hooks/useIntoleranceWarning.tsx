@@ -147,6 +147,9 @@ export function useIntoleranceWarning() {
   // Hook para labels de segurança do banco de dados
   const { getIntoleranceLabel: getDbIntoleranceLabel } = useSafetyLabels();
 
+  // Estado para mapeamento de normalização de chaves do banco de dados
+  const [keyNormalizationMap, setKeyNormalizationMap] = useState<Record<string, string>>({});
+
   // Fetch user profile data, mappings, and forbidden ingredients from database
   useEffect(() => {
     const fetchData = async () => {
@@ -190,8 +193,8 @@ export function useIntoleranceWarning() {
           return allMappings;
         };
 
-        // Fetch all data in parallel - incluindo onboarding_options para classificação
-        const [profileResult, allMappings, forbiddenResult, dietaryProfilesResult, onboardingResult] = await Promise.all([
+        // Fetch all data in parallel - incluindo intolerance_key_normalization do banco
+        const [profileResult, allMappings, forbiddenResult, dietaryProfilesResult, onboardingResult, keyNormResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('intolerances, dietary_preference, excluded_ingredients')
@@ -210,8 +213,23 @@ export function useIntoleranceWarning() {
             .from('onboarding_options')
             .select('option_id, category, label')
             .in('category', ['intolerances', 'allergies', 'sensitivities'])
-            .eq('is_active', true)
+            .eq('is_active', true),
+          // NOVO: Buscar mapeamento de normalização de chaves do banco
+          supabase
+            .from('intolerance_key_normalization')
+            .select('onboarding_key, database_key')
         ]);
+        
+        // Construir mapa de normalização de chaves a partir do banco de dados
+        const dbKeyNormMap: Record<string, string> = {};
+        if (keyNormResult.data) {
+          for (const norm of keyNormResult.data) {
+            // Normalizar para lowercase para comparação case-insensitive
+            dbKeyNormMap[norm.onboarding_key.toLowerCase()] = norm.database_key.toLowerCase();
+          }
+          setKeyNormalizationMap(dbKeyNormMap);
+          console.log('[INTOLERANCE] Key normalization loaded from DB:', Object.keys(dbKeyNormMap).length, 'entries');
+        }
 
         // Construir mapeamentos de tipo e label a partir do onboarding_options
         if (onboardingResult.data) {
@@ -242,83 +260,23 @@ export function useIntoleranceWarning() {
             setExcludedIngredients(normalizedExcluded);
           }
 
-          // Normalize intolerances
+          // Normalize intolerances usando mapa do banco de dados
           if (profileResult.data.intolerances) {
             // Normaliza intolerâncias do perfil para chaves canônicas do banco
-            // O onboarding atual usa chaves em inglês (egg, nuts, seafood, etc)
-            // O banco usa as mesmas chaves via intolerance_key_normalization
+            // Usa intolerance_key_normalization do banco (dbKeyNormMap)
             const normalizedIntolerances = profileResult.data.intolerances
               .map((intol: string) => {
-                // Mapeamento de chaves legadas/alternativas para chaves canônicas do banco
-                const mapping: Record<string, string> = {
-                  // === CHAVES CANÔNICAS (já corretas) ===
-                  'gluten': 'gluten',
-                  'lactose': 'lactose',
-                  'fructose': 'fructose',
-                  'sorbitol': 'sorbitol',
-                  'fodmap': 'fodmap',
-                  'egg': 'egg',
-                  'nuts': 'tree_nuts', // onboarding usa 'nuts', banco usa 'tree_nuts'
-                  'tree_nuts': 'tree_nuts',
-                  'seafood': 'seafood',
-                  'soy': 'soy',
-                  'peanut': 'peanut',
-                  'fish': 'fish',
-                  'corn': 'corn',
-                  'histamine': 'histamine',
-                  'caffeine': 'caffeine',
-                  'sulfite': 'sulfite',
-                  'salicylate': 'salicylate',
-                  'nickel': 'nickel',
-                  
-                  // === ALIASES LEGADOS (português → inglês) ===
-                  'Lactose': 'lactose',
-                  'Glúten': 'gluten',
-                  'Gluten': 'gluten',
-                  'glúten': 'gluten',
-                  'Cafeína': 'caffeine',
-                  'Cafeina': 'caffeine',
-                  'cafeina': 'caffeine',
-                  'cafeína': 'caffeine',
-                  'Açúcar': 'sugar',
-                  'Acucar': 'sugar',
-                  'açúcar': 'sugar',
-                  'acucar': 'sugar',
-                  'sugar': 'sugar',
-                  'Ovo': 'egg',
-                  'ovo': 'egg',
-                  'ovos': 'egg',
-                  'Ovos': 'egg',
-                  'eggs': 'egg',
-                  'Frutos do Mar': 'seafood',
-                  'frutos_do_mar': 'seafood',
-                  'Amendoim': 'peanut',
-                  'amendoim': 'peanut',
-                  'Soja': 'soy',
-                  'soja': 'soy',
-                  'Castanhas': 'tree_nuts',
-                  'castanhas': 'tree_nuts',
-                  'oleaginosas': 'tree_nuts',
-                  'Oleaginosas': 'tree_nuts',
-                  'Peixe': 'fish',
-                  'peixe': 'fish',
-                  'Milho': 'corn',
-                  'milho': 'corn',
-                  'Histamina': 'histamine',
-                  'histamina': 'histamine',
-                  'Frutose': 'fructose',
-                  'frutose': 'fructose',
-                  'Sorbitol': 'sorbitol',
-                  'Sulfito': 'sulfite',
-                  'sulfito': 'sulfite',
-                  'sulfitos': 'sulfite',
-                  'Salicilato': 'salicylate',
-                  'salicilato': 'salicylate',
-                  'salicilatos': 'salicylate',
-                  'Níquel': 'nickel',
-                  'niquel': 'nickel',
-                };
-                return mapping[intol] || intol.toLowerCase().replace(/\s+/g, '_');
+                const lowerIntol = intol.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/\s+/g, '_');
+                // Primeiro tentar o mapa do banco de dados
+                if (dbKeyNormMap[lowerIntol]) {
+                  return dbKeyNormMap[lowerIntol];
+                }
+                // Depois tentar com a chave original
+                if (dbKeyNormMap[intol.toLowerCase()]) {
+                  return dbKeyNormMap[intol.toLowerCase()];
+                }
+                // Fallback: usar a chave como está (normalizada)
+                return lowerIntol;
               })
               .filter((i: string) => i !== 'nenhuma' && i !== 'none');
             setIntolerances(normalizedIntolerances);

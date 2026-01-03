@@ -74,6 +74,7 @@ export interface RegionalConfig {
 
 export interface FoodItem {
   name: string;
+  name_en?: string; // English name for universal database lookup
   grams: number;
 }
 
@@ -4000,9 +4001,9 @@ function getRegionalExamples(countryCode: string, language: string): {
       breakfast: `{
   "title": "Tapioca com queijo e café com leite",
   "foods": [
-    {"name": "Tapioca recheada com queijo branco", "grams": 120},
-    {"name": "1 xícara de café com leite", "grams": 200},
-    {"name": "1 fatia de mamão (sobremesa)", "grams": 100}
+    {"name": "Tapioca recheada com queijo branco", "name_en": "Tapioca with white cheese", "grams": 120},
+    {"name": "1 xícara de café com leite", "name_en": "Coffee with milk", "grams": 200},
+    {"name": "1 fatia de mamão (sobremesa)", "name_en": "Papaya slice (dessert)", "grams": 100}
   ],
   "instructions": [
     "Ingredientes: goma de tapioca (80g), queijo branco (40g).",
@@ -4012,7 +4013,7 @@ function getRegionalExamples(countryCode: string, language: string): {
 }`,
       snack: `{
   "title": "Iogurte com granola e morangos",
-  "foods": [{"name": "Bowl de iogurte com granola e morangos", "grams": 250}],
+  "foods": [{"name": "Bowl de iogurte com granola e morangos", "name_en": "Yogurt bowl with granola and strawberries", "grams": 250}],
   "instructions": [
     "Ingredientes: iogurte natural (170g), granola sem açúcar (30g), morangos (50g).",
     "Monte em camadas no bowl.",
@@ -4022,12 +4023,12 @@ function getRegionalExamples(countryCode: string, language: string): {
       lunch: `{
   "title": "Frango grelhado com arroz, feijão e salada",
   "foods": [
-    {"name": "Filé de frango grelhado ao limão", "grams": 150},
-    {"name": "Arroz integral", "grams": 100},
-    {"name": "Feijão carioca", "grams": 80},
-    {"name": "Salada verde com azeite", "grams": 80},
-    {"name": "1 laranja média (sobremesa)", "grams": 150},
-    {"name": "1 copo de água (opcional)", "grams": 200}
+    {"name": "Filé de frango grelhado ao limão", "name_en": "Grilled chicken breast with lemon", "grams": 150},
+    {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100},
+    {"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80},
+    {"name": "Salada verde com azeite", "name_en": "Green salad with olive oil", "grams": 80},
+    {"name": "1 laranja média (sobremesa)", "name_en": "Medium orange (dessert)", "grams": 150},
+    {"name": "1 copo de água (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Tempere o frango com sal, alho e limão. Marine por 10 min.",
@@ -4038,8 +4039,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       dinner: `{
   "title": "Sopa de lentilha com tofu e legumes",
   "foods": [
-    {"name": "Sopa de lentilha com tofu e legumes", "grams": 380},
-    {"name": "1 copo de água (opcional)", "grams": 200}
+    {"name": "Sopa de lentilha com tofu e legumes", "name_en": "Lentil soup with tofu and vegetables", "grams": 380},
+    {"name": "1 copo de água (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Ingredientes: lentilha (100g), tofu (80g), cenoura (50g), aipo (30g), cebola (20g).",
@@ -4050,8 +4051,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       supper: `{
   "title": "Banana com chia e chá de camomila",
   "foods": [
-    {"name": "Banana com chia e canela", "grams": 75},
-    {"name": "1 xícara de chá de camomila", "grams": 200}
+    {"name": "Banana com chia e canela", "name_en": "Banana with chia seeds and cinnamon", "grams": 75},
+    {"name": "1 xícara de chá de camomila", "name_en": "Chamomile tea", "grams": 200}
   ],
   "instructions": [
     "Ingredientes: 1/2 banana (60g), chia (10g), canela (5g).",
@@ -4068,10 +4069,10 @@ function getRegionalExamples(countryCode: string, language: string): {
       breakfast: `{
   "title": "Scrambled eggs with toast and berries",
   "foods": [
-    {"name": "Scrambled eggs with cheese", "grams": 150},
-    {"name": "Whole wheat toast", "grams": 60},
-    {"name": "1 cup of coffee with milk", "grams": 200},
-    {"name": "Mixed berries (dessert)", "grams": 100}
+    {"name": "Scrambled eggs with cheese", "name_en": "Scrambled eggs with cheese", "grams": 150},
+    {"name": "Whole wheat toast", "name_en": "Whole wheat toast", "grams": 60},
+    {"name": "1 cup of coffee with milk", "name_en": "Coffee with milk", "grams": 200},
+    {"name": "Mixed berries (dessert)", "name_en": "Mixed berries (dessert)", "grams": 100}
   ],
   "instructions": [
     "Ingredients: 2 eggs, cheese (30g), butter (5g), bread (60g), berries (100g).",
@@ -4081,7 +4082,7 @@ function getRegionalExamples(countryCode: string, language: string): {
 }`,
       snack: `{
   "title": "Greek yogurt with granola and strawberries",
-  "foods": [{"name": "Greek yogurt parfait with granola and strawberries", "grams": 250}],
+  "foods": [{"name": "Greek yogurt parfait with granola and strawberries", "name_en": "Greek yogurt parfait with granola and strawberries", "grams": 250}],
   "instructions": [
     "Ingredients: Greek yogurt (170g), granola (30g), strawberries (50g).",
     "Layer yogurt, granola, and sliced strawberries.",
@@ -4091,12 +4092,12 @@ function getRegionalExamples(countryCode: string, language: string): {
       lunch: `{
   "title": "Grilled chicken with rice and vegetables",
   "foods": [
-    {"name": "Grilled chicken breast with herbs", "grams": 150},
-    {"name": "Brown rice", "grams": 100},
-    {"name": "Steamed broccoli", "grams": 80},
-    {"name": "Mixed green salad", "grams": 80},
-    {"name": "1 medium apple (dessert)", "grams": 150},
-    {"name": "1 glass of water (optional)", "grams": 200}
+    {"name": "Grilled chicken breast with herbs", "name_en": "Grilled chicken breast with herbs", "grams": 150},
+    {"name": "Brown rice", "name_en": "Brown rice", "grams": 100},
+    {"name": "Steamed broccoli", "name_en": "Steamed broccoli", "grams": 80},
+    {"name": "Mixed green salad", "name_en": "Mixed green salad", "grams": 80},
+    {"name": "1 medium apple (dessert)", "name_en": "Medium apple (dessert)", "grams": 150},
+    {"name": "1 glass of water (optional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Season chicken with salt, pepper, and herbs. Marinate 10 min.",
@@ -4107,8 +4108,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       dinner: `{
   "title": "Lentil soup with vegetables",
   "foods": [
-    {"name": "Lentil soup with carrots and celery", "grams": 380},
-    {"name": "1 glass of water (optional)", "grams": 200}
+    {"name": "Lentil soup with carrots and celery", "name_en": "Lentil soup with carrots and celery", "grams": 380},
+    {"name": "1 glass of water (optional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Ingredients: lentils (100g), carrots (50g), celery (30g), onion (20g), olive oil (5g).",
@@ -4119,8 +4120,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       supper: `{
   "title": "Banana with almond butter and chamomile tea",
   "foods": [
-    {"name": "Banana with almond butter", "grams": 75},
-    {"name": "1 cup of chamomile tea", "grams": 200}
+    {"name": "Banana with almond butter", "name_en": "Banana with almond butter", "grams": 75},
+    {"name": "1 cup of chamomile tea", "name_en": "Chamomile tea", "grams": 200}
   ],
   "instructions": [
     "Ingredients: 1/2 banana (60g), almond butter (15g).",
@@ -4137,9 +4138,9 @@ function getRegionalExamples(countryCode: string, language: string): {
       breakfast: `{
   "title": "Tostada con tomate y café con leche",
   "foods": [
-    {"name": "Tostada con tomate y aceite de oliva", "grams": 100},
-    {"name": "1 taza de café con leche", "grams": 200},
-    {"name": "1 naranja (postre)", "grams": 150}
+    {"name": "Tostada con tomate y aceite de oliva", "name_en": "Toast with tomato and olive oil", "grams": 100},
+    {"name": "1 taza de café con leche", "name_en": "Coffee with milk", "grams": 200},
+    {"name": "1 naranja (postre)", "name_en": "Orange (dessert)", "grams": 150}
   ],
   "instructions": [
     "Ingredientes: pan integral (60g), tomate rallado (30g), aceite de oliva (10g).",
@@ -4149,7 +4150,7 @@ function getRegionalExamples(countryCode: string, language: string): {
 }`,
       snack: `{
   "title": "Yogur natural con nueces",
-  "foods": [{"name": "Yogur natural con nueces y miel", "grams": 200}],
+  "foods": [{"name": "Yogur natural con nueces y miel", "name_en": "Plain yogurt with walnuts and honey", "grams": 200}],
   "instructions": [
     "Ingredientes: yogur natural (150g), nueces (30g), miel (20g).",
     "Mezcla el yogur con las nueces.",
@@ -4159,11 +4160,11 @@ function getRegionalExamples(countryCode: string, language: string): {
       lunch: `{
   "title": "Pollo asado con patatas y ensalada",
   "foods": [
-    {"name": "Pechuga de pollo asada con hierbas", "grams": 150},
-    {"name": "Patatas asadas", "grams": 100},
-    {"name": "Ensalada mediterránea", "grams": 80},
-    {"name": "1 manzana (postre)", "grams": 150},
-    {"name": "1 vaso de agua (opcional)", "grams": 200}
+    {"name": "Pechuga de pollo asada con hierbas", "name_en": "Roasted chicken breast with herbs", "grams": 150},
+    {"name": "Patatas asadas", "name_en": "Roasted potatoes", "grams": 100},
+    {"name": "Ensalada mediterránea", "name_en": "Mediterranean salad", "grams": 80},
+    {"name": "1 manzana (postre)", "name_en": "Apple (dessert)", "grams": 150},
+    {"name": "1 vaso de agua (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Sazona el pollo con sal, pimienta y hierbas. Marina 10 min.",
@@ -4174,8 +4175,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       dinner: `{
   "title": "Crema de calabacín",
   "foods": [
-    {"name": "Crema de calabacín con queso", "grams": 350},
-    {"name": "1 vaso de agua (opcional)", "grams": 200}
+    {"name": "Crema de calabacín con queso", "name_en": "Zucchini cream soup with cheese", "grams": 350},
+    {"name": "1 vaso de agua (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Ingredientes: calabacín (200g), patata (50g), cebolla (30g), queso fresco (30g).",
@@ -4186,8 +4187,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       supper: `{
   "title": "Plátano con yogur y té de manzanilla",
   "foods": [
-    {"name": "Plátano con yogur", "grams": 75},
-    {"name": "1 taza de té de manzanilla", "grams": 200}
+    {"name": "Plátano con yogur", "name_en": "Banana with yogurt", "grams": 75},
+    {"name": "1 taza de té de manzanilla", "name_en": "Chamomile tea", "grams": 200}
   ],
   "instructions": [
     "Ingredientes: 1/2 plátano (60g), yogur natural (50g).",
@@ -4204,10 +4205,10 @@ function getRegionalExamples(countryCode: string, language: string): {
       breakfast: `{
   "title": "Huevos rancheros con frijoles",
   "foods": [
-    {"name": "Huevos rancheros con salsa", "grams": 180},
-    {"name": "Frijoles refritos", "grams": 80},
-    {"name": "1 taza de café", "grams": 200},
-    {"name": "1 porción de papaya (postre)", "grams": 100}
+    {"name": "Huevos rancheros con salsa", "name_en": "Ranch-style eggs with salsa", "grams": 180},
+    {"name": "Frijoles refritos", "name_en": "Refried beans", "grams": 80},
+    {"name": "1 taza de café", "name_en": "Coffee", "grams": 200},
+    {"name": "1 porción de papaya (postre)", "name_en": "Papaya (dessert)", "grams": 100}
   ],
   "instructions": [
     "Ingredientes: 2 huevos, salsa roja (30g), tortilla (30g), frijoles (80g).",
@@ -4217,7 +4218,7 @@ function getRegionalExamples(countryCode: string, language: string): {
 }`,
       snack: `{
   "title": "Manzana con crema de cacahuate",
-  "foods": [{"name": "Manzana con crema de cacahuate", "grams": 175}],
+  "foods": [{"name": "Manzana con crema de cacahuate", "name_en": "Apple with peanut butter", "grams": 175}],
   "instructions": [
     "Ingredientes: 1 manzana (150g), crema de cacahuate (25g).",
     "Corta la manzana en rebanadas.",
@@ -4227,12 +4228,12 @@ function getRegionalExamples(countryCode: string, language: string): {
       lunch: `{
   "title": "Pollo a la plancha con arroz y ensalada",
   "foods": [
-    {"name": "Pechuga de pollo a la plancha", "grams": 150},
-    {"name": "Arroz rojo", "grams": 100},
-    {"name": "Frijoles negros", "grams": 80},
-    {"name": "Ensalada de nopal", "grams": 80},
-    {"name": "1 naranja (postre)", "grams": 150},
-    {"name": "1 vaso de agua (opcional)", "grams": 200}
+    {"name": "Pechuga de pollo a la plancha", "name_en": "Grilled chicken breast", "grams": 150},
+    {"name": "Arroz rojo", "name_en": "Mexican red rice", "grams": 100},
+    {"name": "Frijoles negros", "name_en": "Black beans", "grams": 80},
+    {"name": "Ensalada de nopal", "name_en": "Nopal cactus salad", "grams": 80},
+    {"name": "1 naranja (postre)", "name_en": "Orange (dessert)", "grams": 150},
+    {"name": "1 vaso de agua (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Sazona el pollo con sal, pimienta y limón. Marina 10 min.",
@@ -4243,8 +4244,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       dinner: `{
   "title": "Sopa de tortilla",
   "foods": [
-    {"name": "Sopa de tortilla con aguacate", "grams": 350},
-    {"name": "1 vaso de agua (opcional)", "grams": 200}
+    {"name": "Sopa de tortilla con aguacate", "name_en": "Tortilla soup with avocado", "grams": 350},
+    {"name": "1 vaso de agua (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
   ],
   "instructions": [
     "Ingredientes: caldo de pollo (250ml), tortilla (30g), aguacate (30g), queso (20g).",
@@ -4255,8 +4256,8 @@ function getRegionalExamples(countryCode: string, language: string): {
       supper: `{
   "title": "Plátano con chia y té de manzanilla",
   "foods": [
-    {"name": "Plátano con chia", "grams": 75},
-    {"name": "1 taza de té de manzanilla", "grams": 200}
+    {"name": "Plátano con chia", "name_en": "Banana with chia seeds", "grams": 75},
+    {"name": "1 taza de té de manzanilla", "name_en": "Chamomile tea", "grams": 200}
   ],
   "instructions": [
     "Ingredientes: 1/2 plátano (60g), chia (10g), canela (5g).",
@@ -4300,7 +4301,7 @@ export function getMasterMealPromptV5(params: MasterPromptParams): string {
       "options": [
         {
           "title": "Descriptive name in ${regional.language}",
-          "foods": [{"name": "food name in ${regional.language}", "grams": 100}],
+          "foods": [{"name": "food name in ${regional.language}", "name_en": "food name in English (for database)", "grams": 100}],
           "calories_kcal": ${m.targetCalories},
           "instructions": ["Preparation step in ${regional.language}"]
         }
@@ -4418,6 +4419,24 @@ ${countryBehavioralPrompt}
 📝 FOODS FORMAT (foods array) - ABSOLUTE RULE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
+🚨🚨🚨 DUAL-NAME ARCHITECTURE (CRITICAL FOR DATABASE) 🚨🚨🚨
+
+Every food item MUST have TWO name fields:
+• "name": Food name in USER'S LOCAL LANGUAGE (${regional.language}) - displayed to user
+• "name_en": Food name in ENGLISH - used for universal database lookup
+
+EXAMPLE:
+{"name": "Filé de frango grelhado", "name_en": "Grilled chicken breast", "grams": 150}
+{"name": "Arroz integral", "name_en": "Brown rice", "grams": 100}
+{"name": "1 maçã média (sobremesa)", "name_en": "Medium apple (dessert)", "grams": 150}
+
+RULES FOR name_en:
+• Use SIMPLE, STANDARD English ingredient names
+• Avoid regional/brand-specific terms
+• Match common food database terminology (USDA style)
+• For composed dishes, use descriptive English: "Lentil soup with vegetables"
+• For local foods with no translation, use transliteration: "Tapioca" stays "Tapioca"
+
 🚨🚨🚨 CRITICAL RULE: SINGLE DISHES vs COMPOSED MEALS 🚨🚨🚨
 
 ▶️ TYPE 1 - SINGLE DISHES (CONSOLIDATE INTO 1 ITEM):
@@ -4425,15 +4444,15 @@ If the meal is: ${regionalExamples.consolidatedDishes}...
 
 → CONSOLIDATE ALL ingredients into 1 SINGLE item in the foods array!
 
-✅ CORRECT: [{"name": "Lentil soup with vegetables", "grams": 350}]
-✅ CORRECT: [{"name": "Egg white omelet with spinach and cheese", "grams": 180}]
-✅ CORRECT: [{"name": "Caesar salad with grilled chicken", "grams": 280}]
+✅ CORRECT: [{"name": "Sopa de lentilha com legumes", "name_en": "Lentil soup with vegetables", "grams": 350}]
+✅ CORRECT: [{"name": "Omelete de claras com espinafre e queijo", "name_en": "Egg white omelet with spinach and cheese", "grams": 180}]
+✅ CORRECT: [{"name": "Salada Caesar com frango grelhado", "name_en": "Caesar salad with grilled chicken", "grams": 280}]
 
 ❌ FORBIDDEN: 
 [
-  {"name": "Mashed tofu", "grams": 50},
-  {"name": "Chopped sun-dried tomato", "grams": 20},
-  {"name": "Salt", "grams": 2}
+  {"name": "Tofu amassado", "grams": 50},
+  {"name": "Tomate seco picado", "grams": 20},
+  {"name": "Sal", "grams": 2}
 ]
 → This is NOT a menu, it's a shopping list! SERIOUS ERROR!
 
@@ -4452,10 +4471,10 @@ ${regionalExamples.lunch}
 • Seasonings/condiments = NEVER separate (go INSIDE the dish name)
 
 ❌ NEVER DO (loose ingredients without context):
-• {"name": "Mashed tofu", "grams": 50} → LOOSE! Where's the dish?
-• {"name": "Salt", "grams": 2} → SEASONING! Not an item!
-• {"name": "Olive oil", "grams": 5} → SEASONING! Not an item!
-• {"name": "Chopped sun-dried tomato", "grams": 20} → LOOSE! Part of which dish?
+• {"name": "Tofu amassado", "grams": 50} → LOOSE! Where's the dish?
+• {"name": "Sal", "grams": 2} → SEASONING! Not an item!
+• {"name": "Azeite", "grams": 5} → SEASONING! Not an item!
+• {"name": "Tomate seco picado", "grams": 20} → LOOSE! Part of which dish?
 
 ORDER IN foods ARRAY:
 1. Main dish (consolidated OR protein of composed meal)

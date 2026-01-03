@@ -569,6 +569,9 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         success: true,
         promptPreview: masterPrompt,
+        isHardcoded: true,
+        note: 'Prompt gerado dinamicamente por getMasterMealPromptV5() em mealGenerationConfig.ts',
+        model: 'gemini-2.5-flash-lite',
         timestamp: new Date().toISOString(),
       }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }

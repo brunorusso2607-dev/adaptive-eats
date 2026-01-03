@@ -432,6 +432,26 @@ export function normalizeForCalorieTable(foodName: string): string {
  * Busca calorias por grama de um alimento
  * Retorna null se não encontrar na tabela
  */
+// Palavras genéricas que causam falsos positivos
+const GENERIC_WORDS_CALORIE = new Set([
+  'doce', 'erva', 'verde', 'natural', 'integral', 'light', 'zero',
+  'com', 'sem', 'de', 'em', 'ao', 'a', 'e', 'ou', 'para',
+  'uma', 'um', 'xicara', 'copo', 'colher', 'fatia', 'pedaco',
+  'pequeno', 'medio', 'grande', 'porcao', 'unidade',
+]);
+
+// Categorias de alimentos para validação cruzada
+const BEVERAGE_KEYWORDS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante', 'vinho', 'cerveja'];
+const SOLID_FOOD_KEYWORDS = ['batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao', 'bolo', 'queijo', 'salada'];
+
+function isBeverageSearchCalorie(normalized: string): boolean {
+  return BEVERAGE_KEYWORDS.some(b => normalized.includes(b));
+}
+
+function isSolidFoodKeyCalorie(key: string): boolean {
+  return SOLID_FOOD_KEYWORDS.some(s => key.includes(s));
+}
+
 export function findCaloriesPerGram(foodName: string): number | null {
   const normalized = normalizeForCalorieTable(foodName);
   
@@ -440,22 +460,41 @@ export function findCaloriesPerGram(foodName: string): number | null {
     return CALORIE_TABLE[normalized] / 100;
   }
   
-  // Busca parcial - tenta encontrar match em qualquer parte
+  const isBeverageSearch = isBeverageSearchCalorie(normalized);
+  
+  // Busca parcial com validação de categoria
   for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
-    if (normalized.includes(key) || key.includes(normalized)) {
+    const matches = normalized.includes(key) || key.includes(normalized);
+    if (matches) {
+      // PROTEÇÃO: Se busca é bebida, não pode retornar sólido
+      if (isBeverageSearch && isSolidFoodKeyCalorie(key)) {
+        continue; // Pular este match
+      }
       return kcalPer100g / 100;
     }
   }
   
-  // Busca por palavras-chave individuais (para casos como "1 xicara de cha de camomila")
-  const words = normalized.split(/\s+/).filter(w => w.length >= 3);
+  // Busca por palavras-chave individuais (MAIS RESTRITIVA)
+  const words = normalized.split(/\s+/).filter(w => 
+    w.length >= 3 && !GENERIC_WORDS_CALORIE.has(w)
+  );
+  
   for (const word of words) {
     if (CALORIE_TABLE[word] !== undefined) {
+      // PROTEÇÃO: Validar categoria
+      if (isBeverageSearch && isSolidFoodKeyCalorie(word)) {
+        continue;
+      }
       return CALORIE_TABLE[word] / 100;
     }
-    // Buscar chaves que contenham a palavra
+    
+    // Buscar chaves que contenham a palavra (com validação)
     for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
       if (key.includes(word)) {
+        // PROTEÇÃO: Validar categoria
+        if (isBeverageSearch && isSolidFoodKeyCalorie(key)) {
+          continue;
+        }
         return kcalPer100g / 100;
       }
     }

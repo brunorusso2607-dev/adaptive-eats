@@ -325,9 +325,10 @@ export default function AdminDietaryForbidden() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">🌍 Todos</SelectItem>
-                      {uniqueLanguages.map((lang) => (
-                        <SelectItem key={lang} value={lang}>
-                          {countryConfig[lang]?.flag || "🏳️"} {countryConfig[lang]?.label || lang.toUpperCase()}
+                      <SelectItem value="en">🇺🇸 English (Global)</SelectItem>
+                      {onboardingCountries?.map((country) => (
+                        <SelectItem key={country.country_code} value={country.country_code.toLowerCase()}>
+                          {country.flag_emoji} {country.country_name}
                         </SelectItem>
                       ))}
                     </SelectContent>

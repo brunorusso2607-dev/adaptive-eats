@@ -32,27 +32,36 @@ interface IntoleranceDefinition {
 
 /**
  * CHAVES CANÔNICAS - Lista definitiva de todas as intolerâncias suportadas
- * Estas são as únicas chaves que devem existir no banco de dados
+ * SINCRONIZADO com onboarding_options (jan/2026):
+ * - Intolerâncias: gluten, lactose, fructose, sorbitol, fodmap (5)
+ * - Alergias: egg, peanut, tree_nuts/nuts, seafood, fish, soy (6)
+ * - Sensibilidades: corn, caffeine, histamine, sulfite, salicylate, nickel (6)
+ * 
+ * Nota: sugar foi removido do onboarding mas mantido por compatibilidade
  */
 export const CANONICAL_INTOLERANCE_KEYS = [
+  // Intolerâncias
   'lactose',
   'gluten', 
+  'fructose',
+  'sorbitol',
+  'fodmap',
+  // Alergias
   'egg',
   'peanut',
-  'tree_nuts',
+  'tree_nuts', // onboarding usa 'nuts', normaliza para 'tree_nuts'
   'seafood',
   'fish',
   'soy',
-  'sugar',
+  // Sensibilidades
   'corn',
   'caffeine',
   'histamine',
-  'fodmap',
-  'fructose',
-  'sorbitol',
   'sulfite',
   'salicylate',
   'nickel',
+  // Legado (mantido por compatibilidade)
+  'sugar',
 ] as const;
 
 export type CanonicalIntoleranceKey = typeof CANONICAL_INTOLERANCE_KEYS[number];

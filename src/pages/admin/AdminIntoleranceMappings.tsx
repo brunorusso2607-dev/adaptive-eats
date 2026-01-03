@@ -416,17 +416,28 @@ export default function AdminIntoleranceMappings() {
       m.severity_level !== newSeverityLevel
     ) || [];
     
-    // Filter out ingredients that already exist in the SAME category
+    // Filter out ingredients that already exist in the SAME category AND SAME language
+    const languageToCheck = selectedLanguage === "all" ? "pt" : selectedLanguage;
     const existingInSameCategory = mappings?.filter(m => 
       m.intolerance_key === selectedIntolerance &&
       ingredientsToAdd.includes(m.ingredient.toLowerCase()) &&
-      m.severity_level === newSeverityLevel
+      m.severity_level === newSeverityLevel &&
+      m.language === languageToCheck
     ) || [];
     
-    if (existingInSameCategory.length > 0) {
-      toast.error(`Ingrediente(s) já existe(m) nesta categoria: ${existingInSameCategory.map(m => m.ingredient).join(", ")}`);
+    // Allow duplicates - just skip the ones that already exist in this language
+    const filteredIngredientsToAdd = ingredientsToAdd.filter(ing => 
+      !existingInSameCategory.some(m => m.ingredient.toLowerCase() === ing)
+    );
+    
+    if (filteredIngredientsToAdd.length === 0 && ingredientsToAdd.length > 0) {
+      toast.info(`Ingrediente(s) já existe(m) para este país: ${existingInSameCategory.map(m => m.ingredient).join(", ")}`);
       return;
     }
+    
+    // Update ingredientsToAdd to only include new ones for this language
+    ingredientsToAdd.length = 0;
+    ingredientsToAdd.push(...filteredIngredientsToAdd);
     
     if (existingInOtherCategories.length > 0) {
       // Show confirmation dialog to move

@@ -145,10 +145,30 @@ const COUNTRIES = [
 const INTOLERANCES = [
   { value: 'lactose', label: 'Lactose' },
   { value: 'gluten', label: 'Glúten' },
+  { value: 'fructose', label: 'Frutose' },
+  { value: 'fodmap', label: 'FODMAPs' },
+  { value: 'histamine', label: 'Histamina' },
+  { value: 'caffeine', label: 'Cafeína' },
+  { value: 'sulfites', label: 'Sulfitos' },
+  { value: 'tyramine', label: 'Tiramina' },
+];
+
+const ALLERGIES = [
   { value: 'egg', label: 'Ovo' },
   { value: 'peanut', label: 'Amendoim' },
   { value: 'shellfish', label: 'Frutos do Mar' },
   { value: 'soy', label: 'Soja' },
+  { value: 'treenut', label: 'Nozes' },
+  { value: 'fish', label: 'Peixes' },
+  { value: 'wheat', label: 'Trigo' },
+  { value: 'sesame', label: 'Gergelim' },
+];
+
+const SENSITIVITIES = [
+  { value: 'nickel', label: 'Níquel' },
+  { value: 'salicylates', label: 'Salicilatos' },
+  { value: 'msg', label: 'MSG (Glutamato)' },
+  { value: 'oxalates', label: 'Oxalatos' },
 ];
 
 const SEVERITY_CONFIG = {
@@ -226,6 +246,8 @@ export default function AdminPromptValidation() {
   const [mealType, setMealType] = useState('almoco');
   const [countryCode, setCountryCode] = useState('BR');
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
+  const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);
+  const [selectedSensitivities, setSelectedSensitivities] = useState<string[]>([]);
   const [isRunning, setIsRunning] = useState(false);
   const [isLoadingPreview, setIsLoadingPreview] = useState(false);
   const [result, setResult] = useState<ValidationResult | null>(null);
@@ -322,8 +344,16 @@ export default function AdminPromptValidation() {
   // =============================================================================
 
   const runMealPlanValidation = async (targetMealType: string): Promise<ValidationResult> => {
+    // Combina todas as restrições para teste
+    const allRestrictions = [...selectedIntolerances, ...selectedAllergies, ...selectedSensitivities];
+    
     const { data, error } = await supabase.functions.invoke('test-prompt-validation', {
-      body: { mealType: targetMealType, countryCode, testMode: 'full' }
+      body: { 
+        mealType: targetMealType, 
+        countryCode, 
+        testMode: 'full',
+        intolerances: allRestrictions
+      }
     });
     if (error) throw error;
     return data as ValidationResult;
@@ -336,13 +366,16 @@ export default function AdminPromptValidation() {
       imageData = await Promise.all(uploadedImages.map(img => convertImageToBase64(img.file)));
     }
 
+    // Combina todas as restrições para teste
+    const allRestrictions = [...selectedIntolerances, ...selectedAllergies, ...selectedSensitivities];
+
     const { data, error } = await supabase.functions.invoke('test-all-prompts-validation', {
       body: { 
         moduleId: selectedModule, 
         testMode: 'full',
         testParams: {
           countryCode,
-          intolerances: selectedIntolerances,
+          intolerances: allRestrictions,
           images: imageData,
         }
       }
@@ -609,30 +642,74 @@ export default function AdminPromptValidation() {
                 </Select>
               </div>
 
-              {/* Intolerances - for modules that use safety validation */}
-              {['analyze-food-photo', 'analyze-label-photo', 'analyze-fridge-photo', 'generate-recipe', 'regenerate-meal'].includes(selectedModule) && (
-                <div className="col-span-2">
-                  <label className="text-sm font-medium mb-2 block">Intolerâncias de Teste</label>
-                  <div className="flex flex-wrap gap-2">
-                    {INTOLERANCES.map(intol => (
-                      <Badge
-                        key={intol.value}
-                        variant={selectedIntolerances.includes(intol.value) ? "default" : "outline"}
-                        className="cursor-pointer"
-                        onClick={() => {
-                          setSelectedIntolerances(prev =>
-                            prev.includes(intol.value)
-                              ? prev.filter(i => i !== intol.value)
-                              : [...prev, intol.value]
-                          );
-                        }}
-                      >
-                        {intol.label}
-                      </Badge>
-                    ))}
-                  </div>
+              {/* Intolerâncias de Teste - para TODOS os módulos */}
+              <div className="col-span-2">
+                <label className="text-sm font-medium mb-2 block">🚫 Intolerâncias de Teste</label>
+                <div className="flex flex-wrap gap-2">
+                  {INTOLERANCES.map(intol => (
+                    <Badge
+                      key={intol.value}
+                      variant={selectedIntolerances.includes(intol.value) ? "default" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedIntolerances(prev =>
+                          prev.includes(intol.value)
+                            ? prev.filter(i => i !== intol.value)
+                            : [...prev, intol.value]
+                        );
+                      }}
+                    >
+                      {intol.label}
+                    </Badge>
+                  ))}
                 </div>
-              )}
+              </div>
+
+              {/* Alergias de Teste - para TODOS os módulos */}
+              <div className="col-span-2">
+                <label className="text-sm font-medium mb-2 block">⚠️ Alergias de Teste</label>
+                <div className="flex flex-wrap gap-2">
+                  {ALLERGIES.map(allergy => (
+                    <Badge
+                      key={allergy.value}
+                      variant={selectedAllergies.includes(allergy.value) ? "destructive" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedAllergies(prev =>
+                          prev.includes(allergy.value)
+                            ? prev.filter(i => i !== allergy.value)
+                            : [...prev, allergy.value]
+                        );
+                      }}
+                    >
+                      {allergy.label}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+
+              {/* Sensibilidades de Teste - para TODOS os módulos */}
+              <div className="col-span-2">
+                <label className="text-sm font-medium mb-2 block">🔶 Sensibilidades de Teste</label>
+                <div className="flex flex-wrap gap-2">
+                  {SENSITIVITIES.map(sens => (
+                    <Badge
+                      key={sens.value}
+                      variant={selectedSensitivities.includes(sens.value) ? "secondary" : "outline"}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        setSelectedSensitivities(prev =>
+                          prev.includes(sens.value)
+                            ? prev.filter(i => i !== sens.value)
+                            : [...prev, sens.value]
+                        );
+                      }}
+                    >
+                      {sens.label}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
 
               {/* Image upload - for modules that require images */}
               {currentModuleInfo?.requiresImage && (

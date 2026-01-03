@@ -57,7 +57,21 @@ function normalizeText(text: string): string {
     .trim();
 }
 
-async function searchUSDAFood(searchTerm: string, apiKey: string): Promise<USDAFood | null> {
+// Extrai o ingrediente principal de um termo composto
+function extractMainIngredient(searchTerm: string): string | null {
+  // Palavras a ignorar (preposições, artigos, etc)
+  const stopWords = ['with', 'and', 'in', 'on', 'the', 'a', 'an', 'de', 'com', 'e'];
+  
+  // Dividir e filtrar
+  const words = searchTerm.toLowerCase().split(/[\s,]+/).filter(w => 
+    w.length > 2 && !stopWords.includes(w)
+  );
+  
+  // Retornar a primeira palavra significativa
+  return words.length > 0 ? words[0] : null;
+}
+
+async function searchUSDAFood(searchTerm: string, apiKey: string, retryWithSimpleTerm = true): Promise<USDAFood | null> {
   const url = `https://api.nal.usda.gov/fdc/v1/foods/search?api_key=${apiKey}&query=${encodeURIComponent(searchTerm)}&dataType=Foundation,SR%20Legacy&pageSize=1`;
   
   logStep("Searching USDA API", { searchTerm, url: url.replace(apiKey, "***") });
@@ -72,6 +86,15 @@ async function searchUSDAFood(searchTerm: string, apiKey: string): Promise<USDAF
   
   if (data.foods && data.foods.length > 0) {
     return data.foods[0];
+  }
+  
+  // Se não encontrou e o termo é composto, tentar com ingrediente principal
+  if (retryWithSimpleTerm && searchTerm.includes(' ')) {
+    const mainIngredient = extractMainIngredient(searchTerm);
+    if (mainIngredient && mainIngredient !== searchTerm.toLowerCase()) {
+      logStep("Retrying with main ingredient", { original: searchTerm, mainIngredient });
+      return searchUSDAFood(mainIngredient, apiKey, false);
+    }
   }
   
   return null;

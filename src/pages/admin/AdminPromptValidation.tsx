@@ -143,47 +143,36 @@ const COUNTRIES = [
 ];
 
 // =============================================================================
-// RESTRICTION LISTS - Global-ready with EN keys (match intolerance_mappings)
+// RESTRICTION LISTS - Synced with onboarding_options (option_id values)
 // =============================================================================
 
-// INTOLERÂNCIAS (digestivas) - chaves EN do intolerance_mappings
+// INTOLERÂNCIAS - chaves exatas do onboarding_options.option_id
 const INTOLERANCES = [
-  { value: 'lactose', label: 'Lactose' },
   { value: 'gluten', label: 'Glúten' },
-  { value: 'fructose', label: 'Frutose' },
-  { value: 'fodmap', label: 'FODMAPs' },
-  { value: 'caffeine', label: 'Cafeína' },
-  { value: 'sulfite', label: 'Sulfitos' },
-  { value: 'tyramine', label: 'Tiramina' },
+  { value: 'lactose', label: 'Lactose' },
+  { value: 'frutose', label: 'Frutose' },
   { value: 'sorbitol', label: 'Sorbitol' },
-  { value: 'corn', label: 'Milho' },
+  { value: 'fodmap', label: 'FODMAP' },
 ];
 
-// ALERGIAS (imunológicas) - chaves EN do intolerance_mappings
+// ALERGIAS - chaves exatas do onboarding_options.option_id
 const ALLERGIES = [
-  { value: 'egg', label: 'Ovo' },
   { value: 'peanut', label: 'Amendoim' },
-  { value: 'shellfish', label: 'Frutos do Mar' },
+  { value: 'nuts', label: 'Oleaginosas' },
+  { value: 'seafood', label: 'Frutos do Mar' },
+  { value: 'fish', label: 'Peixe' },
+  { value: 'eggs', label: 'Ovos' },
   { value: 'soy', label: 'Soja' },
-  { value: 'tree_nut', label: 'Nozes' },
-  { value: 'fish', label: 'Peixes' },
-  { value: 'wheat', label: 'Trigo' },
-  { value: 'sesame', label: 'Gergelim' },
-  { value: 'milk', label: 'Leite (Proteína)' },
-  { value: 'mustard', label: 'Mostarda' },
-  { value: 'celery', label: 'Aipo' },
-  { value: 'lupin', label: 'Tremoço' },
-  { value: 'mollusk', label: 'Moluscos' },
 ];
 
-// SENSIBILIDADES (químicas/metabólicas) - chaves EN do intolerance_mappings
+// SENSIBILIDADES - chaves exatas do onboarding_options.option_id
 const SENSITIVITIES = [
-  { value: 'histamine', label: 'Histamina' },
-  { value: 'nickel', label: 'Níquel' },
-  { value: 'salicylate', label: 'Salicilatos' },
-  { value: 'msg', label: 'MSG (Glutamato)' },
-  { value: 'oxalate', label: 'Oxalatos' },
-  { value: 'nightshade', label: 'Solanáceas' },
+  { value: 'histamina', label: 'Histamina' },
+  { value: 'cafeina', label: 'Cafeína' },
+  { value: 'sulfito', label: 'Sulfito' },
+  { value: 'salicilato', label: 'Salicilato' },
+  { value: 'milho', label: 'Milho' },
+  { value: 'niquel', label: 'Níquel' },
 ];
 
 const SEVERITY_CONFIG = {

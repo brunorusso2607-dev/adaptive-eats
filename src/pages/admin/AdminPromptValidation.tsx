@@ -146,33 +146,33 @@ const COUNTRIES = [
 // RESTRICTION LISTS - Synced with onboarding_options (option_id values)
 // =============================================================================
 
-// INTOLERÂNCIAS - chaves exatas do onboarding_options.option_id
+// INTOLERÂNCIAS - chaves EN canônicas (synced with intolerance_mappings)
 const INTOLERANCES = [
   { value: 'gluten', label: 'Glúten' },
   { value: 'lactose', label: 'Lactose' },
-  { value: 'frutose', label: 'Frutose' },
+  { value: 'fructose', label: 'Frutose' },
   { value: 'sorbitol', label: 'Sorbitol' },
   { value: 'fodmap', label: 'FODMAP' },
 ];
 
-// ALERGIAS - chaves exatas do onboarding_options.option_id
+// ALERGIAS - chaves EN canônicas (synced with intolerance_mappings)
 const ALLERGIES = [
   { value: 'peanut', label: 'Amendoim' },
   { value: 'nuts', label: 'Oleaginosas' },
   { value: 'seafood', label: 'Frutos do Mar' },
   { value: 'fish', label: 'Peixe' },
-  { value: 'eggs', label: 'Ovos' },
+  { value: 'egg', label: 'Ovo' },
   { value: 'soy', label: 'Soja' },
 ];
 
-// SENSIBILIDADES - chaves exatas do onboarding_options.option_id
+// SENSIBILIDADES - chaves EN canônicas (synced with intolerance_mappings)
 const SENSITIVITIES = [
-  { value: 'histamina', label: 'Histamina' },
-  { value: 'cafeina', label: 'Cafeína' },
-  { value: 'sulfito', label: 'Sulfito' },
-  { value: 'salicilato', label: 'Salicilato' },
-  { value: 'milho', label: 'Milho' },
-  { value: 'niquel', label: 'Níquel' },
+  { value: 'histamine', label: 'Histamina' },
+  { value: 'caffeine', label: 'Cafeína' },
+  { value: 'sulfite', label: 'Sulfito' },
+  { value: 'salicylate', label: 'Salicilato' },
+  { value: 'corn', label: 'Milho' },
+  { value: 'nickel', label: 'Níquel' },
 ];
 
 const SEVERITY_CONFIG = {

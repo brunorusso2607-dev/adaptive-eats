@@ -1363,13 +1363,32 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const assistantMessage = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+    let assistantMessage = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+
+    // Process profile updates from AI response (if any)
+    let addedRestriction: string | null = null;
+    if (userId && userProfile) {
+      const currentIntolerances = userProfile.intolerances || [];
+      const result = await processProfileUpdateFromResponse(
+        supabase,
+        userId,
+        assistantMessage,
+        currentIntolerances
+      );
+      assistantMessage = result.updatedResponse;
+      addedRestriction = result.addedRestriction;
+      
+      if (addedRestriction) {
+        logStep("Restriction added via chat", { restriction: addedRestriction });
+      }
+    }
 
     const executionTime = Date.now() - startTime;
     logStep("Response generated", { 
       executionTimeMs: executionTime,
       responseLength: assistantMessage.length,
-      tokens: aiData.usage
+      tokens: aiData.usage,
+      addedRestriction
     });
 
     // Log AI usage
@@ -1385,7 +1404,8 @@ serve(async (req) => {
           execution_time_ms: executionTime,
           metadata: {
             page_context: currentPage?.path,
-            has_images: !!images?.length
+            has_images: !!images?.length,
+            added_restriction: addedRestriction
           }
         });
       } catch (logError) {
@@ -1396,7 +1416,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: assistantMessage 
+        message: assistantMessage,
+        profileUpdated: !!addedRestriction,
+        addedRestriction
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

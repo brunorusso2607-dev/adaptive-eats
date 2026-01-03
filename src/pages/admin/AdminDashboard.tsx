@@ -35,7 +35,8 @@ import {
   Apple,
   Activity,
   Globe,
-  Utensils
+  Utensils,
+  Leaf
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -88,6 +89,7 @@ const mainMenuItems: SubMenuItem[] = [
     subItems: [
       { path: "/admin/foods", label: "Base de Alimentos", icon: Apple },
       { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
+      { path: "/admin/dietary-forbidden", label: "Proibidos por Dieta", icon: Leaf },
       { path: "/admin/food-decomposition", label: "Decomposição Alimentos", icon: Utensils },
       { path: "/admin/blocked-ingredients", label: "Revisão de Bloqueios", icon: Shield },
       { path: "/admin/ingredient-validations", label: "Validações Ingredientes", icon: Sparkles },

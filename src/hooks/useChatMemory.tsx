@@ -22,7 +22,7 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const hasInitializedRef = useRef(false);
+  const [lastInitUserId, setLastInitUserId] = useState<string | null>(null);
   const onMessagesLoadedRef = useRef(onMessagesLoaded);
 
   // Keep ref updated
@@ -95,12 +95,12 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
     }
   }, [userId]);
 
-  // Initial load - auto-load last conversation
+  // Initial load - auto-load last conversation (reloads when userId changes)
   useEffect(() => {
     const initializeChat = async () => {
-      if (!userId || hasInitializedRef.current) return;
+      if (!userId || userId === lastInitUserId) return;
       
-      hasInitializedRef.current = true;
+      setLastInitUserId(userId);
       setIsLoadingHistory(true);
 
       try {
@@ -114,7 +114,7 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
         if (error) throw error;
         setConversations(data || []);
 
-        // Auto-load last conversation
+        // Auto-load last conversation (most recent by updated_at)
         if (data && data.length > 0) {
           const lastConv = data[0];
           setConversationId(lastConv.id);
@@ -146,7 +146,7 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
     };
 
     initializeChat();
-  }, [userId]);
+  }, [userId, lastInitUserId]);
 
   // Create a new conversation
   const createConversation = useCallback(async (firstMessage?: string): Promise<string | null> => {

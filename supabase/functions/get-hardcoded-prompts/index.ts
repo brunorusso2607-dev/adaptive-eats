@@ -11,7 +11,7 @@ const corsHeaders = {
 
 const HARDCODED_PROMPTS: Record<string, { systemPrompt: string; model: string; description: string }> = {
   'analyze-food-photo': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Análise de fotos de alimentos - identifica alimentos, calcula macros e valida segurança',
     systemPrompt: `You are a GLOBAL food safety and nutrition expert specialized in protecting users with food intolerances and allergies.
 
@@ -156,7 +156,7 @@ VARIABLES:
   },
 
   'analyze-label-photo': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Análise de rótulos de produtos - extrai ingredientes e detecta alérgenos',
     systemPrompt: `You are a GLOBAL nutrition label expert with deep knowledge of:
 
@@ -253,7 +253,7 @@ VARIABLES:
   },
 
   'analyze-fridge-photo': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Análise de fotos de geladeira - identifica ingredientes e sugere receitas',
     systemPrompt: `You are a kitchen inventory expert and recipe suggester.
 
@@ -322,7 +322,7 @@ VARIABLES:
   },
 
   'generate-recipe': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Geração de receitas personalizadas com ingredientes do usuário',
     systemPrompt: `You are a professional chef and nutritionist specialized in creating safe, delicious recipes.
 
@@ -397,7 +397,7 @@ VARIABLES:
   },
 
   'regenerate-meal': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Regeneração de refeições alternativas mantendo restrições',
     systemPrompt: `You are a meal planning expert specialized in creating alternatives.
 
@@ -454,7 +454,7 @@ VARIABLES:
   },
 
   'chat-assistant': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Assistente de chat sobre alimentação e saúde',
     systemPrompt: `You are ReceitAI, a friendly nutrition and cooking assistant.
 
@@ -498,7 +498,7 @@ VARIABLES:
   },
 
   'generate-ai-meal-plan': {
-    model: 'gemini-2.0-flash-lite',
+    model: 'gemini-2.5-flash-lite',
     description: 'Geração de planos alimentares personalizados',
     systemPrompt: `[PROMPT v7.0 GLOBAL - getMasterMealPromptV5]
 

@@ -456,6 +456,13 @@ export default function FloatingChefIA() {
           await saveMessage(assistantMessage, activeConvId);
         }
 
+        // Show toast if profile was updated with new restriction
+        if (data.profileUpdated && data.addedRestriction) {
+          toast.success(`${data.addedRestriction} adicionado ao seu perfil!`, {
+            description: "Suas recomendações agora consideram essa restrição."
+          });
+        }
+
         // Show notification if chat is closed
         if (!isOpen) {
           setHasNewMessage(true);

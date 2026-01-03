@@ -362,55 +362,79 @@ export default function Dashboard() {
     }
 
     setIsGeneratingRecipe(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-recipe", {
-        body: { 
-          type,
-          ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
-          categoryContext: categoryContext || null,
-        },
-      });
-
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
-
-      // Store the recipe with the input ingredients for "Gerar Outra"
-      const recipeWithIngredients = {
-        ...data.recipe,
-        input_ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
-      };
+    
+    // Retry logic for safety-blocked recipes (max 3 attempts)
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      attempt++;
       
-      setGeneratedRecipe(recipeWithIngredients);
-      setShowRecipe(true);
-      
-      // Log user action
-      await logUserAction(
-        "recipe_generated",
-        `Receita gerada: "${data.recipe.name}"${categoryContext ? ` (${categoryContext.category}/${categoryContext.subcategory})` : type === "com_ingredientes" ? " (com ingredientes)" : " (automática)"}`,
-        null,
-        { 
-          recipe_name: data.recipe.name, 
-          type, 
-          ingredients: ingredientsToUse,
-          category: categoryContext?.category,
-          subcategory: categoryContext?.subcategory 
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-recipe", {
+          body: { 
+            type,
+            ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
+            categoryContext: categoryContext || null,
+          },
+        });
+
+        if (error) throw error;
+        
+        // Check for safety block (should_retry flag)
+        if (data.safety_blocked && data.should_retry && attempt < maxRetries) {
+          console.log(`[Recipe Safety] Attempt ${attempt}/${maxRetries} blocked, retrying...`, data.conflicts);
+          toast.info(`Receita insegura detectada, gerando alternativa... (${attempt}/${maxRetries})`);
+          continue; // Try again
         }
-      );
-      
-      // Save ingredients and category for "Gerar Outra" and clear input
-      if (type === "com_ingredientes") {
-        setLastUsedIngredients(ingredientsToUse);
+        
+        if (data.error) throw new Error(data.error);
+
+        // Store the recipe with the input ingredients for "Gerar Outra"
+        const recipeWithIngredients = {
+          ...data.recipe,
+          input_ingredients: type === "com_ingredientes" ? ingredientsToUse : null,
+        };
+        
+        setGeneratedRecipe(recipeWithIngredients);
+        setShowRecipe(true);
+        
+        // Log user action
+        await logUserAction(
+          "recipe_generated",
+          `Receita gerada: "${data.recipe.name}"${categoryContext ? ` (${categoryContext.category}/${categoryContext.subcategory})` : type === "com_ingredientes" ? " (com ingredientes)" : " (automática)"}`,
+          null,
+          { 
+            recipe_name: data.recipe.name, 
+            type, 
+            ingredients: ingredientsToUse,
+            category: categoryContext?.category,
+            subcategory: categoryContext?.subcategory 
+          }
+        );
+        
+        // Save ingredients and category for "Gerar Outra" and clear input
+        if (type === "com_ingredientes") {
+          setLastUsedIngredients(ingredientsToUse);
+        }
+        if (categoryContext) {
+          setLastUsedCategoryContext(categoryContext);
+        }
+        setIngredients([]);
+        
+        // Success - exit retry loop
+        break;
+        
+      } catch (error) {
+        // If this is the last attempt, show error
+        if (attempt >= maxRetries) {
+          console.error("Error generating recipe after all retries:", error);
+          toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
+        }
       }
-      if (categoryContext) {
-        setLastUsedCategoryContext(categoryContext);
-      }
-      setIngredients([]);
-    } catch (error) {
-      console.error("Error generating recipe:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
-    } finally {
-      setIsGeneratingRecipe(false);
     }
+    
+    setIsGeneratingRecipe(false);
   };
 
   // Generate recipe with ingredients passed directly (avoids state sync issues)
@@ -423,41 +447,65 @@ export default function Dashboard() {
     const ingredientsToUse = ingredientsList.join(", ");
     
     setIsGeneratingRecipe(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("generate-recipe", {
-        body: { 
-          type: "com_ingredientes",
-          ingredients: ingredientsToUse,
-          categoryContext: null,
-        },
-      });
+    
+    // Retry logic for safety-blocked recipes (max 3 attempts)
+    const maxRetries = 3;
+    let attempt = 0;
+    
+    while (attempt < maxRetries) {
+      attempt++;
+      
+      try {
+        const { data, error } = await supabase.functions.invoke("generate-recipe", {
+          body: { 
+            type: "com_ingredientes",
+            ingredients: ingredientsToUse,
+            categoryContext: null,
+          },
+        });
 
-      if (error) throw error;
-      if (data.error) throw new Error(data.error);
+        if (error) throw error;
+        
+        // Check for safety block (should_retry flag)
+        if (data.safety_blocked && data.should_retry && attempt < maxRetries) {
+          console.log(`[Recipe Safety] Attempt ${attempt}/${maxRetries} blocked, retrying...`, data.conflicts);
+          toast.info(`Receita insegura detectada, gerando alternativa... (${attempt}/${maxRetries})`);
+          continue; // Try again
+        }
+        
+        if (data.error) throw new Error(data.error);
 
-      const recipeWithIngredients = {
-        ...data.recipe,
-        input_ingredients: ingredientsToUse,
-      };
-      
-      setGeneratedRecipe(recipeWithIngredients);
-      setShowRecipe(true);
-      
-      await logUserAction(
-        "recipe_generated",
-        `Receita gerada: "${data.recipe.name}" (com ingredientes)`,
-        null,
-        { recipe_name: data.recipe.name, type: "com_ingredientes", ingredients: ingredientsToUse }
-      );
-      
-      setLastUsedIngredients(ingredientsToUse);
-      setIngredients([]);
-    } catch (error) {
-      console.error("Error generating recipe:", error);
-      toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
-    } finally {
-      setIsGeneratingRecipe(false);
+        const recipeWithIngredients = {
+          ...data.recipe,
+          input_ingredients: ingredientsToUse,
+        };
+        
+        setGeneratedRecipe(recipeWithIngredients);
+        setShowRecipe(true);
+        
+        await logUserAction(
+          "recipe_generated",
+          `Receita gerada: "${data.recipe.name}" (com ingredientes)`,
+          null,
+          { recipe_name: data.recipe.name, type: "com_ingredientes", ingredients: ingredientsToUse }
+        );
+        
+        setLastUsedIngredients(ingredientsToUse);
+        setIngredients([]);
+        
+        // Success - exit retry loop
+        break;
+        
+      } catch (error) {
+        // If this is the last attempt, show error
+        if (attempt >= maxRetries) {
+          console.error("Error generating recipe after all retries:", error);
+          toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
+        }
+      }
     }
+    
+    setIsGeneratingRecipe(false);
   };
 
   const handleCategorySelect = (category: string, subcategory: string, filters?: { culinaria?: string; tempo?: string; metodo?: string }) => {

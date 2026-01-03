@@ -363,6 +363,7 @@ ${baseSystemPrompt}`;
 
       // ========== POST-AI SAFETY VALIDATION USING GLOBAL SAFETY ENGINE ==========
       // This ensures consistent validation with all other modules
+      // CRITICAL: Recipes with safety conflicts are BLOCKED to protect users with intolerances
       try {
         const safetyDatabase: SafetyDatabase = await loadSafetyDatabase();
         const normalizedIntolerances = normalizeUserIntolerances(profile.intolerances || [], safetyDatabase);
@@ -404,10 +405,25 @@ ${baseSystemPrompt}`;
           type: w.type
         }));
 
-        // If there are conflicts, log a warning (but still return the recipe)
-        if (!validationResult.isSafe) {
-          logStep("⚠️ Recipe has safety conflicts - user will be warned", {
+        // CRITICAL: BLOCK recipes with safety conflicts - do not allow unsafe recipes
+        if (!validationResult.isSafe && validationResult.conflicts.length > 0) {
+          const conflictDetails = validationResult.conflicts.map(c => 
+            `"${c.originalIngredient}" conflita com ${c.label}`
+          ).join(', ');
+          
+          logStep("🚫 BLOCKED: Recipe has safety conflicts", {
+            recipeName: recipe.name,
             conflicts: validationResult.conflicts
+          });
+          
+          return new Response(JSON.stringify({ 
+            error: `Receita bloqueada por segurança alimentar: ${conflictDetails}. Gerando nova receita...`,
+            safety_blocked: true,
+            conflicts: validationResult.conflicts,
+            should_retry: true
+          }), {
+            status: 422, // Unprocessable Entity - recipe violates user restrictions
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
         }
       } catch (safetyError) {

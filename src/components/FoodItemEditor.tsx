@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Check, X, Flame, Beef, Wheat, Droplets, AlertCircle, HelpCircle } from "lucide-react";
+import { Pencil, Check, X, Flame, Beef, Wheat, Droplets, AlertCircle, HelpCircle, Search } from "lucide-react";
+import UnifiedFoodSearchBlock, { SelectedFoodItem } from "./UnifiedFoodSearchBlock";
 
 type FoodItem = {
   item: string;
@@ -31,6 +32,9 @@ type FoodItem = {
   correcao_tipo?: "exact" | "fuzzy";
   // Track similarity percentage for fuzzy matches
   correcao_similaridade?: number;
+  // Unidentified food item - needs user correction
+  nao_identificado?: boolean;
+  descricao_visual?: string; // Visual description when unidentified
 };
 
 interface FoodItemEditorProps {
@@ -42,10 +46,32 @@ interface FoodItemEditorProps {
 
 export default function FoodItemEditor({ food, index, onSave, onSelectAlternative }: FoodItemEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isSearching, setIsSearching] = useState(food.nao_identificado ?? false); // Start in search mode if unidentified
   const [editedFood, setEditedFood] = useState<FoodItem>(food);
   const [originalPortion, setOriginalPortion] = useState<number | null>(null);
   const [portionQuantity, setPortionQuantity] = useState<string>("1");
   const [portionUnit, setPortionUnit] = useState<string>("g");
+
+  // Handle food selection from search
+  const handleFoodSelected = useCallback((selectedFood: SelectedFoodItem) => {
+    const updatedFood: FoodItem = {
+      ...food,
+      item: selectedFood.name,
+      calorias: Math.round(selectedFood.calories),
+      macros: {
+        proteinas: Math.round(selectedFood.protein * 10) / 10,
+        carboidratos: Math.round(selectedFood.carbs * 10) / 10,
+        gorduras: Math.round(selectedFood.fat * 10) / 10,
+      },
+      porcao_estimada: `${selectedFood.quantity_grams}g`,
+      corrigido_manualmente: true,
+      nao_identificado: false, // No longer unidentified
+      descricao_visual: food.descricao_visual, // Keep original description for reference
+    };
+    
+    onSave(index, updatedFood);
+    setIsSearching(false);
+  }, [food, index, onSave]);
 
   // Food-specific units with approximate gram values
   const foodSpecificUnits: Record<string, { value: string; label: string; grams: number }[]> = useMemo(() => ({
@@ -488,6 +514,76 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
           </div>
         </CardContent>
       </Card>
+    );
+  }
+
+  // Unidentified food - show search UI
+  if (food.nao_identificado && isSearching) {
+    return (
+      <Card className="border-amber-500/50 bg-amber-500/5">
+        <CardContent className="p-4 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="w-10 h-10 rounded-full bg-amber-500/20 flex items-center justify-center flex-shrink-0">
+              <AlertCircle className="w-5 h-5 text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-foreground text-sm">Alimento não identificado</p>
+              <p className="text-xs text-muted-foreground">
+                &quot;{food.descricao_visual || food.item}&quot;
+              </p>
+              <p className="text-xs text-amber-600 mt-1">
+                Busque o alimento correto abaixo
+              </p>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setIsSearching(false)}
+              className="flex-shrink-0"
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          </div>
+          
+          <div className="border-t border-amber-500/20 pt-3">
+            <UnifiedFoodSearchBlock
+              onSelectFood={handleFoodSelected}
+              scrollHeight="h-[200px]"
+              autoFocus={true}
+              confirmButtonLabel="Usar este alimento"
+            />
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // Unidentified food - show compact warning card (if user closed search)
+  if (food.nao_identificado && !isSearching) {
+    return (
+      <div 
+        className="flex items-center justify-between p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 cursor-pointer hover:bg-amber-500/15 transition-colors"
+        onClick={() => setIsSearching(true)}
+      >
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" />
+          <div>
+            <p className="font-medium text-foreground flex items-center gap-1">
+              {food.descricao_visual || food.item}
+              <span className="text-xs px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-600">
+                não identificado
+              </span>
+            </p>
+            <p className="text-xs text-amber-600">
+              Toque para corrigir
+            </p>
+          </div>
+        </div>
+        <div className="text-right flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">--</span>
+          <Search className="w-4 h-4 text-amber-500" />
+        </div>
+      </div>
     );
   }
 

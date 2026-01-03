@@ -553,6 +553,8 @@ This meal represents a portion of their daily intake.
     {
       "name": "food name in ${userLocale}",
       "name_in_cuisine_language": "original name if different (e.g., 'Pad Thai', 'Feijoada')",
+      "unidentified": false,
+      "unidentified_description": null,
       "portion_estimate": {
         "value": 150,
         "unit": "g",
@@ -649,6 +651,31 @@ It MUST be a HUMANIZED, COMPOSITE name that describes the ENTIRE meal, not just 
 
 **health_bonus: ONLY include when safety_score >= 4 AND intolerance_alerts is empty**
 If any alert exists, set health_bonus to null.
+
+=== UNIDENTIFIED FOOD ITEMS ===
+
+When you CANNOT confidently identify a specific food item, you MUST:
+1. Set "unidentified": true for that item
+2. Set "unidentified_description": A brief visual description (e.g., "substância cremosa branca", "molho escuro", "grãos marrons")
+3. Set "name": The visual description (same as unidentified_description)
+4. Set "calories": 0 (DO NOT ESTIMATE CALORIES FOR UNIDENTIFIED ITEMS)
+5. Set all macros to 0
+
+**UNIDENTIFIED triggers (set unidentified: true if ANY apply):**
+- Generic descriptions like "substância", "pasta", "molho", "mistura", "creme" without specific identification
+- Names containing words like "desconhecido", "não identificado", "unknown"
+- Cannot distinguish between multiple possibilities (e.g., could be mayonnaise, sour cream, or cream cheese)
+- Very low visual confidence on what the item actually is
+
+**Examples of UNIDENTIFIED items:**
+- ❌ "Substância cremosa branca" → unidentified: true, calories: 0
+- ❌ "Molho escuro não identificado" → unidentified: true, calories: 0
+- ❌ "Grãos marrons" (could be beans, lentils, or coffee) → unidentified: true, calories: 0
+- ✅ "Arroz branco" → unidentified: false (clearly rice)
+- ✅ "Tomate cereja" → unidentified: false (clearly identified)
+
+**CRITICAL: NEVER assign calories to items you cannot confidently identify.**
+This protects user trust - better to ask for correction than guess wrong.
 
 === FINAL PRINCIPLES ===
 
@@ -772,28 +799,44 @@ If any alert exists, set health_bonus to null.
     // ========== TRANSFORM AI RESPONSE FORMAT ==========
     // The AI returns 'items' and 'totals', but we need 'alimentos' and 'total_geral'
     if (analysis.items && !analysis.alimentos) {
-      analysis.alimentos = analysis.items.map((item: any) => ({
-        item: item.name || item.item || '',
-        item_original_language: item.name_in_cuisine_language,
-        porcao_estimada: item.portion_estimate 
-          ? `${item.portion_estimate.value}${item.portion_estimate.unit}` 
-          : '',
-        calorias: item.calories || 0,
-        macros: {
-          proteinas: item.macros?.protein || 0,
-          carboidratos: item.macros?.carbs || 0,
-          gorduras: item.macros?.fat || 0,
-        },
-        confianca_identificacao: item.portion_estimate?.margin_error_percent 
-          ? (item.portion_estimate.margin_error_percent <= 25 ? 'alta' : item.portion_estimate.margin_error_percent <= 35 ? 'media' : 'baixa')
-          : 'media',
-        culinaria_origem: item.cuisine_origin,
-        ingredientes_visiveis: item.detected_ingredients?.filter((i: any) => i.certainty === 'high').map((i: any) => i.name) || [],
-        ingredientes_provaveis_ocultos: item.probable_hidden_ingredients?.map((i: any) => i.name) || [],
-        metodo_preparo_provavel: item.cooking_method,
-      }));
+      analysis.alimentos = analysis.items.map((item: any) => {
+        // Check if this item is marked as unidentified by the AI
+        const isUnidentified = item.unidentified === true;
+        
+        return {
+          item: item.name || item.item || '',
+          item_original_language: item.name_in_cuisine_language,
+          porcao_estimada: item.portion_estimate 
+            ? `${item.portion_estimate.value}${item.portion_estimate.unit}` 
+            : '',
+          // If unidentified, force calories to 0
+          calorias: isUnidentified ? 0 : (item.calories || 0),
+          macros: {
+            proteinas: isUnidentified ? 0 : (item.macros?.protein || 0),
+            carboidratos: isUnidentified ? 0 : (item.macros?.carbs || 0),
+            gorduras: isUnidentified ? 0 : (item.macros?.fat || 0),
+          },
+          confianca_identificacao: isUnidentified ? 'baixa' : (
+            item.portion_estimate?.margin_error_percent 
+              ? (item.portion_estimate.margin_error_percent <= 25 ? 'alta' : item.portion_estimate.margin_error_percent <= 35 ? 'media' : 'baixa')
+              : 'media'
+          ),
+          culinaria_origem: item.cuisine_origin,
+          ingredientes_visiveis: item.detected_ingredients?.filter((i: any) => i.certainty === 'high').map((i: any) => i.name) || [],
+          ingredientes_provaveis_ocultos: item.probable_hidden_ingredients?.map((i: any) => i.name) || [],
+          metodo_preparo_provavel: item.cooking_method,
+          // Unidentified food item properties
+          nao_identificado: isUnidentified,
+          descricao_visual: isUnidentified ? (item.unidentified_description || item.name || '') : undefined,
+        };
+      });
       delete analysis.items;
-      logStep("Transformed items → alimentos", { count: analysis.alimentos.length });
+      
+      const unidentifiedCount = analysis.alimentos.filter((a: any) => a.nao_identificado).length;
+      logStep("Transformed items → alimentos", { 
+        count: analysis.alimentos.length,
+        unidentifiedCount 
+      });
     }
     
     if (analysis.totals && !analysis.total_geral) {

@@ -693,6 +693,7 @@ export type Database = {
           food_name: string
           id: string
           is_active: boolean
+          language: string
           notes: string | null
           updated_at: string
         }
@@ -702,6 +703,7 @@ export type Database = {
           food_name: string
           id?: string
           is_active?: boolean
+          language?: string
           notes?: string | null
           updated_at?: string
         }
@@ -711,6 +713,7 @@ export type Database = {
           food_name?: string
           id?: string
           is_active?: boolean
+          language?: string
           notes?: string | null
           updated_at?: string
         }

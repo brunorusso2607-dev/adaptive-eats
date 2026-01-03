@@ -197,3 +197,6 @@ verify_jwt = false
 
 [functions.translate-intolerance-mappings]
 verify_jwt = false
+
+[functions.translate-food-decomposition]
+verify_jwt = false

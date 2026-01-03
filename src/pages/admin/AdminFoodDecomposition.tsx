@@ -25,8 +25,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, Plus, Trash2, Search, Utensils, Edit2, ChevronRight, Package } from "lucide-react";
+import { Loader2, Plus, Trash2, Search, Utensils, Edit2, ChevronRight, Package, Languages, Globe, Flag } from "lucide-react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
 type FoodDecomposition = {
@@ -35,22 +42,34 @@ type FoodDecomposition = {
   base_ingredients: string[];
   is_active: boolean;
   notes: string | null;
+  language: string;
   created_at: string;
   updated_at: string;
 };
 
+const LANGUAGE_OPTIONS = [
+  { value: "all", label: "Todos os idiomas", icon: Globe },
+  { value: "en", label: "Inglês (Global)", icon: Globe },
+  { value: "br", label: "Português (Brasil)", icon: Flag },
+  { value: "pt", label: "Português (Pendente)", icon: Languages },
+];
+
 export default function AdminFoodDecomposition() {
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
+  const [languageFilter, setLanguageFilter] = useState("all");
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [deleteItem, setDeleteItem] = useState<FoodDecomposition | null>(null);
   const [editingItem, setEditingItem] = useState<FoodDecomposition | null>(null);
+  const [isTranslating, setIsTranslating] = useState(false);
+  const [translationProgress, setTranslationProgress] = useState({ processed: 0, total: 0 });
   
   // Form states
   const [formFoodName, setFormFoodName] = useState("");
   const [formIngredients, setFormIngredients] = useState("");
   const [formNotes, setFormNotes] = useState("");
+  const [formLanguage, setFormLanguage] = useState("pt");
   const [formIsActive, setFormIsActive] = useState(true);
 
   // Fetch all decomposition mappings
@@ -67,11 +86,20 @@ export default function AdminFoodDecomposition() {
     },
   });
 
-  // Filter by search
-  const filteredDecompositions = decompositions?.filter(d =>
-    d.food_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    d.base_ingredients.some(i => i.toLowerCase().includes(searchTerm.toLowerCase()))
-  ) || [];
+  // Filter by search and language
+  const filteredDecompositions = decompositions?.filter(d => {
+    const matchesSearch = d.food_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      d.base_ingredients.some(i => i.toLowerCase().includes(searchTerm.toLowerCase()));
+    const matchesLanguage = languageFilter === "all" || d.language === languageFilter;
+    return matchesSearch && matchesLanguage;
+  }) || [];
+
+  // Count by language
+  const countByLanguage = {
+    en: decompositions?.filter(d => d.language === 'en').length || 0,
+    br: decompositions?.filter(d => d.language === 'br').length || 0,
+    pt: decompositions?.filter(d => d.language === 'pt').length || 0,
+  };
 
   // Add mutation
   const addMutation = useMutation({
@@ -87,6 +115,7 @@ export default function AdminFoodDecomposition() {
           food_name: formFoodName.trim().toLowerCase(),
           base_ingredients: ingredients,
           notes: formNotes.trim() || null,
+          language: formLanguage,
           is_active: formIsActive,
         });
 
@@ -123,6 +152,7 @@ export default function AdminFoodDecomposition() {
           food_name: formFoodName.trim().toLowerCase(),
           base_ingredients: ingredients,
           notes: formNotes.trim() || null,
+          language: formLanguage,
           is_active: formIsActive,
         })
         .eq("id", editingItem.id);
@@ -184,6 +214,7 @@ export default function AdminFoodDecomposition() {
     setFormFoodName("");
     setFormIngredients("");
     setFormNotes("");
+    setFormLanguage("pt");
     setFormIsActive(true);
   };
 
@@ -192,6 +223,7 @@ export default function AdminFoodDecomposition() {
     setFormFoodName(item.food_name);
     setFormIngredients(item.base_ingredients.join(", "));
     setFormNotes(item.notes || "");
+    setFormLanguage(item.language || "pt");
     setFormIsActive(item.is_active);
     setIsEditOpen(true);
   };
@@ -210,6 +242,79 @@ export default function AdminFoodDecomposition() {
       return;
     }
     updateMutation.mutate();
+  };
+
+  const handleTranslate = async () => {
+    if (countByLanguage.pt === 0) {
+      toast.info("Não há registros pendentes para traduzir");
+      return;
+    }
+
+    setIsTranslating(true);
+    setTranslationProgress({ processed: 0, total: countByLanguage.pt });
+
+    try {
+      let offset = 0;
+      let totalProcessed = 0;
+      const batchSize = 20;
+
+      // Primeiro, fazer dry run para ver o que será processado
+      const { data: dryRunResult, error: dryRunError } = await supabase.functions.invoke(
+        'translate-food-decomposition',
+        { body: { batch_size: batchSize, offset: 0, dry_run: true } }
+      );
+
+      if (dryRunError) throw dryRunError;
+
+      toast.info(`Iniciando tradução de ${countByLanguage.pt} registros...`);
+
+      // Agora processar em lotes
+      while (true) {
+        const { data, error } = await supabase.functions.invoke(
+          'translate-food-decomposition',
+          { body: { batch_size: batchSize, offset, dry_run: false } }
+        );
+
+        if (error) throw error;
+
+        if (!data.success) {
+          throw new Error(data.error || 'Erro desconhecido');
+        }
+
+        totalProcessed += data.processed || 0;
+        setTranslationProgress({ processed: totalProcessed, total: countByLanguage.pt });
+
+        if (data.next_offset === null) {
+          break;
+        }
+
+        offset = data.next_offset;
+
+        // Pequena pausa entre lotes
+        await new Promise(resolve => setTimeout(resolve, 500));
+      }
+
+      queryClient.invalidateQueries({ queryKey: ["food-decomposition-mappings"] });
+      toast.success(`Tradução concluída! ${totalProcessed} registros processados.`);
+    } catch (error) {
+      console.error('Translation error:', error);
+      toast.error(`Erro na tradução: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    } finally {
+      setIsTranslating(false);
+      setTranslationProgress({ processed: 0, total: 0 });
+    }
+  };
+
+  const getLanguageBadge = (language: string) => {
+    switch (language) {
+      case 'en':
+        return <Badge variant="outline" className="bg-blue-500/10 text-blue-600 border-blue-500/30">🌍 EN</Badge>;
+      case 'br':
+        return <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30">🇧🇷 BR</Badge>;
+      case 'pt':
+      default:
+        return <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30">⏳ PT</Badge>;
+    }
   };
 
   const activeCount = decompositions?.filter(d => d.is_active).length || 0;
@@ -237,11 +342,11 @@ export default function AdminFoodDecomposition() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-2xl font-bold text-primary">{totalCount}</div>
-            <div className="text-sm text-muted-foreground">Total de mapeamentos</div>
+            <div className="text-sm text-muted-foreground">Total</div>
           </CardContent>
         </Card>
         <Card>
@@ -250,21 +355,70 @@ export default function AdminFoodDecomposition() {
             <div className="text-sm text-muted-foreground">Ativos</div>
           </CardContent>
         </Card>
-        <Card>
+        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setLanguageFilter('en')}>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-muted-foreground">{totalCount - activeCount}</div>
-            <div className="text-sm text-muted-foreground">Inativos</div>
+            <div className="text-2xl font-bold text-blue-600">{countByLanguage.en}</div>
+            <div className="text-sm text-muted-foreground">🌍 Inglês</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setLanguageFilter('br')}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-green-600">{countByLanguage.br}</div>
+            <div className="text-sm text-muted-foreground">🇧🇷 Brasil</div>
+          </CardContent>
+        </Card>
+        <Card className="cursor-pointer hover:bg-accent/50 transition-colors" onClick={() => setLanguageFilter('pt')}>
+          <CardContent className="p-4">
+            <div className="text-2xl font-bold text-yellow-600">{countByLanguage.pt}</div>
+            <div className="text-sm text-muted-foreground">⏳ Pendente</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="p-4">
-            <div className="text-2xl font-bold text-blue-600">{filteredDecompositions.length}</div>
-            <div className="text-sm text-muted-foreground">Resultados da busca</div>
+            <div className="text-2xl font-bold text-muted-foreground">{filteredDecompositions.length}</div>
+            <div className="text-sm text-muted-foreground">Filtrados</div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Search and Add */}
+      {/* Translation Action */}
+      {countByLanguage.pt > 0 && (
+        <Card className="border-yellow-500/30 bg-yellow-500/5">
+          <CardContent className="p-4 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Languages className="h-5 w-5 text-yellow-600" />
+              <div>
+                <p className="font-medium text-yellow-700">
+                  {countByLanguage.pt} registros pendentes de tradução
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  Clique para classificar e traduzir automaticamente
+                </p>
+              </div>
+            </div>
+            <Button 
+              onClick={handleTranslate} 
+              disabled={isTranslating}
+              variant="outline"
+              className="border-yellow-500/50 text-yellow-700 hover:bg-yellow-500/10"
+            >
+              {isTranslating ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  {translationProgress.processed}/{translationProgress.total}
+                </>
+              ) : (
+                <>
+                  <Languages className="h-4 w-4 mr-2" />
+                  Traduzir Todos
+                </>
+              )}
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Search and Filters */}
       <div className="flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -275,9 +429,21 @@ export default function AdminFoodDecomposition() {
             className="pl-10"
           />
         </div>
+        <Select value={languageFilter} onValueChange={setLanguageFilter}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Filtrar idioma" />
+          </SelectTrigger>
+          <SelectContent>
+            {LANGUAGE_OPTIONS.map(opt => (
+              <SelectItem key={opt.value} value={opt.value}>
+                {opt.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
         <Button onClick={() => { resetForm(); setIsAddOpen(true); }} className="gap-2">
           <Plus className="h-4 w-4" />
-          Adicionar Mapeamento
+          Adicionar
         </Button>
       </div>
 
@@ -294,7 +460,7 @@ export default function AdminFoodDecomposition() {
             <div className="space-y-2">
               {filteredDecompositions.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
-                  {searchTerm ? "Nenhum resultado encontrado" : "Nenhum mapeamento cadastrado"}
+                  {searchTerm || languageFilter !== "all" ? "Nenhum resultado encontrado" : "Nenhum mapeamento cadastrado"}
                 </div>
               ) : (
                 filteredDecompositions.map((item) => (
@@ -306,6 +472,7 @@ export default function AdminFoodDecomposition() {
                   >
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
+                        {getLanguageBadge(item.language)}
                         <span className="font-medium text-foreground capitalize">
                           {item.food_name}
                         </span>
@@ -390,6 +557,19 @@ export default function AdminFoodDecomposition() {
               </p>
             </div>
             <div>
+              <Label>Idioma/Região</Label>
+              <Select value={formLanguage} onValueChange={setFormLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">🌍 Inglês (Global)</SelectItem>
+                  <SelectItem value="br">🇧🇷 Português (Brasil)</SelectItem>
+                  <SelectItem value="pt">⏳ Pendente de tradução</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Notas (opcional)</Label>
               <Input
                 placeholder="Ex: Pão de queijo mineiro tradicional"
@@ -446,6 +626,19 @@ export default function AdminFoodDecomposition() {
               <p className="text-xs text-muted-foreground mt-1">
                 Separe por vírgula ou nova linha. Use ingredientes puros.
               </p>
+            </div>
+            <div>
+              <Label>Idioma/Região</Label>
+              <Select value={formLanguage} onValueChange={setFormLanguage}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="en">🌍 Inglês (Global)</SelectItem>
+                  <SelectItem value="br">🇧🇷 Português (Brasil)</SelectItem>
+                  <SelectItem value="pt">⏳ Pendente de tradução</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Notas (opcional)</Label>

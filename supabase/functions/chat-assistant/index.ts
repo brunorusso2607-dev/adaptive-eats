@@ -20,6 +20,16 @@ const logStep = (step: string, details?: any) => {
   console.log(`[${timestamp}] [chat-assistant] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// ============= DASHBOARD CONTEXT TYPE =============
+interface DashboardContext {
+  waterToday: { total_ml: number; goal_ml: number; percentage: number } | null;
+  caloriesToday: { consumed: number; target: number; remaining: number } | null;
+  macrosToday: { protein: number; carbs: number; fat: number; targets: { protein: number; carbs: number; fat: number } } | null;
+  gamification: { xp: number; level: number; streak: number; adherence: number } | null;
+  recentSymptoms: Array<{ symptoms: string[]; severity: string; logged_at: string }>;
+  strategy: { key: string; label: string; description: string } | null;
+}
+
 // ============= HELPDESK PROMPT - SIMPÁTICO E PROFISSIONAL =============
 const buildSystemPrompt = (
   userProfile: any,
@@ -42,7 +52,8 @@ const buildSystemPrompt = (
       calories: number;
       isCompleted: boolean;
     }>;
-  }
+  },
+  dashboardContext?: DashboardContext
 ): string => {
   const intolerances = userProfile?.intolerances || [];
   const dietaryPreference = userProfile?.dietary_preference || "comum";
@@ -144,6 +155,47 @@ ${activeMealPlanContext.todayMeals.length > 0
     ).join("\n")
   : "Nenhuma refeição planejada para hoje."}
 ` : "O usuário não possui um plano alimentar ativo no momento."}
+
+---
+
+## 📊 DADOS DO DASHBOARD DO USUÁRIO (HOJE)
+
+${dashboardContext ? `
+### 💧 HIDRATAÇÃO
+${dashboardContext.waterToday 
+  ? `- **Consumo**: ${dashboardContext.waterToday.total_ml}ml de ${dashboardContext.waterToday.goal_ml}ml (${dashboardContext.waterToday.percentage}%)
+${dashboardContext.waterToday.percentage < 50 ? "⚠️ Usuário está com baixa hidratação hoje!" : dashboardContext.waterToday.percentage >= 100 ? "✅ Meta de água atingida!" : ""}`
+  : "Sem registro de água hoje."}
+
+### 🔥 CALORIAS E MACROS
+${dashboardContext.caloriesToday 
+  ? `- **Calorias**: ${dashboardContext.caloriesToday.consumed} kcal consumidas de ${dashboardContext.caloriesToday.target} kcal (faltam ${dashboardContext.caloriesToday.remaining} kcal)
+${dashboardContext.macrosToday ? `- **Proteína**: ${dashboardContext.macrosToday.protein}g / ${dashboardContext.macrosToday.targets.protein}g
+- **Carboidratos**: ${dashboardContext.macrosToday.carbs}g / ${dashboardContext.macrosToday.targets.carbs}g
+- **Gorduras**: ${dashboardContext.macrosToday.fat}g / ${dashboardContext.macrosToday.targets.fat}g` : ""}`
+  : "Sem registro de consumo alimentar hoje."}
+
+### 🏆 GAMIFICAÇÃO
+${dashboardContext.gamification 
+  ? `- **Nível**: ${dashboardContext.gamification.level}
+- **XP Total**: ${dashboardContext.gamification.xp}
+- **Sequência (Streak)**: ${dashboardContext.gamification.streak} dias
+- **Aderência ao plano**: ${dashboardContext.gamification.adherence}%`
+  : "Sem dados de gamificação."}
+
+### 🩺 SINTOMAS RECENTES (últimos 3 dias)
+${dashboardContext.recentSymptoms.length > 0 
+  ? dashboardContext.recentSymptoms.map(s => 
+      `- ${new Date(s.logged_at).toLocaleDateString('pt-BR')}: ${s.symptoms.join(", ")} (${s.severity})`
+    ).join("\n")
+  : "Nenhum sintoma registrado recentemente."}
+
+### 🎯 ESTRATÉGIA NUTRICIONAL
+${dashboardContext.strategy 
+  ? `- **Estratégia**: ${dashboardContext.strategy.label}
+- **Descrição**: ${dashboardContext.strategy.description}`
+  : "Nenhuma estratégia definida."}
+` : "Dados do dashboard não disponíveis."}
 
 ---
 
@@ -644,6 +696,222 @@ const fetchActiveMealPlanContext = async (
   }
 };
 
+// ============= FETCH DASHBOARD CONTEXT =============
+const fetchDashboardContext = async (
+  supabase: any,
+  userId: string,
+  userProfile: any,
+  userTimezone: string
+): Promise<DashboardContext> => {
+  const context: DashboardContext = {
+    waterToday: null,
+    caloriesToday: null,
+    macrosToday: null,
+    gamification: null,
+    recentSymptoms: [],
+    strategy: null
+  };
+
+  try {
+    // Get user's current date in their timezone
+    const now = new Date();
+    const userNow = new Date(now.toLocaleString("en-US", { timeZone: userTimezone }));
+    const todayStart = new Date(userNow);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(userNow);
+    todayEnd.setHours(23, 59, 59, 999);
+    const threeDaysAgo = new Date(userNow);
+    threeDaysAgo.setDate(threeDaysAgo.getDate() - 3);
+
+    logStep("Fetching dashboard context", { userId, userTimezone });
+
+    // Fetch all data in parallel
+    const [waterData, consumptionData, gamificationData, symptomsData, strategyData] = await Promise.all([
+      // Water consumption today
+      supabase.rpc('get_water_today', { p_user_id: userId }).catch(() => ({ data: null })),
+      
+      // Meal consumption today
+      supabase
+        .from("meal_consumption")
+        .select("total_calories, total_protein, total_carbs, total_fat")
+        .eq("user_id", userId)
+        .gte("consumed_at", todayStart.toISOString())
+        .lte("consumed_at", todayEnd.toISOString()),
+      
+      // Gamification data
+      supabase
+        .from("user_gamification")
+        .select("total_xp, current_streak, adherence_percentage")
+        .eq("user_id", userId)
+        .single(),
+      
+      // Recent symptoms (last 3 days)
+      supabase
+        .from("symptom_logs")
+        .select("symptoms, severity, logged_at")
+        .eq("user_id", userId)
+        .gte("logged_at", threeDaysAgo.toISOString())
+        .order("logged_at", { ascending: false })
+        .limit(5),
+      
+      // Nutritional strategy
+      userProfile?.strategy_id 
+        ? supabase
+            .from("nutritional_strategies")
+            .select("key, label, description")
+            .eq("id", userProfile.strategy_id)
+            .single()
+        : Promise.resolve({ data: null })
+    ]);
+
+    // Process water data
+    if (waterData?.data !== null && waterData?.data !== undefined) {
+      const totalMl = typeof waterData.data === 'number' ? waterData.data : 0;
+      const goalMl = 2000; // Default goal
+      context.waterToday = {
+        total_ml: totalMl,
+        goal_ml: goalMl,
+        percentage: Math.round((totalMl / goalMl) * 100)
+      };
+    } else {
+      // Try alternative: query water_consumption table directly
+      const { data: waterRecords } = await supabase
+        .from("water_consumption")
+        .select("amount_ml")
+        .eq("user_id", userId)
+        .gte("consumed_at", todayStart.toISOString())
+        .lte("consumed_at", todayEnd.toISOString());
+      
+      if (waterRecords && waterRecords.length > 0) {
+        const totalMl = waterRecords.reduce((sum: number, r: any) => sum + (r.amount_ml || 0), 0);
+        const goalMl = 2000;
+        context.waterToday = {
+          total_ml: totalMl,
+          goal_ml: goalMl,
+          percentage: Math.round((totalMl / goalMl) * 100)
+        };
+      }
+    }
+
+    // Process consumption data for calories and macros
+    if (consumptionData?.data && consumptionData.data.length > 0) {
+      const totals = consumptionData.data.reduce((acc: any, meal: any) => ({
+        calories: acc.calories + (meal.total_calories || 0),
+        protein: acc.protein + (meal.total_protein || 0),
+        carbs: acc.carbs + (meal.total_carbs || 0),
+        fat: acc.fat + (meal.total_fat || 0)
+      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
+
+      // Calculate targets based on profile
+      const weight = userProfile?.weight_current || 70;
+      const calorieTarget = calculateDailyCalories(userProfile);
+      const proteinTarget = Math.round(weight * 1.6); // 1.6g/kg
+      const fatTarget = Math.round((calorieTarget * 0.25) / 9); // 25% from fat
+      const carbsTarget = Math.round((calorieTarget - (proteinTarget * 4) - (fatTarget * 9)) / 4);
+
+      context.caloriesToday = {
+        consumed: Math.round(totals.calories),
+        target: calorieTarget,
+        remaining: Math.max(0, calorieTarget - Math.round(totals.calories))
+      };
+
+      context.macrosToday = {
+        protein: Math.round(totals.protein),
+        carbs: Math.round(totals.carbs),
+        fat: Math.round(totals.fat),
+        targets: {
+          protein: proteinTarget,
+          carbs: carbsTarget,
+          fat: fatTarget
+        }
+      };
+    }
+
+    // Process gamification data
+    if (gamificationData?.data) {
+      const xp = gamificationData.data.total_xp || 0;
+      const level = Math.floor(xp / 1000) + 1; // Simple level calculation
+      context.gamification = {
+        xp,
+        level,
+        streak: gamificationData.data.current_streak || 0,
+        adherence: gamificationData.data.adherence_percentage || 0
+      };
+    }
+
+    // Process symptoms data
+    if (symptomsData?.data && symptomsData.data.length > 0) {
+      context.recentSymptoms = symptomsData.data.map((s: any) => ({
+        symptoms: s.symptoms || [],
+        severity: s.severity || "leve",
+        logged_at: s.logged_at
+      }));
+    }
+
+    // Process strategy data
+    if (strategyData?.data) {
+      context.strategy = {
+        key: strategyData.data.key,
+        label: strategyData.data.label,
+        description: strategyData.data.description || ""
+      };
+    }
+
+    logStep("Dashboard context fetched", {
+      hasWater: !!context.waterToday,
+      hasCalories: !!context.caloriesToday,
+      hasGamification: !!context.gamification,
+      symptomsCount: context.recentSymptoms.length,
+      hasStrategy: !!context.strategy
+    });
+
+  } catch (error) {
+    logStep("Error fetching dashboard context", { error: error instanceof Error ? error.message : "Unknown" });
+  }
+
+  return context;
+};
+
+// Helper function to calculate daily calories
+const calculateDailyCalories = (profile: any): number => {
+  if (!profile) return 2000;
+  
+  const weight = profile.weight_current || 70;
+  const height = profile.height || 170;
+  const age = profile.age || 30;
+  const sex = profile.sex || "masculino";
+  
+  // Mifflin-St Jeor equation
+  let bmr: number;
+  if (sex === "feminino") {
+    bmr = 10 * weight + 6.25 * height - 5 * age - 161;
+  } else {
+    bmr = 10 * weight + 6.25 * height - 5 * age + 5;
+  }
+  
+  // Activity multiplier
+  const activityMultipliers: Record<string, number> = {
+    sedentario: 1.2,
+    leve: 1.375,
+    moderado: 1.55,
+    ativo: 1.725,
+    muito_ativo: 1.9
+  };
+  const multiplier = activityMultipliers[profile.activity_level] || 1.55;
+  
+  let tdee = bmr * multiplier;
+  
+  // Goal adjustment
+  const goal = profile.goal || "manter";
+  if (goal === "perder" || goal === "emagrecer") {
+    tdee *= 0.85; // 15% deficit
+  } else if (goal === "ganhar") {
+    tdee *= 1.15; // 15% surplus
+  }
+  
+  return Math.round(tdee);
+}
+
 // ============= MAIN HANDLER =============
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -732,15 +1000,32 @@ serve(async (req) => {
       });
     }
 
+    // Fetch dashboard context if user is authenticated
+    let dashboardContext: DashboardContext | undefined = undefined;
+    if (userId && userProfile) {
+      dashboardContext = await fetchDashboardContext(
+        supabase,
+        userId,
+        userProfile,
+        userProfile.timezone || "America/Sao_Paulo"
+      );
+    }
+
     // Build system prompt
     const systemPrompt = buildSystemPrompt(
       userProfile, 
       safetyDatabase, 
       currentPage, 
       isFirstMessage,
-      activeMealPlanContext
+      activeMealPlanContext,
+      dashboardContext
     );
-    logStep("System prompt built", { length: systemPrompt.length, isFirstMessage, hasActivePlan: !!activeMealPlanContext });
+    logStep("System prompt built", { 
+      length: systemPrompt.length, 
+      isFirstMessage, 
+      hasActivePlan: !!activeMealPlanContext,
+      hasDashboardContext: !!dashboardContext 
+    });
 
     // Prepare messages for AI
     const aiMessages: any[] = [

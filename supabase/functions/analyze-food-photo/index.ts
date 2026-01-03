@@ -1155,23 +1155,48 @@ If any alert exists, set health_bonus to null.
     };
     
     // Função para consultar decomposição no banco de dados
+    // Lógica multilíngue: EN (global) primeiro, BR (regional) como fallback para brasileiros
     const getDecompositionFromDatabase = async (foodName: string): Promise<string[] | null> => {
       try {
         const normalized = foodName.toLowerCase().trim();
-        const { data, error } = await supabaseClient
+        const userCountry = profile?.country || 'BR';
+        
+        // 1. Buscar em EN primeiro (padrão global para todos os países)
+        const { data: enData, error: enError } = await supabaseClient
           .from('food_decomposition_mappings')
           .select('base_ingredients')
           .eq('is_active', true)
+          .eq('language', 'en')
           .ilike('food_name', `%${normalized}%`)
           .limit(1)
           .single();
         
-        if (!error && data?.base_ingredients?.length > 0) {
-          logStep(`Found decomposition in database for "${foodName}"`, { 
-            ingredients: data.base_ingredients 
+        if (!enError && enData?.base_ingredients?.length > 0) {
+          logStep(`Found EN decomposition in database for "${foodName}"`, { 
+            ingredients: enData.base_ingredients 
           });
-          return data.base_ingredients;
+          return enData.base_ingredients;
         }
+        
+        // 2. Se usuário for brasileiro e não achou em EN, buscar em BR (produtos típicos)
+        if (userCountry === 'BR') {
+          const { data: brData, error: brError } = await supabaseClient
+            .from('food_decomposition_mappings')
+            .select('base_ingredients')
+            .eq('is_active', true)
+            .eq('language', 'br')
+            .ilike('food_name', `%${normalized}%`)
+            .limit(1)
+            .single();
+          
+          if (!brError && brData?.base_ingredients?.length > 0) {
+            logStep(`Found BR decomposition in database for "${foodName}"`, { 
+              ingredients: brData.base_ingredients 
+            });
+            return brData.base_ingredients;
+          }
+        }
+        
         return null;
       } catch {
         return null;

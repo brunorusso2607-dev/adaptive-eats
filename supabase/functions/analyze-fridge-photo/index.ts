@@ -949,24 +949,49 @@ function isProcessedFood(name: string): boolean {
 }
 
 // Função para buscar decomposição no banco de dados
-async function getDecompositionFromDatabase(foodName: string, supabaseUrl: string, serviceRoleKey: string): Promise<string[] | null> {
+// Lógica multilíngue: EN (global) primeiro, BR (regional) como fallback para brasileiros
+async function getDecompositionFromDatabase(foodName: string, supabaseUrl: string, serviceRoleKey: string, userCountry?: string): Promise<string[] | null> {
   try {
     const serviceClient = createClient(supabaseUrl, serviceRoleKey);
     const normalized = foodName.toLowerCase().trim();
-    const { data, error } = await serviceClient
+    const country = userCountry || 'BR';
+    
+    // 1. Buscar em EN primeiro (padrão global para todos os países)
+    const { data: enData, error: enError } = await serviceClient
       .from('food_decomposition_mappings')
       .select('base_ingredients')
       .eq('is_active', true)
+      .eq('language', 'en')
       .ilike('food_name', `%${normalized}%`)
       .limit(1)
       .single();
     
-    if (!error && data?.base_ingredients?.length > 0) {
-      logStep(`Found decomposition in database for "${foodName}"`, { 
-        ingredients: data.base_ingredients 
+    if (!enError && enData?.base_ingredients?.length > 0) {
+      logStep(`Found EN decomposition in database for "${foodName}"`, { 
+        ingredients: enData.base_ingredients 
       });
-      return data.base_ingredients;
+      return enData.base_ingredients;
     }
+    
+    // 2. Se usuário for brasileiro e não achou em EN, buscar em BR (produtos típicos)
+    if (country === 'BR') {
+      const { data: brData, error: brError } = await serviceClient
+        .from('food_decomposition_mappings')
+        .select('base_ingredients')
+        .eq('is_active', true)
+        .eq('language', 'br')
+        .ilike('food_name', `%${normalized}%`)
+        .limit(1)
+        .single();
+      
+      if (!brError && brData?.base_ingredients?.length > 0) {
+        logStep(`Found BR decomposition in database for "${foodName}"`, { 
+          ingredients: brData.base_ingredients 
+        });
+        return brData.base_ingredients;
+      }
+    }
+    
     return null;
   } catch {
     return null;
@@ -1039,10 +1064,10 @@ async function decomposeProcessedFoodAsync(name: string, country?: string): Prom
     }
   }
   
-  // 3. Fallback: Consultar banco de dados food_decomposition_mappings
+  // 3. Fallback: Consultar banco de dados food_decomposition_mappings (com suporte multilíngue)
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-  const dbDecomposition = await getDecompositionFromDatabase(name, supabaseUrl, serviceRoleKey);
+  const dbDecomposition = await getDecompositionFromDatabase(name, supabaseUrl, serviceRoleKey, country);
   if (dbDecomposition) {
     return dbDecomposition;
   }

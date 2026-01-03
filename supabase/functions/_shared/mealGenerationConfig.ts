@@ -4325,9 +4325,18 @@ export function getMasterMealPromptV5(params: MasterPromptParams): string {
   const regionalExamples = getRegionalExamples(countryCode, regional.language);
 
   // =============================================================================
-  // PROMPT v7.0 GLOBAL - 100% ENGLISH MASTER WITH REGIONAL INJECTION
+  // PROMPT v7.1 GLOBAL - 100% ENGLISH MASTER WITH REGIONAL INJECTION
+  // CRITICAL: Forçar resposta JSON pura sem raciocínio interno
   // =============================================================================
-  return `${nutritionistPersona}
+  return `🚨🚨🚨 CRITICAL OUTPUT RULES - READ FIRST! 🚨🚨🚨
+
+DO NOT include any reasoning, thinking, or internal notes in your response.
+DO NOT start with "[INTERNAL REASONING" or any similar prefix.
+DO NOT add explanations before or after the JSON.
+Your response MUST be ONLY the raw JSON object, nothing else.
+Start your response DIRECTLY with the opening brace "{".
+
+${nutritionistPersona}
 
 🎯 ${getMissionText(regional.language, dayName, dayNumber, dailyCalories)}
 

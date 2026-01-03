@@ -142,33 +142,48 @@ const COUNTRIES = [
   { value: 'CO', label: '🇨🇴 Colômbia' },
 ];
 
+// =============================================================================
+// RESTRICTION LISTS - Global-ready with EN keys (match intolerance_mappings)
+// =============================================================================
+
+// INTOLERÂNCIAS (digestivas) - chaves EN do intolerance_mappings
 const INTOLERANCES = [
   { value: 'lactose', label: 'Lactose' },
   { value: 'gluten', label: 'Glúten' },
   { value: 'fructose', label: 'Frutose' },
   { value: 'fodmap', label: 'FODMAPs' },
-  { value: 'histamine', label: 'Histamina' },
   { value: 'caffeine', label: 'Cafeína' },
-  { value: 'sulfites', label: 'Sulfitos' },
+  { value: 'sulfite', label: 'Sulfitos' },
   { value: 'tyramine', label: 'Tiramina' },
+  { value: 'sorbitol', label: 'Sorbitol' },
+  { value: 'corn', label: 'Milho' },
 ];
 
+// ALERGIAS (imunológicas) - chaves EN do intolerance_mappings
 const ALLERGIES = [
   { value: 'egg', label: 'Ovo' },
   { value: 'peanut', label: 'Amendoim' },
   { value: 'shellfish', label: 'Frutos do Mar' },
   { value: 'soy', label: 'Soja' },
-  { value: 'treenut', label: 'Nozes' },
+  { value: 'tree_nut', label: 'Nozes' },
   { value: 'fish', label: 'Peixes' },
   { value: 'wheat', label: 'Trigo' },
   { value: 'sesame', label: 'Gergelim' },
+  { value: 'milk', label: 'Leite (Proteína)' },
+  { value: 'mustard', label: 'Mostarda' },
+  { value: 'celery', label: 'Aipo' },
+  { value: 'lupin', label: 'Tremoço' },
+  { value: 'mollusk', label: 'Moluscos' },
 ];
 
+// SENSIBILIDADES (químicas/metabólicas) - chaves EN do intolerance_mappings
 const SENSITIVITIES = [
+  { value: 'histamine', label: 'Histamina' },
   { value: 'nickel', label: 'Níquel' },
-  { value: 'salicylates', label: 'Salicilatos' },
+  { value: 'salicylate', label: 'Salicilatos' },
   { value: 'msg', label: 'MSG (Glutamato)' },
-  { value: 'oxalates', label: 'Oxalatos' },
+  { value: 'oxalate', label: 'Oxalatos' },
+  { value: 'nightshade', label: 'Solanáceas' },
 ];
 
 const SEVERITY_CONFIG = {

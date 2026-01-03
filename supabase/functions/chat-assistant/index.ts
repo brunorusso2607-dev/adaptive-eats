@@ -299,6 +299,39 @@ Responda DIRETO como se estivesse mostrando:
 
 ---
 
+---
+
+## 🔧 CAPACIDADE DE ATUALIZAR PERFIL
+
+Você TEM a capacidade REAL de adicionar restrições ao perfil do usuário.
+
+### Quando o usuário disser coisas como:
+- "Tenho intolerância a lactose" / "Sou intolerante a X"
+- "Tenho alergia a amendoim" / "Sou alérgico a X"  
+- "Adiciona glúten nas minhas restrições"
+- "Também não posso comer X"
+
+### Você DEVE:
+1. Reconhecer a intenção de adicionar uma restrição
+2. Incluir NO INÍCIO da sua resposta o marcador especial: [ADICIONAR_RESTRICAO:chave]
+3. Responder naturalmente confirmando a adição
+
+### Chaves válidas para intolerâncias:
+gluten, lactose, fructose, sorbitol, fodmap
+
+### Chaves válidas para alergias:
+peanut (amendoim), nuts (oleaginosas), seafood (frutos do mar), fish (peixe), egg (ovos), soy (soja)
+
+### Chaves válidas para sensibilidades:
+histamine (histamina), caffeine (cafeína), sulfite (sulfito), salicylate (salicilato), corn (milho), nickel (níquel)
+
+### Exemplo de resposta correta:
+Usuário: "Tenho intolerância a lactose também"
+Resposta: "[ADICIONAR_RESTRICAO:lactose]
+Entendi, ${userName || ""}! Adicionei Lactose às suas restrições. A partir de agora vou te alertar sobre leite, queijo, iogurte, manteiga, sorvete..."
+
+**IMPORTANTE**: Só use este marcador quando o usuário CLARAMENTE quiser adicionar uma restrição. Se apenas perguntar sobre um alimento, NÃO adicione.
+
 Agora responda naturalmente, como um amigo que entende de comida e do app.`;
 };
 
@@ -466,6 +499,93 @@ Explique como tirar fotos melhores para análise se tiverem dificuldade.`
   }
 
   return "";
+};
+
+// ============= VALID RESTRICTION KEYS =============
+const VALID_RESTRICTION_KEYS: Record<string, { type: 'intolerance' | 'allergy' | 'sensitivity', label: string }> = {
+  // Intolerances
+  'gluten': { type: 'intolerance', label: 'Glúten' },
+  'lactose': { type: 'intolerance', label: 'Lactose' },
+  'fructose': { type: 'intolerance', label: 'Frutose' },
+  'sorbitol': { type: 'intolerance', label: 'Sorbitol' },
+  'fodmap': { type: 'intolerance', label: 'FODMAP' },
+  // Allergies
+  'peanut': { type: 'allergy', label: 'Amendoim' },
+  'nuts': { type: 'allergy', label: 'Oleaginosas' },
+  'seafood': { type: 'allergy', label: 'Frutos do Mar' },
+  'fish': { type: 'allergy', label: 'Peixe' },
+  'egg': { type: 'allergy', label: 'Ovos' },
+  'soy': { type: 'allergy', label: 'Soja' },
+  // Sensitivities
+  'histamine': { type: 'sensitivity', label: 'Histamina' },
+  'caffeine': { type: 'sensitivity', label: 'Cafeína' },
+  'sulfite': { type: 'sensitivity', label: 'Sulfito' },
+  'salicylate': { type: 'sensitivity', label: 'Salicilato' },
+  'corn': { type: 'sensitivity', label: 'Milho' },
+  'nickel': { type: 'sensitivity', label: 'Níquel' },
+};
+
+// ============= PROCESS PROFILE UPDATE FROM AI RESPONSE =============
+const processProfileUpdateFromResponse = async (
+  supabase: any,
+  userId: string,
+  aiResponse: string,
+  currentIntolerances: string[]
+): Promise<{ updatedResponse: string; addedRestriction: string | null }> => {
+  // Look for the marker in the response
+  const markerMatch = aiResponse.match(/\[ADICIONAR_RESTRICAO:(\w+)\]/i);
+  
+  if (!markerMatch) {
+    return { updatedResponse: aiResponse, addedRestriction: null };
+  }
+
+  const restrictionKey = markerMatch[1].toLowerCase();
+  const restrictionInfo = VALID_RESTRICTION_KEYS[restrictionKey];
+
+  // Remove the marker from the response
+  let cleanResponse = aiResponse.replace(/\[ADICIONAR_RESTRICAO:\w+\]\s*/gi, '');
+
+  if (!restrictionInfo) {
+    logStep("Invalid restriction key detected", { key: restrictionKey });
+    return { updatedResponse: cleanResponse, addedRestriction: null };
+  }
+
+  // Check if already has this restriction
+  if (currentIntolerances.includes(restrictionKey)) {
+    logStep("Restriction already exists", { key: restrictionKey });
+    return { updatedResponse: cleanResponse, addedRestriction: null };
+  }
+
+  // Add the new restriction
+  const newIntolerances = [...currentIntolerances, restrictionKey];
+  
+  try {
+    const { error } = await supabase
+      .from('profiles')
+      .update({ 
+        intolerances: newIntolerances,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', userId);
+
+    if (error) {
+      logStep("Failed to update profile", { error: error.message });
+      return { updatedResponse: cleanResponse, addedRestriction: null };
+    }
+
+    logStep("Profile updated successfully", { 
+      addedRestriction: restrictionKey,
+      newIntolerances 
+    });
+
+    return { 
+      updatedResponse: cleanResponse, 
+      addedRestriction: restrictionInfo.label 
+    };
+  } catch (err) {
+    logStep("Error updating profile", { error: String(err) });
+    return { updatedResponse: cleanResponse, addedRestriction: null };
+  }
 };
 
 // ============= FETCH ACTIVE MEAL PLAN =============
@@ -1243,13 +1363,32 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
-    const assistantMessage = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+    let assistantMessage = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+
+    // Process profile updates from AI response (if any)
+    let addedRestriction: string | null = null;
+    if (userId && userProfile) {
+      const currentIntolerances = userProfile.intolerances || [];
+      const result = await processProfileUpdateFromResponse(
+        supabase,
+        userId,
+        assistantMessage,
+        currentIntolerances
+      );
+      assistantMessage = result.updatedResponse;
+      addedRestriction = result.addedRestriction;
+      
+      if (addedRestriction) {
+        logStep("Restriction added via chat", { restriction: addedRestriction });
+      }
+    }
 
     const executionTime = Date.now() - startTime;
     logStep("Response generated", { 
       executionTimeMs: executionTime,
       responseLength: assistantMessage.length,
-      tokens: aiData.usage
+      tokens: aiData.usage,
+      addedRestriction
     });
 
     // Log AI usage
@@ -1265,7 +1404,8 @@ serve(async (req) => {
           execution_time_ms: executionTime,
           metadata: {
             page_context: currentPage?.path,
-            has_images: !!images?.length
+            has_images: !!images?.length,
+            added_restriction: addedRestriction
           }
         });
       } catch (logError) {
@@ -1276,7 +1416,9 @@ serve(async (req) => {
     return new Response(
       JSON.stringify({ 
         success: true, 
-        message: assistantMessage 
+        message: assistantMessage,
+        profileUpdated: !!addedRestriction,
+        addedRestriction
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

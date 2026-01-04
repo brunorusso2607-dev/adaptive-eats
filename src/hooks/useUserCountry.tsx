@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 // Países suportados pelo sistema
 export const SUPPORTED_COUNTRY_CODES = [
-  'BR', 'US', 'PT', 'MX', 'ES', 'AR', 'CO', 'FR', 'DE', 'IT', 'GB'
+  'BR', 'US', 'PT', 'MX', 'ES', 'AR', 'CO', 'FR', 'DE', 'IT', 'GB', 'AU', 'CA', 'CL', 'PE'
 ] as const;
 
 export type SupportedCountryCode = typeof SUPPORTED_COUNTRY_CODES[number];

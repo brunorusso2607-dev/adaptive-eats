@@ -79,25 +79,25 @@ const DAY_NAMES_SHORT = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 const DAY_NAMES_FULL = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
 
 // Standard meal types - internal keys used across the system
-const STANDARD_MEAL_TYPES = ["cafe_manha", "lanche_manha", "almoco", "lanche", "jantar", "ceia"] as const;
+const STANDARD_MEAL_TYPES = ["breakfast", "morning_snack", "lunch", "afternoon_snack", "dinner", "supper"] as const;
 
 const MEAL_CONFIG: Record<string, { icon: typeof Coffee; label: string; color: string }> = {
-  cafe_manha: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
-  lanche_manha: { icon: Cookie, label: "Lanche da Manhã", color: "bg-orange-500/20 text-orange-600 dark:text-orange-400" },
-  almoco: { icon: UtensilsCrossed, label: "Almoço", color: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
-  lanche: { icon: Cookie, label: "Lanche da Tarde", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
-  jantar: { icon: Moon, label: "Jantar", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
-  ceia: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
+  breakfast: { icon: Coffee, label: "Café da Manhã", color: "bg-amber-500/20 text-amber-600 dark:text-amber-400" },
+  morning_snack: { icon: Cookie, label: "Lanche da Manhã", color: "bg-orange-500/20 text-orange-600 dark:text-orange-400" },
+  lunch: { icon: UtensilsCrossed, label: "Almoço", color: "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400" },
+  afternoon_snack: { icon: Cookie, label: "Lanche da Tarde", color: "bg-purple-500/20 text-purple-600 dark:text-purple-400" },
+  dinner: { icon: Moon, label: "Jantar", color: "bg-blue-500/20 text-blue-600 dark:text-blue-400" },
+  supper: { icon: Soup, label: "Ceia", color: "bg-indigo-500/20 text-indigo-600 dark:text-indigo-400" },
 };
 
 // Fallback horários padrão (usado apenas se hook não carregar)
 const DEFAULT_MEAL_TIME_RANGES: Record<string, { start: number; end: number }> = {
-  cafe_manha: { start: 6, end: 10 },
-  lanche_manha: { start: 10, end: 12 },
-  almoco: { start: 12, end: 14 },
-  lanche: { start: 14, end: 17 },
-  jantar: { start: 17, end: 21 },
-  ceia: { start: 21, end: 24 },
+  breakfast: { start: 6, end: 10 },
+  morning_snack: { start: 10, end: 12 },
+  lunch: { start: 12, end: 14 },
+  afternoon_snack: { start: 14, end: 17 },
+  dinner: { start: 17, end: 21 },
+  supper: { start: 21, end: 24 },
 };
 
 export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onToggleFavorite, onMealUpdated, onEditPlan, userProfile, externalSelectedWeek, externalSelectedDayIndex, onSelectedWeekChange, onSelectedDayIndexChange }: MealPlanCalendarProps) {

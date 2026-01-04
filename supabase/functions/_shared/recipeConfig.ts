@@ -333,18 +333,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "pt-BR",
     ingredientPriority: "Priorize ingredientes de fácil acesso no Brasil",
     mealTypeLabels: {
-      cafe_manha: "Café da Manhã",
-      almoco: "Almoço",
-      lanche: "Lanche da Tarde",
-      jantar: "Jantar",
-      ceia: "Ceia"
+      breakfast: "Café da Manhã",
+      lunch: "Almoço",
+      afternoon_snack: "Lanche da Tarde",
+      dinner: "Jantar",
+      supper: "Ceia"
     },
     mealExamples: {
-      cafe_manha: ["tapioca recheada", "pão francês com manteiga", "mingau de aveia", "vitamina de banana", "cuscuz nordestino"],
-      almoco: ["arroz com feijão e bife", "frango grelhado com legumes", "feijoada light", "strogonoff de frango", "moqueca de peixe"],
-      lanche: ["pão de queijo", "açaí na tigela", "sanduíche natural", "bolo de cenoura", "tapioca"],
-      jantar: ["sopa de legumes", "omelete de legumes", "salada completa", "wrap leve", "creme de abóbora"],
-      ceia: ["chá com biscoito integral", "iogurte natural", "frutas", "queijo cottage"]
+      breakfast: ["tapioca recheada", "pão francês com manteiga", "mingau de aveia", "vitamina de banana", "cuscuz nordestino"],
+      lunch: ["arroz com feijão e bife", "frango grelhado com legumes", "feijoada light", "strogonoff de frango", "moqueca de peixe"],
+      afternoon_snack: ["pão de queijo", "açaí na tigela", "sanduíche natural", "bolo de cenoura", "tapioca"],
+      dinner: ["sopa de legumes", "omelete de legumes", "salada completa", "wrap leve", "creme de abóbora"],
+      supper: ["chá com biscoito integral", "iogurte natural", "frutas", "queijo cottage"]
     }
   },
   US: {
@@ -352,18 +352,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "en-US",
     ingredientPriority: "Prioritize ingredients commonly available in the United States",
     mealTypeLabels: {
-      cafe_manha: "Breakfast",
-      almoco: "Lunch",
-      lanche: "Snack",
-      jantar: "Dinner",
-      ceia: "Late Night Snack"
+      breakfast: "Breakfast",
+      lunch: "Lunch",
+      afternoon_snack: "Snack",
+      dinner: "Dinner",
+      supper: "Late Night Snack"
     },
     mealExamples: {
-      cafe_manha: ["scrambled eggs with bacon", "pancakes with maple syrup", "oatmeal with berries", "bagel with cream cheese", "avocado toast", "smoothie bowl"],
-      almoco: ["grilled chicken salad", "turkey club sandwich", "burrito bowl", "mac and cheese", "chicken wrap"],
-      lanche: ["protein bar", "trail mix", "apple with peanut butter", "greek yogurt", "cheese and crackers"],
-      jantar: ["grilled salmon with vegetables", "BBQ chicken", "steak with mashed potatoes", "pasta primavera", "beef stir-fry"],
-      ceia: ["cottage cheese", "warm milk", "handful of almonds", "banana"]
+      breakfast: ["scrambled eggs with bacon", "pancakes with maple syrup", "oatmeal with berries", "bagel with cream cheese", "avocado toast", "smoothie bowl"],
+      lunch: ["grilled chicken salad", "turkey club sandwich", "burrito bowl", "mac and cheese", "chicken wrap"],
+      afternoon_snack: ["protein bar", "trail mix", "apple with peanut butter", "greek yogurt", "cheese and crackers"],
+      dinner: ["grilled salmon with vegetables", "BBQ chicken", "steak with mashed potatoes", "pasta primavera", "beef stir-fry"],
+      supper: ["cottage cheese", "warm milk", "handful of almonds", "banana"]
     }
   },
   MX: {
@@ -371,18 +371,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "es-MX",
     ingredientPriority: "Prioriza ingredientes típicos de la cocina mexicana",
     mealTypeLabels: {
-      cafe_manha: "Desayuno",
-      almoco: "Comida",
-      lanche: "Merienda",
-      jantar: "Cena",
-      ceia: "Cena Ligera"
+      breakfast: "Desayuno",
+      lunch: "Comida",
+      afternoon_snack: "Merienda",
+      dinner: "Cena",
+      supper: "Cena Ligera"
     },
     mealExamples: {
-      cafe_manha: ["huevos rancheros", "chilaquiles verdes", "molletes", "quesadillas de queso", "licuado de frutas"],
-      almoco: ["tacos de carne asada", "enchiladas rojas", "pozole rojo", "mole con pollo", "chiles rellenos"],
-      lanche: ["elote con mayonesa", "fruta con chile", "tostadas de aguacate", "guacamole con totopos"],
-      jantar: ["sopa de tortilla", "quesadillas", "flautas de pollo", "tostadas de tinga", "tamales"],
-      ceia: ["té de manzanilla", "yogur natural", "fruta picada"]
+      breakfast: ["huevos rancheros", "chilaquiles verdes", "molletes", "quesadillas de queso", "licuado de frutas"],
+      lunch: ["tacos de carne asada", "enchiladas rojas", "pozole rojo", "mole con pollo", "chiles rellenos"],
+      afternoon_snack: ["elote con mayonesa", "fruta con chile", "tostadas de aguacate", "guacamole con totopos"],
+      dinner: ["sopa de tortilla", "quesadillas", "flautas de pollo", "tostadas de tinga", "tamales"],
+      supper: ["té de manzanilla", "yogur natural", "fruta picada"]
     }
   },
   PT: {
@@ -390,18 +390,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "pt-PT",
     ingredientPriority: "Prioriza ingredientes típicos da culinária portuguesa",
     mealTypeLabels: {
-      cafe_manha: "Pequeno-almoço",
-      almoco: "Almoço",
-      lanche: "Lanche",
-      jantar: "Jantar",
-      ceia: "Ceia"
+      breakfast: "Pequeno-almoço",
+      lunch: "Almoço",
+      afternoon_snack: "Lanche",
+      dinner: "Jantar",
+      supper: "Ceia"
     },
     mealExamples: {
-      cafe_manha: ["torrada com manteiga", "pastel de nata", "iogurte com cereais", "pão com queijo", "café com leite"],
-      almoco: ["bacalhau à brás", "francesinha", "caldo verde", "arroz de pato", "sardinha assada"],
-      lanche: ["pastel de nata", "bolo de arroz", "sandes de presunto", "fruta"],
-      jantar: ["sopa de legumes", "peixe grelhado", "omelete", "bifanas", "polvo à lagareiro"],
-      ceia: ["chá de camomila", "iogurte", "fruta", "queijo fresco"]
+      breakfast: ["torrada com manteiga", "pastel de nata", "iogurte com cereais", "pão com queijo", "café com leite"],
+      lunch: ["bacalhau à brás", "francesinha", "caldo verde", "arroz de pato", "sardinha assada"],
+      afternoon_snack: ["pastel de nata", "bolo de arroz", "sandes de presunto", "fruta"],
+      dinner: ["sopa de legumes", "peixe grelhado", "omelete", "bifanas", "polvo à lagareiro"],
+      supper: ["chá de camomila", "iogurte", "fruta", "queijo fresco"]
     }
   },
   ES: {
@@ -409,18 +409,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "es-ES",
     ingredientPriority: "Prioriza ingredientes típicos de la cocina española",
     mealTypeLabels: {
-      cafe_manha: "Desayuno",
-      almoco: "Almuerzo",
-      lanche: "Merienda",
-      jantar: "Cena",
-      ceia: "Cena Ligera"
+      breakfast: "Desayuno",
+      lunch: "Almuerzo",
+      afternoon_snack: "Merienda",
+      dinner: "Cena",
+      supper: "Cena Ligera"
     },
     mealExamples: {
-      cafe_manha: ["tostada con tomate", "churros con chocolate", "tortilla española", "zumo de naranja"],
-      almoco: ["paella valenciana", "gazpacho andaluz", "cocido madrileño", "fabada asturiana", "pulpo a la gallega"],
-      lanche: ["bocadillo de jamón", "magdalenas", "fruta de temporada"],
-      jantar: ["tortilla española", "ensalada mixta", "croquetas", "gambas al ajillo", "pimientos de padrón"],
-      ceia: ["yogur natural", "frutos secos", "queso manchego"]
+      breakfast: ["tostada con tomate", "churros con chocolate", "tortilla española", "zumo de naranja"],
+      lunch: ["paella valenciana", "gazpacho andaluz", "cocido madrileño", "fabada asturiana", "pulpo a la gallega"],
+      afternoon_snack: ["bocadillo de jamón", "magdalenas", "fruta de temporada"],
+      dinner: ["tortilla española", "ensalada mixta", "croquetas", "gambas al ajillo", "pimientos de padrón"],
+      supper: ["yogur natural", "frutos secos", "queso manchego"]
     }
   },
   AR: {
@@ -428,18 +428,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "es-AR",
     ingredientPriority: "Prioriza ingredientes típicos de la cocina argentina",
     mealTypeLabels: {
-      cafe_manha: "Desayuno",
-      almoco: "Almuerzo",
-      lanche: "Merienda",
-      jantar: "Cena",
-      ceia: "Cena Ligera"
+      breakfast: "Desayuno",
+      lunch: "Almuerzo",
+      afternoon_snack: "Merienda",
+      dinner: "Cena",
+      supper: "Cena Ligera"
     },
     mealExamples: {
-      cafe_manha: ["medialunas con café", "tostadas con dulce de leche", "mate con facturas"],
-      almoco: ["asado con ensalada", "milanesa napolitana", "empanadas", "locro", "bife de chorizo"],
-      lanche: ["alfajores", "mate con facturas", "tostado de jamón y queso"],
-      jantar: ["pizza argentina", "pasta con salsa", "provoleta", "choripán"],
-      ceia: ["yogur", "fruta", "queso con membrillo"]
+      breakfast: ["medialunas con café", "tostadas con dulce de leche", "mate con facturas"],
+      lunch: ["asado con ensalada", "milanesa napolitana", "empanadas", "locro", "bife de chorizo"],
+      afternoon_snack: ["alfajores", "mate con facturas", "tostado de jamón y queso"],
+      dinner: ["pizza argentina", "pasta con salsa", "provoleta", "choripán"],
+      supper: ["yogur", "fruta", "queso con membrillo"]
     }
   },
   CO: {
@@ -447,18 +447,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "es-CO",
     ingredientPriority: "Prioriza ingredientes típicos de la cocina colombiana",
     mealTypeLabels: {
-      cafe_manha: "Desayuno",
-      almoco: "Almuerzo",
-      lanche: "Onces",
-      jantar: "Cena",
-      ceia: "Cena Ligera"
+      breakfast: "Desayuno",
+      lunch: "Almuerzo",
+      afternoon_snack: "Onces",
+      dinner: "Cena",
+      supper: "Cena Ligera"
     },
     mealExamples: {
-      cafe_manha: ["arepa con queso", "huevos pericos", "calentado", "changua", "pandebono"],
-      almoco: ["bandeja paisa", "ajiaco bogotano", "sancocho", "arroz con pollo", "lechona"],
-      lanche: ["empanadas", "buñuelos", "almojábanas", "fruta con sal"],
-      jantar: ["sopa de mondongo", "tamales", "patacones con hogao"],
-      ceia: ["aromática", "galletas", "queso con bocadillo"]
+      breakfast: ["arepa con queso", "huevos pericos", "calentado", "changua", "pandebono"],
+      lunch: ["bandeja paisa", "ajiaco bogotano", "sancocho", "arroz con pollo", "lechona"],
+      afternoon_snack: ["empanadas", "buñuelos", "almojábanas", "fruta con sal"],
+      dinner: ["sopa de mondongo", "tamales", "patacones con hogao"],
+      supper: ["aromática", "galletas", "queso con bocadillo"]
     }
   },
   CL: {
@@ -466,18 +466,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "es-CL",
     ingredientPriority: "Prioriza ingredientes típicos de la cocina chilena",
     mealTypeLabels: {
-      cafe_manha: "Desayuno",
-      almoco: "Almuerzo",
-      lanche: "Once",
-      jantar: "Cena",
-      ceia: "Cena Ligera"
+      breakfast: "Desayuno",
+      lunch: "Almuerzo",
+      afternoon_snack: "Once",
+      dinner: "Cena",
+      supper: "Cena Ligera"
     },
     mealExamples: {
-      cafe_manha: ["pan con palta", "huevos revueltos", "tostadas con mermelada", "leche con cereales"],
-      almoco: ["pastel de choclo", "cazuela de pollo", "empanadas de pino", "curanto", "porotos con riendas"],
-      lanche: ["pan con queso", "kuchen", "té con sopaipillas"],
-      jantar: ["caldillo de congrio", "plateada", "ensalada chilena"],
-      ceia: ["té con galletas", "fruta", "yogur"]
+      breakfast: ["pan con palta", "huevos revueltos", "tostadas con mermelada", "leche con cereales"],
+      lunch: ["pastel de choclo", "cazuela de pollo", "empanadas de pino", "curanto", "porotos con riendas"],
+      afternoon_snack: ["pan con queso", "kuchen", "té con sopaipillas"],
+      dinner: ["caldillo de congrio", "plateada", "ensalada chilena"],
+      supper: ["té con galletas", "fruta", "yogur"]
     }
   },
   PE: {
@@ -485,18 +485,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "es-PE",
     ingredientPriority: "Prioriza ingredientes típicos de la cocina peruana",
     mealTypeLabels: {
-      cafe_manha: "Desayuno",
-      almoco: "Almuerzo",
-      lanche: "Lonche",
-      jantar: "Cena",
-      ceia: "Cena Ligera"
+      breakfast: "Desayuno",
+      lunch: "Almuerzo",
+      afternoon_snack: "Lonche",
+      dinner: "Cena",
+      supper: "Cena Ligera"
     },
     mealExamples: {
-      cafe_manha: ["pan con chicharrón", "quinua con leche", "tamales", "jugo de papaya"],
-      almoco: ["ceviche", "lomo saltado", "ají de gallina", "arroz con pollo", "causa limeña"],
-      lanche: ["picarones", "anticuchos", "papa rellena"],
-      jantar: ["sopa criolla", "tacu tacu", "arroz chaufa"],
-      ceia: ["emoliente", "mazamorra morada", "fruta"]
+      breakfast: ["pan con chicharrón", "quinua con leche", "tamales", "jugo de papaya"],
+      lunch: ["ceviche", "lomo saltado", "ají de gallina", "arroz con pollo", "causa limeña"],
+      afternoon_snack: ["picarones", "anticuchos", "papa rellena"],
+      dinner: ["sopa criolla", "tacu tacu", "arroz chaufa"],
+      supper: ["emoliente", "mazamorra morada", "fruta"]
     }
   },
   FR: {
@@ -504,18 +504,18 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "fr-FR",
     ingredientPriority: "Privilégiez les ingrédients typiques de la cuisine française",
     mealTypeLabels: {
-      cafe_manha: "Petit-déjeuner",
-      almoco: "Déjeuner",
-      lanche: "Goûter",
-      jantar: "Dîner",
-      ceia: "Collation"
+      breakfast: "Petit-déjeuner",
+      lunch: "Déjeuner",
+      afternoon_snack: "Goûter",
+      dinner: "Dîner",
+      supper: "Collation"
     },
     mealExamples: {
-      cafe_manha: ["croissant au beurre", "pain au chocolat", "tartine avec confiture", "café au lait", "œufs brouillés"],
-      almoco: ["coq au vin", "ratatouille", "quiche lorraine", "boeuf bourguignon", "salade niçoise"],
-      lanche: ["madeleine", "pain au chocolat", "fruit frais"],
-      jantar: ["soupe à l'oignon", "croque-monsieur", "omelette aux fines herbes", "poisson grillé"],
-      ceia: ["tisane", "yaourt nature", "fromage blanc"]
+      breakfast: ["croissant au beurre", "pain au chocolat", "tartine avec confiture", "café au lait", "œufs brouillés"],
+      lunch: ["coq au vin", "ratatouille", "quiche lorraine", "boeuf bourguignon", "salade niçoise"],
+      afternoon_snack: ["madeleine", "pain au chocolat", "fruit frais"],
+      dinner: ["soupe à l'oignon", "croque-monsieur", "omelette aux fines herbes", "poisson grillé"],
+      supper: ["tisane", "yaourt nature", "fromage blanc"]
     }
   },
   IT: {

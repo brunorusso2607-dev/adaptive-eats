@@ -68,7 +68,7 @@ export function MealReminderSettings({ open, onOpenChange }: MealReminderSetting
       } else {
         // Default: all meals enabled
         const defaultMeals = mealTimeSettings.map(m => m.meal_type);
-        setEnabledMeals(defaultMeals.length > 0 ? defaultMeals : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"]);
+        setEnabledMeals(defaultMeals.length > 0 ? defaultMeals : ["breakfast", "lunch", "afternoon_snack", "dinner", "supper"]);
       }
 
       setIsLoading(false);

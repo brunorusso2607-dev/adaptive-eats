@@ -193,7 +193,7 @@ export function NotificationSettingsSheet({
           const defaultMeals = mealTimeSettings.map(m => m.meal_type);
           setMealSettings(prev => ({
             ...prev,
-            enabled_meals: defaultMeals.length > 0 ? defaultMeals : ["cafe_manha", "almoco", "lanche", "jantar", "ceia"]
+            enabled_meals: defaultMeals.length > 0 ? defaultMeals : ["breakfast", "lunch", "afternoon_snack", "dinner", "supper"]
           }));
         }
       } catch (error) {

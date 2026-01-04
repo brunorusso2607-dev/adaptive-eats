@@ -795,22 +795,26 @@ export async function markRecipeAsUsed(
  * Normaliza o tipo de refeição para o padrão do sistema
  */
 function normalizeMealType(mealType: string): string {
-  if (!mealType) return "cafe_manha";
+  if (!mealType) return "breakfast";
   
   const normalized = mealType.toLowerCase().trim();
   
+  // Mapeamento para novas chaves em inglês (mantendo retrocompatibilidade)
   const normalizations: Record<string, string> = {
-    "breakfast": "cafe_manha",
-    "lunch": "almoco",
-    "dinner": "jantar",
-    "snack": "lanche",
-    "supper": "ceia",
-    "lanche_tarde": "lanche",
-    "lanche_da_tarde": "lanche",
-    "café_manha": "cafe_manha",
-    "cafe_da_manha": "cafe_manha",
-    "café_da_manhã": "cafe_manha",
-    "almoço": "almoco",
+    // Valores antigos em português -> novos valores em inglês
+    "cafe_manha": "breakfast",
+    "lanche_manha": "morning_snack",
+    "almoco": "lunch",
+    "lanche": "afternoon_snack",
+    "lanche_tarde": "afternoon_snack",
+    "lanche_da_tarde": "afternoon_snack",
+    "jantar": "dinner",
+    "ceia": "supper",
+    // Variações com acento
+    "café_manha": "breakfast",
+    "cafe_da_manha": "breakfast",
+    "café_da_manhã": "breakfast",
+    "almoço": "lunch",
   };
   
   return normalizations[normalized] || normalized;

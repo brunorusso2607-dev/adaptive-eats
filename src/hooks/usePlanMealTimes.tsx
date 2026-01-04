@@ -10,7 +10,7 @@ export type MealTimeConfig = {
   isCustom: boolean; // Indica se é horário personalizado do plano
 };
 
-export type CustomMealTimes = Record<string, string>; // { "cafe_manha": "07:00", "almoco": "12:30" }
+export type CustomMealTimes = Record<string, string>; // { "breakfast": "07:00", "lunch": "12:30" }
 
 interface UsePlanMealTimesOptions {
   planId?: string | null;

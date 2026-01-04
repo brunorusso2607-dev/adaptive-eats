@@ -65,12 +65,12 @@ const COUNTRIES = [
 ];
 
 const MEAL_TYPES = [
-  { value: "cafe_manha", label: "Cafe da Manha" },
-  { value: "lanche_manha", label: "Lanche da Manhã" },
-  { value: "almoco", label: "Almoço" },
-  { value: "lanche_tarde", label: "Lanche da Tarde" },
-  { value: "jantar", label: "Jantar" },
-  { value: "ceia", label: "Ceia" },
+  { value: "breakfast", label: "Café da Manhã" },
+  { value: "morning_snack", label: "Lanche da Manhã" },
+  { value: "lunch", label: "Almoço" },
+  { value: "afternoon_snack", label: "Lanche da Tarde" },
+  { value: "dinner", label: "Jantar" },
+  { value: "supper", label: "Ceia" },
 ];
 
 const ACTIVITY_LEVELS = [
@@ -179,7 +179,7 @@ export default function AdminAIMealPlanTest() {
   
   const [dietaryPreference, setDietaryPreference] = useState("omnivore");
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
-  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>(["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"]);
+  const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>(["breakfast", "morning_snack", "lunch", "afternoon_snack", "dinner"]);
   const [optionsPerMeal, setOptionsPerMeal] = useState(3);
   const [daysCount, setDaysCount] = useState(1);
   const [generatedPlan, setGeneratedPlan] = useState<GeneratedPlan | null>(null);

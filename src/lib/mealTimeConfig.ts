@@ -20,30 +20,30 @@ const CACHE_DURATION = 5 * 60 * 1000; // 5 minutos
 // Constante: tolerância em horas para considerar refeição atrasada
 export const MEAL_DELAY_TOLERANCE_HOURS = 1;
 
-// Standard meal types - single source of truth
-export const STANDARD_MEAL_TYPES = ["cafe_manha", "lanche_manha", "almoco", "lanche", "jantar", "ceia"] as const;
+// Standard meal types - single source of truth (English keys)
+export const STANDARD_MEAL_TYPES = ["breakfast", "morning_snack", "lunch", "afternoon_snack", "dinner", "supper"] as const;
 export type StandardMealType = typeof STANDARD_MEAL_TYPES[number];
 
 // Valores padrão (fallback se o banco falhar)
 const DEFAULT_TIME_RANGES: MealTimeRanges = {
-  cafe_manha: { start: 6, end: 10 },
-  lanche_manha: { start: 10, end: 12 },
-  almoco: { start: 12, end: 14 },
-  lanche: { start: 14, end: 17 },
-  jantar: { start: 17, end: 21 },
-  ceia: { start: 21, end: 24 },
+  breakfast: { start: 6, end: 10 },
+  morning_snack: { start: 10, end: 12 },
+  lunch: { start: 12, end: 14 },
+  afternoon_snack: { start: 14, end: 17 },
+  dinner: { start: 17, end: 21 },
+  supper: { start: 21, end: 24 },
 };
 
 const DEFAULT_LABELS: MealLabels = {
-  cafe_manha: "Café da Manhã",
-  lanche_manha: "Lanche da Manhã",
-  almoco: "Almoço",
-  lanche: "Lanche da Tarde",
-  jantar: "Jantar",
-  ceia: "Ceia",
+  breakfast: "Café da Manhã",
+  morning_snack: "Lanche da Manhã",
+  lunch: "Almoço",
+  afternoon_snack: "Lanche da Tarde",
+  dinner: "Jantar",
+  supper: "Ceia",
 };
 
-const DEFAULT_MEAL_ORDER = ["cafe_manha", "lanche_manha", "almoco", "lanche", "jantar", "ceia"];
+const DEFAULT_MEAL_ORDER = ["breakfast", "morning_snack", "lunch", "afternoon_snack", "dinner", "supper"];
 
 // Load from localStorage on module init
 function loadFromStorage(): boolean {

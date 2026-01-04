@@ -36,12 +36,12 @@ import MealComposerForPlan from "./MealComposerForPlan";
 
 // Mapeamento de meal_type para ícones
 const MEAL_ICONS: Record<string, string> = {
-  cafe_manha: "☕",
-  lanche_manha: "🥐",
-  almoco: "🍽️",
-  lanche_tarde: "🍎",
-  jantar: "🌙",
-  ceia: "🍵"
+  breakfast: "☕",
+  morning_snack: "🥐",
+  lunch: "🍽️",
+  afternoon_snack: "🍎",
+  dinner: "🌙",
+  supper: "🍵"
 };
 
 type MealSlot = {
@@ -123,12 +123,12 @@ export default function CustomMealPlanBuilder({ onClose, onPlanGenerated }: Cust
     if (!mealTimeSettings || mealTimeSettings.length === 0) {
       // Fallback se não tiver configurações
       const defaultSlots = [
-        { key: "cafe_manha", label: "Café da Manhã", icon: "☕", mealType: "cafe_manha" },
-        { key: "lanche_manha", label: "Lanche da Manhã", icon: "🥐", mealType: "lanche_manha" },
-        { key: "almoco", label: "Almoço", icon: "🍽️", mealType: "almoco" },
-        { key: "lanche_tarde", label: "Lanche da Tarde", icon: "🍎", mealType: "lanche_tarde" },
-        { key: "jantar", label: "Jantar", icon: "🌙", mealType: "jantar" },
-        { key: "ceia", label: "Ceia", icon: "🍵", mealType: "ceia" }
+        { key: "breakfast", label: "Café da Manhã", icon: "☕", mealType: "breakfast" },
+        { key: "morning_snack", label: "Lanche da Manhã", icon: "🥐", mealType: "morning_snack" },
+        { key: "lunch", label: "Almoço", icon: "🍽️", mealType: "lunch" },
+        { key: "afternoon_snack", label: "Lanche da Tarde", icon: "🍎", mealType: "afternoon_snack" },
+        { key: "dinner", label: "Jantar", icon: "🌙", mealType: "dinner" },
+        { key: "supper", label: "Ceia", icon: "🍵", mealType: "supper" }
       ];
       
       // Filtrar por enabled_meals se existir

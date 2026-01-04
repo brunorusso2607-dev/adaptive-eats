@@ -11,11 +11,11 @@ import { toast } from "sonner";
 import UnifiedFoodSearchBlock, { type SelectedFoodItem, type LookupFood } from "./UnifiedFoodSearchBlock";
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
-  cafe_da_manha: "Café da Manhã",
-  almoco: "Almoço",
-  lanche: "Lanche",
-  jantar: "Jantar",
-  ceia: "Ceia",
+  breakfast: "Café da Manhã",
+  lunch: "Almoço",
+  afternoon_snack: "Lanche",
+  dinner: "Jantar",
+  supper: "Ceia",
 };
 
 interface FoodSearchDrawerProps {

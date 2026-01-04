@@ -276,9 +276,9 @@ serve(async (req) => {
     // CENÁRIO 6: Horário de refeição por timezone
     // ============================================
     const mealTimeSettings = [
-      { meal_type: "cafe_manha", start_hour: 7 },
-      { meal_type: "almoco", start_hour: 12 },
-      { meal_type: "jantar", start_hour: 18 },
+      { meal_type: "breakfast", start_hour: 7 },
+      { meal_type: "lunch", start_hour: 12 },
+      { meal_type: "dinner", start_hour: 18 },
     ];
 
     const testTimezones = ["America/Sao_Paulo", "America/Los_Angeles", "Europe/Paris"];

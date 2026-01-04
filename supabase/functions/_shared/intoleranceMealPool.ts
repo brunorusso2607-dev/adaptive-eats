@@ -8,6 +8,14 @@
  * - generate-ai-meal-plan
  * - regenerate-ai-meal-alternatives
  * - analyze-food-photo (sugestões seguras)
+ * 
+ * MEAL_TYPE KEYS (English standard):
+ * - breakfast (cafe_manha)
+ * - morning_snack (lanche_manha)
+ * - lunch (almoco)
+ * - afternoon_snack (lanche_tarde)
+ * - dinner (jantar)
+ * - supper (ceia)
  */
 
 // Tipo de refeição com arrays de opções
@@ -21,7 +29,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM GLÚTEN (180 itens) =============
   'gluten': {
-    'cafe_manha': [
+    'breakfast': [
       'Tapioca com queijo e ovo mexido',
       'Mingau de aveia sem glúten com frutas vermelhas',
       'Omelete com vegetais e queijo minas',
@@ -53,7 +61,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Bolo de cenoura sem glúten com cobertura de chocolate',
       'Mingau de polvilho doce com leite de coco',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Iogurte natural com mel e amêndoas',
       'Castanhas e nozes variadas',
       'Banana com pasta de amendoim',
@@ -85,7 +93,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Frutas com iogurte grego',
       'Barra de proteína sem glúten',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com feijão, frango grelhado e salada verde',
       'Batata-doce assada com carne moída e legumes refogados',
       'Risoto de quinoa com camarão e brócolis',
@@ -117,7 +125,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Arroz negro com frutos do mar',
       'Frango ao curry com arroz jasmim',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira com azeite',
       'Frutas picadas com coco ralado',
       'Biscoitos de polvilho doce',
@@ -149,7 +157,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Smoothie de manga',
       'Iogurte batido com chia',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes com frango desfiado',
       'Omelete de forno com espinafre e queijo',
       'Escondidinho de carne com mandioca',
@@ -181,7 +189,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Salada completa com ovos cozidos',
       'Wrap de alface com peixe grelhado',
     ],
-    'ceia': [
+    'supper': [
       'Chá com biscoitos de polvilho',
       'Iogurte natural com chia',
       'Frutas assadas com canela',
@@ -217,7 +225,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM LACTOSE (180 itens) =============
   'lactose': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com geleia e pasta de amendoim',
       'Mingau de aveia com leite de amêndoas',
       'Panqueca com banana e mel (leite vegetal)',
@@ -249,7 +257,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Torrada com tomate e azeite',
       'Granola com iogurte vegetal',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas frescas variadas',
       'Mix de oleaginosas (castanhas e nozes)',
       'Barra de cereais sem lactose',
@@ -281,7 +289,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Smoothie tropical',
       'Biscoitos integrais simples',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz integral, feijão, carne e salada',
       'Macarrão integral ao sugo com frango',
       'Peixe grelhado com legumes assados',
@@ -313,7 +321,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Macarrão com abobrinha e tomate',
       'Salmão com crosta de ervas',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca com azeite e sal',
       'Pão sem lactose com pasta de atum',
       'Frutas com granola sem lactose',
@@ -345,7 +353,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de manga',
       'Crackers com pasta vegetal',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de lentilha com legumes',
       'Omelete com legumes (sem queijo)',
       'Salada Caesar adaptada (sem parmesão)',
@@ -377,7 +385,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Sopa de mandioquinha',
       'Omelete de brócolis com salada',
     ],
-    'ceia': [
+    'supper': [
       'Chá com biscoitos sem lactose',
       'Frutas desidratadas',
       'Leite vegetal com aveia',
@@ -413,7 +421,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM AMENDOIM (180 itens) =============
   'amendoim': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão com geleia de frutas vermelhas',
       'Mingau com castanhas de caju',
       'Tapioca com queijo cottage',
@@ -445,7 +453,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Panqueca proteica',
       'Iogurte batido com frutas',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas da estação variadas',
       'Castanhas variadas (exceto amendoim)',
       'Queijo branco com mel',
@@ -477,7 +485,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte grego',
       'Smoothie tropical',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz, feijão, carne assada e salada',
       'Macarrão à carbonara',
       'Frango xadrez com legumes',
@@ -509,7 +517,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Salmão grelhado',
       'Risoto de camarão',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Pão de queijo',
       'Frutas com mel',
@@ -541,7 +549,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Queijo branco',
       'Smoothie tropical',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes com carne',
       'Omelete caprese',
       'Sanduíche natural de frango',
@@ -573,7 +581,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Risoto light',
       'Crepe de frango',
     ],
-    'ceia': [
+    'supper': [
       'Chá com torradas',
       'Iogurte com mel',
       'Frutas assadas',
@@ -609,7 +617,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM OLEAGINOSAS (180 itens) =============
   'oleaginosas': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão francês com manteiga e geleia',
       'Mingau de aveia simples',
       'Panqueca americana com mel',
@@ -641,7 +649,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Bolo caseiro',
       'Torrada integral',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas frescas variadas',
       'Iogurte natural',
       'Biscoitos maria',
@@ -673,7 +681,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina verde',
       'Queijo com geleia',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz, feijão, bife e salada',
       'Macarrão ao molho branco',
       'Frango assado com legumes',
@@ -705,7 +713,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Bife à parmegiana',
       'Frango ao curry',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Pão de queijo',
       'Frutas com mel',
@@ -737,7 +745,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Smoothie tropical',
       'Iogurte batido',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de mandioquinha com carne',
       'Omelete simples com salada',
       'Sanduíche de frango',
@@ -769,7 +777,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Risoto simples',
       'Crepe de espinafre',
     ],
-    'ceia': [
+    'supper': [
       'Chá com torradas',
       'Iogurte com mel',
       'Frutas assadas',
@@ -805,7 +813,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM FRUTOS DO MAR (180 itens) =============
   'frutos_do_mar': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com ovo mexido',
       'Mingau de aveia com frutas',
       'Panqueca com queijo e presunto',
@@ -837,7 +845,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca doce',
       'Wrap vegetariano',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas variadas',
       'Mix de nuts',
       'Queijo com uvas',
@@ -869,7 +877,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte com mel',
       'Smoothie tropical',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz, feijão, frango e legumes',
       'Macarrão à bolonhesa',
       'Bife grelhado com batata-doce',
@@ -901,7 +909,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Bife grelhado simples',
       'Frango ao curry',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca com queijo',
       'Pão com pasta de frango',
       'Frutas com granola',
@@ -933,7 +941,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina tropical',
       'Biscoitos simples',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de carne com legumes',
       'Omelete caprese',
       'Sanduíche natural de frango',
@@ -965,7 +973,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de carne moída',
       'Pizza de frigideira',
     ],
-    'ceia': [
+    'supper': [
       'Chá com torradas',
       'Iogurte',
       'Frutas cozidas',
@@ -1001,7 +1009,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM PEIXE (180 itens) =============
   'peixe': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão com queijo e presunto',
       'Mingau com frutas secas',
       'Panqueca com frango desfiado',
@@ -1033,7 +1041,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca doce',
       'Wrap de frango',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas frescas',
       'Oleaginosas',
       'Iogurte com granola',
@@ -1065,7 +1073,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte batido',
       'Smoothie tropical',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz, feijão, carne bovina e salada',
       'Macarrão com frango ao molho pesto',
       'Bife à parmegiana',
@@ -1097,7 +1105,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Macarrão ao sugo',
       'Frango ao molho madeira',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca temperada',
       'Pão com pasta de frango',
       'Frutas com iogurte',
@@ -1129,7 +1137,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina tropical',
       'Biscoitos simples',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de carne com legumes',
       'Omelete caprese',
       'Sanduíche natural de frango',
@@ -1161,7 +1169,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de carne moída',
       'Pizza de frigideira',
     ],
-    'ceia': [
+    'supper': [
       'Chá com torradas',
       'Iogurte',
       'Frutas cozidas',
@@ -1197,7 +1205,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM OVOS (180 itens) =============
   'ovos': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão com queijo e geleia',
       'Mingau de aveia com frutas',
       'Tapioca com queijo',
@@ -1229,7 +1237,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca com queijo coalho',
       'Smoothie de manga',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas variadas',
       'Castanhas e amêndoas',
       'Queijo com biscoitos',
@@ -1261,7 +1269,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte grego',
       'Smoothie tropical',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz, feijão, carne e salada',
       'Macarrão ao sugo com almôndegas',
       'Frango grelhado com purê',
@@ -1293,7 +1301,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Picadinho de carne',
       'Feijoada',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca natural',
       'Pão com pasta de atum',
       'Frutas com mel',
@@ -1325,7 +1333,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina tropical',
       'Biscoitos simples',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes com carne',
       'Salada completa com frango',
       'Sanduíche de frango',
@@ -1357,7 +1365,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Risoto simples',
       'Crepe de tapioca com queijo',
     ],
-    'ceia': [
+    'supper': [
       'Chá com torradas',
       'Iogurte',
       'Frutas cozidas',
@@ -1393,7 +1401,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM SOJA (180 itens) =============
   'soja': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com queijo',
       'Mingau de aveia com leite',
       'Panqueca com mel',
@@ -1425,7 +1433,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca doce',
       'Wrap de frango',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas frescas',
       'Castanhas variadas',
       'Queijo com biscoitos',
@@ -1457,7 +1465,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte grego',
       'Smoothie tropical',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz, feijão, carne e salada',
       'Macarrão à bolonhesa',
       'Frango grelhado com legumes',
@@ -1489,7 +1497,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Picadinho de carne',
       'Feijoada',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Pão com queijo',
       'Frutas com mel',
@@ -1521,7 +1529,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina tropical',
       'Biscoitos integrais',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes com carne',
       'Omelete caprese',
       'Sanduíche de frango',
@@ -1553,7 +1561,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de carne moída',
       'Crepe recheado',
     ],
-    'ceia': [
+    'supper': [
       'Chá com biscoitos',
       'Iogurte',
       'Frutas cozidas',
@@ -1589,7 +1597,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM FRUTOSE (180 itens) =============
   'frutose': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com queijo',
       'Mingau de aveia simples',
       'Omelete com vegetais',
@@ -1621,7 +1629,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca com ovo',
       'Crepioca simples',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Iogurte natural',
       'Queijo branco',
       'Castanhas de caju',
@@ -1653,7 +1661,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Mix de castanhas',
       'Queijo mussarela',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com feijão e bife grelhado',
       'Frango assado com batata e legumes',
       'Macarrão ao sugo com carne moída',
@@ -1685,7 +1693,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Lasanha de carne',
       'Feijoada light',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Pão de queijo',
       'Tapioca com queijo',
@@ -1717,7 +1725,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Biscoitos de polvilho doce',
       'Queijo mussarela',
     ],
-    'jantar': [
+    'dinner': [
       'Omelete de queijo com salada',
       'Sopa de legumes com carne',
       'Wrap de frango com vegetais',
@@ -1749,7 +1757,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap vegetariano',
       'Salada completa',
     ],
-    'ceia': [
+    'supper': [
       'Chá de camomila',
       'Iogurte natural',
       'Queijo branco',
@@ -1785,7 +1793,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM FODMAP (180 itens) =============
   'fodmap': {
-    'cafe_manha': [
+    'breakfast': [
       'Tapioca com ovo mexido e queijo',
       'Pão sem glúten com manteiga',
       'Mingau de aveia sem glúten com banana',
@@ -1817,7 +1825,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de morango',
       'Panqueca proteica sem trigo',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Banana madura',
       'Uvas (pequena porção)',
       'Queijo branco',
@@ -1849,7 +1857,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Pitaya',
       'Queijo provolone',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com frango grelhado e cenoura',
       'Bife de contrafilé com batata e espinafre',
       'Peixe assado com arroz e abobrinha',
@@ -1881,7 +1889,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Arroz de couve-flor com carne',
       'Frango ao molho de ervas',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Tapioca com queijo',
       'Banana com pasta de amendoim',
@@ -1913,7 +1921,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca com presunto',
       'Tangerina',
     ],
-    'jantar': [
+    'dinner': [
       'Omelete de espinafre com queijo',
       'Sopa de cenoura com gengibre',
       'Salada completa com frango',
@@ -1945,7 +1953,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de alface simples',
       'Creme de brócolis (pequena porção)',
     ],
-    'ceia': [
+    'supper': [
       'Chá de gengibre',
       'Iogurte sem lactose',
       'Banana madura',
@@ -1981,7 +1989,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM HISTAMINA (180 itens) =============
   'histamina': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão fresco com manteiga e geleia caseira',
       'Mingau de aveia com maçã fresca',
       'Omelete de legumes frescos (abobrinha, cenoura)',
@@ -2013,7 +2021,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de melancia',
       'Panqueca proteica',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Maçã fresca',
       'Pera',
       'Melão',
@@ -2045,7 +2053,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Kiwi amarelo',
       'Biscoitos de água e sal',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com frango fresco grelhado e salada',
       'Bife fresco com batata e legumes',
       'Peixe fresco grelhado com arroz',
@@ -2077,7 +2085,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Arroz com lentilha e frango fresco',
       'Frango fresco xadrez',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira fresca',
       'Pão de queijo fresco',
       'Tapioca com queijo fresco',
@@ -2109,7 +2117,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Tapioca com ovo',
       'Frutas da estação',
     ],
-    'jantar': [
+    'dinner': [
       'Omelete de legumes frescos',
       'Sopa caseira de legumes',
       'Salada fresca com frango grelhado',
@@ -2141,7 +2149,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de alface com peito de peru',
       'Creme de brócolis',
     ],
-    'ceia': [
+    'supper': [
       'Chá de camomila',
       'Leite fresco morno',
       'Maçã assada',
@@ -2177,7 +2185,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM CAFEÍNA (180 itens) =============
   'cafeina': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com geleia e manteiga',
       'Mingau de aveia com frutas',
       'Panqueca com mel e banana',
@@ -2209,7 +2217,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de morango',
       'Crepioca simples',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas variadas',
       'Mix de castanhas',
       'Iogurte natural',
@@ -2241,7 +2249,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte com mel',
       'Queijo coalho',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com feijão, carne e salada',
       'Macarrão à bolonhesa',
       'Frango grelhado com legumes',
@@ -2273,7 +2281,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Picadinho de carne',
       'Feijoada',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Pão de queijo',
       'Frutas com mel',
@@ -2305,7 +2313,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de manga',
       'Biscoitos de arroz',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes com carne',
       'Omelete caprese',
       'Sanduíche de frango',
@@ -2337,7 +2345,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de carne moída',
       'Crepe recheado',
     ],
-    'ceia': [
+    'supper': [
       'Leite morno com mel',
       'Iogurte natural',
       'Frutas cozidas',
@@ -2373,7 +2381,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM SULFITOS (180 itens) =============
   'sulfitos': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral caseiro com manteiga',
       'Mingau de aveia com frutas frescas',
       'Omelete de legumes frescos',
@@ -2405,7 +2413,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de abacate',
       'Panqueca integral',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas frescas variadas',
       'Castanhas naturais',
       'Iogurte natural sem conservantes',
@@ -2437,7 +2445,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte com mel puro',
       'Queijo coalho',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com feijão fresco e carne grelhada',
       'Frango grelhado com legumes frescos',
       'Peixe fresco grelhado com arroz',
@@ -2469,7 +2477,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Peixe grelhado simples',
       'Arroz de couve-flor com carne',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira natural',
       'Pão de queijo caseiro',
       'Frutas frescas com mel',
@@ -2501,7 +2509,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de manga',
       'Biscoitos de arroz',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa caseira de legumes',
       'Omelete de legumes frescos',
       'Sanduíche caseiro de frango',
@@ -2533,7 +2541,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Salada de folhas frescas',
       'Wrap de alface com atum',
     ],
-    'ceia': [
+    'supper': [
       'Chá de camomila',
       'Leite morno com mel puro',
       'Frutas frescas cozidas',
@@ -2569,7 +2577,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM SORBITOL (180 itens) =============
   'sorbitol': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com manteiga e geleia de morango',
       'Mingau de aveia com banana',
       'Omelete de vegetais',
@@ -2601,7 +2609,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de abacate',
       'Panqueca integral',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Banana madura',
       'Uvas',
       'Manga',
@@ -2633,7 +2641,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Lichia',
       'Biscoitos cream cracker',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com feijão e frango grelhado',
       'Bife de contrafilé com batata',
       'Peixe grelhado com arroz',
@@ -2665,7 +2673,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Arroz de couve-flor',
       'Frango ao limão',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira',
       'Pão de queijo',
       'Frutas tropicais',
@@ -2697,7 +2705,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de mamão',
       'Biscoitos de arroz',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes com carne',
       'Omelete caprese',
       'Sanduíche de frango',
@@ -2729,7 +2737,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de atum',
       'Creme de mandioquinha',
     ],
-    'ceia': [
+    'supper': [
       'Chá de camomila',
       'Iogurte natural',
       'Banana cozida',
@@ -2765,7 +2773,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM SALICILATOS (180 itens) =============
   'salicilatos': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão branco com manteiga',
       'Mingau de aveia com banana',
       'Omelete simples com queijo',
@@ -2797,7 +2805,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Leite com banana',
       'Panqueca simples',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Banana madura',
       'Pera',
       'Mamão',
@@ -2829,7 +2837,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Coco ralado',
       'Biscoitos de polvilho',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz branco com frango grelhado',
       'Bife de carne com batata',
       'Peixe grelhado com arroz',
@@ -2861,7 +2869,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Arroz com feijão e carne',
       'Frango xadrez (sem pimentão)',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca caseira simples',
       'Pão de queijo',
       'Banana com mel',
@@ -2893,7 +2901,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de coco',
       'Biscoitos de arroz',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de batata com frango',
       'Omelete de queijo',
       'Sanduíche simples de frango',
@@ -2925,7 +2933,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Salada verde simples',
       'Wrap de alface com presunto',
     ],
-    'ceia': [
+    'supper': [
       'Chá de camomila',
       'Leite morno com mel',
       'Banana cozida',
@@ -2961,7 +2969,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM MILHO (180 itens) =============
   'milho': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão integral com geleia',
       'Mingau de aveia',
       'Omelete de vegetais',
@@ -2993,7 +3001,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de abacate',
       'Panqueca integral',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Frutas variadas',
       'Mix de castanhas',
       'Iogurte natural',
@@ -3025,7 +3033,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Iogurte com mel',
       'Queijo coalho',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz com feijão e frango',
       'Macarrão à bolonhesa',
       'Bife grelhado com batata',
@@ -3057,7 +3065,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Picadinho de carne',
       'Feijoada',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca de arroz',
       'Pão de queijo (sem amido de milho)',
       'Frutas com mel',
@@ -3089,7 +3097,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de manga',
       'Biscoitos simples',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de legumes',
       'Omelete caprese',
       'Sanduíche de frango',
@@ -3121,7 +3129,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Wrap de alface com atum',
       'Creme de mandioquinha',
     ],
-    'ceia': [
+    'supper': [
       'Chá de camomila',
       'Iogurte natural',
       'Frutas cozidas',
@@ -3157,7 +3165,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
 
   // ============= SEM NÍQUEL (180 itens) =============
   'niquel': {
-    'cafe_manha': [
+    'breakfast': [
       'Pão branco com manteiga',
       'Mingau de arroz com leite',
       'Omelete simples',
@@ -3189,7 +3197,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Leite com aveia',
       'Panqueca de mandioca',
     ],
-    'lanche_manha': [
+    'morning_snack': [
       'Maçã',
       'Pera',
       'Melão',
@@ -3221,7 +3229,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Biscoitos de mandioca',
       'Leite com mel',
     ],
-    'almoco': [
+    'lunch': [
       'Arroz branco com frango grelhado',
       'Bife de carne com batata',
       'Peixe branco grelhado com arroz',
@@ -3253,7 +3261,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Arroz de forno',
       'Frango xadrez simples',
     ],
-    'lanche_tarde': [
+    'afternoon_snack': [
       'Pipoca de arroz',
       'Pão de queijo',
       'Frutas frescas',
@@ -3285,7 +3293,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Vitamina de melão',
       'Biscoitos de água e sal',
     ],
-    'jantar': [
+    'dinner': [
       'Sopa de batata com frango',
       'Omelete de queijo',
       'Sanduíche simples de frango',
@@ -3317,7 +3325,7 @@ export const INTOLERANCE_MEAL_POOL: IntolerancePoolType = {
       'Salada verde simples',
       'Wrap de alface com presunto',
     ],
-    'ceia': [
+    'supper': [
       'Leite morno com mel',
       'Iogurte natural',
       'Maçã cozida',

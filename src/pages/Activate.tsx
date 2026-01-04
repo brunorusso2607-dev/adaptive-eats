@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { ChefHat, Mail, Loader2, CheckCircle, Download, MoreVertical, ArrowRight, Share, PlusSquare, Copy, ExternalLink } from "lucide-react";
+import { ChefHat, Mail, Loader2, CheckCircle, Download, MoreVertical, ArrowRight, Share, PlusSquare, Copy, ExternalLink, User } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
 import { useTrackingPixels } from "@/hooks/useTrackingPixels";
@@ -14,7 +14,10 @@ import iosStep1 from "@/assets/ios-step-1-share.png";
 import iosStep2 from "@/assets/ios-step-2-add-home.png";
 import iosStep3 from "@/assets/ios-step-3-confirm.png";
 
-const emailSchema = z.string().email("Email inválido");
+const activateSchema = z.object({
+  firstName: z.string().trim().min(2, "Nome deve ter pelo menos 2 caracteres").max(50, "Nome muito longo"),
+  email: z.string().email("Email inválido"),
+});
 
 type Step = "email" | "install";
 
@@ -25,6 +28,7 @@ export default function Activate() {
   
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
+  const [firstName, setFirstName] = useState("");
   const [step, setStep] = useState<Step>("email");
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallButton, setShowInstallButton] = useState(false);
@@ -100,10 +104,10 @@ export default function Activate() {
   const handleActivate = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    try {
-      emailSchema.parse(email);
-    } catch {
-      toast.error("Por favor, insira um email válido");
+    const validation = activateSchema.safeParse({ firstName: firstName.trim(), email });
+    if (!validation.success) {
+      const firstError = validation.error.errors[0];
+      toast.error(firstError.message);
       return;
     }
 
@@ -111,7 +115,7 @@ export default function Activate() {
     
     try {
       const { data, error } = await supabase.functions.invoke("activate-account", {
-        body: { email, sessionId },
+        body: { email, firstName: firstName.trim(), sessionId },
       });
 
       if (error) {
@@ -351,6 +355,27 @@ export default function Activate() {
         <CardContent className="space-y-6">
           <form onSubmit={handleActivate} className="space-y-4">
             <div className="space-y-2">
+              <Label htmlFor="firstName">Seu nome</Label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Input
+                  id="firstName"
+                  type="text"
+                  placeholder="Como você gostaria de ser chamado?"
+                  value={firstName}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    const capitalized = value.charAt(0).toUpperCase() + value.slice(1);
+                    setFirstName(capitalized);
+                  }}
+                  className="pl-10"
+                  disabled={isLoading}
+                  required
+                  autoFocus
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
               <Label htmlFor="email">Email usado no pagamento</Label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
@@ -363,7 +388,6 @@ export default function Activate() {
                   className="pl-10"
                   disabled={isLoading}
                   required
-                  autoFocus
                 />
               </div>
               <p className="text-xs text-muted-foreground">

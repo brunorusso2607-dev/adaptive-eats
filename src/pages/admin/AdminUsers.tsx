@@ -227,9 +227,9 @@ export default function AdminUsers() {
 
   const getGoalLabel = (goal: string | null) => {
     switch (goal) {
-      case "emagrecer": return "Emagrecer";
-      case "ganhar_peso": return "Ganhar Peso";
-      case "manter": return "Manter";
+      case "lose_weight": return "Emagrecer";
+      case "gain_weight": return "Ganhar Peso";
+      case "maintain": return "Manter";
       default: return "N/A";
     }
   };
@@ -978,9 +978,9 @@ export default function AdminUsers() {
                       <SelectValue placeholder="Selecione" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="emagrecer">Emagrecer</SelectItem>
-                      <SelectItem value="manter">Manter</SelectItem>
-                      <SelectItem value="ganhar_peso">Ganhar Peso</SelectItem>
+                      <SelectItem value="lose_weight">Emagrecer</SelectItem>
+                      <SelectItem value="maintain">Manter</SelectItem>
+                      <SelectItem value="gain_weight">Ganhar Peso</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

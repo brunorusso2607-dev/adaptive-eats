@@ -30,15 +30,16 @@ type UserContext = Database["public"]["Enums"]["user_context"];
  * Isso permite que categorias definidas com goals antigos funcionem com novas estratégias
  */
 export const STRATEGY_TO_COMPATIBLE_GOALS: Record<string, BaseUserGoal[]> = {
-  emagrecer: ["lose_weight"],
+  // English keys (standard)
   lose_weight: ["lose_weight"],
+  weight_loss: ["lose_weight"],
   cutting: ["lose_weight"], // Cutting é compatível com categorias de lose_weight
-  manter: ["maintain"],
   maintain: ["maintain"],
+  maintenance: ["maintain"],
   fitness: ["maintain"], // Fitness é compatível com categorias de maintain
-  ganhar_peso: ["gain_weight"],
   gain_weight: ["gain_weight"],
-  dieta_flexivel: ["lose_weight", "maintain", "gain_weight"], // Flexível é compatível com todas
+  weight_gain: ["gain_weight"],
+  flexible_diet: ["lose_weight", "maintain", "gain_weight"], // Flexível é compatível com todas
 };
 
 export interface SubcategoryRule {

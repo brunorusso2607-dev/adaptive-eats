@@ -159,6 +159,7 @@ export default function FloatingChefIA() {
   const [historySearch, setHistorySearch] = useState("");
   const [hasNewMessage, setHasNewMessage] = useState(false);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
+  const [userName, setUserName] = useState<string | null>(null);
   
   // Drag state
   const [position, setPosition] = useState({ x: 16, y: 110 }); // Distance from bottom-right, above mobile nav
@@ -197,6 +198,25 @@ export default function FloatingChefIA() {
     startNewChat,
     deleteConversation
   } = useChatMemory(handleMessagesLoaded);
+
+  // Fetch user's first name for personalized greeting
+  useEffect(() => {
+    const fetchUserName = async () => {
+      if (!userId) return;
+      
+      const { data } = await supabase
+        .from("profiles")
+        .select("first_name")
+        .eq("id", userId)
+        .single();
+      
+      if (data?.first_name) {
+        setUserName(data.first_name);
+      }
+    };
+    
+    fetchUserName();
+  }, [userId]);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -363,16 +383,20 @@ export default function FloatingChefIA() {
     }
   }, []);
 
-  // Initial greeting
+  // Initial greeting - personalized with user name
   useEffect(() => {
     if (!isLoadingHistory && !conversationId && messages.length === 0 && conversations.length === 0) {
+      const greeting = userName 
+        ? `Oi, ${userName}! 👋 Sou o Chef IA. Como posso ajudar?`
+        : `Oi! 👋 Sou o Chef IA. Como posso ajudar?`;
+      
       setMessages([{
         role: "assistant",
-        content: `Olá! 👋 Sou o Chef IA, seu assistente.\n\nVocê está em **${pageContext.name}**. Como posso ajudar?`,
+        content: greeting,
         timestamp: new Date()
       }]);
     }
-  }, [isLoadingHistory, conversationId, conversations.length, pageContext.name]);
+  }, [isLoadingHistory, conversationId, conversations.length, userName]);
 
   const addAttachment = (file: File) => {
     const isImage = file.type.startsWith('image/');

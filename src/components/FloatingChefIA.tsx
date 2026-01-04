@@ -6,7 +6,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Bot, User, Send, Loader2, Sparkles, Trash2, Mic, MicOff, 
   Paperclip, X, MapPin, History, Plus, ChevronDown, Search,
-  Minimize2, Maximize2, GripVertical, Square
+  Minimize2, Maximize2, GripVertical, Square, ArrowDown
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -158,6 +158,7 @@ export default function FloatingChefIA() {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [historySearch, setHistorySearch] = useState("");
   const [hasNewMessage, setHasNewMessage] = useState(false);
+  const [showScrollToBottom, setShowScrollToBottom] = useState(false);
   
   // Drag state
   const [position, setPosition] = useState({ x: 16, y: 110 }); // Distance from bottom-right, above mobile nav
@@ -311,9 +312,36 @@ export default function FloatingChefIA() {
       const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]');
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
+        setShowScrollToBottom(false);
       }
     }
   }, [messages]);
+
+  // Detect scroll position to show/hide "scroll to bottom" button
+  useEffect(() => {
+    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (!scrollContainer) return;
+
+    const handleScroll = () => {
+      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
+      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+      setShowScrollToBottom(!isNearBottom);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
+  }, [isOpen]);
+
+  // Function to scroll to bottom
+  const scrollToBottom = useCallback(() => {
+    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (scrollContainer) {
+      scrollContainer.scrollTo({
+        top: scrollContainer.scrollHeight,
+        behavior: 'smooth'
+      });
+    }
+  }, []);
 
   // Initial greeting
   useEffect(() => {
@@ -749,7 +777,8 @@ export default function FloatingChefIA() {
       </div>
 
       {/* Messages */}
-      <ScrollArea ref={scrollAreaRef} className="flex-1 p-4">
+      <div className="relative flex-1 min-h-0">
+        <ScrollArea ref={scrollAreaRef} className="h-full p-4">
         <div className="space-y-3">
           {isLoadingHistory && (
             <div className="flex flex-col items-center justify-center py-8 gap-2">
@@ -836,7 +865,19 @@ export default function FloatingChefIA() {
             </div>
           )}
         </div>
-      </ScrollArea>
+        </ScrollArea>
+
+        {/* Scroll to bottom button */}
+        {showScrollToBottom && (
+          <button
+            onClick={scrollToBottom}
+            className="absolute bottom-3 right-3 w-8 h-8 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all z-10 animate-in fade-in slide-in-from-bottom-2"
+            title="Ir para o fim"
+          >
+            <ArrowDown className="w-4 h-4" />
+          </button>
+        )}
+      </div>
 
       {/* Attachments Preview */}
       {attachments.length > 0 && (

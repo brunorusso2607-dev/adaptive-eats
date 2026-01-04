@@ -249,8 +249,8 @@ export function WaterTracker() {
             onClick={handleAddWater}
             disabled={isAdding}
           >
-            <Plus className="h-4 w-4 mr-2" />
-            Adicionar {selectedAmount}ml
+            <Droplets className="h-4 w-4 mr-2" />
+            Tomei {selectedAmount}ml
           </Button>
           <Button
             variant="outline"

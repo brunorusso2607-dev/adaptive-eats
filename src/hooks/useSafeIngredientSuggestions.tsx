@@ -111,14 +111,22 @@ const SAFE_FOODS_BY_RESTRICTION: Record<string, string[]> = {
     "farinha de arroz", "farinha de amêndoas", "farinha de coco", "polvilho",
     "fécula de batata", "tapioca", "quinoa", "amaranto",
   ],
-  amendoim: [
+  peanut: [
     "castanha de caju", "amêndoas", "tahine", "pasta de castanhas", "sementes de girassol",
   ],
-  acucar: ["xilitol", "eritritol", "stevia", "monk fruit", "açúcar de coco"],
-  ovo: ["linhaça hidratada", "chia hidratada", "banana amassada", "aquafaba", "tofu macio"],
-  frutos_mar: ["frango", "carne bovina", "tofu", "cogumelos", "proteína de soja"],
-  vegetariana: ["tofu", "grão de bico", "lentilha", "feijão", "proteína de soja", "cogumelos", "quinoa", "ovo"],
-  vegana: ["tofu", "grão de bico", "lentilha", "proteína de soja", "cogumelos", "leite de coco", "leite de amêndoas", "queijo vegano", "seitan"],
+  amendoim: [ // Legacy PT key
+    "castanha de caju", "amêndoas", "tahine", "pasta de castanhas", "sementes de girassol",
+  ],
+  sugar: ["xilitol", "eritritol", "stevia", "monk fruit", "açúcar de coco"],
+  acucar: ["xilitol", "eritritol", "stevia", "monk fruit", "açúcar de coco"], // Legacy PT key
+  egg: ["linhaça hidratada", "chia hidratada", "banana amassada", "aquafaba", "tofu macio"],
+  ovo: ["linhaça hidratada", "chia hidratada", "banana amassada", "aquafaba", "tofu macio"], // Legacy PT key
+  seafood: ["frango", "carne bovina", "tofu", "cogumelos", "proteína de soja"],
+  frutos_mar: ["frango", "carne bovina", "tofu", "cogumelos", "proteína de soja"], // Legacy PT key
+  vegetarian: ["tofu", "grão de bico", "lentilha", "feijão", "proteína de soja", "cogumelos", "quinoa", "ovo"],
+  vegetariana: ["tofu", "grão de bico", "lentilha", "feijão", "proteína de soja", "cogumelos", "quinoa", "ovo"], // Legacy PT key
+  vegan: ["tofu", "grão de bico", "lentilha", "proteína de soja", "cogumelos", "leite de coco", "leite de amêndoas", "queijo vegano", "seitan"],
+  vegana: ["tofu", "grão de bico", "lentilha", "proteína de soja", "cogumelos", "leite de coco", "leite de amêndoas", "queijo vegano", "seitan"], // Legacy PT key
 };
 
 type UserProfile = {
@@ -192,7 +200,8 @@ export function useSafeIngredientSuggestions(profile: UserProfile | null) {
       if (userRestrictions.includes("amendoim")) {
         substitutes = substitutes.filter(s => !s.toLowerCase().includes("amendoim"));
       }
-      if (userRestrictions.includes("vegana") || userRestrictions.includes("vegetariana")) {
+      if (userRestrictions.includes("vegan") || userRestrictions.includes("vegana") || 
+          userRestrictions.includes("vegetarian") || userRestrictions.includes("vegetariana")) {
         substitutes = substitutes.filter(s => 
           !["carne", "frango", "peixe", "camarão", "bacon", "porco", "bovina"].some(m => s.toLowerCase().includes(m))
         );

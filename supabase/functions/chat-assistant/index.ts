@@ -735,7 +735,9 @@ const processProfileUpdateFromResponse = async (
   userId: string,
   aiResponse: string,
   currentIntolerances: string[],
-  currentGoal: string
+  currentGoal: string,
+  weightCurrent?: number | null,
+  weightGoal?: number | null
 ): Promise<ProfileUpdateResult> => {
   let cleanResponse = aiResponse;
   let addedRestriction: string | null = null;
@@ -812,19 +814,50 @@ const processProfileUpdateFromResponse = async (
         const goalInfo = VALID_GOAL_KEYS[valueKey];
         
         if (goalInfo && goalInfo.dbValue !== currentGoal) {
-          const { error } = await supabase
-            .from('profiles')
-            .update({ 
-              goal: goalInfo.dbValue,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', userId);
-
-          if (!error) {
-            updatedGoal = goalInfo.label;
-            logStep("Goal updated successfully", { newGoal: goalInfo.dbValue });
+          // VALIDAÇÃO CRÍTICA: Verificar compatibilidade do peso_meta com o novo objetivo
+          const newGoal = goalInfo.dbValue;
+          const hasWeightData = weightCurrent != null && weightGoal != null;
+          
+          let isCompatible = true;
+          let incompatibilityReason = '';
+          
+          if (hasWeightData) {
+            if (newGoal === 'gain_weight' && weightGoal <= weightCurrent) {
+              isCompatible = false;
+              incompatibilityReason = `Para "Ganhar peso", a meta de peso (${weightGoal}kg) precisa ser MAIOR que o peso atual (${weightCurrent}kg). Por favor, informe qual seria sua nova meta de peso.`;
+            } else if (newGoal === 'lose_weight' && weightGoal >= weightCurrent) {
+              isCompatible = false;
+              incompatibilityReason = `Para "Perder peso", a meta de peso (${weightGoal}kg) precisa ser MENOR que o peso atual (${weightCurrent}kg). Por favor, informe qual seria sua nova meta de peso.`;
+            }
+          }
+          
+          if (!isCompatible) {
+            // NÃO atualiza o objetivo, retorna mensagem de erro
+            logStep("Goal update blocked - weight incompatibility", { 
+              newGoal, 
+              weightCurrent, 
+              weightGoal, 
+              reason: incompatibilityReason 
+            });
+            
+            // Substituir a confirmação falsa por uma mensagem de erro
+            cleanResponse = `⚠️ Não consegui atualizar. ${incompatibilityReason}`;
           } else {
-            logStep("Failed to update goal", { error: error.message });
+            // Peso compatível, pode atualizar
+            const { error } = await supabase
+              .from('profiles')
+              .update({ 
+                goal: goalInfo.dbValue,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', userId);
+
+            if (!error) {
+              updatedGoal = goalInfo.label;
+              logStep("Goal updated successfully", { newGoal: goalInfo.dbValue });
+            } else {
+              logStep("Failed to update goal", { error: error.message });
+            }
           }
         }
       } else if (updateType === 'dieta') {
@@ -1736,12 +1769,16 @@ serve(async (req) => {
     if (userId && userProfile) {
       const currentIntolerances = userProfile.intolerances || [];
       const currentGoal = userProfile.goal || 'manter';
+      const weightCurrent = userProfile.weight_current || null;
+      const weightGoal = userProfile.weight_goal || null;
       const result = await processProfileUpdateFromResponse(
         supabase,
         userId,
         assistantMessage,
         currentIntolerances,
-        currentGoal
+        currentGoal,
+        weightCurrent,
+        weightGoal
       );
       assistantMessage = result.updatedResponse;
       addedRestriction = result.addedRestriction;

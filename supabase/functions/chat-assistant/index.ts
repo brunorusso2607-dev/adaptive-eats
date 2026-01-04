@@ -461,9 +461,17 @@ const getGoalLabel = (goal: string): string => {
   return labels[goal] || "Não definido";
 };
 
-// ============= MEAL LABELS =============
+// ============= MEAL LABELS (English keys with Portuguese display) =============
 const getMealLabels = (meals: string[]): string => {
   const labels: Record<string, string> = {
+    // English keys (standard)
+    "breakfast": "Café da manhã",
+    "morning_snack": "Lanche da manhã",
+    "lunch": "Almoço",
+    "afternoon_snack": "Lanche da tarde",
+    "dinner": "Jantar",
+    "supper": "Ceia",
+    // Legacy Portuguese keys (backward compatibility)
     "cafe_manha": "Café da manhã",
     "lanche_manha": "Lanche da manhã",
     "almoco": "Almoço",

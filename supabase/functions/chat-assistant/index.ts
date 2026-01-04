@@ -471,8 +471,10 @@ Pronto! Atualizei [campo] pra [valor novo]. ✅"
 | objetivo | perder, manter, ganhar |
 | restricao | gluten, lactose, fructose, sorbitol, fodmap, peanut, nuts, seafood, fish, egg, soy, histamine, caffeine, sulfite, salicylate, corn, nickel |
 | peso | número em kg |
-| peso_meta | número em kg |
+| peso_meta | número em kg (VALIDADO: deve ser compatível com objetivo) |
 | idade | número em anos |
+| altura | número em cm |
+| sexo | male, female |
 | atividade | sedentary, light, moderate, active, very_active |
 | dieta | omnivore, vegetarian, vegan, pescatarian, flexitarian |
 
@@ -718,8 +720,18 @@ const VALID_ACTIVITY_KEYS: Record<string, { dbValue: string; label: string }> = 
   'very_active': { dbValue: 'very_active', label: 'Muito ativo' },
 };
 
+// ============= VALID SEX KEYS =============
+const VALID_SEX_KEYS: Record<string, { dbValue: string; label: string }> = {
+  'male': { dbValue: 'male', label: 'Masculino' },
+  'masculino': { dbValue: 'male', label: 'Masculino' },
+  'homem': { dbValue: 'male', label: 'Masculino' },
+  'female': { dbValue: 'female', label: 'Feminino' },
+  'feminino': { dbValue: 'female', label: 'Feminino' },
+  'mulher': { dbValue: 'female', label: 'Feminino' },
+};
+
 // All supported update types
-type UpdateType = 'restricao' | 'objetivo' | 'dieta' | 'peso' | 'peso_meta' | 'idade' | 'atividade';
+type UpdateType = 'restricao' | 'objetivo' | 'dieta' | 'peso' | 'peso_meta' | 'idade' | 'altura' | 'sexo' | 'atividade';
 // ============= PROFILE UPDATE RESULT TYPE =============
 interface ProfileUpdateResult {
   updatedResponse: string;
@@ -746,8 +758,8 @@ const processProfileUpdateFromResponse = async (
   let pendingUpdate: { type: UpdateType; value: string; label: string } | null = null;
 
   // Check for PERGUNTAR_ATUALIZACAO marker (asking permission - do NOT update, just track)
-  // Extended regex to match all update types: restricao|objetivo|dieta|peso|peso_meta|idade|atividade
-  const askMatch = cleanResponse.match(/\[PERGUNTAR_ATUALIZACAO:(restricao|objetivo|dieta|peso|peso_meta|idade|atividade):([\w.]+)\]/i);
+  // Extended regex to match all update types: restricao|objetivo|dieta|peso|peso_meta|idade|altura|sexo|atividade
+  const askMatch = cleanResponse.match(/\[PERGUNTAR_ATUALIZACAO:(restricao|objetivo|dieta|peso|peso_meta|idade|altura|sexo|atividade):([\w.]+)\]/i);
   if (askMatch) {
     const [, updateType, value] = askMatch;
     let label = value;
@@ -761,10 +773,14 @@ const processProfileUpdateFromResponse = async (
       label = VALID_DIETARY_KEYS[value.toLowerCase()]?.label || value;
     } else if (updateType === 'atividade') {
       label = VALID_ACTIVITY_KEYS[value.toLowerCase()]?.label || value;
+    } else if (updateType === 'sexo') {
+      label = VALID_SEX_KEYS[value.toLowerCase()]?.label || value;
     } else if (updateType === 'peso' || updateType === 'peso_meta') {
       label = `${value} kg`;
     } else if (updateType === 'idade') {
       label = `${value} anos`;
+    } else if (updateType === 'altura') {
+      label = `${value} cm`;
     }
     
     pendingUpdate = { 
@@ -779,8 +795,8 @@ const processProfileUpdateFromResponse = async (
   }
 
   // Check for CONFIRMAR_ATUALIZACAO marker (user confirmed - DO update)
-  // Extended regex to match all update types
-  const confirmMatch = cleanResponse.match(/\[CONFIRMAR_ATUALIZACAO:(restricao|objetivo|dieta|peso|peso_meta|idade|atividade):([\w.]+)\]/i);
+  // Extended regex to match all update types including altura and sexo
+  const confirmMatch = cleanResponse.match(/\[CONFIRMAR_ATUALIZACAO:(restricao|objetivo|dieta|peso|peso_meta|idade|altura|sexo|atividade):([\w.]+)\]/i);
   if (confirmMatch) {
     const [, updateType, value] = confirmMatch;
     const valueKey = value.toLowerCase();
@@ -902,19 +918,43 @@ const processProfileUpdateFromResponse = async (
         const numericValue = parseFloat(value);
         
         if (!isNaN(numericValue) && numericValue > 0 && numericValue < 500) {
-          const { error } = await supabase
-            .from('profiles')
-            .update({ 
-              weight_goal: numericValue,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', userId);
-
-          if (!error) {
-            updatedField = { field: 'Peso meta', value: `${numericValue} kg` };
-            logStep("Goal weight updated successfully", { newGoalWeight: numericValue });
+          // VALIDAÇÃO CRÍTICA: Verificar compatibilidade do peso_meta com o objetivo ATUAL
+          let isCompatible = true;
+          let incompatibilityReason = '';
+          
+          if (weightCurrent != null) {
+            if (currentGoal === 'gain_weight' && numericValue <= weightCurrent) {
+              isCompatible = false;
+              incompatibilityReason = `Para seu objetivo atual "Ganhar peso", a meta (${numericValue}kg) precisa ser MAIOR que o peso atual (${weightCurrent}kg).`;
+            } else if (currentGoal === 'lose_weight' && numericValue >= weightCurrent) {
+              isCompatible = false;
+              incompatibilityReason = `Para seu objetivo atual "Perder peso", a meta (${numericValue}kg) precisa ser MENOR que o peso atual (${weightCurrent}kg).`;
+            }
+          }
+          
+          if (!isCompatible) {
+            logStep("Weight goal update blocked - incompatible with current goal", { 
+              newWeightGoal: numericValue, 
+              weightCurrent, 
+              currentGoal, 
+              reason: incompatibilityReason 
+            });
+            cleanResponse = `⚠️ Não consegui atualizar. ${incompatibilityReason} Quer mudar o objetivo também?`;
           } else {
-            logStep("Failed to update goal weight", { error: error.message });
+            const { error } = await supabase
+              .from('profiles')
+              .update({ 
+                weight_goal: numericValue,
+                updated_at: new Date().toISOString()
+              })
+              .eq('id', userId);
+
+            if (!error) {
+              updatedField = { field: 'Peso meta', value: `${numericValue} kg` };
+              logStep("Goal weight updated successfully", { newGoalWeight: numericValue });
+            } else {
+              logStep("Failed to update goal weight", { error: error.message });
+            }
           }
         }
       } else if (updateType === 'idade') {
@@ -954,6 +994,50 @@ const processProfileUpdateFromResponse = async (
           } else {
             logStep("Failed to update activity level", { error: error.message });
           }
+        }
+      } else if (updateType === 'altura') {
+        const numericValue = parseFloat(value);
+        
+        // Altura válida: 50cm a 300cm
+        if (!isNaN(numericValue) && numericValue >= 50 && numericValue <= 300) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              height: numericValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Altura', value: `${numericValue} cm` };
+            logStep("Height updated successfully", { newHeight: numericValue });
+          } else {
+            logStep("Failed to update height", { error: error.message });
+          }
+        } else {
+          logStep("Invalid height value", { value: numericValue });
+          cleanResponse = `⚠️ Altura inválida. Por favor, informe um valor entre 50 e 300 cm.`;
+        }
+      } else if (updateType === 'sexo') {
+        const sexInfo = VALID_SEX_KEYS[valueKey];
+        
+        if (sexInfo) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              sex: sexInfo.dbValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Sexo', value: sexInfo.label };
+            logStep("Sex updated successfully", { newSex: sexInfo.dbValue });
+          } else {
+            logStep("Failed to update sex", { error: error.message });
+          }
+        } else {
+          logStep("Invalid sex value", { value: valueKey });
         }
       }
     } catch (err) {

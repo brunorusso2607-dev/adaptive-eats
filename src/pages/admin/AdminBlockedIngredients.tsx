@@ -650,13 +650,13 @@ export default function AdminBlockedIngredients() {
                   <SelectValue placeholder="Selecione..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="vegana">Vegana</SelectItem>
-                  <SelectItem value="vegetariana">Vegetariana</SelectItem>
+                  <SelectItem value="vegan">Vegana</SelectItem>
+                  <SelectItem value="vegetarian">Vegetariana</SelectItem>
                   <SelectItem value="lactose">Intolerância à Lactose</SelectItem>
                   <SelectItem value="gluten">Intolerância ao Glúten</SelectItem>
-                  <SelectItem value="ovo">Alergia a Ovo</SelectItem>
-                  <SelectItem value="pescetariana">Pescetariana</SelectItem>
-                  <SelectItem value="cetogenica">Cetogênica</SelectItem>
+                  <SelectItem value="egg">Alergia a Ovo</SelectItem>
+                  <SelectItem value="pescatarian">Pescetariana</SelectItem>
+                  <SelectItem value="ketogenic">Cetogênica</SelectItem>
                   <SelectItem value="low_carb">Low Carb</SelectItem>
                 </SelectContent>
               </Select>

@@ -128,7 +128,9 @@ export function useDynamicDietaryCompatibility() {
       !profileContext.intolerances?.includes("nenhuma");
     const hasExcluded = (profileContext.excluded_ingredients?.length ?? 0) > 0;
     const hasDietaryRestriction = profileContext.dietary_preference && 
+      profileContext.dietary_preference !== "omnivore" &&
       profileContext.dietary_preference !== "comum" &&
+      profileContext.dietary_preference !== "flexitarian" &&
       profileContext.dietary_preference !== "flexitariana";
     return hasIntolerances || hasExcluded || hasDietaryRestriction;
   }, [profileContext.intolerances, profileContext.excluded_ingredients, profileContext.dietary_preference]);
@@ -196,7 +198,7 @@ export function useDynamicDietaryCompatibility() {
 
       // 2. Verifica preferência dietética
       const dietaryPref = profileContext.dietary_preference;
-      if (dietaryPref && dietaryPref !== "comum" && dietaryPref !== "flexitariana") {
+      if (dietaryPref && dietaryPref !== "omnivore" && dietaryPref !== "comum" && dietaryPref !== "flexitarian" && dietaryPref !== "flexitariana") {
         const forbiddenByDiet = dietaryForbidden[dietaryPref] || [];
         for (const forbidden of forbiddenByDiet) {
           const normalizedForbidden = normalizeText(forbidden);

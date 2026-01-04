@@ -137,9 +137,9 @@ export default function IngredientSubstitutionSheet({
           strategyKey: profile?.strategyKey,
           // Novos campos para usar mesma lógica do generate-ai-meal-plan
           intolerances: profile?.intolerances || [],
-          dietaryPreference: profile?.dietary_preference || 'comum',
+          dietaryPreference: profile?.dietary_preference || 'omnivore',
           excludedIngredients: profile?.excluded_ingredients || [],
-          goal: profile?.goal || 'manter',
+          goal: profile?.goal || 'maintain',
           userCountry: profile?.country || 'BR',
           existingFoods: [] // Pode ser expandido para receber os alimentos já na refeição
         }

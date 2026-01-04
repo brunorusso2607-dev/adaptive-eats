@@ -38,7 +38,7 @@ export function SafetyStatusBadge({
   const { data: options, isLoading: optionsLoading } = useOnboardingOptions();
   const { getIntoleranceLabel, getDietaryLabel } = useSafetyLabels();
   
-  const hasRestrictions = intolerances.length > 0 || excludedIngredients.length > 0 || (dietaryPreference && dietaryPreference !== "comum");
+  const hasRestrictions = intolerances.length > 0 || excludedIngredients.length > 0 || (dietaryPreference && dietaryPreference !== "omnivore" && dietaryPreference !== "comum");
 
   const handleOpenEdit = () => {
     setSelectedIntolerances(intolerances);
@@ -152,7 +152,7 @@ export function SafetyStatusBadge({
   }
 
   // Adicionar preferência alimentar usando labels do database
-  if (dietaryPreference && dietaryPreference !== "comum") {
+  if (dietaryPreference && dietaryPreference !== "omnivore" && dietaryPreference !== "comum") {
     const label = getDietaryLabel(dietaryPreference);
     activeRestrictions.push({ label, key: dietaryPreference, type: "diet" });
   }

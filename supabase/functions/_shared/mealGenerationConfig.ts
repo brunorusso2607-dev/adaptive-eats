@@ -2359,14 +2359,39 @@ export const DIETARY_PROFILE_POOL: Record<string, Record<string, string[]>> = {
   },
 };
 
+// ============= MEAL TYPE NORMALIZATION =============
+// Maps English keys to internal Portuguese pool keys for backward compatibility
+const MEAL_TYPE_TO_POOL_KEY: Record<string, string> = {
+  // English keys -> Portuguese pool keys
+  'breakfast': 'cafe_manha',
+  'morning_snack': 'lanche_manha',
+  'lunch': 'almoco',
+  'afternoon_snack': 'lanche_tarde',
+  'dinner': 'jantar',
+  'supper': 'ceia',
+  // Keep Portuguese keys working for backward compatibility
+  'cafe_manha': 'cafe_manha',
+  'lanche_manha': 'lanche_manha',
+  'almoco': 'almoco',
+  'lanche_tarde': 'lanche_tarde',
+  'lanche': 'lanche_tarde',
+  'jantar': 'jantar',
+  'ceia': 'ceia',
+};
+
+function normalizePoolMealType(mealType: string): string {
+  return MEAL_TYPE_TO_POOL_KEY[mealType] || mealType;
+}
+
 // Função para obter refeições do pool por perfil dietético
 export function getMealsFromDietaryPool(
   dietaryPreference: string,
   mealType: string,
   count: number = 5
 ): string[] {
+  const normalizedMealType = normalizePoolMealType(mealType);
   const profilePool = DIETARY_PROFILE_POOL[dietaryPreference] || DIETARY_PROFILE_POOL['comum'];
-  const meals = profilePool[mealType] || [];
+  const meals = profilePool[normalizedMealType] || [];
   
   if (meals.length === 0) return [];
   
@@ -2383,10 +2408,11 @@ export function getRandomMealFromDietaryPool(dietaryPreference: string, mealType
 
 // Função para verificar se uma refeição está no pool dietético
 export function isMealInDietaryPool(dietaryPreference: string, mealType: string, mealName: string): boolean {
+  const normalizedMealType = normalizePoolMealType(mealType);
   const profilePool = DIETARY_PROFILE_POOL[dietaryPreference];
   if (!profilePool) return false;
   
-  const meals = profilePool[mealType] || [];
+  const meals = profilePool[normalizedMealType] || [];
   const normalizedMealName = normalizeText(mealName);
   
   return meals.some(meal => normalizeText(meal).includes(normalizedMealName) || normalizedMealName.includes(normalizeText(meal)));
@@ -2398,8 +2424,9 @@ export function getMealsFromPool(
   mealType: string,
   count: number = 5
 ): string[] {
+  const normalizedMealType = normalizePoolMealType(mealType);
   const strategyPool = STRATEGY_MEAL_POOL[strategyKey] || STRATEGY_MEAL_POOL['manter'];
-  const meals = strategyPool[mealType] || [];
+  const meals = strategyPool[normalizedMealType] || [];
   
   if (meals.length === 0) return [];
   
@@ -2416,10 +2443,11 @@ export function getRandomMealFromPool(strategyKey: string, mealType: string): st
 
 // Função para verificar se uma refeição está no pool
 export function isMealInPool(strategyKey: string, mealType: string, mealName: string): boolean {
+  const normalizedMealType = normalizePoolMealType(mealType);
   const strategyPool = STRATEGY_MEAL_POOL[strategyKey];
   if (!strategyPool) return false;
   
-  const meals = strategyPool[mealType] || [];
+  const meals = strategyPool[normalizedMealType] || [];
   const normalizedMealName = normalizeText(mealName);
   
   return meals.some(meal => normalizeText(meal).includes(normalizedMealName) || normalizedMealName.includes(normalizeText(meal)));

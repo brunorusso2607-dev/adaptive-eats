@@ -231,7 +231,7 @@ serve(async (req) => {
         
         if (error) return { passed: false, error: error.message };
         
-        const requiredMeals = ['cafe_manha', 'almoco', 'lanche_tarde', 'jantar', 'ceia'];
+        const requiredMeals = ['breakfast', 'lunch', 'afternoon_snack', 'dinner', 'supper'];
         const foundMeals = data?.map(d => d.meal_type) || [];
         const missing = requiredMeals.filter(m => !foundMeals.includes(m));
         

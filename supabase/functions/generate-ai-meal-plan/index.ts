@@ -808,9 +808,24 @@ serve(async (req) => {
 
     if (profileError) throw new Error(`Profile error: ${profileError.message}`);
     
-    // ============= DETERMINAR MEAL TYPES BASEADO NO PERFIL =============
-    // Prioridade: 1) requestedMealTypes (da request), 2) enabled_meals (do perfil), 3) default 5 refeições
-    const DEFAULT_MEAL_TYPES = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"];
+    // ============= DETERMINE MEAL TYPES BASED ON PROFILE =============
+    // Priority: 1) requestedMealTypes (from request), 2) enabled_meals (from profile), 3) default 5 meals
+    const DEFAULT_MEAL_TYPES = ["breakfast", "morning_snack", "lunch", "afternoon_snack", "dinner"];
+    
+    // Normalization map for legacy Portuguese keys
+    const MEAL_TYPE_NORMALIZATION: Record<string, string> = {
+      "cafe_manha": "breakfast",
+      "lanche_manha": "morning_snack",
+      "almoco": "lunch",
+      "lanche": "afternoon_snack",
+      "lanche_tarde": "afternoon_snack",
+      "jantar": "dinner",
+      "ceia": "supper",
+    };
+    
+    const normalizeMealType = (meal: string): string => {
+      return MEAL_TYPE_NORMALIZATION[meal] || meal;
+    };
     
     logStep("🔍 DEBUG: Checking mealTypes sources", { 
       requestedMealTypes, 
@@ -821,19 +836,15 @@ serve(async (req) => {
     
     let mealTypes: string[];
     if (requestedMealTypes && Array.isArray(requestedMealTypes) && requestedMealTypes.length > 0) {
-      // Usar os tipos passados na request
-      mealTypes = requestedMealTypes;
+      // Use types from request (normalize if needed)
+      mealTypes = requestedMealTypes.map(normalizeMealType);
       logStep("✅ Using mealTypes from REQUEST", { mealTypes, count: mealTypes.length });
     } else if (profile.enabled_meals && Array.isArray(profile.enabled_meals) && profile.enabled_meals.length > 0) {
-      // Usar os tipos do perfil do usuário
-      // Normalizar nomes: "lanche" -> "lanche_tarde" para manter consistência
-      mealTypes = profile.enabled_meals.map((meal: string) => {
-        if (meal === "lanche") return "lanche_tarde";
-        return meal;
-      });
+      // Use types from user profile (normalize legacy Portuguese keys)
+      mealTypes = profile.enabled_meals.map(normalizeMealType);
       logStep("✅ Using mealTypes from PROFILE (enabled_meals)", { mealTypes, count: mealTypes.length, original: profile.enabled_meals });
     } else {
-      // Fallback para default
+      // Fallback to default
       mealTypes = DEFAULT_MEAL_TYPES;
       logStep("⚠️ Using DEFAULT mealTypes (no source found)", { mealTypes, count: mealTypes.length });
     }

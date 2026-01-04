@@ -121,13 +121,17 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
         if (isCancelled) return;
         if (error) throw error;
         
-        setConversations(data || []);
+        const sortedConversations = (data || []).sort((a, b) => 
+          new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+        );
+        
+        setConversations(sortedConversations);
 
         // Auto-load the MOST RECENT conversation (first in the list = most recently updated)
-        if (data && data.length > 0) {
-          const mostRecentConv = data[0];
+        if (sortedConversations.length > 0) {
+          const mostRecentConv = sortedConversations[0];
           
-          console.log("[ChatMemory] Loading most recent conversation:", mostRecentConv.id, "updated_at:", mostRecentConv.updated_at);
+          console.log("[ChatMemory] Loading most recent conversation:", mostRecentConv.id, "updated_at:", mostRecentConv.updated_at, "title:", mostRecentConv.title);
           
           const { data: messagesData, error: messagesError } = await supabase
             .from("chat_messages")
@@ -137,7 +141,7 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
 
           if (isCancelled) return;
           
-          // Set conversation ID AFTER loading messages to ensure sync
+          // Set conversation ID FIRST to establish context
           setConversationId(mostRecentConv.id);
 
           if (!messagesError && messagesData && messagesData.length > 0) {
@@ -148,11 +152,16 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
               timestamp: new Date(msg.created_at),
             }));
             
-            console.log("[ChatMemory] Loaded", messages.length, "messages from most recent conversation");
+            console.log("[ChatMemory] Loaded", messages.length, "messages from conversation:", mostRecentConv.title);
             
-            if (onMessagesLoadedRef.current) {
-              onMessagesLoadedRef.current(messages);
-            }
+            // Use setTimeout to ensure React has processed state updates
+            setTimeout(() => {
+              if (!isCancelled && onMessagesLoadedRef.current) {
+                onMessagesLoadedRef.current(messages);
+              }
+            }, 0);
+          } else {
+            console.log("[ChatMemory] No messages in most recent conversation");
           }
         }
       } catch (error) {

@@ -93,55 +93,64 @@ const MEAL_TYPE_INFO: Record<string, {
   forbidden: string[];
   examples: string[];
 }> = {
-  cafe_manha: {
+  // English keys (standard)
+  breakfast: {
     label: 'Breakfast',
     labelPt: 'Café da Manhã',
     allowed: ['pão', 'tapioca', 'ovo', 'queijo', 'iogurte', 'fruta', 'aveia', 'granola', 'leite', 'café', 'suco', 'vitamina', 'panqueca', 'crepioca', 'torrada', 'manteiga', 'mel', 'geleia', 'cereal', 'mingau'],
     forbidden: ['arroz', 'feijão', 'carne vermelha', 'frango grelhado', 'salada de almoço', 'macarrão', 'lasanha', 'estrogonofe'],
     examples: ['Tapioca com queijo', 'Pão integral com ovo', 'Iogurte com granola', 'Vitamina de banana', 'Crepioca', 'Panqueca de aveia']
   },
-  lanche_manha: {
+  morning_snack: {
     label: 'Morning Snack',
     labelPt: 'Lanche da Manhã',
     allowed: ['fruta', 'iogurte', 'castanha', 'barrinha', 'queijo', 'biscoito', 'suco', 'shake'],
     forbidden: ['arroz', 'feijão', 'carne de almoço', 'pratos pesados'],
     examples: ['Maçã com pasta de amendoim', 'Iogurte natural', 'Mix de castanhas', 'Banana']
   },
-  almoco: {
+  lunch: {
     label: 'Lunch',
     labelPt: 'Almoço',
     allowed: ['arroz', 'feijão', 'carne', 'frango', 'peixe', 'salada', 'legumes', 'batata', 'macarrão', 'ovo', 'grão de bico', 'lentilha', 'quinoa'],
     forbidden: ['cereal matinal', 'panqueca doce', 'granola com leite'],
     examples: ['Arroz integral', 'Feijão preto', 'Filé de frango grelhado', 'Batata doce', 'Salada verde']
   },
-  lanche_tarde: {
+  afternoon_snack: {
     label: 'Afternoon Snack',
     labelPt: 'Lanche da Tarde',
     allowed: ['fruta', 'iogurte', 'sanduíche', 'tapioca', 'pão', 'queijo', 'castanha', 'shake', 'suco', 'barrinha', 'torrada'],
     forbidden: ['arroz com feijão', 'pratos de almoço completo', 'refeições pesadas'],
     examples: ['Sanduíche natural', 'Tapioca', 'Frutas com iogurte', 'Shake proteico']
   },
-  lanche: {
-    label: 'Afternoon Snack',
-    labelPt: 'Lanche da Tarde',
-    allowed: ['fruta', 'iogurte', 'sanduíche', 'tapioca', 'pão', 'queijo', 'castanha', 'shake', 'suco', 'barrinha', 'torrada'],
-    forbidden: ['arroz com feijão', 'pratos de almoço completo', 'refeições pesadas'],
-    examples: ['Sanduíche natural', 'Tapioca', 'Frutas com iogurte', 'Shake proteico']
-  },
-  jantar: {
+  dinner: {
     label: 'Dinner',
     labelPt: 'Jantar',
     allowed: ['sopa', 'salada', 'omelete', 'peixe', 'frango', 'legumes', 'ovo', 'arroz', 'batata', 'carne leve', 'wrap', 'sanduíche'],
     forbidden: ['cereal matinal', 'granola', 'café da manhã típico'],
     examples: ['Sopa de legumes', 'Omelete', 'Salada com frango', 'Peixe grelhado']
   },
-  ceia: {
+  supper: {
     label: 'Late Night Snack',
     labelPt: 'Ceia',
     allowed: ['chá', 'fruta', 'iogurte', 'castanha', 'leite', 'queijo cottage', 'aveia'],
     forbidden: ['carne pesada', 'fritura', 'refeição completa', 'arroz com feijão', 'ovos', 'omelete'],
     examples: ['Chá de camomila', 'Iogurte natural', 'Maçã', 'Leite morno']
   }
+};
+
+// Normalization map for legacy Portuguese keys
+const MEAL_TYPE_NORMALIZATION: Record<string, string> = {
+  "cafe_manha": "breakfast",
+  "lanche_manha": "morning_snack",
+  "almoco": "lunch",
+  "lanche": "afternoon_snack",
+  "lanche_tarde": "afternoon_snack",
+  "jantar": "dinner",
+  "ceia": "supper",
+};
+
+const normalizeMealType = (mealType: string): string => {
+  return MEAL_TYPE_NORMALIZATION[mealType] || mealType;
 };
 
 serve(async (req) => {
@@ -225,7 +234,8 @@ serve(async (req) => {
     const prepStyles = detectPreparationStyle(ingredientName);
     
     // Obter info do tipo de refeição
-    const mealTypeInfo = MEAL_TYPE_INFO[mealType] || MEAL_TYPE_INFO['almoco'];
+    const normalizedMealType = normalizeMealType(mealType);
+    const mealTypeInfo = MEAL_TYPE_INFO[normalizedMealType] || MEAL_TYPE_INFO['lunch'];
     
     // Obter config regional (igual generate-ai-meal-plan)
     const regionalConfig = getRegionalConfig(userCountry);

@@ -100,32 +100,40 @@ export function NotificationHandler() {
     };
   }, [markNotificationAsRead]);
 
-  // Sync badge on app visibility change (when user opens the app)
+  // Mark all notifications as read and clear badge when app becomes visible
   useEffect(() => {
-    const syncBadgeOnVisibility = async () => {
+    const markAllReadOnVisibility = async () => {
       if (document.visibilityState === 'visible') {
-        console.log('[NotificationHandler] App visible, syncing badge...');
+        console.log('[NotificationHandler] App visible, marking all notifications as read...');
         
         const { data: { session } } = await supabase.auth.getSession();
         if (!session) return;
         
-        const { count } = await supabase
+        // Mark all unread notifications as read
+        const { error } = await supabase
           .from("notifications")
-          .select("*", { count: "exact", head: true })
+          .update({ is_read: true })
           .eq("user_id", session.user.id)
           .eq("is_read", false);
         
-        await updateAppBadge(count || 0);
+        if (error) {
+          console.error('[NotificationHandler] Error marking notifications as read:', error);
+        } else {
+          console.log('[NotificationHandler] All notifications marked as read');
+        }
+        
+        // Always clear badge when app is opened
+        await updateAppBadge(0);
       }
     };
 
-    document.addEventListener('visibilitychange', syncBadgeOnVisibility);
+    document.addEventListener('visibilitychange', markAllReadOnVisibility);
     
-    // Also sync on mount
-    syncBadgeOnVisibility();
+    // Also run on mount
+    markAllReadOnVisibility();
     
     return () => {
-      document.removeEventListener('visibilitychange', syncBadgeOnVisibility);
+      document.removeEventListener('visibilitychange', markAllReadOnVisibility);
     };
   }, []);
 

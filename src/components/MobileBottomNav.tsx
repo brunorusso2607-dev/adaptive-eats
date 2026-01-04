@@ -64,7 +64,7 @@ export default function MobileBottomNav({
                 "flex flex-col items-center justify-center gap-1 flex-1 h-full transition-colors relative",
                 isActive 
                   ? "text-primary" 
-                  : "text-[hsl(215,14%,60%)] hover:text-foreground"
+                  : "text-muted-foreground hover:text-foreground"
               )}
             >
               <div className="relative">

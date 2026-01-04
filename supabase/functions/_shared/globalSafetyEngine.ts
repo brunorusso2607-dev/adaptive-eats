@@ -163,11 +163,20 @@ export const INTOLERANCE_LABELS: Record<string, string> = {
 };
 
 export const DIETARY_LABELS: Record<string, string> = {
+  // === CHAVES CANÔNICAS EM INGLÊS (sincronizado com dietary_profiles e onboarding_options) ===
+  omnivore: "Onívoro",
+  vegetarian: "Vegetarianismo",
+  vegan: "Veganismo",
+  pescatarian: "Pescetarianismo",
+  flexitarian: "Flexitariana",
+  ketogenic: "Cetogênica",
+  low_carb: "Low Carb",
+  
+  // === ALIASES LEGADOS para compatibilidade (podem ser removidos no futuro) ===
   vegana: "Veganismo",
   vegetariana: "Vegetarianismo",
   pescetariana: "Pescetarianismo",
   comum: "Onívoro",
-  low_carb: "Low Carb",
   cetogenica: "Cetogênica",
   flexitariana: "Flexitariana"
 };

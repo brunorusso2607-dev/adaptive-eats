@@ -1054,23 +1054,25 @@ const calculateDailyCalories = (profile: any): number => {
   const weight = profile.weight_current || 70;
   const height = profile.height || 170;
   const age = profile.age || 30;
-  const sex = profile.sex || "masculino";
+  const sex = profile.sex || "male";
   
   // Mifflin-St Jeor equation
+  // Database stores: "male" | "female"
   let bmr: number;
-  if (sex === "feminino") {
+  if (sex === "female") {
     bmr = 10 * weight + 6.25 * height - 5 * age - 161;
   } else {
     bmr = 10 * weight + 6.25 * height - 5 * age + 5;
   }
   
   // Activity multiplier
+  // Database stores: "sedentary" | "light" | "moderate" | "active" | "very_active"
   const activityMultipliers: Record<string, number> = {
-    sedentario: 1.2,
-    leve: 1.375,
-    moderado: 1.55,
-    ativo: 1.725,
-    muito_ativo: 1.9
+    sedentary: 1.2,
+    light: 1.375,
+    moderate: 1.55,
+    active: 1.725,
+    very_active: 1.9
   };
   const multiplier = activityMultipliers[profile.activity_level] || 1.55;
   

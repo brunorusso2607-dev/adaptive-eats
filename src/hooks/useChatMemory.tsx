@@ -22,7 +22,6 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
   const [conversations, setConversations] = useState<ChatConversation[]>([]);
   const [isLoadingHistory, setIsLoadingHistory] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
-  const [lastInitUserId, setLastInitUserId] = useState<string | null>(null);
   const onMessagesLoadedRef = useRef(onMessagesLoaded);
 
   // Keep ref updated
@@ -97,14 +96,17 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
 
   // Initial load - auto-load last conversation (reloads when userId changes or chat component remounts)
   useEffect(() => {
+    let isCancelled = false;
+    
     const initializeChat = async () => {
-      if (!userId) return;
-      
-      // Always reinitialize when userId changes
-      if (userId !== lastInitUserId) {
-        setLastInitUserId(userId);
+      if (!userId) {
+        setIsLoadingHistory(false);
+        return;
       }
       
+      // Reset state for fresh load
+      setConversationId(null);
+      setConversations([]);
       setIsLoadingHistory(true);
 
       try {
@@ -116,7 +118,9 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
           .order("updated_at", { ascending: false })
           .limit(10);
 
+        if (isCancelled) return;
         if (error) throw error;
+        
         setConversations(data || []);
 
         // Auto-load the MOST RECENT conversation (first in the list = most recently updated)
@@ -125,13 +129,16 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
           
           console.log("[ChatMemory] Loading most recent conversation:", mostRecentConv.id, "updated_at:", mostRecentConv.updated_at);
           
-          setConversationId(mostRecentConv.id);
-          
           const { data: messagesData, error: messagesError } = await supabase
             .from("chat_messages")
             .select("*")
             .eq("conversation_id", mostRecentConv.id)
             .order("created_at", { ascending: true });
+
+          if (isCancelled) return;
+          
+          // Set conversation ID AFTER loading messages to ensure sync
+          setConversationId(mostRecentConv.id);
 
           if (!messagesError && messagesData && messagesData.length > 0) {
             const messages = messagesData.map(msg => ({
@@ -151,12 +158,18 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
       } catch (error) {
         console.error("Error initializing chat:", error);
       } finally {
-        setIsLoadingHistory(false);
+        if (!isCancelled) {
+          setIsLoadingHistory(false);
+        }
       }
     };
 
     initializeChat();
-  }, [userId]); // Removed lastInitUserId from dependencies to prevent blocking reinit
+    
+    return () => {
+      isCancelled = true;
+    };
+  }, [userId]);
 
   // Create a new conversation
   const createConversation = useCallback(async (firstMessage?: string): Promise<string | null> => {

@@ -317,29 +317,49 @@ export default function FloatingChefIA() {
     }
   }, [messages]);
 
+  // Scroll container ref for direct access
+  const scrollContainerRef = useRef<Element | null>(null);
+
   // Detect scroll position to show/hide "scroll to bottom" button
   useEffect(() => {
-    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-    if (!scrollContainer) return;
+    if (!isOpen || isMinimized) {
+      setShowScrollToBottom(false);
+      return;
+    }
 
-    const handleScroll = () => {
-      const { scrollTop, scrollHeight, clientHeight } = scrollContainer;
-      const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
-      setShowScrollToBottom(!isNearBottom);
-    };
+    // Small delay to ensure ScrollArea is mounted
+    const timer = setTimeout(() => {
+      const container = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+      scrollContainerRef.current = container;
+      
+      if (!container) return;
 
-    scrollContainer.addEventListener('scroll', handleScroll);
-    return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, [isOpen]);
+      const handleScroll = () => {
+        const { scrollTop, scrollHeight, clientHeight } = container;
+        const isNearBottom = scrollHeight - scrollTop - clientHeight < 100;
+        setShowScrollToBottom(!isNearBottom);
+      };
+
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      
+      // Initial check
+      handleScroll();
+      
+      return () => container.removeEventListener('scroll', handleScroll);
+    }, 100);
+
+    return () => clearTimeout(timer);
+  }, [isOpen, isMinimized, messages.length]);
 
   // Function to scroll to bottom
   const scrollToBottom = useCallback(() => {
-    const scrollContainer = scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
-    if (scrollContainer) {
-      scrollContainer.scrollTo({
-        top: scrollContainer.scrollHeight,
+    const container = scrollContainerRef.current || scrollAreaRef.current?.querySelector('[data-radix-scroll-area-viewport]');
+    if (container) {
+      container.scrollTo({
+        top: container.scrollHeight,
         behavior: 'smooth'
       });
+      setShowScrollToBottom(false);
     }
   }, []);
 
@@ -867,14 +887,14 @@ export default function FloatingChefIA() {
         </div>
         </ScrollArea>
 
-        {/* Scroll to bottom button */}
+        {/* Scroll to bottom button - subtle grey transparent */}
         {showScrollToBottom && (
           <button
             onClick={scrollToBottom}
-            className="absolute bottom-3 right-3 w-8 h-8 bg-primary text-primary-foreground rounded-full shadow-lg flex items-center justify-center hover:bg-primary/90 transition-all z-10 animate-in fade-in slide-in-from-bottom-2"
+            className="absolute bottom-3 right-3 w-7 h-7 bg-foreground/20 backdrop-blur-sm text-foreground/60 rounded-full flex items-center justify-center hover:bg-foreground/30 hover:text-foreground/80 transition-all z-10"
             title="Ir para o fim"
           >
-            <ArrowDown className="w-4 h-4" />
+            <ArrowDown className="w-3.5 h-3.5" />
           </button>
         )}
       </div>

@@ -13,15 +13,29 @@ export type Notification = {
 };
 
 // Helper to update app badge
-const updateAppBadge = (count: number) => {
-  if (count === 0) {
-    if ('clearAppBadge' in navigator) {
-      (navigator as any).clearAppBadge().catch(() => {});
+const updateAppBadge = async (count: number) => {
+  console.log("[Badge] Attempting to update app badge to:", count);
+  
+  try {
+    if (count === 0) {
+      // Try clearAppBadge first
+      if ('clearAppBadge' in navigator) {
+        await (navigator as any).clearAppBadge();
+        console.log("[Badge] clearAppBadge() called successfully");
+      } 
+      // Fallback: set badge to 0 explicitly
+      if ('setAppBadge' in navigator) {
+        await (navigator as any).setAppBadge(0);
+        console.log("[Badge] setAppBadge(0) called as fallback");
+      }
+    } else {
+      if ('setAppBadge' in navigator) {
+        await (navigator as any).setAppBadge(count);
+        console.log("[Badge] setAppBadge() called with count:", count);
+      }
     }
-  } else {
-    if ('setAppBadge' in navigator) {
-      (navigator as any).setAppBadge(count).catch(() => {});
-    }
+  } catch (error) {
+    console.error("[Badge] Error updating badge:", error);
   }
 };
 

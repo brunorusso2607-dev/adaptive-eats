@@ -138,14 +138,14 @@ function buildUserPrompt(moduleId: string, testParams: any): string {
       });
       
     case 'regenerate-meal':
-      const mealType = testParams?.mealType || 'almoco';
+      const mealType = testParams?.mealType || 'lunch';
       return JSON.stringify({
         task: "regenerate_meal",
         locale: locale,
         user_intolerances: intolerances,
         meal_type: mealType,
         target_calories: testParams?.targetCalories || 500,
-        instructions: `Gere uma refeição alternativa para ${mealType} com aproximadamente 500 calorias.`,
+        instructions: `Generate an alternative meal for ${mealType} with approximately 500 calories.`,
         test_mode: true
       });
       
@@ -160,7 +160,7 @@ function buildUserPrompt(moduleId: string, testParams: any): string {
       });
       
     case 'generate-ai-meal-plan':
-      const planMealType = testParams?.mealType || 'almoco';
+      const planMealType = testParams?.mealType || 'lunch';
       return JSON.stringify({
         task: "generate_meal_plan",
         locale: locale,

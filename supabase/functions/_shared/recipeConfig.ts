@@ -714,6 +714,29 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
 // FUNÇÕES UTILITÁRIAS DE PAÍS
 // ============================================
 
+// Meal type key normalization for backward compatibility
+const MEAL_TYPE_TO_CONFIG_KEY: Record<string, string> = {
+  // English keys -> Portuguese config keys (for older country configs)
+  'breakfast': 'cafe_manha',
+  'morning_snack': 'lanche_manha',
+  'lunch': 'almoco',
+  'afternoon_snack': 'lanche_tarde',
+  'dinner': 'jantar',
+  'supper': 'ceia',
+  // Keep all variants working
+  'cafe_manha': 'cafe_manha',
+  'lanche_manha': 'lanche_manha',
+  'almoco': 'almoco',
+  'lanche_tarde': 'lanche_tarde',
+  'lanche': 'lanche',
+  'jantar': 'jantar',
+  'ceia': 'ceia',
+};
+
+function normalizeConfigMealType(mealType: string): string {
+  return MEAL_TYPE_TO_CONFIG_KEY[mealType] || mealType;
+}
+
 /**
  * Obtém configuração do país (fallback para BR)
  */
@@ -723,10 +746,13 @@ export function getCountryConfig(country: string | null | undefined): CountryCui
 
 /**
  * Obtém exemplos de refeição por tipo e país
+ * Supports both English keys (breakfast, lunch, dinner) and Portuguese keys (cafe_manha, almoco, jantar)
  */
 export function getMealExamples(mealType: string, country: string | null | undefined): string[] {
   const config = getCountryConfig(country);
-  return config.mealExamples[mealType] || config.mealExamples["almoco"] || [];
+  const normalizedKey = normalizeConfigMealType(mealType);
+  // Try normalized key first, then original, then fallback
+  return config.mealExamples[normalizedKey] || config.mealExamples[mealType] || config.mealExamples["lunch"] || config.mealExamples["almoco"] || [];
 }
 
 /**
@@ -738,10 +764,13 @@ export function getIngredientPriority(country: string | null | undefined): strin
 
 /**
  * Obtém labels de tipo de refeição por país
+ * Supports both English keys (breakfast, lunch, dinner) and Portuguese keys (cafe_manha, almoco, jantar)
  */
 export function getMealTypeLabel(mealType: string, country: string | null | undefined): string {
   const config = getCountryConfig(country);
-  return config.mealTypeLabels[mealType] || MEAL_TYPE_LABELS[mealType] || mealType;
+  const normalizedKey = normalizeConfigMealType(mealType);
+  // Try original key first (for countries using English keys), then normalized key
+  return config.mealTypeLabels[mealType] || config.mealTypeLabels[normalizedKey] || MEAL_TYPE_LABELS[mealType] || mealType;
 }
 
 export interface MacroTargets {

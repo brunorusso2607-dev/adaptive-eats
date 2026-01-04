@@ -137,13 +137,14 @@ serve(async (req) => {
     });
 
     // Build physical data for centralized calculations
+    // Database stores: sex = "male" | "female", activity_level = "sedentary" | "light" | "moderate" | "active" | "very_active"
     const physicalData: UserPhysicalData = {
-      sex: profile.sex || "masculino",
+      sex: profile.sex || "male",
       age: profile.age || 30,
       height: profile.height || 170,
       weight_current: profile.weight_current || 70,
       weight_goal: profile.weight_goal,
-      activity_level: profile.activity_level || "moderado",
+      activity_level: profile.activity_level || "moderate",
     };
 
     // Get calorie modifier from strategy or fallback to goal-based

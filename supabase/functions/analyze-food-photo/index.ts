@@ -179,8 +179,9 @@ function findBestCorrection(
 // ========== END FUZZY MATCHING UTILITIES ==========
 
 // Calcular TMB (Taxa Metabólica Basal) usando fórmula de Mifflin-St Jeor
+// Database stores: "male" | "female"
 function calculateTMB(weight: number, height: number, age: number, sex: string): number {
-  if (sex === 'masculino') {
+  if (sex === 'male') {
     return 10 * weight + 6.25 * height - 5 * age + 5;
   } else {
     return 10 * weight + 6.25 * height - 5 * age - 161;
@@ -280,15 +281,12 @@ serve(async (req) => {
     // Calcular meta calórica diária
     let dailyCalorieGoal: number | null = null;
     if (profile?.weight_current && profile?.height && profile?.age && profile?.sex) {
-      // Normalizar sexo para o formato esperado pela função
-      const normalizedSex = profile.sex === 'male' ? 'masculino' : 
-                            profile.sex === 'female' ? 'feminino' : 
-                            profile.sex;
+      // Database stores sex as "male" | "female" - use directly
       const tmb = calculateTMB(
         profile.weight_current,
         profile.height,
         profile.age,
-        normalizedSex
+        profile.sex
       );
       const tdee = calculateTDEE(tmb, profile.activity_level || 'moderate');
       dailyCalorieGoal = calculateDailyGoal(tdee, profile.goal || 'manter');

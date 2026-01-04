@@ -94,8 +94,9 @@ serve(async (req) => {
     const isWeightGainMode = profile.goal === "ganhar_peso";
 
     // Calculate nutritional targets using centralized calculations
+    // Database stores: sex = "male" | "female", activity_level = "sedentary" | "light" | "moderate" | "active" | "very_active"
     const physicalData: UserPhysicalData = {
-      sex: profile.sex || "masculino",
+      sex: profile.sex || "male",
       age: profile.age || 30,
       height: profile.height || 170,
       weight_current: profile.weight_current || 70,

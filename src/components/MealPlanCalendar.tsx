@@ -140,9 +140,9 @@ export default function MealPlanCalendar({ mealPlan, onClose, onSelectMeal, onTo
     
     // Strategy
     if (currentStrategy) {
-      const strategyIcon = currentStrategy.key === 'emagrecer' || currentStrategy.key === 'cutting' 
+      const strategyIcon = currentStrategy.key === 'lose_weight' || currentStrategy.key === 'weight_loss' || currentStrategy.key === 'cutting' 
         ? TrendingDown 
-        : currentStrategy.key === 'ganhar_peso' 
+        : currentStrategy.key === 'gain_weight' || currentStrategy.key === 'weight_gain'
           ? TrendingUp 
           : Activity;
       items.push({ icon: strategyIcon, label: currentStrategy.label, key: 'strategy' });

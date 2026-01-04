@@ -168,7 +168,7 @@ const STRATEGY_ACTIVITY_VALIDATIONS: StrategyActivityWarning[] = [
     suggestion: "Aumente para pelo menos 'Moderado' (3-5x/semana com foco em musculação) ou escolha 'Manutenção'.",
   },
   {
-    strategyKey: "ganhar_peso",
+    strategyKey: "gain_weight",
     incompatibleLevels: ["sedentary", "light"],
     level: "warning",
     title: "Risco de ganho de gordura",

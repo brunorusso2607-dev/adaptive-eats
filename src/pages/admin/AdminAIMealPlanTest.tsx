@@ -27,17 +27,17 @@ function validateWeightGoal(
   }
 
   // Estratégias de emagrecimento: meta deve ser MENOR que atual
-  if (strategyKey === "emagrecer" || strategyKey === "cutting") {
+  if (strategyKey === "lose_weight" || strategyKey === "weight_loss" || strategyKey === "cutting") {
     if (weightGoal >= weightCurrent) {
       return {
         isValid: false,
-        error: `Para ${strategyKey === "emagrecer" ? "Emagrecimento" : "Cutting"}, a meta de peso deve ser menor que o peso atual.`
+        error: `Para ${strategyKey === "cutting" ? "Cutting" : "Emagrecimento"}, a meta de peso deve ser menor que o peso atual.`
       };
     }
   }
 
   // Estratégias de ganho de peso: meta deve ser MAIOR que atual
-  if (strategyKey === "ganhar_peso") {
+  if (strategyKey === "gain_weight" || strategyKey === "weight_gain") {
     if (weightGoal <= weightCurrent) {
       return {
         isValid: false,

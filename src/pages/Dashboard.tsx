@@ -303,7 +303,7 @@ export default function Dashboard() {
         "weight_goal_toggle",
         "Meta de peso desativada",
         { goal: userGoal },
-        { goal: "manter" }
+        { goal: "maintain" }
       );
     }
   };
@@ -811,11 +811,11 @@ export default function Dashboard() {
                   });
                   // Goal is set based on user selection
                   if (data.calculations.mode === "lose") {
-                    setUserGoal("emagrecer");
+                    setUserGoal("lose_weight");
                   } else if (data.calculations.mode === "gain") {
-                    setUserGoal("ganhar_peso");
+                    setUserGoal("gain_weight");
                   } else {
-                    setUserGoal("manter");
+                    setUserGoal("maintain");
                   }
                   setShowWeightLossSetup(false);
                 }}
@@ -832,11 +832,11 @@ export default function Dashboard() {
                     strategy_id: data.strategy_id,
                   });
                   if (data.calculations.mode === "lose") {
-                    setUserGoal("emagrecer");
+                    setUserGoal("lose_weight");
                   } else if (data.calculations.mode === "gain") {
-                    setUserGoal("ganhar_peso");
+                    setUserGoal("gain_weight");
                   } else {
-                    setUserGoal("manter");
+                    setUserGoal("maintain");
                   }
                   setShowWeightLossSetup(false);
                   setShowMealPlanGenerator(true);
@@ -854,11 +854,11 @@ export default function Dashboard() {
                   });
                   // Goal is set based on user selection
                   if (data.calculations.mode === "lose") {
-                    setUserGoal("emagrecer");
+                    setUserGoal("lose_weight");
                   } else if (data.calculations.mode === "gain") {
-                    setUserGoal("ganhar_peso");
+                    setUserGoal("gain_weight");
                   } else {
-                    setUserGoal("manter");
+                    setUserGoal("maintain");
                   }
                   setShowWeightLossSetup(false);
                   // Update hasMealPlan and navigate to meal plan section
@@ -1137,7 +1137,7 @@ export default function Dashboard() {
                 <div className="grid grid-cols-2 gap-4">
 
                   {/* Meta de Peso Toggle - só aparece quando não há meta ativa ou não tem dados configurados */}
-                  {(userGoal !== "emagrecer" && userGoal !== "ganhar_peso" && userGoal !== "manter") || !weightData?.weight_current ? (
+                  {(userGoal !== "lose_weight" && userGoal !== "gain_weight" && userGoal !== "maintain") || !weightData?.weight_current ? (
                     !weightData?.weight_current && (
                       <Card 
                         className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"

@@ -180,7 +180,7 @@ export function CompactHealthCircles({
   };
 
   const weightDiff = getWeightDiff();
-  const hasWeightGoal = (userGoal === "emagrecer" || userGoal === "ganhar_peso" || userGoal === "manter") && weightData?.weight_current;
+  const hasWeightGoal = (userGoal === "lose_weight" || userGoal === "gain_weight" || userGoal === "maintain") && weightData?.weight_current;
   const calcs = weightData ? calculateMacros(weightData) : null;
 
   return (
@@ -254,15 +254,15 @@ export function CompactHealthCircles({
         >
           <div className="flex items-center gap-2 w-full mb-2">
             <div className="w-7 h-7 rounded-lg flex items-center justify-center bg-primary/20">
-              {userGoal === "ganhar_peso" 
+              {userGoal === "gain_weight" 
                 ? <TrendingUp className="h-4 w-4 text-primary" />
-                : userGoal === "manter"
+                : userGoal === "maintain"
                   ? <Scale className="h-4 w-4 text-primary" />
                   : <TrendingDown className="h-4 w-4 text-primary" />
               }
             </div>
             <span className="text-xs font-medium text-muted-foreground">
-              {userGoal === "ganhar_peso" ? "Ganho" : userGoal === "manter" ? "Peso" : "Peso"}
+              {userGoal === "gain_weight" ? "Ganho" : userGoal === "maintain" ? "Peso" : "Peso"}
             </span>
           </div>
           
@@ -270,7 +270,7 @@ export function CompactHealthCircles({
             <span className="text-lg font-semibold text-primary">
               {weightData?.weight_current ? `${weightData.weight_current}kg` : "--"}
             </span>
-            {weightData?.weight_goal && userGoal !== "manter" && (
+            {weightData?.weight_goal && userGoal !== "maintain" && (
               <span className="text-xs text-muted-foreground">→ {weightData.weight_goal}kg</span>
             )}
           </div>
@@ -287,7 +287,7 @@ export function CompactHealthCircles({
               <span className="text-[10px] text-muted-foreground">
                 {weightDiff === 0 
                   ? "Meta atingida!" 
-                  : userGoal === "manter"
+                  : userGoal === "maintain"
                     ? "Mantendo peso"
                     : `${Math.abs(weightDiff).toFixed(1)}kg p/ meta`
                 }
@@ -326,15 +326,15 @@ export function CompactHealthCircles({
         <SheetContent side="bottom" className="h-[80vh] flex flex-col p-0">
           <SheetHeader className="p-6 pb-4 flex-shrink-0">
             <SheetTitle className="flex items-center gap-2">
-              {userGoal === "ganhar_peso" 
+              {userGoal === "gain_weight" 
                 ? <TrendingUp className="h-5 w-5 text-primary" />
-                : userGoal === "manter"
+                : userGoal === "maintain"
                   ? <Scale className="h-5 w-5 text-primary" />
                   : <TrendingDown className="h-5 w-5 text-primary" />
               }
-              {userGoal === "ganhar_peso" 
+              {userGoal === "gain_weight" 
                 ? "Ganho de Peso" 
-                : userGoal === "manter"
+                : userGoal === "maintain"
                   ? "Manutenção"
                   : "Emagrecimento"}
             </SheetTitle>
@@ -346,7 +346,7 @@ export function CompactHealthCircles({
               {/* Header info */}
               <div className="flex items-center justify-between">
                 <p className="text-sm text-muted-foreground">
-                  {userGoal === "manter"
+                  {userGoal === "maintain"
                     ? `Mantendo ${weightData?.weight_current}kg`
                     : `${weightData?.weight_current}kg → ${weightData?.weight_goal}kg`}
                 </p>
@@ -462,9 +462,9 @@ export function CompactHealthCircles({
               <div className="border-t border-border/40 pt-3">
                 <p className="text-xs text-muted-foreground text-center">
                   *Estimativa baseada em {
-                    userGoal === "ganhar_peso" 
+                    userGoal === "gain_weight" 
                       ? "superávit calórico saudável" 
-                      : userGoal === "manter"
+                      : userGoal === "maintain"
                         ? "balanço calórico equilibrado"
                         : "déficit calórico saudável"
                   }. Resultados variam individualmente.

@@ -348,9 +348,9 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
             Dados Físicos
           </h3>
           {(() => {
-            // Verifica se a estratégia selecionada é "manter" para esconder o campo de peso meta
+            // Verifica se a estratégia selecionada é "maintenance" para esconder o campo de peso meta
             const selectedStrategy = strategies?.find(s => s.id === editedProfile.strategy_id);
-            const isMaintenance = selectedStrategy?.key === "manter";
+            const isMaintenance = selectedStrategy?.key === "maintain" || selectedStrategy?.key === "maintenance";
             
             return (
               <PhysicalDataInputs
@@ -559,8 +559,8 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
           
           // Verifica conflitos apenas se temos pesos definidos
           if (currentWeight && goalWeight && strategyKey) {
-            const isLossGoal = strategyKey === "emagrecer" || strategyKey === "cutting";
-            const isGainGoal = strategyKey === "ganhar_peso" || strategyKey === "fitness";
+            const isLossGoal = strategyKey === "lose_weight" || strategyKey === "weight_loss" || strategyKey === "cutting";
+            const isGainGoal = strategyKey === "gain_weight" || strategyKey === "weight_gain" || strategyKey === "fitness";
             
             const hasConflict = 
               (isLossGoal && goalWeight >= currentWeight) ||
@@ -607,8 +607,8 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
               const goalWeight = editedProfile.weight_goal;
               
               if (currentWeight && goalWeight && strategyKey) {
-                const isLossGoal = strategyKey === "emagrecer" || strategyKey === "cutting";
-                const isGainGoal = strategyKey === "ganhar_peso" || strategyKey === "fitness";
+                const isLossGoal = strategyKey === "lose_weight" || strategyKey === "weight_loss" || strategyKey === "cutting";
+                const isGainGoal = strategyKey === "gain_weight" || strategyKey === "weight_gain" || strategyKey === "fitness";
                 
                 const hasConflict = 
                   (isLossGoal && goalWeight >= currentWeight) ||
@@ -676,7 +676,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
         </Button>
 
         {/* Meta de Peso */}
-        {(profile.strategy_id || (profile.goal && profile.goal !== "manter")) && (
+        {(profile.strategy_id || (profile.goal && profile.goal !== "maintain")) && (
           <div className="space-y-2">
             <h3 className="font-semibold text-sm flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" />

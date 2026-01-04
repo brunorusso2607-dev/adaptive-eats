@@ -321,12 +321,15 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
             {strategies?.map((strategy) => {
               const getIcon = (key: string) => {
                 switch (key) {
-                  case "emagrecer": return TrendingDown;
+                  case "lose_weight":
+                  case "weight_loss": return TrendingDown;
                   case "cutting": return Dumbbell;
-                  case "manter": return Scale;
+                  case "maintain":
+                  case "maintenance": return Scale;
                   case "fitness": return Dumbbell;
-                  case "ganhar_peso": return TrendingUp;
-                  case "dieta_flexivel": return Utensils;
+                  case "gain_weight":
+                  case "weight_gain": return TrendingUp;
+                  case "flexible_diet": return Utensils;
                   default: return Sparkles;
                 }
               };

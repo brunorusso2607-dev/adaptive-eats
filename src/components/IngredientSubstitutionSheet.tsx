@@ -47,7 +47,7 @@ export default function IngredientSubstitutionSheet({
   open,
   onOpenChange,
   originalIngredient,
-  mealType = 'almoco',
+  mealType = 'lunch',
   onSubstitute,
 }: IngredientSubstitutionSheetProps) {
   const [selectedSubstitute, setSelectedSubstitute] = useState<SmartSubstitute | null>(null);
@@ -132,7 +132,7 @@ export default function IngredientSubstitutionSheet({
           ingredientCarbs,
           ingredientFat,
           ingredientCalories,
-          mealType: mealType || 'almoco',
+          mealType: mealType || 'lunch',
           restrictions,
           strategyKey: profile?.strategyKey,
           // Novos campos para usar mesma lógica do generate-ai-meal-plan

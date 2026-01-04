@@ -29,7 +29,7 @@ export type NextMealData = {
   completed_at: string | null;
 };
 
-type CustomMealTimes = Record<string, string>; // { "cafe_manha": "07:00" }
+type CustomMealTimes = Record<string, string>; // { "breakfast": "07:00" }
 
 // Re-exportar funções para compatibilidade - SEMPRE usar as funções sync para valores atualizados
 export function getMealLabels() {
@@ -84,22 +84,22 @@ function getCurrentMealType(customTimes?: CustomMealTimes | null): string {
     }
   }
   
-  // Verificar ceia (refeição noturna que pode cruzar meia-noite)
-  const ceiaRange = timeRanges["ceia"];
-  if (ceiaRange && (hour >= ceiaRange.start || hour < 6)) {
-    return "ceia";
+  // Verificar supper (refeição noturna que pode cruzar meia-noite)
+  const supperRange = timeRanges["supper"];
+  if (supperRange && (hour >= supperRange.start || hour < 6)) {
+    return "supper";
   }
   
-  return mealOrder[0] || "cafe_manha";
+  return mealOrder[0] || "breakfast";
 }
 
 // Standard meal order for sorting
 const MEAL_SORT_PRIORITY: Record<string, number> = {
-  "cafe_manha": 0,
-  "almoco": 1,
-  "lanche": 2,
-  "jantar": 3,
-  "ceia": 4,
+  "breakfast": 0,
+  "lunch": 1,
+  "afternoon_snack": 2,
+  "dinner": 3,
+  "supper": 4,
 };
 
 function getMealSortIndex(mealType: string): number {

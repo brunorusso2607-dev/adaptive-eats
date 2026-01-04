@@ -122,12 +122,12 @@ const AI_MODULES = [
 
 const MEAL_TYPES = [
   { value: 'all', label: '🔄 Testar Todas' },
-  { value: 'cafe_manha', label: 'Café da Manhã' },
-  { value: 'lanche_manha', label: 'Lanche da Manhã' },
-  { value: 'almoco', label: 'Almoço' },
-  { value: 'lanche_tarde', label: 'Lanche da Tarde' },
-  { value: 'jantar', label: 'Jantar' },
-  { value: 'ceia', label: 'Ceia' },
+  { value: 'breakfast', label: 'Café da Manhã' },
+  { value: 'morning_snack', label: 'Lanche da Manhã' },
+  { value: 'lunch', label: 'Almoço' },
+  { value: 'afternoon_snack', label: 'Lanche da Tarde' },
+  { value: 'dinner', label: 'Jantar' },
+  { value: 'supper', label: 'Ceia' },
 ];
 
 const INDIVIDUAL_MEAL_TYPES = MEAL_TYPES.filter(m => m.value !== 'all');
@@ -247,7 +247,7 @@ const MODULE_RULES_INFO: Record<string, { categories: { name: string; severity: 
 export default function AdminPromptValidation() {
   const { isAdmin, isLoading: adminLoading } = useAdmin();
   const [selectedModule, setSelectedModule] = useState('generate-ai-meal-plan');
-  const [mealType, setMealType] = useState('almoco');
+  const [mealType, setMealType] = useState('lunch');
   const [countryCode, setCountryCode] = useState('BR');
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
   const [selectedAllergies, setSelectedAllergies] = useState<string[]>([]);

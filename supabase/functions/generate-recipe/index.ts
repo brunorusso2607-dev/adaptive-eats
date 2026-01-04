@@ -163,14 +163,14 @@ serve(async (req) => {
       
       // Mapeia tipo de receita para meal_type aproximado
       const typeToMealType: Record<string, string> = {
-        "rapida": "lanche",
-        "equilibrada": "almoco",
-        "elaborada": "jantar",
-        "sobremesa": "lanche",
-        "bebida": "cafe_manha"
+        "rapida": "afternoon_snack",
+        "equilibrada": "lunch",
+        "elaborada": "dinner",
+        "sobremesa": "afternoon_snack",
+        "bebida": "breakfast"
       };
       
-      const searchMealType = typeToMealType[type] || "almoco";
+      const searchMealType = typeToMealType[type] || "lunch";
       
       const poolRecipes = await searchRecipePool(supabaseClient, {
         mealType: searchMealType,
@@ -509,9 +509,9 @@ ${baseSystemPrompt}`;
       }
 
       // STEP 3: Salva a receita gerada no pool para reutilização futura
-      const mealTypeForSave = categoryContext?.category === "sobremesa" ? "lanche" : 
-                             categoryContext?.category === "bebida" ? "cafe_manha" : 
-                             type === "rapida" ? "lanche" : "almoco";
+      const mealTypeForSave = categoryContext?.category === "sobremesa" ? "afternoon_snack" : 
+                             categoryContext?.category === "bebida" ? "breakfast" : 
+                             type === "rapida" ? "afternoon_snack" : "lunch";
       
       const saveResult = await saveRecipeToPool(supabaseClient, {
         name: recipe.name,

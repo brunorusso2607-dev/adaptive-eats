@@ -180,7 +180,7 @@ serve(async (req) => {
     }
 
     // Calculate nutritional targets using centralized module
-    const enabledMeals = profile.enabled_meals || ["cafe_manha", "almoco", "lanche", "jantar", "ceia"];
+    const enabledMeals = profile.enabled_meals || ["breakfast", "lunch", "afternoon_snack", "dinner", "supper"];
     const nutritionalTargets = calculateNutritionalTargets(physicalData, {
       calorieModifier,
       proteinPerKg,
@@ -208,11 +208,11 @@ serve(async (req) => {
       // Fallback to simple calculation
       const fallbackDailyCalories = 2000;
       const calorieDistribution: Record<string, number> = {
-        cafe_manha: 0.20,
-        almoco: 0.30,
-        lanche: 0.10,
-        jantar: 0.30,
-        ceia: 0.10,
+        breakfast: 0.20,
+        lunch: 0.30,
+        afternoon_snack: 0.10,
+        dinner: 0.30,
+        supper: 0.10,
       };
       targetCalories = Math.round(fallbackDailyCalories * (calorieDistribution[mealType] || 0.20));
       logStep("Using fallback calorie calculation", { mealType, targetCalories });

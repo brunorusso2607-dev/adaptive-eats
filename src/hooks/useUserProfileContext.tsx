@@ -17,11 +17,11 @@ export interface CalorieRange {
 }
 
 export interface MealCalorieRanges {
-  cafe_manha: CalorieRange;
-  almoco: CalorieRange;
-  lanche: CalorieRange;
-  jantar: CalorieRange;
-  ceia: CalorieRange;
+  breakfast: CalorieRange;
+  lunch: CalorieRange;
+  afternoon_snack: CalorieRange;
+  dinner: CalorieRange;
+  supper: CalorieRange;
 }
 
 export interface MacroTargets {
@@ -78,12 +78,12 @@ const ACTIVITY_FACTORS: Record<string, number> = {
 };
 
 // Distribuição de calorias por refeição (% do total diário)
-const CALORIE_DISTRIBUTION = {
-  cafe_manha: 0.25,
-  almoco: 0.35,
-  lanche: 0.10,
-  jantar: 0.25,
-  ceia: 0.05,
+const CALORIE_DISTRIBUTION: Record<string, number> = {
+  breakfast: 0.25,
+  lunch: 0.35,
+  afternoon_snack: 0.10,
+  dinner: 0.25,
+  supper: 0.05,
 };
 
 // ============================================
@@ -279,11 +279,11 @@ export function calculateMealCalorieRanges(
   };
 
   return {
-    cafe_manha: calculateRange("cafe_manha"),
-    almoco: calculateRange("almoco"),
-    lanche: calculateRange("lanche"),
-    jantar: calculateRange("jantar"),
-    ceia: calculateRange("ceia"),
+    breakfast: calculateRange("breakfast"),
+    lunch: calculateRange("lunch"),
+    afternoon_snack: calculateRange("afternoon_snack"),
+    dinner: calculateRange("dinner"),
+    supper: calculateRange("supper"),
   };
 }
 

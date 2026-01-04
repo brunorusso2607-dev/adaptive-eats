@@ -138,14 +138,14 @@ function getCurrentMealType(): string {
     }
   }
   
-  // Verificar ceia (pode ir até meia-noite ou passar)
-  const ceiaRange = timeRanges["ceia"];
-  if (ceiaRange && (hour >= ceiaRange.start || hour < 6)) {
-    return "ceia";
+  // Verificar supper (pode ir até meia-noite ou passar)
+  const supperRange = timeRanges["supper"];
+  if (supperRange && (hour >= supperRange.start || hour < 6)) {
+    return "supper";
   }
   
   // Fallback para o primeiro da ordem
-  return mealOrder[0] || "cafe_manha";
+  return mealOrder[0] || "breakfast";
 }
 
 // Versão com suporte a ranges customizados

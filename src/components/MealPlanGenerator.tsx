@@ -123,9 +123,10 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
 
         setProgress(Math.round((batch / totalBatches) * 100));
 
-        // Normalizar nomes de refeições: "lanche" -> "lanche_tarde" para consistência
+        // Normalizar nomes de refeições: valores antigos em português para inglês
         const normalizedMealTypes = enabledMeals?.map((meal: string) => {
-          if (meal === "lanche") return "lanche_tarde";
+          // Manter retrocompatibilidade com valores antigos
+          if (meal === "lanche" || meal === "lanche_tarde") return "afternoon_snack";
           return meal;
         }) || null;
 

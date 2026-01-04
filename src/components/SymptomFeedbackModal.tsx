@@ -37,13 +37,12 @@ const SEVERITY_OPTIONS = [
 ] as const;
 
 const mealTypeLabels: Record<string, string> = {
-  cafe_da_manha: "Café da Manhã",
-  cafe_manha: "Café da Manhã",
-  lanche_manha: "Lanche da Manhã",
-  almoco: "Almoço",
-  lanche: "Lanche",
-  jantar: "Jantar",
-  ceia: "Ceia",
+  breakfast: "Café da Manhã",
+  morning_snack: "Lanche da Manhã",
+  lunch: "Almoço",
+  afternoon_snack: "Lanche da Tarde",
+  dinner: "Jantar",
+  supper: "Ceia",
 };
 
 export function SymptomFeedbackModal({

@@ -56,7 +56,7 @@ const RULE_CATEGORIES = {
 // REGRAS DE VALIDAÇÃO COMPLETAS (30+ regras)
 // =============================================================================
 
-function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationRule[] {
+function validateMealFormat(meal: any, mealType: string = 'lunch'): ValidationRule[] {
   const rules: ValidationRule[] = [];
   
   // ========== CATEGORIA: FORMATO DOS DADOS ==========
@@ -325,12 +325,12 @@ function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationR
 
   // Regra 18: Calorias realistas por tipo de refeição
   const calorieRanges: Record<string, [number, number]> = {
-    'cafe_manha': [150, 600],
-    'lanche_manha': [80, 300],
-    'almoco': [300, 900],
-    'lanche_tarde': [80, 300],
-    'jantar': [300, 900],
-    'ceia': [50, 250],
+    'breakfast': [150, 600],
+    'morning_snack': [80, 300],
+    'lunch': [300, 900],
+    'afternoon_snack': [80, 300],
+    'dinner': [300, 900],
+    'supper': [50, 250],
   };
   const range = calorieRanges[mealType] || [100, 1000];
   rules.push({
@@ -364,7 +364,7 @@ function validateMealFormat(meal: any, mealType: string = 'almoco'): ValidationR
   });
 
   // Regra 20: Refeição composta tem estrutura correta
-  const isRefeicaoComposta = /almoco|jantar/i.test(mealType) && !isPratoUnico;
+  const isRefeicaoComposta = /lunch|dinner/i.test(mealType) && !isPratoUnico;
   if (isRefeicaoComposta) {
     const hasProtein = foods.some((f: any) => {
       const name = ((f.name || f.nome) || '').toLowerCase();
@@ -517,7 +517,7 @@ serve(async (req) => {
 
   try {
     const { 
-      mealType = 'almoco', 
+      mealType = 'lunch', 
       countryCode = 'BR', 
       testMode = 'quick',
       intolerances = [],
@@ -531,12 +531,12 @@ serve(async (req) => {
     
     // Calorias alvo realistas por tipo de refeição
     const mealTypeCalories: Record<string, number> = {
-      'cafe_manha': 400,
-      'lanche_manha': 150,
-      'almoco': 600,
-      'lanche_tarde': 150,
-      'jantar': 550,
-      'ceia': 120,
+      'breakfast': 400,
+      'morning_snack': 150,
+      'lunch': 600,
+      'afternoon_snack': 150,
+      'dinner': 550,
+      'supper': 120,
     };
     const targetCalories = mealTypeCalories[mealType] || 500;
     

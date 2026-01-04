@@ -578,10 +578,13 @@ const VALID_RESTRICTION_KEYS: Record<string, { type: 'intolerance' | 'allergy' |
 };
 
 // ============= VALID GOAL KEYS =============
-const VALID_GOAL_KEYS: Record<string, string> = {
-  'perder': 'Perder peso',
-  'manter': 'Manter peso',
-  'ganhar': 'Ganhar peso',
+// Mapping: prompt markers (perder/manter/ganhar) → database values (emagrecer/manter/ganhar_peso)
+const VALID_GOAL_KEYS: Record<string, { dbValue: string; label: string }> = {
+  'perder': { dbValue: 'emagrecer', label: 'Perder peso' },
+  'emagrecer': { dbValue: 'emagrecer', label: 'Perder peso' },
+  'manter': { dbValue: 'manter', label: 'Manter peso' },
+  'ganhar': { dbValue: 'ganhar_peso', label: 'Ganhar peso' },
+  'ganhar_peso': { dbValue: 'ganhar_peso', label: 'Ganhar peso' },
 };
 
 // ============= PROFILE UPDATE RESULT TYPE =============
@@ -609,8 +612,9 @@ const processProfileUpdateFromResponse = async (
   const askMatch = cleanResponse.match(/\[PERGUNTAR_ATUALIZACAO:(restricao|objetivo):(\w+)\]/i);
   if (askMatch) {
     const [, updateType, value] = askMatch;
+    const goalInfo = VALID_GOAL_KEYS[value.toLowerCase()];
     const label = updateType === 'objetivo' 
-      ? VALID_GOAL_KEYS[value.toLowerCase()] || value
+      ? goalInfo?.label || value
       : VALID_RESTRICTION_KEYS[value.toLowerCase()]?.label || value;
     
     pendingUpdate = { 
@@ -659,21 +663,22 @@ const processProfileUpdateFromResponse = async (
         }
       }
     } else if (updateType === 'objetivo') {
-      const goalLabel = VALID_GOAL_KEYS[valueKey];
+      const goalInfo = VALID_GOAL_KEYS[valueKey];
       
-      if (goalLabel && valueKey !== currentGoal) {
+      // Use the database value (emagrecer/manter/ganhar_peso) not the prompt key
+      if (goalInfo && goalInfo.dbValue !== currentGoal) {
         try {
           const { error } = await supabase
             .from('profiles')
             .update({ 
-              goal: valueKey,
+              goal: goalInfo.dbValue, // Use the correct database value
               updated_at: new Date().toISOString()
             })
             .eq('id', userId);
 
           if (!error) {
-            updatedGoal = goalLabel;
-            logStep("Goal updated successfully", { newGoal: valueKey });
+            updatedGoal = goalInfo.label;
+            logStep("Goal updated successfully", { newGoal: goalInfo.dbValue });
           } else {
             logStep("Failed to update goal", { error: error.message });
           }
@@ -1079,10 +1084,11 @@ const calculateDailyCalories = (profile: any): number => {
   let tdee = bmr * multiplier;
   
   // Goal adjustment
+  // Database stores: "emagrecer" | "manter" | "ganhar_peso"
   const goal = profile.goal || "manter";
-  if (goal === "perder" || goal === "emagrecer") {
+  if (goal === "emagrecer") {
     tdee *= 0.85; // 15% deficit
-  } else if (goal === "ganhar") {
+  } else if (goal === "ganhar_peso") {
     tdee *= 1.15; // 15% surplus
   }
   

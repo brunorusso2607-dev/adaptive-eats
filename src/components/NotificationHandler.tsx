@@ -2,6 +2,33 @@ import { useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 
+// Helper to update app badge - same as in useNotifications
+const updateAppBadge = async (count: number) => {
+  console.log("[NotificationHandler] Updating app badge to:", count);
+  
+  try {
+    if (count === 0) {
+      // Try clearAppBadge first
+      if ('clearAppBadge' in navigator) {
+        await (navigator as any).clearAppBadge();
+        console.log("[NotificationHandler] clearAppBadge() success");
+      } 
+      // Fallback: set badge to 0 explicitly
+      if ('setAppBadge' in navigator) {
+        await (navigator as any).setAppBadge(0);
+        console.log("[NotificationHandler] setAppBadge(0) fallback success");
+      }
+    } else {
+      if ('setAppBadge' in navigator) {
+        await (navigator as any).setAppBadge(count);
+        console.log("[NotificationHandler] setAppBadge() success:", count);
+      }
+    }
+  } catch (error) {
+    console.error("[NotificationHandler] Badge error:", error);
+  }
+};
+
 /**
  * Global notification handler that processes markAsRead query params
  * and Service Worker messages. This component should be placed inside
@@ -14,6 +41,12 @@ export function NotificationHandler() {
   const markNotificationAsRead = useCallback(async (notificationId: string) => {
     console.log('[NotificationHandler] Marking as read:', notificationId);
     
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) {
+      console.warn('[NotificationHandler] No session, skipping');
+      return;
+    }
+
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
@@ -23,17 +56,15 @@ export function NotificationHandler() {
       console.error('[NotificationHandler] Error marking as read:', error);
     } else {
       console.log('[NotificationHandler] Successfully marked as read:', notificationId);
-      // Update app badge
+      
+      // Update app badge with user-specific count
       const { count } = await supabase
         .from("notifications")
         .select("*", { count: "exact", head: true })
+        .eq("user_id", session.user.id)
         .eq("is_read", false);
       
-      if (count === 0 && 'clearAppBadge' in navigator) {
-        (navigator as any).clearAppBadge().catch(() => {});
-      } else if ('setAppBadge' in navigator) {
-        (navigator as any).setAppBadge(count || 0).catch(() => {});
-      }
+      await updateAppBadge(count || 0);
     }
   }, []);
 
@@ -68,6 +99,35 @@ export function NotificationHandler() {
       }
     };
   }, [markNotificationAsRead]);
+
+  // Sync badge on app visibility change (when user opens the app)
+  useEffect(() => {
+    const syncBadgeOnVisibility = async () => {
+      if (document.visibilityState === 'visible') {
+        console.log('[NotificationHandler] App visible, syncing badge...');
+        
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session) return;
+        
+        const { count } = await supabase
+          .from("notifications")
+          .select("*", { count: "exact", head: true })
+          .eq("user_id", session.user.id)
+          .eq("is_read", false);
+        
+        await updateAppBadge(count || 0);
+      }
+    };
+
+    document.addEventListener('visibilitychange', syncBadgeOnVisibility);
+    
+    // Also sync on mount
+    syncBadgeOnVisibility();
+    
+    return () => {
+      document.removeEventListener('visibilitychange', syncBadgeOnVisibility);
+    };
+  }, []);
 
   // This component doesn't render anything
   return null;

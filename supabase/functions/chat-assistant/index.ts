@@ -672,12 +672,33 @@ const VALID_GOAL_KEYS: Record<string, { dbValue: string; label: string }> = {
   'gain_weight': { dbValue: 'gain_weight', label: 'Ganhar peso' },
 };
 
+// ============= VALID DIETARY KEYS =============
+const VALID_DIETARY_KEYS: Record<string, { dbValue: string; label: string }> = {
+  'omnivore': { dbValue: 'omnivore', label: 'Onívoro' },
+  'vegetarian': { dbValue: 'vegetarian', label: 'Vegetariano' },
+  'vegan': { dbValue: 'vegan', label: 'Vegano' },
+  'pescatarian': { dbValue: 'pescatarian', label: 'Pescetariano' },
+  'flexitarian': { dbValue: 'flexitarian', label: 'Flexitariano' },
+};
+
+// ============= VALID ACTIVITY KEYS =============
+const VALID_ACTIVITY_KEYS: Record<string, { dbValue: string; label: string }> = {
+  'sedentary': { dbValue: 'sedentary', label: 'Sedentário' },
+  'light': { dbValue: 'light', label: 'Leve' },
+  'moderate': { dbValue: 'moderate', label: 'Moderado' },
+  'active': { dbValue: 'active', label: 'Ativo' },
+  'very_active': { dbValue: 'very_active', label: 'Muito ativo' },
+};
+
+// All supported update types
+type UpdateType = 'restricao' | 'objetivo' | 'dieta' | 'peso' | 'peso_meta' | 'idade' | 'atividade';
 // ============= PROFILE UPDATE RESULT TYPE =============
 interface ProfileUpdateResult {
   updatedResponse: string;
   addedRestriction: string | null;
   updatedGoal: string | null;
-  pendingUpdate: { type: 'restricao' | 'objetivo'; value: string; label: string } | null;
+  updatedField: { field: string; value: string } | null;
+  pendingUpdate: { type: UpdateType; value: string; label: string } | null;
 }
 
 // ============= PROCESS PROFILE UPDATE FROM AI RESPONSE =============
@@ -691,44 +712,59 @@ const processProfileUpdateFromResponse = async (
   let cleanResponse = aiResponse;
   let addedRestriction: string | null = null;
   let updatedGoal: string | null = null;
-  let pendingUpdate: { type: 'restricao' | 'objetivo'; value: string; label: string } | null = null;
+  let updatedField: { field: string; value: string } | null = null;
+  let pendingUpdate: { type: UpdateType; value: string; label: string } | null = null;
 
   // Check for PERGUNTAR_ATUALIZACAO marker (asking permission - do NOT update, just track)
-  const askMatch = cleanResponse.match(/\[PERGUNTAR_ATUALIZACAO:(restricao|objetivo):(\w+)\]/i);
+  // Extended regex to match all update types: restricao|objetivo|dieta|peso|peso_meta|idade|atividade
+  const askMatch = cleanResponse.match(/\[PERGUNTAR_ATUALIZACAO:(restricao|objetivo|dieta|peso|peso_meta|idade|atividade):([\w.]+)\]/i);
   if (askMatch) {
     const [, updateType, value] = askMatch;
-    const goalInfo = VALID_GOAL_KEYS[value.toLowerCase()];
-    const label = updateType === 'objetivo' 
-      ? goalInfo?.label || value
-      : VALID_RESTRICTION_KEYS[value.toLowerCase()]?.label || value;
+    let label = value;
+    
+    // Get proper label based on type
+    if (updateType === 'objetivo') {
+      label = VALID_GOAL_KEYS[value.toLowerCase()]?.label || value;
+    } else if (updateType === 'restricao') {
+      label = VALID_RESTRICTION_KEYS[value.toLowerCase()]?.label || value;
+    } else if (updateType === 'dieta') {
+      label = VALID_DIETARY_KEYS[value.toLowerCase()]?.label || value;
+    } else if (updateType === 'atividade') {
+      label = VALID_ACTIVITY_KEYS[value.toLowerCase()]?.label || value;
+    } else if (updateType === 'peso' || updateType === 'peso_meta') {
+      label = `${value} kg`;
+    } else if (updateType === 'idade') {
+      label = `${value} anos`;
+    }
     
     pendingUpdate = { 
-      type: updateType as 'restricao' | 'objetivo', 
+      type: updateType as UpdateType, 
       value: value.toLowerCase(),
       label 
     };
     
-    // Remove the marker from response
-    cleanResponse = cleanResponse.replace(/\[PERGUNTAR_ATUALIZACAO:\w+:\w+\]\s*/gi, '');
+    // Remove ALL markers from response (global replace)
+    cleanResponse = cleanResponse.replace(/\[PERGUNTAR_ATUALIZACAO:[\w]+:[\w.]+\]\s*/gi, '');
     logStep("Pending profile update detected (awaiting confirmation)", { pendingUpdate });
   }
 
   // Check for CONFIRMAR_ATUALIZACAO marker (user confirmed - DO update)
-  const confirmMatch = cleanResponse.match(/\[CONFIRMAR_ATUALIZACAO:(restricao|objetivo):(\w+)\]/i);
+  // Extended regex to match all update types
+  const confirmMatch = cleanResponse.match(/\[CONFIRMAR_ATUALIZACAO:(restricao|objetivo|dieta|peso|peso_meta|idade|atividade):([\w.]+)\]/i);
   if (confirmMatch) {
     const [, updateType, value] = confirmMatch;
     const valueKey = value.toLowerCase();
     
     // Remove the marker first
-    cleanResponse = cleanResponse.replace(/\[CONFIRMAR_ATUALIZACAO:\w+:\w+\]\s*/gi, '');
+    cleanResponse = cleanResponse.replace(/\[CONFIRMAR_ATUALIZACAO:[\w]+:[\w.]+\]\s*/gi, '');
 
-    if (updateType === 'restricao') {
-      const restrictionInfo = VALID_RESTRICTION_KEYS[valueKey];
-      
-      if (restrictionInfo && !currentIntolerances.includes(valueKey)) {
-        const newIntolerances = [...currentIntolerances, valueKey];
+    try {
+      if (updateType === 'restricao') {
+        const restrictionInfo = VALID_RESTRICTION_KEYS[valueKey];
         
-        try {
+        if (restrictionInfo && !currentIntolerances.includes(valueKey)) {
+          const newIntolerances = [...currentIntolerances, valueKey];
+          
           const { error } = await supabase
             .from('profiles')
             .update({ 
@@ -743,20 +779,15 @@ const processProfileUpdateFromResponse = async (
           } else {
             logStep("Failed to add restriction", { error: error.message });
           }
-        } catch (err) {
-          logStep("Error adding restriction", { error: String(err) });
         }
-      }
-    } else if (updateType === 'objetivo') {
-      const goalInfo = VALID_GOAL_KEYS[valueKey];
-      
-      // Use the database value (emagrecer/manter/ganhar_peso) not the prompt key
-      if (goalInfo && goalInfo.dbValue !== currentGoal) {
-        try {
+      } else if (updateType === 'objetivo') {
+        const goalInfo = VALID_GOAL_KEYS[valueKey];
+        
+        if (goalInfo && goalInfo.dbValue !== currentGoal) {
           const { error } = await supabase
             .from('profiles')
             .update({ 
-              goal: goalInfo.dbValue, // Use the correct database value
+              goal: goalInfo.dbValue,
               updated_at: new Date().toISOString()
             })
             .eq('id', userId);
@@ -767,10 +798,105 @@ const processProfileUpdateFromResponse = async (
           } else {
             logStep("Failed to update goal", { error: error.message });
           }
-        } catch (err) {
-          logStep("Error updating goal", { error: String(err) });
+        }
+      } else if (updateType === 'dieta') {
+        const dietaryInfo = VALID_DIETARY_KEYS[valueKey];
+        
+        if (dietaryInfo) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              dietary_preference: dietaryInfo.dbValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Dieta', value: dietaryInfo.label };
+            logStep("Dietary preference updated successfully", { newDiet: dietaryInfo.dbValue });
+          } else {
+            logStep("Failed to update dietary preference", { error: error.message });
+          }
+        }
+      } else if (updateType === 'peso') {
+        const numericValue = parseFloat(value);
+        
+        if (!isNaN(numericValue) && numericValue > 0 && numericValue < 500) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              weight_current: numericValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Peso atual', value: `${numericValue} kg` };
+            logStep("Current weight updated successfully", { newWeight: numericValue });
+          } else {
+            logStep("Failed to update current weight", { error: error.message });
+          }
+        }
+      } else if (updateType === 'peso_meta') {
+        const numericValue = parseFloat(value);
+        
+        if (!isNaN(numericValue) && numericValue > 0 && numericValue < 500) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              weight_goal: numericValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Peso meta', value: `${numericValue} kg` };
+            logStep("Goal weight updated successfully", { newGoalWeight: numericValue });
+          } else {
+            logStep("Failed to update goal weight", { error: error.message });
+          }
+        }
+      } else if (updateType === 'idade') {
+        const numericValue = parseInt(value, 10);
+        
+        if (!isNaN(numericValue) && numericValue > 0 && numericValue < 150) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              age: numericValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Idade', value: `${numericValue} anos` };
+            logStep("Age updated successfully", { newAge: numericValue });
+          } else {
+            logStep("Failed to update age", { error: error.message });
+          }
+        }
+      } else if (updateType === 'atividade') {
+        const activityInfo = VALID_ACTIVITY_KEYS[valueKey];
+        
+        if (activityInfo) {
+          const { error } = await supabase
+            .from('profiles')
+            .update({ 
+              activity_level: activityInfo.dbValue,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', userId);
+
+          if (!error) {
+            updatedField = { field: 'Nível de atividade', value: activityInfo.label };
+            logStep("Activity level updated successfully", { newActivity: activityInfo.dbValue });
+          } else {
+            logStep("Failed to update activity level", { error: error.message });
+          }
         }
       }
+    } catch (err) {
+      logStep("Error processing profile update", { error: String(err), updateType, value });
     }
   }
 
@@ -781,6 +907,7 @@ const processProfileUpdateFromResponse = async (
     updatedResponse: cleanResponse, 
     addedRestriction,
     updatedGoal,
+    updatedField,
     pendingUpdate
   };
 };
@@ -1568,6 +1695,16 @@ serve(async (req) => {
     // Process profile updates from AI response (if any)
     let addedRestriction: string | null = null;
     let updatedGoal: string | null = null;
+    let updatedField: { field: string; value: string } | null = null;
+    
+    // Always clean markers from response
+    const cleanMarkers = (response: string): string => {
+      return response
+        .replace(/\[PERGUNTAR_ATUALIZACAO:[\w]+:[\w.]+\]\s*/gi, '')
+        .replace(/\[CONFIRMAR_ATUALIZACAO:[\w]+:[\w.]+\]\s*/gi, '')
+        .replace(/\[ADICIONAR_RESTRICAO:\w+\]\s*/gi, '');
+    };
+    
     if (userId && userProfile) {
       const currentIntolerances = userProfile.intolerances || [];
       const currentGoal = userProfile.goal || 'manter';
@@ -1581,6 +1718,7 @@ serve(async (req) => {
       assistantMessage = result.updatedResponse;
       addedRestriction = result.addedRestriction;
       updatedGoal = result.updatedGoal;
+      updatedField = result.updatedField;
       
       if (addedRestriction) {
         logStep("Restriction added via chat", { restriction: addedRestriction });
@@ -1588,6 +1726,12 @@ serve(async (req) => {
       if (updatedGoal) {
         logStep("Goal updated via chat", { goal: updatedGoal });
       }
+      if (updatedField) {
+        logStep("Profile field updated via chat", { field: updatedField.field, value: updatedField.value });
+      }
+    } else {
+      // No user authenticated - just clean the markers
+      assistantMessage = cleanMarkers(assistantMessage);
     }
 
     const executionTime = Date.now() - startTime;
@@ -1595,7 +1739,8 @@ serve(async (req) => {
       executionTimeMs: executionTime,
       responseLength: assistantMessage.length,
       tokens: aiData.usage,
-      addedRestriction
+      addedRestriction,
+      updatedField
     });
 
     // Log AI usage
@@ -1613,7 +1758,8 @@ serve(async (req) => {
             page_context: currentPage?.path,
             has_images: !!images?.length,
             added_restriction: addedRestriction,
-            updated_goal: updatedGoal
+            updated_goal: updatedGoal,
+            updated_field: updatedField
           }
         });
       } catch (logError) {
@@ -1625,9 +1771,10 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         message: assistantMessage,
-        profileUpdated: !!(addedRestriction || updatedGoal),
+        profileUpdated: !!(addedRestriction || updatedGoal || updatedField),
         addedRestriction,
-        updatedGoal
+        updatedGoal,
+        updatedField
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

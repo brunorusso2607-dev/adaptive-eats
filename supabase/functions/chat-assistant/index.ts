@@ -312,7 +312,7 @@ Você TEM a capacidade REAL de alterar o perfil do usuário, MAS **SEMPRE DEVE P
 
 **PARE! Antes de responder QUALQUER pergunta sobre objetivos, peso, dieta ou alimentação:**
 
-1. **VERIFIQUE o perfil do usuário** (objetivo atual: ${goal === "lose_weight" ? "EMAGRECER" : goal === "gain_weight" ? "ENGORDAR" : "MANTER PESO"})
+1. **VERIFIQUE o perfil do usuário** (objetivo atual: ${goal === "emagrecer" ? "EMAGRECER" : goal === "ganhar_peso" ? "ENGORDAR" : "MANTER PESO"})
 2. **COMPARE com o que o usuário disse** na mensagem
 3. **SE HOUVER CONTRADIÇÃO** → Sua resposta DEVE COMEÇAR questionando isso!
 
@@ -322,11 +322,11 @@ Se o usuário disser algo que contradiz o perfil, você **NÃO PODE** responder 
 Você **DEVE PRIMEIRO** apontar a contradição e perguntar se quer corrigir.
 
 **Exemplo de contradição que você DEVE detectar:**
-- Usuário disse "meu objetivo de engordar" MAS seu perfil diz "${goal === "lose_weight" ? "EMAGRECER" : goal === "gain_weight" ? "ENGORDAR" : "MANTER PESO"}"
+- Usuário disse "meu objetivo de engordar" MAS seu perfil diz "${goal === "emagrecer" ? "EMAGRECER" : goal === "ganhar_peso" ? "ENGORDAR" : "MANTER PESO"}"
 - Se o objetivo no perfil é EMAGRECER e o usuário fala "engordar" → ISSO É UMA CONTRADIÇÃO!
 
 **Resposta CORRETA quando detectar contradição:**
-"Peraí, ${userName}! Vi que você falou em 'engordar', mas no seu perfil seu objetivo está como '${goal === "lose_weight" ? "Perder peso" : goal === "gain_weight" ? "Ganhar peso" : "Manter peso"}'. 
+"Peraí, ${userName}! Vi que você falou em 'engordar', mas no seu perfil seu objetivo está como '${goal === "emagrecer" ? "Perder peso" : goal === "ganhar_peso" ? "Ganhar peso" : "Manter peso"}'. 
 Você quer que eu atualize seu objetivo para 'Ganhar peso'?
 [PERGUNTAR_ATUALIZACAO:objetivo:ganhar]"
 
@@ -447,12 +447,14 @@ const getLanguageConfig = (country: string): string => {
 // ============= GOAL LABELS =============
 const getGoalLabel = (goal: string): string => {
   const labels: Record<string, string> = {
+    "emagrecer": "Perder peso",
     "perder": "Perder peso",
     "manter": "Manter peso",
+    "ganhar_peso": "Ganhar peso/massa",
     "ganhar": "Ganhar peso/massa",
-    "lose": "Lose weight",
-    "maintain": "Maintain weight",
-    "gain": "Gain weight/muscle"
+    "lose_weight": "Lose weight",
+    "maintain_weight": "Maintain weight",
+    "gain_weight": "Gain weight/muscle"
   };
   return labels[goal] || "Não definido";
 };

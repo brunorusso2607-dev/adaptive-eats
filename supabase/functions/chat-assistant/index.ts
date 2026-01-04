@@ -20,6 +20,262 @@ const logStep = (step: string, details?: any) => {
   console.log(`[${timestamp}] [chat-assistant] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// ============= HEALTH RISK CALCULATION (BMI-Based) =============
+type BMICategory = "underweight" | "normal" | "overweight" | "obese_1" | "obese_2" | "obese_3";
+
+interface HealthRisk {
+  level: "info" | "warning" | "danger";
+  title: string;
+  message: string;
+  suggestion?: string;
+}
+
+interface HealthRiskParams {
+  weightCurrent: number | null;
+  weightGoal: number | null;
+  height: number | null;
+  sex: string | null;
+  activityLevel: string | null;
+  goal: string | null;
+  userName?: string;
+}
+
+function getBMICategory(bmi: number): BMICategory {
+  if (bmi < 18.5) return "underweight";
+  if (bmi < 25) return "normal";
+  if (bmi < 30) return "overweight";
+  if (bmi < 35) return "obese_1";
+  if (bmi < 40) return "obese_2";
+  return "obese_3";
+}
+
+function getBMICategoryLabel(category: BMICategory): string {
+  const labels: Record<BMICategory, string> = {
+    underweight: "baixo peso",
+    normal: "peso normal",
+    overweight: "sobrepeso",
+    obese_1: "obesidade grau I",
+    obese_2: "obesidade grau II",
+    obese_3: "obesidade grau III",
+  };
+  return labels[category];
+}
+
+function getHealthyWeightRange(heightCm: number): { min: number; max: number } {
+  const heightM = heightCm / 100;
+  return {
+    min: Math.round(18.5 * heightM * heightM),
+    max: Math.round(24.9 * heightM * heightM),
+  };
+}
+
+function getMaxRealisticMuscularWeight(
+  heightCm: number, 
+  sex: string | null,
+  activityLevel: string | null
+): number {
+  const heightM = heightCm / 100;
+  const isHighlyActive = activityLevel === "active" || activityLevel === "very_active";
+  
+  let maxMuscularBMI: number;
+  if (sex === "male" || sex === "masculino") {
+    maxMuscularBMI = isHighlyActive ? 32 : 28;
+  } else if (sex === "female" || sex === "feminino") {
+    maxMuscularBMI = isHighlyActive ? 28 : 25;
+  } else {
+    maxMuscularBMI = isHighlyActive ? 30 : 26.5;
+  }
+  
+  return Math.round(maxMuscularBMI * heightM * heightM);
+}
+
+/**
+ * Calculate health risks based on user's physical data and goals
+ * Returns humanized warning messages for the chat assistant
+ */
+function calculateHealthRisks(params: HealthRiskParams): HealthRisk[] {
+  const { weightCurrent, weightGoal, height, sex, activityLevel, goal, userName } = params;
+  const risks: HealthRisk[] = [];
+  
+  // Need minimum data to calculate
+  if (!weightCurrent || !height) {
+    return risks;
+  }
+
+  const heightM = height / 100;
+  const currentBMI = weightCurrent / (heightM * heightM);
+  const currentCategory = getBMICategory(currentBMI);
+  
+  const healthyRange = getHealthyWeightRange(height);
+  const isSedentaryOrLight = activityLevel === "sedentary" || activityLevel === "light";
+  const isHighlyActive = activityLevel === "active" || activityLevel === "very_active";
+  const maxMuscularWeight = getMaxRealisticMuscularWeight(height, sex, activityLevel);
+  const sexLabel = sex === "female" || sex === "feminino" ? "uma mulher" : sex === "male" || sex === "masculino" ? "um homem" : "uma pessoa";
+
+  // ============= CURRENT BMI ALERTS =============
+  
+  // Currently underweight
+  if (currentCategory === "underweight") {
+    risks.push({
+      level: "warning",
+      title: "Peso abaixo do ideal",
+      message: `Com ${weightCurrent}kg e ${height}cm, seu IMC é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Pode ser interessante conversar com um profissional.`,
+      suggestion: `Peso mínimo saudável para sua altura: ${healthyRange.min}kg.`,
+    });
+  }
+  
+  // Currently overweight
+  if (currentCategory === "overweight") {
+    risks.push({
+      level: "info",
+      title: "Atenção ao peso",
+      message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). ${goal === "lose_weight" ? "Ótimo que você já está trabalhando nisso!" : "Considere revisar seu objetivo."}`,
+    });
+  }
+  
+  // Currently obese
+  if (currentCategory.startsWith("obese")) {
+    const obesityLevel = currentCategory === "obese_1" ? "grau I" : currentCategory === "obese_2" ? "grau II" : "grau III";
+    risks.push({
+      level: currentCategory === "obese_3" ? "danger" : "warning",
+      title: `Obesidade ${obesityLevel}`,
+      message: `Seu IMC atual é ${currentBMI.toFixed(1)}. Recomendo acompanhamento profissional para um plano seguro e efetivo.`,
+      suggestion: `Faixa de peso saudável para ${height}cm: ${healthyRange.min}-${healthyRange.max}kg.`,
+    });
+  }
+
+  // ============= GOAL WEIGHT ALERTS (when weight_goal is provided) =============
+  
+  if (weightGoal) {
+    const goalBMI = weightGoal / (heightM * heightM);
+    const goalCategory = getBMICategory(goalBMI);
+    
+    // Goal leads to underweight
+    if (goalCategory === "underweight" && (goal === "lose_weight" || !goal)) {
+      risks.push({
+        level: "danger",
+        title: "Meta pode ser arriscada",
+        message: `A meta de ${weightGoal}kg resultaria em IMC de ${goalBMI.toFixed(1)} (${getBMICategoryLabel(goalCategory)}). Isso pode prejudicar sua saúde.`,
+        suggestion: `Peso mínimo saudável para ${height}cm: ${healthyRange.min}kg.`,
+      });
+    }
+    
+    // Goal leads to severe obesity (BMI 40+)
+    if (goalBMI >= 40 && goal === "gain_weight") {
+      risks.push({
+        level: "danger",
+        title: "Meta muito elevada",
+        message: `${weightGoal}kg para ${sexLabel} de ${height}cm resultaria em IMC ${goalBMI.toFixed(1)} - acima do limite saudável mesmo para atletas.`,
+        suggestion: `Peso atlético máximo sugerido: ~${maxMuscularWeight}kg.`,
+      });
+    }
+    
+    // Goal leads to obesity without exercise
+    if (goal === "gain_weight" && goalCategory.startsWith("obese") && isSedentaryOrLight) {
+      risks.push({
+        level: "warning",
+        title: "Atenção ao ganho de peso",
+        message: `A meta de ${weightGoal}kg (IMC ${goalBMI.toFixed(1)}) sem exercício regular pode resultar em acúmulo de gordura, não de músculo.`,
+        suggestion: "Considere iniciar treino de força para um ganho mais saudável.",
+      });
+    }
+    
+    // Losing weight while already underweight
+    if (goal === "lose_weight" && currentCategory === "underweight") {
+      risks.push({
+        level: "danger",
+        title: "Não recomendado perder mais peso",
+        message: `Você já está com IMC de ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Perder mais peso pode ser perigoso.`,
+        suggestion: "Por favor, consulte um profissional de saúde.",
+      });
+    }
+    
+    // Gaining weight while already obese
+    if (goal === "gain_weight" && currentCategory.startsWith("obese")) {
+      risks.push({
+        level: "warning",
+        title: "Já acima do peso ideal",
+        message: `Seu IMC atual é ${currentBMI.toFixed(1)} (${getBMICategoryLabel(currentCategory)}). Ganhar mais peso pode aumentar riscos à saúde.`,
+        suggestion: "Se o objetivo for massa muscular, procure um nutricionista esportivo.",
+      });
+    }
+    
+    // Very ambitious goal (>20kg change)
+    const weightDiff = Math.abs(weightGoal - weightCurrent);
+    if (weightDiff > 20) {
+      const hasDanger = risks.some(r => r.level === "danger");
+      if (!hasDanger) {
+        risks.push({
+          level: "info",
+          title: "Meta ambiciosa",
+          message: `Mudança de ${weightDiff.toFixed(0)}kg é significativa. Metas grandes podem desmotivar ao longo do caminho.`,
+          suggestion: "Que tal dividir em metas menores de 5-10kg?",
+        });
+      }
+    }
+    
+    // Healthy goal with exercise - positive feedback!
+    if (goal === "gain_weight" && goalCategory === "normal" && !isSedentaryOrLight && risks.length === 0) {
+      risks.push({
+        level: "info",
+        title: "Combinação saudável",
+        message: `A meta de ${weightGoal}kg (IMC ${goalBMI.toFixed(1)}) está na faixa saudável. Com exercício, você pode atingir esse objetivo de forma segura!`,
+      });
+    }
+  }
+
+  return risks;
+}
+
+/**
+ * Generate humanized health alerts for the chat context
+ */
+function buildHealthAlertsForPrompt(params: HealthRiskParams): string {
+  const risks = calculateHealthRisks(params);
+  
+  if (risks.length === 0) {
+    return "";
+  }
+  
+  let alertSection = `
+## ⚠️ ALERTAS DE SAÚDE (USE ESTES AVISOS DE FORMA NATURAL E EMPÁTICA!)
+
+Os seguintes alertas foram detectados baseados nos dados do usuário. 
+**VOCÊ DEVE** mencionar esses pontos de forma humanizada quando relevante:
+
+`;
+
+  for (const risk of risks) {
+    const icon = risk.level === "danger" ? "🔴" : risk.level === "warning" ? "🟡" : "🔵";
+    alertSection += `${icon} **${risk.title}**: ${risk.message}`;
+    if (risk.suggestion) {
+      alertSection += ` 💡 ${risk.suggestion}`;
+    }
+    alertSection += "\n";
+  }
+  
+  alertSection += `
+### COMO USAR ESSES ALERTAS:
+
+1. **NÃO seja robótico**: Não diga "Detectei um alerta de saúde..."
+2. **SEJA empático**: "Olha, percebi que...", "Uma coisa importante...", "Ei, só um cuidado..."
+3. **CONTEXTUALIZE**: Só mencione se for relevante à conversa
+4. **OFEREÇA AJUDA**: Pergunte se quer ajustar a meta ou conversar sobre isso
+
+### EXEMPLOS DE USO HUMANIZADO:
+
+❌ ERRADO: "Alerta: seu IMC de 31.2 indica obesidade grau I segundo a tabela de classificação."
+
+✅ CERTO: "Olha, antes de a gente ajustar sua meta... com ${params.weightCurrent}kg e ${params.height}cm, você está num ponto onde vale a pena ter acompanhamento. Quer que eu sugira uma meta mais gradual?"
+
+✅ CERTO: "Ei, uma coisa: a meta de ${params.weightGoal}kg ficaria um pouco baixa pra sua altura. O mínimo saudável seria uns Xkg. Quer ajustar?"
+
+✅ CERTO: "Ah, e parabéns por estar num caminho saudável! Com ${params.weightGoal}kg você vai ficar numa faixa ótima."
+`;
+
+  return alertSection;
+}
+
 // ============= DASHBOARD CONTEXT TYPE =============
 interface DashboardContext {
   waterToday: { total_ml: number; goal_ml: number; percentage: number } | null;
@@ -484,6 +740,16 @@ Pronto! Atualizei [campo] pra [valor novo]. ✅"
 - Usar [CONFIRMAR_ATUALIZACAO] sem antes ter usado [PERGUNTAR_ATUALIZACAO] e recebido confirmação do usuário
 - Ignorar contradições e responder como se o que o usuário disse fosse verdade
 
+${buildHealthAlertsForPrompt({
+  weightCurrent,
+  weightGoal,
+  height,
+  sex,
+  activityLevel,
+  goal,
+  userName
+})}
+
 Agora responda naturalmente, como um amigo que entende de comida e do app.`;
 };
 
@@ -739,6 +1005,16 @@ interface ProfileUpdateResult {
   updatedGoal: string | null;
   updatedField: { field: string; value: string } | null;
   pendingUpdate: { type: UpdateType; value: string; label: string } | null;
+  healthAlert: string | null; // NEW: Alert about health risks after update
+}
+
+interface ProfileUpdateContext {
+  weightCurrent?: number | null;
+  weightGoal?: number | null;
+  height?: number | null;
+  sex?: string | null;
+  activityLevel?: string | null;
+  userName?: string;
 }
 
 // ============= PROCESS PROFILE UPDATE FROM AI RESPONSE =============
@@ -748,14 +1024,16 @@ const processProfileUpdateFromResponse = async (
   aiResponse: string,
   currentIntolerances: string[],
   currentGoal: string,
-  weightCurrent?: number | null,
-  weightGoal?: number | null
+  context?: ProfileUpdateContext
 ): Promise<ProfileUpdateResult> => {
+  const { weightCurrent, weightGoal, height, sex, activityLevel, userName } = context || {};
+  
   let cleanResponse = aiResponse;
   let addedRestriction: string | null = null;
   let updatedGoal: string | null = null;
   let updatedField: { field: string; value: string } | null = null;
   let pendingUpdate: { type: UpdateType; value: string; label: string } | null = null;
+  let healthAlert: string | null = null;
 
   // Check for PERGUNTAR_ATUALIZACAO marker (asking permission - do NOT update, just track)
   // Extended regex to match all update types: restricao|objetivo|dieta|peso|peso_meta|idade|altura|sexo|atividade
@@ -1048,12 +1326,47 @@ const processProfileUpdateFromResponse = async (
   // Also clean up any old ADICIONAR_RESTRICAO markers for backwards compatibility
   cleanResponse = cleanResponse.replace(/\[ADICIONAR_RESTRICAO:\w+\]\s*/gi, '');
 
+  // Generate health alert if weight-related fields were updated
+  if (updatedField && (updatedField.field === 'Peso atual' || updatedField.field === 'Peso meta' || updatedField.field === 'Altura')) {
+    // Get the updated values for health calculation
+    const newWeightCurrent = updatedField.field === 'Peso atual' 
+      ? parseFloat(updatedField.value.replace(' kg', '')) 
+      : weightCurrent;
+    const newWeightGoal = updatedField.field === 'Peso meta' 
+      ? parseFloat(updatedField.value.replace(' kg', '')) 
+      : weightGoal;
+    const newHeight = updatedField.field === 'Altura' 
+      ? parseFloat(updatedField.value.replace(' cm', '')) 
+      : height;
+    
+    const risks = calculateHealthRisks({
+      weightCurrent: newWeightCurrent ?? null,
+      weightGoal: newWeightGoal ?? null,
+      height: newHeight ?? null,
+      sex: sex ?? null,
+      activityLevel: activityLevel ?? null,
+      goal: currentGoal,
+      userName: userName
+    });
+    
+    // Generate a humanized health alert for relevant risks
+    const significantRisks = risks.filter(r => r.level === "danger" || r.level === "warning");
+    if (significantRisks.length > 0) {
+      const topRisk = significantRisks[0];
+      healthAlert = topRisk.suggestion 
+        ? `${topRisk.message} ${topRisk.suggestion}`
+        : topRisk.message;
+      logStep("Health alert generated after profile update", { alert: healthAlert, risk: topRisk.title });
+    }
+  }
+
   return { 
     updatedResponse: cleanResponse, 
     addedRestriction,
     updatedGoal,
     updatedField,
-    pendingUpdate
+    pendingUpdate,
+    healthAlert
   };
 };
 
@@ -1853,21 +2166,31 @@ serve(async (req) => {
     if (userId && userProfile) {
       const currentIntolerances = userProfile.intolerances || [];
       const currentGoal = userProfile.goal || 'manter';
-      const weightCurrent = userProfile.weight_current || null;
-      const weightGoal = userProfile.weight_goal || null;
       const result = await processProfileUpdateFromResponse(
         supabase,
         userId,
         assistantMessage,
         currentIntolerances,
         currentGoal,
-        weightCurrent,
-        weightGoal
+        {
+          weightCurrent: userProfile.weight_current || null,
+          weightGoal: userProfile.weight_goal || null,
+          height: userProfile.height || null,
+          sex: userProfile.sex || null,
+          activityLevel: userProfile.activity_level || null,
+          userName: userProfile.first_name || undefined
+        }
       );
       assistantMessage = result.updatedResponse;
       addedRestriction = result.addedRestriction;
       updatedGoal = result.updatedGoal;
       updatedField = result.updatedField;
+      
+      // Append health alert to response if present
+      if (result.healthAlert && updatedField) {
+        assistantMessage += `\n\n💡 ${result.healthAlert}`;
+        logStep("Health alert appended to response", { alert: result.healthAlert });
+      }
       
       if (addedRestriction) {
         logStep("Restriction added via chat", { restriction: addedRestriction });

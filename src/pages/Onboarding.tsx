@@ -49,9 +49,9 @@ export default function Onboarding() {
   const [profile, setProfile] = useState<ProfileData>({
     country: "BR",
     intolerances: [],
-    dietary_preference: "comum",
+    dietary_preference: "omnivore",
     excluded_ingredients: [],
-    goal: "manter",
+    goal: "maintain",
     strategy_id: null,
   });
   const [ingredientInput, setIngredientInput] = useState("");

@@ -50,7 +50,12 @@ export function useAllNutritionalStrategies() {
 }
 
 // Mapeia goal para strategy_key para fallback
+// Database now stores: "lose_weight" | "maintain" | "gain_weight"
 export const GOAL_TO_STRATEGY_KEY: Record<string, string> = {
+  lose_weight: "emagrecer",
+  maintain: "manter",
+  gain_weight: "ganhar_peso",
+  // Legacy fallbacks
   emagrecer: "emagrecer",
   manter: "manter",
   ganhar_peso: "ganhar_peso",
@@ -68,18 +73,19 @@ export function getRecommendedStrategy(
 }
 
 // Deriva o goal automaticamente a partir da estratégia selecionada
-export function deriveGoalFromStrategy(strategyKey: string): "emagrecer" | "manter" | "ganhar_peso" {
+// Database stores: "lose_weight" | "maintain" | "gain_weight"
+export function deriveGoalFromStrategy(strategyKey: string): "lose_weight" | "maintain" | "gain_weight" {
   switch (strategyKey) {
     case "emagrecer":
     case "cutting":
-      return "emagrecer";
+      return "lose_weight";
     case "ganhar_peso":
-      return "ganhar_peso";
+      return "gain_weight";
     case "manter":
     case "fitness":
     case "dieta_flexivel":
     default:
-      return "manter";
+      return "maintain";
   }
 }
 
@@ -93,20 +99,21 @@ export function getStrategiesForGoal(
 
   strategies.forEach(strategy => {
     // Estratégias compatíveis por goal
-    if (goal === "emagrecer") {
+    // Database stores: "lose_weight" | "maintain" | "gain_weight"
+    if (goal === "lose_weight") {
       if (strategy.key === "emagrecer" || strategy.key === "cutting") {
         recommended.push(strategy);
       } else {
         others.push(strategy);
       }
-    } else if (goal === "ganhar_peso") {
+    } else if (goal === "gain_weight") {
       if (strategy.key === "ganhar_peso" || strategy.key === "fitness") {
         recommended.push(strategy);
       } else {
         others.push(strategy);
       }
     } else {
-      // manter ou undefined
+      // maintain ou undefined
       if (strategy.key === "manter" || strategy.key === "dieta_flexivel") {
         recommended.push(strategy);
       } else {

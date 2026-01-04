@@ -82,8 +82,8 @@ const ACTIVITY_LEVELS = [
 ];
 
 const SEX_OPTIONS = [
-  { value: "masculino", label: "Masculino" },
-  { value: "feminino", label: "Feminino" },
+  { value: "male", label: "Masculino" },
+  { value: "female", label: "Feminino" },
 ];
 
 interface FoodItem {
@@ -140,7 +140,7 @@ function calculateEstimatedCalories(
 ): number | null {
   if (!weight || !height || !age) return null;
 
-  const isMale = sex === "masculino" || sex === "male";
+  const isMale = sex === "male";
   
   // Mifflin-St Jeor
   const bmr = isMale
@@ -171,13 +171,13 @@ export default function AdminAIMealPlanTest() {
   const [weightGoal, setWeightGoal] = useState(65);
   const [height, setHeight] = useState(170);
   const [age, setAge] = useState(30);
-  const [sex, setSex] = useState("masculino");
+  const [sex, setSex] = useState("male");
   const [activityLevel, setActivityLevel] = useState("moderate");
   
   // Estratégia nutricional
   const [selectedStrategyId, setSelectedStrategyId] = useState<string>("");
   
-  const [dietaryPreference, setDietaryPreference] = useState("comum");
+  const [dietaryPreference, setDietaryPreference] = useState("omnivore");
   const [selectedIntolerances, setSelectedIntolerances] = useState<string[]>([]);
   const [selectedMealTypes, setSelectedMealTypes] = useState<string[]>(["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar"]);
   const [optionsPerMeal, setOptionsPerMeal] = useState(3);
@@ -255,9 +255,10 @@ export default function AdminAIMealPlanTest() {
       if (!user) throw new Error("Usuario nao autenticado");
 
       // Deriva o goal a partir da estratégia
+      // deriveGoalFromStrategy now returns: "lose_weight" | "maintain" | "gain_weight"
       const derivedGoal = selectedStrategy 
         ? deriveGoalFromStrategy(selectedStrategy.key)
-        : "manter";
+        : "maintain";
 
       // Update profile with test settings
       await supabase
@@ -265,7 +266,7 @@ export default function AdminAIMealPlanTest() {
         .update({
           country,
           goal: derivedGoal,
-          dietary_preference: dietaryPreference as "comum" | "vegetariana" | "vegana" | "low_carb" | "pescetariana" | "cetogenica" | "flexitariana",
+          dietary_preference: dietaryPreference as "omnivore" | "vegetarian" | "vegan" | "low_carb" | "pescatarian" | "ketogenic" | "flexitarian",
           intolerances: selectedIntolerances,
           weight_current: weightCurrent,
           weight_goal: weightGoal,

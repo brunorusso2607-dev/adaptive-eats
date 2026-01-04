@@ -59,18 +59,18 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
     { id: "23", category: "excluded_ingredients", option_id: "frutos_mar", label: "Frutos do mar", description: "Camarão, lula, polvo, mexilhão", emoji: null, icon_name: "fish", is_active: true, sort_order: 3 },
   ],
   dietary_preferences: [
-    { id: "31", category: "dietary_preferences", option_id: "comum", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", icon_name: "utensils", is_active: true, sort_order: 1 },
-    { id: "32", category: "dietary_preferences", option_id: "vegetariana", label: "Vegetariana", description: "Não como carnes", emoji: "🥗", icon_name: "salad", is_active: true, sort_order: 2 },
-    { id: "33", category: "dietary_preferences", option_id: "vegana", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 3 },
+    { id: "31", category: "dietary_preferences", option_id: "omnivore", label: "Comum", description: "Como de tudo sem restrições", emoji: "🍽️", icon_name: "utensils", is_active: true, sort_order: 1 },
+    { id: "32", category: "dietary_preferences", option_id: "vegetarian", label: "Vegetariana", description: "Não como carnes", emoji: "🥗", icon_name: "salad", is_active: true, sort_order: 2 },
+    { id: "33", category: "dietary_preferences", option_id: "vegan", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 3 },
     { id: "34", category: "dietary_preferences", option_id: "low_carb", label: "Low Carb", description: "Reduzo carboidratos", emoji: "🥩", icon_name: "beef", is_active: true, sort_order: 4 },
-    { id: "35", category: "dietary_preferences", option_id: "pescetariana", label: "Pescetariana", description: "Como peixes e frutos do mar, sem carnes", emoji: "🐟", icon_name: "fish", is_active: true, sort_order: 5 },
-    { id: "36", category: "dietary_preferences", option_id: "cetogenica", label: "Cetogênica", description: "Baixo carboidrato, alta gordura", emoji: "🥑", icon_name: "flame", is_active: true, sort_order: 6 },
-    { id: "37", category: "dietary_preferences", option_id: "flexitariana", label: "Flexitariana", description: "Vegetariana com carne ocasional", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 7 },
+    { id: "35", category: "dietary_preferences", option_id: "pescatarian", label: "Pescetariana", description: "Como peixes e frutos do mar, sem carnes", emoji: "🐟", icon_name: "fish", is_active: true, sort_order: 5 },
+    { id: "36", category: "dietary_preferences", option_id: "ketogenic", label: "Cetogênica", description: "Baixo carboidrato, alta gordura", emoji: "🥑", icon_name: "flame", is_active: true, sort_order: 6 },
+    { id: "37", category: "dietary_preferences", option_id: "flexitarian", label: "Flexitariana", description: "Vegetariana com carne ocasional", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 7 },
   ],
   goals: [
-    { id: "41", category: "goals", option_id: "emagrecer", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
-    { id: "42", category: "goals", option_id: "manter", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
-    { id: "43", category: "goals", option_id: "ganhar_peso", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
+    { id: "41", category: "goals", option_id: "lose_weight", label: "Emagrecer", description: "Quero perder peso", emoji: "⬇️", icon_name: "trending-down", is_active: true, sort_order: 1 },
+    { id: "42", category: "goals", option_id: "maintain", label: "Manter peso", description: "Quero manter meu peso atual", emoji: "⚖️", icon_name: "scale", is_active: true, sort_order: 2 },
+    { id: "43", category: "goals", option_id: "gain_weight", label: "Ganhar peso", description: "Quero ganhar massa", emoji: "⬆️", icon_name: "trending-up", is_active: true, sort_order: 3 },
   ],
 };
 

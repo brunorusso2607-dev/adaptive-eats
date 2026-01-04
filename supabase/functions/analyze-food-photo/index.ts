@@ -276,7 +276,7 @@ serve(async (req) => {
 
     const userIntolerances = profile?.intolerances || [];
     const excludedIngredients = profile?.excluded_ingredients || [];
-    const dietaryPreference = profile?.dietary_preference || "comum";
+    const dietaryPreference = profile?.dietary_preference || "omnivore";
     
     // Calcular meta calórica diária
     let dailyCalorieGoal: number | null = null;
@@ -289,7 +289,7 @@ serve(async (req) => {
         profile.sex
       );
       const tdee = calculateTDEE(tmb, profile.activity_level || 'moderate');
-      dailyCalorieGoal = calculateDailyGoal(tdee, profile.goal || 'manter');
+      dailyCalorieGoal = calculateDailyGoal(tdee, profile.goal || 'maintain');
       logStep("Daily calorie goal calculated", { tmb, tdee, dailyCalorieGoal });
     }
     
@@ -342,7 +342,7 @@ serve(async (req) => {
     const normalizedIntolerances = normalizeUserIntolerances(userIntolerances, safetyDatabase);
     const userRestrictionsForEngine: UserRestrictions = {
       intolerances: normalizedIntolerances,
-      dietaryPreference: dietaryPreference || "comum",
+      dietaryPreference: dietaryPreference || "omnivore",
       excludedIngredients: excludedIngredients || [],
     };
 
@@ -351,16 +351,17 @@ serve(async (req) => {
 
     // Build intolerance context for the prompt
     let intoleranceContext = "";
-    const hasRestrictions = userIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "comum";
+    // Database now stores dietary_preference as: "omnivore" | "vegetarian" | "vegan" | etc.
+    const hasRestrictions = userIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "omnivore";
     
     if (hasRestrictions) {
       intoleranceContext = `
 IMPORTANTE - RESTRIÇÕES ALIMENTARES DO USUÁRIO:
 ${userIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${normalizedIntolerances.map((i: string) => getIntoleranceLabel(i, safetyDatabase)).join(", ")}` : ""}
 ${excludedIngredients.length > 0 ? `- Ingredientes Excluídos Manualmente: ${excludedIngredients.join(", ")}` : ""}
-${dietaryPreference === "vegetariana" ? `- Dieta: ${getDietaryLabel("vegetariana", safetyDatabase)}` : ""}
-${dietaryPreference === "vegana" ? `- Dieta: ${getDietaryLabel("vegana", safetyDatabase)}` : ""}
-${dietaryPreference === "pescetariana" ? `- Dieta: ${getDietaryLabel("pescetariana", safetyDatabase)}` : ""}
+${dietaryPreference === "vegetarian" ? `- Dieta: ${getDietaryLabel("vegetarian", safetyDatabase)}` : ""}
+${dietaryPreference === "vegan" ? `- Dieta: ${getDietaryLabel("vegan", safetyDatabase)}` : ""}
+${dietaryPreference === "pescatarian" ? `- Dieta: ${getDietaryLabel("pescatarian", safetyDatabase)}` : ""}
 
 ${dynamicIngredientsContext}
 
@@ -1778,7 +1779,8 @@ This protects user trust - better to ask for correction than guess wrong.
     
     // Verificação de preferência alimentar JÁ é feita pelo globalSafetyEngine
     // mas mantemos fallback visual para clareza
-    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana" || dietaryPreference === "pescetariana") {
+    // Database now stores: "omnivore" | "vegetarian" | "vegan" | etc.
+    if (dietaryPreference === "vegetarian" || dietaryPreference === "vegan" || dietaryPreference === "pescatarian") {
       const dietLabel = getDietaryLabel(dietaryPreference, safetyDatabase);
       
       // Verificar se há conflitos de dieta nos resultados

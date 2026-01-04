@@ -685,7 +685,7 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
             {(() => {
               const selectedStrategy = strategies?.find(s => s.id === profile.strategy_id);
               const derivedGoal = selectedStrategy ? deriveGoalFromStrategy(selectedStrategy.key) : profile.goal;
-              const isLossGoal = derivedGoal === "emagrecer";
+              const isLossGoal = derivedGoal === "lose_weight";
               
               return (
                 <div className={cn(

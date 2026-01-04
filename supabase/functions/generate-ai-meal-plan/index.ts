@@ -848,9 +848,9 @@ serve(async (req) => {
 
     const restrictions = {
       intolerances: profile.intolerances || [],
-      dietaryPreference: profile.dietary_preference || 'comum',
+      dietaryPreference: profile.dietary_preference || 'omnivore',
       excludedIngredients: profile.excluded_ingredients || [],
-      goal: profile.goal || 'manter',
+      goal: profile.goal || 'maintain',
     };
 
     logStep("User restrictions", restrictions);
@@ -887,7 +887,7 @@ serve(async (req) => {
     // As comfort foods só aparecem como ALTERNATIVAS ao trocar refeição
     let effectiveStrategyKey = strategyKey;
     if (strategyKey === 'dieta_flexivel') {
-      effectiveStrategyKey = 'emagrecer'; // Usa pool saudável para o plano principal
+      effectiveStrategyKey = 'lose_weight'; // Usa pool saudável para o plano principal
       logStep("🍽️ Dieta Flexível: usando pool de EMAGRECIMENTO para plano principal");
       logStep("💡 Comfort foods disponíveis apenas nas alternativas de troca");
     }
@@ -914,8 +914,9 @@ serve(async (req) => {
       };
 
       // Determinar parâmetros de estratégia baseado no objetivo
-      const goal = profile.goal || 'manter';
-      const dietaryPreference = profile.dietary_preference || 'comum';
+      // Database now stores: "lose_weight" | "maintain" | "gain_weight"
+      const goal = profile.goal || 'maintain';
+      const dietaryPreference = profile.dietary_preference || 'omnivore';
       
       let calorieModifier = 0;
       let proteinPerKg = 1.6;
@@ -923,10 +924,10 @@ serve(async (req) => {
       let fatRatio = 0.30;
 
       // Ajustes por objetivo
-      if (goal === 'emagrecer') {
+      if (goal === 'lose_weight') {
         calorieModifier = -500;
         proteinPerKg = 2.0;
-      } else if (goal === 'ganhar_peso') {
+      } else if (goal === 'gain_weight') {
         calorieModifier = 400;
         proteinPerKg = 2.2;
       }

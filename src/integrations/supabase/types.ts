@@ -2527,16 +2527,16 @@ export type Database = {
       app_role: "admin" | "user"
       calorie_goal: "reduzir" | "manter" | "aumentar" | "definir_depois"
       dietary_preference:
-        | "comum"
-        | "vegetariana"
-        | "vegana"
+        | "omnivore"
+        | "vegetarian"
+        | "vegan"
         | "low_carb"
-        | "pescetariana"
-        | "cetogenica"
-        | "flexitariana"
+        | "pescatarian"
+        | "ketogenic"
+        | "flexitarian"
       recipe_complexity: "rapida" | "equilibrada" | "elaborada"
       user_context: "individual" | "familia" | "modo_kids"
-      user_goal: "emagrecer" | "manter" | "ganhar_peso"
+      user_goal: "lose_weight" | "maintain" | "gain_weight"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2667,17 +2667,17 @@ export const Constants = {
       app_role: ["admin", "user"],
       calorie_goal: ["reduzir", "manter", "aumentar", "definir_depois"],
       dietary_preference: [
-        "comum",
-        "vegetariana",
-        "vegana",
+        "omnivore",
+        "vegetarian",
+        "vegan",
         "low_carb",
-        "pescetariana",
-        "cetogenica",
-        "flexitariana",
+        "pescatarian",
+        "ketogenic",
+        "flexitarian",
       ],
       recipe_complexity: ["rapida", "equilibrada", "elaborada"],
       user_context: ["individual", "familia", "modo_kids"],
-      user_goal: ["emagrecer", "manter", "ganhar_peso"],
+      user_goal: ["lose_weight", "maintain", "gain_weight"],
     },
   },
 } as const

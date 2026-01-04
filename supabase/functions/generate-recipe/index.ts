@@ -90,8 +90,9 @@ serve(async (req) => {
     });
 
     const isKidsMode = profile.context === "modo_kids";
-    const isWeightLossMode = profile.goal === "emagrecer";
-    const isWeightGainMode = profile.goal === "ganhar_peso";
+    // Database now stores: "lose_weight" | "maintain" | "gain_weight"
+    const isWeightLossMode = profile.goal === "lose_weight";
+    const isWeightGainMode = profile.goal === "gain_weight";
 
     // Calculate nutritional targets using centralized calculations
     // Database stores: sex = "male" | "female", activity_level = "sedentary" | "light" | "moderate" | "active" | "very_active"
@@ -127,9 +128,10 @@ serve(async (req) => {
       }
     } else {
       // Fallback to goal-based modifiers
+      // Database now stores: "lose_weight" | "maintain" | "gain_weight"
       switch (profile.goal) {
-        case "emagrecer": calorieModifier = -500; break;
-        case "ganhar_peso": calorieModifier = 300; break;
+        case "lose_weight": calorieModifier = -500; break;
+        case "gain_weight": calorieModifier = 300; break;
         default: calorieModifier = 0;
       }
     }

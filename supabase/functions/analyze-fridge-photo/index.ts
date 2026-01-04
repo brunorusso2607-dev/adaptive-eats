@@ -1896,11 +1896,12 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
     }
     
     // Adicionar verificação de preferência alimentar
-    if (dietaryPreference === "vegetariana" || dietaryPreference === "vegana") {
-      const dietLabel = dietaryPreference === "vegana" ? "Veganismo" : "Vegetarianismo";
+    // Database now stores: "omnivore" | "vegetarian" | "vegan" | etc.
+    if (dietaryPreference === "vegetarian" || dietaryPreference === "vegan") {
+      const dietLabel = dietaryPreference === "vegan" ? "Veganismo" : "Vegetarianismo";
       const meatKeywords = ["carne", "frango", "peixe", "camarão", "bacon", "linguiça", "presunto", "salsicha", "boi"];
       const animalKeywords = [...meatKeywords, "leite", "queijo", "ovo", "manteiga", "iogurte", "mel"];
-      const keywordsToCheck = dietaryPreference === "vegana" ? animalKeywords : meatKeywords;
+      const keywordsToCheck = dietaryPreference === "vegan" ? animalKeywords : meatKeywords;
       
       let foundIngredients: string[] = [];
       

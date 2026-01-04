@@ -99,8 +99,8 @@ export default function AdminAnalytics() {
 
         setDailyData(chartData);
 
-        // Process goal distribution
-        const goalCounts = { emagrecer: 0, manter: 0, ganhar_peso: 0 };
+        // Process goal distribution (database now stores English values)
+        const goalCounts = { lose_weight: 0, maintain: 0, gain_weight: 0 };
         profilesResult.data?.forEach((profile) => {
           if (profile.goal && profile.goal in goalCounts) {
             goalCounts[profile.goal as keyof typeof goalCounts] += 1;
@@ -108,15 +108,15 @@ export default function AdminAnalytics() {
         });
 
         setGoalDistribution([
-          { name: "Emagrecer", value: goalCounts.emagrecer, color: "hsl(var(--primary))" },
-          { name: "Manter", value: goalCounts.manter, color: "hsl(var(--accent))" },
-          { name: "Ganhar Peso", value: goalCounts.ganhar_peso, color: "hsl(152 60% 45%)" },
+          { name: "Emagrecer", value: goalCounts.lose_weight, color: "hsl(var(--primary))" },
+          { name: "Manter", value: goalCounts.maintain, color: "hsl(var(--accent))" },
+          { name: "Ganhar Peso", value: goalCounts.gain_weight, color: "hsl(152 60% 45%)" },
         ]);
 
-        // Process diet distribution
+        // Process diet distribution (database now stores English values)
         const dietCounts: Record<string, number> = {};
         profilesResult.data?.forEach((profile) => {
-          const diet = profile.dietary_preference || "comum";
+          const diet = profile.dietary_preference || "omnivore";
           dietCounts[diet] = (dietCounts[diet] || 0) + 1;
         });
 

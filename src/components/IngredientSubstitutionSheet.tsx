@@ -82,9 +82,10 @@ export default function IngredientSubstitutionSheet({
   });
 
   // Build restrictions array
+  // Database now stores dietary_preference as: "omnivore" | "vegetarian" | "vegan" | etc.
   const restrictions = [
     ...(profile?.intolerances || []),
-    ...(profile?.dietary_preference && profile.dietary_preference !== 'comum' ? [profile.dietary_preference] : []),
+    ...(profile?.dietary_preference && profile.dietary_preference !== 'omnivore' ? [profile.dietary_preference] : []),
     ...(profile?.excluded_ingredients || [])
   ];
 

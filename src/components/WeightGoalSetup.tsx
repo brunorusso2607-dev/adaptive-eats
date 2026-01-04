@@ -518,11 +518,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onOpe
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Map mode to goal enum
+    // Map mode to goal enum (database stores English values)
     const goalMap = {
-      lose: "emagrecer" as const,
-      gain: "ganhar_peso" as const,
-      maintain: "manter" as const,
+      lose: "lose_weight" as const,
+      gain: "gain_weight" as const,
+      maintain: "maintain" as const,
     };
 
     const updateData = {
@@ -774,10 +774,11 @@ export default function WeightGoalSetup({ onClose, onSave, onGeneratePlan, onOpe
               selectedStrategyId={data.strategy_id}
               onSelectStrategy={(strategy) => {
                 const derivedGoalMode = deriveGoalFromStrategy(strategy.key);
+                // deriveGoalFromStrategy returns: "lose_weight" | "maintain" | "gain_weight"
                 const goalModeMap: Record<string, GoalMode> = {
-                  emagrecer: "lose",
-                  manter: "maintain",
-                  ganhar_peso: "gain",
+                  lose_weight: "lose",
+                  maintain: "maintain",
+                  gain_weight: "gain",
                 };
                 const goalMode = goalModeMap[derivedGoalMode] || "maintain";
                 setData({ 

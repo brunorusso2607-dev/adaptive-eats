@@ -138,14 +138,14 @@ function buildSimpleNutritionistPrompt(params: {
   return getMasterMealPromptV5(promptParams);
 }
 
-// ============= DISTRIBUICAO CALORICA =============
+// ============= CALORIE DISTRIBUTION (English keys) =============
 const CALORIE_DISTRIBUTION: Record<string, number> = {
-  cafe_manha: 0.22,
-  lanche_manha: 0.08,
-  almoco: 0.30,
-  lanche_tarde: 0.10,
-  jantar: 0.22,
-  ceia: 0.08,
+  breakfast: 0.22,
+  morning_snack: 0.08,
+  lunch: 0.30,
+  afternoon_snack: 0.10,
+  dinner: 0.22,
+  supper: 0.08,
 };
 
 // ARCHITECTURE: Validação de ingredientes agora usa globalSafetyEngine internamente

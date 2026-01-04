@@ -66,28 +66,28 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
 };
 
 // ============================================
-// MEAL DISTRIBUTION PERCENTAGES
+// MEAL DISTRIBUTION PERCENTAGES (English keys)
 // ============================================
 
 // Standard 5-meal distribution
 const MEAL_PERCENTAGES: Record<string, { percentage: number; label: string }> = {
-  cafe_manha: { percentage: 0.20, label: "Café da Manhã" },
-  lanche_manha: { percentage: 0.10, label: "Lanche da Manhã" },
-  almoco: { percentage: 0.30, label: "Almoço" },
-  lanche_tarde: { percentage: 0.15, label: "Lanche da Tarde" },
-  jantar: { percentage: 0.25, label: "Jantar" },
-  ceia: { percentage: 0.05, label: "Ceia" },
+  breakfast: { percentage: 0.20, label: "Café da Manhã" },
+  morning_snack: { percentage: 0.10, label: "Lanche da Manhã" },
+  lunch: { percentage: 0.30, label: "Almoço" },
+  afternoon_snack: { percentage: 0.15, label: "Lanche da Tarde" },
+  dinner: { percentage: 0.25, label: "Jantar" },
+  supper: { percentage: 0.05, label: "Ceia" },
 };
 
 // Alternative 4-meal distribution (no morning/evening snacks)
-// IMPORTANTE: deve conter TODAS as refeições possíveis para que o filtro funcione
+// IMPORTANT: must contain ALL possible meals for the filter to work
 const MEAL_PERCENTAGES_4: Record<string, { percentage: number; label: string }> = {
-  cafe_manha: { percentage: 0.25, label: "Café da Manhã" },
-  lanche_manha: { percentage: 0.10, label: "Lanche da Manhã" },
-  almoco: { percentage: 0.35, label: "Almoço" },
-  lanche_tarde: { percentage: 0.15, label: "Lanche da Tarde" },
-  jantar: { percentage: 0.25, label: "Jantar" },
-  ceia: { percentage: 0.10, label: "Ceia" },
+  breakfast: { percentage: 0.25, label: "Café da Manhã" },
+  morning_snack: { percentage: 0.10, label: "Lanche da Manhã" },
+  lunch: { percentage: 0.35, label: "Almoço" },
+  afternoon_snack: { percentage: 0.15, label: "Lanche da Tarde" },
+  dinner: { percentage: 0.25, label: "Jantar" },
+  supper: { percentage: 0.10, label: "Ceia" },
 };
 
 // ============================================

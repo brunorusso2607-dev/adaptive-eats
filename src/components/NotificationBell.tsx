@@ -44,9 +44,10 @@ export function NotificationBell({ onOpenSettings }: NotificationBellProps) {
   // Mark all as read and clear app badge when popover opens
   useEffect(() => {
     if (open && unreadCount > 0) {
+      console.log("[NotificationBell] Popover opened, marking all as read and clearing badge");
       markAllAsRead();
     }
-  }, [open]);
+  }, [open, unreadCount, markAllAsRead]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>

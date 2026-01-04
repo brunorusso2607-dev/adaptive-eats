@@ -60,7 +60,7 @@ const buildSystemPrompt = (
   const excludedIngredients = userProfile?.excluded_ingredients || [];
   const userName = userProfile?.first_name || "";
   const country = userProfile?.country || "BR";
-  const enabledMeals = userProfile?.enabled_meals || ["cafe_manha", "almoco", "jantar"];
+  const enabledMeals = userProfile?.enabled_meals || ["breakfast", "lunch", "dinner"];
   const goal = userProfile?.goal || "maintain";
   
   // Normalize intolerances for display

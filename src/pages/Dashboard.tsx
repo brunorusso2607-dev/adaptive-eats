@@ -53,6 +53,14 @@ import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { useAutoSkipNotifications } from "@/hooks/useAutoSkipNotifications";
 
+// Helper function to convert database goal to UI mode
+const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
+  if (goal === "lose_weight") return "lose";
+  if (goal === "gain_weight") return "gain";
+  if (goal === "maintain") return "maintain";
+  return null;
+};
+
 type Recipe = {
   name: string;
   description: string;
@@ -220,13 +228,6 @@ export default function Dashboard() {
       });
       
       if (data?.weight_current) {
-        // Database now stores: "lose_weight" | "maintain" | "gain_weight"
-        const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
-          if (goal === "lose_weight") return "lose";
-          if (goal === "gain_weight") return "gain";
-          if (goal === "maintain") return "maintain";
-          return null;
-        };
         setWeightData({
           weight_current: data.weight_current,
           weight_goal: data.weight_goal,
@@ -263,13 +264,6 @@ export default function Dashboard() {
       setUserGoal(data.goal || "maintain");
       
       // Atualizar weightData
-      // Database now stores: "lose_weight" | "maintain" | "gain_weight"
-      const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
-        if (goal === "lose_weight") return "lose";
-        if (goal === "gain_weight") return "gain";
-        if (goal === "maintain") return "maintain";
-        return null;
-      };
       
       setWeightData({
         weight_current: data.weight_current,

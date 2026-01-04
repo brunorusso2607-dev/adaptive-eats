@@ -75,6 +75,11 @@ export function useNotifications() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) return;
 
+    console.log("[Notifications] Marking all as read and clearing app badge...");
+
+    // Clear app badge immediately for better UX
+    updateAppBadge(0);
+
     const { error } = await supabase
       .from("notifications")
       .update({ is_read: true })
@@ -86,9 +91,13 @@ export function useNotifications() {
         prev.map((n) => ({ ...n, is_read: true }))
       );
       setUnreadCount(0);
-      updateAppBadge(0);
+      console.log("[Notifications] All notifications marked as read, badge cleared");
+    } else {
+      console.error("[Notifications] Error marking as read:", error);
+      // Re-sync badge on error
+      fetchNotifications();
     }
-  }, []);
+  }, [fetchNotifications]);
 
   const deleteNotification = useCallback(async (notificationId: string) => {
     const { error } = await supabase

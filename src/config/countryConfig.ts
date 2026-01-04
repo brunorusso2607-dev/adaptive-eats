@@ -140,6 +140,46 @@ const COUNTRY_OVERRIDES: Record<string, Partial<CountryConfig>> = {
       hint: 'Sei spezifisch: "gegrillte Hähnchenbrust" statt "Hähnchen"'
     },
     portionExample: '100g'
+  },
+  AU: {
+    language: 'en',
+    locale: 'en-AU',
+    nutritionalSources: ['FSANZ', 'USDA'],
+    searchPlaceholder: {
+      text: 'Type the full food name (e.g., grilled chicken breast)',
+      hint: 'Be specific: "brown rice cooked" instead of "rice"'
+    },
+    portionExample: '100g'
+  },
+  CA: {
+    language: 'en',
+    locale: 'en-CA',
+    nutritionalSources: ['CNF', 'USDA'],
+    searchPlaceholder: {
+      text: 'Type the full food name (e.g., grilled chicken breast)',
+      hint: 'Be specific: "brown rice cooked" instead of "rice"'
+    },
+    portionExample: '100g'
+  },
+  CL: {
+    language: 'es',
+    locale: 'es-CL',
+    nutritionalSources: ['USDA', 'INTA'],
+    searchPlaceholder: {
+      text: 'Escribe el alimento completo (ej: arroz integral cocido)',
+      hint: 'Sé específico: "pechuga de pollo a la plancha" en lugar de "pollo"'
+    },
+    portionExample: '100g'
+  },
+  PE: {
+    language: 'es',
+    locale: 'es-PE',
+    nutritionalSources: ['USDA', 'CENAN'],
+    searchPlaceholder: {
+      text: 'Escribe el alimento completo (ej: arroz integral cocido)',
+      hint: 'Sé específico: "pechuga de pollo a la plancha" en lugar de "pollo"'
+    },
+    portionExample: '100g'
   }
 };
 

@@ -581,90 +581,6 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
       supper: ["warm milk", "digestive biscuits", "cheese and crackers"]
     }
   },
-  JP: {
-    name: "日本",
-    language: "ja-JP",
-    ingredientPriority: "日本で一般的に入手可能な食材を優先してください",
-    mealTypeLabels: {
-      breakfast: "朝食 (Breakfast)",
-      morning_snack: "午前のおやつ (Morning Snack)",
-      lunch: "昼食 (Lunch)",
-      afternoon_snack: "おやつ (Snack)",
-      dinner: "夕食 (Dinner)",
-      supper: "夜食 (Late Snack)"
-    },
-    mealExamples: {
-      breakfast: ["onigiri with nori", "miso soup with tofu", "tamagoyaki", "natto with rice", "japanese breakfast set"],
-      morning_snack: ["fruit", "rice crackers", "green tea"],
-      lunch: ["ramen", "donburi", "bento box", "udon", "curry rice", "tonkatsu"],
-      afternoon_snack: ["onigiri", "edamame", "mochi", "senbei", "matcha latte"],
-      dinner: ["teriyaki salmon", "tonkatsu", "sukiyaki", "sashimi", "yakitori", "tempura"],
-      supper: ["green tea", "rice ball", "fruit", "taiyaki"]
-    }
-  },
-  CN: {
-    name: "中国",
-    language: "zh-CN",
-    ingredientPriority: "优先使用中国常见的食材",
-    mealTypeLabels: {
-      breakfast: "早餐 (Breakfast)",
-      morning_snack: "上午点心 (Morning Snack)",
-      lunch: "午餐 (Lunch)",
-      afternoon_snack: "点心 (Snack)",
-      dinner: "晚餐 (Dinner)",
-      supper: "夜宵 (Late Snack)"
-    },
-    mealExamples: {
-      breakfast: ["congee with pickles", "jianbing", "baozi", "soy milk with youtiao", "dim sum"],
-      morning_snack: ["fruit", "tea", "light pastry"],
-      lunch: ["kung pao chicken", "mapo tofu", "sweet and sour pork", "fried rice", "dumplings"],
-      afternoon_snack: ["spring rolls", "egg tarts", "sesame balls", "steamed buns"],
-      dinner: ["hot pot", "peking duck", "twice-cooked pork", "steamed fish", "stir-fried vegetables"],
-      supper: ["chrysanthemum tea", "fruit", "light congee"]
-    }
-  },
-  KR: {
-    name: "한국",
-    language: "ko-KR",
-    ingredientPriority: "한국에서 쉽게 구할 수 있는 재료를 우선시하세요",
-    mealTypeLabels: {
-      breakfast: "아침 (Breakfast)",
-      morning_snack: "오전 간식 (Morning Snack)",
-      lunch: "점심 (Lunch)",
-      afternoon_snack: "간식 (Snack)",
-      dinner: "저녁 (Dinner)",
-      supper: "야식 (Late Snack)"
-    },
-    mealExamples: {
-      breakfast: ["korean breakfast with rice and soup", "gimbap", "gyeran-jjim", "juk (rice porridge)"],
-      morning_snack: ["fruit", "rice cake", "barley tea"],
-      lunch: ["bibimbap", "bulgogi", "kimchi jjigae", "samgyeopsal", "japchae"],
-      afternoon_snack: ["tteokbokki", "hotteok", "kimbap", "bungeoppang"],
-      dinner: ["samgyetang", "galbi", "doenjang jjigae", "jeyuk bokkeum"],
-      supper: ["barley tea", "fruit", "rice cakes"]
-    }
-  },
-  IN: {
-    name: "India",
-    language: "en-IN",
-    ingredientPriority: "Prioritize ingredients commonly available in India",
-    mealTypeLabels: {
-      breakfast: "Breakfast",
-      morning_snack: "Mid-Morning Snack",
-      lunch: "Lunch",
-      afternoon_snack: "Evening Snacks",
-      dinner: "Dinner",
-      supper: "Light Dinner"
-    },
-    mealExamples: {
-      breakfast: ["idli with sambar", "dosa with chutney", "poha", "paratha with curd", "upma", "aloo puri"],
-      morning_snack: ["fruit", "masala chai", "biscuits"],
-      lunch: ["dal tadka with rice", "chicken curry", "paneer butter masala", "biryani", "roti with sabzi"],
-      afternoon_snack: ["samosa", "pakora", "chaat", "vada pav", "masala chai with biscuits"],
-      dinner: ["palak paneer", "chicken tikka", "dal makhani", "khichdi", "vegetable korma"],
-      supper: ["warm milk with turmeric", "fruit", "light khichdi"]
-    }
-  },
   AU: {
     name: "Australia",
     language: "en-AU",
@@ -707,27 +623,6 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
       supper: ["chamomile tea", "fruit", "cheese"]
     }
   },
-  AE: {
-    name: "الإمارات",
-    language: "ar-AE",
-    ingredientPriority: "Prioritize ingredients common in Middle Eastern and Emirati cuisine",
-    mealTypeLabels: {
-      breakfast: "فطور (Breakfast)",
-      morning_snack: "سناك الصباح (Morning Snack)",
-      lunch: "غداء (Lunch)",
-      afternoon_snack: "سناك (Snack)",
-      dinner: "عشاء (Dinner)",
-      supper: "وجبة خفيفة (Light Meal)"
-    },
-    mealExamples: {
-      breakfast: ["shakshuka", "foul medames", "labneh with pita", "manakish", "date smoothie"],
-      morning_snack: ["dates", "arabic coffee", "nuts"],
-      lunch: ["chicken machboos", "lamb ouzi", "grilled kebab", "biryani", "harees"],
-      afternoon_snack: ["hummus with pita", "falafel", "dates", "arabic coffee with sweets"],
-      dinner: ["grilled fish", "shawarma", "stuffed vine leaves", "fattoush salad"],
-      supper: ["warm milk with honey", "dates", "light soup"]
-    }
-  }
 };
 
 // ============================================

@@ -1,13 +1,13 @@
 // ============================================
-// NUTRITIONAL STRATEGIES - CONFIGURAÇÃO DINÂMICA
+// NUTRITIONAL STRATEGIES - DYNAMIC CONFIGURATION
 // ============================================
-// Este arquivo gerencia as estratégias nutricionais do banco de dados
-// Substitui a lógica hardcoded de goals por configurações dinâmicas
+// This file manages the nutritional strategies from the database
+// Replaces hardcoded goal logic with dynamic configurations
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 // ============================================
-// TIPOS
+// TYPES
 // ============================================
 
 export interface NutritionalStrategy {
@@ -15,11 +15,11 @@ export interface NutritionalStrategy {
   key: string;
   label: string;
   description: string | null;
-  calorie_modifier: number | null; // -500, 0, +400, etc. NULL para dieta flexível
-  protein_per_kg: number | null; // 1.6, 2.0, 2.2, etc. NULL para dieta flexível
-  carb_ratio: number | null; // 0.45 = 45%. NULL para dieta flexível
-  fat_ratio: number | null; // 0.30 = 30%. NULL para dieta flexível
-  is_flexible: boolean; // se true, usuário define metas manualmente
+  calorie_modifier: number | null; // -500, 0, +400, etc. NULL for flexible diet
+  protein_per_kg: number | null; // 1.6, 2.0, 2.2, etc. NULL for flexible diet
+  carb_ratio: number | null; // 0.45 = 45%. NULL for flexible diet
+  fat_ratio: number | null; // 0.30 = 30%. NULL for flexible diet
+  is_flexible: boolean; // if true, user defines goals manually
   icon: string | null;
   sort_order: number;
   is_active: boolean;
@@ -36,19 +36,23 @@ export interface StrategyContext {
 }
 
 // ============================================
-// MAPEAMENTO DE FALLBACK (para usuários sem strategy_id)
+// FALLBACK MAPPING (for users without strategy_id)
 // ============================================
 
 const GOAL_TO_STRATEGY_KEY: Record<string, string> = {
-  emagrecer: "emagrecer",
-  manter: "manter",
-  ganhar_peso: "ganhar_peso",
+  lose_weight: "weight_loss",
+  maintain: "maintenance",
+  gain_weight: "weight_gain",
+  // Legacy fallbacks (Portuguese keys - for migration compatibility)
+  emagrecer: "weight_loss",
+  manter: "maintenance",
+  ganhar_peso: "weight_gain",
 };
 
-// Valores padrão por goal (fallback se não conseguir carregar do banco)
+// Default values per goal (fallback if unable to load from database)
 const DEFAULT_STRATEGY_CONFIG: Record<string, Partial<NutritionalStrategy>> = {
-  emagrecer: {
-    key: "emagrecer",
+  weight_loss: {
+    key: "weight_loss",
     calorie_modifier: -500,
     protein_per_kg: 1.8,
     carb_ratio: 0.45,
@@ -63,8 +67,8 @@ const DEFAULT_STRATEGY_CONFIG: Record<string, Partial<NutritionalStrategy>> = {
     fat_ratio: 0.30,
     is_flexible: false,
   },
-  manter: {
-    key: "manter",
+  maintenance: {
+    key: "maintenance",
     calorie_modifier: 0,
     protein_per_kg: 1.6,
     carb_ratio: 0.50,
@@ -79,16 +83,16 @@ const DEFAULT_STRATEGY_CONFIG: Record<string, Partial<NutritionalStrategy>> = {
     fat_ratio: 0.30,
     is_flexible: false,
   },
-  ganhar_peso: {
-    key: "ganhar_peso",
+  weight_gain: {
+    key: "weight_gain",
     calorie_modifier: 400,
     protein_per_kg: 2.0,
     carb_ratio: 0.50,
     fat_ratio: 0.25,
     is_flexible: false,
   },
-  dieta_flexivel: {
-    key: "dieta_flexivel",
+  flexible_diet: {
+    key: "flexible_diet",
     calorie_modifier: null,
     protein_per_kg: null,
     carb_ratio: null,
@@ -98,11 +102,11 @@ const DEFAULT_STRATEGY_CONFIG: Record<string, Partial<NutritionalStrategy>> = {
 };
 
 // ============================================
-// FUNÇÕES DE CARREGAMENTO
+// LOADING FUNCTIONS
 // ============================================
 
 /**
- * Carrega uma estratégia nutricional do banco de dados por ID
+ * Loads a nutritional strategy from the database by ID
  */
 export async function getStrategyById(strategyId: string): Promise<NutritionalStrategy | null> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -131,7 +135,7 @@ export async function getStrategyById(strategyId: string): Promise<NutritionalSt
 }
 
 /**
- * Carrega uma estratégia nutricional do banco de dados por key
+ * Loads a nutritional strategy from the database by key
  */
 export async function getStrategyByKey(key: string): Promise<NutritionalStrategy | null> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -160,7 +164,7 @@ export async function getStrategyByKey(key: string): Promise<NutritionalStrategy
 }
 
 /**
- * Carrega todas as estratégias nutricionais ativas
+ * Loads all active nutritional strategies
  */
 export async function getAllActiveStrategies(): Promise<NutritionalStrategy[]> {
   const supabaseUrl = Deno.env.get("SUPABASE_URL");
@@ -188,7 +192,7 @@ export async function getAllActiveStrategies(): Promise<NutritionalStrategy[]> {
 }
 
 // ============================================
-// FUNÇÃO PRINCIPAL: OBTER CONTEXTO DA ESTRATÉGIA
+// MAIN FUNCTION: GET STRATEGY CONTEXT
 // ============================================
 
 interface UserProfileForStrategy {
@@ -199,31 +203,31 @@ interface UserProfileForStrategy {
 }
 
 /**
- * Obtém o contexto completo da estratégia nutricional para um perfil de usuário.
+ * Gets the complete nutritional strategy context for a user profile.
  * 
- * Prioridade:
- * 1. Se profile.strategy_id existe, carrega a estratégia do banco
- * 2. Se não, usa profile.goal para mapear para uma estratégia
- * 3. Se falhar, usa valores padrão (manter)
+ * Priority:
+ * 1. If profile.strategy_id exists, load strategy from database
+ * 2. If not, use profile.goal to map to a strategy
+ * 3. If fails, use default values (maintenance)
  */
 export async function getStrategyContext(profile: UserProfileForStrategy): Promise<StrategyContext> {
   let strategy: NutritionalStrategy | null = null;
 
-  // Tentar carregar por strategy_id primeiro
+  // Try to load by strategy_id first
   if (profile.strategy_id) {
     strategy = await getStrategyById(profile.strategy_id);
   }
 
-  // Fallback: usar goal para encontrar a estratégia
+  // Fallback: use goal to find strategy
   if (!strategy && profile.goal) {
     const strategyKey = GOAL_TO_STRATEGY_KEY[profile.goal] || profile.goal;
     strategy = await getStrategyByKey(strategyKey);
   }
 
-  // Se ainda não encontrou, usar fallback hardcoded
+  // If still not found, use hardcoded fallback
   if (!strategy) {
-    const fallbackKey = profile.goal || "manter";
-    const fallbackConfig = DEFAULT_STRATEGY_CONFIG[fallbackKey] || DEFAULT_STRATEGY_CONFIG["manter"];
+    const fallbackKey = profile.goal ? (GOAL_TO_STRATEGY_KEY[profile.goal] || "maintenance") : "maintenance";
+    const fallbackConfig = DEFAULT_STRATEGY_CONFIG[fallbackKey] || DEFAULT_STRATEGY_CONFIG["maintenance"];
     
     return {
       strategy: null,
@@ -258,7 +262,7 @@ export async function getStrategyContext(profile: UserProfileForStrategy): Promi
 }
 
 /**
- * Calcula multiplicador de intensidade baseado na diferença de peso
+ * Calculates intensity multiplier based on weight difference
  */
 function calculateIntensityMultiplier(
   strategyKey: string,
@@ -266,38 +270,38 @@ function calculateIntensityMultiplier(
   weightGoal: number | null | undefined
 ): number {
   if (!weightCurrent || !weightGoal) {
-    return 1.0; // intensidade padrão
+    return 1.0; // default intensity
   }
 
   const difference = Math.abs(weightCurrent - weightGoal);
 
-  // Estratégias de déficit (emagrecer, cutting)
-  if (strategyKey === "emagrecer" || strategyKey === "cutting") {
-    if (difference <= 5) return 0.6; // light: -300 ao invés de -500
-    if (difference <= 15) return 1.0; // moderate: valor padrão
-    return 1.4; // aggressive: -700 ao invés de -500
+  // Deficit strategies (weight_loss, cutting)
+  if (strategyKey === "weight_loss" || strategyKey === "cutting") {
+    if (difference <= 5) return 0.6; // light: -300 instead of -500
+    if (difference <= 15) return 1.0; // moderate: default value
+    return 1.4; // aggressive: -700 instead of -500
   }
 
-  // Estratégias de superávit (ganhar_peso, bulk)
-  if (strategyKey === "ganhar_peso") {
-    if (difference <= 5) return 0.625; // light: +250 ao invés de +400
-    if (difference <= 10) return 1.0; // moderate: valor padrão
-    return 1.5; // aggressive: +600 ao invés de +400
+  // Surplus strategies (weight_gain, bulk)
+  if (strategyKey === "weight_gain") {
+    if (difference <= 5) return 0.625; // light: +250 instead of +400
+    if (difference <= 10) return 1.0; // moderate: default value
+    return 1.5; // aggressive: +600 instead of +400
   }
 
-  return 1.0; // manter, fitness, dieta_flexivel
+  return 1.0; // maintenance, fitness, flexible_diet
 }
 
 /**
- * Determina o estilo de receita baseado na key da estratégia
+ * Determines recipe style based on strategy key
  */
 function determineRecipeStyle(strategyKey: string): "fitness" | "regular" | "high_calorie" {
   switch (strategyKey) {
-    case "emagrecer":
+    case "weight_loss":
     case "cutting":
     case "fitness":
       return "fitness";
-    case "ganhar_peso":
+    case "weight_gain":
       return "high_calorie";
     default:
       return "regular";
@@ -305,99 +309,99 @@ function determineRecipeStyle(strategyKey: string): "fitness" | "regular" | "hig
 }
 
 /**
- * Gera instruções para o prompt de IA baseado na estratégia
+ * Generates instructions for AI prompt based on strategy
  */
 export function buildStrategyInstructions(context: StrategyContext, weightDifference: number): string {
   if (!context.strategy) {
     return `
-🎯 OBJETIVO: ALIMENTAÇÃO EQUILIBRADA
-- Receitas balanceadas e nutritivas
-- Proporção padrão de macronutrientes`;
+🎯 GOAL: BALANCED NUTRITION
+- Balanced and nutritious recipes
+- Standard macronutrient ratio`;
   }
 
   const strategy = context.strategy;
 
   if (strategy.is_flexible) {
     return `
-🎯 OBJETIVO: DIETA FLEXÍVEL
-- Usuário define suas próprias metas calóricas
-- Respeitar proporções de macronutrientes definidas pelo usuário
-- Flexibilidade nas escolhas alimentares`;
+🎯 GOAL: FLEXIBLE DIET
+- User defines their own caloric goals
+- Respect macronutrient ratios defined by user
+- Flexibility in food choices`;
   }
 
   const calorieText = context.calorieAdjustment < 0 
-    ? `Déficit calórico: ${Math.abs(context.calorieAdjustment)} kcal/dia`
+    ? `Caloric deficit: ${Math.abs(context.calorieAdjustment)} kcal/day`
     : context.calorieAdjustment > 0 
-      ? `Superávit calórico: +${context.calorieAdjustment} kcal/dia`
-      : `Calorias equilibradas para manutenção`;
+      ? `Caloric surplus: +${context.calorieAdjustment} kcal/day`
+      : `Balanced calories for maintenance`;
 
   const macroText = `
-- Proteína: ${context.proteinMultiplier}g por kg de peso corporal
-- Carboidratos: ${Math.round(context.carbRatio * 100)}% das calorias
-- Gorduras: ${Math.round(context.fatRatio * 100)}% das calorias`;
+- Protein: ${context.proteinMultiplier}g per kg of body weight
+- Carbohydrates: ${Math.round(context.carbRatio * 100)}% of calories
+- Fats: ${Math.round(context.fatRatio * 100)}% of calories`;
 
   let styleInstructions = "";
   switch (strategy.key) {
-    case "emagrecer":
+    case "weight_loss":
       styleInstructions = `
-- PRIORIZAR: Vegetais volumosos, proteínas magras, fibras
-- EVITAR: Carboidratos refinados, açúcares, frituras
-- PREFERIR: Grelhados, assados, cozidos no vapor
-- ESTILO: RECEITAS FITNESS - baixa caloria, alto valor nutricional`;
+- PRIORITIZE: Voluminous vegetables, lean proteins, fiber
+- AVOID: Refined carbs, sugars, fried foods
+- PREFER: Grilled, baked, steamed
+- STYLE: FITNESS RECIPES - low calorie, high nutritional value`;
       break;
     case "cutting":
       styleInstructions = `
-- PRIORIZAR: Proteínas de alta qualidade, vegetais fibrosos
-- FOCO: Preservação de massa muscular durante déficit
-- EVITAR: Carboidratos refinados, açúcares
-- ESTILO: RECEITAS CUTTING - alta proteína, baixa caloria`;
+- PRIORITIZE: High quality proteins, fibrous vegetables
+- FOCUS: Muscle preservation during deficit
+- AVOID: Refined carbs, sugars
+- STYLE: CUTTING RECIPES - high protein, low calorie`;
       break;
     case "fitness":
       styleInstructions = `
-- PRIORIZAR: Proteínas magras, carboidratos complexos
-- FOCO: Recomposição corporal, massa magra
-- INCLUIR: Alimentos funcionais, alto valor proteico
-- ESTILO: RECEITAS FITNESS - balanceadas, ricas em proteína`;
+- PRIORITIZE: Lean proteins, complex carbs
+- FOCUS: Body recomposition, lean mass
+- INCLUDE: Functional foods, high protein value
+- STYLE: FITNESS RECIPES - balanced, protein-rich`;
       break;
-    case "ganhar_peso":
+    case "weight_gain":
       styleInstructions = `
-- PRIORIZAR: Proteínas de qualidade, carboidratos complexos, gorduras saudáveis
-- INCLUIR: Porções generosas, alimentos densos em nutrientes
-- PREFERIR: Combinações calóricas nutritivas
-- ESTILO: RECEITAS PARA GANHO DE MASSA - calóricas e nutritivas`;
+- PRIORITIZE: Quality proteins, complex carbs, healthy fats
+- INCLUDE: Generous portions, nutrient-dense foods
+- PREFER: Nutritious caloric combinations
+- STYLE: MASS GAIN RECIPES - caloric and nutritious`;
       break;
     default:
       styleInstructions = `
-- Receitas balanceadas e variadas
-- Proporção equilibrada de macronutrientes`;
+- Balanced and varied recipes
+- Balanced macronutrient ratio`;
   }
 
   return `
-${strategy.icon || "🎯"} OBJETIVO: ${strategy.label?.toUpperCase() || strategy.key.toUpperCase()}
+${strategy.icon || "🎯"} GOAL: ${strategy.label?.toUpperCase() || strategy.key.toUpperCase()}
 ${strategy.description ? `- ${strategy.description}` : ""}
-- Meta de peso: ${weightDifference > 0 ? `${weightDifference}kg` : "manutenção"}
+- Weight goal: ${weightDifference > 0 ? `${weightDifference}kg` : "maintenance"}
 - ${calorieText}
 ${macroText}
 ${styleInstructions}`;
 }
 
 /**
- * Verifica se uma estratégia é compatível com filtros de categorias
- * Mapeia novas estratégias para os goals antigos para compatibilidade
+ * Checks if a strategy is compatible with category filters
+ * Maps new strategies to old goals for compatibility
  */
 export function getCompatibleGoalKeys(strategyKey: string): string[] {
   switch (strategyKey) {
-    case "emagrecer":
+    case "weight_loss":
     case "cutting":
-      return ["emagrecer"];
-    case "manter":
+      return ["lose_weight"];
+    case "maintenance":
     case "fitness":
-      return ["manter"];
-    case "ganhar_peso":
-      return ["ganhar_peso"];
-    case "dieta_flexivel":
-      return ["emagrecer", "manter", "ganhar_peso"]; // compatível com todas
+      return ["maintain"];
+    case "weight_gain":
+      return ["gain_weight"];
+    case "flexible_diet":
+      return ["lose_weight", "maintain", "gain_weight"]; // compatible with all
     default:
-      return ["manter"];
+      return ["maintain"];
   }
 }

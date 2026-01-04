@@ -94,7 +94,8 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
     }
   }, [userId]);
 
-  // Initial load - auto-load last conversation (reloads when userId changes or chat component remounts)
+  // Initial load - always start with empty chat (like ChatGPT/Claude pattern)
+  // User can access history via the history button
   useEffect(() => {
     let isCancelled = false;
     
@@ -104,13 +105,13 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
         return;
       }
       
-      // Reset state for fresh load
+      // Reset state for fresh load - ALWAYS start with empty chat
       setConversationId(null);
       setConversations([]);
       setIsLoadingHistory(true);
 
       try {
-        // Fetch conversations ordered by updated_at DESC (most recent first)
+        // Fetch conversations for history list only (don't auto-load any)
         const { data, error } = await supabase
           .from("chat_conversations")
           .select("*")
@@ -126,44 +127,11 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
         );
         
         setConversations(sortedConversations);
-
-        // Auto-load the MOST RECENT conversation (first in the list = most recently updated)
-        if (sortedConversations.length > 0) {
-          const mostRecentConv = sortedConversations[0];
-          
-          console.log("[ChatMemory] Loading most recent conversation:", mostRecentConv.id, "updated_at:", mostRecentConv.updated_at, "title:", mostRecentConv.title);
-          
-          const { data: messagesData, error: messagesError } = await supabase
-            .from("chat_messages")
-            .select("*")
-            .eq("conversation_id", mostRecentConv.id)
-            .order("created_at", { ascending: true });
-
-          if (isCancelled) return;
-          
-          // Set conversation ID FIRST to establish context
-          setConversationId(mostRecentConv.id);
-
-          if (!messagesError && messagesData && messagesData.length > 0) {
-            const messages = messagesData.map(msg => ({
-              id: msg.id,
-              role: msg.role as "user" | "assistant",
-              content: msg.content,
-              timestamp: new Date(msg.created_at),
-            }));
-            
-            console.log("[ChatMemory] Loaded", messages.length, "messages from conversation:", mostRecentConv.title);
-            
-            // Use setTimeout to ensure React has processed state updates
-            setTimeout(() => {
-              if (!isCancelled && onMessagesLoadedRef.current) {
-                onMessagesLoadedRef.current(messages);
-              }
-            }, 0);
-          } else {
-            console.log("[ChatMemory] No messages in most recent conversation");
-          }
-        }
+        console.log("[ChatMemory] Initialized with empty chat. User has", sortedConversations.length, "conversations in history.");
+        
+        // Don't auto-load any conversation - user starts fresh every time
+        // They can access old conversations via the history button (🕐)
+        
       } catch (error) {
         console.error("Error initializing chat:", error);
       } finally {

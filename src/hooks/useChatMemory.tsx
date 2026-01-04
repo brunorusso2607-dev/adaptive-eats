@@ -95,15 +95,20 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
     }
   }, [userId]);
 
-  // Initial load - auto-load last conversation (reloads when userId changes)
+  // Initial load - auto-load last conversation (reloads when userId changes or chat component remounts)
   useEffect(() => {
     const initializeChat = async () => {
-      if (!userId || userId === lastInitUserId) return;
+      if (!userId) return;
       
-      setLastInitUserId(userId);
+      // Always reinitialize when userId changes
+      if (userId !== lastInitUserId) {
+        setLastInitUserId(userId);
+      }
+      
       setIsLoadingHistory(true);
 
       try {
+        // Fetch conversations ordered by updated_at DESC (most recent first)
         const { data, error } = await supabase
           .from("chat_conversations")
           .select("*")
@@ -114,15 +119,18 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
         if (error) throw error;
         setConversations(data || []);
 
-        // Auto-load last conversation (most recent by updated_at)
+        // Auto-load the MOST RECENT conversation (first in the list = most recently updated)
         if (data && data.length > 0) {
-          const lastConv = data[0];
-          setConversationId(lastConv.id);
+          const mostRecentConv = data[0];
+          
+          console.log("[ChatMemory] Loading most recent conversation:", mostRecentConv.id, "updated_at:", mostRecentConv.updated_at);
+          
+          setConversationId(mostRecentConv.id);
           
           const { data: messagesData, error: messagesError } = await supabase
             .from("chat_messages")
             .select("*")
-            .eq("conversation_id", lastConv.id)
+            .eq("conversation_id", mostRecentConv.id)
             .order("created_at", { ascending: true });
 
           if (!messagesError && messagesData && messagesData.length > 0) {
@@ -132,6 +140,8 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
               content: msg.content,
               timestamp: new Date(msg.created_at),
             }));
+            
+            console.log("[ChatMemory] Loaded", messages.length, "messages from most recent conversation");
             
             if (onMessagesLoadedRef.current) {
               onMessagesLoadedRef.current(messages);
@@ -146,7 +156,7 @@ export function useChatMemory(onMessagesLoaded?: (messages: ChatMessage[]) => vo
     };
 
     initializeChat();
-  }, [userId, lastInitUserId]);
+  }, [userId]); // Removed lastInitUserId from dependencies to prevent blocking reinit
 
   // Create a new conversation
   const createConversation = useCallback(async (firstMessage?: string): Promise<string | null> => {

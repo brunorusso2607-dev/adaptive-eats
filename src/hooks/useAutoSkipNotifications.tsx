@@ -74,8 +74,12 @@ export function useAutoSkipNotifications() {
     markAsNotified();
   }, [pendingNotifications, markAsNotified]);
 
+  // Defer initial fetch to avoid blocking first render
   useEffect(() => {
-    fetchPendingNotifications();
+    const timer = setTimeout(() => {
+      fetchPendingNotifications();
+    }, 2000); // 2s delay for initial load
+    return () => clearTimeout(timer);
   }, [fetchPendingNotifications]);
 
   // Auto-show toast when there are pending notifications

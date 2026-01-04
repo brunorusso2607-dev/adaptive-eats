@@ -436,8 +436,12 @@ export function useGamification() {
     }
   }, [checkAndUnlockAchievements]);
 
+  // Defer initial load to avoid blocking first render
   useEffect(() => {
-    loadGamificationData();
+    const timer = setTimeout(() => {
+      loadGamificationData();
+    }, 1000); // 1s delay for initial load
+    return () => clearTimeout(timer);
   }, [loadGamificationData]);
 
   const refresh = useCallback(() => {

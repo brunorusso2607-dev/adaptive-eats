@@ -130,8 +130,12 @@ export function usePendingSymptomFeedback() {
     return true;
   };
 
+  // Defer initial fetch to avoid blocking first render
   useEffect(() => {
-    fetchPendingMeals();
+    const timer = setTimeout(() => {
+      fetchPendingMeals();
+    }, 2500); // 2.5s delay for initial load
+    return () => clearTimeout(timer);
   }, [fetchPendingMeals]);
 
   return {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, lazy, Suspense, useCallback } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -9,30 +9,33 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import RecipeResult from "@/components/RecipeResult";
-import RecipeList from "@/components/RecipeList";
-import WeightGoalSetup, { calculateMacros } from "@/components/WeightGoalSetup";
+
+// Lazy loaded components - carregados apenas quando necessários
+const RecipeResult = lazy(() => import("@/components/RecipeResult"));
+const RecipeList = lazy(() => import("@/components/RecipeList"));
+const WeightGoalSetup = lazy(() => import("@/components/WeightGoalSetup").then(m => ({ default: m.default })));
+const MealPlanSection = lazy(() => import("@/components/MealPlanSection"));
+const MealPlanGenerator = lazy(() => import("@/components/MealPlanGenerator"));
+const ProfilePage = lazy(() => import("@/components/ProfilePage"));
+const FoodPhotoAnalyzer = lazy(() => import("@/components/FoodPhotoAnalyzer"));
+const PhotoModeSelector = lazy(() => import("@/components/PhotoModeSelector"));
+const MealHistoryPage = lazy(() => import("@/components/MealHistoryPage"));
+const WeightHistoryChart = lazy(() => import("@/components/WeightHistoryChart"));
+const RecipeCategorySheet = lazy(() => import("@/components/RecipeCategorySheet"));
+const FreeFormMealLogger = lazy(() => import("@/components/FreeFormMealLogger"));
+
+// Imports síncronos - componentes essenciais para o primeiro render
+import { calculateMacros } from "@/components/WeightGoalSetup";
 import WeightProgressBar from "@/components/WeightProgressBar";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import { useDailyConsumption } from "@/hooks/useDailyConsumption";
 import UserAccountMenu from "@/components/UserAccountMenu";
-import ProfilePage from "@/components/ProfilePage";
-import MealPlanSection from "@/components/MealPlanSection";
-import MealPlanGenerator from "@/components/MealPlanGenerator";
 import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
-
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
-import RecipeCategorySheet from "@/components/RecipeCategorySheet";
-import FoodPhotoAnalyzer from "@/components/FoodPhotoAnalyzer";
-import PhotoModeSelector, { type PhotoMode } from "@/components/PhotoModeSelector";
+import type { PhotoMode } from "@/components/PhotoModeSelector";
 
 import PendingMealsList from "@/components/PendingMealsList";
-import FreeFormMealLogger from "@/components/FreeFormMealLogger";
-import MealHistoryPage from "@/components/MealHistoryPage";
-
-
 import WeightUpdateModal from "@/components/WeightUpdateModal";
-import WeightHistoryChart from "@/components/WeightHistoryChart";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAdmin } from "@/hooks/useAdmin";
@@ -52,6 +55,13 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { useAutoSkipNotifications } from "@/hooks/useAutoSkipNotifications";
+
+// Componente de fallback para Suspense
+const LazyFallback = () => (
+  <div className="flex justify-center py-8">
+    <Loader2 className="w-8 h-8 animate-spin text-primary" />
+  </div>
+);
 
 // Helper function to convert database goal to UI mode
 const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
@@ -780,171 +790,179 @@ export default function Dashboard() {
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
           ) : showMealPlan ? (
-            <MealPlanSection 
-              key={mealPlanKey} 
-              onBack={() => setShowMealPlan(false)} 
-              onPlanDeleted={() => {
-                setHasMealPlan(false);
-                refetchPendingMeals();
-              }}
-            />
+            <Suspense fallback={<LazyFallback />}>
+              <MealPlanSection 
+                key={mealPlanKey} 
+                onBack={() => setShowMealPlan(false)} 
+                onPlanDeleted={() => {
+                  setHasMealPlan(false);
+                  refetchPendingMeals();
+                }}
+              />
+            </Suspense>
           ) : isSubscribed ? (
             showWeightLossSetup ? (
-              <WeightGoalSetup
-                onClose={() => setShowWeightLossSetup(false)}
-                onSave={(data) => {
-                  setWeightData({
-                    weight_current: data.weight_current,
-                    weight_goal: data.weight_goal,
-                    height: data.height,
-                    age: data.age,
-                    sex: data.sex,
-                    activity_level: data.activity_level,
-                    goal_mode: data.calculations.mode,
-                    strategy_id: data.strategy_id,
-                  });
-                  // Goal is set based on user selection
-                  if (data.calculations.mode === "lose") {
-                    setUserGoal("lose_weight");
-                  } else if (data.calculations.mode === "gain") {
-                    setUserGoal("gain_weight");
-                  } else {
-                    setUserGoal("maintain");
-                  }
-                  setShowWeightLossSetup(false);
-                }}
-                onOpenMealPlanGenerator={(data) => {
-                  // Salvar dados de peso e abrir o MealPlanGenerator
-                  setWeightData({
-                    weight_current: data.weight_current,
-                    weight_goal: data.weight_goal,
-                    height: data.height,
-                    age: data.age,
-                    sex: data.sex,
-                    activity_level: data.activity_level,
-                    goal_mode: data.calculations.mode,
-                    strategy_id: data.strategy_id,
-                  });
-                  if (data.calculations.mode === "lose") {
-                    setUserGoal("lose_weight");
-                  } else if (data.calculations.mode === "gain") {
-                    setUserGoal("gain_weight");
-                  } else {
-                    setUserGoal("maintain");
-                  }
-                  setShowWeightLossSetup(false);
-                  setShowMealPlanGenerator(true);
-                }}
-                onGeneratePlan={(data) => {
-                  setWeightData({
-                    weight_current: data.weight_current,
-                    weight_goal: data.weight_goal,
-                    height: data.height,
-                    age: data.age,
-                    sex: data.sex,
-                    activity_level: data.activity_level,
-                    goal_mode: data.calculations.mode,
-                    strategy_id: data.strategy_id,
-                  });
-                  // Goal is set based on user selection
-                  if (data.calculations.mode === "lose") {
-                    setUserGoal("lose_weight");
-                  } else if (data.calculations.mode === "gain") {
-                    setUserGoal("gain_weight");
-                  } else {
-                    setUserGoal("maintain");
-                  }
-                  setShowWeightLossSetup(false);
-                  // Update hasMealPlan and navigate to meal plan section
-                  setHasMealPlan(true);
-                  setMealPlanKey(prev => prev + 1); // Força remontagem do MealPlanSection
-                  setShowMealPlan(true);
-                  // Navigate to "Plano" tab on mobile
-                  setMobileActiveTab("meal-plan");
-                }}
-                initialData={weightData || undefined}
-                hasExistingPlan={hasMealPlan || hasActiveMealPlan}
-                onPlanRegenerated={() => {
-                  // Força refresh dos dados do Dashboard após regeneração
-                  refetchPendingMeals();
-                  // Incrementa key para forçar remontagem do MealPlanSection
-                  setMealPlanKey(prev => prev + 1);
-                }}
-                onRegenerateStart={() => setIsRegeneratingPlan(true)}
-                onRegenerateEnd={() => setIsRegeneratingPlan(false)}
-              />
-            ) : showMealPlanGenerator ? (
-              <MealPlanGenerator
-                onClose={() => setShowMealPlanGenerator(false)}
-                onPlanGenerated={() => {
-                  setShowMealPlanGenerator(false);
-                  setHasMealPlan(true);
-                  setMealPlanKey(prev => prev + 1);
-                  refetchPendingMeals();
-                  setShowMealPlan(true);
-                  setMobileActiveTab("meal-plan");
-                }}
-              />
-            ) : showRecipe && generatedRecipe ? (
-              <RecipeResult
-                recipe={generatedRecipe}
-                onBack={() => setShowRecipe(false)}
-                onGenerateAnother={() => generateRecipe(
-                  generatedRecipe.input_ingredients ? "com_ingredientes" : "automatica",
-                  true, // Use last ingredients when generating another
-                  lastUsedCategoryContext || undefined // Preserve the category context
-                )}
-                isGenerating={isGeneratingRecipe}
-              />
-            ) : showList ? (
-              <RecipeList
-                type={showList}
-                onBack={() => setShowList(null)}
-                onSelectRecipe={(recipe) => {
-                  setGeneratedRecipe(recipe);
-                  setShowRecipe(true);
-                  setShowList(null);
-                }}
-              />
-            ) : showFoodAnalyzer ? (
-              // Check if we have a captured image to pass to analyzer
-              selectedPhotoMode ? (
-                <FoodPhotoAnalyzer 
-                  initialMode={selectedPhotoMode} 
-                  hideModeTabs={true}
-                  initialImage={capturedImageBase64 || undefined}
-                />
-              ) : (
-                <PhotoModeSelector 
-                  onSelectMode={(mode, imageBase64) => {
-                    if (imageBase64) {
-                      // Image captured directly from camera input
-                      setCapturedImageBase64(imageBase64);
-                      setSelectedPhotoMode(mode);
+              <Suspense fallback={<LazyFallback />}>
+                <WeightGoalSetup
+                  onClose={() => setShowWeightLossSetup(false)}
+                  onSave={(data) => {
+                    setWeightData({
+                      weight_current: data.weight_current,
+                      weight_goal: data.weight_goal,
+                      height: data.height,
+                      age: data.age,
+                      sex: data.sex,
+                      activity_level: data.activity_level,
+                      goal_mode: data.calculations.mode,
+                      strategy_id: data.strategy_id,
+                    });
+                    if (data.calculations.mode === "lose") {
+                      setUserGoal("lose_weight");
+                    } else if (data.calculations.mode === "gain") {
+                      setUserGoal("gain_weight");
                     } else {
-                      // Fridge mode goes directly to FridgeScanner component
-                      setSelectedPhotoMode(mode);
+                      setUserGoal("maintain");
                     }
+                    setShowWeightLossSetup(false);
+                  }}
+                  onOpenMealPlanGenerator={(data) => {
+                    setWeightData({
+                      weight_current: data.weight_current,
+                      weight_goal: data.weight_goal,
+                      height: data.height,
+                      age: data.age,
+                      sex: data.sex,
+                      activity_level: data.activity_level,
+                      goal_mode: data.calculations.mode,
+                      strategy_id: data.strategy_id,
+                    });
+                    if (data.calculations.mode === "lose") {
+                      setUserGoal("lose_weight");
+                    } else if (data.calculations.mode === "gain") {
+                      setUserGoal("gain_weight");
+                    } else {
+                      setUserGoal("maintain");
+                    }
+                    setShowWeightLossSetup(false);
+                    setShowMealPlanGenerator(true);
+                  }}
+                  onGeneratePlan={(data) => {
+                    setWeightData({
+                      weight_current: data.weight_current,
+                      weight_goal: data.weight_goal,
+                      height: data.height,
+                      age: data.age,
+                      sex: data.sex,
+                      activity_level: data.activity_level,
+                      goal_mode: data.calculations.mode,
+                      strategy_id: data.strategy_id,
+                    });
+                    if (data.calculations.mode === "lose") {
+                      setUserGoal("lose_weight");
+                    } else if (data.calculations.mode === "gain") {
+                      setUserGoal("gain_weight");
+                    } else {
+                      setUserGoal("maintain");
+                    }
+                    setShowWeightLossSetup(false);
+                    setHasMealPlan(true);
+                    setMealPlanKey(prev => prev + 1);
+                    setShowMealPlan(true);
+                    setMobileActiveTab("meal-plan");
+                  }}
+                  initialData={weightData || undefined}
+                  hasExistingPlan={hasMealPlan || hasActiveMealPlan}
+                  onPlanRegenerated={() => {
+                    refetchPendingMeals();
+                    setMealPlanKey(prev => prev + 1);
+                  }}
+                  onRegenerateStart={() => setIsRegeneratingPlan(true)}
+                  onRegenerateEnd={() => setIsRegeneratingPlan(false)}
+                />
+              </Suspense>
+            ) : showMealPlanGenerator ? (
+              <Suspense fallback={<LazyFallback />}>
+                <MealPlanGenerator
+                  onClose={() => setShowMealPlanGenerator(false)}
+                  onPlanGenerated={() => {
+                    setShowMealPlanGenerator(false);
+                    setHasMealPlan(true);
+                    setMealPlanKey(prev => prev + 1);
+                    refetchPendingMeals();
+                    setShowMealPlan(true);
+                    setMobileActiveTab("meal-plan");
                   }}
                 />
-              )
+              </Suspense>
+            ) : showRecipe && generatedRecipe ? (
+              <Suspense fallback={<LazyFallback />}>
+                <RecipeResult
+                  recipe={generatedRecipe}
+                  onBack={() => setShowRecipe(false)}
+                  onGenerateAnother={() => generateRecipe(
+                    generatedRecipe.input_ingredients ? "com_ingredientes" : "automatica",
+                    true,
+                    lastUsedCategoryContext || undefined
+                  )}
+                  isGenerating={isGeneratingRecipe}
+                />
+              </Suspense>
+            ) : showList ? (
+              <Suspense fallback={<LazyFallback />}>
+                <RecipeList
+                  type={showList}
+                  onBack={() => setShowList(null)}
+                  onSelectRecipe={(recipe) => {
+                    setGeneratedRecipe(recipe);
+                    setShowRecipe(true);
+                    setShowList(null);
+                  }}
+                />
+              </Suspense>
+            ) : showFoodAnalyzer ? (
+              <Suspense fallback={<LazyFallback />}>
+                {selectedPhotoMode ? (
+                  <FoodPhotoAnalyzer 
+                    initialMode={selectedPhotoMode} 
+                    hideModeTabs={true}
+                    initialImage={capturedImageBase64 || undefined}
+                  />
+                ) : (
+                  <PhotoModeSelector 
+                    onSelectMode={(mode, imageBase64) => {
+                      if (imageBase64) {
+                        setCapturedImageBase64(imageBase64);
+                        setSelectedPhotoMode(mode);
+                      } else {
+                        setSelectedPhotoMode(mode);
+                      }
+                    }}
+                  />
+                )}
+              </Suspense>
             ) : showWeightHistory && weightData?.weight_goal ? (
-              <WeightHistoryChart 
-                onBack={() => setShowWeightHistory(false)}
-                goalWeight={weightData.weight_goal}
-                goalMode={weightData.goal_mode}
-                currentWeight={weightData.weight_current || 0}
-              />
+              <Suspense fallback={<LazyFallback />}>
+                <WeightHistoryChart 
+                  onBack={() => setShowWeightHistory(false)}
+                  goalWeight={weightData.weight_goal}
+                  goalMode={weightData.goal_mode}
+                  currentWeight={weightData.weight_current || 0}
+                />
+              </Suspense>
             ) : showProfileSheet ? (
-              <ProfilePage
-                user={user}
-                subscription={subscription}
-                onLogout={handleLogout}
-                onBack={() => setShowProfileSheet(false)}
-                onProfileUpdated={refetchUserProfile}
-              />
+              <Suspense fallback={<LazyFallback />}>
+                <ProfilePage
+                  user={user}
+                  subscription={subscription}
+                  onLogout={handleLogout}
+                  onBack={() => setShowProfileSheet(false)}
+                  onProfileUpdated={refetchUserProfile}
+                />
+              </Suspense>
             ) : mobileActiveTab === "history" ? (
-              <MealHistoryPage onBack={() => handleMobileTabChange("home")} />
+              <Suspense fallback={<LazyFallback />}>
+                <MealHistoryPage onBack={() => handleMobileTabChange("home")} />
+              </Suspense>
             ) : (
             <>
               {/* Home Principal */}
@@ -1052,14 +1070,16 @@ export default function Dashboard() {
                 </Card>
 
                 {/* Free Form Meal Logger Sheet */}
-                <FreeFormMealLogger
-                  open={showFreeFormLogger}
-                  onOpenChange={setShowFreeFormLogger}
-                  onSuccess={() => {
-                    refetchDailyConsumption();
-                    refetchPendingMeals();
-                  }}
-                />
+                <Suspense fallback={null}>
+                  <FreeFormMealLogger
+                    open={showFreeFormLogger}
+                    onOpenChange={setShowFreeFormLogger}
+                    onSuccess={() => {
+                      refetchDailyConsumption();
+                      refetchPendingMeals();
+                    }}
+                  />
+                </Suspense>
 
                 {/* 5. Gerar Receita - Ferramenta secundária */}
                 <Card className="bg-card border border-border shadow-sm overflow-visible">
@@ -1093,16 +1113,18 @@ export default function Dashboard() {
                     </Button>
                     
                     {/* Category Sheet */}
-                    <RecipeCategorySheet
-                      open={showCategorySheet}
-                      onOpenChange={setShowCategorySheet}
-                      onSelectCategory={handleCategorySelect}
-                      onGenerateWithIngredients={(ingredientsList) => {
-                        generateRecipeWithIngredients(ingredientsList);
-                      }}
-                      isLoading={isGeneratingRecipe}
-                      userProfile={userProfile}
-                    />
+                    <Suspense fallback={null}>
+                      <RecipeCategorySheet
+                        open={showCategorySheet}
+                        onOpenChange={setShowCategorySheet}
+                        onSelectCategory={handleCategorySelect}
+                        onGenerateWithIngredients={(ingredientsList) => {
+                          generateRecipeWithIngredients(ingredientsList);
+                        }}
+                        isLoading={isGeneratingRecipe}
+                        userProfile={userProfile}
+                      />
+                    </Suspense>
                   </CardContent>
                 </Card>
 

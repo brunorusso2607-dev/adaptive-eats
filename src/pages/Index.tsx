@@ -6,6 +6,7 @@ import { ChefHat, Check, X, Crown, Star, Quote, Loader2 } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTrackingPixels } from "@/hooks/useTrackingPixels";
 
 // Landing page components
 import { PainPointHero } from "@/components/landing/PainPointHero";
@@ -75,6 +76,7 @@ const plans = {
 
 export default function Index() {
   const navigate = useNavigate();
+  const { trackEvent } = useTrackingPixels();
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   // Redirect logged-in users to dashboard
@@ -98,6 +100,17 @@ export default function Index() {
 
   const handleStartCheckout = async (plan: "essencial" | "premium") => {
     setLoadingPlan(plan);
+    
+    // Track InitiateCheckout event
+    const planDetails = plans[plan];
+    trackEvent("InitiateCheckout", {
+      value: parseFloat(planDetails.price.replace(",", ".")),
+      currency: "BRL",
+      content_name: planDetails.name,
+      content_ids: [planDetails.priceId],
+      content_type: "subscription",
+    });
+    
     try {
       const { data, error } = await supabase.functions.invoke("create-checkout", {
         body: { 

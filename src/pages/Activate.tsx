@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChefHat, Mail, Loader2, CheckCircle, Download, MoreVertical, ArrowRight, Share, PlusSquare, Copy, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { useTrackingPixels } from "@/hooks/useTrackingPixels";
 
 import iosStep1 from "@/assets/ios-step-1-share.png";
 import iosStep2 from "@/assets/ios-step-2-add-home.png";
@@ -20,6 +21,7 @@ type Step = "email" | "install";
 export default function Activate() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const { trackEvent } = useTrackingPixels();
   
   const [isLoading, setIsLoading] = useState(false);
   const [email, setEmail] = useState("");
@@ -131,6 +133,15 @@ export default function Activate() {
           throw new Error(verifyError.message);
         }
 
+        // Track Purchase/CompleteRegistration event - this is the conversion!
+        trackEvent("Purchase", {
+          value: 0, // Actual value comes from Stripe webhook if needed
+          currency: "BRL",
+          content_name: "ReceitAI Subscription",
+          content_type: "subscription",
+        });
+        trackEvent("CompleteRegistration");
+        
         toast.success("Conta ativada com sucesso!");
         setStep("install");
       } else {

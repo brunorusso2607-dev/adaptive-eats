@@ -31,15 +31,15 @@ const COUNTRY_SOURCE_PRIORITY: Record<string, string[]> = {
   'DEFAULT': ['usda', 'curated', 'TBCA', 'taco', 'BAM'],
 };
 
-// Mapeamento de país para cuisine_origin prioritário
+// Mapping of country to priority cuisine_origin
 const COUNTRY_CUISINE_PRIORITY: Record<string, string[]> = {
-  'BR': ['brasileira', 'latina'],
-  'MX': ['mexicana', 'latina'],
-  'AR': ['argentina', 'latina'],
-  'CL': ['chilena', 'latina'],
-  'CO': ['colombiana', 'latina'],
-  'PE': ['peruana', 'latina'],
-  'US': ['americana', 'international'],
+  'BR': ['brazilian', 'latin'],
+  'MX': ['mexican', 'latin'],
+  'AR': ['argentinian', 'latin'],
+  'CL': ['chilean', 'latin'],
+  'CO': ['colombian', 'latin'],
+  'PE': ['peruvian', 'latin'],
+  'US': ['american', 'international'],
   'DEFAULT': ['international'],
 };
 

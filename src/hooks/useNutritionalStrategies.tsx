@@ -49,47 +49,47 @@ export function useAllNutritionalStrategies() {
   });
 }
 
-// Mapeia goal para strategy_key para fallback
+// Maps goal to strategy_key for fallback
 // Database now stores: "lose_weight" | "maintain" | "gain_weight"
 export const GOAL_TO_STRATEGY_KEY: Record<string, string> = {
-  lose_weight: "emagrecer",
-  maintain: "manter",
-  gain_weight: "ganhar_peso",
-  // Legacy fallbacks
-  emagrecer: "emagrecer",
-  manter: "manter",
-  ganhar_peso: "ganhar_peso",
+  lose_weight: "weight_loss",
+  maintain: "maintenance",
+  gain_weight: "weight_gain",
+  // Legacy fallbacks (Portuguese keys - for migration compatibility)
+  emagrecer: "weight_loss",
+  manter: "maintenance",
+  ganhar_peso: "weight_gain",
 };
 
-// Retorna a strategy recomendada baseada no goal
+// Returns the recommended strategy based on goal
 export function getRecommendedStrategy(
   goal: string | null,
   strategies: NutritionalStrategy[]
 ): NutritionalStrategy | null {
-  if (!goal) return strategies.find(s => s.key === "manter") || null;
+  if (!goal) return strategies.find(s => s.key === "maintenance") || null;
   
   const strategyKey = GOAL_TO_STRATEGY_KEY[goal];
   return strategies.find(s => s.key === strategyKey) || null;
 }
 
-// Deriva o goal automaticamente a partir da estratégia selecionada
+// Derives goal automatically from selected strategy
 // Database stores: "lose_weight" | "maintain" | "gain_weight"
 export function deriveGoalFromStrategy(strategyKey: string): "lose_weight" | "maintain" | "gain_weight" {
   switch (strategyKey) {
-    case "emagrecer":
+    case "weight_loss":
     case "cutting":
       return "lose_weight";
-    case "ganhar_peso":
+    case "weight_gain":
       return "gain_weight";
-    case "manter":
+    case "maintenance":
     case "fitness":
-    case "dieta_flexivel":
+    case "flexible_diet":
     default:
       return "maintain";
   }
 }
 
-// Agrupa strategies por compatibilidade com goal
+// Groups strategies by goal compatibility
 export function getStrategiesForGoal(
   goal: string | null,
   strategies: NutritionalStrategy[]
@@ -98,23 +98,23 @@ export function getStrategiesForGoal(
   const others: NutritionalStrategy[] = [];
 
   strategies.forEach(strategy => {
-    // Estratégias compatíveis por goal
+    // Compatible strategies by goal
     // Database stores: "lose_weight" | "maintain" | "gain_weight"
     if (goal === "lose_weight") {
-      if (strategy.key === "emagrecer" || strategy.key === "cutting") {
+      if (strategy.key === "weight_loss" || strategy.key === "cutting") {
         recommended.push(strategy);
       } else {
         others.push(strategy);
       }
     } else if (goal === "gain_weight") {
-      if (strategy.key === "ganhar_peso" || strategy.key === "fitness") {
+      if (strategy.key === "weight_gain" || strategy.key === "fitness") {
         recommended.push(strategy);
       } else {
         others.push(strategy);
       }
     } else {
-      // maintain ou undefined
-      if (strategy.key === "manter" || strategy.key === "dieta_flexivel") {
+      // maintain or undefined
+      if (strategy.key === "maintenance" || strategy.key === "flexible_diet") {
         recommended.push(strategy);
       } else {
         others.push(strategy);

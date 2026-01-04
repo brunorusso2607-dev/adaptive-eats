@@ -1011,7 +1011,7 @@ export default function Dashboard() {
                 <SafetyStatusBadge
                   intolerances={userProfile?.intolerances || []}
                   excludedIngredients={userProfile?.excluded_ingredients || []}
-                  dietaryPreference={userProfile?.dietary_preference || "comum"}
+                  dietaryPreference={userProfile?.dietary_preference || "omnivore"}
                   isLoading={!userProfile}
                   onUpdate={refetchUserProfile}
                 />

@@ -33,6 +33,7 @@ export default function MealSubstanceBadges({
     const hasIntolerances = (userProfile.intolerances?.length ?? 0) > 0;
     const hasExcluded = (userProfile.excluded_ingredients?.length ?? 0) > 0;
     const hasDietaryRestriction = userProfile.dietary_preference && 
+      userProfile.dietary_preference !== "omnivore" &&
       userProfile.dietary_preference !== "comum";
     return hasIntolerances || hasExcluded || hasDietaryRestriction;
   }, [userProfile]);

@@ -474,20 +474,20 @@ const RESTRICTION_INGREDIENTS_MAP: Record<string, Set<string>> = {
 const isIngredientCompatible = (ingredient: string, dietaryPreference: string | null | undefined): boolean => {
   const lowerIngredient = ingredient.toLowerCase();
   
-  // Se não tem preferência ou é "comum", mostra tudo
-  if (!dietaryPreference || dietaryPreference === "comum") {
+  // Se não tem preferência ou é "omnivore", mostra tudo
+  if (!dietaryPreference || dietaryPreference === "omnivore" || dietaryPreference === "comum") {
     return true;
   }
   
   // Vegetariano: sem carnes, peixes e frutos do mar
-  if (dietaryPreference === "vegetariana") {
+  if (dietaryPreference === "vegetarian" || dietaryPreference === "vegetariana") {
     if (MEAT_INGREDIENTS.has(lowerIngredient)) return false;
     if (FISH_SEAFOOD_INGREDIENTS.has(lowerIngredient)) return false;
     return true;
   }
   
   // Vegano: sem carnes, peixes, frutos do mar, laticínios, ovos, mel e gelatina
-  if (dietaryPreference === "vegana") {
+  if (dietaryPreference === "vegan" || dietaryPreference === "vegana") {
     if (MEAT_INGREDIENTS.has(lowerIngredient)) return false;
     if (FISH_SEAFOOD_INGREDIENTS.has(lowerIngredient)) return false;
     if (DAIRY_INGREDIENTS.has(lowerIngredient)) return false;
@@ -497,8 +497,8 @@ const isIngredientCompatible = (ingredient: string, dietaryPreference: string | 
     return true;
   }
   
-  // Low carb: mostra tudo (é sobre macros, não restrições de ingredientes)
-  if (dietaryPreference === "low_carb") {
+  // Low carb/Ketogenic: mostra tudo (é sobre macros, não restrições de ingredientes)
+  if (dietaryPreference === "low_carb" || dietaryPreference === "ketogenic" || dietaryPreference === "cetogenica") {
     return true;
   }
   

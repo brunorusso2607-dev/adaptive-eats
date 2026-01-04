@@ -20,14 +20,14 @@ interface SimulatorResponse {
 
 export default function AdminPromptSimulator() {
   const [selectedFunction, setSelectedFunction] = useState<FunctionType>("generate-recipe");
-  const [inputPayload, setInputPayload] = useState<string>('{\n  "ingredients": "frango, arroz, brócolis",\n  "dietaryPreference": "comum",\n  "complexity": "equilibrada"\n}');
+  const [inputPayload, setInputPayload] = useState<string>('{\n  "ingredients": "frango, arroz, brócolis",\n  "dietaryPreference": "omnivore",\n  "complexity": "balanced"\n}');
   const [response, setResponse] = useState<SimulatorResponse | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [copied, setCopied] = useState(false);
 
   const functionOptions = [
-    { value: "generate-recipe", label: "Gerar Receita", defaultPayload: '{\n  "ingredients": "frango, arroz, brócolis",\n  "dietaryPreference": "comum",\n  "complexity": "equilibrada"\n}' },
-    { value: "generate-meal-plan", label: "Gerar Plano Alimentar", defaultPayload: '{\n  "dietaryPreference": "comum",\n  "calorieGoal": "manter",\n  "complexity": "equilibrada",\n  "intolerances": []\n}' },
+    { value: "generate-recipe", label: "Gerar Receita", defaultPayload: '{\n  "ingredients": "frango, arroz, brócolis",\n  "dietaryPreference": "omnivore",\n  "complexity": "balanced"\n}' },
+    { value: "generate-meal-plan", label: "Gerar Plano Alimentar", defaultPayload: '{\n  "dietaryPreference": "omnivore",\n  "calorieGoal": "maintain",\n  "complexity": "balanced",\n  "intolerances": []\n}' },
     { value: "analyze-food-photo", label: "Analisar Foto de Comida", defaultPayload: '{\n  "imageBase64": "BASE64_DA_IMAGEM"\n}' },
     { value: "analyze-fridge-photo", label: "Analisar Foto da Geladeira", defaultPayload: '{\n  "imageBase64": "BASE64_DA_IMAGEM"\n}' },
   ];

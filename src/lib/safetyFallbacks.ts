@@ -76,9 +76,17 @@ export const FALLBACK_INTOLERANCE_LABELS: Record<string, string> = {
 // ============================================================================
 
 export const FALLBACK_DIETARY_LABELS: Record<string, string> = {
+  // English canonical keys
+  vegan: "Vegana",
+  vegetarian: "Vegetariana",
+  low_carb: "Low Carb",
+  pescatarian: "Pescetariana",
+  ketogenic: "Cetogênica",
+  flexitarian: "Flexitariana",
+  omnivore: "Comum",
+  // Legacy Portuguese keys for compatibility
   vegana: "Vegana",
   vegetariana: "Vegetariana",
-  low_carb: "Low Carb",
   pescetariana: "Pescetariana",
   cetogenica: "Cetogênica",
   flexitariana: "Flexitariana",
@@ -87,11 +95,19 @@ export const FALLBACK_DIETARY_LABELS: Record<string, string> = {
 
 // Versão com artigo para frases (ex: "não é adequado para vegano(a)")
 export const FALLBACK_DIETARY_LABELS_WITH_ARTICLE: Record<string, string> = {
+  // English canonical keys
+  vegan: "vegano(a)",
+  vegetarian: "vegetariano(a)",
+  pescatarian: "pescetariano(a)",
+  flexitarian: "flexitariano(a)",
+  low_carb: "low carb",
+  ketogenic: "cetogênico(a)",
+  omnivore: "dieta comum",
+  // Legacy Portuguese keys for compatibility
   vegana: "vegano(a)",
   vegetariana: "vegetariano(a)",
   pescetariana: "pescetariano(a)",
   flexitariana: "flexitariano(a)",
-  low_carb: "low carb",
   cetogenica: "cetogênico(a)",
   comum: "dieta comum",
 };
@@ -101,13 +117,13 @@ export const FALLBACK_DIETARY_LABELS_WITH_ARTICLE: Record<string, string> = {
 // ============================================================================
 
 export const FALLBACK_DIETARY_PREFERENCES = [
-  { value: "comum", label: "Comum / Omnívora" },
-  { value: "vegetariana", label: "Vegetariana" },
-  { value: "vegana", label: "Vegana" },
-  { value: "pescetariana", label: "Pescetariana" },
-  { value: "flexitariana", label: "Flexitariana" },
+  { value: "omnivore", label: "Comum / Omnívora" },
+  { value: "vegetarian", label: "Vegetariana" },
+  { value: "vegan", label: "Vegana" },
+  { value: "pescatarian", label: "Pescetariana" },
+  { value: "flexitarian", label: "Flexitariana" },
   { value: "low_carb", label: "Low Carb" },
-  { value: "cetogenica", label: "Cetogênica" },
+  { value: "ketogenic", label: "Cetogênica" },
 ] as const;
 
 // ============================================================================

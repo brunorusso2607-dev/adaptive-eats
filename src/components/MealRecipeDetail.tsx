@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FodmapSeasoningAlert } from "@/components/FodmapSeasoningAlert";
+import { useIngredientCalories } from "@/hooks/useIngredientCalories";
 
 type Ingredient = { 
   item: string; 
@@ -94,6 +95,21 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
   });
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
+  const { calculateIngredientCalories, isLoaded: isCaloriesLoaded } = useIngredientCalories();
+
+  // Calculate individual calories for each ingredient
+  const ingredientCalories = useMemo(() => {
+    if (!isCaloriesLoaded) return new Map<string, number>();
+    
+    const results = calculateIngredientCalories(localIngredients);
+    const map = new Map<string, number>();
+    results.forEach(r => {
+      if (r.matched && r.calories > 0) {
+        map.set(r.item.toLowerCase().trim(), r.calories);
+      }
+    });
+    return map;
+  }, [localIngredients, calculateIngredientCalories, isCaloriesLoaded]);
 
   // Check which ingredients have conflicts
   const ingredientConflicts = useMemo(() => {
@@ -297,6 +313,9 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
                 const itemKey = ingredient.item.toLowerCase().trim();
                 const conflict = ingredientConflicts.get(itemKey);
                 
+                // Get individual calories for this ingredient
+                const individualCalories = ingredientCalories.get(itemKey);
+                
                 return (
                   <li 
                     key={index} 
@@ -320,12 +339,16 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
                       <span className="text-primary mt-0.5">•</span>
                     )}
                     
-                    {/* Formato com gramas: "Salmão assado (150g)" */}
+                    {/* Formato com gramas e calorias: "Salmão assado (150g) — 165 kcal" */}
                     <span className={cn(
                       "flex-1",
                       conflict ? "text-amber-600 dark:text-amber-400 font-medium" : "text-foreground"
                     )}>
-                      {ingredient.item} {quantityDisplay && <span className="text-muted-foreground">{quantityDisplay}</span>}
+                      {ingredient.item}
+                      {quantityDisplay && <span className="text-muted-foreground"> {quantityDisplay}</span>}
+                      {individualCalories && individualCalories > 0 && (
+                        <span className="text-muted-foreground"> — <span className="text-orange-500 font-medium">{individualCalories} kcal</span></span>
+                      )}
                     </span>
                     
                     <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />

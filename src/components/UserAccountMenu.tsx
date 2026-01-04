@@ -52,9 +52,9 @@ type UserAccountMenuProps = {
 // Labels estáticos que não vêm do DB (activity, sex, goal display)
 const STATIC_LABELS = {
   goal: {
-    emagrecer: "Emagrecer",
-    manter: "Manter peso",
-    ganhar_peso: "Ganhar peso",
+    lose_weight: "Emagrecer",
+    maintain: "Manter peso",
+    gain_weight: "Ganhar peso",
   },
   activity_level: {
     sedentary: "Sedentário",
@@ -465,7 +465,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
         </Button>
 
         {/* Meta de Peso */}
-        {(profile.strategy_id || (profile.goal && profile.goal !== "manter")) && (
+        {(profile.strategy_id || (profile.goal && profile.goal !== "maintain")) && (
           <div className="space-y-2">
             <h3 className="font-semibold text-sm flex items-center gap-2">
               <Target className="w-4 h-4 text-primary" />
@@ -474,7 +474,7 @@ export default function UserAccountMenu({ user, subscription, onLogout, external
             {(() => {
               const selectedStrategy = strategies?.find(s => s.id === profile.strategy_id);
               const derivedGoal = selectedStrategy ? deriveGoalFromStrategy(selectedStrategy.key) : profile.goal;
-              const isLossGoal = derivedGoal === "emagrecer";
+              const isLossGoal = derivedGoal === "lose_weight";
               
               return (
                 <div className={cn(

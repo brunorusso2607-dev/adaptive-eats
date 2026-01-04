@@ -171,9 +171,10 @@ serve(async (req) => {
       }
     } else {
       // Fallback to goal-based modifiers
+      // Database now stores: "lose_weight" | "maintain" | "gain_weight"
       switch (profile.goal) {
-        case "emagrecer": calorieModifier = -500; break;
-        case "ganhar_peso": calorieModifier = 400; break;
+        case "lose_weight": calorieModifier = -500; break;
+        case "gain_weight": calorieModifier = 400; break;
         default: calorieModifier = 0;
       }
     }

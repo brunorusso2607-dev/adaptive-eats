@@ -30,12 +30,15 @@ type UserContext = Database["public"]["Enums"]["user_context"];
  * Isso permite que categorias definidas com goals antigos funcionem com novas estratégias
  */
 export const STRATEGY_TO_COMPATIBLE_GOALS: Record<string, BaseUserGoal[]> = {
-  emagrecer: ["emagrecer"],
-  cutting: ["emagrecer"], // Cutting é compatível com categorias de emagrecer
-  manter: ["manter"],
-  fitness: ["manter"], // Fitness é compatível com categorias de manter
-  ganhar_peso: ["ganhar_peso"],
-  dieta_flexivel: ["emagrecer", "manter", "ganhar_peso"], // Flexível é compatível com todas
+  emagrecer: ["lose_weight"],
+  lose_weight: ["lose_weight"],
+  cutting: ["lose_weight"], // Cutting é compatível com categorias de lose_weight
+  manter: ["maintain"],
+  maintain: ["maintain"],
+  fitness: ["maintain"], // Fitness é compatível com categorias de maintain
+  ganhar_peso: ["gain_weight"],
+  gain_weight: ["gain_weight"],
+  dieta_flexivel: ["lose_weight", "maintain", "gain_weight"], // Flexível é compatível com todas
 };
 
 export interface SubcategoryRule {
@@ -110,7 +113,7 @@ export const CATEGORY_RULES: CategoryConfig[] = [
       { name: "Molhos para salada", alwaysShow: true },
       { name: "Pastas e patês", alwaysShow: true },
       { name: "Antepastos", alwaysShow: true },
-      { name: "Sopas leves", compatibleGoals: ["emagrecer", "manter"] },
+      { name: "Sopas leves", compatibleGoals: ["lose_weight", "maintain"] },
       { name: "Caldos", alwaysShow: true },
       { name: "Cremes frios", alwaysShow: true },
     ],
@@ -123,22 +126,22 @@ export const CATEGORY_RULES: CategoryConfig[] = [
       { name: "Prato principal tradicional", alwaysShow: true },
       { 
         name: "Pratos fitness", 
-        compatibleGoals: ["emagrecer", "manter"],
-        incompatibleGoals: ["ganhar_peso"],
+        compatibleGoals: ["lose_weight", "maintain"],
+        incompatibleGoals: ["gain_weight"],
       },
       { 
         name: "Pratos low carb", 
-        compatibleGoals: ["emagrecer"],
-        incompatibleGoals: ["ganhar_peso"],
-        incompatibleDietaryPreference: ["vegana"], // Low carb geralmente usa proteínas animais
+        compatibleGoals: ["lose_weight"],
+        incompatibleGoals: ["gain_weight"],
+        incompatibleDietaryPreference: ["vegan"], // Low carb geralmente usa proteínas animais
       },
       { 
         name: "Pratos vegetarianos", 
-        requiredDietaryPreference: ["vegetariana", "vegana"],
+        requiredDietaryPreference: ["vegetarian", "vegan"],
       },
       { 
         name: "Pratos veganos", 
-        requiredDietaryPreference: ["vegana"],
+        requiredDietaryPreference: ["vegan"],
       },
       { 
         name: "Pratos proteicos (high protein)", 
@@ -151,13 +154,13 @@ export const CATEGORY_RULES: CategoryConfig[] = [
       },
       { 
         name: "Pratos para bulking", 
-        compatibleGoals: ["ganhar_peso"],
-        incompatibleGoals: ["emagrecer"],
+        compatibleGoals: ["gain_weight"],
+        incompatibleGoals: ["lose_weight"],
       },
       { 
         name: "Pratos calóricos", 
-        compatibleGoals: ["ganhar_peso"],
-        incompatibleGoals: ["emagrecer"],
+        compatibleGoals: ["gain_weight"],
+        incompatibleGoals: ["lose_weight"],
       },
     ],
   },
@@ -183,12 +186,12 @@ export const CATEGORY_RULES: CategoryConfig[] = [
       { name: "Café da manhã", alwaysShow: true },
       { 
         name: "Lanches fitness", 
-        compatibleGoals: ["emagrecer", "manter"],
+        compatibleGoals: ["lose_weight", "maintain"],
       },
       { 
         name: "Lanches calóricos", 
-        compatibleGoals: ["ganhar_peso"],
-        incompatibleGoals: ["emagrecer"],
+        compatibleGoals: ["gain_weight"],
+        incompatibleGoals: ["lose_weight"],
       },
       { name: "Panquecas", alwaysShow: true, containsIngredientTags: ["ovos", "glúten"] },
       { name: "Ovos e omeletes", alwaysShow: true, containsIngredientTags: ["ovos"] },
@@ -208,17 +211,17 @@ export const CATEGORY_RULES: CategoryConfig[] = [
       },
       { 
         name: "Sobremesas fitness", 
-        compatibleGoals: ["emagrecer", "manter"],
+        compatibleGoals: ["lose_weight", "maintain"],
       },
       { 
         name: "Sobremesas low carb", 
-        compatibleGoals: ["emagrecer"],
-        incompatibleGoals: ["ganhar_peso"],
+        compatibleGoals: ["lose_weight"],
+        incompatibleGoals: ["gain_weight"],
       },
       { name: "Sobremesas sem açúcar", alwaysShow: true },
       { 
         name: "Sobremesas veganas", 
-        requiredDietaryPreference: ["vegana"],
+        requiredDietaryPreference: ["vegan"],
       },
       { name: "Bolos", alwaysShow: true, containsIngredientTags: ["glúten", "ovos"] },
       { name: "Tortas doces", alwaysShow: true, containsIngredientTags: ["glúten"] },
@@ -238,18 +241,18 @@ export const CATEGORY_RULES: CategoryConfig[] = [
       },
       { 
         name: "Shakes para ganho de massa", 
-        compatibleGoals: ["ganhar_peso"],
-        incompatibleGoals: ["emagrecer"],
+        compatibleGoals: ["gain_weight"],
+        incompatibleGoals: ["lose_weight"],
       },
       { name: "Chás", alwaysShow: true },
       { 
         name: "Bebidas funcionais", 
-        compatibleGoals: ["emagrecer", "manter"],
+        compatibleGoals: ["lose_weight", "maintain"],
       },
       { 
         name: "Bebidas detox", 
-        compatibleGoals: ["emagrecer"],
-        incompatibleGoals: ["ganhar_peso"],
+        compatibleGoals: ["lose_weight"],
+        incompatibleGoals: ["gain_weight"],
       },
     ],
   },
@@ -260,17 +263,17 @@ export const CATEGORY_RULES: CategoryConfig[] = [
     subcategories: [
       { 
         name: "Snacks saudáveis", 
-        compatibleGoals: ["emagrecer", "manter"],
+        compatibleGoals: ["lose_weight", "maintain"],
       },
       { 
         name: "Snacks low carb", 
-        compatibleGoals: ["emagrecer"],
-        incompatibleGoals: ["ganhar_peso"],
+        compatibleGoals: ["lose_weight"],
+        incompatibleGoals: ["gain_weight"],
       },
       { 
         name: "Snacks calóricos", 
-        compatibleGoals: ["ganhar_peso"],
-        incompatibleGoals: ["emagrecer"],
+        compatibleGoals: ["gain_weight"],
+        incompatibleGoals: ["lose_weight"],
       },
       { name: "Petiscos de forno", alwaysShow: true },
       { name: "Petiscos de airfryer", alwaysShow: true },

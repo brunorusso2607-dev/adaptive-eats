@@ -8,7 +8,8 @@ import { supabase } from "@/integrations/supabase/client";
 export type GoalIntensity = "light" | "moderate" | "aggressive";
 export type RecipeStyle = "fitness" | "regular" | "high_calorie";
 export type ActivityLevel = "sedentary" | "light" | "moderate" | "active" | "very_active";
-export type UserGoal = "emagrecer" | "manter" | "ganhar_peso";
+// Database stores: "lose_weight" | "maintain" | "gain_weight"
+export type UserGoal = "lose_weight" | "maintain" | "gain_weight";
 
 export interface CalorieRange {
   min: number;
@@ -103,19 +104,20 @@ export function calculateGoalIntensity(
 
   const difference = Math.abs(weightCurrent - weightGoal);
 
-  if (goal === "emagrecer") {
+  // Database stores: "lose_weight" | "maintain" | "gain_weight"
+  if (goal === "lose_weight") {
     if (difference <= 5) return "light";
     if (difference <= 15) return "moderate";
     return "aggressive";
   }
 
-  if (goal === "ganhar_peso") {
+  if (goal === "gain_weight") {
     if (difference <= 5) return "light";
     if (difference <= 10) return "moderate";
     return "aggressive";
   }
 
-  return "moderate"; // manter
+  return "moderate"; // maintain
 }
 
 /**
@@ -125,15 +127,16 @@ export function calculateRecipeStyle(
   goal: UserGoal | null,
   intensity: GoalIntensity
 ): RecipeStyle {
-  if (!goal || goal === "manter") {
+  // Database stores: "lose_weight" | "maintain" | "gain_weight"
+  if (!goal || goal === "maintain") {
     return "regular";
   }
 
-  if (goal === "emagrecer") {
+  if (goal === "lose_weight") {
     return "fitness";
   }
 
-  if (goal === "ganhar_peso") {
+  if (goal === "gain_weight") {
     return "high_calorie";
   }
 
@@ -206,7 +209,8 @@ export function calculateMacroTargets(
     const tdee = Math.round(tmb * factor);
 
     // Ajuste baseado no objetivo E intensidade
-    if (goal === "emagrecer") {
+    // Database stores: "lose_weight" | "maintain" | "gain_weight"
+    if (goal === "lose_weight") {
       const calorieDeficit = intensity === "light" ? 300 : intensity === "moderate" ? 500 : 700;
       const minCalories = sex === "male" ? 1500 : 1200;
       dailyCalories = Math.max(tdee - calorieDeficit, minCalories);
@@ -216,7 +220,7 @@ export function calculateMacroTargets(
       dailyProtein = Math.round((weightGoal || weightCurrent) * proteinMultiplier);
       
       mode = "lose";
-    } else if (goal === "ganhar_peso") {
+    } else if (goal === "gain_weight") {
       const calorieSurplus = intensity === "light" ? 250 : intensity === "moderate" ? 400 : 600;
       dailyCalories = tdee + calorieSurplus;
       
@@ -235,11 +239,11 @@ export function calculateMacroTargets(
     const proteinCalories = dailyProtein * 4;
     const remainingCalories = dailyCalories - proteinCalories;
 
-    if (goal === "emagrecer") {
+    if (goal === "lose_weight") {
       // Low carb para emagrecimento: 30% carbs, 70% gordura das calorias restantes
       dailyCarbs = Math.round((remainingCalories * 0.4) / 4);
       dailyFat = Math.round((remainingCalories * 0.6) / 9);
-    } else if (goal === "ganhar_peso") {
+    } else if (goal === "gain_weight") {
       // Mais carbs para energia: 60% carbs, 40% gordura
       dailyCarbs = Math.round((remainingCalories * 0.6) / 4);
       dailyFat = Math.round((remainingCalories * 0.4) / 9);

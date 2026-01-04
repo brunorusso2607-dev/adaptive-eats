@@ -56,12 +56,12 @@ const buildSystemPrompt = (
   dashboardContext?: DashboardContext
 ): string => {
   const intolerances = userProfile?.intolerances || [];
-  const dietaryPreference = userProfile?.dietary_preference || "comum";
+  const dietaryPreference = userProfile?.dietary_preference || "omnivore";
   const excludedIngredients = userProfile?.excluded_ingredients || [];
   const userName = userProfile?.first_name || "";
   const country = userProfile?.country || "BR";
   const enabledMeals = userProfile?.enabled_meals || ["cafe_manha", "almoco", "jantar"];
-  const goal = userProfile?.goal || "manter";
+  const goal = userProfile?.goal || "maintain";
   
   // Normalize intolerances for display
   const normalizedIntolerances = normalizeUserIntolerances(intolerances, safetyDatabase);
@@ -249,7 +249,7 @@ ${normalizedIntolerances.map(i => `⚠️ ${getIntoleranceLabel(i, safetyDatabas
 2. Explique em 1 frase simples
 3. Sugira alternativa segura` : "Sem restrições cadastradas."}
 
-${dietaryPreference !== "comum" ? `**Dieta ${dietaryLabel}**: Respeitar rigorosamente.` : ""}
+${dietaryPreference !== "omnivore" ? `**Dieta ${dietaryLabel}**: Respeitar rigorosamente.` : ""}
 
 ${excludedIngredients.length > 0 ? `**Prefere evitar**: ${excludedIngredients.join(", ")}` : ""}
 
@@ -312,7 +312,7 @@ Você TEM a capacidade REAL de alterar o perfil do usuário, MAS **SEMPRE DEVE P
 
 **PARE! Antes de responder QUALQUER pergunta sobre objetivos, peso, dieta ou alimentação:**
 
-1. **VERIFIQUE o perfil do usuário** (objetivo atual: ${goal === "emagrecer" ? "EMAGRECER" : goal === "ganhar_peso" ? "ENGORDAR" : "MANTER PESO"})
+1. **VERIFIQUE o perfil do usuário** (objetivo atual: ${goal === "lose_weight" ? "EMAGRECER" : goal === "gain_weight" ? "ENGORDAR" : "MANTER PESO"})
 2. **COMPARE com o que o usuário disse** na mensagem
 3. **SE HOUVER CONTRADIÇÃO** → Sua resposta DEVE COMEÇAR questionando isso!
 
@@ -322,11 +322,11 @@ Se o usuário disser algo que contradiz o perfil, você **NÃO PODE** responder 
 Você **DEVE PRIMEIRO** apontar a contradição e perguntar se quer corrigir.
 
 **Exemplo de contradição que você DEVE detectar:**
-- Usuário disse "meu objetivo de engordar" MAS seu perfil diz "${goal === "emagrecer" ? "EMAGRECER" : goal === "ganhar_peso" ? "ENGORDAR" : "MANTER PESO"}"
+- Usuário disse "meu objetivo de engordar" MAS seu perfil diz "${goal === "lose_weight" ? "EMAGRECER" : goal === "gain_weight" ? "ENGORDAR" : "MANTER PESO"}"
 - Se o objetivo no perfil é EMAGRECER e o usuário fala "engordar" → ISSO É UMA CONTRADIÇÃO!
 
 **Resposta CORRETA quando detectar contradição:**
-"Peraí, ${userName}! Vi que você falou em 'engordar', mas no seu perfil seu objetivo está como '${goal === "emagrecer" ? "Perder peso" : goal === "ganhar_peso" ? "Ganhar peso" : "Manter peso"}'. 
+"Peraí, ${userName}! Vi que você falou em 'engordar', mas no seu perfil seu objetivo está como '${goal === "lose_weight" ? "Perder peso" : goal === "gain_weight" ? "Ganhar peso" : "Manter peso"}'. 
 Você quer que eu atualize seu objetivo para 'Ganhar peso'?
 [PERGUNTAR_ATUALIZACAO:objetivo:ganhar]"
 
@@ -445,16 +445,18 @@ const getLanguageConfig = (country: string): string => {
 };
 
 // ============= GOAL LABELS =============
+// Database now stores: "lose_weight" | "maintain" | "gain_weight"
 const getGoalLabel = (goal: string): string => {
   const labels: Record<string, string> = {
+    "lose_weight": "Perder peso",
+    "maintain": "Manter peso",
+    "gain_weight": "Ganhar peso/massa",
+    // Legacy fallbacks
     "emagrecer": "Perder peso",
     "perder": "Perder peso",
     "manter": "Manter peso",
     "ganhar_peso": "Ganhar peso/massa",
     "ganhar": "Ganhar peso/massa",
-    "lose_weight": "Lose weight",
-    "maintain_weight": "Maintain weight",
-    "gain_weight": "Gain weight/muscle"
   };
   return labels[goal] || "Não definido";
 };
@@ -578,13 +580,16 @@ const VALID_RESTRICTION_KEYS: Record<string, { type: 'intolerance' | 'allergy' |
 };
 
 // ============= VALID GOAL KEYS =============
-// Mapping: prompt markers (perder/manter/ganhar) → database values (emagrecer/manter/ganhar_peso)
+// Mapping: prompt markers (perder/manter/ganhar) → database values (lose_weight/maintain/gain_weight)
 const VALID_GOAL_KEYS: Record<string, { dbValue: string; label: string }> = {
-  'perder': { dbValue: 'emagrecer', label: 'Perder peso' },
-  'emagrecer': { dbValue: 'emagrecer', label: 'Perder peso' },
-  'manter': { dbValue: 'manter', label: 'Manter peso' },
-  'ganhar': { dbValue: 'ganhar_peso', label: 'Ganhar peso' },
-  'ganhar_peso': { dbValue: 'ganhar_peso', label: 'Ganhar peso' },
+  'perder': { dbValue: 'lose_weight', label: 'Perder peso' },
+  'emagrecer': { dbValue: 'lose_weight', label: 'Perder peso' },
+  'lose_weight': { dbValue: 'lose_weight', label: 'Perder peso' },
+  'manter': { dbValue: 'maintain', label: 'Manter peso' },
+  'maintain': { dbValue: 'maintain', label: 'Manter peso' },
+  'ganhar': { dbValue: 'gain_weight', label: 'Ganhar peso' },
+  'ganhar_peso': { dbValue: 'gain_weight', label: 'Ganhar peso' },
+  'gain_weight': { dbValue: 'gain_weight', label: 'Ganhar peso' },
 };
 
 // ============= PROFILE UPDATE RESULT TYPE =============
@@ -1084,11 +1089,11 @@ const calculateDailyCalories = (profile: any): number => {
   let tdee = bmr * multiplier;
   
   // Goal adjustment
-  // Database stores: "emagrecer" | "manter" | "ganhar_peso"
-  const goal = profile.goal || "manter";
-  if (goal === "emagrecer") {
+  // Database stores: "lose_weight" | "maintain" | "gain_weight"
+  const goal = profile.goal || "maintain";
+  if (goal === "lose_weight") {
     tdee *= 0.85; // 15% deficit
-  } else if (goal === "ganhar_peso") {
+  } else if (goal === "gain_weight") {
     tdee *= 1.15; // 15% surplus
   }
   

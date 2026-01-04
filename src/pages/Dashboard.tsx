@@ -210,7 +210,7 @@ export default function Dashboard() {
       setOnboardingCompleted(true);
       setUserContext("individual"); // App is individual by default
       setKidsMode(data?.kids_mode || false);
-      setUserGoal(data?.goal || "manter");
+      setUserGoal(data?.goal || "maintain");
       
       // Salvar dados do perfil para validação de ingredientes
       setUserProfile({
@@ -220,10 +220,11 @@ export default function Dashboard() {
       });
       
       if (data?.weight_current) {
+        // Database now stores: "lose_weight" | "maintain" | "gain_weight"
         const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
-          if (goal === "emagrecer") return "lose";
-          if (goal === "ganhar_peso") return "gain";
-          if (goal === "manter") return "maintain";
+          if (goal === "lose_weight") return "lose";
+          if (goal === "gain_weight") return "gain";
+          if (goal === "maintain") return "maintain";
           return null;
         };
         setWeightData({
@@ -233,7 +234,7 @@ export default function Dashboard() {
           age: data.age,
           sex: data.sex as "male" | "female" | null,
           activity_level: (data.activity_level as any) || "moderate",
-          goal_mode: goalToMode(data.goal || "manter"),
+          goal_mode: goalToMode(data.goal || "maintain"),
           strategy_id: data.strategy_id,
         });
       }
@@ -259,13 +260,14 @@ export default function Dashboard() {
       });
       
       // Atualizar userGoal
-      setUserGoal(data.goal || "manter");
+      setUserGoal(data.goal || "maintain");
       
       // Atualizar weightData
+      // Database now stores: "lose_weight" | "maintain" | "gain_weight"
       const goalToMode = (goal: string): "lose" | "gain" | "maintain" | null => {
-        if (goal === "emagrecer") return "lose";
-        if (goal === "ganhar_peso") return "gain";
-        if (goal === "manter") return "maintain";
+        if (goal === "lose_weight") return "lose";
+        if (goal === "gain_weight") return "gain";
+        if (goal === "maintain") return "maintain";
         return null;
       };
       
@@ -276,7 +278,7 @@ export default function Dashboard() {
         age: data.age,
         sex: data.sex as "male" | "female" | null,
         activity_level: (data.activity_level as any) || "moderate",
-        goal_mode: goalToMode(data.goal || "manter"),
+        goal_mode: goalToMode(data.goal || "maintain"),
         strategy_id: data.strategy_id,
       });
     }
@@ -289,11 +291,11 @@ export default function Dashboard() {
     // Desativar o modo atual
     const { error } = await supabase
       .from("profiles")
-      .update({ goal: "manter" })
+      .update({ goal: "maintain" })
       .eq("id", session.user.id);
     
     if (!error) {
-      setUserGoal("manter");
+      setUserGoal("maintain");
       toast.success("Meta de peso desativada");
       
       // Log user action

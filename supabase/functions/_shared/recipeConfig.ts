@@ -523,18 +523,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "it-IT",
     ingredientPriority: "Privilegia ingredienti tipici della cucina italiana",
     mealTypeLabels: {
-      cafe_manha: "Colazione",
-      almoco: "Pranzo",
-      lanche: "Merenda",
-      jantar: "Cena",
-      ceia: "Spuntino Serale"
+      breakfast: "Colazione",
+      morning_snack: "Spuntino Mattutino",
+      lunch: "Pranzo",
+      afternoon_snack: "Merenda",
+      dinner: "Cena",
+      supper: "Spuntino Serale"
     },
     mealExamples: {
-      cafe_manha: ["cornetto con cappuccino", "pane con marmellata", "fette biscottate", "yogurt con granola"],
-      almoco: ["pasta al pomodoro", "risotto ai funghi", "lasagna alla bolognese", "insalata caprese", "gnocchi al pesto"],
-      lanche: ["bruschetta", "frutta fresca", "biscotti", "gelato"],
-      jantar: ["minestrone", "pesce alla griglia", "pollo arrosto", "pizza margherita", "frittata"],
-      ceia: ["tisana", "frutta", "parmigiano con miele"]
+      breakfast: ["cornetto con cappuccino", "pane con marmellata", "fette biscottate", "yogurt con granola"],
+      morning_snack: ["frutta fresca", "yogurt", "biscotti"],
+      lunch: ["pasta al pomodoro", "risotto ai funghi", "lasagna alla bolognese", "insalata caprese", "gnocchi al pesto"],
+      afternoon_snack: ["bruschetta", "frutta fresca", "biscotti", "gelato"],
+      dinner: ["minestrone", "pesce alla griglia", "pollo arrosto", "pizza margherita", "frittata"],
+      supper: ["tisana", "frutta", "parmigiano con miele"]
     }
   },
   DE: {
@@ -542,18 +544,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "de-DE",
     ingredientPriority: "Bevorzugen Sie typisch deutsche Zutaten",
     mealTypeLabels: {
-      cafe_manha: "Frühstück",
-      almoco: "Mittagessen",
-      lanche: "Kaffee und Kuchen",
-      jantar: "Abendessen",
-      ceia: "Spätmahlzeit"
+      breakfast: "Frühstück",
+      morning_snack: "Vormittagssnack",
+      lunch: "Mittagessen",
+      afternoon_snack: "Kaffee und Kuchen",
+      dinner: "Abendessen",
+      supper: "Spätmahlzeit"
     },
     mealExamples: {
-      cafe_manha: ["brötchen mit käse", "müsli mit joghurt", "rührei mit speck", "vollkornbrot"],
-      almoco: ["schnitzel mit kartoffelsalat", "bratwurst mit sauerkraut", "rinderroulade", "spätzle"],
-      lanche: ["apfelstrudel", "käsekuchen", "brezel"],
-      jantar: ["brotzeit", "currywurst", "eintopf", "gulaschsuppe"],
-      ceia: ["kräutertee", "joghurt", "obst"]
+      breakfast: ["brötchen mit käse", "müsli mit joghurt", "rührei mit speck", "vollkornbrot"],
+      morning_snack: ["obst", "joghurt", "nüsse"],
+      lunch: ["schnitzel mit kartoffelsalat", "bratwurst mit sauerkraut", "rinderroulade", "spätzle"],
+      afternoon_snack: ["apfelstrudel", "käsekuchen", "brezel"],
+      dinner: ["brotzeit", "currywurst", "eintopf", "gulaschsuppe"],
+      supper: ["kräutertee", "joghurt", "obst"]
     }
   },
   GB: {
@@ -561,18 +565,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "en-GB",
     ingredientPriority: "Prioritise ingredients common in British cuisine",
     mealTypeLabels: {
-      cafe_manha: "Breakfast",
-      almoco: "Lunch",
-      lanche: "Afternoon Tea",
-      jantar: "Dinner",
-      ceia: "Supper"
+      breakfast: "Breakfast",
+      morning_snack: "Elevenses",
+      lunch: "Lunch",
+      afternoon_snack: "Afternoon Tea",
+      dinner: "Dinner",
+      supper: "Supper"
     },
     mealExamples: {
-      cafe_manha: ["full english breakfast", "porridge with berries", "toast with marmalade", "eggs benedict"],
-      almoco: ["fish and chips", "shepherd's pie", "cornish pasty", "ploughman's lunch", "jacket potato"],
-      lanche: ["scones with cream", "cucumber sandwiches", "victoria sponge"],
-      jantar: ["roast beef with yorkshire pudding", "chicken tikka masala", "bangers and mash", "cottage pie"],
-      ceia: ["warm milk", "digestive biscuits", "cheese and crackers"]
+      breakfast: ["full english breakfast", "porridge with berries", "toast with marmalade", "eggs benedict"],
+      morning_snack: ["biscuits with tea", "fruit", "crumpets"],
+      lunch: ["fish and chips", "shepherd's pie", "cornish pasty", "ploughman's lunch", "jacket potato"],
+      afternoon_snack: ["scones with cream", "cucumber sandwiches", "victoria sponge"],
+      dinner: ["roast beef with yorkshire pudding", "chicken tikka masala", "bangers and mash", "cottage pie"],
+      supper: ["warm milk", "digestive biscuits", "cheese and crackers"]
     }
   },
   JP: {
@@ -580,18 +586,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "ja-JP",
     ingredientPriority: "日本で一般的に入手可能な食材を優先してください",
     mealTypeLabels: {
-      cafe_manha: "朝食 (Breakfast)",
-      almoco: "昼食 (Lunch)",
-      lanche: "おやつ (Snack)",
-      jantar: "夕食 (Dinner)",
-      ceia: "夜食 (Late Snack)"
+      breakfast: "朝食 (Breakfast)",
+      morning_snack: "午前のおやつ (Morning Snack)",
+      lunch: "昼食 (Lunch)",
+      afternoon_snack: "おやつ (Snack)",
+      dinner: "夕食 (Dinner)",
+      supper: "夜食 (Late Snack)"
     },
     mealExamples: {
-      cafe_manha: ["onigiri with nori", "miso soup with tofu", "tamagoyaki", "natto with rice", "japanese breakfast set"],
-      almoco: ["ramen", "donburi", "bento box", "udon", "curry rice", "tonkatsu"],
-      lanche: ["onigiri", "edamame", "mochi", "senbei", "matcha latte"],
-      jantar: ["teriyaki salmon", "tonkatsu", "sukiyaki", "sashimi", "yakitori", "tempura"],
-      ceia: ["green tea", "rice ball", "fruit", "taiyaki"]
+      breakfast: ["onigiri with nori", "miso soup with tofu", "tamagoyaki", "natto with rice", "japanese breakfast set"],
+      morning_snack: ["fruit", "rice crackers", "green tea"],
+      lunch: ["ramen", "donburi", "bento box", "udon", "curry rice", "tonkatsu"],
+      afternoon_snack: ["onigiri", "edamame", "mochi", "senbei", "matcha latte"],
+      dinner: ["teriyaki salmon", "tonkatsu", "sukiyaki", "sashimi", "yakitori", "tempura"],
+      supper: ["green tea", "rice ball", "fruit", "taiyaki"]
     }
   },
   CN: {
@@ -599,18 +607,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "zh-CN",
     ingredientPriority: "优先使用中国常见的食材",
     mealTypeLabels: {
-      cafe_manha: "早餐 (Breakfast)",
-      almoco: "午餐 (Lunch)",
-      lanche: "点心 (Snack)",
-      jantar: "晚餐 (Dinner)",
-      ceia: "夜宵 (Late Snack)"
+      breakfast: "早餐 (Breakfast)",
+      morning_snack: "上午点心 (Morning Snack)",
+      lunch: "午餐 (Lunch)",
+      afternoon_snack: "点心 (Snack)",
+      dinner: "晚餐 (Dinner)",
+      supper: "夜宵 (Late Snack)"
     },
     mealExamples: {
-      cafe_manha: ["congee with pickles", "jianbing", "baozi", "soy milk with youtiao", "dim sum"],
-      almoco: ["kung pao chicken", "mapo tofu", "sweet and sour pork", "fried rice", "dumplings"],
-      lanche: ["spring rolls", "egg tarts", "sesame balls", "steamed buns"],
-      jantar: ["hot pot", "peking duck", "twice-cooked pork", "steamed fish", "stir-fried vegetables"],
-      ceia: ["chrysanthemum tea", "fruit", "light congee"]
+      breakfast: ["congee with pickles", "jianbing", "baozi", "soy milk with youtiao", "dim sum"],
+      morning_snack: ["fruit", "tea", "light pastry"],
+      lunch: ["kung pao chicken", "mapo tofu", "sweet and sour pork", "fried rice", "dumplings"],
+      afternoon_snack: ["spring rolls", "egg tarts", "sesame balls", "steamed buns"],
+      dinner: ["hot pot", "peking duck", "twice-cooked pork", "steamed fish", "stir-fried vegetables"],
+      supper: ["chrysanthemum tea", "fruit", "light congee"]
     }
   },
   KR: {
@@ -618,18 +628,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "ko-KR",
     ingredientPriority: "한국에서 쉽게 구할 수 있는 재료를 우선시하세요",
     mealTypeLabels: {
-      cafe_manha: "아침 (Breakfast)",
-      almoco: "점심 (Lunch)",
-      lanche: "간식 (Snack)",
-      jantar: "저녁 (Dinner)",
-      ceia: "야식 (Late Snack)"
+      breakfast: "아침 (Breakfast)",
+      morning_snack: "오전 간식 (Morning Snack)",
+      lunch: "점심 (Lunch)",
+      afternoon_snack: "간식 (Snack)",
+      dinner: "저녁 (Dinner)",
+      supper: "야식 (Late Snack)"
     },
     mealExamples: {
-      cafe_manha: ["korean breakfast with rice and soup", "gimbap", "gyeran-jjim", "juk (rice porridge)"],
-      almoco: ["bibimbap", "bulgogi", "kimchi jjigae", "samgyeopsal", "japchae"],
-      lanche: ["tteokbokki", "hotteok", "kimbap", "bungeoppang"],
-      jantar: ["samgyetang", "galbi", "doenjang jjigae", "jeyuk bokkeum"],
-      ceia: ["barley tea", "fruit", "rice cakes"]
+      breakfast: ["korean breakfast with rice and soup", "gimbap", "gyeran-jjim", "juk (rice porridge)"],
+      morning_snack: ["fruit", "rice cake", "barley tea"],
+      lunch: ["bibimbap", "bulgogi", "kimchi jjigae", "samgyeopsal", "japchae"],
+      afternoon_snack: ["tteokbokki", "hotteok", "kimbap", "bungeoppang"],
+      dinner: ["samgyetang", "galbi", "doenjang jjigae", "jeyuk bokkeum"],
+      supper: ["barley tea", "fruit", "rice cakes"]
     }
   },
   IN: {
@@ -637,18 +649,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "en-IN",
     ingredientPriority: "Prioritize ingredients commonly available in India",
     mealTypeLabels: {
-      cafe_manha: "Breakfast",
-      almoco: "Lunch",
-      lanche: "Evening Snacks",
-      jantar: "Dinner",
-      ceia: "Light Dinner"
+      breakfast: "Breakfast",
+      morning_snack: "Mid-Morning Snack",
+      lunch: "Lunch",
+      afternoon_snack: "Evening Snacks",
+      dinner: "Dinner",
+      supper: "Light Dinner"
     },
     mealExamples: {
-      cafe_manha: ["idli with sambar", "dosa with chutney", "poha", "paratha with curd", "upma", "aloo puri"],
-      almoco: ["dal tadka with rice", "chicken curry", "paneer butter masala", "biryani", "roti with sabzi"],
-      lanche: ["samosa", "pakora", "chaat", "vada pav", "masala chai with biscuits"],
-      jantar: ["palak paneer", "chicken tikka", "dal makhani", "khichdi", "vegetable korma"],
-      ceia: ["warm milk with turmeric", "fruit", "light khichdi"]
+      breakfast: ["idli with sambar", "dosa with chutney", "poha", "paratha with curd", "upma", "aloo puri"],
+      morning_snack: ["fruit", "masala chai", "biscuits"],
+      lunch: ["dal tadka with rice", "chicken curry", "paneer butter masala", "biryani", "roti with sabzi"],
+      afternoon_snack: ["samosa", "pakora", "chaat", "vada pav", "masala chai with biscuits"],
+      dinner: ["palak paneer", "chicken tikka", "dal makhani", "khichdi", "vegetable korma"],
+      supper: ["warm milk with turmeric", "fruit", "light khichdi"]
     }
   },
   AU: {
@@ -656,18 +670,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "en-AU",
     ingredientPriority: "Prioritise ingredients commonly available in Australia",
     mealTypeLabels: {
-      cafe_manha: "Breakfast",
-      almoco: "Lunch",
-      lanche: "Arvo Snack",
-      jantar: "Dinner",
-      ceia: "Supper"
+      breakfast: "Breakfast",
+      morning_snack: "Morning Tea",
+      lunch: "Lunch",
+      afternoon_snack: "Arvo Snack",
+      dinner: "Dinner",
+      supper: "Supper"
     },
     mealExamples: {
-      cafe_manha: ["avocado toast with poached eggs", "vegemite on toast", "acai bowl", "big breakfast", "smashed avo"],
-      almoco: ["meat pie", "fish and chips", "chicken schnitzel", "poke bowl", "barramundi"],
-      lanche: ["tim tams", "lamingtons", "fruit", "flat white"],
-      jantar: ["grilled kangaroo", "lamb chops", "pavlova", "bbq prawns", "chicken parmigiana"],
-      ceia: ["herbal tea", "yogurt", "anzac biscuits"]
+      breakfast: ["avocado toast with poached eggs", "vegemite on toast", "acai bowl", "big breakfast", "smashed avo"],
+      morning_snack: ["fruit", "flat white", "muffin"],
+      lunch: ["meat pie", "fish and chips", "chicken schnitzel", "poke bowl", "barramundi"],
+      afternoon_snack: ["tim tams", "lamingtons", "fruit", "flat white"],
+      dinner: ["grilled kangaroo", "lamb chops", "pavlova", "bbq prawns", "chicken parmigiana"],
+      supper: ["herbal tea", "yogurt", "anzac biscuits"]
     }
   },
   CA: {
@@ -675,18 +691,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "en-CA",
     ingredientPriority: "Prioritize ingredients commonly available in Canada",
     mealTypeLabels: {
-      cafe_manha: "Breakfast",
-      almoco: "Lunch",
-      lanche: "Snack",
-      jantar: "Dinner",
-      ceia: "Late Snack"
+      breakfast: "Breakfast",
+      morning_snack: "Morning Snack",
+      lunch: "Lunch",
+      afternoon_snack: "Snack",
+      dinner: "Dinner",
+      supper: "Late Snack"
     },
     mealExamples: {
-      cafe_manha: ["pancakes with maple syrup", "eggs benedict", "canadian bacon", "montreal bagel", "oatmeal"],
-      almoco: ["poutine", "montreal smoked meat sandwich", "tourtière", "caesar salad"],
-      lanche: ["butter tarts", "nanaimo bars", "maple cookies", "apple slices"],
-      jantar: ["salmon", "roast turkey", "alberta beef steak", "wild rice pilaf"],
-      ceia: ["chamomile tea", "fruit", "cheese"]
+      breakfast: ["pancakes with maple syrup", "eggs benedict", "canadian bacon", "montreal bagel", "oatmeal"],
+      morning_snack: ["fruit", "coffee", "muffin"],
+      lunch: ["poutine", "montreal smoked meat sandwich", "tourtière", "caesar salad"],
+      afternoon_snack: ["butter tarts", "nanaimo bars", "maple cookies", "apple slices"],
+      dinner: ["salmon", "roast turkey", "alberta beef steak", "wild rice pilaf"],
+      supper: ["chamomile tea", "fruit", "cheese"]
     }
   },
   AE: {
@@ -694,18 +712,20 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
     language: "ar-AE",
     ingredientPriority: "Prioritize ingredients common in Middle Eastern and Emirati cuisine",
     mealTypeLabels: {
-      cafe_manha: "فطور (Breakfast)",
-      almoco: "غداء (Lunch)",
-      lanche: "سناك (Snack)",
-      jantar: "عشاء (Dinner)",
-      ceia: "وجبة خفيفة (Light Meal)"
+      breakfast: "فطور (Breakfast)",
+      morning_snack: "سناك الصباح (Morning Snack)",
+      lunch: "غداء (Lunch)",
+      afternoon_snack: "سناك (Snack)",
+      dinner: "عشاء (Dinner)",
+      supper: "وجبة خفيفة (Light Meal)"
     },
     mealExamples: {
-      cafe_manha: ["shakshuka", "foul medames", "labneh with pita", "manakish", "date smoothie"],
-      almoco: ["chicken machboos", "lamb ouzi", "grilled kebab", "biryani", "harees"],
-      lanche: ["hummus with pita", "falafel", "dates", "arabic coffee with sweets"],
-      jantar: ["grilled fish", "shawarma", "stuffed vine leaves", "fattoush salad"],
-      ceia: ["warm milk with honey", "dates", "light soup"]
+      breakfast: ["shakshuka", "foul medames", "labneh with pita", "manakish", "date smoothie"],
+      morning_snack: ["dates", "arabic coffee", "nuts"],
+      lunch: ["chicken machboos", "lamb ouzi", "grilled kebab", "biryani", "harees"],
+      afternoon_snack: ["hummus with pita", "falafel", "dates", "arabic coffee with sweets"],
+      dinner: ["grilled fish", "shawarma", "stuffed vine leaves", "fattoush salad"],
+      supper: ["warm milk with honey", "dates", "light soup"]
     }
   }
 };
@@ -714,23 +734,23 @@ export const COUNTRY_CUISINE_CONFIG: Record<string, CountryCuisineConfig> = {
 // FUNÇÕES UTILITÁRIAS DE PAÍS
 // ============================================
 
-// Meal type key normalization for backward compatibility
+// Meal type key normalization for backward compatibility (legacy Portuguese keys -> English)
 const MEAL_TYPE_TO_CONFIG_KEY: Record<string, string> = {
-  // English keys -> Portuguese config keys (for older country configs)
-  'breakfast': 'cafe_manha',
-  'morning_snack': 'lanche_manha',
-  'lunch': 'almoco',
-  'afternoon_snack': 'lanche_tarde',
-  'dinner': 'jantar',
-  'supper': 'ceia',
-  // Keep all variants working
-  'cafe_manha': 'cafe_manha',
-  'lanche_manha': 'lanche_manha',
-  'almoco': 'almoco',
-  'lanche_tarde': 'lanche_tarde',
-  'lanche': 'lanche',
-  'jantar': 'jantar',
-  'ceia': 'ceia',
+  // Legacy Portuguese keys -> English standard keys
+  'cafe_manha': 'breakfast',
+  'lanche_manha': 'morning_snack',
+  'almoco': 'lunch',
+  'lanche_tarde': 'afternoon_snack',
+  'lanche': 'afternoon_snack',
+  'jantar': 'dinner',
+  'ceia': 'supper',
+  // English keys stay as-is
+  'breakfast': 'breakfast',
+  'morning_snack': 'morning_snack',
+  'lunch': 'lunch',
+  'afternoon_snack': 'afternoon_snack',
+  'dinner': 'dinner',
+  'supper': 'supper',
 };
 
 function normalizeConfigMealType(mealType: string): string {

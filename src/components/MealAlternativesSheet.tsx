@@ -12,6 +12,7 @@ import { Loader2, Flame, Beef, Wheat, Droplets, Clock, Check, RefreshCw, Salad, 
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "@/hooks/use-toast";
+import { useIngredientCalories } from "@/hooks/useIngredientCalories";
 
 type Ingredient = { item: string; quantity: string; unit: string };
 
@@ -65,6 +66,15 @@ export default function MealAlternativesSheet({
   const [isLoading, setIsLoading] = useState(false);
   const [isApplying, setIsApplying] = useState<number | null>(null);
   const [isDietaFlexivel, setIsDietaFlexivel] = useState(false);
+  
+  const { calculateIngredientCalories, isLoaded: isNutritionLoaded } = useIngredientCalories();
+  
+  // Helper to get calories for a single ingredient
+  const getIngredientCalories = (item: string, quantity: string): number | null => {
+    if (!isNutritionLoaded) return null;
+    const result = calculateIngredientCalories([{ item, quantity }]);
+    return result[0]?.matched ? result[0].calories : null;
+  };
 
   // Auto-load alternatives when sheet opens
   useEffect(() => {
@@ -232,17 +242,26 @@ export default function MealAlternativesSheet({
               </span>
             </div>
             
-            {/* Ingredients preview */}
+            {/* Ingredients preview with individual calories */}
             <div className="mt-2 flex flex-wrap gap-1">
-              {alt.recipe_ingredients.slice(0, 4).map((ing, i) => (
-                <Badge 
-                  key={i} 
-                  variant="secondary" 
-                  className="text-[10px] px-1.5 py-0"
-                >
-                  {ing.item.split(" ").slice(0, 3).join(" ")}
-                </Badge>
-              ))}
+              {alt.recipe_ingredients.slice(0, 4).map((ing, i) => {
+                const calories = getIngredientCalories(ing.item, ing.quantity);
+                const shortName = ing.item.split(" ").slice(0, 2).join(" ");
+                return (
+                  <Badge 
+                    key={i} 
+                    variant="secondary" 
+                    className="text-[10px] px-1.5 py-0.5"
+                  >
+                    {shortName}
+                    {calories !== null && (
+                      <span className="ml-1 text-orange-600 dark:text-orange-400 font-medium">
+                        {calories}kcal
+                      </span>
+                    )}
+                  </Badge>
+                );
+              })}
               {alt.recipe_ingredients.length > 4 && (
                 <Badge 
                   variant="outline" 

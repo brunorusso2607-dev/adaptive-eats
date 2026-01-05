@@ -154,6 +154,10 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     product_category: string;
     message: string;
   } | null>(null);
+  const [foodNotLabelError, setFoodNotLabelError] = useState<{
+    descricao: string;
+    mensagem: string;
+  } | null>(null);
   
   // Label two-step flow
   const [labelStep, setLabelStep] = useState<LabelStep>("front");
@@ -489,6 +493,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setIsAnalyzing(true);
     setNotFoodError(null);
     setCategoryError(null);
+    setFoodNotLabelError(null);
     
     // AbortController para timeout de 45 segundos
     const controller = new AbortController();
@@ -550,6 +555,15 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
 
       if (data.qualityIssue) {
         setNotFoodError(data.message || "A imagem está difícil de ler. Tente uma foto mais nítida.");
+        return;
+      }
+
+      // Handle food detected in label scanner - redirect to food module
+      if (data.foodNotLabelError) {
+        setFoodNotLabelError({
+          descricao: data.descricao_objeto || "alimento",
+          mensagem: data.message || "Use o módulo 'Analisar Prato' para verificar este alimento."
+        });
         return;
       }
 
@@ -758,6 +772,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
     setNotFoodError(null);
     setCategoryError(null);
     setPackagedProductError(null);
+    setFoodNotLabelError(null);
     setLabelStep("front");
     setFrontImage(null);
     setNeedsBackPhoto(false);
@@ -778,6 +793,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
       setNotFoodError(null);
       setCategoryError(null);
       setPackagedProductError(null);
+      setFoodNotLabelError(null);
       setLabelStep("front");
       setFrontImage(null);
       setNeedsBackPhoto(false);
@@ -1248,8 +1264,52 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
               </CardContent>
             )}
 
+            {/* Food detected in label scanner - redirect to food module */}
+            {foodNotLabelError && (
+              <CardContent className="p-4">
+                <div className="flex flex-col items-center gap-4 text-center p-5 rounded-xl border-2 bg-orange-50/50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800">
+                  <div className="w-20 h-20 rounded-full bg-background flex items-center justify-center shadow-md">
+                    <UtensilsCrossed className="w-10 h-10 text-orange-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h3 className="text-lg font-bold text-foreground">
+                      Alimento Detectado
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Identificamos: <span className="font-medium">{foodNotLabelError.descricao}</span>
+                    </p>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed max-w-xs">
+                    {foodNotLabelError.mensagem}
+                  </p>
+                  <div className="flex flex-col gap-2 w-full max-w-xs">
+                    <Button
+                      variant="default"
+                      onClick={() => {
+                        resetAnalysis();
+                        setMode("food");
+                      }}
+                      className="gradient-primary"
+                      size="lg"
+                    >
+                      <Flame className="w-5 h-5 mr-2" />
+                      Analisar Prato
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={resetAnalysis}
+                      size="sm"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />
+                      Tirar Outra Foto
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            )}
+
             {/* Not food/label error message */}
-            {notFoodError && !categoryError && !packagedProductError && (
+            {notFoodError && !categoryError && !packagedProductError && !foodNotLabelError && (
               <CardContent className="p-4">
                 <div className="flex flex-col items-center gap-3 text-center">
                   <div className="w-12 h-12 rounded-full bg-yellow-500/10 flex items-center justify-center">

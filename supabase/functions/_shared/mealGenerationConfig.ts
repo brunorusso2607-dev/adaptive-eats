@@ -4074,18 +4074,18 @@ function getRegionalExamples(countryCode: string, language: string): {
       lunch: `{
   "title": "Frango grelhado com arroz, feijão e salada",
   "foods": [
-    {"name": "Filé de frango grelhado ao limão", "name_en": "Chicken breast", "grams": 150},
     {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100},
     {"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80},
+    {"name": "Filé de frango grelhado ao limão", "name_en": "Chicken breast", "grams": 150},
     {"name": "Salada verde com azeite", "name_en": "Green salad", "grams": 80},
     {"name": "1 laranja média (sobremesa)", "name_en": "Orange", "grams": 150},
     {"name": "1 copo de água (opcional)", "name_en": "Water", "grams": 200}
   ],
   "instructions": [
-    "Ingredientes: frango (150g), arroz integral (100g), feijão (80g), alface (80g), laranja (150g).",
+    "Ingredientes: arroz integral (100g), feijão (80g), frango (150g), alface (80g), laranja (150g).",
     "Tempere o frango com sal, alho e limão. Marine por 10 min.",
     "Grelhe por 5-6 min de cada lado.",
-    "Monte: arroz, feijão, salada e frango."
+    "Monte: arroz, feijão, frango e salada."
   ]
 }`,
       dinner: `{
@@ -4421,20 +4421,29 @@ ${countryBehavioralPrompt}
    • Breakfast: eggs → Lunch: different protein
    • Supper: NO heavy protein (max yogurt/milk)
 
-3️⃣ 🚨🚨🚨 FOODS ARRAY ORDER - MANDATORY 🚨🚨🚨:
+3️⃣ 🚨🚨🚨 FOODS ARRAY ORDER - MANDATORY FOR BRAZIL 🚨🚨🚨:
    ⚠️ ABSOLUTE RULE: BEVERAGES ALWAYS IN LAST POSITION!
-   ⚠️ ABSOLUTE RULE: MAIN DISH ALWAYS IN FIRST POSITION!
+   ⚠️ ABSOLUTE RULE: CARBS (Rice+Beans) ALWAYS IN FIRST POSITIONS FOR LUNCH/DINNER!
    
-   CORRECT ORDER (follow EXACTLY):
-   1st POSITION: Main dish / Protein (chicken, omelet, etc.)
-   2nd POSITION: Side dishes (rice, beans, salad - if applicable)
-   3rd POSITION: Condiments (olive oil for finishing - if necessary)
-   4th POSITION: Fruit/Dessert (if applicable)
-   5th POSITION (LAST): Beverage (ALWAYS last - never before!)
+   CORRECT ORDER FOR BRAZIL (follow EXACTLY for lunch/dinner):
+   1st POSITION: Rice (SEPARATE ITEM - e.g., {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100})
+   2nd POSITION: Beans (SEPARATE ITEM - e.g., {"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80})
+   3rd POSITION: Protein (chicken, fish, beef, etc.)
+   4th POSITION: Salad/Vegetables
+   5th POSITION: Fruit/Dessert (if applicable)
+   6th POSITION (LAST): Beverage (ALWAYS last - never before!)
    
-   ✅ CORRECT: [Protein, Rice, Beans, Fruit, Beverage]
-   ❌ WRONG: [Beverage, Protein, Rice] ← Beverage CANNOT be first!
-   ❌ WRONG: [Protein, Beverage, Fruit] ← Beverage CANNOT come before fruit!
+   ✅ CORRECT FOR BRAZIL: [Rice, Beans, Chicken, Salad, Fruit, Beverage]
+   ❌ WRONG: [Chicken, Rice, Beans] ← Rice+Beans should come BEFORE protein!
+   ❌ WRONG: [Beverage, Rice, Beans, Chicken] ← Beverage CANNOT be first!
+   ❌ WRONG: [Rice, Chicken, Fruit] ← Where are the beans? In Brazil, beans MUST accompany rice!
+
+   🚨🚨🚨 BRAZIL CULTURAL RULE: BEANS MUST ALWAYS HAVE RICE! 🚨🚨🚨
+   • In Brazilian culture, beans are NEVER eaten alone - they ALWAYS accompany rice
+   • Rice CAN be eaten alone (e.g., with just protein)
+   • But if you include beans, you MUST also include rice!
+   • ❌ WRONG: [Feijão carioca, Chicken, Salad] ← Where's the rice? SERIOUS ERROR!
+   • ✅ CORRECT: [Arroz, Feijão, Chicken, Salad] ← Rice AND beans together!
 
 4️⃣ MANDATORY BEVERAGES FOR LUNCH AND DINNER:
    • Lunch/Dinner: ALWAYS include 1 ZERO beverage as LAST item:
@@ -4483,21 +4492,34 @@ ${countryBehavioralPrompt}
 🚨🚨🚨 DUAL-NAME ARCHITECTURE (CRITICAL FOR DATABASE LOOKUP) 🚨🚨🚨
 
 Every food item MUST have TWO name fields:
-• "name": Food name in USER'S LOCAL LANGUAGE (${regional.language}) - displayed to user
-• "name_en": SIMPLIFIED ENGLISH ingredient name - used for universal database lookup (TACO, USDA, BAM)
+• "name": Food name in USER'S NATIVE LANGUAGE (${regional.language}) - THIS IS DISPLAYED TO THE USER!
+• "name_en": SIMPLIFIED ENGLISH ingredient name - used ONLY for database lookup (TACO, USDA, BAM)
+
+🚨🚨🚨 CRITICAL RULE: "name" MUST ALWAYS BE IN USER'S LANGUAGE! 🚨🚨🚨
+The "name" field is what the user sees in the app interface.
+For a Brazilian user: "name" MUST be in Portuguese (e.g., "Pão integral")
+For a Mexican user: "name" MUST be in Spanish (e.g., "Pan integral")
+For a US user: "name" MUST be in English (e.g., "Whole wheat bread")
+
+❌ SERIOUS ERROR: {"name": "Whole wheat bread slice", "name_en": "Whole wheat bread", "grams": 35}
+   → For Brazilian users, "name" should be "Fatia de pão integral", NOT English!
+✅ CORRECT: {"name": "Fatia de pão integral", "name_en": "Whole wheat bread", "grams": 35}
 
 🚨 CRITICAL: name_en MUST BE SIMPLE INGREDIENT NAMES FOR DB LOOKUP! 🚨
 The name_en field is used to find nutritional data in verified databases.
 Use the SIMPLEST possible English ingredient name to maximize database matches.
 
-EXAMPLE:
+EXAMPLE FOR BRAZIL (${countryCode === 'BR' ? 'CURRENT USER COUNTRY' : 'reference'}):
 {"name": "Filé de frango grelhado ao limão", "name_en": "Chicken breast", "grams": 150}
 {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100}
-{"name": "2 colheres de aveia", "name_en": "Oats", "grams": 30}
+{"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80}
+{"name": "2 colheres de aveia com leite", "name_en": "Oats", "grams": 30}
 {"name": "Ovo cozido", "name_en": "Boiled egg", "grams": 50}
 {"name": "Banana", "name_en": "Banana", "grams": 100}
 {"name": "Purê de batata doce", "name_en": "Sweet potato", "grams": 150}
 {"name": "Brócolis refogado", "name_en": "Broccoli", "grams": 100}
+{"name": "Fatia de pão integral", "name_en": "Whole wheat bread", "grams": 35}
+{"name": "1 xícara de café preto sem açúcar", "name_en": "Black coffee", "grams": 150}
 
 RULES FOR name_en (DATABASE LOOKUP OPTIMIZATION):
 • Use SIMPLE, SINGLE-WORD or BASIC English ingredient names when possible
@@ -4553,12 +4575,20 @@ ${regionalExamples.lunch}
 • {"name": "Azeite", "grams": 5} → SEASONING! Not an item!
 • {"name": "Tomate seco picado", "grams": 20} → LOOSE! Part of which dish?
 
-ORDER IN foods ARRAY:
-1. Main dish (consolidated OR protein of composed meal)
-2. Side dishes (rice SEPARATELY, beans SEPARATELY - if composed meal)
-3. Condiments (olive oil for finishing - ONLY if necessary)
-4. Dessert fruit
-5. Zero/optional beverage (lunch/dinner)
+ORDER IN foods ARRAY (FOR BRAZIL - COMPOSED MEALS):
+1. Rice (ALWAYS FIRST for lunch/dinner in Brazil)
+2. Beans (ALWAYS SECOND - beans MUST accompany rice!)
+3. Protein (chicken, fish, beef, etc.)
+4. Salad/Vegetables
+5. Condiments (olive oil for finishing - ONLY if necessary)
+6. Dessert fruit
+7. Zero/optional beverage (lunch/dinner - ALWAYS LAST!)
+
+ORDER IN foods ARRAY (FOR SINGLE/CONSOLIDATED DISHES):
+1. Main consolidated dish (soup, omelet, salad bowl, etc.)
+2. Optional accompaniments
+3. Dessert fruit
+4. Beverage (ALWAYS LAST!)
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📖 INSTRUCTIONS FORMAT (instructions array) - HOW TO PREPARE:

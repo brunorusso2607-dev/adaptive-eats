@@ -811,6 +811,79 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       });
     }
 
+    // ========== PÓS-PROCESSAMENTO: DECOMPOSIÇÃO DO PRODUTO IDENTIFICADO ==========
+    // Se o produto foi identificado, buscar ingredientes base no banco de decomposição
+    // Isso garante que produtos como "cerveja" sejam detectados como contendo glúten
+    
+    const productName = (analysis.produto_identificado || "").toLowerCase().trim();
+    if (productName && (!analysis.ingredientes_analisados || analysis.ingredientes_analisados.length === 0)) {
+      logStep("Trying to decompose product from database", { productName });
+      
+      try {
+        // Buscar decomposição no banco de dados
+        const { data: decompositionData, error: decompositionError } = await supabaseClient
+          .from("food_decomposition_mappings")
+          .select("food_name, base_ingredients")
+          .eq("is_active", true)
+          .or(`food_name.ilike.%${productName}%,food_name.ilike.%${productName.split(' ')[0]}%`);
+        
+        if (!decompositionError && decompositionData && decompositionData.length > 0) {
+          const decomposition = decompositionData[0];
+          logStep("Found product decomposition in database", { 
+            product: decomposition.food_name, 
+            ingredients: decomposition.base_ingredients 
+          });
+          
+          // Adicionar ingredientes à análise
+          analysis.ingredientes_analisados = decomposition.base_ingredients.map((ing: string) => {
+            // Verificar se o ingrediente é problemático para o usuário
+            let status: "seguro" | "risco_potencial" | "contem" = "seguro";
+            let restricaoAfetada = "";
+            
+            const ingLower = ing.toLowerCase();
+            for (const intolerance of userIntolerances) {
+              const intoleranceKey = safetyDatabase 
+                ? (safetyDatabase.keyNormalization.get(intolerance.toLowerCase()) || intolerance.toLowerCase())
+                : intolerance.toLowerCase();
+              
+              const forbiddenIngredients: string[] = safetyDatabase 
+                ? (safetyDatabase.intoleranceMappings.get(intoleranceKey) || [])
+                : [];
+              
+              if (forbiddenIngredients.some((forbidden: string) => ingLower.includes(forbidden) || forbidden.includes(ingLower))) {
+                status = "contem";
+                restricaoAfetada = safetyDatabase 
+                  ? getIntoleranceLabel(intoleranceKey, safetyDatabase)
+                  : (INTOLERANCE_LABELS[intoleranceKey] || intolerance);
+                break;
+              }
+            }
+            
+            return {
+              nome: ing,
+              status,
+              fonte: "decomposition_database",
+              restricao_afetada: restricaoAfetada || undefined
+            };
+          });
+          
+          // Calcular veredicto baseado nos ingredientes
+          const hasContem = analysis.ingredientes_analisados.some((i: any) => i.status === "contem");
+          const hasRisco = analysis.ingredientes_analisados.some((i: any) => i.status === "risco_potencial");
+          analysis.veredicto = hasContem ? "contem" : (hasRisco ? "risco_potencial" : "seguro");
+          analysis.fonte_informacao = "decomposition_database";
+          analysis.confianca = "alta";
+          
+          logStep("Product decomposed and validated", { 
+            veredicto: analysis.veredicto, 
+            ingredientCount: analysis.ingredientes_analisados.length 
+          });
+        }
+      } catch (decompError) {
+        logStep("Error decomposing product", { error: String(decompError) });
+      }
+    }
+
     // ========== PÓS-PROCESSAMENTO: ENRIQUECIMENTO DE MACROS COM TABELA FOODS ==========
     // Se o rótulo foi analisado, enriquecer ingredientes com macros reais da tabela foods
     

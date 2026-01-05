@@ -816,3 +816,277 @@ export function clearCache(): void {
   cachedDatabase = null;
   cacheTimestamp = 0;
 }
+
+// ============= DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS =============
+// Centralizado aqui para uso em TODOS os módulos do app
+
+/**
+ * Palavras-chave que indicam alimentos processados que precisam ser decompostos
+ * Usado por: analyze-food-photo, analyze-label-photo, analyze-fridge-photo
+ */
+export const PROCESSED_FOOD_KEYWORDS = [
+  // Padaria e massas
+  'biscoito', 'bolacha', 'pão', 'bolo', 'torta', 'pizza', 'macarrão', 'massa', 
+  'salgado', 'pastel', 'empada', 'coxinha', 'esfiha', 'croissant', 'wafer',
+  'cookie', 'cracker', 'muffin', 'brownie', 'donut', 'rosquinha', 'pretzel',
+  'sanduíche', 'hambúrguer', 'hot dog', 'cachorro quente', 'wrap', 'tapioca',
+  'lasanha', 'nhoque', 'ravioli', 'cappelletti', 'ravióli', 'canelone',
+  'panqueca', 'crepe', 'waffle', 'churros', 'sonho', 'bomba', 'éclair',
+  'panetone', 'colomba', 'brioche', 'focaccia', 'ciabatta', 'baguete',
+  'cereal', 'granola', 'muesli', 'barra de cereal', 'snack', 'chips',
+  'sorvete', 'picolé', 'açaí', 'pudim', 'mousse', 'cheesecake',
+  'bagel', 'broa', 'pita', 'scone', 'danish', 'folhado', 'vol-au-vent',
+  'canapé', 'bruschetta', 'quiche', 'panko', 'crouton',
+  // Doces brasileiros
+  'brigadeiro', 'beijinho', 'cajuzinho', 'paçoca', 'pé de moleque',
+  'canjica', 'arroz doce', 'mingau', 'manjar', 'quindim', 'romeu e julieta',
+  // Bebidas
+  'vitamina', 'milk shake', 'milkshake', 'cappuccino', 'café com leite',
+  'achocolatado', 'yakult', 'leite fermentado', 'petit suisse', 'danoninho',
+  'cerveja', 'beer', 'heineken', 'brahma', 'skol', 'budweiser', 'corona',
+  'refrigerante', 'frappuccino', 'latte', 'mocha', 'chai',
+  'smoothie', 'shake', 'whisky', 'whiskey', 'vodka', 'gin', 'baileys',
+  'licor', 'vinho', 'champagne', 'sidra', 'sakê', 'sake', 'chopp',
+  'ovomaltine', 'toddy', 'nescau', 'kefir', 'lassi', 'horchata',
+  'protein shake', 'whey', 'mass gainer',
+  // Pratos regionais
+  'strogonoff', 'strogonofe', 'escondidinho', 'bobó', 'moqueca', 'vatapá',
+  'acarajé', 'pão de queijo', 'cuscuz', 'polenta', 'purê', 'xinxim',
+  'caruru', 'tacacá', 'baião', 'tropeiro', 'carreteiro', 'galinhada',
+  'pamonha', 'curau', 'cural', 'mungunzá',
+  // Oriental
+  'sushi', 'tempurá', 'tempura', 'yakisoba', 'rolinho primavera', 'guioza',
+  'dumpling', 'miojo', 'lámen', 'lamen', 'ramen', 'udon', 'soba',
+  'takoyaki', 'okonomiyaki', 'tonkatsu', 'korokke', 'gyudon', 'katsudon',
+  'oyakodon', 'natto', 'unagi', 'tamagoyaki', 'dim sum', 'siu mai',
+  'har gow', 'baozi', 'jiaozi', 'wonton', 'char siu', 'congee',
+  // Sobremesas internacionais
+  'tiramisù', 'tiramisu', 'panna cotta', 'creme brulee', 'crème brûlée',
+  'petit gateau', 'pastel de nata', 'pão de mel', 'affogato',
+  'cinnamon roll', 'macaron', 'blondie', 'pavê',
+  'trifle', 'banana split', 'sundae',
+  // Embutidos e processados
+  'salsicha', 'linguiça', 'mortadela', 'presunto', 'nugget', 'empanado',
+  'almôndega', 'croquete', 'bolinho', 'isca', 'milanesa',
+  // Salgadinhos
+  'doritos', 'cheetos', 'salgadinho', 'pipoca', 'ruffles', 'pringles',
+  // Cremes e pastas
+  'nutella', 'creme de avelã', 'requeijão', 'cream cheese',
+  // Fast food
+  'big mac', 'whopper', 'mcchicken', 'mcnuggets', 'mcflurry', 'cheeseburger',
+  // Sopas e caldos
+  'sopa', 'caldo', 'canja', 'minestrone', 'missoshiru',
+  // Pratos internacionais
+  'pad thai', 'curry', 'pho', 'banh mi', 'kimchi', 'bibimbap',
+  'taco', 'burrito', 'quesadilla', 'nachos', 'falafel', 'shawarma', 'kebab',
+  'tikka masala', 'naan', 'samosa', 'biryani',
+];
+
+/**
+ * Mapa de decomposição local para alimentos processados
+ * Usado como fallback quando o banco de dados não tem a decomposição
+ */
+export const DECOMPOSITION_MAP: Record<string, string[]> = {
+  // Bebidas com glúten
+  'cerveja': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'beer': ['barley', 'wheat', 'hops', 'gluten', 'malt'],
+  'heineken': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'brahma': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'skol': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'budweiser': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'corona': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'chopp': ['cevada', 'trigo', 'lúpulo', 'glúten', 'malte'],
+  'cerveja de trigo': ['trigo', 'glúten', 'cevada', 'malte'],
+  'whisky': ['cevada maltada', 'glúten'],
+  'whiskey': ['cevada maltada', 'glúten'],
+  
+  // Pães
+  'pão': ['farinha de trigo', 'trigo', 'fermento', 'sal', 'açúcar'],
+  'pão de forma': ['farinha de trigo', 'trigo', 'fermento', 'açúcar', 'leite', 'soja'],
+  'pão francês': ['farinha de trigo', 'trigo', 'fermento', 'sal', 'leite'],
+  'pão de queijo': ['polvilho', 'queijo', 'leite', 'ovo'],
+  
+  // Massas
+  'macarrão': ['farinha de trigo', 'trigo', 'ovo'],
+  'pizza': ['farinha de trigo', 'trigo', 'queijo', 'tomate'],
+  'lasanha': ['farinha de trigo', 'trigo', 'ovo', 'queijo', 'leite', 'carne'],
+  
+  // Laticínios
+  'sorvete': ['leite', 'açúcar', 'creme de leite'],
+  'queijo': ['leite'],
+  'iogurte': ['leite', 'fermento lácteo'],
+  
+  // Doces
+  'brigadeiro': ['leite condensado', 'leite', 'chocolate', 'cacau', 'manteiga'],
+  'pudim': ['leite', 'ovo', 'açúcar', 'caramelo'],
+  'bolo': ['farinha de trigo', 'trigo', 'açúcar', 'ovo', 'leite', 'manteiga'],
+  
+  // Embutidos
+  'salsicha': ['carne', 'amido', 'sal', 'soja', 'lactose'],
+  'mortadela': ['carne', 'amido', 'sal', 'soja', 'lactose'],
+  'presunto': ['carne suína', 'sal', 'açúcar', 'lactose'],
+  
+  // Salgados
+  'coxinha': ['farinha de trigo', 'trigo', 'frango', 'leite', 'ovo'],
+  'pastel': ['farinha de trigo', 'trigo', 'gordura', 'ovo'],
+  'empada': ['farinha de trigo', 'trigo', 'manteiga', 'ovo'],
+};
+
+/**
+ * Verifica se um alimento é processado e precisa ser decomposto
+ */
+export function isProcessedFood(foodName: string): boolean {
+  const normalized = foodName.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return PROCESSED_FOOD_KEYWORDS.some(keyword => 
+    normalized.includes(keyword.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+}
+
+/**
+ * Busca decomposição no banco de dados food_decomposition_mappings
+ * @param foodName Nome do alimento
+ * @param supabaseUrl URL do Supabase
+ * @param supabaseKey Chave de serviço do Supabase
+ * @param userCountry País do usuário para priorização de idioma
+ */
+export async function getDecompositionFromDatabase(
+  foodName: string,
+  supabaseUrl?: string,
+  supabaseKey?: string,
+  userCountry: string = 'BR'
+): Promise<string[] | null> {
+  try {
+    const url = supabaseUrl || Deno.env.get('SUPABASE_URL');
+    const key = supabaseKey || Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    
+    if (!url || !key) return null;
+    
+    const serviceClient = createClient(url, key);
+    const normalized = foodName.toLowerCase().trim();
+    
+    // 1. Buscar em EN primeiro (padrão global)
+    const { data: enData, error: enError } = await serviceClient
+      .from('food_decomposition_mappings')
+      .select('base_ingredients')
+      .eq('is_active', true)
+      .eq('language', 'en')
+      .ilike('food_name', `%${normalized}%`)
+      .limit(1)
+      .single();
+    
+    if (!enError && enData?.base_ingredients?.length > 0) {
+      console.log(`[GlobalSafetyEngine] Found EN decomposition for "${foodName}":`, enData.base_ingredients);
+      return enData.base_ingredients;
+    }
+    
+    // 2. Buscar no idioma do país do usuário
+    const languageMap: Record<string, string> = { 'BR': 'br', 'PT': 'pt', 'ES': 'es', 'MX': 'es' };
+    const lang = languageMap[userCountry] || 'en';
+    
+    if (lang !== 'en') {
+      const { data: langData, error: langError } = await serviceClient
+        .from('food_decomposition_mappings')
+        .select('base_ingredients')
+        .eq('is_active', true)
+        .eq('language', lang)
+        .ilike('food_name', `%${normalized}%`)
+        .limit(1)
+        .single();
+      
+      if (!langError && langData?.base_ingredients?.length > 0) {
+        console.log(`[GlobalSafetyEngine] Found ${lang} decomposition for "${foodName}":`, langData.base_ingredients);
+        return langData.base_ingredients;
+      }
+    }
+    
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Decompõe um alimento processado em ingredientes base
+ * Prioridade: 1. Banco de dados, 2. Mapa local, 3. Nome original
+ */
+export async function decomposeFood(
+  foodName: string,
+  supabaseUrl?: string,
+  supabaseKey?: string,
+  userCountry: string = 'BR'
+): Promise<string[]> {
+  const normalized = foodName.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  
+  // 1. Tentar banco de dados primeiro
+  const dbDecomposition = await getDecompositionFromDatabase(foodName, supabaseUrl, supabaseKey, userCountry);
+  if (dbDecomposition && dbDecomposition.length > 0) {
+    return dbDecomposition;
+  }
+  
+  // 2. Fallback: Mapa local
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    if (normalized.includes(keyNormalized) || keyNormalized.includes(normalized)) {
+      console.log(`[GlobalSafetyEngine] Using local decomposition for "${foodName}" → "${key}"`);
+      return ingredients;
+    }
+  }
+  
+  // 3. Match parcial por palavras
+  for (const [key, ingredients] of Object.entries(DECOMPOSITION_MAP)) {
+    const keyNormalized = key.normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const keyWords = keyNormalized.split(' ');
+    if (keyWords.some(word => word.length > 3 && normalized.includes(word))) {
+      console.log(`[GlobalSafetyEngine] Using partial match for "${foodName}" → "${key}"`);
+      return ingredients;
+    }
+  }
+  
+  // 4. Retorna nome original se não conseguir decompor
+  return [foodName];
+}
+
+/**
+ * Valida um alimento com decomposição automática
+ * Esta função decompõe automaticamente alimentos processados antes de validar
+ * 
+ * @param foodName Nome do alimento ou produto
+ * @param restrictions Restrições do usuário
+ * @param database Base de dados de segurança
+ * @param supabaseUrl URL do Supabase (opcional)
+ * @param supabaseKey Chave de serviço (opcional)
+ * @param userCountry País do usuário (padrão: BR)
+ */
+export async function validateFoodWithDecomposition(
+  foodName: string,
+  restrictions: UserRestrictions,
+  database: SafetyDatabase,
+  supabaseUrl?: string,
+  supabaseKey?: string,
+  userCountry: string = 'BR'
+): Promise<SafetyCheckResult & { decomposedIngredients?: string[], wasDecomposed?: boolean }> {
+  let ingredientsToValidate: string[] = [foodName];
+  let wasDecomposed = false;
+  
+  // Se é alimento processado, decompor primeiro
+  if (isProcessedFood(foodName)) {
+    const decomposed = await decomposeFood(foodName, supabaseUrl, supabaseKey, userCountry);
+    if (decomposed.length > 0 && (decomposed.length > 1 || decomposed[0] !== foodName)) {
+      ingredientsToValidate = decomposed;
+      wasDecomposed = true;
+      console.log(`[GlobalSafetyEngine] Decomposed "${foodName}" into:`, decomposed);
+    }
+  }
+  
+  // Validar todos os ingredientes (incluindo o nome original para segurança)
+  const allItems = wasDecomposed ? [foodName, ...ingredientsToValidate] : ingredientsToValidate;
+  const result = validateIngredientList(allItems, restrictions, database);
+  
+  return {
+    ...result,
+    decomposedIngredients: wasDecomposed ? ingredientsToValidate : undefined,
+    wasDecomposed
+  };
+}

@@ -15,11 +15,15 @@ import {
   Server,
   Database,
   Zap,
-  Monitor
+  Monitor,
+  Shield,
+  History,
+  FileEdit
 } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { useSystemIntegrity, useRecentCriticalChanges } from "@/hooks/useSystemIntegrity";
 
 interface HealthLog {
   id: string;
@@ -58,6 +62,10 @@ const typeIcons = {
 export default function AdminSystemHealth() {
   const queryClient = useQueryClient();
   const [isRunningCheck, setIsRunningCheck] = useState(false);
+  
+  // Hooks de integridade do sistema
+  const { data: integrityData, isLoading: loadingIntegrity, refetch: refetchIntegrity } = useSystemIntegrity();
+  const { data: criticalChanges, isLoading: loadingChanges } = useRecentCriticalChanges();
 
   // Buscar últimos health checks
   const { data: healthLogs, isLoading: loadingHealth } = useQuery({
@@ -212,12 +220,187 @@ export default function AdminSystemHealth() {
         </div>
 
         {/* Tabs */}
-        <Tabs defaultValue="status">
-          <TabsList>
+        <Tabs defaultValue="integrity">
+          <TabsList className="flex-wrap">
+            <TabsTrigger value="integrity" className="gap-1">
+              <Shield className="h-4 w-4" />
+              Integridade
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1">
+              <FileEdit className="h-4 w-4" />
+              Auditoria ({criticalChanges?.length || 0})
+            </TabsTrigger>
             <TabsTrigger value="status">Status dos Componentes</TabsTrigger>
             <TabsTrigger value="frontend">Erros Frontend ({frontendErrors?.length || 0})</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
+
+          {/* Aba de Integridade do Sistema */}
+          <TabsContent value="integrity" className="mt-4">
+            <Card>
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Integridade dos Módulos Críticos
+                </CardTitle>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={() => refetchIntegrity()}
+                  disabled={loadingIntegrity}
+                >
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loadingIntegrity ? 'animate-spin' : ''}`} />
+                  Verificar
+                </Button>
+              </CardHeader>
+              <CardContent>
+                {loadingIntegrity ? (
+                  <p className="text-muted-foreground">Verificando integridade...</p>
+                ) : !integrityData ? (
+                  <p className="text-muted-foreground">Erro ao carregar dados</p>
+                ) : (
+                  <div className="space-y-4">
+                    {/* Status geral */}
+                    <div className={`p-4 rounded-lg ${
+                      integrityData.overallStatus === 'healthy' ? 'bg-green-50 border border-green-200' :
+                      integrityData.overallStatus === 'degraded' ? 'bg-yellow-50 border border-yellow-200' :
+                      'bg-red-50 border border-red-200'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {integrityData.overallStatus === 'healthy' ? (
+                          <CheckCircle className="h-5 w-5 text-green-500" />
+                        ) : integrityData.overallStatus === 'degraded' ? (
+                          <AlertTriangle className="h-5 w-5 text-yellow-500" />
+                        ) : (
+                          <XCircle className="h-5 w-5 text-red-500" />
+                        )}
+                        <span className="font-semibold">
+                          {integrityData.overallStatus === 'healthy' ? 'Sistema Saudável' :
+                           integrityData.overallStatus === 'degraded' ? 'Sistema Degradado' :
+                           'Sistema Crítico'}
+                        </span>
+                        <span className="text-sm text-muted-foreground ml-auto">
+                          {integrityData.totalPassed}/{integrityData.checks.length} verificações OK
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Lista de verificações */}
+                    <div className="space-y-2">
+                      {integrityData.checks.map((check, idx) => (
+                        <div 
+                          key={idx}
+                          className={`flex items-center justify-between p-3 rounded-lg ${
+                            check.status === 'ok' ? 'bg-green-50' :
+                            check.status === 'warning' ? 'bg-yellow-50' :
+                            'bg-red-50'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2">
+                            {check.status === 'ok' ? (
+                              <CheckCircle className="h-4 w-4 text-green-500" />
+                            ) : check.status === 'warning' ? (
+                              <AlertTriangle className="h-4 w-4 text-yellow-500" />
+                            ) : (
+                              <XCircle className="h-4 w-4 text-red-500" />
+                            )}
+                            <span className="font-medium">{check.module}</span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-muted-foreground">{check.message}</span>
+                            {check.count !== undefined && (
+                              <Badge variant="outline">{check.count}</Badge>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <p className="text-xs text-muted-foreground text-right">
+                      Última verificação: {format(integrityData.lastChecked, "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
+                    </p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Aba de Auditoria de Mudanças Críticas */}
+          <TabsContent value="audit" className="mt-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <History className="h-5 w-5" />
+                  Auditoria de Mudanças Críticas
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                {loadingChanges ? (
+                  <p className="text-muted-foreground">Carregando auditoria...</p>
+                ) : !criticalChanges || criticalChanges.length === 0 ? (
+                  <div className="text-center py-8">
+                    <Shield className="h-12 w-12 text-green-500 mx-auto mb-2" />
+                    <p className="text-muted-foreground">
+                      Nenhuma mudança crítica registrada
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Alterações em tabelas protegidas aparecerão aqui
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                    {criticalChanges.map((change: any) => (
+                      <div 
+                        key={change.id}
+                        className={`p-3 rounded-lg border ${
+                          change.operation === 'DELETE' ? 'bg-red-50 border-red-200' :
+                          change.operation === 'UPDATE' ? 'bg-yellow-50 border-yellow-200' :
+                          'bg-blue-50 border-blue-200'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <Badge variant={
+                              change.operation === 'DELETE' ? 'destructive' :
+                              change.operation === 'UPDATE' ? 'secondary' :
+                              'default'
+                            }>
+                              {change.operation}
+                            </Badge>
+                            <span className="font-medium">{change.table_name}</span>
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {format(new Date(change.changed_at), "dd/MM/yyyy HH:mm:ss", { locale: ptBR })}
+                          </span>
+                        </div>
+                        
+                        {change.operation === 'DELETE' && change.old_data && (
+                          <div className="text-xs bg-white/50 p-2 rounded">
+                            <span className="text-red-600">Removido:</span>{' '}
+                            {JSON.stringify(change.old_data).slice(0, 100)}...
+                          </div>
+                        )}
+                        
+                        {change.operation === 'INSERT' && change.new_data && (
+                          <div className="text-xs bg-white/50 p-2 rounded">
+                            <span className="text-blue-600">Adicionado:</span>{' '}
+                            {JSON.stringify(change.new_data).slice(0, 100)}...
+                          </div>
+                        )}
+                        
+                        {change.operation === 'UPDATE' && (
+                          <div className="text-xs bg-white/50 p-2 rounded space-y-1">
+                            <div><span className="text-yellow-600">Antes:</span> {JSON.stringify(change.old_data).slice(0, 80)}...</div>
+                            <div><span className="text-green-600">Depois:</span> {JSON.stringify(change.new_data).slice(0, 80)}...</div>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           <TabsContent value="status" className="mt-4">
             <Card>

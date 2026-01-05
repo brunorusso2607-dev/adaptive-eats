@@ -1608,36 +1608,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 </div>
               )}
 
-              {/* Total macros card */}
-              <Card className="glass-card border-primary/20 animate-reveal animate-reveal-3">
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-lg">Total Estimado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-4 gap-2">
-                    <div className="text-center p-3 rounded-lg bg-orange-500/10">
-                      <Flame className="w-5 h-5 mx-auto mb-1 text-orange-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.calorias_totais ?? 0}</p>
-                      <p className="text-xs text-muted-foreground">kcal</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-red-500/10">
-                      <Beef className="w-5 h-5 mx-auto mb-1 text-red-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.proteinas_totais ?? 0}g</p>
-                      <p className="text-xs text-muted-foreground">proteína</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-amber-500/10">
-                      <Wheat className="w-5 h-5 mx-auto mb-1 text-amber-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.carboidratos_totais ?? 0}g</p>
-                      <p className="text-xs text-muted-foreground">carbos</p>
-                    </div>
-                    <div className="text-center p-3 rounded-lg bg-blue-500/10">
-                      <Droplets className="w-5 h-5 mx-auto mb-1 text-blue-500" />
-                      <p className="text-xl font-bold text-foreground">{foodAnalysis.total_geral?.gorduras_totais ?? 0}g</p>
-                      <p className="text-xs text-muted-foreground">gordura</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* Card duplicado removido - agora usando apenas o card unificado com fonte dos dados abaixo */}
 
               {/* Meta Diária Card */}
               {metaDiaria && (

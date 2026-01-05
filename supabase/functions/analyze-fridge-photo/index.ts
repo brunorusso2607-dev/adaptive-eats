@@ -1820,8 +1820,10 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       });
     }
 
-    // ========== PÓS-PROCESSAMENTO DE SEGURANÇA - CRUZAMENTO COM PERFIL USANDO GLOBAL SAFETY ENGINE ==========
-    // Esta etapa GARANTE que nenhuma intolerância do usuário escape da detecção
+    // ========== ARQUITETURA CORRETA: PERFIL DERIVA DO SAFETY ENGINE ==========
+    // O Safety Engine já validou cada ingrediente durante o pós-processamento acima.
+    // Agora apenas DERIVAMOS os alertas do que já foi marcado com alerta_seguranca.
+    // NÃO fazemos nova validação - apenas refletimos o que o Safety Engine decidiu.
     
     const alertasPersonalizados: Array<{
       ingrediente: string;
@@ -1831,48 +1833,65 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       icone: string;
     }> = [];
     
-    // Verificar cada intolerância do usuário contra os ingredientes identificados
+    // Função auxiliar para normalizar texto
+    const normalizeTextLocal = (text: string): string => {
+      return text.toLowerCase().trim()
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    };
+    
+    // Para cada intolerância do usuário, verificar se há ingredientes já marcados com conflito
     for (const userIntolerance of normalizedIntolerances) {
+      // Obter todas as formas normalizadas desta intolerância
+      const normalizedKeys: string[] = safetyDatabase 
+        ? (safetyDatabase.keyNormalization.get(userIntolerance.toLowerCase()) || [userIntolerance.toLowerCase()])
+        : [userIntolerance.toLowerCase()];
+      
+      const intoleranceKey = normalizedKeys[0];
+      const restricaoLabel = getIntoleranceLabel(intoleranceKey, safetyDatabase);
+      
+      // Criar set de todas as formas normalizadas para matching
+      const allNormalizedForms = new Set<string>();
+      allNormalizedForms.add(normalizeTextLocal(userIntolerance));
+      allNormalizedForms.add(normalizeTextLocal(restricaoLabel));
+      for (const key of normalizedKeys) {
+        allNormalizedForms.add(normalizeTextLocal(key));
+        const keyLabel = getIntoleranceLabel(key, safetyDatabase);
+        allNormalizedForms.add(normalizeTextLocal(keyLabel));
+      }
+      
       let found = false;
       let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
       let foundIngredient = "";
       
-      // Verificar em ingredientes identificados usando globalSafetyEngine
-      // AGORA COM DECOMPOSIÇÃO DE ALIMENTOS PROCESSADOS + FALLBACK OPENFOODFACTS
+      // ========== ÚNICA FONTE DE VERDADE: ingredientes com alerta_seguranca ==========
       if (analysis.ingredientes_identificados) {
         for (const ing of analysis.ingredientes_identificados) {
-          const ingName = ing.nome || "";
-          
-          // Decompor alimentos processados antes de validar (com fallback para DB e OpenFoodFacts)
-          let ingredientsToCheck: string[] = [ingName];
-          if (isProcessedFood(ingName)) {
-            ingredientsToCheck = await decomposeProcessedFoodAsync(ingName, userCountry);
-          }
-          
-          // Verificar se este ingrediente corresponde à intolerância usando globalSafetyEngine
-          const singleRestriction: UserRestrictions = {
-            intolerances: [userIntolerance],
-            dietaryPreference: 'comum',
-            excludedIngredients: [],
-          };
-          const check = validateIngredientList(ingredientsToCheck, singleRestriction, safetyDatabase);
-          
-          if (!check.isSafe) {
-            found = true;
-            foundIngredient = ing.nome;
-            // Se temos alerta de segurança ou confiança baixa, é risco_potencial
-            // Se é industrializado sem alerta e alta confiança, assumimos que contém
-            if (ing.alerta_seguranca || ing.confianca === 'baixa') {
-              foundStatus = "risco_potencial";
-            } else {
-              foundStatus = "contem";
+          // Se o Safety Engine já marcou este ingrediente com alerta
+          if (ing.alerta_seguranca) {
+            const alertaNorm = normalizeTextLocal(ing.alerta_seguranca);
+            
+            // Verificar se o alerta corresponde a esta intolerância
+            const matchesThisIntolerance = Array.from(allNormalizedForms).some(form => 
+              alertaNorm.includes(form) || form.includes(alertaNorm.split(' ').slice(1, 3).join(' '))
+            );
+            
+            if (matchesThisIntolerance) {
+              found = true;
+              foundIngredient = ing.nome;
+              foundStatus = alertaNorm.includes('🔴') ? "contem" : "risco_potencial";
+              
+              logStep("Perfil DERIVANDO do Safety Engine (Fridge)", {
+                ingredient: ing.nome,
+                alerta_original: ing.alerta_seguranca,
+                intolerance_usuario: userIntolerance,
+                status_derivado: foundStatus
+              });
+              
+              if (foundStatus === "contem") break; // Pior caso
             }
           }
         }
       }
-      
-      // Gerar mensagem personalizada para o usuário
-      const restricaoLabel = getIntoleranceLabel(userIntolerance, safetyDatabase);
       
       if (found) {
         alertasPersonalizados.push({

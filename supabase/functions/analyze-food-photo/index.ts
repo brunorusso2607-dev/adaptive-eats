@@ -537,10 +537,40 @@ Priority order: severity > certainty > user's intolerance list order
 User's daily goal: ${dailyCalorieGoal} kcal
 This meal represents a portion of their daily intake.
 
+=== RAW FOOD DETECTION (IMPORTANT) ===
+
+Detect if the image shows RAW, UNPREPARED food that is NOT a ready-to-eat meal.
+
+**SET is_raw_unprepared: true IF:**
+- Raw meat (beef, chicken, pork, fish) NOT on a plate as a meal
+- Raw eggs (in shell or cracked raw)
+- Raw ingredients on a kitchen counter/cutting board being prepared
+- Uncooked ingredients not plated as a meal
+- Food still in packaging being prepared
+
+**SET is_raw_unprepared: false (EXCEPTIONS - traditionally served raw):**
+- Sushi, Sashimi, Nigiri
+- Tartare (steak tartare, tuna tartare)
+- Carpaccio
+- Ceviche
+- Kibbeh cru / Quibe cru
+- Oysters, raw seafood appetizers
+- Fruits and vegetables (naturally eaten raw)
+- Salads
+
+**Context clues for raw unprepared:**
+- Kitchen counter/cutting board visible (not dining table)
+- Raw meat texture (shiny, wet, no browning)
+- No plate/bowl presentation
+- Cooking utensils nearby (knives, cutting board)
+- Packaging visible
+
 === OUTPUT FORMAT (JSON) ===
 
 {
   "type": "food" | "partial_food" | "not_food" | "label",
+  "is_raw_unprepared": false,
+  "raw_food_reason": "reason if is_raw_unprepared is true, in ${userLocale}, or null",
   "analysis_confidence": {
     "level": "high" | "medium" | "low",
     "reasons": ["reason in ${userLocale}"],
@@ -896,6 +926,20 @@ This protects user trust - better to ask for correction than guess wrong.
       };
       
       logStep("Generated prato_identificado", { nome: analysis.prato_identificado.nome });
+    }
+    
+    // ========== RAW UNPREPARED FOOD DETECTION ==========
+    // Transfer is_raw_unprepared flag from AI response
+    if (analysis.is_raw_unprepared !== undefined) {
+      analysis.alimento_cru_nao_preparado = analysis.is_raw_unprepared;
+      analysis.motivo_cru = analysis.raw_food_reason || null;
+      logStep("Raw food detection", { 
+        is_raw_unprepared: analysis.is_raw_unprepared,
+        reason: analysis.raw_food_reason 
+      });
+    } else {
+      analysis.alimento_cru_nao_preparado = false;
+      analysis.motivo_cru = null;
     }
 
     // ========== HYBRID MACRO CALCULATION: Use real data from foods table ==========

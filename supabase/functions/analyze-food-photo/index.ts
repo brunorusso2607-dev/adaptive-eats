@@ -987,7 +987,12 @@ This protects user trust - better to ask for correction than guess wrong.
               carboidratos: Math.round(calc.carbs * 10) / 10,
               gorduras: Math.round(calc.fat * 10) / 10,
             };
-            analysis.alimentos[i].calculo_fonte = calc.source === 'database' ? 'tabela_foods' : 'estimativa_ia';
+            
+            // Map source to display format
+            // 'database' and 'database_global' = official tables (TACO/USDA)
+            // 'category_fallback' and 'ai_estimate' = AI estimation
+            const isFromDatabase = calc.source === 'database' || calc.source === 'database_global';
+            analysis.alimentos[i].calculo_fonte = isFromDatabase ? 'tabela_foods' : 'estimativa_ia';
             analysis.alimentos[i].gramas_usadas = calc.grams;
             if (calc.food_id) {
               analysis.alimentos[i].food_id = calc.food_id;
@@ -996,13 +1001,13 @@ This protects user trust - better to ask for correction than guess wrong.
               analysis.alimentos[i].alimento_encontrado = calc.matched_name;
             }
             
-            if (calc.source === 'database') {
+            if (isFromDatabase) {
               macrosFromDatabase++;
               detalhesRecalculo.push({
                 item: analysis.alimentos[i].item,
                 original: originalCalorias,
                 recalculado: calc.calories,
-                source: 'database'
+                source: calc.source
               });
             } else {
               macrosFromAI++;

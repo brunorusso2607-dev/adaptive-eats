@@ -995,127 +995,79 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       icone: string;
     }> = [];
     
-    // Verificar cada intolerância do usuário contra os ingredientes analisados
+    // ========== ARQUITETURA CORRETA: PERFIL DERIVA DO SAFETY ENGINE ==========
+    // O Safety Engine já validou cada ingrediente e marcou:
+    // - status: "seguro" | "risco_potencial" | "contem"
+    // - restricao_afetada: a intolerância que causou o conflito
+    // 
+    // O Perfil NÃO faz nova consulta - apenas REFLETE o que o Safety Engine decidiu.
+    // Se algum ingrediente tem status="contem" e restricao_afetada corresponde à 
+    // intolerância do usuário, então é conflito.
+    
     for (const userIntolerance of userIntolerances) {
-      // Normalizar a key usando o Global Safety Engine
-      // CORRIGIDO: keyNormalization retorna um ARRAY de keys, não uma string única
+      // Normalizar a key do usuário para comparação
+      const normalizedUserKey = normalizeText(userIntolerance);
+      
+      // Obter todas as formas normalizadas desta intolerância
       const normalizedKeys: string[] = safetyDatabase 
         ? (safetyDatabase.keyNormalization.get(userIntolerance.toLowerCase()) || [userIntolerance.toLowerCase()])
         : [userIntolerance.toLowerCase()];
       
-      // Obter TODOS os ingredientes proibidos de TODAS as keys expandidas
-      const forbiddenIngredients: string[] = [];
-      for (const key of normalizedKeys) {
-        const ingredients = safetyDatabase?.intoleranceMappings.get(key) || [];
-        forbiddenIngredients.push(...ingredients);
-      }
-      
-      // Se não encontrou nada, usar a própria key como fallback
-      if (forbiddenIngredients.length === 0) {
-        forbiddenIngredients.push(userIntolerance.toLowerCase());
-      }
-      
-      // Usar a primeira key para o label
+      // Obter o label amigável para esta intolerância
       const intoleranceKey = normalizedKeys[0];
+      const restricaoLabel = safetyDatabase 
+        ? getIntoleranceLabel(intoleranceKey, safetyDatabase)
+        : (INTOLERANCE_LABELS[intoleranceKey] || userIntolerance);
+      
+      // Normalizar TODAS as variações para matching
+      const allNormalizedForms = new Set<string>();
+      allNormalizedForms.add(normalizeText(userIntolerance));
+      allNormalizedForms.add(normalizeText(restricaoLabel));
+      for (const key of normalizedKeys) {
+        allNormalizedForms.add(normalizeText(key));
+        const keyLabel = safetyDatabase ? getIntoleranceLabel(key, safetyDatabase) : key;
+        allNormalizedForms.add(normalizeText(keyLabel));
+      }
       
       let found = false;
       let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
       let foundIngredient = "";
       
-      // ========== STEP 0: VERIFICAR NO NOME DO PRODUTO (CRÍTICO PARA CERVEJAS, PÃES, ETC) ==========
-      const productName = (analysis.produto_identificado || "").toLowerCase();
-      const productBrand = (analysis.marca || "").toLowerCase();
-      const productFull = `${productName} ${productBrand}`;
-      
-      for (const forbidden of forbiddenIngredients) {
-        if (productFull.includes(forbidden)) {
-          found = true;
-          foundStatus = "contem";
-          foundIngredient = analysis.produto_identificado;
-          logStep("Product name contains forbidden ingredient for intolerance", { 
-            product: analysis.produto_identificado, 
-            forbiddenIngredient: forbidden,
-            intolerance: intoleranceKey 
-          });
-          break;
-        }
-      }
-      
-      // Verificar em ingredientes_analisados (se não encontrou no nome do produto)
-      if (!found && analysis.ingredientes_analisados) {
+      // ========== ÚNICA FONTE DE VERDADE: ingredientes_analisados do Safety Engine ==========
+      if (analysis.ingredientes_analisados) {
         for (const ing of analysis.ingredientes_analisados) {
-          const ingName = normalizeText(ing.nome || "");
-          const ingMotivo = normalizeText(ing.motivo || "");
-          const ingRestricao = normalizeText(ing.restricao_afetada || "");
-          
-          // NOVA LÓGICA SIMPLIFICADA:
-          // 1. Verificar se o ingrediente já foi marcado como "contem" pelo Global Safety Engine
-          //    e se a restrição afetada corresponde a esta intolerância
-          // 2. OU verificar se o nome do ingrediente está na lista de proibidos
-          
-          let matchesIntolerance = false;
-          
-          // Verificação 1: O ingrediente já está marcado com status "contem" para esta intolerância?
-          if (ing.status === "contem" && ingRestricao) {
-            // Verificar se a restrição afetada corresponde a qualquer key normalizada
-            matchesIntolerance = normalizedKeys.some(key => {
-              const normalizedKey = normalizeText(key);
-              const keyLabel = safetyDatabase ? getIntoleranceLabel(key, safetyDatabase) : key;
-              const normalizedLabel = normalizeText(keyLabel);
-              // Match por key ou por label
-              return ingRestricao.includes(normalizedKey) || 
-                     normalizedKey.includes(ingRestricao) ||
-                     normalizedLabel.includes(ingRestricao) ||
-                     ingRestricao.includes(normalizedLabel);
-            });
-          }
-          
-          // Verificação 2: O nome do ingrediente está na lista de proibidos?
-          if (!matchesIntolerance) {
-            matchesIntolerance = forbiddenIngredients.some((forbidden: string) => {
-              const normalizedForbidden = normalizeText(forbidden);
-              return ingName === normalizedForbidden || 
-                     ingName.includes(normalizedForbidden) || 
-                     normalizedForbidden.includes(ingName);
-            });
-          }
-          
-          if (matchesIntolerance) {
-            found = true;
-            foundIngredient = ing.nome;
-            if (ing.status === "contem") {
-              foundStatus = "contem";
-              logStep("Found intolerance match in analyzed ingredients", {
-                ingredient: ing.nome,
-                restricao: ing.restricao_afetada,
-                intolerance: intoleranceKey,
-                status: ing.status
-              });
-              break; // Pior caso, não precisa continuar
-            } else if (ing.status === "risco_potencial") {
-              foundStatus = "risco_potencial";
+          // Se o Safety Engine marcou como "contem" ou "risco_potencial", RESPEITAR
+          if (ing.status === "contem" || ing.status === "risco_potencial") {
+            const ingRestricao = normalizeText(ing.restricao_afetada || "");
+            
+            // Verificar se a restrição afetada corresponde a esta intolerância do usuário
+            // Matching bidirecional para cobrir todas as variações linguísticas
+            const matchesThisIntolerance = Array.from(allNormalizedForms).some(form => 
+              ingRestricao.includes(form) || form.includes(ingRestricao)
+            );
+            
+            if (matchesThisIntolerance) {
+              found = true;
+              foundIngredient = ing.nome;
+              
+              // Priorizar o status mais grave
+              if (ing.status === "contem") {
+                foundStatus = "contem";
+                logStep("Perfil DERIVANDO do Safety Engine", {
+                  ingredient: ing.nome,
+                  restricao_original: ing.restricao_afetada,
+                  intolerance_usuario: userIntolerance,
+                  status_safety_engine: ing.status,
+                  matched_forms: Array.from(allNormalizedForms)
+                });
+                break; // "contem" é o pior caso, não precisa continuar
+              } else if (ing.status === "risco_potencial" && foundStatus === "seguro") {
+                foundStatus = "risco_potencial";
+              }
             }
           }
         }
       }
-      
-      // Verificar também no conteúdo dos alertas da IA
-      if (!found && analysis.alertas) {
-        for (const alerta of analysis.alertas) {
-          const alertaLower = alerta.toLowerCase();
-          if (forbiddenIngredients.some((forbidden: string) => alertaLower.includes(forbidden))) {
-            found = true;
-            foundStatus = "contem";
-            foundIngredient = userIntolerance;
-            break;
-          }
-        }
-      }
-      
-      // Obter label amigável usando Global Safety Engine
-      const restricaoLabel = safetyDatabase 
-        ? getIntoleranceLabel(intoleranceKey, safetyDatabase)
-        : (INTOLERANCE_LABELS[intoleranceKey] || userIntolerance);
       
       if (found) {
         alertasPersonalizados.push({

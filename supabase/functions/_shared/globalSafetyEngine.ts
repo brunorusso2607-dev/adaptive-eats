@@ -126,16 +126,31 @@ const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes - reduced for faster updates
 // This is the LAST LINE OF DEFENSE for user safety.
 // Format: { intoleranceKey: [critical ingredients] }
 const CRITICAL_FALLBACK_MAPPINGS: Record<string, string[]> = {
+  // === INTOLERÂNCIAS ===
   gluten: ["trigo", "wheat", "centeio", "rye", "cevada", "barley", "malte", "malt", "aveia", "oats", "farinha de trigo", "wheat flour", "gluten", "glúten", "seitan", "cerveja", "beer"],
   lactose: ["leite", "milk", "queijo", "cheese", "iogurte", "yogurt", "creme de leite", "cream", "manteiga", "butter", "nata", "whey", "soro de leite", "lactose", "requeijão", "ricota"],
+  fructose: ["mel", "honey", "agave", "xarope de milho", "corn syrup", "frutose", "fructose", "xarope de frutose", "high fructose"],
+  sorbitol: ["sorbitol", "ameixa", "prune", "pêssego", "peach", "damasco", "apricot", "cereja", "cherry", "maçã", "apple", "pera", "pear", "chiclete", "gum"],
+  fodmap: ["alho", "garlic", "cebola", "onion", "maçã", "apple", "mel", "honey", "trigo", "wheat", "feijão", "beans", "grão de bico", "chickpea", "lentilha", "lentil"],
+  
+  // === ALERGIAS ===
   egg: ["ovo", "egg", "ovos", "eggs", "gema", "yolk", "clara de ovo", "egg white", "albumina", "albumin", "maionese", "mayonnaise"],
   peanut: ["amendoim", "peanut", "manteiga de amendoim", "peanut butter", "pasta de amendoim"],
-  nuts: ["castanha", "nut", "nozes", "walnuts", "amêndoas", "almonds", "avelã", "hazelnut", "pistache", "pistachio", "macadâmia", "macadamia", "pecã", "pecan"],
+  nuts: ["castanha", "nut", "nozes", "walnuts", "amêndoas", "almonds", "avelã", "hazelnut", "pistache", "pistachio", "macadâmia", "macadamia", "pecã", "pecan", "castanha de caju", "cashew"],
   seafood: ["camarão", "shrimp", "lagosta", "lobster", "caranguejo", "crab", "ostra", "oyster", "mexilhão", "mussel", "lula", "squid", "polvo", "octopus", "marisco", "shellfish"],
-  fish: ["peixe", "fish", "salmão", "salmon", "atum", "tuna", "bacalhau", "cod", "sardinha", "sardine", "tilápia", "tilapia"],
+  fish: ["peixe", "fish", "salmão", "salmon", "atum", "tuna", "bacalhau", "cod", "sardinha", "sardine", "tilápia", "tilapia", "anchova", "anchovy"],
   soy: ["soja", "soy", "tofu", "molho de soja", "soy sauce", "shoyu", "edamame", "tempeh", "missô", "miso", "lecitina de soja"],
-  fructose: ["mel", "honey", "agave", "xarope de milho", "corn syrup", "frutose", "fructose"],
-  fodmap: ["alho", "garlic", "cebola", "onion", "maçã", "apple", "mel", "honey", "trigo", "wheat", "feijão", "beans"]
+  sesame: ["gergelim", "sesame", "tahine", "tahini", "óleo de gergelim", "sesame oil", "pasta de gergelim"],
+  mustard: ["mostarda", "mustard", "semente de mostarda", "mustard seed", "molho de mostarda"],
+  celery: ["aipo", "celery", "salsão", "celeriac", "semente de aipo", "celery seed", "sal de aipo", "celery salt"],
+  
+  // === SENSIBILIDADES ===
+  histamine: ["vinho", "wine", "cerveja", "beer", "queijo curado", "aged cheese", "salame", "salami", "presunto", "ham", "atum enlatado", "canned tuna", "espinafre", "spinach", "tomate", "tomato", "vinagre", "vinegar"],
+  caffeine: ["café", "coffee", "cafeína", "caffeine", "chá preto", "black tea", "chá verde", "green tea", "chocolate", "guaraná", "guarana", "energético", "energy drink", "cola", "mate"],
+  sulfite: ["sulfito", "sulfite", "vinho", "wine", "cerveja", "beer", "frutas secas", "dried fruit", "vinagre", "vinegar", "camarão congelado", "frozen shrimp", "batata congelada", "frozen potato"],
+  salicylate: ["aspirina", "aspirin", "salicilato", "salicylate", "morango", "strawberry", "framboesa", "raspberry", "hortelã", "mint", "curry", "páprica", "paprika"],
+  corn: ["milho", "corn", "amido de milho", "corn starch", "fubá", "cornmeal", "xarope de milho", "corn syrup", "polenta", "pipoca", "popcorn", "óleo de milho", "corn oil"],
+  nickel: ["cacau", "cocoa", "chocolate", "aveia", "oats", "oleaginosas", "nuts", "soja", "soy", "feijão", "beans", "lentilha", "lentil", "espinafre", "spinach"]
 };
 
 const CRITICAL_DIETARY_FALLBACK: Record<string, string[]> = {
@@ -145,51 +160,73 @@ const CRITICAL_DIETARY_FALLBACK: Record<string, string[]> = {
 };
 
 const CRITICAL_SAFE_KEYWORDS: Record<string, string[]> = {
-  gluten: ["sem gluten", "gluten free", "sem glúten", "livre de gluten"],
-  lactose: ["sem lactose", "lactose free", "zero lactose", "deslactosado"],
-  egg: ["sem ovo", "egg free", "sem ovos"],
-  peanut: ["sem amendoim", "peanut free"],
-  nuts: ["sem oleaginosas", "nut free", "sem nozes"]
+  // === INTOLERÂNCIAS ===
+  gluten: ["sem gluten", "gluten free", "sem glúten", "livre de gluten", "gluten-free"],
+  lactose: ["sem lactose", "lactose free", "zero lactose", "deslactosado", "lactose-free"],
+  fructose: ["sem frutose", "fructose free", "low fructose"],
+  sorbitol: ["sem sorbitol", "sorbitol free"],
+  fodmap: ["low fodmap", "baixo fodmap", "fodmap friendly"],
+  
+  // === ALERGIAS ===
+  egg: ["sem ovo", "egg free", "sem ovos", "egg-free", "vegan"],
+  peanut: ["sem amendoim", "peanut free", "peanut-free"],
+  nuts: ["sem oleaginosas", "nut free", "sem nozes", "tree nut free", "nut-free"],
+  seafood: ["sem frutos do mar", "shellfish free", "sem marisco"],
+  fish: ["sem peixe", "fish free"],
+  soy: ["sem soja", "soy free", "soy-free"],
+  sesame: ["sem gergelim", "sesame free"],
+  mustard: ["sem mostarda", "mustard free"],
+  celery: ["sem aipo", "celery free"],
+  
+  // === SENSIBILIDADES ===
+  histamine: ["baixa histamina", "low histamine"],
+  caffeine: ["sem cafeína", "caffeine free", "descafeinado", "decaf"],
+  sulfite: ["sem sulfito", "sulfite free", "sem conservantes"],
+  salicylate: ["baixo salicilato", "low salicylate"],
+  corn: ["sem milho", "corn free"],
+  nickel: ["baixo níquel", "low nickel"]
 };
 
 // ============= LABELS AMIGÁVEIS =============
 // SINCRONIZADO com onboarding_options (jan/2026)
-// 17 restrições ativas: 5 intolerâncias + 6 alergias + 6 sensibilidades
+// 20 restrições: 5 intolerâncias + 9 alergias + 6 sensibilidades
 
 export const INTOLERANCE_LABELS: Record<string, string> = {
-  // === CHAVES CANÔNICAS DO ONBOARDING ===
-  // Intolerâncias (5)
+  // === INTOLERÂNCIAS (5) ===
   gluten: "Glúten",
   lactose: "Lactose",
   fructose: "Frutose",
   sorbitol: "Sorbitol",
   fodmap: "FODMAP",
-  // Alergias (6)
+  
+  // === ALERGIAS (9) ===
   egg: "Ovos",
+  peanut: "Amendoim",
   nuts: "Oleaginosas",
   tree_nuts: "Oleaginosas", // alias do banco para 'nuts'
   seafood: "Frutos do Mar",
-  soy: "Soja",
-  peanut: "Amendoim",
   fish: "Peixe",
-  // Sensibilidades (6)
-  corn: "Milho",
+  soy: "Soja",
+  sesame: "Gergelim",
+  mustard: "Mostarda",
+  celery: "Aipo",
+  
+  // === SENSIBILIDADES (6) ===
   histamine: "Histamina",
   caffeine: "Cafeína",
   sulfite: "Sulfito",
   salicylate: "Salicilato",
+  corn: "Milho",
   nickel: "Níquel",
-  // Especial
+  
+  // === ESPECIAL ===
   none: "Nenhuma",
   
   // === ALIASES LEGADOS para compatibilidade ===
   sugar: "Açúcar",
-  milk: "Leite", // intolerance_mappings tem 'milk' separado de 'lactose'
-  wheat: "Trigo", // intolerance_mappings tem 'wheat' separado de 'gluten'
+  milk: "Leite",
+  wheat: "Trigo",
   alcohol: "Álcool",
-  sesame: "Sésamo",
-  mustard: "Mostarda",
-  celery: "Aipo",
   lupin: "Tremoço",
 };
 

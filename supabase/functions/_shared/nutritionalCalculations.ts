@@ -379,20 +379,20 @@ export const MEAL_MACRO_TARGETS: Record<Goal, Record<Sex, Record<ActivityLevel, 
 };
 
 // ============================================
-// FUNÇÃO PARA OBTER TARGETS DE MACROS POR REFEIÇÃO
+// FUNCTION TO GET MACRO TARGETS PER MEAL
 // ============================================
 
 /**
- * Obtém os targets de macros para uma refeição específica baseado no
- * objetivo, sexo e nível de atividade do usuário.
+ * Gets the macro targets for a specific meal based on
+ * user's goal, sex, and activity level.
  * 
- * Esta é a função principal do Motor de Decisão Nutricional.
+ * This is the main function of the Deterministic Nutritional Decision Engine.
  * 
- * @param goal - Objetivo: 'lose_weight' | 'maintain' | 'gain_weight'
- * @param sex - Sexo: 'male' | 'female' 
- * @param activityLevel - Nível de atividade
- * @param mealType - Tipo de refeição
- * @returns MealMacroTarget com proteína, carboidrato e gordura em gramas
+ * @param goal - Goal: 'lose_weight' | 'maintain' | 'gain_weight'
+ * @param sex - Sex: 'male' | 'female' 
+ * @param activityLevel - Activity level
+ * @param mealType - Meal type
+ * @returns MealMacroTarget with protein, carbs, and fat in grams
  */
 export function getMealMacroTargets(
   goal: string,
@@ -400,17 +400,17 @@ export function getMealMacroTargets(
   activityLevel: string,
   mealType: string
 ): MealMacroTarget {
-  // Normalizar goal
+  // Normalize goal
   const normalizedGoal: Goal = 
     goal === 'weight_loss' || goal === 'lose_weight' || goal === 'emagrecer' ? 'lose_weight' :
     goal === 'weight_gain' || goal === 'gain_weight' || goal === 'gain_muscle' || goal === 'ganhar' ? 'gain_weight' :
     'maintain';
   
-  // Normalizar sex
+  // Normalize sex
   const normalizedSex: Sex = 
     sex === 'male' || sex === 'masculino' || sex === 'm' ? 'male' : 'female';
   
-  // Normalizar activity level (default: moderate)
+  // Normalize activity level (default: moderate)
   const normalizedActivity: ActivityLevel =
     activityLevel === 'sedentary' || activityLevel === 'sedentario' ? 'sedentary' :
     activityLevel === 'light' || activityLevel === 'leve' ? 'light' :
@@ -418,7 +418,7 @@ export function getMealMacroTargets(
     activityLevel === 'very_active' || activityLevel === 'muito_ativo' ? 'very_active' :
     'moderate';
   
-  // Normalizar meal type
+  // Normalize meal type
   const normalizedMeal = 
     mealType === 'cafe_manha' || mealType === 'café_manhã' || mealType === 'cafe_da_manha' ? 'breakfast' :
     mealType === 'lanche_manha' || mealType === 'lanche_manhã' ? 'morning_snack' :
@@ -428,7 +428,7 @@ export function getMealMacroTargets(
     mealType === 'ceia' ? 'supper' :
     mealType as keyof MealMacroTargetSet;
   
-  // Buscar na tabela
+  // Lookup in table
   const goalData = MEAL_MACRO_TARGETS[normalizedGoal];
   if (!goalData) {
     console.warn(`[getMealMacroTargets] Goal not found: ${goal}, using maintain`);
@@ -457,8 +457,8 @@ export function getMealMacroTargets(
 }
 
 /**
- * Obtém TODOS os targets de macros para um perfil de usuário.
- * Retorna os targets para todas as 6 refeições.
+ * Gets ALL macro targets for a user profile.
+ * Returns targets for all 6 meals.
  */
 export function getAllMealMacroTargets(
   goal: string,
@@ -479,8 +479,8 @@ export function getAllMealMacroTargets(
 }
 
 /**
- * Gera uma string com os targets de macros para injeção no prompt da IA.
- * Formato otimizado para o Gemini entender as metas por refeição.
+ * Generates a string with macro targets for AI prompt injection.
+ * Format optimized for Gemini to understand per-meal goals.
  */
 export function buildMealMacroTargetsForPrompt(
   goal: string,
@@ -491,23 +491,23 @@ export function buildMealMacroTargetsForPrompt(
   const allTargets = getAllMealMacroTargets(goal, sex, activityLevel);
   
   const mealLabels: Record<string, string> = {
-    breakfast: 'Café da manhã',
-    morning_snack: 'Lanche da manhã',
-    lunch: 'Almoço',
-    afternoon_snack: 'Lanche da tarde',
-    dinner: 'Jantar',
-    supper: 'Ceia',
+    breakfast: 'Breakfast',
+    morning_snack: 'Morning Snack',
+    lunch: 'Lunch',
+    afternoon_snack: 'Afternoon Snack',
+    dinner: 'Dinner',
+    supper: 'Supper',
   };
   
   let prompt = `
-📊 METAS DE MACRONUTRIENTES POR REFEIÇÃO (OBRIGATÓRIO):
-Cada refeição DEVE ter aproximadamente estes valores (±15% tolerância):
+=== DETERMINISTIC NUTRITIONAL DECISION ENGINE ===
+MANDATORY MACRO TARGETS PER MEAL (±15% tolerance):
 `;
 
   const mealsToShow = enabledMeals || Object.keys(mealLabels);
   
   for (const [mealKey, targets] of Object.entries(allTargets)) {
-    // Normalizar enabledMeals para comparação
+    // Normalize enabledMeals for comparison
     const normalizedEnabledMeals = mealsToShow.map(m => {
       if (m === 'cafe_manha' || m === 'café_manhã' || m === 'cafe_da_manha') return 'breakfast';
       if (m === 'lanche_manha' || m === 'lanche_manhã') return 'morning_snack';
@@ -522,11 +522,11 @@ Cada refeição DEVE ter aproximadamente estes valores (±15% tolerância):
       const label = mealLabels[mealKey] || mealKey;
       const calories = (targets.protein * 4) + (targets.carbs * 4) + (targets.fat * 9);
       prompt += `
-- ${label}: P${targets.protein}g C${targets.carbs}g G${targets.fat}g (~${Math.round(calories)}kcal)`;
+- ${label}: P${targets.protein}g C${targets.carbs}g F${targets.fat}g (~${Math.round(calories)}kcal)`;
     }
   }
   
-  // Adicionar regras baseadas no objetivo
+  // Add goal-specific rules
   const normalizedGoal = 
     goal === 'weight_loss' || goal === 'lose_weight' || goal === 'emagrecer' ? 'lose_weight' :
     goal === 'weight_gain' || goal === 'gain_weight' || goal === 'gain_muscle' || goal === 'ganhar' ? 'gain_weight' :
@@ -535,18 +535,23 @@ Cada refeição DEVE ter aproximadamente estes valores (±15% tolerância):
   if (normalizedGoal === 'lose_weight') {
     prompt += `
 
-⚠️ REGRAS PARA EMAGRECIMENTO:
-- Ceia DEVE ter carboidrato ZERO ou muito baixo
-- Proteína ALTA em todas as refeições para preservar massa muscular
-- Carboidratos reduzidos especialmente à noite`;
+RULES FOR WEIGHT LOSS:
+- Supper MUST have ZERO or very low carbs
+- HIGH protein in all meals to preserve muscle mass
+- Reduced carbs especially at night`;
   } else if (normalizedGoal === 'gain_weight') {
     prompt += `
 
-⚠️ REGRAS PARA GANHO DE PESO:
-- Carboidratos ALTOS especialmente no café e almoço
-- Proteína ALTA para construção muscular
-- Ceia pode ter carboidrato moderado`;
+RULES FOR WEIGHT GAIN:
+- HIGH carbs especially at breakfast and lunch
+- HIGH protein for muscle building
+- Supper can have moderate carbs`;
   }
+  
+  prompt += `
+
+IMPORTANT: These are exact targets calibrated by nutritionists. Do not deviate.
+==============================================`;
   
   return prompt;
 }
@@ -825,18 +830,18 @@ export function evaluateMealCompatibility(
 
   let feedback: string;
   if (isWithinRange) {
-    feedback = "Refeição dentro das metas nutricionais";
+    feedback = "Meal within nutritional targets";
   } else if (mealCalories > targetCalories * (1 + tolerance)) {
     const excess = mealCalories - targetCalories;
-    feedback = `${excess} kcal acima do recomendado para esta refeição`;
+    feedback = `${excess} kcal above recommended for this meal`;
   } else if (mealCalories < targetCalories * (1 - tolerance)) {
     const deficit = targetCalories - mealCalories;
-    feedback = `${deficit} kcal abaixo do recomendado para esta refeição`;
+    feedback = `${deficit} kcal below recommended for this meal`;
   } else if (mealProtein < targetProtein * (1 - tolerance)) {
     const deficit = Math.round(targetProtein - mealProtein);
-    feedback = `Faltam ${deficit}g de proteína para atingir a meta`;
+    feedback = `Missing ${deficit}g of protein to reach target`;
   } else {
-    feedback = "Refeição próxima das metas nutricionais";
+    feedback = "Meal close to nutritional targets";
   }
 
   return {
@@ -882,27 +887,27 @@ export function buildNutritionalContextForPrompt(
   enabledMeals?: string[]
 ): string {
   let context = `
-📊 PERFIL NUTRICIONAL DO USUÁRIO:
-- Taxa Metabólica Basal (TMB): ${targets.bmr} kcal/dia
-- Gasto Energético Total (TDEE): ${targets.tdee} kcal/dia
-- Meta Calórica Diária: ${targets.targetCalories} kcal/dia
+USER NUTRITIONAL PROFILE:
+- Basal Metabolic Rate (BMR): ${targets.bmr} kcal/day
+- Total Daily Energy Expenditure (TDEE): ${targets.tdee} kcal/day
+- Daily Calorie Target: ${targets.targetCalories} kcal/day
 
-📈 METAS DE MACRONUTRIENTES DIÁRIOS:
-- Proteína: ${targets.protein}g (${Math.round((targets.protein * 4 / targets.targetCalories) * 100)}% das calorias)
-- Carboidratos: ${targets.carbs}g (${Math.round((targets.carbs * 4 / targets.targetCalories) * 100)}% das calorias)
-- Gorduras: ${targets.fat}g (${Math.round((targets.fat * 9 / targets.targetCalories) * 100)}% das calorias)
-- Fibras: ~${targets.fiber}g`;
+DAILY MACRONUTRIENT TARGETS:
+- Protein: ${targets.protein}g (${Math.round((targets.protein * 4 / targets.targetCalories) * 100)}% of calories)
+- Carbs: ${targets.carbs}g (${Math.round((targets.carbs * 4 / targets.targetCalories) * 100)}% of calories)
+- Fat: ${targets.fat}g (${Math.round((targets.fat * 9 / targets.targetCalories) * 100)}% of calories)
+- Fiber: ~${targets.fiber}g`;
 
   if (mealType) {
     const mealTarget = getMealTarget(targets, mealType, enabledMeals);
     if (mealTarget) {
       context += `
 
-🍽️ METAS PARA ${mealTarget.label.toUpperCase()}:
-- Calorias: ${mealTarget.calorieRange.min}-${mealTarget.calorieRange.max} kcal (ideal: ${mealTarget.calories} kcal)
-- Proteína: ~${mealTarget.protein}g
-- Carboidratos: ~${mealTarget.carbs}g
-- Gorduras: ~${mealTarget.fat}g`;
+TARGETS FOR ${mealTarget.label.toUpperCase()}:
+- Calories: ${mealTarget.calorieRange.min}-${mealTarget.calorieRange.max} kcal (ideal: ${mealTarget.calories} kcal)
+- Protein: ~${mealTarget.protein}g
+- Carbs: ~${mealTarget.carbs}g
+- Fat: ~${mealTarget.fat}g`;
     }
   }
 
@@ -919,11 +924,11 @@ export function buildMealDistributionForPrompt(
   const distribution = calculateMealDistribution(targets, enabledMeals);
   
   let summary = `
-📅 DISTRIBUIÇÃO CALÓRICA POR REFEIÇÃO:`;
+CALORIE DISTRIBUTION PER MEAL:`;
 
   distribution.forEach(meal => {
     summary += `
-- ${meal.label}: ${meal.calorieRange.min}-${meal.calorieRange.max} kcal | ~${meal.protein}g prot | ~${meal.carbs}g carb | ~${meal.fat}g gord`;
+- ${meal.label}: ${meal.calorieRange.min}-${meal.calorieRange.max} kcal | ~${meal.protein}g prot | ~${meal.carbs}g carb | ~${meal.fat}g fat`;
   });
 
   return summary;
@@ -970,19 +975,19 @@ export function validateTargetsHealth(targets: NutritionalTargets): { isHealthy:
   const warnings: string[] = [];
 
   if (targets.targetCalories < 1200) {
-    warnings.push("Meta calórica muito baixa (< 1200 kcal). Pode ser prejudicial à saúde.");
+    warnings.push("Calorie target too low (< 1200 kcal). May be harmful to health.");
   }
 
   if (targets.targetCalories > 4000) {
-    warnings.push("Meta calórica muito alta (> 4000 kcal). Verificar se está correto.");
+    warnings.push("Calorie target too high (> 4000 kcal). Verify if correct.");
   }
 
   if (targets.protein < 50) {
-    warnings.push("Proteína diária baixa (< 50g). Pode comprometer massa muscular.");
+    warnings.push("Daily protein low (< 50g). May compromise muscle mass.");
   }
 
   if (targets.fat < 30) {
-    warnings.push("Gordura diária muito baixa (< 30g). Pode afetar hormônios.");
+    warnings.push("Daily fat too low (< 30g). May affect hormones.");
   }
 
   return {

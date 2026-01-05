@@ -42,6 +42,40 @@ function normalizeForLookup(text: string): string {
     .trim();
 }
 
+// ============================================
+// CATEGORY DETECTION - Beverage vs Solid Food
+// ============================================
+const BEVERAGE_KEYWORDS = [
+  'cha', 'tea', 'cafe', 'coffee', 'suco', 'juice', 'agua', 'water',
+  'leite', 'milk', 'vitamina', 'smoothie', 'infusao', 'refrigerante',
+  'bebida', 'drink', 'cappuccino', 'latte', 'espresso'
+];
+
+const LOW_CALORIE_BEVERAGES = [
+  'cha', 'tea', 'cafe', 'coffee', 'agua', 'water', 'infusao',
+  'camomila', 'hortela', 'erva-doce', 'hibisco', 'verde', 'preto', 'mate'
+];
+
+const SOLID_FOOD_KEYWORDS = [
+  'batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao',
+  'bolo', 'queijo', 'macarrao', 'biscoito', 'torta', 'pizza', 'hamburguer'
+];
+
+function isBeverageSearch(text: string): boolean {
+  const normalized = normalizeForLookup(text);
+  return BEVERAGE_KEYWORDS.some(kw => normalized.includes(kw));
+}
+
+function isLowCalorieBeverage(text: string): boolean {
+  const normalized = normalizeForLookup(text);
+  return LOW_CALORIE_BEVERAGES.some(kw => normalized.includes(kw));
+}
+
+function isSolidFoodMatch(text: string): boolean {
+  const normalized = normalizeForLookup(text);
+  return SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw));
+}
+
 // Extract main food term from ingredient name
 function extractMainTerm(name: string): string[] {
   const normalized = normalizeForLookup(name);
@@ -120,7 +154,30 @@ function parseQuantityToGrams(quantity: string, unit?: string): number {
   return numValue || 100;
 }
 
-// Lookup food in the nutritional table
+// ============================================
+// SANITY CHECK: Low calorie beverages should have max ~10 kcal/100ml
+// ============================================
+const LOW_CAL_BEVERAGE_MAX_PER_100 = 10; // Max 10 kcal per 100ml for plain teas/coffee/water
+
+function applySanityCheckForBeverage(
+  foodName: string,
+  calories: number,
+  grams: number
+): number {
+  // If this is a low-calorie beverage search, enforce limits
+  if (isLowCalorieBeverage(foodName)) {
+    const caloriesPer100 = (calories / grams) * 100;
+    if (caloriesPer100 > LOW_CAL_BEVERAGE_MAX_PER_100) {
+      // Override with correct value for plain tea/coffee/water: ~1-2 kcal/100ml
+      const correctedCalories = Math.round((2 / 100) * grams);
+      console.log(`[SANITY-CHECK] Beverage "${foodName}" had ${caloriesPer100} kcal/100ml, corrected to 2 kcal/100ml`);
+      return correctedCalories;
+    }
+  }
+  return calories;
+}
+
+// Lookup food in the nutritional table with CATEGORY PROTECTION
 function lookupFood(
   table: NutritionalFood[],
   foodName: string,
@@ -131,6 +188,8 @@ function lookupFood(
   }
   
   const searchTerms = extractMainTerm(foodName);
+  const isBeverage = isBeverageSearch(foodName);
+  const isLowCalBeverage = isLowCalorieBeverage(foodName);
   
   // Create normalized index
   const normalizedTable = table.map(f => ({
@@ -138,61 +197,89 @@ function lookupFood(
     normalized: normalizeForLookup(f.name),
   }));
   
-  // PHASE 1: Exact match
+  // Helper to validate category compatibility
+  const isCategoryCompatible = (matchedFood: { name: string; normalized: string; cal: number }): boolean => {
+    // If searching for beverage, reject solid food matches
+    if (isBeverage && isSolidFoodMatch(matchedFood.normalized)) {
+      return false;
+    }
+    // If searching for low-calorie beverage, reject high-calorie matches
+    if (isLowCalBeverage && matchedFood.cal > LOW_CAL_BEVERAGE_MAX_PER_100) {
+      // But allow if the match is also a beverage (could be sweetened version)
+      if (!isBeverageSearch(matchedFood.normalized)) {
+        return false;
+      }
+    }
+    return true;
+  };
+  
+  // Helper to build result with sanity check
+  const buildResult = (food: { name: string; cal: number; prot: number; carb: number; fat: number }) => {
+    const factor = grams / 100;
+    let calculatedCalories = Math.round(food.cal * factor);
+    
+    // Apply sanity check for low-calorie beverages
+    calculatedCalories = applySanityCheckForBeverage(foodName, calculatedCalories, grams);
+    
+    return {
+      matched: true,
+      matchedName: food.name,
+      calories: calculatedCalories,
+      protein: Math.round(food.prot * factor * 10) / 10,
+      carbs: Math.round(food.carb * factor * 10) / 10,
+      fat: Math.round(food.fat * factor * 10) / 10,
+    };
+  };
+  
+  // PHASE 1: Exact match (with category validation)
   for (const term of searchTerms) {
-    const exactMatch = normalizedTable.find(f => f.normalized === term);
+    const exactMatch = normalizedTable.find(f => 
+      f.normalized === term && isCategoryCompatible(f)
+    );
     if (exactMatch) {
-      const factor = grams / 100;
-      return {
-        matched: true,
-        matchedName: exactMatch.name,
-        calories: Math.round(exactMatch.cal * factor),
-        protein: Math.round(exactMatch.prot * factor * 10) / 10,
-        carbs: Math.round(exactMatch.carb * factor * 10) / 10,
-        fat: Math.round(exactMatch.fat * factor * 10) / 10,
-      };
+      return buildResult(exactMatch);
     }
   }
   
-  // PHASE 2: Partial match (starts with or contains)
+  // PHASE 2: Partial match (starts with or contains) with category validation
   for (const term of searchTerms) {
     if (term.length < 4) continue;
     
     const partialMatch = normalizedTable.find(f => 
-      f.normalized.startsWith(term) || f.normalized.includes(` ${term}`)
+      (f.normalized.startsWith(term) || f.normalized.includes(` ${term}`)) &&
+      isCategoryCompatible(f)
     );
     
     if (partialMatch) {
-      const factor = grams / 100;
-      return {
-        matched: true,
-        matchedName: partialMatch.name,
-        calories: Math.round(partialMatch.cal * factor),
-        protein: Math.round(partialMatch.prot * factor * 10) / 10,
-        carbs: Math.round(partialMatch.carb * factor * 10) / 10,
-        fat: Math.round(partialMatch.fat * factor * 10) / 10,
-      };
+      return buildResult(partialMatch);
     }
   }
   
-  // PHASE 3: Fuzzy match (any word matches)
-  const mainWord = searchTerms[searchTerms.length - 1]; // Usually the cleaned single word
+  // PHASE 3: Fuzzy match (any word matches) with category validation
+  const mainWord = searchTerms[searchTerms.length - 1];
   if (mainWord && mainWord.length >= 4) {
     const fuzzyMatch = normalizedTable.find(f => 
-      f.normalized.split(' ').some(word => word.startsWith(mainWord.slice(0, 4)))
+      f.normalized.split(' ').some(word => word.startsWith(mainWord.slice(0, 4))) &&
+      isCategoryCompatible(f)
     );
     
     if (fuzzyMatch) {
-      const factor = grams / 100;
-      return {
-        matched: true,
-        matchedName: fuzzyMatch.name,
-        calories: Math.round(fuzzyMatch.cal * factor),
-        protein: Math.round(fuzzyMatch.prot * factor * 10) / 10,
-        carbs: Math.round(fuzzyMatch.carb * factor * 10) / 10,
-        fat: Math.round(fuzzyMatch.fat * factor * 10) / 10,
-      };
+      return buildResult(fuzzyMatch);
     }
+  }
+  
+  // FALLBACK: For low-calorie beverages, return estimated value even without match
+  if (isLowCalBeverage) {
+    const estimatedCalories = Math.round((2 / 100) * grams); // 2 kcal per 100ml
+    console.log(`[FALLBACK] Low-cal beverage "${foodName}" using fallback: ${estimatedCalories} kcal`);
+    return {
+      matched: true, // Treat as matched with fallback
+      matchedName: `${foodName} (estimado)`,
+      calories: estimatedCalories,
+      protein: 0,
+      carbs: 0,
+      fat: 0,
+    };
   }
   
   return { matched: false, calories: 0, protein: 0, carbs: 0, fat: 0 };

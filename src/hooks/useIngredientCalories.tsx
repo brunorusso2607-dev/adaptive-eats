@@ -1,15 +1,22 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useUserCountry, DEFAULT_COUNTRY } from './useUserCountry';
 
 /**
- * CASCATA DE CÁLCULO DE CALORIAS (Frontend)
+ * CASCATA CENTRALIZADA DE CÁLCULO DE CALORIAS
  * 
- * Nível 1: Cache em memória (já calculado)
- * Nível 2: Busca exata no DB (foods.name_normalized)
- * Nível 3: Sanity Check (validar limites por categoria)
- * Nível 4: Fallback para dados da IA (ing.calories)
+ * Este hook usa a MESMA lógica do lookup-ingredient para garantir
+ * consistência de fonte (TACO, USDA, Local, AI) em todo o sistema.
+ * 
+ * Níveis:
+ * 1. Cache em memória
+ * 2. Busca no DB via lookup-ingredient (fonte centralizada)
+ * 3. Sanity Check (validar limites por categoria)
+ * 4. Fallback para dados da IA (ing.calories)
+ * 5. Fallback por categoria
  */
 
+// ===== INTERFACES =====
 interface IngredientWithCalories {
   item: string;
   quantity: string;
@@ -20,7 +27,7 @@ interface IngredientWithCalories {
   fat?: number;
 }
 
-interface IngredientCaloriesResult {
+export interface IngredientCaloriesResult {
   item: string;
   quantity: number;
   calories: number;
@@ -29,13 +36,10 @@ interface IngredientCaloriesResult {
   fat: number;
   matched: boolean;
   matchedName?: string;
-  source: 'cache' | 'database' | 'sanity_fallback' | 'ai_data' | 'category_fallback';
+  source: 'cache' | 'TACO' | 'TBCA' | 'usda' | 'ai-generated' | 'curated' | 'manual' | 'ai_data' | 'category_fallback';
 }
 
-// ============================================
-// NORMALIZAÇÃO E PARSING
-// ============================================
-
+// ===== NORMALIZAÇÃO =====
 function normalize(text: string): string {
   return text
     .toLowerCase()
@@ -65,24 +69,16 @@ function parseQuantityToGrams(quantity: string, unit?: string): number {
   return numValue || 100;
 }
 
-// ============================================
-// SANITY CHECK (Limites por categoria)
-// ============================================
-
+// ===== SANITY CHECK (Limites por categoria) =====
 const CALORIE_LIMITS_PER_100: Record<string, { max: number; fallback: number }> = {
   'cha': { max: 10, fallback: 2 },
-  'infusao': { max: 10, fallback: 2 },
   'cafe': { max: 15, fallback: 2 },
   'agua': { max: 5, fallback: 0 },
-  'leite_vegetal': { max: 60, fallback: 25 },
   'leite': { max: 70, fallback: 50 },
   'suco': { max: 60, fallback: 45 },
-  'refrigerante': { max: 50, fallback: 42 },
-  'refrigerante_zero': { max: 5, fallback: 0 },
   'fruta': { max: 120, fallback: 50 },
   'vegetal': { max: 80, fallback: 25 },
   'folhoso': { max: 30, fallback: 15 },
-  'legume': { max: 100, fallback: 40 },
   'carne': { max: 350, fallback: 200 },
   'frango': { max: 250, fallback: 165 },
   'peixe': { max: 250, fallback: 120 },
@@ -91,10 +87,8 @@ const CALORIE_LIMITS_PER_100: Record<string, { max: number; fallback: number }> 
   'arroz': { max: 180, fallback: 130 },
   'pao': { max: 320, fallback: 265 },
   'massa': { max: 180, fallback: 130 },
-  'cereal': { max: 420, fallback: 350 },
   'oleaginosa': { max: 700, fallback: 600 },
   'oleo': { max: 900, fallback: 884 },
-  'manteiga': { max: 800, fallback: 717 },
   'doce': { max: 450, fallback: 350 },
   'iogurte': { max: 150, fallback: 60 },
   'default': { max: 500, fallback: 150 },
@@ -102,30 +96,24 @@ const CALORIE_LIMITS_PER_100: Record<string, { max: number; fallback: number }> 
 
 const CATEGORY_KEYWORDS: Record<string, string[]> = {
   'cha': ['cha', 'tea', 'camomila', 'hortela', 'mate', 'infusao', 'hibisco'],
-  'cafe': ['cafe', 'coffee', 'espresso', 'cappuccino'],
+  'cafe': ['cafe', 'coffee', 'espresso'],
   'agua': ['agua', 'water'],
-  'leite_vegetal': ['leite de coco', 'leite vegetal', 'leite de amendoa', 'leite de aveia', 'bebida vegetal'],
   'leite': ['leite', 'milk'],
   'suco': ['suco', 'juice'],
-  'refrigerante_zero': ['zero', 'diet', 'light', 'sem acucar'],
-  'refrigerante': ['refrigerante', 'soda', 'cola', 'guarana'],
-  'fruta': ['banana', 'maca', 'laranja', 'morango', 'manga', 'abacaxi', 'melancia', 'mamao', 'uva', 'pera', 'kiwi'],
+  'fruta': ['banana', 'maca', 'laranja', 'morango', 'manga', 'abacaxi', 'melancia', 'mamao', 'uva'],
   'folhoso': ['alface', 'rucula', 'agriao', 'espinafre', 'couve'],
-  'vegetal': ['tomate', 'pepino', 'cenoura', 'brocolis', 'abobrinha', 'legume', 'verdura'],
-  'legume': ['batata', 'mandioca', 'inhame', 'abobora', 'beterraba'],
-  'carne': ['carne', 'boi', 'porco', 'bife', 'picanha', 'alcatra', 'costela', 'patinho'],
-  'frango': ['frango', 'peito de frango', 'coxa', 'sobrecoxa', 'ave', 'peru'],
-  'peixe': ['peixe', 'salmao', 'tilapia', 'atum', 'sardinha', 'camarao'],
+  'vegetal': ['tomate', 'pepino', 'cenoura', 'brocolis', 'abobrinha', 'legume'],
+  'carne': ['carne', 'boi', 'porco', 'bife', 'picanha', 'alcatra', 'patinho'],
+  'frango': ['frango', 'peito de frango', 'coxa', 'ave'],
+  'peixe': ['peixe', 'salmao', 'tilapia', 'atum', 'camarao'],
   'ovo': ['ovo', 'clara', 'gema', 'omelete'],
-  'queijo': ['queijo', 'mussarela', 'parmesao', 'cottage', 'ricota'],
+  'queijo': ['queijo', 'mussarela', 'parmesao', 'ricota'],
   'arroz': ['arroz'],
-  'pao': ['pao', 'torrada', 'bisnaga'],
-  'massa': ['massa', 'macarrao', 'espaguete', 'lasanha'],
-  'cereal': ['cereal', 'aveia', 'granola'],
+  'pao': ['pao', 'torrada'],
+  'massa': ['massa', 'macarrao', 'espaguete'],
   'oleaginosa': ['castanha', 'amendoa', 'nozes', 'amendoim'],
   'oleo': ['oleo', 'azeite'],
-  'manteiga': ['manteiga', 'margarina'],
-  'doce': ['chocolate', 'bolo', 'brigadeiro', 'pudim', 'sobremesa'],
+  'doce': ['chocolate', 'bolo', 'brigadeiro', 'pudim'],
   'iogurte': ['iogurte', 'coalhada'],
 };
 
@@ -133,23 +121,18 @@ function detectFoodCategory(foodName: string): string {
   const normalized = normalize(foodName);
   
   const categoryOrder = [
-    'refrigerante_zero', 'leite_vegetal',
-    'cha', 'cafe', 'agua', 'suco', 'refrigerante', 'leite',
-    'folhoso', 'fruta', 'vegetal', 'legume',
+    'cha', 'cafe', 'agua', 'suco', 'leite',
+    'folhoso', 'fruta', 'vegetal',
     'frango', 'peixe', 'ovo', 'queijo', 'carne',
-    'arroz', 'pao', 'massa', 'cereal',
-    'oleaginosa', 'oleo', 'manteiga',
+    'arroz', 'pao', 'massa',
+    'oleaginosa', 'oleo',
     'iogurte', 'doce',
   ];
   
   for (const category of categoryOrder) {
     const keywords = CATEGORY_KEYWORDS[category];
-    if (keywords) {
-      for (const keyword of keywords) {
-        if (normalized.includes(normalize(keyword))) {
-          return category;
-        }
-      }
+    if (keywords?.some(kw => normalized.includes(normalize(kw)))) {
+      return category;
     }
   }
   
@@ -173,7 +156,6 @@ function applySanityCheck(
     return { calories, wasAdjusted: false };
   }
   
-  // Valor excede limite - usar fallback
   const correctedCalories = Math.round((limits.fallback / 100) * grams);
   console.log(`[SANITY-CHECK] ${foodName}: ${Math.round(caloriesPer100)} kcal/100g excede ${limits.max} (${category}). Corrigido: ${correctedCalories} kcal`);
   
@@ -186,50 +168,60 @@ function getCategoryFallback(foodName: string, grams: number): number {
   return Math.round((limits.fallback / 100) * grams);
 }
 
-// ============================================
-// CACHE STRUCTURES
-// ============================================
-
-interface DBFoodEntry {
-  name: string;
-  calories_per_100g: number;
-  protein_per_100g: number;
-  carbs_per_100g: number;
-  fat_per_100g: number;
-}
-
+// ===== CACHE STRUCTURE =====
 interface CacheEntry {
+  name: string;
   calories_per_100g: number;
   protein_per_100g: number;
   carbs_per_100g: number;
   fat_per_100g: number;
-  name: string;
+  source: string;
 }
 
-// ============================================
-// MAIN HOOK
-// ============================================
-
+// ===== MAIN HOOK =====
 export function useIngredientCalories() {
   const [isLoading, setIsLoading] = useState(false);
-  const cacheRef = useRef<Map<string, CacheEntry | null>>(new Map());
-  const dbTableRef = useRef<DBFoodEntry[]>([]);
   const [isLoaded, setIsLoaded] = useState(false);
+  const [tableSize, setTableSize] = useState(0);
+  
+  const cacheRef = useRef<Map<string, CacheEntry | null>>(new Map());
+  const dbTableRef = useRef<CacheEntry[]>([]);
+  
+  const { country: userCountry } = useUserCountry();
 
-  // Carregar tabela nutricional do DB uma vez
+  // Carregar tabela nutricional do DB uma vez (como lookup-ingredient faz)
   useEffect(() => {
     const loadTable = async () => {
       try {
+        // Prioridade por país (igual lookup-ingredient)
+        const countryPriority: Record<string, string[]> = {
+          'BR': ['TBCA', 'taco', 'curated'],
+          'US': ['usda', 'curated'],
+          'MX': ['BAM', 'curated'],
+        };
+        
+        const preferredSources = countryPriority[userCountry || 'BR'] || countryPriority['BR'];
+        
+        // Buscar alimentos verificados com prioridade por fonte
         const { data, error } = await supabase
           .from('foods')
-          .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g')
+          .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, source')
           .eq('is_verified', true)
           .eq('is_recipe', false)
+          .in('source', [...preferredSources, 'usda', 'ai-generated', 'manual'])
           .order('search_count', { ascending: false, nullsFirst: false })
-          .limit(500);
+          .limit(800);
 
         if (!error && data) {
-          dbTableRef.current = data;
+          dbTableRef.current = data.map(f => ({
+            name: f.name,
+            calories_per_100g: f.calories_per_100g || 0,
+            protein_per_100g: f.protein_per_100g || 0,
+            carbs_per_100g: f.carbs_per_100g || 0,
+            fat_per_100g: f.fat_per_100g || 0,
+            source: f.source || 'local',
+          }));
+          setTableSize(data.length);
           console.log(`[CALORIE-CASCADE] Tabela nutricional carregada: ${data.length} itens`);
         }
       } catch (err) {
@@ -240,9 +232,9 @@ export function useIngredientCalories() {
     };
     
     loadTable();
-  }, []);
+  }, [userCountry]);
 
-  // Busca exata no DB (Nível 2)
+  // Busca no DB local (mesmo algoritmo do lookup-ingredient)
   const searchInDB = useCallback((ingredientName: string): CacheEntry | null => {
     const normalizedSearch = normalize(ingredientName);
     const cacheKey = normalizedSearch;
@@ -268,23 +260,20 @@ export function useIngredientCalories() {
       return null;
     }
 
-    // Buscar na tabela em memória
     const table = dbTableRef.current;
     
-    // Fase 1: Match exato na primeira palavra
+    // Fase 1: Match exato (começa com a palavra)
     let match = table.find(f => {
       const normalizedName = normalize(f.name);
-      const firstWord = normalizedName.split(' ')[0];
-      return firstWord === mainKeyword;
+      return normalizedName.startsWith(mainKeyword);
     });
 
-    // Fase 2: Match contém a palavra (priorizar nomes mais curtos)
+    // Fase 2: Match contém (priorizar nomes mais curtos = mais puros)
     if (!match) {
       const candidates = table.filter(f => 
         normalize(f.name).includes(mainKeyword)
       );
       if (candidates.length > 0) {
-        // Escolher o nome mais curto (mais puro)
         match = candidates.reduce((a, b) => 
           a.name.length <= b.name.length ? a : b
         );
@@ -292,15 +281,8 @@ export function useIngredientCalories() {
     }
 
     if (match && match.calories_per_100g > 0) {
-      const entry: CacheEntry = {
-        name: match.name,
-        calories_per_100g: match.calories_per_100g,
-        protein_per_100g: match.protein_per_100g || 0,
-        carbs_per_100g: match.carbs_per_100g || 0,
-        fat_per_100g: match.fat_per_100g || 0,
-      };
-      cacheRef.current.set(cacheKey, entry);
-      return entry;
+      cacheRef.current.set(cacheKey, match);
+      return match;
     }
 
     cacheRef.current.set(cacheKey, null);
@@ -320,7 +302,7 @@ export function useIngredientCalories() {
         const grams = parseQuantityToGrams(ing.quantity, ing.unit);
         
         // ============================================
-        // NÍVEL 2: Busca no DB
+        // NÍVEL 2: Busca no DB (fonte centralizada)
         // ============================================
         const dbMatch = searchInDB(ing.item);
         
@@ -340,7 +322,7 @@ export function useIngredientCalories() {
             fat: Math.round(dbMatch.fat_per_100g * factor * 10) / 10,
             matched: true,
             matchedName: dbMatch.name,
-            source: wasAdjusted ? 'sanity_fallback' : 'database',
+            source: wasAdjusted ? 'category_fallback' : (dbMatch.source as IngredientCaloriesResult['source']) || 'TACO',
           });
           continue;
         }
@@ -349,7 +331,6 @@ export function useIngredientCalories() {
         // NÍVEL 4: Fallback para dados da IA
         // ============================================
         if (ing.calories && ing.calories > 0) {
-          // Aplicar sanity check nos dados da IA também
           const { calories, wasAdjusted } = applySanityCheck(ing.item, ing.calories, grams);
           
           results.push({
@@ -360,7 +341,7 @@ export function useIngredientCalories() {
             carbs: ing.carbs || 0,
             fat: ing.fat || 0,
             matched: true,
-            source: wasAdjusted ? 'sanity_fallback' : 'ai_data',
+            source: wasAdjusted ? 'category_fallback' : 'ai_data',
           });
           continue;
         }
@@ -392,6 +373,6 @@ export function useIngredientCalories() {
     calculateIngredientCalories,
     isLoading,
     isLoaded,
-    tableSize: dbTableRef.current.length,
+    tableSize,
   };
 }

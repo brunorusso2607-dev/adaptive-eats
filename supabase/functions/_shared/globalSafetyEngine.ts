@@ -133,7 +133,7 @@ const CRITICAL_FALLBACK_MAPPINGS: Record<string, string[]> = {
   sorbitol: ["sorbitol", "ameixa", "prune", "pêssego", "peach", "damasco", "apricot", "cereja", "cherry", "maçã", "apple", "pera", "pear", "chiclete", "gum"],
   fodmap: ["alho", "garlic", "cebola", "onion", "maçã", "apple", "mel", "honey", "trigo", "wheat", "feijão", "beans", "grão de bico", "chickpea", "lentilha", "lentil"],
   
-  // === ALERGIAS ===
+  // === ALERGIAS (7) ===
   egg: ["ovo", "egg", "ovos", "eggs", "gema", "yolk", "clara de ovo", "egg white", "albumina", "albumin", "maionese", "mayonnaise"],
   peanut: ["amendoim", "peanut", "manteiga de amendoim", "peanut butter", "pasta de amendoim"],
   nuts: ["castanha", "nut", "nozes", "walnuts", "amêndoas", "almonds", "avelã", "hazelnut", "pistache", "pistachio", "macadâmia", "macadamia", "pecã", "pecan", "castanha de caju", "cashew"],
@@ -141,8 +141,6 @@ const CRITICAL_FALLBACK_MAPPINGS: Record<string, string[]> = {
   fish: ["peixe", "fish", "salmão", "salmon", "atum", "tuna", "bacalhau", "cod", "sardinha", "sardine", "tilápia", "tilapia", "anchova", "anchovy"],
   soy: ["soja", "soy", "tofu", "molho de soja", "soy sauce", "shoyu", "edamame", "tempeh", "missô", "miso", "lecitina de soja"],
   sesame: ["gergelim", "sesame", "tahine", "tahini", "óleo de gergelim", "sesame oil", "pasta de gergelim"],
-  mustard: ["mostarda", "mustard", "semente de mostarda", "mustard seed", "molho de mostarda"],
-  celery: ["aipo", "celery", "salsão", "celeriac", "semente de aipo", "celery seed", "sal de aipo", "celery salt"],
   
   // === SENSIBILIDADES ===
   histamine: ["vinho", "wine", "cerveja", "beer", "queijo curado", "aged cheese", "salame", "salami", "presunto", "ham", "atum enlatado", "canned tuna", "espinafre", "spinach", "tomate", "tomato", "vinagre", "vinegar"],
@@ -167,7 +165,7 @@ const CRITICAL_SAFE_KEYWORDS: Record<string, string[]> = {
   sorbitol: ["sem sorbitol", "sorbitol free"],
   fodmap: ["low fodmap", "baixo fodmap", "fodmap friendly"],
   
-  // === ALERGIAS ===
+  // === ALERGIAS (7) ===
   egg: ["sem ovo", "egg free", "sem ovos", "egg-free", "vegan"],
   peanut: ["sem amendoim", "peanut free", "peanut-free"],
   nuts: ["sem oleaginosas", "nut free", "sem nozes", "tree nut free", "nut-free"],
@@ -175,8 +173,6 @@ const CRITICAL_SAFE_KEYWORDS: Record<string, string[]> = {
   fish: ["sem peixe", "fish free"],
   soy: ["sem soja", "soy free", "soy-free"],
   sesame: ["sem gergelim", "sesame free"],
-  mustard: ["sem mostarda", "mustard free"],
-  celery: ["sem aipo", "celery free"],
   
   // === SENSIBILIDADES ===
   histamine: ["baixa histamina", "low histamine"],
@@ -189,7 +185,7 @@ const CRITICAL_SAFE_KEYWORDS: Record<string, string[]> = {
 
 // ============= LABELS AMIGÁVEIS =============
 // SINCRONIZADO com onboarding_options (jan/2026)
-// 20 restrições: 5 intolerâncias + 9 alergias + 6 sensibilidades
+// 18 restrições: 5 intolerâncias + 7 alergias + 6 sensibilidades
 
 export const INTOLERANCE_LABELS: Record<string, string> = {
   // === INTOLERÂNCIAS (5) ===
@@ -199,7 +195,7 @@ export const INTOLERANCE_LABELS: Record<string, string> = {
   sorbitol: "Sorbitol",
   fodmap: "FODMAP",
   
-  // === ALERGIAS (9) ===
+  // === ALERGIAS (7) ===
   egg: "Ovos",
   peanut: "Amendoim",
   nuts: "Oleaginosas",
@@ -208,8 +204,6 @@ export const INTOLERANCE_LABELS: Record<string, string> = {
   fish: "Peixe",
   soy: "Soja",
   sesame: "Gergelim",
-  mustard: "Mostarda",
-  celery: "Aipo",
   
   // === SENSIBILIDADES (6) ===
   histamine: "Histamina",
@@ -228,6 +222,8 @@ export const INTOLERANCE_LABELS: Record<string, string> = {
   wheat: "Trigo",
   alcohol: "Álcool",
   lupin: "Tremoço",
+  mustard: "Mostarda", // legado
+  celery: "Aipo", // legado
 };
 
 export const DIETARY_LABELS: Record<string, string> = {

@@ -1048,20 +1048,49 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
           const ingMotivo = normalizeText(ing.motivo || "");
           const ingRestricao = normalizeText(ing.restricao_afetada || "");
           
-          // Verificar se este ingrediente corresponde à intolerância
-          // CORRIGIDO: Usar normalizeText para remover acentos e fazer matching consistente
-          const matchesIntolerance = forbiddenIngredients.some((forbidden: string) => {
-            const normalizedForbidden = normalizeText(forbidden);
-            return ingName.includes(normalizedForbidden) || 
-                   normalizedForbidden.includes(ingName) ||
-                   ingMotivo.includes(normalizedForbidden);
-          }) || normalizedKeys.some(key => ingRestricao.includes(normalizeText(key)));
+          // NOVA LÓGICA SIMPLIFICADA:
+          // 1. Verificar se o ingrediente já foi marcado como "contem" pelo Global Safety Engine
+          //    e se a restrição afetada corresponde a esta intolerância
+          // 2. OU verificar se o nome do ingrediente está na lista de proibidos
+          
+          let matchesIntolerance = false;
+          
+          // Verificação 1: O ingrediente já está marcado com status "contem" para esta intolerância?
+          if (ing.status === "contem" && ingRestricao) {
+            // Verificar se a restrição afetada corresponde a qualquer key normalizada
+            matchesIntolerance = normalizedKeys.some(key => {
+              const normalizedKey = normalizeText(key);
+              const keyLabel = safetyDatabase ? getIntoleranceLabel(key, safetyDatabase) : key;
+              const normalizedLabel = normalizeText(keyLabel);
+              // Match por key ou por label
+              return ingRestricao.includes(normalizedKey) || 
+                     normalizedKey.includes(ingRestricao) ||
+                     normalizedLabel.includes(ingRestricao) ||
+                     ingRestricao.includes(normalizedLabel);
+            });
+          }
+          
+          // Verificação 2: O nome do ingrediente está na lista de proibidos?
+          if (!matchesIntolerance) {
+            matchesIntolerance = forbiddenIngredients.some((forbidden: string) => {
+              const normalizedForbidden = normalizeText(forbidden);
+              return ingName === normalizedForbidden || 
+                     ingName.includes(normalizedForbidden) || 
+                     normalizedForbidden.includes(ingName);
+            });
+          }
           
           if (matchesIntolerance) {
             found = true;
             foundIngredient = ing.nome;
             if (ing.status === "contem") {
               foundStatus = "contem";
+              logStep("Found intolerance match in analyzed ingredients", {
+                ingredient: ing.nome,
+                restricao: ing.restricao_afetada,
+                intolerance: intoleranceKey,
+                status: ing.status
+              });
               break; // Pior caso, não precisa continuar
             } else if (ing.status === "risco_potencial") {
               foundStatus = "risco_potencial";

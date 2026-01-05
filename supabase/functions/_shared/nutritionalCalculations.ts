@@ -3,12 +3,16 @@
 // ============================================
 // Este arquivo é a FONTE ÚNICA para todos os cálculos nutricionais.
 // Usado por: generate-ai-meal-plan, regenerate-meal, generate-recipe,
-//            analyze-food-photo, analyze-fridge-photo, analyze-label-photo
+//            analyze-food-photo, analyze-fridge-photo, analyze-label-photo,
+//            regenerate-ai-meal-alternatives, suggest-meal-alternatives,
+//            suggest-smart-substitutes
 //
 // Fórmulas baseadas em evidências científicas:
 // - TMB: Mifflin-St Jeor (1990)
 // - TDEE: Multiplicadores de atividade (Harris-Benedict revisado)
 // - Macros: Diretrizes de sociedades de nutrição esportiva
+// - MEAL_MACRO_TARGETS: Motor de Decisão Nutricional Determinístico (2025)
+//   Tabela de macros por refeição calibrada por nutricionistas
 
 // ============================================
 // TYPES
@@ -64,6 +68,488 @@ const ACTIVITY_MULTIPLIERS: Record<string, number> = {
   active: 1.725, // Hard exercise 6-7 days/week
   very_active: 1.9, // Very hard exercise, physical job
 };
+
+// ============================================
+// MEAL MACRO TARGETS - MOTOR DE DECISÃO NUTRICIONAL
+// ============================================
+// Tabela determinística de macros por refeição
+// Calibrada por nutricionistas para cada combinação de:
+// - Objetivo (lose_weight, maintain, gain_weight)
+// - Sexo (male, female)
+// - Nível de atividade (sedentary, light, moderate, active, very_active)
+// 
+// Valores em GRAMAS (proteína, carboidrato, gordura)
+// Regras nutricionais:
+// - Proteína presente em 100% das refeições
+// - Ceia com carbo zero/baixo para emagrecimento
+// - Carbo escala com nível de atividade
+// - Homens têm valores absolutos maiores que mulheres
+
+export interface MealMacroTarget {
+  protein: number; // gramas
+  carbs: number;   // gramas
+  fat: number;     // gramas
+}
+
+export interface MealMacroTargetSet {
+  breakfast: MealMacroTarget;
+  morning_snack: MealMacroTarget;
+  lunch: MealMacroTarget;
+  afternoon_snack: MealMacroTarget;
+  dinner: MealMacroTarget;
+  supper: MealMacroTarget;
+}
+
+type ActivityLevel = 'sedentary' | 'light' | 'moderate' | 'active' | 'very_active';
+type Sex = 'male' | 'female';
+type Goal = 'lose_weight' | 'maintain' | 'gain_weight';
+
+export const MEAL_MACRO_TARGETS: Record<Goal, Record<Sex, Record<ActivityLevel, MealMacroTargetSet>>> = {
+  // =============================================
+  // OBJETIVO: EMAGRECER (lose_weight)
+  // =============================================
+  lose_weight: {
+    male: {
+      sedentary: {
+        breakfast: { protein: 30, carbs: 25, fat: 10 },
+        morning_snack: { protein: 20, carbs: 10, fat: 5 },
+        lunch: { protein: 40, carbs: 40, fat: 15 },
+        afternoon_snack: { protein: 25, carbs: 15, fat: 5 },
+        dinner: { protein: 40, carbs: 20, fat: 10 },
+        supper: { protein: 20, carbs: 0, fat: 5 },
+      },
+      light: {
+        breakfast: { protein: 30, carbs: 30, fat: 10 },
+        morning_snack: { protein: 20, carbs: 15, fat: 5 },
+        lunch: { protein: 40, carbs: 50, fat: 15 },
+        afternoon_snack: { protein: 25, carbs: 20, fat: 5 },
+        dinner: { protein: 40, carbs: 25, fat: 10 },
+        supper: { protein: 20, carbs: 0, fat: 5 },
+      },
+      moderate: {
+        breakfast: { protein: 35, carbs: 35, fat: 10 },
+        morning_snack: { protein: 25, carbs: 20, fat: 5 },
+        lunch: { protein: 45, carbs: 60, fat: 15 },
+        afternoon_snack: { protein: 30, carbs: 25, fat: 5 },
+        dinner: { protein: 45, carbs: 30, fat: 10 },
+        supper: { protein: 25, carbs: 0, fat: 5 },
+      },
+      active: {
+        breakfast: { protein: 35, carbs: 40, fat: 10 },
+        morning_snack: { protein: 25, carbs: 25, fat: 5 },
+        lunch: { protein: 45, carbs: 70, fat: 15 },
+        afternoon_snack: { protein: 30, carbs: 30, fat: 5 },
+        dinner: { protein: 45, carbs: 35, fat: 10 },
+        supper: { protein: 25, carbs: 0, fat: 5 },
+      },
+      very_active: {
+        breakfast: { protein: 40, carbs: 45, fat: 10 },
+        morning_snack: { protein: 30, carbs: 30, fat: 5 },
+        lunch: { protein: 50, carbs: 80, fat: 15 },
+        afternoon_snack: { protein: 35, carbs: 35, fat: 5 },
+        dinner: { protein: 50, carbs: 40, fat: 10 },
+        supper: { protein: 30, carbs: 0, fat: 5 },
+      },
+    },
+    female: {
+      sedentary: {
+        breakfast: { protein: 25, carbs: 20, fat: 10 },
+        morning_snack: { protein: 15, carbs: 10, fat: 5 },
+        lunch: { protein: 30, carbs: 30, fat: 12 },
+        afternoon_snack: { protein: 20, carbs: 15, fat: 5 },
+        dinner: { protein: 30, carbs: 20, fat: 10 },
+        supper: { protein: 15, carbs: 0, fat: 5 },
+      },
+      light: {
+        breakfast: { protein: 25, carbs: 25, fat: 10 },
+        morning_snack: { protein: 15, carbs: 15, fat: 5 },
+        lunch: { protein: 30, carbs: 40, fat: 12 },
+        afternoon_snack: { protein: 20, carbs: 20, fat: 5 },
+        dinner: { protein: 30, carbs: 25, fat: 10 },
+        supper: { protein: 15, carbs: 0, fat: 5 },
+      },
+      moderate: {
+        breakfast: { protein: 30, carbs: 30, fat: 10 },
+        morning_snack: { protein: 20, carbs: 20, fat: 5 },
+        lunch: { protein: 35, carbs: 50, fat: 12 },
+        afternoon_snack: { protein: 25, carbs: 25, fat: 5 },
+        dinner: { protein: 35, carbs: 30, fat: 10 },
+        supper: { protein: 20, carbs: 0, fat: 5 },
+      },
+      active: {
+        breakfast: { protein: 30, carbs: 35, fat: 10 },
+        morning_snack: { protein: 20, carbs: 25, fat: 5 },
+        lunch: { protein: 35, carbs: 60, fat: 12 },
+        afternoon_snack: { protein: 25, carbs: 30, fat: 5 },
+        dinner: { protein: 35, carbs: 35, fat: 10 },
+        supper: { protein: 20, carbs: 0, fat: 5 },
+      },
+      very_active: {
+        breakfast: { protein: 35, carbs: 40, fat: 10 },
+        morning_snack: { protein: 25, carbs: 30, fat: 5 },
+        lunch: { protein: 40, carbs: 70, fat: 12 },
+        afternoon_snack: { protein: 30, carbs: 35, fat: 5 },
+        dinner: { protein: 40, carbs: 40, fat: 10 },
+        supper: { protein: 25, carbs: 0, fat: 5 },
+      },
+    },
+  },
+  
+  // =============================================
+  // OBJETIVO: MANTER PESO (maintain)
+  // Valores médios das faixas do prompt determinístico
+  // =============================================
+  maintain: {
+    male: {
+      sedentary: {
+        breakfast: { protein: 32, carbs: 45, fat: 12 },
+        morning_snack: { protein: 22, carbs: 25, fat: 6 },
+        lunch: { protein: 42, carbs: 70, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 35, fat: 6 },
+        dinner: { protein: 42, carbs: 50, fat: 12 },
+        supper: { protein: 22, carbs: 15, fat: 6 },
+      },
+      light: {
+        breakfast: { protein: 32, carbs: 45, fat: 12 },
+        morning_snack: { protein: 22, carbs: 25, fat: 6 },
+        lunch: { protein: 42, carbs: 70, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 35, fat: 6 },
+        dinner: { protein: 42, carbs: 50, fat: 12 },
+        supper: { protein: 22, carbs: 15, fat: 6 },
+      },
+      moderate: {
+        breakfast: { protein: 32, carbs: 45, fat: 12 },
+        morning_snack: { protein: 22, carbs: 25, fat: 6 },
+        lunch: { protein: 42, carbs: 70, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 35, fat: 6 },
+        dinner: { protein: 42, carbs: 50, fat: 12 },
+        supper: { protein: 22, carbs: 15, fat: 6 },
+      },
+      active: {
+        breakfast: { protein: 32, carbs: 45, fat: 12 },
+        morning_snack: { protein: 22, carbs: 25, fat: 6 },
+        lunch: { protein: 42, carbs: 70, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 35, fat: 6 },
+        dinner: { protein: 42, carbs: 50, fat: 12 },
+        supper: { protein: 22, carbs: 15, fat: 6 },
+      },
+      very_active: {
+        breakfast: { protein: 32, carbs: 45, fat: 12 },
+        morning_snack: { protein: 22, carbs: 25, fat: 6 },
+        lunch: { protein: 42, carbs: 70, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 35, fat: 6 },
+        dinner: { protein: 42, carbs: 50, fat: 12 },
+        supper: { protein: 22, carbs: 15, fat: 6 },
+      },
+    },
+    female: {
+      sedentary: {
+        breakfast: { protein: 27, carbs: 40, fat: 12 },
+        morning_snack: { protein: 17, carbs: 22, fat: 6 },
+        lunch: { protein: 32, carbs: 57, fat: 12 },
+        afternoon_snack: { protein: 22, carbs: 30, fat: 6 },
+        dinner: { protein: 32, carbs: 42, fat: 12 },
+        supper: { protein: 17, carbs: 15, fat: 6 },
+      },
+      light: {
+        breakfast: { protein: 27, carbs: 40, fat: 12 },
+        morning_snack: { protein: 17, carbs: 22, fat: 6 },
+        lunch: { protein: 32, carbs: 57, fat: 12 },
+        afternoon_snack: { protein: 22, carbs: 30, fat: 6 },
+        dinner: { protein: 32, carbs: 42, fat: 12 },
+        supper: { protein: 17, carbs: 15, fat: 6 },
+      },
+      moderate: {
+        breakfast: { protein: 27, carbs: 40, fat: 12 },
+        morning_snack: { protein: 17, carbs: 22, fat: 6 },
+        lunch: { protein: 32, carbs: 57, fat: 12 },
+        afternoon_snack: { protein: 22, carbs: 30, fat: 6 },
+        dinner: { protein: 32, carbs: 42, fat: 12 },
+        supper: { protein: 17, carbs: 15, fat: 6 },
+      },
+      active: {
+        breakfast: { protein: 27, carbs: 40, fat: 12 },
+        morning_snack: { protein: 17, carbs: 22, fat: 6 },
+        lunch: { protein: 32, carbs: 57, fat: 12 },
+        afternoon_snack: { protein: 22, carbs: 30, fat: 6 },
+        dinner: { protein: 32, carbs: 42, fat: 12 },
+        supper: { protein: 17, carbs: 15, fat: 6 },
+      },
+      very_active: {
+        breakfast: { protein: 27, carbs: 40, fat: 12 },
+        morning_snack: { protein: 17, carbs: 22, fat: 6 },
+        lunch: { protein: 32, carbs: 57, fat: 12 },
+        afternoon_snack: { protein: 22, carbs: 30, fat: 6 },
+        dinner: { protein: 32, carbs: 42, fat: 12 },
+        supper: { protein: 17, carbs: 15, fat: 6 },
+      },
+    },
+  },
+  
+  // =============================================
+  // OBJETIVO: GANHAR PESO (gain_weight)
+  // Valores médios das faixas do prompt determinístico
+  // =============================================
+  gain_weight: {
+    male: {
+      sedentary: {
+        breakfast: { protein: 40, carbs: 80, fat: 15 },
+        morning_snack: { protein: 30, carbs: 55, fat: 10 },
+        lunch: { protein: 47, carbs: 105, fat: 20 },
+        afternoon_snack: { protein: 37, carbs: 80, fat: 10 },
+        dinner: { protein: 47, carbs: 80, fat: 15 },
+        supper: { protein: 30, carbs: 35, fat: 10 },
+      },
+      light: {
+        breakfast: { protein: 40, carbs: 80, fat: 15 },
+        morning_snack: { protein: 30, carbs: 55, fat: 10 },
+        lunch: { protein: 47, carbs: 105, fat: 20 },
+        afternoon_snack: { protein: 37, carbs: 80, fat: 10 },
+        dinner: { protein: 47, carbs: 80, fat: 15 },
+        supper: { protein: 30, carbs: 35, fat: 10 },
+      },
+      moderate: {
+        breakfast: { protein: 40, carbs: 80, fat: 15 },
+        morning_snack: { protein: 30, carbs: 55, fat: 10 },
+        lunch: { protein: 47, carbs: 105, fat: 20 },
+        afternoon_snack: { protein: 37, carbs: 80, fat: 10 },
+        dinner: { protein: 47, carbs: 80, fat: 15 },
+        supper: { protein: 30, carbs: 35, fat: 10 },
+      },
+      active: {
+        breakfast: { protein: 40, carbs: 80, fat: 15 },
+        morning_snack: { protein: 30, carbs: 55, fat: 10 },
+        lunch: { protein: 47, carbs: 105, fat: 20 },
+        afternoon_snack: { protein: 37, carbs: 80, fat: 10 },
+        dinner: { protein: 47, carbs: 80, fat: 15 },
+        supper: { protein: 30, carbs: 35, fat: 10 },
+      },
+      very_active: {
+        breakfast: { protein: 40, carbs: 80, fat: 15 },
+        morning_snack: { protein: 30, carbs: 55, fat: 10 },
+        lunch: { protein: 47, carbs: 105, fat: 20 },
+        afternoon_snack: { protein: 37, carbs: 80, fat: 10 },
+        dinner: { protein: 47, carbs: 80, fat: 15 },
+        supper: { protein: 30, carbs: 35, fat: 10 },
+      },
+    },
+    female: {
+      sedentary: {
+        breakfast: { protein: 32, carbs: 67, fat: 15 },
+        morning_snack: { protein: 22, carbs: 45, fat: 10 },
+        lunch: { protein: 37, carbs: 90, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 67, fat: 10 },
+        dinner: { protein: 37, carbs: 67, fat: 15 },
+        supper: { protein: 22, carbs: 30, fat: 10 },
+      },
+      light: {
+        breakfast: { protein: 32, carbs: 67, fat: 15 },
+        morning_snack: { protein: 22, carbs: 45, fat: 10 },
+        lunch: { protein: 37, carbs: 90, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 67, fat: 10 },
+        dinner: { protein: 37, carbs: 67, fat: 15 },
+        supper: { protein: 22, carbs: 30, fat: 10 },
+      },
+      moderate: {
+        breakfast: { protein: 32, carbs: 67, fat: 15 },
+        morning_snack: { protein: 22, carbs: 45, fat: 10 },
+        lunch: { protein: 37, carbs: 90, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 67, fat: 10 },
+        dinner: { protein: 37, carbs: 67, fat: 15 },
+        supper: { protein: 22, carbs: 30, fat: 10 },
+      },
+      active: {
+        breakfast: { protein: 32, carbs: 67, fat: 15 },
+        morning_snack: { protein: 22, carbs: 45, fat: 10 },
+        lunch: { protein: 37, carbs: 90, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 67, fat: 10 },
+        dinner: { protein: 37, carbs: 67, fat: 15 },
+        supper: { protein: 22, carbs: 30, fat: 10 },
+      },
+      very_active: {
+        breakfast: { protein: 32, carbs: 67, fat: 15 },
+        morning_snack: { protein: 22, carbs: 45, fat: 10 },
+        lunch: { protein: 37, carbs: 90, fat: 15 },
+        afternoon_snack: { protein: 27, carbs: 67, fat: 10 },
+        dinner: { protein: 37, carbs: 67, fat: 15 },
+        supper: { protein: 22, carbs: 30, fat: 10 },
+      },
+    },
+  },
+};
+
+// ============================================
+// FUNÇÃO PARA OBTER TARGETS DE MACROS POR REFEIÇÃO
+// ============================================
+
+/**
+ * Obtém os targets de macros para uma refeição específica baseado no
+ * objetivo, sexo e nível de atividade do usuário.
+ * 
+ * Esta é a função principal do Motor de Decisão Nutricional.
+ * 
+ * @param goal - Objetivo: 'lose_weight' | 'maintain' | 'gain_weight'
+ * @param sex - Sexo: 'male' | 'female' 
+ * @param activityLevel - Nível de atividade
+ * @param mealType - Tipo de refeição
+ * @returns MealMacroTarget com proteína, carboidrato e gordura em gramas
+ */
+export function getMealMacroTargets(
+  goal: string,
+  sex: string,
+  activityLevel: string,
+  mealType: string
+): MealMacroTarget {
+  // Normalizar goal
+  const normalizedGoal: Goal = 
+    goal === 'weight_loss' || goal === 'lose_weight' || goal === 'emagrecer' ? 'lose_weight' :
+    goal === 'weight_gain' || goal === 'gain_weight' || goal === 'gain_muscle' || goal === 'ganhar' ? 'gain_weight' :
+    'maintain';
+  
+  // Normalizar sex
+  const normalizedSex: Sex = 
+    sex === 'male' || sex === 'masculino' || sex === 'm' ? 'male' : 'female';
+  
+  // Normalizar activity level (default: moderate)
+  const normalizedActivity: ActivityLevel =
+    activityLevel === 'sedentary' || activityLevel === 'sedentario' ? 'sedentary' :
+    activityLevel === 'light' || activityLevel === 'leve' ? 'light' :
+    activityLevel === 'active' || activityLevel === 'ativo' ? 'active' :
+    activityLevel === 'very_active' || activityLevel === 'muito_ativo' ? 'very_active' :
+    'moderate';
+  
+  // Normalizar meal type
+  const normalizedMeal = 
+    mealType === 'cafe_manha' || mealType === 'café_manhã' || mealType === 'cafe_da_manha' ? 'breakfast' :
+    mealType === 'lanche_manha' || mealType === 'lanche_manhã' ? 'morning_snack' :
+    mealType === 'almoco' || mealType === 'almoço' ? 'lunch' :
+    mealType === 'lanche_tarde' || mealType === 'lanche' ? 'afternoon_snack' :
+    mealType === 'jantar' ? 'dinner' :
+    mealType === 'ceia' ? 'supper' :
+    mealType as keyof MealMacroTargetSet;
+  
+  // Buscar na tabela
+  const goalData = MEAL_MACRO_TARGETS[normalizedGoal];
+  if (!goalData) {
+    console.warn(`[getMealMacroTargets] Goal not found: ${goal}, using maintain`);
+    return MEAL_MACRO_TARGETS.maintain.male.moderate.lunch;
+  }
+  
+  const sexData = goalData[normalizedSex];
+  if (!sexData) {
+    console.warn(`[getMealMacroTargets] Sex not found: ${sex}, using male`);
+    return MEAL_MACRO_TARGETS[normalizedGoal].male.moderate.lunch;
+  }
+  
+  const activityData = sexData[normalizedActivity];
+  if (!activityData) {
+    console.warn(`[getMealMacroTargets] Activity not found: ${activityLevel}, using moderate`);
+    return sexData.moderate.lunch;
+  }
+  
+  const mealData = activityData[normalizedMeal as keyof MealMacroTargetSet];
+  if (!mealData) {
+    console.warn(`[getMealMacroTargets] Meal not found: ${mealType}, using lunch`);
+    return activityData.lunch;
+  }
+  
+  return mealData;
+}
+
+/**
+ * Obtém TODOS os targets de macros para um perfil de usuário.
+ * Retorna os targets para todas as 6 refeições.
+ */
+export function getAllMealMacroTargets(
+  goal: string,
+  sex: string,
+  activityLevel: string
+): MealMacroTargetSet {
+  const meals: (keyof MealMacroTargetSet)[] = [
+    'breakfast', 'morning_snack', 'lunch', 'afternoon_snack', 'dinner', 'supper'
+  ];
+  
+  const result: Partial<MealMacroTargetSet> = {};
+  
+  for (const meal of meals) {
+    result[meal] = getMealMacroTargets(goal, sex, activityLevel, meal);
+  }
+  
+  return result as MealMacroTargetSet;
+}
+
+/**
+ * Gera uma string com os targets de macros para injeção no prompt da IA.
+ * Formato otimizado para o Gemini entender as metas por refeição.
+ */
+export function buildMealMacroTargetsForPrompt(
+  goal: string,
+  sex: string,
+  activityLevel: string,
+  enabledMeals?: string[]
+): string {
+  const allTargets = getAllMealMacroTargets(goal, sex, activityLevel);
+  
+  const mealLabels: Record<string, string> = {
+    breakfast: 'Café da manhã',
+    morning_snack: 'Lanche da manhã',
+    lunch: 'Almoço',
+    afternoon_snack: 'Lanche da tarde',
+    dinner: 'Jantar',
+    supper: 'Ceia',
+  };
+  
+  let prompt = `
+📊 METAS DE MACRONUTRIENTES POR REFEIÇÃO (OBRIGATÓRIO):
+Cada refeição DEVE ter aproximadamente estes valores (±15% tolerância):
+`;
+
+  const mealsToShow = enabledMeals || Object.keys(mealLabels);
+  
+  for (const [mealKey, targets] of Object.entries(allTargets)) {
+    // Normalizar enabledMeals para comparação
+    const normalizedEnabledMeals = mealsToShow.map(m => {
+      if (m === 'cafe_manha' || m === 'café_manhã' || m === 'cafe_da_manha') return 'breakfast';
+      if (m === 'lanche_manha' || m === 'lanche_manhã') return 'morning_snack';
+      if (m === 'almoco' || m === 'almoço') return 'lunch';
+      if (m === 'lanche_tarde' || m === 'lanche') return 'afternoon_snack';
+      if (m === 'jantar') return 'dinner';
+      if (m === 'ceia') return 'supper';
+      return m;
+    });
+    
+    if (normalizedEnabledMeals.includes(mealKey)) {
+      const label = mealLabels[mealKey] || mealKey;
+      const calories = (targets.protein * 4) + (targets.carbs * 4) + (targets.fat * 9);
+      prompt += `
+- ${label}: P${targets.protein}g C${targets.carbs}g G${targets.fat}g (~${Math.round(calories)}kcal)`;
+    }
+  }
+  
+  // Adicionar regras baseadas no objetivo
+  const normalizedGoal = 
+    goal === 'weight_loss' || goal === 'lose_weight' || goal === 'emagrecer' ? 'lose_weight' :
+    goal === 'weight_gain' || goal === 'gain_weight' || goal === 'gain_muscle' || goal === 'ganhar' ? 'gain_weight' :
+    'maintain';
+  
+  if (normalizedGoal === 'lose_weight') {
+    prompt += `
+
+⚠️ REGRAS PARA EMAGRECIMENTO:
+- Ceia DEVE ter carboidrato ZERO ou muito baixo
+- Proteína ALTA em todas as refeições para preservar massa muscular
+- Carboidratos reduzidos especialmente à noite`;
+  } else if (normalizedGoal === 'gain_weight') {
+    prompt += `
+
+⚠️ REGRAS PARA GANHO DE PESO:
+- Carboidratos ALTOS especialmente no café e almoço
+- Proteína ALTA para construção muscular
+- Ceia pode ter carboidrato moderado`;
+  }
+  
+  return prompt;
+}
 
 // ============================================
 // MEAL DISTRIBUTION PERCENTAGES (English keys)

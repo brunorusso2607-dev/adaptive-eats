@@ -14,6 +14,8 @@ import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import {
   calculateNutritionalTargets,
   getMealTarget,
+  getMealMacroTargets,
+  buildMealMacroTargetsForPrompt,
 } from "../_shared/nutritionalCalculations.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
 import { getNutritionalTablePrompt } from "../_shared/nutritionalTableInjection.ts";
@@ -170,6 +172,14 @@ serve(async (req) => {
     const nutritionalTablePrompt = await getNutritionalTablePrompt(supabaseClient, profile.country || 'BR');
     logStep("Nutritional table loaded for prompt injection");
 
+    // Build macro targets from Motor de Decisão Nutricional
+    const macroTargetsPrompt = buildMealMacroTargetsForPrompt(
+      profile.goal || 'maintain',
+      profile.sex || 'male',
+      profile.activity_level || 'moderate',
+      [mealType]
+    );
+
     // Build prompt for alternatives
     const basePrompt = buildAlternativesPrompt(
       mealLabel,
@@ -178,7 +188,8 @@ serve(async (req) => {
       restrictionText,
       formatRules,
       profile.kids_mode === true,
-      regional.language
+      regional.language,
+      macroTargetsPrompt
     );
     
     // Inject nutritional table BEFORE the alternatives prompt
@@ -394,6 +405,7 @@ serve(async (req) => {
 
 /**
  * Builds prompt for generating meal alternatives using shared format rules
+ * Now includes Motor de Decisão Nutricional targets
  */
 function buildAlternativesPrompt(
   mealLabel: string,
@@ -402,7 +414,8 @@ function buildAlternativesPrompt(
   restrictionText: string,
   formatRules: string,
   isKidsMode: boolean,
-  language: string
+  language: string,
+  macroTargetsPrompt?: string // Novo: contexto do Motor de Decisão
 ): string {
   const isPortuguese = language.startsWith('pt');
   const isSpanish = language.startsWith('es');
@@ -415,6 +428,9 @@ function buildAlternativesPrompt(
   const minCal = Math.round(targetCalories * 0.85);
   const maxCal = Math.round(targetCalories * 1.15);
 
+  // Incluir targets de macros se disponíveis
+  const macroContext = macroTargetsPrompt || '';
+
   if (isPortuguese) {
     return `🥗 NUTRICIONISTA - Gerar ${count} OPÇÕES de ${mealLabel}
 🎯 Meta: ${minCal}-${maxCal} kcal${kidsNote}
@@ -423,6 +439,7 @@ function buildAlternativesPrompt(
 ${restrictionText}
 
 🔒 Dúvida sobre ingrediente → is_safe: false
+${macroContext}
 
 📋 GERAR ${count} OPÇÕES DIFERENTES de ${mealLabel}:
 • Cada opção deve ser uma refeição COMPLETA e DIFERENTE
@@ -464,6 +481,7 @@ Responda APENAS JSON válido com ${count} opções.`;
 ${restrictionText}
 
 🔒 Duda sobre ingrediente → is_safe: false
+${macroContext}
 
 📋 GENERAR ${count} OPCIONES DIFERENTES de ${mealLabel}
 
@@ -480,6 +498,7 @@ Responda SOLO JSON válido con ${count} opciones.`;
 ${restrictionText}
 
 🔒 Doubt about ingredient → is_safe: false
+${macroContext}
 
 📋 GENERATE ${count} DIFFERENT OPTIONS for ${mealLabel}
 

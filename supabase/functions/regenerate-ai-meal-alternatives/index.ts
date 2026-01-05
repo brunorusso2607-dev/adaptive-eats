@@ -4,6 +4,8 @@ import { logAIUsage } from "../_shared/logAIUsage.ts";
 import {
   calculateNutritionalTargets,
   getMealTarget,
+  getMealMacroTargets,
+  buildMealMacroTargetsForPrompt,
 } from "../_shared/nutritionalCalculations.ts";
 // Import from shared config
 import {
@@ -48,8 +50,10 @@ function buildAlternativesPrompt(params: {
   addSugarQualifier: boolean;
   strategyKey?: string;
   isFlexibleOption?: boolean; // Flag para gerar comfort foods
+  sex?: string; // Para Motor de Decisão Nutricional
+  activityLevel?: string; // Para Motor de Decisão Nutricional
 }): string {
-  const { mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, language, countryCode, optionsCount, addSugarQualifier, strategyKey, isFlexibleOption } = params;
+  const { mealType, mealLabel, targetCalories, targetProtein, targetCarbs, targetFat, restrictions, language, countryCode, optionsCount, addSugarQualifier, strategyKey, isFlexibleOption, sex, activityLevel } = params;
 
   const restrictionText = getRestrictionText(restrictions, language, addSugarQualifier);
   const promptRules = getMealPromptRules(language);
@@ -63,9 +67,23 @@ function buildAlternativesPrompt(params: {
     goal: restrictions.goal, // Passar objetivo (emagrecer, manter, ganhar_peso)
   }) : '';
 
+  // ============= MOTOR DE DECISÃO NUTRICIONAL =============
+  // Obter targets específicos para esta refeição baseado no perfil
+  const macroTargets = getMealMacroTargets(
+    restrictions.goal || 'maintain',
+    sex || 'male',
+    activityLevel || 'moderate',
+    mealType
+  );
+  
+  // Usar targets do Motor se não foram passados explicitamente
+  const finalProtein = targetProtein || macroTargets.protein;
+  const finalCarbs = targetCarbs || macroTargets.carbs;
+  const finalFat = targetFat || macroTargets.fat;
+
   let macroDescription = `${targetCalories} kcal`;
-  if (targetProtein && targetCarbs && targetFat) {
-    macroDescription = `${targetCalories} kcal | ${targetProtein}g proteína | ${targetCarbs}g carboidratos | ${targetFat}g gordura`;
+  if (finalProtein && finalCarbs && finalFat) {
+    macroDescription = `${targetCalories} kcal | ${finalProtein}g proteína | ${finalCarbs}g carboidratos | ${finalFat}g gordura`;
   }
 
   // Contexto adicional para opções flexíveis
@@ -118,9 +136,9 @@ RESPONDA EXCLUSIVAMENTE EM JSON VÁLIDO:
       "title": "Nome descritivo da refeição",
       "foods": [{"name": "1 filé médio de frango grelhado", "grams": 120}],
       "calories_kcal": ${targetCalories},
-      "protein_g": ${targetProtein || 25},
-      "carbs_g": ${targetCarbs || 40},
-      "fat_g": ${targetFat || 15}
+      "protein_g": ${finalProtein},
+      "carbs_g": ${finalCarbs},
+      "fat_g": ${finalFat}
     }
   ]
 }
@@ -353,6 +371,8 @@ serve(async (req) => {
         addSugarQualifier,
         strategyKey: 'emagrecer', // Usa pool de emagrecimento
         isFlexibleOption: false,
+        sex: profile.sex,
+        activityLevel: profile.activity_level,
       });
       
       // Inject nutritional table (CASCATA CAMADA 1)
@@ -392,6 +412,8 @@ serve(async (req) => {
         addSugarQualifier,
         strategyKey: 'dieta_flexivel',
         isFlexibleOption: true, // Flag para gerar comfort foods
+        sex: profile.sex,
+        activityLevel: profile.activity_level,
       });
       
       // Inject nutritional table (CASCATA CAMADA 1)
@@ -435,6 +457,8 @@ serve(async (req) => {
         addSugarQualifier,
         strategyKey,
         isFlexibleOption: false,
+        sex: profile.sex,
+        activityLevel: profile.activity_level,
       });
       
       // Inject nutritional table (CASCATA CAMADA 1)

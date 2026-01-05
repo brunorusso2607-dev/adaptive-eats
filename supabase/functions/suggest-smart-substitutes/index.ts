@@ -19,6 +19,7 @@ import {
   getMealPromptRules,
   shouldAddSugarQualifier,
   getRegionalConfig,
+  getMealMacroTargets,
   type IntoleranceMapping,
   type SafeKeyword,
 } from "../_shared/mealGenerationConfig.ts";

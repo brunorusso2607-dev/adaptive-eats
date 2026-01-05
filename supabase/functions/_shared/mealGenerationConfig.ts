@@ -4407,6 +4407,43 @@ ${previousDaysMeals.length > 0 ? `\n━━━ ${getNoRepeatHeader(regional.langu
 ${countryBehavioralPrompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🔄 SMART SUBSTITUTION BY INTOLERANCE (18 CATEGORIES):
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+⚠️ NEVER simply block foods for intolerant users!
+⚠️ Instead, SUBSTITUTE with safe adapted versions!
+
+UNIVERSAL SUBSTITUTION RULES:
+• LACTOSE intolerance → Use "leite sem lactose", "iogurte sem lactose", "queijo sem lactose"
+• GLUTEN intolerance → Use "pão sem glúten", "macarrão sem glúten", "tapioca" (naturally GF)
+• EGG allergy → Use "tofu mexido" instead of scrambled eggs, "chia egg" for baking
+• SOY allergy → Use "leite de coco", "leite de amêndoas" instead of soy milk
+• PEANUT allergy → Use "pasta de castanha de caju", "tahine", "manteiga de amêndoas"
+• TREE NUTS allergy → Use "sementes de girassol", "sementes de abóbora", "coco"
+• FISH allergy → Use "frango", "carne", "tofu", "ovos" as protein
+• SEAFOOD allergy → Use "peixe de água doce", "frango", "carne" as protein
+• SHELLFISH allergy → Use other seafood or chicken/beef
+• SESAME allergy → Use "sementes de linhaça", "sementes de chia", "sementes de girassol"
+• SULFITE sensitivity → Use fresh fruits instead of dried, avoid wine/vinegar
+• HISTAMINE intolerance → Use fresh meats, avoid aged cheeses and cured meats
+• SALICYLATE sensitivity → Use "batata", "cenoura", "abobrinha" (low salicylate veggies)
+• NICKEL sensitivity → Use "arroz branco", "frango", "batata" (low nickel foods)
+• FODMAP sensitivity → Use "arroz", "batata", "cenoura", avoid onion/garlic
+• LUPIN allergy → Avoid lupin flour, use other legumes
+• MUSTARD allergy → Use other condiments
+• CELERY allergy → Omit celery, use other vegetables
+
+BRAZIL-SPECIFIC SUBSTITUTION EXAMPLES:
+✅ Gluten user wants bread → Give "pão sem glúten" NOT skip bread entirely
+✅ Lactose user wants milk → Give "leite sem lactose" NOT skip milk entirely  
+✅ Lactose user wants cheese → Give "queijo sem lactose" or "queijo vegetal"
+✅ Lactose user wants yogurt → Give "iogurte sem lactose" or "iogurte de coco"
+✅ Gluten user wants pasta → Give "macarrão sem glúten" or "macarrão de arroz"
+✅ Egg allergy user → Give "tofu mexido com cúrcuma" for breakfast scramble
+
+❌ WRONG: User has lactose intolerance → Skip all dairy dishes entirely
+✅ CORRECT: User has lactose intolerance → Include dairy dishes with lactose-free alternatives
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 🍽️ REAL MEAL PHILOSOPHY (CRITICAL RULES):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -4454,12 +4491,28 @@ ${countryBehavioralPrompt}
    ❌ WRONG: [Beverage, Rice, Beans, Chicken] ← Beverage CANNOT be first!
    ❌ WRONG: [Rice, Chicken, Fruit] ← Where are the beans? In Brazil, beans MUST accompany rice!
 
-   🚨🚨🚨 BRAZIL CULTURAL RULE: BEANS MUST ALWAYS HAVE RICE! 🚨🚨🚨
+   🚨🚨🚨 BRAZIL CULTURAL RULE: RICE AND BEANS 🚨🚨🚨
    • In Brazilian culture, beans are NEVER eaten alone - they ALWAYS accompany rice
    • Rice CAN be eaten alone (e.g., with just protein)
    • But if you include beans, you MUST also include rice!
    • ❌ WRONG: [Feijão carioca, Chicken, Salad] ← Where's the rice? SERIOUS ERROR!
    • ✅ CORRECT: [Arroz, Feijão, Chicken, Salad] ← Rice AND beans together!
+   
+   🚨🚨🚨 BRAZIL DINNER CULTURAL RULE - LIGHTER EVENING MEALS 🚨🚨🚨
+   • LUNCH: Rice + Beans is MANDATORY (100% of the time for Brazil)
+   • DINNER: Rice + Beans is OPTIONAL (only 30% of dinners should have rice+beans)
+   • Brazilians prefer LIGHTER dinners: soups, omelets, wraps, salads, light sandwiches
+   
+   DINNER OPTIONS FOR BRAZIL (prefer these over rice+beans):
+   ✅ "Sopa de legumes com frango" (vegetable soup with chicken)
+   ✅ "Omelete de queijo com salada" (cheese omelet with salad)
+   ✅ "Wrap integral de frango" (whole wheat chicken wrap)
+   ✅ "Salada caesar com frango grelhado" (caesar salad with chicken)
+   ✅ "Sanduíche natural de atum" (natural tuna sandwich)
+   ✅ "Caldo verde com linguiça" (Portuguese kale soup)
+   
+   ❌ WRONG: Rice + beans for dinner EVERY DAY ← Brazilians find this too heavy!
+   ✅ CORRECT: Mix of light dinners (70%) + occasional rice+beans dinners (30%)
 
 5️⃣ MANDATORY BEVERAGES FOR LUNCH AND DINNER:
    • Lunch/Dinner: ALWAYS include 1 ZERO beverage as LAST item:

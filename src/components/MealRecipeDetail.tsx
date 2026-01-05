@@ -13,7 +13,7 @@ import { toast } from "sonner";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { FodmapSeasoningAlert } from "@/components/FodmapSeasoningAlert";
-import { useIngredientCalories } from "@/hooks/useIngredientCalories";
+
 
 type Ingredient = { 
   item: string; 
@@ -95,27 +95,18 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
   });
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
-  const { calculateIngredientCalories, isLoaded: isCaloriesLoaded } = useIngredientCalories();
-
-  // Calculate individual calories for each ingredient (async)
-  const [ingredientCalories, setIngredientCalories] = useState<Map<string, number>>(new Map());
   
-  useEffect(() => {
-    if (!isCaloriesLoaded || localIngredients.length === 0) return;
-    
-    const loadCalories = async () => {
-      const results = await calculateIngredientCalories(localIngredients);
-      const map = new Map<string, number>();
-      results.forEach(r => {
-        if (r.matched && r.calories > 0) {
-          map.set(r.item.toLowerCase().trim(), r.calories);
-        }
-      });
-      setIngredientCalories(map);
-    };
-    
-    loadCalories();
-  }, [localIngredients, calculateIngredientCalories, isCaloriesLoaded]);
+
+  // Use calories directly from AI-generated ingredient data (no DB lookup needed)
+  const ingredientCalories = useMemo(() => {
+    const map = new Map<string, number>();
+    localIngredients.forEach(ing => {
+      if (ing.calories && ing.calories > 0) {
+        map.set(ing.item.toLowerCase().trim(), ing.calories);
+      }
+    });
+    return map;
+  }, [localIngredients]);
 
   // Check which ingredients have conflicts
   const ingredientConflicts = useMemo(() => {

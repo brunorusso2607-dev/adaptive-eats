@@ -35,6 +35,11 @@ type FoodItem = {
   // Unidentified food item - needs user correction
   nao_identificado?: boolean;
   descricao_visual?: string; // Visual description when unidentified (e.g., "substância cremosa branca")
+  // Nutritional data source tracking
+  calculo_fonte?: "tabela_foods" | "estimativa_ia"; // Source of nutritional data
+  alimento_encontrado?: string; // Name matched in the database
+  food_id?: string; // ID from foods table if found
+  gramas_usadas?: number; // Grams used for calculation
 };
 
 type IntoleranceAlert = {

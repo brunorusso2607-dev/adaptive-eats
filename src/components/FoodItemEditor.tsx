@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Pencil, Check, X, Flame, Beef, Wheat, Droplets, AlertCircle, HelpCircle, Search } from "lucide-react";
+import { Pencil, Check, X, Flame, Beef, Wheat, Droplets, AlertCircle, HelpCircle, Search, Database, Sparkles } from "lucide-react";
 import UnifiedFoodSearchBlock, { SelectedFoodItem } from "./UnifiedFoodSearchBlock";
 
 type FoodItem = {
@@ -35,6 +35,11 @@ type FoodItem = {
   // Unidentified food item - needs user correction
   nao_identificado?: boolean;
   descricao_visual?: string; // Visual description when unidentified
+  // Nutritional data source tracking
+  calculo_fonte?: "tabela_foods" | "estimativa_ia"; // Source of nutritional data
+  alimento_encontrado?: string; // Name matched in the database
+  food_id?: string; // ID from foods table if found
+  gramas_usadas?: number; // Grams used for calculation
 };
 
 interface FoodItemEditorProps {
@@ -643,6 +648,22 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
           <p className="text-xs text-muted-foreground">
             P:{food.macros.proteinas}g C:{food.macros.carboidratos}g G:{food.macros.gorduras}g
           </p>
+          {/* Data source indicator */}
+          {food.calculo_fonte && (
+            <p className="text-[10px] text-muted-foreground flex items-center justify-end gap-0.5 mt-0.5">
+              {food.calculo_fonte === "tabela_foods" ? (
+                <>
+                  <Database className="w-2.5 h-2.5 text-green-500" />
+                  <span className="text-green-600">TACO/USDA</span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-2.5 h-2.5 text-purple-500" />
+                  <span className="text-purple-600">IA</span>
+                </>
+              )}
+            </p>
+          )}
         </div>
       </summary>
       
@@ -661,6 +682,40 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
           <Pencil className="w-4 h-4 mr-2" />
           Corrigir este alimento
         </Button>
+
+        {/* Nutritional data source info */}
+        {food.calculo_fonte && (
+          <div className={`p-2 rounded-lg ${
+            food.calculo_fonte === "tabela_foods" 
+              ? "bg-green-500/10 border border-green-500/30" 
+              : "bg-purple-500/10 border border-purple-500/30"
+          }`}>
+            <div className="flex items-center gap-2">
+              {food.calculo_fonte === "tabela_foods" ? (
+                <>
+                  <Database className="w-4 h-4 text-green-500" />
+                  <div>
+                    <p className="text-xs font-medium text-green-600">Dados de fonte oficial</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      {food.alimento_encontrado 
+                        ? `Encontrado: "${food.alimento_encontrado}"`
+                        : "Tabela TACO/USDA"
+                      }
+                    </p>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="w-4 h-4 text-purple-500" />
+                  <div>
+                    <p className="text-xs font-medium text-purple-600">Estimativa por IA</p>
+                    <p className="text-[10px] text-muted-foreground">Valores aproximados</p>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {food.item_original_language && food.item_original_language !== food.item && (
           <p className="text-muted-foreground">

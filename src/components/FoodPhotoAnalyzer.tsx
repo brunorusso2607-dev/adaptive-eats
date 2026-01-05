@@ -1708,26 +1708,35 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   </div>
                   
                   {/* Action buttons */}
-                  <div className="flex items-center gap-3">
-                    {/* Primary action */}
-                    <Button
-                      onClick={() => setRegisterMealOpen(true)}
-                      className="flex-1 gradient-primary"
-                    >
-                      <Check className="w-4 h-4 mr-2" />
-                      Vou comer agora
-                    </Button>
+                  {(() => {
+                    // Check if there are unidentified items - hide "Vou comer agora" if true
+                    const hasUnidentifiedFood = foodAnalysis.alimentos?.some(a => a.nao_identificado === true);
+                    
+                    return (
+                      <div className="flex items-center gap-3">
+                        {/* Primary action - only show if food was properly identified */}
+                        {!hasUnidentifiedFood && (
+                          <Button
+                            onClick={() => setRegisterMealOpen(true)}
+                            className="flex-1 gradient-primary"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            Vou comer agora
+                          </Button>
+                        )}
 
-                    {/* Secondary action */}
-                    <Button
-                      variant="outline"
-                      onClick={resetAnalysis}
-                      className="flex-shrink-0"
-                    >
-                      <Camera className="w-4 h-4 mr-2" />
-                      Nova foto
-                    </Button>
-                  </div>
+                        {/* Secondary action - full width when primary is hidden */}
+                        <Button
+                          variant="outline"
+                          onClick={resetAnalysis}
+                          className={hasUnidentifiedFood ? "flex-1" : "flex-shrink-0"}
+                        >
+                          <Camera className="w-4 h-4 mr-2" />
+                          Nova foto
+                        </Button>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
 

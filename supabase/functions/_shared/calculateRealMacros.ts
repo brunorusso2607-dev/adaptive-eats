@@ -327,13 +327,68 @@ async function findFoodInDatabase(
 }
 
 /**
+ * Valida se os dados do banco são fisicamente possíveis
+ * Rejeita dados corrompidos (ex: 2 kcal mas 70g carbs)
+ */
+function validateDatabaseData(food: any): { isValid: boolean; reason?: string } {
+  const cal = food.calories_per_100g || 0;
+  const protein = food.protein_per_100g || 0;
+  const carbs = food.carbs_per_100g || 0;
+  const fat = food.fat_per_100g || 0;
+  
+  // Limite físico: gordura pura = 900 kcal/100g (com margem para arredondamento)
+  if (cal > 910) {
+    return { isValid: false, reason: `Calorias impossíveis: ${cal} kcal/100g (máx: 910)` };
+  }
+  
+  // Limite: macros não podem exceder 100g em 100g de alimento
+  if (protein > 100 || carbs > 100 || fat > 100) {
+    return { isValid: false, reason: `Macro impossível: P=${protein}g, C=${carbs}g, G=${fat}g` };
+  }
+  
+  // Verificação de consistência: calorias calculadas vs informadas
+  // Fórmula: P×4 + C×4 + G×9
+  const expectedCalories = (protein * 4) + (carbs * 4) + (fat * 9);
+  
+  // Se calorias informadas são muito baixas mas macros são altos = dados corrompidos
+  if (cal < 10 && expectedCalories > 50) {
+    return { isValid: false, reason: `Inconsistência: ${cal} kcal informado mas ${Math.round(expectedCalories)} kcal calculado` };
+  }
+  
+  // Tolerância de 50% para variações (fibra, álcool, etc afetam)
+  if (cal > 0 && expectedCalories > 0) {
+    const ratio = cal / expectedCalories;
+    if (ratio < 0.3 || ratio > 2.0) {
+      return { isValid: false, reason: `Inconsistência grave: ${cal} kcal vs ${Math.round(expectedCalories)} kcal calculado (ratio: ${ratio.toFixed(2)})` };
+    }
+  }
+  
+  return { isValid: true };
+}
+
+/**
  * Calcula macros de um ingrediente baseado na gramagem
  */
 function calculateMacrosForGrams(
   food: any, 
   grams: number,
-  source: 'database' | 'database_global'
-): Omit<CalculatedFoodItem, 'name' | 'grams' | 'estimated_calories' | 'estimated_protein' | 'estimated_carbs' | 'estimated_fat'> {
+  source: 'database' | 'database_global',
+  originalSearchTerm?: string
+): Omit<CalculatedFoodItem, 'name' | 'grams' | 'estimated_calories' | 'estimated_protein' | 'estimated_carbs' | 'estimated_fat'> | null {
+  // VALIDAÇÃO DE SANIDADE: rejeitar dados impossíveis do banco
+  const validation = validateDatabaseData(food);
+  if (!validation.isValid) {
+    logStep('DATABASE DATA REJECTED - Using fallback', { 
+      food: food.name, 
+      reason: validation.reason,
+      cal: food.calories_per_100g,
+      protein: food.protein_per_100g,
+      carbs: food.carbs_per_100g,
+      fat: food.fat_per_100g
+    });
+    return null; // Sinaliza para usar fallback
+  }
+  
   const factor = grams / 100;
   
   return {
@@ -624,8 +679,13 @@ export async function calculateRealMacrosForFoods(
   for (const item of foods) {
     const match = batchResults.get(item.name);
     if (match) {
-      const macros = calculateMacrosForGrams(match.food, item.grams, match.source);
-      foundInBatch.set(item.name, { item, macros });
+      const macros = calculateMacrosForGrams(match.food, item.grams, match.source, item.name);
+      if (macros !== null) {
+        foundInBatch.set(item.name, { item, macros });
+      } else {
+        // Dados inválidos no banco - tratar como não encontrado
+        notFoundInBatch.push(item);
+      }
     } else {
       notFoundInBatch.push(item);
     }
@@ -649,8 +709,13 @@ export async function calculateRealMacrosForFoods(
   for (const item of itemsToSearchIndividually) {
     const match = await findFoodInDatabase(supabase, item.name, userCountry);
     if (match) {
-      const macros = calculateMacrosForGrams(match.food, item.grams, match.source);
-      foundInIndividual.set(item.name, { item, macros });
+      const macros = calculateMacrosForGrams(match.food, item.grams, match.source, item.name);
+      if (macros !== null) {
+        foundInIndividual.set(item.name, { item, macros });
+      } else {
+        // Dados inválidos no banco - tratar como não encontrado
+        notFoundAnywhere.push(item);
+      }
     } else {
       notFoundAnywhere.push(item);
     }
@@ -910,7 +975,14 @@ export async function calculateOptimizedMacrosForDay(
       const dbMatch = batchResults.get(entry.food.name);
       
       if (dbMatch) {
-        const macros = calculateMacrosForGrams(dbMatch.food, entry.food.grams, dbMatch.source);
+        const macros = calculateMacrosForGrams(dbMatch.food, entry.food.grams, dbMatch.source, entry.food.name);
+        
+        // Se macros retornou null (dados inválidos), tratar como não encontrado
+        if (macros === null) {
+          stillNotFound.push(entry);
+          continue;
+        }
+        
         const result = mealResults.get(entry.mealIndex)!;
         result.items.push({
           name: entry.food.name,

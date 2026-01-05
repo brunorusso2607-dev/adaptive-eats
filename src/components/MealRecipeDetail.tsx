@@ -97,18 +97,24 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
   const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
   const { calculateIngredientCalories, isLoaded: isCaloriesLoaded } = useIngredientCalories();
 
-  // Calculate individual calories for each ingredient
-  const ingredientCalories = useMemo(() => {
-    if (!isCaloriesLoaded) return new Map<string, number>();
+  // Calculate individual calories for each ingredient (async)
+  const [ingredientCalories, setIngredientCalories] = useState<Map<string, number>>(new Map());
+  
+  useEffect(() => {
+    if (!isCaloriesLoaded || localIngredients.length === 0) return;
     
-    const results = calculateIngredientCalories(localIngredients);
-    const map = new Map<string, number>();
-    results.forEach(r => {
-      if (r.matched && r.calories > 0) {
-        map.set(r.item.toLowerCase().trim(), r.calories);
-      }
-    });
-    return map;
+    const loadCalories = async () => {
+      const results = await calculateIngredientCalories(localIngredients);
+      const map = new Map<string, number>();
+      results.forEach(r => {
+        if (r.matched && r.calories > 0) {
+          map.set(r.item.toLowerCase().trim(), r.calories);
+        }
+      });
+      setIngredientCalories(map);
+    };
+    
+    loadCalories();
   }, [localIngredients, calculateIngredientCalories, isCaloriesLoaded]);
 
   // Check which ingredients have conflicts

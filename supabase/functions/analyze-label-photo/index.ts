@@ -902,8 +902,27 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
       let foundIngredient = "";
       
-      // Verificar em ingredientes_analisados
-      if (analysis.ingredientes_analisados) {
+      // ========== STEP 0: VERIFICAR NO NOME DO PRODUTO (CRÍTICO PARA CERVEJAS, PÃES, ETC) ==========
+      const productName = (analysis.produto_identificado || "").toLowerCase();
+      const productBrand = (analysis.marca || "").toLowerCase();
+      const productFull = `${productName} ${productBrand}`;
+      
+      for (const forbidden of forbiddenIngredients) {
+        if (productFull.includes(forbidden)) {
+          found = true;
+          foundStatus = "contem";
+          foundIngredient = analysis.produto_identificado;
+          logStep("Product name contains forbidden ingredient for intolerance", { 
+            product: analysis.produto_identificado, 
+            forbiddenIngredient: forbidden,
+            intolerance: intoleranceKey 
+          });
+          break;
+        }
+      }
+      
+      // Verificar em ingredientes_analisados (se não encontrou no nome do produto)
+      if (!found && analysis.ingredientes_analisados) {
         for (const ing of analysis.ingredientes_analisados) {
           const ingName = ing.nome?.toLowerCase() || "";
           const ingMotivo = ing.motivo?.toLowerCase() || "";

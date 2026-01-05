@@ -98,20 +98,53 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
   const { calculateIngredientCalories } = useIngredientCalories();
 
   // Calculate individual calories for each ingredient (async)
-  const [ingredientCalories, setIngredientCalories] = useState<Map<string, { calories: number; source: string }>>(new Map());
+  const [ingredientCalories, setIngredientCalories] = useState<Map<string, { calories: number; protein: number; carbs: number; fat: number; source: string }>>(new Map());
   
   useEffect(() => {
     if (localIngredients.length === 0) return;
     
     const loadCalories = async () => {
       const results = await calculateIngredientCalories(localIngredients);
-      const map = new Map<string, { calories: number; source: string }>();
+      const map = new Map<string, { calories: number; protein: number; carbs: number; fat: number; source: string }>();
       results.forEach(r => {
         if (r.matched && r.calories > 0) {
-          map.set(r.item.toLowerCase().trim(), { calories: r.calories, source: r.source });
+          map.set(r.item.toLowerCase().trim(), { 
+            calories: r.calories, 
+            protein: r.protein || 0,
+            carbs: r.carbs || 0,
+            fat: r.fat || 0,
+            source: r.source 
+          });
         }
       });
       setIngredientCalories(map);
+      
+      // Recalculate total macros from real database values
+      let totalCalories = 0;
+      let totalProtein = 0;
+      let totalCarbs = 0;
+      let totalFat = 0;
+      
+      localIngredients.forEach(ing => {
+        const key = ing.item.toLowerCase().trim();
+        const data = map.get(key);
+        if (data) {
+          totalCalories += data.calories;
+          totalProtein += data.protein;
+          totalCarbs += data.carbs;
+          totalFat += data.fat;
+        }
+      });
+      
+      // Only update if we found real data
+      if (totalCalories > 0) {
+        setLocalMacros({
+          calories: totalCalories,
+          protein: totalProtein,
+          carbs: totalCarbs,
+          fat: totalFat
+        });
+      }
     };
     
     loadCalories();

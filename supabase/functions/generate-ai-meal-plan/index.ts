@@ -11,7 +11,6 @@ import {
   getNutritionalSource,
   getPortionFormat
 } from "../_shared/nutritionPrompt.ts";
-import { getAIPrompt, type AIPromptData } from "../_shared/getAIPrompt.ts";
 // Importar cálculos nutricionais centralizados
 import {
   calculateNutritionalTargets,
@@ -1021,21 +1020,9 @@ serve(async (req) => {
       estimatedTokens: Math.round(nutritionalTablePrompt.length / 4)
     });
 
-    // Buscar prompt do banco de dados
-    let aiPromptData: AIPromptData | null = null;
-    try {
-      aiPromptData = await getAIPrompt('generate-ai-meal-plan');
-      logStep("AI Prompt loaded from database", { 
-        functionId: aiPromptData.function_id,
-        model: aiPromptData.model,
-        promptLength: aiPromptData.system_prompt.length,
-        promptPreview: aiPromptData.system_prompt.substring(0, 200) + '...'
-      });
-    } catch (promptError) {
-      logStep("❌ CRITICAL: Could not load AI prompt from database, using fallback", { 
-        error: promptError instanceof Error ? promptError.message : 'Unknown error' 
-      });
-    }
+    // Modelo hardcoded para consistência (não busca mais do banco)
+    const AI_MODEL = "gemini-2.5-flash-lite";
+    logStep("Using hardcoded AI model", { model: AI_MODEL });
 
     // Build meals with target calories and regional labels
     // IMPORTANTE: Se o usuário passou dailyCalories explicitamente, devemos respeitar essa preferência
@@ -1109,7 +1096,7 @@ serve(async (req) => {
         dayName,
         regional,
         countryCode: userCountry,
-        baseSystemPrompt: aiPromptData?.system_prompt,
+        baseSystemPrompt: undefined, // Prompts são hardcoded em mealGenerationConfig.ts
         nutritionalContext,
         strategyKey: effectiveStrategyKey,
         previousDaysMeals: previousMeals,

@@ -1,8 +1,10 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
-import { getAIPrompt } from "../_shared/getAIPrompt.ts";
 import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+
+// Modelo hardcoded para consistência com outros módulos
+const AI_MODEL = "gemini-2.5-flash-lite";
 import {
   getLocaleFromCountry,
   getNutritionalSource
@@ -47,12 +49,9 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    // Fetch AI configuration from database
-    const [GOOGLE_AI_API_KEY, promptConfig] = await Promise.all([
-      getGeminiApiKey(),
-      getAIPrompt("analyze-label-photo")
-    ]);
-    logStep("Gemini API key and prompt config fetched from database", { model: promptConfig.model });
+    // Fetch API key (model is hardcoded for consistency)
+    const GOOGLE_AI_API_KEY = await getGeminiApiKey();
+    logStep("Gemini API key fetched", { model: AI_MODEL });
 
     // Parse body first to get potential userId fallback
     const body = await req.json();
@@ -458,7 +457,7 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
 
     // Função para fazer a chamada Gemini com response_mime_type para forçar JSON
     const callGemini = async () => {
-      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${promptConfig.model}:generateContent?key=${GOOGLE_AI_API_KEY}`, {
+      const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${AI_MODEL}:generateContent?key=${GOOGLE_AI_API_KEY}`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",

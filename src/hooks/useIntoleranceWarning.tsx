@@ -139,6 +139,9 @@ export function useIntoleranceWarning() {
   const [dietaryLabels, setDietaryLabels] = useState<Record<string, string>>(FALLBACK_DIETARY_LABELS_WITH_ARTICLE);
   const [isLoading, setIsLoading] = useState(true);
   
+  // Safe keywords by intolerance key - items marked safe despite containing restricted base ingredient
+  const [safeKeywords, setSafeKeywords] = useState<Record<string, string[]>>({});
+  
   // Mapeamento de option_id → tipo de restrição (carregado do onboarding_options)
   const [restrictionTypeMap, setRestrictionTypeMap] = useState<Record<string, RestrictionType>>({});
   // Mapeamento de option_id → label amigável
@@ -193,8 +196,8 @@ export function useIntoleranceWarning() {
           return allMappings;
         };
 
-        // Fetch all data in parallel - incluindo intolerance_key_normalization do banco
-        const [profileResult, allMappings, forbiddenResult, dietaryProfilesResult, onboardingResult, keyNormResult] = await Promise.all([
+        // Fetch all data in parallel - incluindo intolerance_key_normalization e safe_keywords do banco
+        const [profileResult, allMappings, forbiddenResult, dietaryProfilesResult, onboardingResult, keyNormResult, safeKeywordsResult] = await Promise.all([
           supabase
             .from('profiles')
             .select('intolerances, dietary_preference, excluded_ingredients')
@@ -217,8 +220,27 @@ export function useIntoleranceWarning() {
           // NOVO: Buscar mapeamento de normalização de chaves do banco
           supabase
             .from('intolerance_key_normalization')
-            .select('onboarding_key, database_key')
+            .select('onboarding_key, database_key'),
+          // NOVO: Buscar safe keywords do banco para evitar falsos positivos
+          supabase
+            .from('intolerance_safe_keywords')
+            .select('intolerance_key, keyword')
         ]);
+        
+        // Processar safe keywords por intolerância
+        const safeKeywordsByIntolerance: Record<string, string[]> = {};
+        if (safeKeywordsResult.data) {
+          for (const sk of safeKeywordsResult.data) {
+            if (!safeKeywordsByIntolerance[sk.intolerance_key]) {
+              safeKeywordsByIntolerance[sk.intolerance_key] = [];
+            }
+            safeKeywordsByIntolerance[sk.intolerance_key].push(
+              sk.keyword.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+            );
+          }
+          setSafeKeywords(safeKeywordsByIntolerance);
+          console.log('[INTOLERANCE] Safe keywords loaded:', Object.keys(safeKeywordsByIntolerance).length, 'intolerance keys');
+        }
         
         // Construir mapa de normalização de chaves a partir do banco de dados
         const dbKeyNormMap: Record<string, string> = {};
@@ -428,6 +450,18 @@ export function useIntoleranceWarning() {
           containsWholeWord(normalizedName, normalizedIngredient);
         
         if (isMatch && intolerances.includes(mapping.intolerance_key)) {
+          // CRITICAL FIX: Check safe keywords BEFORE marking as conflict
+          // Ex: "pão sem glúten" should NOT trigger gluten conflict
+          const safeWordsForIntolerance = safeKeywords[mapping.intolerance_key] || [];
+          const isSafeFood = safeWordsForIntolerance.some(safeWord => 
+            normalizedName.includes(safeWord)
+          );
+          
+          if (isSafeFood) {
+            // Food contains a safe keyword, skip this intolerance
+            continue;
+          }
+          
           foundConflicts.add(mapping.intolerance_key);
         }
       }
@@ -456,7 +490,7 @@ export function useIntoleranceWarning() {
       fullLabel: labels.length > 0 ? `Contém ${labels.join(', ')}` : null,
       conflictDetails,
     };
-  }, [hasIntolerances, intolerances, mappings, checkDietaryConflict, checkExcludedConflict, getRestrictionInfo]);
+  }, [hasIntolerances, intolerances, mappings, safeKeywords, checkDietaryConflict, checkExcludedConflict, getRestrictionInfo]);
 
   // Check a meal with ingredients for conflicts
   const checkMeal = useCallback((mealName: string, ingredients?: any[]): IntoleranceWarning => {

@@ -102,6 +102,8 @@ export interface ValidationResult {
   isValid: boolean;
   reason?: string;
   restriction?: string;
+  /** If provided, use this substituted food name instead of discarding */
+  substitutedName?: string;
 }
 
 // ============= REGIONAL CONFIGS COM ESTRUTURA COMPORTAMENTAL =============
@@ -553,6 +555,38 @@ export const DAIRY_AND_EGGS = ['leite', 'queijo', 'iogurte', 'ovo', 'ovos', 'man
 
 export const FISH_INGREDIENTS = ['peixe', 'salmao', 'atum', 'tilapia', 'bacalhau', 'sardinha', 'pescada', 'fish', 'salmon', 'tuna', 'cod', 'sardine', 'poisson', 'saumon', 'thon', 'pesce', 'salmone', 'tonno', 'fisch', 'lachs', 'thunfisch', 'pescado', 'atun'];
 
+// ============= SMART SUBSTITUTION MAPPINGS =============
+// Maps restricted ingredients to their safe alternatives
+const SMART_SUBSTITUTIONS: Record<string, Record<string, string>> = {
+  // Gluten substitutions (Portuguese)
+  gluten: {
+    'pao': 'pão sem glúten',
+    'pão': 'pão sem glúten',
+    'pao integral': 'pão integral sem glúten',
+    'pão integral': 'pão integral sem glúten',
+    'torrada': 'torrada sem glúten',
+    'macarrao': 'macarrão sem glúten',
+    'macarrão': 'macarrão sem glúten',
+    'massa': 'massa sem glúten',
+    'biscoito': 'biscoito sem glúten',
+    'bolo': 'bolo sem glúten',
+    'farinha': 'farinha sem glúten',
+    'aveia': 'aveia sem glúten certificada',
+    'trigo': 'farinha sem glúten',
+  },
+  // Lactose substitutions (Portuguese)
+  lactose: {
+    'leite': 'leite sem lactose',
+    'iogurte': 'iogurte sem lactose',
+    'queijo': 'queijo sem lactose',
+    'requeijao': 'requeijão sem lactose',
+    'requeijão': 'requeijão sem lactose',
+    'creme de leite': 'creme de leite sem lactose',
+    'manteiga': 'manteiga sem lactose',
+    'cream cheese': 'cream cheese sem lactose',
+  },
+};
+
 // ============= VALIDATION FUNCTIONS (usando globalSafetyEngine internamente) =============
 export function normalizeText(text: string): string {
   return text
@@ -573,6 +607,40 @@ async function getSafetyDatabase(): Promise<SafetyDatabase> {
     cachedSafetyDatabase = await loadSafetyDatabase();
   }
   return cachedSafetyDatabase;
+}
+
+/**
+ * Attempts to substitute a restricted food with a safe alternative
+ * Returns the substitution or null if no substitution is available
+ */
+function trySmartSubstitution(
+  food: string,
+  intolerance: string
+): string | null {
+  const normalizedFood = normalizeText(food);
+  const substitutions = SMART_SUBSTITUTIONS[intolerance];
+  
+  if (!substitutions) return null;
+  
+  for (const [key, replacement] of Object.entries(substitutions)) {
+    const normalizedKey = normalizeText(key);
+    if (normalizedFood.includes(normalizedKey)) {
+      // Already substituted? (contains "sem glúten", "sem lactose")
+      if (normalizedFood.includes('sem gluten') || normalizedFood.includes('sem lactose') ||
+          normalizedFood.includes('gluten-free') || normalizedFood.includes('lactose-free')) {
+        return null; // Already safe
+      }
+      // Build substituted name maintaining quantity/measure prefix
+      const foodLower = food.toLowerCase();
+      const keyIndex = foodLower.indexOf(key.toLowerCase());
+      if (keyIndex >= 0) {
+        return food.substring(0, keyIndex) + replacement + food.substring(keyIndex + key.length);
+      }
+      return replacement;
+    }
+  }
+  
+  return null;
 }
 
 /**
@@ -714,6 +782,16 @@ export function validateFood(
         // "maca" (maçã) não deve matchear "macaron" ou "macadamia"
         const isWholeWordMatch = containsWholeWord(normalizedFood, forbidden);
         if (isWholeWordMatch) {
+          // SMART SUBSTITUTION: Try to substitute before rejecting
+          const substitution = trySmartSubstitution(food, intolerance);
+          if (substitution) {
+            // Return valid with substituted name
+            return {
+              isValid: true,
+              substitutedName: substitution,
+            };
+          }
+          
           return {
             isValid: false,
             reason: `Contém ${forbidden} (intolerância: ${intolerance})`,

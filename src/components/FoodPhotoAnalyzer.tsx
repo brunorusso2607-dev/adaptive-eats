@@ -74,6 +74,9 @@ type FoodAnalysis = {
   alertas_intolerancia?: IntoleranceAlert[];
   prato_identificado?: PratoIdentificado;
   perguntas_seguranca?: string[];
+  // Raw unprepared food detection
+  alimento_cru_nao_preparado?: boolean;
+  motivo_cru?: string | null;
 };
 
 type PersonalizedAlert = {
@@ -1709,13 +1712,15 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   
                   {/* Action buttons */}
                   {(() => {
-                    // Check if there are unidentified items - hide "Vou comer agora" if true
+                    // Check if there are unidentified items OR raw unprepared food - hide "Vou comer agora" if true
                     const hasUnidentifiedFood = foodAnalysis.alimentos?.some(a => a.nao_identificado === true);
+                    const isRawUnprepared = foodAnalysis.alimento_cru_nao_preparado === true;
+                    const shouldHideEatButton = hasUnidentifiedFood || isRawUnprepared;
                     
                     return (
                       <div className="flex items-center gap-3">
-                        {/* Primary action - only show if food was properly identified */}
-                        {!hasUnidentifiedFood && (
+                        {/* Primary action - only show if food was properly identified AND not raw unprepared */}
+                        {!shouldHideEatButton && (
                           <Button
                             onClick={() => setRegisterMealOpen(true)}
                             className="flex-1 gradient-primary"
@@ -1729,7 +1734,7 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                         <Button
                           variant="outline"
                           onClick={resetAnalysis}
-                          className={hasUnidentifiedFood ? "flex-1" : "flex-shrink-0"}
+                          className={shouldHideEatButton ? "flex-1" : "flex-shrink-0"}
                         >
                           <Camera className="w-4 h-4 mr-2" />
                           Nova foto

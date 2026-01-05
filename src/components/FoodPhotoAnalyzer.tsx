@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, ShieldQuestion, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil, UtensilsCrossed } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, ShieldQuestion, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil, UtensilsCrossed, Database, Sparkles } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import LegalDisclaimer from "./LegalDisclaimer";
 import FoodItemEditor from "./FoodItemEditor";
@@ -1749,6 +1749,79 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                   </CardContent>
                 </Card>
               )}
+
+              {/* Total Estimado Card - integrado com fonte dos dados */}
+              {foodAnalysis.alimentos && foodAnalysis.alimentos.length > 0 && (() => {
+                // Calcular totais a partir dos itens individuais
+                const totals = foodAnalysis.alimentos.reduce(
+                  (acc, item) => ({
+                    calorias: acc.calorias + (item.calorias ?? 0),
+                    proteinas: acc.proteinas + (item.macros?.proteinas ?? 0),
+                    carboidratos: acc.carboidratos + (item.macros?.carboidratos ?? 0),
+                    gorduras: acc.gorduras + (item.macros?.gorduras ?? 0),
+                  }),
+                  { calorias: 0, proteinas: 0, carboidratos: 0, gorduras: 0 }
+                );
+
+                // Verificar se há fontes mistas (tabela + IA)
+                const fontes = foodAnalysis.alimentos.map(a => a.calculo_fonte || 'estimativa_ia');
+                const hasTabela = fontes.some(f => f === 'tabela_foods');
+                const hasIA = fontes.some(f => f === 'estimativa_ia');
+                const fonteMista = hasTabela && hasIA;
+
+                return (
+                  <Card className="glass-card border-primary/20">
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-base flex items-center justify-between">
+                        <span className="flex items-center gap-2">
+                          <Flame className="w-5 h-5 text-orange-500" />
+                          Total Estimado
+                        </span>
+                        <span className="flex items-center gap-1 text-xs font-normal text-muted-foreground">
+                          {fonteMista ? (
+                            <>
+                              <Database className="w-3 h-3" />
+                              <span>+</span>
+                              <Sparkles className="w-3 h-3" />
+                              <span>Fontes mistas</span>
+                            </>
+                          ) : hasTabela ? (
+                            <>
+                              <Database className="w-3 h-3 text-green-500" />
+                              <span>Tabela TACO/USDA</span>
+                            </>
+                          ) : (
+                            <>
+                              <Sparkles className="w-3 h-3 text-blue-500" />
+                              <span>Estimativa IA</span>
+                            </>
+                          )}
+                        </span>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="grid grid-cols-4 gap-2 text-center">
+                        <div className="p-2 rounded-lg bg-orange-500/10">
+                          <p className="text-lg font-bold text-orange-600">{Math.round(totals.calorias)}</p>
+                          <p className="text-xs text-muted-foreground">kcal</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-red-500/10">
+                          <p className="text-lg font-bold text-red-600">{Math.round(totals.proteinas)}g</p>
+                          <p className="text-xs text-muted-foreground">Proteína</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-yellow-500/10">
+                          <p className="text-lg font-bold text-yellow-600">{Math.round(totals.carboidratos)}g</p>
+                          <p className="text-xs text-muted-foreground">Carboidratos</p>
+                        </div>
+                        <div className="p-2 rounded-lg bg-purple-500/10">
+                          <p className="text-lg font-bold text-purple-600">{Math.round(totals.gorduras)}g</p>
+                          <p className="text-xs text-muted-foreground">Gorduras</p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* Legal Disclaimer */}
               <LegalDisclaimer className="mt-2" />

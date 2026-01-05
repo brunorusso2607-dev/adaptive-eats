@@ -231,8 +231,7 @@ function lookupFood(
     };
   };
   
-  // PHASE 1: Exact match (with category validation) - ÚNICA FASE DE MATCH
-  // Match parcial foi REMOVIDO pois causava falsos positivos (chá → carne)
+  // PHASE 1: Exact match (with category validation)
   for (const term of searchTerms) {
     const exactMatch = normalizedTable.find(f => 
       f.normalized === term && isCategoryCompatible(f)
@@ -242,8 +241,28 @@ function lookupFood(
     }
   }
   
-  // PHASE 2 e 3: REMOVIDAS - Match parcial/fuzzy causava falsos positivos
-  // O fallback para bebidas de baixa caloria abaixo é mais seguro
+  // PHASE 2: Safe keyword search - busca ingredientes que COMEÇAM com o termo principal
+  // Isso é mais seguro que match parcial pois "biscoito" → "biscoito, doce" mas não "cha" → "batata"
+  const mainWord = searchTerms[searchTerms.length - 1]; // Última palavra isolada
+  if (mainWord && mainWord.length >= 4) { // Mínimo 4 caracteres para evitar falsos positivos
+    const startsWithMatch = normalizedTable.find(f => 
+      f.normalized.startsWith(mainWord) && isCategoryCompatible(f)
+    );
+    if (startsWithMatch) {
+      return buildResult(startsWithMatch);
+    }
+  }
+  
+  // PHASE 3: Contained keyword search - se a palavra principal está contida no nome do alimento
+  // Ex: "arroz integral" encontra "Arroz, integral, cozido"
+  if (mainWord && mainWord.length >= 5) { // Mínimo 5 caracteres para match contido
+    const containsMatch = normalizedTable.find(f => 
+      f.normalized.includes(mainWord) && isCategoryCompatible(f)
+    );
+    if (containsMatch) {
+      return buildResult(containsMatch);
+    }
+  }
   
   // FALLBACK: For low-calorie beverages, return estimated value even without match
   if (isLowCalBeverage) {

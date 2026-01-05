@@ -551,6 +551,7 @@ export default function FoodItemEditor({ food, index, onSave, onSelectAlternativ
               scrollHeight="h-[200px]"
               autoFocus={true}
               confirmButtonLabel="Usar este alimento"
+              initialQuery={food.item}
             />
           </div>
         </CardContent>

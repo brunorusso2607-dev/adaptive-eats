@@ -68,6 +68,7 @@ export default function IngredientSearchSheet({
             scrollHeight="h-full"
             autoFocus
             confirmButtonLabel="Confirmar Substituição"
+            initialQuery={originalIngredient.item}
           />
         </div>
       </DialogContent>

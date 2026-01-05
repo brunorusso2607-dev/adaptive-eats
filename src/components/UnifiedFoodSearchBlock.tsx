@@ -60,6 +60,7 @@ export interface UnifiedFoodSearchBlockProps {
   confirmButtonLabel?: string;
   hasSelectedFoods?: boolean; // Hide empty state when foods are already selected
   inputRef?: React.RefObject<HTMLInputElement>; // Ref to focus input from parent
+  initialQuery?: string; // Pre-fill search input with this value
 }
 
 // ===== SOURCE BADGE =====
@@ -94,9 +95,10 @@ export default function UnifiedFoodSearchBlock({
   autoFocus = false,
   confirmButtonLabel = "Adicionar",
   hasSelectedFoods = false,
-  inputRef
+  inputRef,
+  initialQuery = ""
 }: UnifiedFoodSearchBlockProps) {
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
   const [isLoadingAI, setIsLoadingAI] = useState(false);
   const [showAISuggestions, setShowAISuggestions] = useState(false);

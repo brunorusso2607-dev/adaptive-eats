@@ -279,14 +279,19 @@ const TITLE_FOOD_KEYWORDS = [
   { titleKey: 'strawberry', foodKeys: ['strawberry', 'strawberries', 'morango'] },
 ];
 
+// ============= BIDIRECTIONAL COHERENCE VALIDATION =============
+// Direction 1: Title mentions something NOT in foods? → Incoherent
+// Direction 2: Foods have main ingredients NOT reflected in title? → Incoherent
 function validateTitleIngredientCoherence(
   title: string,
   foods: FoodItem[]
-): { isCoherent: boolean; issue?: string; missingIngredients: string[] } {
+): { isCoherent: boolean; issue?: string; missingIngredients: string[]; shouldRegenerateTitle: boolean } {
   const normalizedTitle = normalizeText(title);
   const foodNames = foods.map(f => normalizeText(f.name)).join(' ');
   const missingIngredients: string[] = [];
+  let shouldRegenerateTitle = false;
   
+  // Direction 1: Title mentions ingredient not in foods
   for (const mapping of TITLE_FOOD_KEYWORDS) {
     if (normalizedTitle.includes(mapping.titleKey)) {
       const hasIngredient = mapping.foodKeys.some(fk => foodNames.includes(fk));
@@ -296,82 +301,219 @@ function validateTitleIngredientCoherence(
     }
   }
   
+  // Direction 2: Foods have MAIN ingredients (proteins, carbs) not in title
+  // Only check proteins and main carbs - the core identity of the meal
+  const mainProteinKeywords = [
+    { foodKey: 'frango', titleKeys: ['frango', 'chicken', 'omelete', 'sanduiche', 'wrap'] },
+    { foodKey: 'chicken', titleKeys: ['chicken', 'frango', 'omelet', 'sandwich', 'wrap'] },
+    { foodKey: 'carne', titleKeys: ['carne', 'beef', 'hamburguer', 'burger', 'bife', 'steak'] },
+    { foodKey: 'beef', titleKeys: ['beef', 'carne', 'burger', 'steak'] },
+    { foodKey: 'peixe', titleKeys: ['peixe', 'fish', 'tilapia', 'atum', 'sardinha'] },
+    { foodKey: 'fish', titleKeys: ['fish', 'peixe', 'tilapia', 'tuna'] },
+    { foodKey: 'salmao', titleKeys: ['salmao', 'salmon'] },
+    { foodKey: 'salmon', titleKeys: ['salmon', 'salmao'] },
+    { foodKey: 'ovo', titleKeys: ['ovo', 'ovos', 'egg', 'omelete', 'omelet', 'crepioca', 'panqueca'] },
+    { foodKey: 'egg', titleKeys: ['egg', 'eggs', 'omelet', 'omelette', 'crepioca', 'pancake'] },
+    { foodKey: 'tofu', titleKeys: ['tofu'] },
+    { foodKey: 'camarao', titleKeys: ['camarao', 'camarão', 'shrimp'] },
+    { foodKey: 'shrimp', titleKeys: ['shrimp', 'camarao'] },
+  ];
+  
+  const mainCarbKeywords = [
+    { foodKey: 'arroz', titleKeys: ['arroz', 'rice', 'risoto', 'risotto'] },
+    { foodKey: 'rice', titleKeys: ['rice', 'arroz', 'risotto'] },
+    { foodKey: 'feijao', titleKeys: ['feijao', 'feijão', 'beans', 'feijoada'] },
+    { foodKey: 'beans', titleKeys: ['beans', 'feijao'] },
+    { foodKey: 'tapioca', titleKeys: ['tapioca', 'crepioca'] },
+    { foodKey: 'aveia', titleKeys: ['aveia', 'oats', 'mingau', 'porridge', 'oatmeal'] },
+    { foodKey: 'oats', titleKeys: ['oats', 'oatmeal', 'aveia', 'porridge'] },
+    { foodKey: 'pao', titleKeys: ['pao', 'pão', 'bread', 'toast', 'torrada', 'sanduiche', 'sandwich'] },
+    { foodKey: 'bread', titleKeys: ['bread', 'pao', 'toast', 'sandwich'] },
+    { foodKey: 'macarrao', titleKeys: ['macarrao', 'macarrão', 'pasta', 'espaguete', 'spaghetti', 'lasanha'] },
+    { foodKey: 'pasta', titleKeys: ['pasta', 'macarrao', 'spaghetti', 'lasagna'] },
+  ];
+  
+  // Check if main proteins in foods are reflected in title
+  for (const mapping of mainProteinKeywords) {
+    if (foodNames.includes(mapping.foodKey)) {
+      const isInTitle = mapping.titleKeys.some(tk => normalizedTitle.includes(tk));
+      if (!isInTitle) {
+        // Main protein found in foods but not in title - needs regeneration
+        shouldRegenerateTitle = true;
+        break;
+      }
+    }
+  }
+  
+  // Check if main carbs in foods are reflected in title (only if no protein issue)
+  if (!shouldRegenerateTitle) {
+    for (const mapping of mainCarbKeywords) {
+      if (foodNames.includes(mapping.foodKey)) {
+        const isInTitle = mapping.titleKeys.some(tk => normalizedTitle.includes(tk));
+        if (!isInTitle) {
+          // Main carb found in foods but not in title - needs regeneration
+          shouldRegenerateTitle = true;
+          break;
+        }
+      }
+    }
+  }
+  
   if (missingIngredients.length > 0) {
     return { 
       isCoherent: false, 
       issue: `Title mentions [${missingIngredients.join(', ')}] but they are not in ingredients`,
       missingIngredients,
+      shouldRegenerateTitle: true, // Always regenerate if title mentions phantom ingredients
     };
   }
   
-  return { isCoherent: true, missingIngredients: [] };
+  if (shouldRegenerateTitle) {
+    return {
+      isCoherent: false,
+      issue: 'Title does not reflect main ingredients in foods',
+      missingIngredients: [],
+      shouldRegenerateTitle: true,
+    };
+  }
+  
+  return { isCoherent: true, missingIngredients: [], shouldRegenerateTitle: false };
 }
 
 // ============= GENERATE TITLE BASED ON ACTUAL INGREDIENTS =============
 function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
-  if (foods.length === 0) return 'Meal';
+  if (foods.length === 0) return 'Refeição';
   
-  // Find main ingredients (excluding beverages and fruits)
-  const mainIngredients: string[] = [];
-  const sideIngredients: string[] = [];
+  // Find main ingredients (proteins and main carbs)
+  const proteins: string[] = [];
+  const carbs: string[] = [];
+  const others: string[] = [];
+  
+  // Mapping from food keywords to display names
+  const DISPLAY_NAMES: Record<string, string> = {
+    'frango': 'Frango',
+    'peito de frango': 'Frango',
+    'chicken': 'Frango',
+    'carne': 'Carne',
+    'bife': 'Bife',
+    'beef': 'Carne',
+    'peixe': 'Peixe',
+    'tilapia': 'Tilápia',
+    'fish': 'Peixe',
+    'salmao': 'Salmão',
+    'salmon': 'Salmão',
+    'atum': 'Atum',
+    'tuna': 'Atum',
+    'ovo': 'Ovos',
+    'ovos': 'Ovos',
+    'egg': 'Ovos',
+    'omelete': 'Omelete',
+    'omelet': 'Omelete',
+    'tofu': 'Tofu',
+    'camarao': 'Camarão',
+    'shrimp': 'Camarão',
+    'arroz': 'Arroz',
+    'rice': 'Arroz',
+    'feijao': 'Feijão',
+    'beans': 'Feijão',
+    'tapioca': 'Tapioca',
+    'crepioca': 'Crepioca',
+    'aveia': 'Aveia',
+    'oats': 'Aveia',
+    'pao': 'Pão',
+    'pao integral': 'Pão Integral',
+    'bread': 'Pão',
+    'torrada': 'Torrada',
+    'toast': 'Torrada',
+    'macarrao': 'Macarrão',
+    'pasta': 'Macarrão',
+    'iogurte': 'Iogurte',
+    'yogurt': 'Iogurte',
+    'mingau': 'Mingau',
+    'porridge': 'Mingau',
+    'quinoa': 'Quinoa',
+    'batata': 'Batata',
+    'batata doce': 'Batata Doce',
+    'sweet potato': 'Batata Doce',
+  };
   
   for (const food of foods) {
     const normalized = normalizeText(food.name);
     
-    // Ignore simple beverages
-    if (normalized.includes('cha') || normalized.includes('cafe') || normalized.includes('agua') ||
-        normalized.includes('tea') || normalized.includes('coffee') || normalized.includes('water')) {
+    // Skip simple beverages and fruits for title
+    if (normalized.includes('cha ') || normalized.includes('cafe') || normalized.includes('agua') ||
+        normalized.includes('tea') || normalized.includes('coffee') || normalized.includes('water') ||
+        normalized.includes('suco') || normalized.includes('juice')) {
       continue;
     }
     
-    // Classify as main or side ingredient
-    const isMainIngredient = 
-      normalized.includes('frango') || normalized.includes('carne') || normalized.includes('peixe') ||
-      normalized.includes('chicken') || normalized.includes('beef') || normalized.includes('fish') ||
-      normalized.includes('tofu') || normalized.includes('ovo') || normalized.includes('egg') ||
-      normalized.includes('omelete') || normalized.includes('omelet') ||
-      normalized.includes('hamburguer') || normalized.includes('burger') ||
-      normalized.includes('salmao') || normalized.includes('salmon') ||
-      normalized.includes('atum') || normalized.includes('tuna') ||
-      normalized.includes('feijao') || normalized.includes('beans') ||
-      normalized.includes('wrap') || normalized.includes('sanduiche') || normalized.includes('sandwich') ||
-      normalized.includes('espaguete') || normalized.includes('spaghetti') ||
-      normalized.includes('macarrao') || normalized.includes('pasta') ||
-      normalized.includes('mingau') || normalized.includes('porridge') ||
-      normalized.includes('iogurte') || normalized.includes('yogurt') ||
-      normalized.includes('tapioca') || normalized.includes('crepioca');
+    // Check for proteins
+    let foundProtein = false;
+    const proteinKeywords = ['frango', 'chicken', 'carne', 'bife', 'beef', 'peixe', 'fish', 'salmao', 'salmon', 
+                            'atum', 'tuna', 'ovo', 'ovos', 'egg', 'omelete', 'omelet', 'tofu', 'camarao', 'shrimp'];
+    for (const pk of proteinKeywords) {
+      if (normalized.includes(pk) && proteins.length < 2) {
+        const displayName = DISPLAY_NAMES[pk] || pk.charAt(0).toUpperCase() + pk.slice(1);
+        if (!proteins.includes(displayName)) {
+          proteins.push(displayName);
+          foundProtein = true;
+          break;
+        }
+      }
+    }
     
-    // Extract simplified name (first significant part)
-    const simpleName = food.name
-      .replace(/^\d+\s*(unidade[s]?|porcao|porcoes|colher[es]?\s*(de\s*sopa)?|fatia[s]?|copo[s]?|xicara[s]?|piece[s]?|serving[s]?|slice[s]?|cup[s]?)\s*(de\s*|of\s*)?/gi, '')
-      .replace(/\s*\(\d+g\)\s*$/g, '')
-      .replace(/^\s*(1\s+)?/g, '')
-      .trim();
+    if (foundProtein) continue;
     
-    if (simpleName.length > 2) {
-      if (isMainIngredient) {
-        mainIngredients.push(simpleName);
-      } else if (mainIngredients.length < 3 && sideIngredients.length < 2) {
-        sideIngredients.push(simpleName);
+    // Check for main carbs
+    let foundCarb = false;
+    const carbKeywords = ['arroz', 'rice', 'feijao', 'beans', 'tapioca', 'crepioca', 'aveia', 'oats', 
+                         'pao integral', 'pao', 'bread', 'torrada', 'toast', 'macarrao', 'pasta', 
+                         'mingau', 'porridge', 'quinoa', 'batata doce', 'batata', 'sweet potato'];
+    for (const ck of carbKeywords) {
+      if (normalized.includes(ck) && carbs.length < 2) {
+        const displayName = DISPLAY_NAMES[ck] || ck.charAt(0).toUpperCase() + ck.slice(1);
+        if (!carbs.includes(displayName)) {
+          carbs.push(displayName);
+          foundCarb = true;
+          break;
+        }
+      }
+    }
+    
+    if (foundCarb) continue;
+    
+    // Check for other significant items (iogurte, etc)
+    const otherKeywords = ['iogurte', 'yogurt'];
+    for (const ok of otherKeywords) {
+      if (normalized.includes(ok) && others.length < 1) {
+        const displayName = DISPLAY_NAMES[ok] || ok.charAt(0).toUpperCase() + ok.slice(1);
+        if (!others.includes(displayName)) {
+          others.push(displayName);
+          break;
+        }
       }
     }
   }
   
-  // Build title
-  if (mainIngredients.length > 0) {
-    const main = mainIngredients.slice(0, 2).join(' with ');
-    if (sideIngredients.length > 0) {
-      return `${main} and ${sideIngredients[0]}`;
-    }
-    return main;
+  // Build title in Portuguese format
+  const allParts: string[] = [...proteins, ...carbs, ...others];
+  
+  if (allParts.length === 0) {
+    // Fallback: use first food name
+    return foods[0]?.name?.substring(0, 40) || 'Refeição';
   }
   
-  // Fallback: use first 2 ingredients
-  if (sideIngredients.length > 0) {
-    return sideIngredients.slice(0, 2).join(' with ');
+  if (allParts.length === 1) {
+    return allParts[0];
   }
   
-  return foods[0]?.name?.substring(0, 50) || 'Meal';
+  if (allParts.length === 2) {
+    return `${allParts[0]} com ${allParts[1]}`;
+  }
+  
+  // 3+ parts: "A com B e C"
+  const last = allParts.pop();
+  return `${allParts.join(', ')} e ${last}`;
 }
 
 // ============= STOP WORDS - Verbos e palavras comuns que NÃO são ingredientes =============
@@ -694,70 +836,78 @@ function validateMealPlan(
         }
       }
       
-      // Validation 2: Title-ingredient coherence - ADDS MISSING INGREDIENTS OR FIXES TITLE
+      // Validation 2: Title-ingredient coherence - BIDIRECTIONAL CHECK
       const coherenceCheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
       let finalTitle = option.title;
       
-      if (!coherenceCheck.isCoherent) {
+      if (!coherenceCheck.isCoherent || coherenceCheck.shouldRegenerateTitle) {
         logStep(`⚠️ TITLE-INGREDIENT INCOHERENCE DETECTED`, {
           originalTitle: option.title,
           issue: coherenceCheck.issue,
           missingIngredients: coherenceCheck.missingIngredients,
+          shouldRegenerateTitle: coherenceCheck.shouldRegenerateTitle,
           foods: cleanedFoods.map(f => f.name),
         });
         
-        // CORRECTION v3: Add missing ingredients OR fix title
-        // RULE: Don't add category that already exists (e.g., don't add bread if already has bread)
-        // LOCALIZED defaultPortions by countryCode - names in user's native language
-        const defaultPortions = getLocalizedDefaultPortions(countryCode);
-        
-        // Detect categories already present in foods
-        const categoriesPresent = new Set<string>();
-        for (const food of cleanedFoods) {
-          const foodNameLower = normalizeText(food.name);
-          for (const [key, data] of Object.entries(defaultPortions)) {
-            if (foodNameLower.includes(key) || foodNameLower.includes(data.category)) {
-              categoriesPresent.add(data.category);
-            }
-          }
-          // Detect categories by common keywords
-          if (foodNameLower.includes('pao') || foodNameLower.includes('bread') || foodNameLower.includes('torrada') || foodNameLower.includes('toast') || foodNameLower.includes('baguete')) {
-            categoriesPresent.add('bread');
-          }
-          if (foodNameLower.includes('cafe') || foodNameLower.includes('coffee') || foodNameLower.includes('suco') || foodNameLower.includes('juice') || foodNameLower.includes('cha') || foodNameLower.includes('tea') || foodNameLower.includes('leite') || foodNameLower.includes('milk')) {
-            categoriesPresent.add('beverage');
-          }
-          if (foodNameLower.includes('banana') || foodNameLower.includes('mamao') || foodNameLower.includes('papaya') || foodNameLower.includes('morango') || foodNameLower.includes('strawberry') || foodNameLower.includes('laranja') || foodNameLower.includes('orange') || foodNameLower.includes('maca') || foodNameLower.includes('apple')) {
-            categoriesPresent.add('fruit');
-          }
-        }
-        
-        let ingredientsAdded = 0;
-        for (const missing of coherenceCheck.missingIngredients) {
-          const portion = defaultPortions[missing];
-          if (portion) {
-            // NEW RULE: Don't add if category already exists
-            if (categoriesPresent.has(portion.category)) {
-              logStep(`⚠️ DUPLICATE CATEGORY AVOIDED: "${missing}" (${portion.category}) - already in meal`);
-              continue;
-            }
-            cleanedFoods.push({ name: portion.name, grams: portion.grams });
-            categoriesPresent.add(portion.category); // Mark as present
-            ingredientsAdded++;
-            logStep(`🔧 INGREDIENT ADDED: "${missing}" → "${portion.name}" (${portion.grams}g)`);
-          } else {
-            // If we don't have default portion, will fix title instead
-            logStep(`⚠️ NO DEFAULT PORTION for "${missing}" - will be removed from title`);
-          }
-        }
-        
-        // Revalidate after adding ingredients
-        const recheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
-        if (!recheck.isCoherent) {
-          // Still incoherent: generate title based on actual ingredients
+        // If shouldRegenerateTitle is true (Direction 2 failed: foods have main ingredients not in title)
+        // OR if we have phantom ingredients in title - always regenerate title from foods
+        if (coherenceCheck.shouldRegenerateTitle) {
           const correctedTitle = generateTitleFromFoods(cleanedFoods, meal.meal_type);
           finalTitle = correctedTitle;
-          logStep(`🔧 TITLE CORRECTED: "${option.title}" → "${correctedTitle}"`);
+          logStep(`🔧 TITLE REGENERATED FROM FOODS: "${option.title}" → "${correctedTitle}"`);
+        } else if (coherenceCheck.missingIngredients.length > 0) {
+          // Direction 1: Title mentions phantom ingredients - try to add them or fix title
+          // LOCALIZED defaultPortions by countryCode - names in user's native language
+          const defaultPortions = getLocalizedDefaultPortions(countryCode);
+          
+          // Detect categories already present in foods
+          const categoriesPresent = new Set<string>();
+          for (const food of cleanedFoods) {
+            const foodNameLower = normalizeText(food.name);
+            for (const [key, data] of Object.entries(defaultPortions)) {
+              if (foodNameLower.includes(key) || foodNameLower.includes(data.category)) {
+                categoriesPresent.add(data.category);
+              }
+            }
+            // Detect categories by common keywords
+            if (foodNameLower.includes('pao') || foodNameLower.includes('bread') || foodNameLower.includes('torrada') || foodNameLower.includes('toast') || foodNameLower.includes('baguete')) {
+              categoriesPresent.add('bread');
+            }
+            if (foodNameLower.includes('cafe') || foodNameLower.includes('coffee') || foodNameLower.includes('suco') || foodNameLower.includes('juice') || foodNameLower.includes('cha') || foodNameLower.includes('tea') || foodNameLower.includes('leite') || foodNameLower.includes('milk')) {
+              categoriesPresent.add('beverage');
+            }
+            if (foodNameLower.includes('banana') || foodNameLower.includes('mamao') || foodNameLower.includes('papaya') || foodNameLower.includes('morango') || foodNameLower.includes('strawberry') || foodNameLower.includes('laranja') || foodNameLower.includes('orange') || foodNameLower.includes('maca') || foodNameLower.includes('apple')) {
+              categoriesPresent.add('fruit');
+            }
+          }
+          
+          let ingredientsAdded = 0;
+          for (const missing of coherenceCheck.missingIngredients) {
+            const portion = defaultPortions[missing];
+            if (portion) {
+              // NEW RULE: Don't add if category already exists
+              if (categoriesPresent.has(portion.category)) {
+                logStep(`⚠️ DUPLICATE CATEGORY AVOIDED: "${missing}" (${portion.category}) - already in meal`);
+                continue;
+              }
+              cleanedFoods.push({ name: portion.name, grams: portion.grams });
+              categoriesPresent.add(portion.category); // Mark as present
+              ingredientsAdded++;
+              logStep(`🔧 INGREDIENT ADDED: "${missing}" → "${portion.name}" (${portion.grams}g)`);
+            } else {
+              // If we don't have default portion, will fix title instead
+              logStep(`⚠️ NO DEFAULT PORTION for "${missing}" - will be removed from title`);
+            }
+          }
+          
+          // Revalidate after adding ingredients
+          const recheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
+          if (!recheck.isCoherent || recheck.shouldRegenerateTitle) {
+            // Still incoherent: generate title based on actual ingredients
+            const correctedTitle = generateTitleFromFoods(cleanedFoods, meal.meal_type);
+            finalTitle = correctedTitle;
+            logStep(`🔧 TITLE CORRECTED: "${option.title}" → "${correctedTitle}"`);
+          }
         }
       }
       

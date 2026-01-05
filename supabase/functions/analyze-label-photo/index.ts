@@ -861,27 +861,38 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
             });
             
             // Adicionar ingredientes decompostos à análise
+            // CORRIGIDO: Re-validar cada ingrediente individualmente para obter status correto
+            // A lógica anterior procurava match exato nos conflitos, mas o conflito
+            // pode vir de um ingrediente que CONTÉM o item (ex: 'cevada' contém 'cevada' do mapping)
+            
             analysis.ingredientes_analisados = decompositionResult.decomposedIngredients.map((ing: string) => {
-              // Verificar se há conflito para este ingrediente específico
-              const conflict = decompositionResult.conflicts.find(c => 
-                c.originalIngredient.toLowerCase() === ing.toLowerCase() ||
-                c.matchedIngredient.toLowerCase() === ing.toLowerCase()
-              );
-              
-              const warning = decompositionResult.warnings.find(w =>
-                w.originalIngredient.toLowerCase() === ing.toLowerCase() ||
-                w.matchedIngredient.toLowerCase() === ing.toLowerCase()
-              );
+              // Validar este ingrediente específico contra as restrições do usuário
+              const ingredientValidation = validateIngredient(ing, decompRestrictions, safetyDatabase);
               
               let status: "seguro" | "risco_potencial" | "contem" = "seguro";
               let restricaoAfetada = "";
               
-              if (conflict) {
+              if (!ingredientValidation.isValid) {
+                // Ingrediente bloqueado
                 status = "contem";
-                restricaoAfetada = conflict.label;
-              } else if (warning) {
+                if (ingredientValidation.restriction) {
+                  if (ingredientValidation.restriction.startsWith('intolerance_')) {
+                    const key = ingredientValidation.restriction.replace('intolerance_', '');
+                    restricaoAfetada = getIntoleranceLabel(key, safetyDatabase);
+                  } else if (ingredientValidation.restriction.startsWith('dietary_')) {
+                    const key = ingredientValidation.restriction.replace('dietary_', '');
+                    restricaoAfetada = getDietaryLabel(key, safetyDatabase);
+                  } else {
+                    restricaoAfetada = 'Ingrediente Excluído';
+                  }
+                }
+              } else if (ingredientValidation.isCaution) {
+                // Ingrediente com warning
                 status = "risco_potencial";
-                restricaoAfetada = warning.label;
+                if (ingredientValidation.restriction) {
+                  const key = ingredientValidation.restriction.replace('intolerance_', '');
+                  restricaoAfetada = getIntoleranceLabel(key, safetyDatabase);
+                }
               }
               
               return {

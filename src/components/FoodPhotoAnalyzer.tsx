@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil, UtensilsCrossed } from "lucide-react";
+import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, ShieldQuestion, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil, UtensilsCrossed } from "lucide-react";
 import AnalysisFeedbackButton from "./AnalysisFeedbackButton";
 import LegalDisclaimer from "./LegalDisclaimer";
 import FoodItemEditor from "./FoodItemEditor";
@@ -1312,10 +1312,14 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                 const hasContainsAlert = perfilAplicado?.alertas_personalizados?.some(a => a.status === "contem");
                 const hasPotentialRiskAlert = perfilAplicado?.alertas_personalizados?.some(a => a.status === "risco_potencial");
                 
-                // Determine overall status: intolerance alerts take priority
+                // Check if there are unidentified items (nao_identificado: true)
+                const hasUnidentifiedItems = foodAnalysis.alimentos?.some(a => a.nao_identificado === true);
+                
+                // Determine overall status: intolerance alerts take priority, then unidentified
                 const isUnsafe = hasContainsAlert || hasHighRiskIntolerance;
                 const isRisky = hasPotentialRiskAlert || hasMediumRiskIntolerance || (hasIntoleranceAlerts && !hasHighRiskIntolerance);
-                const isSafe = !isUnsafe && !isRisky;
+                const isIndefinite = !isUnsafe && !isRisky && hasUnidentifiedItems;
+                const isSafe = !isUnsafe && !isRisky && !isIndefinite;
                 
                 // Get the restrictions to display
                 const getRestrictionsText = () => {
@@ -1343,6 +1347,8 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                       ? "border-destructive/50 bg-destructive/5" 
                       : isRisky
                       ? "border-yellow-500/50 bg-yellow-500/5"
+                      : isIndefinite
+                      ? "border-gray-400/50 bg-gray-100/50 dark:bg-gray-800/30"
                       : "border-green-500/50 bg-green-500/5"
                   }`}>
                     <CardContent className="px-3 py-2">
@@ -1374,6 +1380,21 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
                               <p className="text-xs text-yellow-600 font-medium">Atenção</p>
                               <p className="text-xs text-muted-foreground">
                                 Possível: {getRestrictionsText()}
+                              </p>
+                            </div>
+                          </>
+                        ) : isIndefinite ? (
+                          <>
+                            <ShieldQuestion className="w-4 h-4 text-gray-500 flex-shrink-0 mt-0.5" />
+                            <div className="flex-1">
+                              {(foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item) && (
+                                <p className="font-medium text-foreground text-sm">
+                                  {foodAnalysis.prato_identificado?.nome || foodAnalysis.alimentos[0]?.item}
+                                </p>
+                              )}
+                              <p className="text-xs text-gray-600 dark:text-gray-400 font-medium">Segurança Indefinida</p>
+                              <p className="text-xs text-muted-foreground">
+                                Alguns itens não foram identificados
                               </p>
                             </div>
                           </>

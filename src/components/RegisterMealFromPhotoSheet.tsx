@@ -10,6 +10,9 @@ interface FoodItem {
     carboidratos: number;
     gorduras: number;
   };
+  // Nutritional data source tracking
+  calculo_fonte?: "tabela_foods" | "estimativa_ia";
+  alimento_encontrado?: string;
 }
 
 interface FoodAnalysis {
@@ -76,6 +79,9 @@ export default function RegisterMealFromPhotoSheet({
       protein: Math.round((item.macros?.proteinas || 0) * 10) / 10,
       carbs: Math.round((item.macros?.carboidratos || 0) * 10) / 10,
       fat: Math.round((item.macros?.gorduras || 0) * 10) / 10,
+      // Pass through data source info
+      calculo_fonte: item.calculo_fonte,
+      alimento_encontrado: item.alimento_encontrado,
     };
   });
 

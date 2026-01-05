@@ -3,7 +3,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Check, Clock, Flame, Beef, Wheat, Droplets, UtensilsCrossed, Loader2, AlertTriangle, ArrowRightLeft, Plus } from "lucide-react";
+import { Check, Clock, Flame, Beef, Wheat, Droplets, UtensilsCrossed, Loader2, AlertTriangle, ArrowRightLeft, Plus, Database, Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -38,6 +38,9 @@ export interface ConsumptionItem {
   protein: number;
   carbs: number;
   fat: number;
+  // Nutritional data source tracking
+  calculo_fonte?: "tabela_foods" | "estimativa_ia";
+  alimento_encontrado?: string;
 }
 
 interface DuplicateMeal {
@@ -380,9 +383,34 @@ export default function MealRegistrationFlow({
 
         {/* Summary header with meal info and macros */}
         <div className="px-4 py-3 bg-muted/30 border-b">
-          <p className="text-sm font-medium mb-2 truncate">
-            {mealData.name || "Refeição"}
-          </p>
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-medium truncate flex-1">
+              {mealData.name || "Refeição"}
+            </p>
+            {/* Data source indicator */}
+            {items.length > 0 && (() => {
+              const fontes = items.map(i => i.calculo_fonte || 'estimativa_ia');
+              const hasTabela = fontes.some(f => f === 'tabela_foods');
+              const hasIA = fontes.some(f => f === 'estimativa_ia');
+              const fonteMista = hasTabela && hasIA;
+              
+              return (
+                <span className="flex items-center gap-1 text-xs text-muted-foreground ml-2">
+                  {fonteMista ? (
+                    <>
+                      <Database className="w-3 h-3" />
+                      <span>+</span>
+                      <Sparkles className="w-3 h-3" />
+                    </>
+                  ) : hasTabela ? (
+                    <Database className="w-3 h-3 text-green-500" />
+                  ) : (
+                    <Sparkles className="w-3 h-3 text-blue-500" />
+                  )}
+                </span>
+              );
+            })()}
+          </div>
           <div className="flex gap-4 text-xs text-muted-foreground">
             <span className="flex items-center gap-1">
               <Flame className="w-3.5 h-3.5 text-orange-500" />

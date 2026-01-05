@@ -95,27 +95,27 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
   });
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
-  const { calculateIngredientCalories, isLoaded: isCaloriesLoaded } = useIngredientCalories();
+  const { calculateIngredientCalories } = useIngredientCalories();
 
   // Calculate individual calories for each ingredient (async)
-  const [ingredientCalories, setIngredientCalories] = useState<Map<string, number>>(new Map());
+  const [ingredientCalories, setIngredientCalories] = useState<Map<string, { calories: number; source: string }>>(new Map());
   
   useEffect(() => {
-    if (!isCaloriesLoaded || localIngredients.length === 0) return;
+    if (localIngredients.length === 0) return;
     
     const loadCalories = async () => {
       const results = await calculateIngredientCalories(localIngredients);
-      const map = new Map<string, number>();
+      const map = new Map<string, { calories: number; source: string }>();
       results.forEach(r => {
         if (r.matched && r.calories > 0) {
-          map.set(r.item.toLowerCase().trim(), r.calories);
+          map.set(r.item.toLowerCase().trim(), { calories: r.calories, source: r.source });
         }
       });
       setIngredientCalories(map);
     };
     
     loadCalories();
-  }, [localIngredients, calculateIngredientCalories, isCaloriesLoaded]);
+  }, [localIngredients, calculateIngredientCalories]);
 
   // Check which ingredients have conflicts
   const ingredientConflicts = useMemo(() => {
@@ -320,7 +320,7 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
                 const conflict = ingredientConflicts.get(itemKey);
                 
                 // Get individual calories for this ingredient
-                const individualCalories = ingredientCalories.get(itemKey);
+                const calData = ingredientCalories.get(itemKey);
                 
                 return (
                   <li 
@@ -345,15 +345,15 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
                       <span className="text-primary mt-0.5">•</span>
                     )}
                     
-                    {/* Formato com gramas e calorias: "Salmão assado (150g) — 165 kcal" */}
+                    {/* Formato com gramas, calorias e fonte: "Salmão assado (150g) — 165 kcal (TACO)" */}
                     <span className={cn(
                       "flex-1",
                       conflict ? "text-amber-600 dark:text-amber-400 font-medium" : "text-foreground"
                     )}>
                       {ingredient.item}
                       {quantityDisplay && <span className="text-muted-foreground"> {quantityDisplay}</span>}
-                      {individualCalories && individualCalories > 0 && (
-                        <span className="text-muted-foreground"> — <span className="text-orange-500 font-medium">{individualCalories} kcal</span></span>
+                      {calData && calData.calories > 0 && (
+                        <span className="text-muted-foreground"> — <span className="text-orange-500 font-medium">{calData.calories} kcal</span>{calData.source && <span className="text-xs ml-1">({calData.source})</span>}</span>
                       )}
                     </span>
                     

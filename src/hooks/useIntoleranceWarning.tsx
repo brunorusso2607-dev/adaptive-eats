@@ -1,3 +1,28 @@
+/**
+ * ============================================
+ * HOOK DE AVISO DE INTOLERÂNCIA - MODO HÍBRIDO
+ * ============================================
+ * 
+ * ARQUITETURA ATUALIZADA (Jan/2026):
+ * 
+ * Este hook agora opera em MODO HÍBRIDO:
+ * 
+ * 1. MODO REFLETOR (PREFERIDO): Para módulos de análise (foto, rótulo, geladeira),
+ *    os alertas são processados pelo globalSafetyEngine no backend e retornados
+ *    prontos. Use processBackendAlerts() para converter esses resultados.
+ * 
+ * 2. MODO LOCAL (LEGADO): Para componentes que ainda precisam de validação
+ *    local (ex: checkFood, checkIngredients), o hook mantém a funcionalidade
+ *    original como fallback.
+ * 
+ * FONTE DE VERDADE: globalSafetyEngine no backend
+ * Este hook sincroniza com o mesmo banco de dados que o Safety Engine usa,
+ * garantindo consistência nos resultados.
+ * 
+ * IMPORTANTE: Para novas implementações, SEMPRE prefira usar os resultados
+ * do backend (alertas_personalizados) em vez das funções locais.
+ */
+
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useSafetyLabels } from './useSafetyLabels';
@@ -567,6 +592,116 @@ export function useIntoleranceWarning() {
     };
   }, [checkFood]);
 
+  /**
+   * NOVO: Processa alertas que vieram do backend (globalSafetyEngine)
+   * Use esta função para converter alertas_personalizados do backend
+   * para o formato IntoleranceWarning usado pela UI.
+   * 
+   * @param backendAlerts - Array de alertas retornados pelo backend
+   * @returns IntoleranceWarning compatível com componentes existentes
+   */
+  const processBackendAlerts = useCallback((backendAlerts: Array<{
+    restricao: string;
+    status: 'seguro' | 'risco_potencial' | 'contem';
+    ingrediente?: string;
+    mensagem?: string;
+    icone?: string;
+  }>): IntoleranceWarning => {
+    if (!backendAlerts || backendAlerts.length === 0) {
+      return { 
+        hasConflict: false, 
+        conflicts: [], 
+        labels: [], 
+        badgeLabel: null, 
+        fullLabel: null, 
+        conflictDetails: [] 
+      };
+    }
+
+    const conflicts: string[] = [];
+    const labels: string[] = [];
+    const conflictDetails: ConflictDetail[] = [];
+
+    for (const alert of backendAlerts) {
+      if (alert.status === 'contem' || alert.status === 'risco_potencial') {
+        conflicts.push(alert.restricao);
+        labels.push(alert.restricao);
+        
+        // Determinar o tipo baseado no contexto
+        const isExcluded = excludedIngredients.some(ex => 
+          alert.restricao.toLowerCase().includes(ex.toLowerCase())
+        );
+        const isDietary = dietaryPreference && 
+          (alert.restricao.toLowerCase().includes(dietaryPreference.toLowerCase()) ||
+           dietaryLabels[dietaryPreference]?.toLowerCase() === alert.restricao.toLowerCase());
+        
+        let type: RestrictionType = 'intolerance';
+        if (isExcluded) type = 'excluded';
+        else if (isDietary) type = 'dietary';
+        else {
+          // Buscar tipo do mapeamento
+          const normalizedKey = alert.restricao.toLowerCase();
+          type = restrictionTypeMap[normalizedKey] || 'intolerance';
+        }
+
+        conflictDetails.push({
+          restrictionKey: alert.restricao,
+          type,
+          label: alert.restricao,
+          message: alert.mensagem || getRestrictionMessage(type, alert.restricao)
+        });
+      }
+    }
+
+    const hasConflict = conflicts.length > 0;
+    const badgeLabel = hasConflict ? labels[0] : null;
+    const fullLabel = hasConflict ? `Contém ${labels.join(', ')}` : null;
+
+    return {
+      hasConflict,
+      conflicts,
+      labels,
+      badgeLabel,
+      fullLabel,
+      conflictDetails
+    };
+  }, [excludedIngredients, dietaryPreference, dietaryLabels, restrictionTypeMap]);
+
+  /**
+   * NOVO: Retorna as restrições do usuário com labels amigáveis
+   * Útil para componentes que precisam exibir as restrições do usuário
+   */
+  const getUserRestrictions = useCallback(() => {
+    const restrictions: Array<{ key: string; label: string; type: RestrictionType }> = [];
+
+    // Intolerâncias
+    for (const intolerance of intolerances) {
+      if (intolerance === 'nenhuma' || intolerance === 'none' || !intolerance) continue;
+      const { type, label } = getRestrictionInfo(intolerance);
+      restrictions.push({ key: intolerance, label, type });
+    }
+
+    // Preferência dietética
+    if (dietaryPreference && dietaryPreference !== 'comum' && dietaryPreference !== 'omnivore') {
+      restrictions.push({
+        key: dietaryPreference,
+        label: dietaryLabels[dietaryPreference] || dietaryPreference,
+        type: 'dietary'
+      });
+    }
+
+    // Ingredientes excluídos
+    for (const excluded of excludedIngredients) {
+      restrictions.push({
+        key: `excluded:${excluded}`,
+        label: excluded.charAt(0).toUpperCase() + excluded.slice(1),
+        type: 'excluded'
+      });
+    }
+
+    return restrictions;
+  }, [intolerances, dietaryPreference, dietaryLabels, excludedIngredients, getRestrictionInfo]);
+
   return {
     /** User's configured intolerances */
     intolerances,
@@ -592,5 +727,9 @@ export function useIntoleranceWarning() {
     checkFoodList,
     /** Legacy: Check conflict returning ConflictType | null */
     checkConflict,
+    /** NOVO: Processa alertas do backend para formato IntoleranceWarning */
+    processBackendAlerts,
+    /** NOVO: Retorna lista de restrições do usuário com labels */
+    getUserRestrictions,
   };
 }

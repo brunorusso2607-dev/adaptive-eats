@@ -121,6 +121,37 @@ let cachedDatabase: SafetyDatabase | null = null;
 let cacheTimestamp: number = 0;
 const CACHE_TTL_MS = 2 * 60 * 1000; // 2 minutes - reduced for faster updates
 
+// ============= CRITICAL FALLBACK - LOCAL SAFETY NET =============
+// These ingredients are ALWAYS blocked if database is unavailable.
+// This is the LAST LINE OF DEFENSE for user safety.
+// Format: { intoleranceKey: [critical ingredients] }
+const CRITICAL_FALLBACK_MAPPINGS: Record<string, string[]> = {
+  gluten: ["trigo", "wheat", "centeio", "rye", "cevada", "barley", "malte", "malt", "aveia", "oats", "farinha de trigo", "wheat flour", "gluten", "glúten", "seitan", "cerveja", "beer"],
+  lactose: ["leite", "milk", "queijo", "cheese", "iogurte", "yogurt", "creme de leite", "cream", "manteiga", "butter", "nata", "whey", "soro de leite", "lactose", "requeijão", "ricota"],
+  egg: ["ovo", "egg", "ovos", "eggs", "gema", "yolk", "clara de ovo", "egg white", "albumina", "albumin", "maionese", "mayonnaise"],
+  peanut: ["amendoim", "peanut", "manteiga de amendoim", "peanut butter", "pasta de amendoim"],
+  nuts: ["castanha", "nut", "nozes", "walnuts", "amêndoas", "almonds", "avelã", "hazelnut", "pistache", "pistachio", "macadâmia", "macadamia", "pecã", "pecan"],
+  seafood: ["camarão", "shrimp", "lagosta", "lobster", "caranguejo", "crab", "ostra", "oyster", "mexilhão", "mussel", "lula", "squid", "polvo", "octopus", "marisco", "shellfish"],
+  fish: ["peixe", "fish", "salmão", "salmon", "atum", "tuna", "bacalhau", "cod", "sardinha", "sardine", "tilápia", "tilapia"],
+  soy: ["soja", "soy", "tofu", "molho de soja", "soy sauce", "shoyu", "edamame", "tempeh", "missô", "miso", "lecitina de soja"],
+  fructose: ["mel", "honey", "agave", "xarope de milho", "corn syrup", "frutose", "fructose"],
+  fodmap: ["alho", "garlic", "cebola", "onion", "maçã", "apple", "mel", "honey", "trigo", "wheat", "feijão", "beans"]
+};
+
+const CRITICAL_DIETARY_FALLBACK: Record<string, string[]> = {
+  vegan: ["carne", "meat", "frango", "chicken", "peixe", "fish", "ovo", "egg", "leite", "milk", "queijo", "cheese", "mel", "honey", "manteiga", "butter", "bacon", "presunto", "ham"],
+  vegetarian: ["carne", "meat", "frango", "chicken", "peixe", "fish", "bacon", "presunto", "ham", "linguiça", "sausage"],
+  pescatarian: ["carne", "meat", "frango", "chicken", "bacon", "presunto", "ham", "linguiça", "boi", "beef", "porco", "pork"]
+};
+
+const CRITICAL_SAFE_KEYWORDS: Record<string, string[]> = {
+  gluten: ["sem gluten", "gluten free", "sem glúten", "livre de gluten"],
+  lactose: ["sem lactose", "lactose free", "zero lactose", "deslactosado"],
+  egg: ["sem ovo", "egg free", "sem ovos"],
+  peanut: ["sem amendoim", "peanut free"],
+  nuts: ["sem oleaginosas", "nut free", "sem nozes"]
+};
+
 // ============= LABELS AMIGÁVEIS =============
 // SINCRONIZADO com onboarding_options (jan/2026)
 // 17 restrições ativas: 5 intolerâncias + 6 alergias + 6 sensibilidades
@@ -197,8 +228,96 @@ export function normalizeText(text: string): string {
 }
 
 /**
+ * Cria um SafetyDatabase usando APENAS os fallbacks locais críticos.
+ * Usado quando o banco de dados está indisponível.
+ */
+function createFallbackDatabase(): SafetyDatabase {
+  console.warn("[GlobalSafetyEngine] USANDO FALLBACK LOCAL - Banco indisponível");
+  
+  const intoleranceMappings = new Map<string, string[]>();
+  const safeKeywords = new Map<string, string[]>();
+  const dietaryForbidden = new Map<string, string[]>();
+  
+  // Carregar fallbacks críticos de intolerâncias
+  for (const [key, ingredients] of Object.entries(CRITICAL_FALLBACK_MAPPINGS)) {
+    intoleranceMappings.set(key, ingredients.map(i => normalizeText(i)));
+  }
+  
+  // Carregar fallbacks críticos de dietas
+  for (const [key, ingredients] of Object.entries(CRITICAL_DIETARY_FALLBACK)) {
+    dietaryForbidden.set(key, ingredients.map(i => normalizeText(i)));
+  }
+  
+  // Carregar fallbacks de safe keywords
+  for (const [key, keywords] of Object.entries(CRITICAL_SAFE_KEYWORDS)) {
+    safeKeywords.set(key, keywords.map(k => normalizeText(k)));
+  }
+  
+  return {
+    intoleranceMappings,
+    cautionMappings: new Map(),
+    safeKeywords,
+    dietaryForbidden,
+    keyNormalization: new Map(),
+    keyLabels: new Map(),
+    dietaryLabels: new Map(),
+    allIntoleranceKeys: Object.keys(CRITICAL_FALLBACK_MAPPINGS),
+    allDietaryKeys: Object.keys(CRITICAL_DIETARY_FALLBACK)
+  };
+}
+
+/**
+ * Mescla os dados do banco com os fallbacks críticos locais.
+ * Isso garante que mesmo se algo faltar no banco, os ingredientes críticos estejam protegidos.
+ */
+function mergeWithCriticalFallbacks(database: SafetyDatabase): SafetyDatabase {
+  // Adicionar fallbacks críticos ao intoleranceMappings (se ainda não existirem)
+  for (const [key, ingredients] of Object.entries(CRITICAL_FALLBACK_MAPPINGS)) {
+    const existing = database.intoleranceMappings.get(key) || [];
+    const normalizedFallbacks = ingredients.map(i => normalizeText(i));
+    
+    // Adicionar apenas os que não existem
+    for (const fallback of normalizedFallbacks) {
+      if (!existing.includes(fallback)) {
+        existing.push(fallback);
+      }
+    }
+    database.intoleranceMappings.set(key, existing);
+  }
+  
+  // Adicionar fallbacks críticos de dietas
+  for (const [key, ingredients] of Object.entries(CRITICAL_DIETARY_FALLBACK)) {
+    const existing = database.dietaryForbidden.get(key) || [];
+    const normalizedFallbacks = ingredients.map(i => normalizeText(i));
+    
+    for (const fallback of normalizedFallbacks) {
+      if (!existing.includes(fallback)) {
+        existing.push(fallback);
+      }
+    }
+    database.dietaryForbidden.set(key, existing);
+  }
+  
+  // Adicionar fallbacks de safe keywords
+  for (const [key, keywords] of Object.entries(CRITICAL_SAFE_KEYWORDS)) {
+    const existing = database.safeKeywords.get(key) || [];
+    const normalizedFallbacks = keywords.map(k => normalizeText(k));
+    
+    for (const fallback of normalizedFallbacks) {
+      if (!existing.includes(fallback)) {
+        existing.push(fallback);
+      }
+    }
+    database.safeKeywords.set(key, existing);
+  }
+  
+  return database;
+}
+
+/**
  * Carrega todos os dados de segurança do banco de dados.
- * Utiliza cache de 5 minutos para performance.
+ * Utiliza cache de 2 minutos para performance.
+ * Se o banco falhar, usa fallback local de ingredientes críticos.
  */
 export async function loadSafetyDatabase(
   supabaseUrl?: string,
@@ -214,149 +333,171 @@ export async function loadSafetyDatabase(
   const url = supabaseUrl || Deno.env.get("SUPABASE_URL") || "";
   const key = supabaseKey || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
+  // Se não há credenciais, usar fallback
+  if (!url || !key) {
+    console.warn("[GlobalSafetyEngine] Sem credenciais - usando fallback local");
+    cachedDatabase = createFallbackDatabase();
+    cacheTimestamp = now;
+    return cachedDatabase;
+  }
+
   const supabaseClient = createClient(url, key, {
     auth: { persistSession: false }
   });
 
-  // Helper function to fetch all records with explicit pagination
-  // Supabase has a default limit of 1000 rows per request
-  async function fetchAllMappings(): Promise<IntoleranceMapping[]> {
-    const pageSize = 1000;
-    let allData: IntoleranceMapping[] = [];
-    let from = 0;
-    let hasMore = true;
+  try {
+    // Helper function to fetch all records with explicit pagination
+    // Supabase has a default limit of 1000 rows per request
+    async function fetchAllMappings(): Promise<IntoleranceMapping[]> {
+      const pageSize = 1000;
+      let allData: IntoleranceMapping[] = [];
+      let from = 0;
+      let hasMore = true;
 
-    while (hasMore) {
-      const { data, error } = await supabaseClient
-        .from("intolerance_mappings")
-        .select("intolerance_key, ingredient, severity_level")
-        .range(from, from + pageSize - 1);
+      while (hasMore) {
+        const { data, error } = await supabaseClient
+          .from("intolerance_mappings")
+          .select("intolerance_key, ingredient, severity_level")
+          .range(from, from + pageSize - 1);
 
-      if (error) {
-        console.error("[GlobalSafetyEngine] Error fetching mappings page:", error);
-        throw new Error(`Failed to load intolerance mappings: ${error.message}`);
+        if (error) {
+          console.error("[GlobalSafetyEngine] Error fetching mappings page:", error);
+          throw new Error(`Failed to load intolerance mappings: ${error.message}`);
+        }
+
+        if (data && data.length > 0) {
+          allData = allData.concat(data as IntoleranceMapping[]);
+          from += pageSize;
+          // If we got less than pageSize, we've reached the end
+          hasMore = data.length === pageSize;
+        } else {
+          hasMore = false;
+        }
       }
 
-      if (data && data.length > 0) {
-        allData = allData.concat(data as IntoleranceMapping[]);
-        from += pageSize;
-        // If we got less than pageSize, we've reached the end
-        hasMore = data.length === pageSize;
-      } else {
-        hasMore = false;
-      }
+      return allData;
     }
 
-    return allData;
-  }
+    // Fetch mappings with pagination, other tables in parallel
+    const [
+      allMappings,
+      safeKeywordsResult,
+      dietaryResult,
+      normalizationResult,
+      dietaryProfilesResult
+    ] = await Promise.all([
+      fetchAllMappings(),
+      supabaseClient
+        .from("intolerance_safe_keywords")
+        .select("intolerance_key, keyword")
+        .limit(2000),
+      supabaseClient
+        .from("dietary_forbidden_ingredients")
+        .select("dietary_key, ingredient, language, category")
+        .limit(3000),
+      supabaseClient
+        .from("intolerance_key_normalization")
+        .select("onboarding_key, database_key, label"),
+      supabaseClient
+        .from("dietary_profiles")
+        .select("key, name")
+        .eq("is_active", true)
+    ]);
 
-  // Fetch mappings with pagination, other tables in parallel
-  const [
-    allMappings,
-    safeKeywordsResult,
-    dietaryResult,
-    normalizationResult,
-    dietaryProfilesResult
-  ] = await Promise.all([
-    fetchAllMappings(),
-    supabaseClient
-      .from("intolerance_safe_keywords")
-      .select("intolerance_key, keyword")
-      .limit(2000),
-    supabaseClient
-      .from("dietary_forbidden_ingredients")
-      .select("dietary_key, ingredient, language, category")
-      .limit(3000),
-    supabaseClient
-      .from("intolerance_key_normalization")
-      .select("onboarding_key, database_key, label"),
-    supabaseClient
-      .from("dietary_profiles")
-      .select("key, name")
-      .eq("is_active", true)
-  ]);
+    // Organizar dados em Maps para acesso O(1)
+    // Separar por severity: high = blocked, low = caution/warning
+    const intoleranceMappings = new Map<string, string[]>();
+    const cautionMappings = new Map<string, string[]>();
+    const allIntoleranceKeys = new Set<string>();
 
-  // Organizar dados em Maps para acesso O(1)
-  // Separar por severity: high = blocked, low = caution/warning
-  const intoleranceMappings = new Map<string, string[]>();
-  const cautionMappings = new Map<string, string[]>();
-  const allIntoleranceKeys = new Set<string>();
+    for (const row of allMappings) {
+      allIntoleranceKeys.add(row.intolerance_key);
+      const normalizedIngredient = normalizeText(row.ingredient);
+      
+      // Severity 'low' goes to caution, 'high' or undefined goes to blocked
+      if (row.severity_level === 'low') {
+        if (!cautionMappings.has(row.intolerance_key)) {
+          cautionMappings.set(row.intolerance_key, []);
+        }
+        cautionMappings.get(row.intolerance_key)!.push(normalizedIngredient);
+      } else if (row.severity_level !== 'safe') {
+        // 'high', 'unknown', or undefined = blocked
+        if (!intoleranceMappings.has(row.intolerance_key)) {
+          intoleranceMappings.set(row.intolerance_key, []);
+        }
+        intoleranceMappings.get(row.intolerance_key)!.push(normalizedIngredient);
+      }
+      // severity_level === 'safe' is ignored (allowed foods)
+    }
 
-  for (const row of allMappings) {
-    allIntoleranceKeys.add(row.intolerance_key);
-    const normalizedIngredient = normalizeText(row.ingredient);
+    const safeKeywords = new Map<string, string[]>();
+    for (const row of (safeKeywordsResult.data as SafeKeyword[]) || []) {
+      if (!safeKeywords.has(row.intolerance_key)) {
+        safeKeywords.set(row.intolerance_key, []);
+      }
+      safeKeywords.get(row.intolerance_key)!.push(normalizeText(row.keyword));
+    }
+
+    const dietaryForbidden = new Map<string, string[]>();
+    const allDietaryKeys = new Set<string>();
+    for (const row of (dietaryResult.data as DietaryForbidden[]) || []) {
+      allDietaryKeys.add(row.dietary_key);
+      if (!dietaryForbidden.has(row.dietary_key)) {
+        dietaryForbidden.set(row.dietary_key, []);
+      }
+      dietaryForbidden.get(row.dietary_key)!.push(normalizeText(row.ingredient));
+    }
+
+    // CHANGED: Now supports MULTIPLE database_keys per onboarding_key
+    // This allows "seafood" to map to both "seafood" AND "shellfish"
+    const keyNormalization = new Map<string, string[]>();
+    const keyLabels = new Map<string, string>();
+    for (const row of (normalizationResult.data as KeyNormalization[]) || []) {
+      // Append to array instead of overwrite
+      const existingKeys = keyNormalization.get(row.onboarding_key) || [];
+      if (!existingKeys.includes(row.database_key)) {
+        existingKeys.push(row.database_key);
+      }
+      keyNormalization.set(row.onboarding_key, existingKeys);
+      keyLabels.set(row.onboarding_key, row.label);
+      keyLabels.set(row.database_key, row.label);
+    }
+
+    // Processar dietary labels do banco
+    const dietaryLabels = new Map<string, string>();
+    for (const row of (dietaryProfilesResult.data as DietaryProfile[]) || []) {
+      dietaryLabels.set(row.key, row.name);
+    }
+
+    let database: SafetyDatabase = {
+      intoleranceMappings,
+      cautionMappings,
+      safeKeywords,
+      dietaryForbidden,
+      keyNormalization,
+      keyLabels,
+      dietaryLabels,
+      allIntoleranceKeys: Array.from(allIntoleranceKeys),
+      allDietaryKeys: Array.from(allDietaryKeys)
+    };
+
+    // MESCLAR com fallbacks críticos para garantir segurança máxima
+    database = mergeWithCriticalFallbacks(database);
+
+    cachedDatabase = database;
+    cacheTimestamp = now;
+
+    console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types (blocked), ${cautionMappings.size} caution types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${allMappings.length} total ingredients (+ critical fallbacks merged)`);
+
+    return cachedDatabase;
+  } catch (error) {
+    console.error("[GlobalSafetyEngine] Database error, using fallback:", error);
     
-    // Severity 'low' goes to caution, 'high' or undefined goes to blocked
-    if (row.severity_level === 'low') {
-      if (!cautionMappings.has(row.intolerance_key)) {
-        cautionMappings.set(row.intolerance_key, []);
-      }
-      cautionMappings.get(row.intolerance_key)!.push(normalizedIngredient);
-    } else if (row.severity_level !== 'safe') {
-      // 'high', 'unknown', or undefined = blocked
-      if (!intoleranceMappings.has(row.intolerance_key)) {
-        intoleranceMappings.set(row.intolerance_key, []);
-      }
-      intoleranceMappings.get(row.intolerance_key)!.push(normalizedIngredient);
-    }
-    // severity_level === 'safe' is ignored (allowed foods)
+    // Se o banco falhou, usar fallback local
+    cachedDatabase = createFallbackDatabase();
+    cacheTimestamp = now;
+    return cachedDatabase;
   }
-
-  const safeKeywords = new Map<string, string[]>();
-  for (const row of (safeKeywordsResult.data as SafeKeyword[]) || []) {
-    if (!safeKeywords.has(row.intolerance_key)) {
-      safeKeywords.set(row.intolerance_key, []);
-    }
-    safeKeywords.get(row.intolerance_key)!.push(normalizeText(row.keyword));
-  }
-
-  const dietaryForbidden = new Map<string, string[]>();
-  const allDietaryKeys = new Set<string>();
-  for (const row of (dietaryResult.data as DietaryForbidden[]) || []) {
-    allDietaryKeys.add(row.dietary_key);
-    if (!dietaryForbidden.has(row.dietary_key)) {
-      dietaryForbidden.set(row.dietary_key, []);
-    }
-    dietaryForbidden.get(row.dietary_key)!.push(normalizeText(row.ingredient));
-  }
-
-  // CHANGED: Now supports MULTIPLE database_keys per onboarding_key
-  // This allows "seafood" to map to both "seafood" AND "shellfish"
-  const keyNormalization = new Map<string, string[]>();
-  const keyLabels = new Map<string, string>();
-  for (const row of (normalizationResult.data as KeyNormalization[]) || []) {
-    // Append to array instead of overwrite
-    const existingKeys = keyNormalization.get(row.onboarding_key) || [];
-    if (!existingKeys.includes(row.database_key)) {
-      existingKeys.push(row.database_key);
-    }
-    keyNormalization.set(row.onboarding_key, existingKeys);
-    keyLabels.set(row.onboarding_key, row.label);
-    keyLabels.set(row.database_key, row.label);
-  }
-
-  // Processar dietary labels do banco
-  const dietaryLabels = new Map<string, string>();
-  for (const row of (dietaryProfilesResult.data as DietaryProfile[]) || []) {
-    dietaryLabels.set(row.key, row.name);
-  }
-
-  cachedDatabase = {
-    intoleranceMappings,
-    cautionMappings,
-    safeKeywords,
-    dietaryForbidden,
-    keyNormalization,
-    keyLabels,
-    dietaryLabels,
-    allIntoleranceKeys: Array.from(allIntoleranceKeys),
-    allDietaryKeys: Array.from(allDietaryKeys)
-  };
-  cacheTimestamp = now;
-
-  console.log(`[GlobalSafetyEngine] Loaded: ${intoleranceMappings.size} intolerance types (blocked), ${cautionMappings.size} caution types, ${dietaryForbidden.size} dietary profiles, ${dietaryLabels.size} dietary labels, ${allMappings.length} total ingredients`);
-
-  return cachedDatabase;
 }
 
 /**

@@ -44,6 +44,7 @@ function normalizeForLookup(text: string): string {
 
 // ============================================
 // CATEGORY DETECTION - Beverage vs Solid Food
+// PROTEÇÃO: Alimentos sólidos NUNCA devem usar fallback de bebidas
 // ============================================
 const BEVERAGE_KEYWORDS = [
   'cha', 'tea', 'cafe', 'coffee', 'suco', 'juice', 'agua', 'water',
@@ -51,29 +52,46 @@ const BEVERAGE_KEYWORDS = [
   'bebida', 'drink', 'cappuccino', 'latte', 'espresso'
 ];
 
+// LOW_CALORIE_BEVERAGES: APENAS termos que EXCLUSIVAMENTE indicam bebidas
+// REMOVIDO: "verde", "preto" pois podem ser "folhas verdes", "feijão preto"
 const LOW_CALORIE_BEVERAGES = [
-  'cha', 'tea', 'cafe', 'coffee', 'agua', 'water', 'infusao',
-  'camomila', 'hortela', 'erva-doce', 'hibisco', 'verde', 'preto', 'mate'
+  'cha de', 'cha ', // "chá de camomila" mas não "batata"
+  'tea ', 'cafe preto', 'cafe sem', 'coffee', 
+  'agua mineral', 'agua com', 'water',
+  'infusao', 'camomila', 'hortela', 'erva-doce', 'hibisco', 
+  'mate', 'boldo', 'cidreira', 'funcho'
 ];
 
+// Alimentos sólidos - PROTEÇÃO contra falsos positivos de bebidas
 const SOLID_FOOD_KEYWORDS = [
   'batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao',
-  'bolo', 'queijo', 'macarrao', 'biscoito', 'torta', 'pizza', 'hamburguer'
+  'bolo', 'queijo', 'macarrao', 'biscoito', 'torta', 'pizza', 'hamburguer',
+  'salada', 'folha', 'legume', 'vegetal', 'brocoli', 'cenoura', 'abobrinha',
+  'tomate', 'alface', 'espinafre', 'couve', 'rucula', 'pure', 'mandioca',
+  'quinoa', 'tilapia', 'salmao', 'file', 'peito', 'sobrecoxa', 'pera', 'maca'
 ];
 
 function isBeverageSearch(text: string): boolean {
   const normalized = normalizeForLookup(text);
+  // Primeiro verificar se é alimento sólido - se for, NÃO é bebida
+  if (isSolidFoodSearch(normalized)) return false;
   return BEVERAGE_KEYWORDS.some(kw => normalized.includes(kw));
 }
 
 function isLowCalorieBeverage(text: string): boolean {
   const normalized = normalizeForLookup(text);
+  // PROTEÇÃO CRÍTICA: Se contém keyword de sólido, NUNCA é bebida de baixa caloria
+  if (isSolidFoodSearch(normalized)) return false;
   return LOW_CALORIE_BEVERAGES.some(kw => normalized.includes(kw));
+}
+
+function isSolidFoodSearch(normalized: string): boolean {
+  return SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw));
 }
 
 function isSolidFoodMatch(text: string): boolean {
   const normalized = normalizeForLookup(text);
-  return SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw));
+  return isSolidFoodSearch(normalized);
 }
 
 // Extract main food term from ingredient name

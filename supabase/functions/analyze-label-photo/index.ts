@@ -285,8 +285,9 @@ Recognize allergens in multiple languages:
 ## STEP ZERO - IMAGE CLASSIFICATION (EXECUTE FIRST!):
 
 POSSIBLE CATEGORIES:
-- "produto_alimenticio": Food product packaging (from any country)
-- "alimento_natural": Food without packaging (fruit, vegetable, prepared dish)
+- "produto_alimenticio": Food product WITH VISIBLE PACKAGING/LABEL (from any country) - cans, bottles, boxes, bags with brand/text visible
+- "alimento_preparado": PREPARED FOOD WITHOUT PACKAGING - plates, bowls, cooked meals, restaurant food, home-cooked dishes, fruits on a plate
+- "alimento_natural": Fresh produce without packaging - loose fruits/vegetables at market
 - "planta_decorativa": Ornamental plant, vase, garden
 - "objeto_nao_alimenticio": Electronics, furniture, clothing, etc.
 - "animal_vivo": Pet, wildlife
@@ -294,7 +295,17 @@ POSSIBLE CATEGORIES:
 - "documento_outro": Document that is not a food label
 - "imagem_ilegivel": Blurry, dark, or cropped photo
 
-⚠️ IF NOT "produto_alimenticio", return:
+⚠️ CRITICAL: If image shows FOOD ON A PLATE, PREPARED DISH, or FOOD WITHOUT PACKAGING (category = "alimento_preparado" or "alimento_natural"), return:
+{
+  "erro": "comida_nao_rotulo",
+  "is_food_not_label": true,
+  "categoria_detectada": "alimento_preparado",
+  "alimento_identificado": "Name of the food detected",
+  "mensagem": "Este módulo é para análise de rótulos de produtos embalados. Para analisar pratos e refeições, use o módulo 'Analisar Prato'.",
+  "food_redirect_message": "Detectamos que você fotografou um prato de comida. Para análise nutricional de refeições, use o módulo 'Analisar Prato' que é mais preciso para este tipo de análise."
+}
+
+⚠️ IF other invalid category (not food product or prepared food), return:
 {
   "erro": "categoria_invalida",
   "categoria_detectada": "[category]",
@@ -604,12 +615,31 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
     if (analysis.erro) {
       logStep("AI detected issue", { erro: analysis.erro, mensagem: analysis.mensagem, categoria: analysis.categoria_detectada });
       
-      // NEW: Handle category validation errors
+      // NEW: Handle food detected in label scanner - redirect to food photo module
+      if (analysis.erro === "comida_nao_rotulo" || analysis.is_food_not_label) {
+        logStep("Food detected in label scanner - suggesting food module redirect", {
+          erro: analysis.erro,
+          alimento: analysis.alimento_identificado,
+          categoria: analysis.categoria_detectada
+        });
+        
+        return new Response(JSON.stringify({
+          success: false,
+          foodNotLabelError: true,
+          descricao_objeto: analysis.alimento_identificado || analysis.descricao_objeto || "alimento",
+          message: analysis.food_redirect_message || analysis.mensagem || "Detectamos um alimento, não um rótulo. Use o módulo 'Analisar Prato' para verificar calorias e segurança do seu prato."
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+          status: 200,
+        });
+      }
+      
+      // Handle category validation errors
       if (analysis.erro === "categoria_invalida") {
         const detectedCategory = analysis.categoria_detectada || "desconhecido";
         
         // Special case: food detected in label scanner - redirect to food photo module
-        if (detectedCategory === "alimento_natural") {
+        if (detectedCategory === "alimento_natural" || detectedCategory === "alimento_preparado") {
           logStep("Food detected in label scanner - suggesting food module redirect", {
             categoria: detectedCategory,
             descricao: analysis.descricao_objeto

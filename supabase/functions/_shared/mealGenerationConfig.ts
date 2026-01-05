@@ -4421,7 +4421,23 @@ ${countryBehavioralPrompt}
    • Breakfast: eggs → Lunch: different protein
    • Supper: NO heavy protein (max yogurt/milk)
 
-3️⃣ 🚨🚨🚨 FOODS ARRAY ORDER - MANDATORY FOR BRAZIL 🚨🚨🚨:
+3️⃣ 🚨🚨🚨 BRAZIL PROTEIN PRIORITY - COST CONSIDERATIONS 🚨🚨🚨
+   ⚠️ In Brazil, SALMON IS VERY EXPENSIVE and should be RARE (max 1x per week)!
+   
+   PRIORITY ORDER FOR BRAZIL (from most accessible to premium):
+   1st: Chicken (frango) - MOST COMMON, use 3-4x per week
+   2nd: Ground beef (carne moída) - AFFORDABLE, use 2x per week
+   3rd: Eggs (ovos) - SUPER ACCESSIBLE, use daily for breakfast/snacks
+   4th: Beef cuts (carne bovina) - USE 1-2x per week
+   5th: Tilapia (tilápia) - AFFORDABLE FISH, prefer over salmon
+   6th: Sardines (sardinha) - CHEAP AND NUTRITIOUS, 1x per week
+   7th: Pork (porco/lombo) - OCCASIONAL
+   RARE: Salmon (salmão), Shrimp (camarão) - PREMIUM, max 1x per week total!
+   
+   ❌ WRONG: Salmon for lunch Monday, Tuesday, Wednesday ← TOO REPETITIVE AND EXPENSIVE!
+   ✅ CORRECT: Monday=Chicken, Tuesday=Ground beef, Wednesday=Tilapia, Thursday=Beef
+
+4️⃣ 🚨🚨🚨 FOODS ARRAY ORDER - MANDATORY FOR BRAZIL 🚨🚨🚨:
    ⚠️ ABSOLUTE RULE: BEVERAGES ALWAYS IN LAST POSITION!
    ⚠️ ABSOLUTE RULE: CARBS (Rice+Beans) ALWAYS IN FIRST POSITIONS FOR LUNCH/DINNER!
    
@@ -4445,14 +4461,14 @@ ${countryBehavioralPrompt}
    • ❌ WRONG: [Feijão carioca, Chicken, Salad] ← Where's the rice? SERIOUS ERROR!
    • ✅ CORRECT: [Arroz, Feijão, Chicken, Salad] ← Rice AND beans together!
 
-4️⃣ MANDATORY BEVERAGES FOR LUNCH AND DINNER:
+5️⃣ MANDATORY BEVERAGES FOR LUNCH AND DINNER:
    • Lunch/Dinner: ALWAYS include 1 ZERO beverage as LAST item:
      - ${regionalExamples.beverageExamples}
    • NEVER use juice as calorie source
    • Breakfast: coffee with milk, tea, or natural juice
    • Supper: calming teas (chamomile, etc.)
 
-5️⃣ 🚨 CALORIC LIMITS BY MEAL TYPE (MANDATORY):
+6️⃣ 🚨 CALORIC LIMITS BY MEAL TYPE (MANDATORY):
    • Breakfast: 300-450 kcal (never more than 500 kcal)
    • Morning snack: 80-200 kcal (MAX 250 kcal - it's a SNACK, not a meal!)
    • Lunch: 450-700 kcal (main meal)
@@ -4463,7 +4479,7 @@ ${countryBehavioralPrompt}
    ⚠️ IF target_calories is HIGHER than max, IGNORE target and use max!
    ⚠️ Snacks with 600kcal are SERIOUS ERROR - they look like a full lunch!
 
-6️⃣ SNACKS MUST BE APPETIZING AND SATISFYING:
+7️⃣ SNACKS MUST BE APPETIZING AND SATISFYING:
    🚨 CRITICAL RULE: Snacks CANNOT be just raw vegetables without protein/fat!
    
    ❌ FORBIDDEN FOR SNACKS:
@@ -4475,11 +4491,29 @@ ${countryBehavioralPrompt}
    
    RULE: Snack = Fruit/Vegetable + Protein OR Healthy fat
 
-7️⃣ FRUITS WITH CONTEXT:
+8️⃣ 🚨🚨🚨 BREAKFAST AND MORNING SNACK VARIETY (ANTI-REPETITION) 🚨🚨🚨
+   ⚠️ NEVER repeat the same breakfast/snack pattern across consecutive days!
+   
+   BREAKFAST VARIETY RULES:
+   • If Day 1 = eggs with toast → Day 2 = tapioca OR oatmeal OR crepioca
+   • If Day 1 = scrambled eggs → Day 2 = omelet OR tapioca (NOT scrambled eggs again!)
+   • If Day 1 = oatmeal → Day 2 = eggs OR tapioca
+   • Each day MUST have a DIFFERENT breakfast base
+   
+   MORNING SNACK VARIETY RULES:
+   • If Day 1 = "Mix de castanhas" → Day 2 CANNOT be "Mix de castanhas" again!
+   • ROTATE: nuts mix → fruit with yogurt → banana with peanut butter → cheese with fruit
+   • Each morning snack MUST be visually and compositionally DIFFERENT
+   
+   ❌ WRONG: 7 days of "Ovos mexidos" for breakfast ← BORING!
+   ❌ WRONG: 7 days of "Mix de castanhas" for morning snack ← NO VARIETY!
+   ✅ CORRECT: Rotate between at least 4-5 different breakfast/snack options per week
+
+9️⃣ FRUITS WITH CONTEXT:
    • Always specify: "1 medium banana (dessert)"
    • Never "mixed fruits" vaguely - specify WHICH fruits
 
-8️⃣ SEASONINGS ARE NOT SEPARATE FOODS:
+🔟 SEASONINGS ARE NOT SEPARATE FOODS:
    • Lemon juice, olive oil, salt, pepper = SEASONINGS that go INSIDE the preparation
    • ❌ WRONG: "Lemon juice (15g)" as separate item
    • ✅ CORRECT: "Grilled chicken with lemon" (seasoning included in name)
@@ -4495,24 +4529,41 @@ Every food item MUST have TWO name fields:
 • "name": Food name in USER'S NATIVE LANGUAGE (${regional.language}) - THIS IS DISPLAYED TO THE USER!
 • "name_en": SIMPLIFIED ENGLISH ingredient name - used ONLY for database lookup (TACO, USDA, BAM)
 
-🚨🚨🚨 CRITICAL RULE: "name" MUST ALWAYS BE IN USER'S LANGUAGE! 🚨🚨🚨
-The "name" field is what the user sees in the app interface.
-For a Brazilian user: "name" MUST be in Portuguese (e.g., "Pão integral")
-For a Mexican user: "name" MUST be in Spanish (e.g., "Pan integral")
-For a US user: "name" MUST be in English (e.g., "Whole wheat bread")
+🚨🚨🚨🚨🚨 ABSOLUTE CRITICAL RULE: "name" MUST ALWAYS BE IN USER'S LANGUAGE! 🚨🚨🚨🚨🚨
+⚠️⚠️⚠️ THIS IS THE MOST COMMON ERROR - READ CAREFULLY! ⚠️⚠️⚠️
 
-❌ SERIOUS ERROR: {"name": "Whole wheat bread slice", "name_en": "Whole wheat bread", "grams": 35}
-   → For Brazilian users, "name" should be "Fatia de pão integral", NOT English!
-✅ CORRECT: {"name": "Fatia de pão integral", "name_en": "Whole wheat bread", "grams": 35}
+The "name" field is what the user sees in the app interface.
+For a Brazilian user (country=${countryCode}): "name" MUST be in PORTUGUESE!
+For a Mexican user: "name" MUST be in SPANISH!
+For a US user: "name" MUST be in ENGLISH!
+
+❌❌❌ SERIOUS ERROR (happens often - DO NOT DO THIS!): 
+{"name": "2 tbsp oats", "name_en": "Oats", "grams": 30}
+→ For Brazilian users, "name" should be "2 colheres de aveia", NOT English!
+
+❌❌❌ ANOTHER COMMON ERROR:
+{"name": "Whole wheat bread slice", "name_en": "Whole wheat bread", "grams": 35}
+→ For Brazilian users, "name" should be "Fatia de pão integral", NOT English!
+
+✅ CORRECT FOR BRAZIL:
+{"name": "2 colheres de aveia com canela", "name_en": "Oats", "grams": 30}
+{"name": "Fatia de pão integral", "name_en": "Whole wheat bread", "grams": 35}
+{"name": "Mingau de aveia com banana", "name_en": "Oats", "grams": 40}
+
+🚨 LANGUAGE CHECK BEFORE GENERATING: 
+   User country: ${countryCode}
+   User language: ${regional.language}
+   "name" MUST be in: ${regional.language.startsWith('pt') ? 'PORTUGUESE' : regional.language.startsWith('es') ? 'SPANISH' : 'ENGLISH'}
 
 🚨 CRITICAL: name_en MUST BE SIMPLE INGREDIENT NAMES FOR DB LOOKUP! 🚨
 The name_en field is used to find nutritional data in verified databases.
 Use the SIMPLEST possible English ingredient name to maximize database matches.
 
-EXAMPLE FOR BRAZIL (${countryCode === 'BR' ? 'CURRENT USER COUNTRY' : 'reference'}):
+EXAMPLE FOR BRAZIL (${countryCode === 'BR' ? 'CURRENT USER COUNTRY - USE PORTUGUESE FOR name!' : 'reference'}):
 {"name": "Filé de frango grelhado ao limão", "name_en": "Chicken breast", "grams": 150}
 {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100}
 {"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80}
+{"name": "Mingau de aveia com canela", "name_en": "Oats", "grams": 40}
 {"name": "2 colheres de aveia com leite", "name_en": "Oats", "grams": 30}
 {"name": "Ovo cozido", "name_en": "Boiled egg", "grams": 50}
 {"name": "Banana", "name_en": "Banana", "grams": 100}
@@ -4646,14 +4697,36 @@ ${regionalExamples.supper}
 ❌ Instructions mention ingredient NOT in foods
 ❌ Combining rice and beans into "arroz com feijão" as single item ← ALWAYS SEPARATE!
 ❌ Title says "pepino e tomate" but foods don't have cucumber or tomato
+❌ Salmon every day ← TOO EXPENSIVE FOR BRAZIL! Max 1x per week!
+❌ Same breakfast 7 days ← MUST ROTATE: eggs, tapioca, oatmeal, crepioca, etc.
+❌ Same morning snack 7 days ← MUST ROTATE: nuts, yogurt, fruit, cheese, etc.
+❌ Food "name" in English for Brazilian users ← "name" MUST be in PORTUGUESE!
 
-🚨🚨🚨 TITLE-INGREDIENT COHERENCE (ABSOLUTE RULE) 🚨🚨🚨
+🚨🚨🚨 TITLE-INGREDIENT COHERENCE (ABSOLUTE RULE - MOST IMPORTANT!) 🚨🚨🚨
+⚠️⚠️⚠️ THIS ERROR HAPPENS OFTEN - PAY EXTREME ATTENTION! ⚠️⚠️⚠️
+
 Every ingredient mentioned in the TITLE must appear in the FOODS array!
-• Title: "Frango com purê de batata doce e salada de pepino" 
-  → Foods MUST include: chicken, sweet potato puree, AND cucumber salad
-• If title mentions "oats/aveia" → Foods MUST include oats with name_en: "Oats"
-• If title mentions "papaya/mamão" → Foods MUST include papaya
-• NEVER use ingredient in title if it's not in foods list!
+BEFORE generating a title, mentally check: "Are ALL these ingredients in my foods list?"
+
+COHERENCE CHECK EXAMPLES:
+• Title: "Pera cozida com canela" 
+  → Foods MUST include: {"name": "Pera cozida com canela", "name_en": "Pear", "grams": 150}
+  → NOT just "Ovo cozido" and then "Pera cozida com canela" ← Where's the cinnamon context?
+
+• Title: "Frango com purê de batata doce e salada de pepino e tomate"
+  → Foods MUST include: chicken + sweet potato + cucumber + tomato (ALL of them!)
+  ❌ WRONG: Title mentions "pepino e tomate" but foods only have salad without specifying
+
+• Title: "Mingau de aveia com banana"
+  → Foods MUST include: {"name": "Mingau de aveia com banana", "name_en": "Oats", ...} OR separate oats + banana
+  → If title mentions "aveia/oats" → name_en MUST be "Oats" (simple, for database lookup)
+
+• Title: "Vitamina de banana com aveia e mel"
+  → Foods MUST include vitamin with banana + oats + honey (all 3!)
+  ❌ WRONG: Foods only have banana but title mentions aveia and mel
+
+GENERATION RULE: Generate the FOODS array FIRST, then derive the TITLE from actual ingredients!
+NEVER use ingredient in title if it's not in foods list!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 NUTRITIONAL TABLE:

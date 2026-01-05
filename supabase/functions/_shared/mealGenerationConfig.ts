@@ -4787,6 +4787,41 @@ NEVER use ingredient in title if it's not in foods list!
 ${nutritionalTablePrompt}
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+🚨🚨🚨 FINAL VALIDATION BEFORE GENERATING - LANGUAGE CHECK! 🚨🚨🚨
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+⚠️⚠️⚠️ STOP! BEFORE OUTPUTTING JSON, CHECK EVERY SINGLE "name" FIELD! ⚠️⚠️⚠️
+
+User language: ${regional.language}
+User country: ${countryCode}
+Required language for "name" field: ${regional.language.startsWith('pt') ? 'PORTUGUESE (Brasileiro)' : regional.language.startsWith('es') ? 'SPANISH' : 'ENGLISH'}
+
+🚨 LANGUAGE VALIDATION CHECKLIST (CHECK EVERY FOOD ITEM):
+□ Is "name" in ${regional.language.startsWith('pt') ? 'Portuguese' : regional.language.startsWith('es') ? 'Spanish' : 'English'}? 
+□ Does "name" look like user-facing text (not code/database key)?
+□ Is "name_en" in simple English for database lookup?
+
+FORBIDDEN ENGLISH WORDS IN "name" FIELD FOR BRAZIL:
+❌ "Whole wheat bread" → ✅ "Pão integral"
+❌ "Scrambled eggs" → ✅ "Ovos mexidos"
+❌ "Grilled chicken" → ✅ "Frango grelhado"
+❌ "Black coffee" → ✅ "Café preto"
+❌ "Brown rice" → ✅ "Arroz integral"
+❌ "Pinto beans" → ✅ "Feijão carioca"
+❌ "Oats" → ✅ "Aveia"
+❌ "Banana" → ✅ "Banana" (same in Portuguese, OK!)
+❌ "Sweet potato" → ✅ "Batata doce"
+❌ "Boiled egg" → ✅ "Ovo cozido"
+❌ "Yogurt" → ✅ "Iogurte"
+❌ "Cheese" → ✅ "Queijo"
+❌ "slice" → ✅ "fatia"
+❌ "cup" → ✅ "xícara"
+❌ "tbsp" → ✅ "colher(es)"
+
+🚨 IF ANY "name" FIELD CONTAINS ENGLISH WORDS FOR A BRAZILIAN USER = CRITICAL ERROR! 🚨
+🚨 REWRITE THE FOOD ITEM IN PORTUGUESE BEFORE OUTPUTTING! 🚨
+
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📤 RESPONSE (PURE JSON):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 {

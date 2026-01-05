@@ -7,6 +7,8 @@ import { useUserCountry, DEFAULT_COUNTRY } from './useUserCountry';
  * 
  * Usa DIRETAMENTE a edge function lookup-ingredient (mesma do filtro de alimentos)
  * para garantir consistência de fonte e valores em todo o sistema.
+ * 
+ * Implementa extração de ingrediente principal para pratos compostos.
  */
 
 interface IngredientWithCalories {
@@ -59,6 +61,76 @@ function parseQuantityToGrams(quantity: string, unit?: string): number {
   return numValue || 100;
 }
 
+/**
+ * Extrai o ingrediente principal de um nome de prato composto
+ * Ex: "Filé de frango grelhado ao limão" -> ["file de frango", "frango"]
+ * Ex: "Arroz com feijão" -> ["arroz"]
+ * Ex: "Salada de folhas verdes com tomate" -> ["salada", "folhas verdes"]
+ */
+function extractMainIngredients(dishName: string): string[] {
+  const normalized = dishName.toLowerCase().trim();
+  const candidates: string[] = [];
+  
+  // Mapeamento de ingredientes principais conhecidos
+  const knownIngredients: Record<string, string[]> = {
+    'frango': ['frango', 'peito de frango'],
+    'file de frango': ['peito de frango', 'frango'],
+    'filé de frango': ['peito de frango', 'frango'],
+    'peito de frango': ['peito de frango'],
+    'carne': ['carne bovina', 'patinho'],
+    'boi': ['carne bovina'],
+    'bovina': ['carne bovina'],
+    'peixe': ['peixe', 'tilapia'],
+    'salmao': ['salmao'],
+    'salmão': ['salmao'],
+    'tilapia': ['tilapia'],
+    'ovo': ['ovo', 'ovo de galinha'],
+    'ovos': ['ovo', 'ovo de galinha'],
+    'arroz': ['arroz', 'arroz branco'],
+    'feijao': ['feijao', 'feijao carioca'],
+    'feijão': ['feijao', 'feijao carioca'],
+    'batata': ['batata', 'batata inglesa'],
+    'salada': ['alface', 'tomate'],
+    'folhas': ['alface'],
+    'abacaxi': ['abacaxi'],
+    'banana': ['banana'],
+    'maca': ['maca', 'maça'],
+    'maçã': ['maca'],
+    'laranja': ['laranja'],
+    'agua': ['agua'],
+    'água': ['agua'],
+    'suco': ['suco'],
+    'leite': ['leite'],
+    'queijo': ['queijo'],
+    'pao': ['pao', 'pao frances'],
+    'pão': ['pao', 'pao frances'],
+    'macarrao': ['macarrao', 'espaguete'],
+    'macarrão': ['macarrao', 'espaguete'],
+  };
+  
+  // Primeiro: verificar se contém ingredientes conhecidos
+  for (const [key, values] of Object.entries(knownIngredients)) {
+    if (normalized.includes(key)) {
+      candidates.push(...values);
+    }
+  }
+  
+  // Segundo: extrair primeira palavra significativa (ignorando artigos/preposições)
+  const stopWords = ['de', 'da', 'do', 'com', 'ao', 'a', 'o', 'e', 'em', 'no', 'na', 'um', 'uma', '1', '2', '3', '4', '5'];
+  const words = normalized.split(/\s+/).filter(w => !stopWords.includes(w) && w.length > 2);
+  
+  if (words.length > 0) {
+    // Pegar as 2 primeiras palavras significativas como candidatas
+    candidates.push(words[0]);
+    if (words.length > 1 && words[1].length > 3) {
+      candidates.push(`${words[0]} ${words[1]}`);
+    }
+  }
+  
+  // Remover duplicatas mantendo ordem
+  return [...new Set(candidates)];
+}
+
 export function useIngredientCalories() {
   const [isLoading, setIsLoading] = useState(false);
   const cacheRef = useRef<Map<string, CacheEntry | null>>(new Map());
@@ -76,7 +148,7 @@ export function useIngredientCalories() {
     try {
       // Call the same edge function used by the food filter
       const { data, error } = await supabase.functions.invoke('lookup-ingredient', {
-        body: { query: ingredientName.trim(), limit: 1, country }
+        body: { query: ingredientName.trim(), limit: 5, country }
       });
 
       if (error) {
@@ -85,8 +157,13 @@ export function useIngredientCalories() {
         return null;
       }
 
-      if (data?.results?.length > 0) {
-        const food = data.results[0];
+      // Filtrar apenas resultados de fontes confiáveis (não ai-generated)
+      const verifiedResults = (data?.results || []).filter(
+        (r: any) => r.source && r.source !== 'ai-generated' && r.calories_per_100g > 0
+      );
+
+      if (verifiedResults.length > 0) {
+        const food = verifiedResults[0];
         const entry: CacheEntry = {
           name: food.name,
           calories_per_100g: food.calories_per_100g || 0,
@@ -117,9 +194,25 @@ export function useIngredientCalories() {
       for (const ing of ingredients) {
         const grams = parseQuantityToGrams(ing.quantity, ing.unit);
         
-        // Buscar via lookup-ingredient (mesma função do filtro)
-        const dbMatch = await lookupIngredient(ing.item);
+        // PASSO 1: Tentar busca direta com nome completo
+        let dbMatch = await lookupIngredient(ing.item);
         
+        // PASSO 2: Se não encontrou, extrair ingrediente principal e tentar novamente
+        if (!dbMatch || dbMatch.calories_per_100g <= 0) {
+          const mainIngredients = extractMainIngredients(ing.item);
+          console.log(`[useIngredientCalories] Extracting main from "${ing.item}":`, mainIngredients);
+          
+          for (const candidate of mainIngredients) {
+            const candidateMatch = await lookupIngredient(candidate);
+            if (candidateMatch && candidateMatch.calories_per_100g > 0) {
+              console.log(`[useIngredientCalories] Found match via "${candidate}":`, candidateMatch.name);
+              dbMatch = candidateMatch;
+              break;
+            }
+          }
+        }
+        
+        // PASSO 3: Se encontrou match verificado, usar
         if (dbMatch && dbMatch.calories_per_100g > 0) {
           const factor = grams / 100;
           results.push({
@@ -136,7 +229,7 @@ export function useIngredientCalories() {
           continue;
         }
         
-        // Fallback: dados da IA se disponíveis
+        // PASSO 4: Fallback para dados da IA se disponíveis (última opção)
         if (ing.calories && ing.calories > 0) {
           results.push({
             item: ing.item,

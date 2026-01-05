@@ -231,7 +231,8 @@ function lookupFood(
     };
   };
   
-  // PHASE 1: Exact match (with category validation)
+  // PHASE 1: Exact match (with category validation) - ÚNICA FASE DE MATCH
+  // Match parcial foi REMOVIDO pois causava falsos positivos (chá → carne)
   for (const term of searchTerms) {
     const exactMatch = normalizedTable.find(f => 
       f.normalized === term && isCategoryCompatible(f)
@@ -241,32 +242,8 @@ function lookupFood(
     }
   }
   
-  // PHASE 2: Partial match (starts with or contains) with category validation
-  for (const term of searchTerms) {
-    if (term.length < 4) continue;
-    
-    const partialMatch = normalizedTable.find(f => 
-      (f.normalized.startsWith(term) || f.normalized.includes(` ${term}`)) &&
-      isCategoryCompatible(f)
-    );
-    
-    if (partialMatch) {
-      return buildResult(partialMatch);
-    }
-  }
-  
-  // PHASE 3: Fuzzy match (any word matches) with category validation
-  const mainWord = searchTerms[searchTerms.length - 1];
-  if (mainWord && mainWord.length >= 4) {
-    const fuzzyMatch = normalizedTable.find(f => 
-      f.normalized.split(' ').some(word => word.startsWith(mainWord.slice(0, 4))) &&
-      isCategoryCompatible(f)
-    );
-    
-    if (fuzzyMatch) {
-      return buildResult(fuzzyMatch);
-    }
-  }
+  // PHASE 2 e 3: REMOVIDAS - Match parcial/fuzzy causava falsos positivos
+  // O fallback para bebidas de baixa caloria abaixo é mais seguro
   
   // FALLBACK: For low-calorie beverages, return estimated value even without match
   if (isLowCalBeverage) {

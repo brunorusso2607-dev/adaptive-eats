@@ -278,43 +278,13 @@ async function findFoodInDatabase(
         return { food: exactMatch, matchType: 'exact_country', source: 'database' };
       }
       
-      // Busca parcial com fonte prioritária
-      const { data: partialMatches } = await supabase
-        .from('foods')
-        .select('*')
-        .eq('is_recipe', false)
-        .in('source', prioritySources)
-        .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
-        .limit(10);
-      
-      if (partialMatches && partialMatches.length > 0) {
-        // PROTEÇÃO: Filtrar matches com validação de categoria E nutricional
-        const validMatches = partialMatches.filter((f: any) => {
-          // Rejeitar sólido quando busca é bebida
-          if (isBeverageSearch && isSolidFood(f.name)) {
-            logStep('BLOCKED: Solid food for beverage search', { search: originalSearchTerm, food: f.name });
-            return false;
-          }
-          // Validação nutricional: bebidas não têm alta proteína/calorias
-          if (!isNutritionallyCompatible(originalSearchTerm, f)) {
-            logStep('Rejected by nutritional validation', { search: originalSearchTerm, matched: f.name, cal: f.calories_per_100g, prot: f.protein_per_100g });
-            return false;
-          }
-          return true;
-        });
-        
-        if (validMatches.length > 0) {
-          const verified = validMatches.find((f: any) => f.is_verified);
-          const selected = verified || validMatches[0];
-          logStep('Partial match found (country source)', { term, name: selected.name, source: selected.source });
-          return { food: selected, matchType: 'partial_country', source: 'database' };
-        }
-      }
+      // MATCH PARCIAL REMOVIDO - causava falsos positivos (chá → carne)
+      // Agora confiamos na IA quando não há match exato
     }
   }
   
   // ========================================
-  // FASE 2: Busca global (qualquer fonte)
+  // FASE 2: Busca exata global (qualquer fonte) - SEM MATCH PARCIAL
   // ========================================
   for (const term of searchTerms) {
     // Busca exata global (com validação)
@@ -331,37 +301,8 @@ async function findFoodInDatabase(
       return { food: exactMatch, matchType: 'exact_global', source: 'database_global' };
     }
     
-    // Busca parcial global
-    const { data: partialMatches } = await supabase
-      .from('foods')
-      .select('*')
-      .eq('is_recipe', false)
-      .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
-      .order('is_verified', { ascending: false })
-      .order('search_count', { ascending: false })
-      .limit(10);
-    
-    if (partialMatches && partialMatches.length > 0) {
-      // PROTEÇÃO: Filtrar matches com validação de categoria E nutricional
-      const validMatches = partialMatches.filter((f: any) => {
-        if (isBeverageSearch && isSolidFood(f.name)) {
-          logStep('BLOCKED: Solid food for beverage search (global)', { search: originalSearchTerm, food: f.name });
-          return false;
-        }
-        // Validação nutricional
-        if (!isNutritionallyCompatible(originalSearchTerm, f)) {
-          logStep('Rejected by nutritional validation (global)', { search: originalSearchTerm, matched: f.name, cal: f.calories_per_100g, prot: f.protein_per_100g });
-          return false;
-        }
-        return true;
-      });
-      
-      if (validMatches.length > 0) {
-        const selected = validMatches[0];
-        logStep('Partial match found (global)', { term, name: selected.name, source: selected.source });
-        return { food: selected, matchType: 'partial_global', source: 'database_global' };
-      }
-    }
+    // MATCH PARCIAL GLOBAL REMOVIDO - causava falsos positivos
+    // A IA já recebe a tabela nutricional injetada no prompt e calcula corretamente
   }
   
   // ========================================

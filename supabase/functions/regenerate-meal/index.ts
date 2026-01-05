@@ -2,7 +2,7 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
 import {
   buildRegenerateMealPrompt,
-  validateRecipe,
+  validateRecipeAsync,
   type UserProfile,
 } from "../_shared/recipeConfig.ts";
 import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
@@ -244,8 +244,8 @@ serve(async (req) => {
         const shuffled = [...poolRecipes].sort(() => Math.random() - 0.5);
         
         for (const poolRecipe of shuffled) {
-          // Validate recipe against user restrictions
-          const validation = validateRecipe(
+          // Validate recipe against user restrictions using globalSafetyEngine
+          const validation = await validateRecipeAsync(
             {
               recipe_name: poolRecipe.name,
               recipe_ingredients: poolRecipe.ingredients || []
@@ -348,8 +348,8 @@ serve(async (req) => {
             continue; // Try again
           }
           
-          // CRITICAL: Validate recipe against user restrictions (double-check)
-          const validation = validateRecipe(
+          // CRITICAL: Validate recipe against user restrictions using globalSafetyEngine
+          const validation = await validateRecipeAsync(
             {
               recipe_name: parsedRecipe.recipe_name || "",
               recipe_ingredients: parsedRecipe.recipe_ingredients || []

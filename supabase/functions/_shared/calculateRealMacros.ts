@@ -355,10 +355,13 @@ function validateDatabaseData(food: any): { isValid: boolean; reason?: string } 
     return { isValid: false, reason: `Inconsistência: ${cal} kcal informado mas ${Math.round(expectedCalories)} kcal calculado` };
   }
   
-  // Tolerância de 50% para variações (fibra, álcool, etc afetam)
+  // Tolerância para variações:
+  // - ratio < 0.3: calorias muito BAIXAS para macros = erro de dados
+  // - ratio > 10.0: calorias muito ALTAS para macros = erro (exceto álcool que pode chegar a ~7x)
+  // Nota: Bebidas alcoólicas têm ratio alto (~4-7x) porque álcool tem 7kcal/g mas não é macro
   if (cal > 0 && expectedCalories > 0) {
     const ratio = cal / expectedCalories;
-    if (ratio < 0.3 || ratio > 2.0) {
+    if (ratio < 0.3 || ratio > 10.0) {
       return { isValid: false, reason: `Inconsistência grave: ${cal} kcal vs ${Math.round(expectedCalories)} kcal calculado (ratio: ${ratio.toFixed(2)})` };
     }
   }

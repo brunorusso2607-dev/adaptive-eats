@@ -128,16 +128,22 @@ function extractBaseName(ingredientName: string): string[] {
 // ============================================
 // PROTEÇÃO ANTI-FALSO MATCH (CATEGORIA + NUTRICIONAL)
 // ============================================
-const BEVERAGE_TERMS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante', 'camomila', 'hortela', 'hibisco', 'mate'];
+const BEVERAGE_TERMS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante', 'camomila', 'hortela', 'hibisco', 'mate', 'erva-doce', 'boldo', 'cidreira', 'funcho', 'gengibre'];
+const LOW_CALORIE_BEVERAGE_TERMS = ['cha', 'cafe', 'agua', 'infusao', 'camomila', 'hortela', 'hibisco', 'mate', 'erva-doce', 'boldo', 'cidreira', 'funcho'];
 const SOLID_FOOD_TERMS = ['batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao', 'bolo', 'queijo', 'macarrao'];
 
 // Termos que indicam cortes de carne (falsos positivos para "chá")
 // "chã de dentro" e "chã de fora" são cortes bovinos que normalizam para "cha"
-const MEAT_CUT_INDICATORS = ['coxao', 'dentro', 'fora', 'boi', 'bovina', 'bovino', 'polpa', 'alcatra', 'patinho', 'gordura', 'charque'];
+const MEAT_CUT_INDICATORS = ['coxao', 'dentro', 'fora', 'boi', 'bovina', 'bovino', 'polpa', 'alcatra', 'patinho', 'gordura', 'charque', 'acougue', 'moida', 'costela', 'file', 'contra', 'maminha', 'picanha', 'fraldinha'];
 
 function isBeverageTerm(text: string): boolean {
   const normalized = normalizeText(text);
   return BEVERAGE_TERMS.some(b => normalized.includes(b));
+}
+
+function isLowCalorieBeverage(text: string): boolean {
+  const normalized = normalizeText(text);
+  return LOW_CALORIE_BEVERAGE_TERMS.some(b => normalized.includes(b));
 }
 
 function isSolidFood(text: string): boolean {
@@ -154,21 +160,31 @@ function isSolidFood(text: string): boolean {
 }
 
 /**
- * Validação nutricional: bebidas de baixa caloria não têm proteína alta
+ * Validação nutricional ESTRITA: bebidas de baixa caloria não têm proteína/calorias altas
  */
-function isNutritionallyCompatible(searchTerm: string, food: { calories_per_100g: number; protein_per_100g: number }): boolean {
+function isNutritionallyCompatible(searchTerm: string, food: { calories_per_100g: number; protein_per_100g: number; name?: string }): boolean {
   const isBeverageSearch = isBeverageTerm(searchTerm);
+  const isLowCalBeverage = isLowCalorieBeverage(searchTerm);
   
-  if (isBeverageSearch) {
-    // Se tem mais de 10g proteína por 100g, definitivamente não é chá/café/água
-    if (food.protein_per_100g > 10) {
+  // PROTEÇÃO CRÍTICA: Se o alimento encontrado contém indicadores de carne, REJEITAR para bebidas
+  if (isBeverageSearch && food.name) {
+    const foodNormalized = normalizeText(food.name);
+    if (MEAT_CUT_INDICATORS.some(kw => foodNormalized.includes(kw))) {
+      logStep('BLOCKED: Meat cut matched for beverage search', { search: searchTerm, food: food.name });
       return false;
     }
-    // Chás e cafés puros têm no máximo ~10 kcal/100ml
-    const lowCalBeverages = ['cha', 'cafe', 'agua', 'infusao', 'camomila', 'hortela', 'hibisco', 'mate'];
-    const normalized = normalizeText(searchTerm);
-    const isLowCalBeverage = lowCalBeverages.some(kw => normalized.includes(kw));
-    if (isLowCalBeverage && food.calories_per_100g > 20) {
+  }
+  
+  if (isBeverageSearch) {
+    // Proteína > 5g/100g = definitivamente não é bebida simples
+    if (food.protein_per_100g > 5) {
+      return false;
+    }
+  }
+  
+  if (isLowCalBeverage) {
+    // Chás e cafés puros têm no máximo ~5 kcal/100ml
+    if (food.calories_per_100g > 15) {
       return false;
     }
   }
@@ -187,8 +203,60 @@ async function findFoodInDatabase(
   const searchTerms = extractBaseName(ingredientName);
   const originalSearchTerm = ingredientName; // Preservar termo original para validação
   const prioritySources = userCountry ? COUNTRY_SOURCE_PRIORITY[userCountry] || [] : [];
+  const isBeverageSearch = isBeverageTerm(originalSearchTerm);
+  const isLowCalBevSearch = isLowCalorieBeverage(originalSearchTerm);
   
-  logStep('Searching for ingredient', { ingredientName, searchTerms, userCountry, prioritySources });
+  logStep('Searching for ingredient', { ingredientName, searchTerms, userCountry, prioritySources, isBeverage: isBeverageSearch });
+
+  // ========================================
+  // FASE 0: PRIORIDADE ABSOLUTA PARA BEBIDAS - BUSCAR EM CURATED PRIMEIRO
+  // ========================================
+  if (isLowCalBevSearch) {
+    for (const term of searchTerms) {
+      const { data: curatedMatch } = await supabase
+        .from('foods')
+        .select('*')
+        .eq('source', 'curated')
+        .eq('is_recipe', false)
+        .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
+        .limit(5);
+      
+      if (curatedMatch && curatedMatch.length > 0) {
+        // Filtrar apenas bebidas de baixa caloria
+        const validBeverages = curatedMatch.filter((f: any) => 
+          f.calories_per_100g <= 15 && f.protein_per_100g <= 2
+        );
+        if (validBeverages.length > 0) {
+          const selected = validBeverages[0];
+          logStep('LOW-CAL BEVERAGE: Curated match found', { term, name: selected.name, cal: selected.calories_per_100g });
+          return { food: selected, matchType: 'curated_beverage', source: 'database' };
+        }
+      }
+    }
+    
+    // Fallback: criar dados sintéticos para bebidas conhecidas
+    const normalized = normalizeText(ingredientName);
+    if (normalized.includes('camomila') || normalized.includes('hortela') || normalized.includes('hibisco') || 
+        normalized.includes('boldo') || normalized.includes('cidreira') || normalized.includes('mate') ||
+        normalized.includes('erva-doce') || normalized.includes('funcho')) {
+      logStep('LOW-CAL BEVERAGE: Using synthetic data', { ingredientName });
+      return {
+        food: {
+          id: 'synthetic-tea',
+          name: ingredientName,
+          calories_per_100g: 1,
+          protein_per_100g: 0,
+          carbs_per_100g: 0,
+          fat_per_100g: 0,
+          fiber_per_100g: 0,
+          source: 'curated',
+          is_verified: true,
+        },
+        matchType: 'synthetic_beverage',
+        source: 'database'
+      };
+    }
+  }
 
   // ========================================
   // FASE 1: Busca por fonte do país do usuário
@@ -205,7 +273,7 @@ async function findFoodInDatabase(
         .limit(1)
         .maybeSingle();
       
-      if (exactMatch) {
+      if (exactMatch && isNutritionallyCompatible(originalSearchTerm, exactMatch)) {
         logStep('Exact match found (country source)', { term, name: exactMatch.name, source: exactMatch.source });
         return { food: exactMatch, matchType: 'exact_country', source: 'database' };
       }
@@ -217,14 +285,14 @@ async function findFoodInDatabase(
         .eq('is_recipe', false)
         .in('source', prioritySources)
         .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
-        .limit(5);
+        .limit(10);
       
       if (partialMatches && partialMatches.length > 0) {
         // PROTEÇÃO: Filtrar matches com validação de categoria E nutricional
-        const isBeverageSearch = isBeverageTerm(originalSearchTerm);
         const validMatches = partialMatches.filter((f: any) => {
           // Rejeitar sólido quando busca é bebida
           if (isBeverageSearch && isSolidFood(f.name)) {
+            logStep('BLOCKED: Solid food for beverage search', { search: originalSearchTerm, food: f.name });
             return false;
           }
           // Validação nutricional: bebidas não têm alta proteína/calorias
@@ -249,7 +317,7 @@ async function findFoodInDatabase(
   // FASE 2: Busca global (qualquer fonte)
   // ========================================
   for (const term of searchTerms) {
-    // Busca exata global
+    // Busca exata global (com validação)
     const { data: exactMatch } = await supabase
       .from('foods')
       .select('*')
@@ -258,7 +326,7 @@ async function findFoodInDatabase(
       .limit(1)
       .maybeSingle();
     
-    if (exactMatch) {
+    if (exactMatch && isNutritionallyCompatible(originalSearchTerm, exactMatch)) {
       logStep('Exact match found (global)', { term, name: exactMatch.name, source: exactMatch.source });
       return { food: exactMatch, matchType: 'exact_global', source: 'database_global' };
     }
@@ -271,13 +339,13 @@ async function findFoodInDatabase(
       .or(`name_normalized.ilike.%${term}%,name.ilike.%${term}%`)
       .order('is_verified', { ascending: false })
       .order('search_count', { ascending: false })
-      .limit(5);
+      .limit(10);
     
     if (partialMatches && partialMatches.length > 0) {
       // PROTEÇÃO: Filtrar matches com validação de categoria E nutricional
-      const isBeverageSearch = isBeverageTerm(originalSearchTerm);
       const validMatches = partialMatches.filter((f: any) => {
         if (isBeverageSearch && isSolidFood(f.name)) {
+          logStep('BLOCKED: Solid food for beverage search (global)', { search: originalSearchTerm, food: f.name });
           return false;
         }
         // Validação nutricional

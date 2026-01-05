@@ -468,6 +468,42 @@ export type Database = {
           },
         ]
       }
+      critical_changes_audit: {
+        Row: {
+          authorization_note: string | null
+          changed_at: string | null
+          changed_by: string | null
+          id: string
+          new_data: Json | null
+          old_data: Json | null
+          operation: string
+          table_name: string
+          was_authorized: boolean | null
+        }
+        Insert: {
+          authorization_note?: string | null
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation: string
+          table_name: string
+          was_authorized?: boolean | null
+        }
+        Update: {
+          authorization_note?: string | null
+          changed_at?: string | null
+          changed_by?: string | null
+          id?: string
+          new_data?: Json | null
+          old_data?: Json | null
+          operation?: string
+          table_name?: string
+          was_authorized?: boolean | null
+        }
+        Relationships: []
+      }
       dietary_forbidden_ingredients: {
         Row: {
           category: string | null

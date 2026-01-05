@@ -587,6 +587,102 @@ const SMART_SUBSTITUTIONS: Record<string, Record<string, string>> = {
   },
 };
 
+// ============= LOCALIZED DEFAULT PORTIONS BY COUNTRY =============
+// Centralized function to return food names in user's native language
+// Used by: generate-ai-meal-plan, regenerate-ai-meal-alternatives, suggest-meal-alternatives
+export interface DefaultPortion {
+  name: string;
+  grams: number;
+  category: string;
+}
+
+export function getLocalizedDefaultPortions(countryCode: string): Record<string, DefaultPortion> {
+  // Brazil / Portuguese
+  if (countryCode === 'BR' || countryCode.startsWith('PT')) {
+    return {
+      'pao integral': { name: 'Fatia de pão integral', grams: 35, category: 'bread' },
+      'pao': { name: 'Pão francês', grams: 50, category: 'bread' },
+      'bread': { name: 'Fatia de pão', grams: 35, category: 'bread' },
+      'torrada': { name: '2 torradas integrais', grams: 30, category: 'bread' },
+      'toast': { name: '2 torradas', grams: 30, category: 'bread' },
+      'suco': { name: 'Suco natural', grams: 200, category: 'beverage' },
+      'juice': { name: 'Suco natural', grams: 200, category: 'beverage' },
+      'cafe': { name: 'Café sem açúcar', grams: 100, category: 'beverage' },
+      'coffee': { name: 'Café', grams: 100, category: 'beverage' },
+      'banana': { name: 'Banana', grams: 100, category: 'fruit' },
+      'mamao': { name: 'Mamão', grams: 150, category: 'fruit' },
+      'papaya': { name: 'Mamão', grams: 150, category: 'fruit' },
+      'laranja': { name: 'Suco de laranja', grams: 200, category: 'beverage' },
+      'orange': { name: 'Laranja', grams: 150, category: 'fruit' },
+      'morango': { name: 'Morangos', grams: 80, category: 'fruit' },
+      'strawberry': { name: 'Morangos', grams: 80, category: 'fruit' },
+      'queijo': { name: 'Queijo branco', grams: 30, category: 'cheese' },
+      'cheese': { name: 'Queijo', grams: 30, category: 'cheese' },
+      'iogurte': { name: 'Iogurte natural', grams: 150, category: 'dairy' },
+      'yogurt': { name: 'Iogurte natural', grams: 150, category: 'dairy' },
+      'aveia': { name: '2 colheres de sopa de aveia', grams: 30, category: 'cereal' },
+      'oats': { name: '2 colheres de sopa de aveia', grams: 30, category: 'cereal' },
+      'chia': { name: '1 colher de sopa de chia', grams: 10, category: 'seed' },
+    };
+  }
+  
+  // Spanish-speaking countries
+  if (['ES', 'MX', 'AR', 'CO', 'CL', 'PE'].includes(countryCode)) {
+    return {
+      'pao integral': { name: 'Rebanada de pan integral', grams: 35, category: 'bread' },
+      'pao': { name: 'Pan francés', grams: 50, category: 'bread' },
+      'bread': { name: 'Rebanada de pan', grams: 35, category: 'bread' },
+      'torrada': { name: '2 tostadas integrales', grams: 30, category: 'bread' },
+      'toast': { name: '2 tostadas', grams: 30, category: 'bread' },
+      'suco': { name: 'Jugo natural', grams: 200, category: 'beverage' },
+      'juice': { name: 'Jugo natural', grams: 200, category: 'beverage' },
+      'cafe': { name: 'Café sin azúcar', grams: 100, category: 'beverage' },
+      'coffee': { name: 'Café', grams: 100, category: 'beverage' },
+      'banana': { name: 'Plátano', grams: 100, category: 'fruit' },
+      'mamao': { name: 'Papaya', grams: 150, category: 'fruit' },
+      'papaya': { name: 'Papaya', grams: 150, category: 'fruit' },
+      'laranja': { name: 'Jugo de naranja', grams: 200, category: 'beverage' },
+      'orange': { name: 'Naranja', grams: 150, category: 'fruit' },
+      'morango': { name: 'Fresas', grams: 80, category: 'fruit' },
+      'strawberry': { name: 'Fresas', grams: 80, category: 'fruit' },
+      'queijo': { name: 'Queso blanco', grams: 30, category: 'cheese' },
+      'cheese': { name: 'Queso', grams: 30, category: 'cheese' },
+      'iogurte': { name: 'Yogur natural', grams: 150, category: 'dairy' },
+      'yogurt': { name: 'Yogur natural', grams: 150, category: 'dairy' },
+      'aveia': { name: '2 cucharadas de avena', grams: 30, category: 'cereal' },
+      'oats': { name: '2 cucharadas de avena', grams: 30, category: 'cereal' },
+      'chia': { name: '1 cucharada de semillas de chía', grams: 10, category: 'seed' },
+    };
+  }
+  
+  // Default: English
+  return {
+    'pao integral': { name: 'Whole wheat bread slice', grams: 35, category: 'bread' },
+    'pao': { name: 'French bread', grams: 50, category: 'bread' },
+    'bread': { name: 'Bread slice', grams: 35, category: 'bread' },
+    'torrada': { name: '2 whole wheat toasts', grams: 30, category: 'bread' },
+    'toast': { name: '2 toasts', grams: 30, category: 'bread' },
+    'suco': { name: 'Natural juice', grams: 200, category: 'beverage' },
+    'juice': { name: 'Natural juice', grams: 200, category: 'beverage' },
+    'cafe': { name: 'Coffee (no sugar)', grams: 100, category: 'beverage' },
+    'coffee': { name: 'Coffee', grams: 100, category: 'beverage' },
+    'banana': { name: 'Banana', grams: 100, category: 'fruit' },
+    'mamao': { name: 'Papaya', grams: 150, category: 'fruit' },
+    'papaya': { name: 'Papaya', grams: 150, category: 'fruit' },
+    'laranja': { name: 'Orange juice', grams: 200, category: 'beverage' },
+    'orange': { name: 'Orange', grams: 150, category: 'fruit' },
+    'morango': { name: 'Strawberries', grams: 80, category: 'fruit' },
+    'strawberry': { name: 'Strawberries', grams: 80, category: 'fruit' },
+    'queijo': { name: 'White cheese', grams: 30, category: 'cheese' },
+    'cheese': { name: 'Cheese', grams: 30, category: 'cheese' },
+    'iogurte': { name: 'Natural yogurt', grams: 150, category: 'dairy' },
+    'yogurt': { name: 'Natural yogurt', grams: 150, category: 'dairy' },
+    'aveia': { name: '2 tbsp oats', grams: 30, category: 'cereal' },
+    'oats': { name: '2 tbsp oats', grams: 30, category: 'cereal' },
+    'chia': { name: '1 tbsp chia seeds', grams: 10, category: 'seed' },
+  };
+}
+
 // ============= VALIDATION FUNCTIONS (usando globalSafetyEngine internamente) =============
 export function normalizeText(text: string): string {
   return text

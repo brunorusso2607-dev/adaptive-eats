@@ -15,6 +15,8 @@ import {
   normalizeUserIntolerances,
   validateIngredient,
   validateIngredientList,
+  validateFoodWithDecomposition,
+  isProcessedFood,
   generateRestrictionsPromptContext,
   getDatabaseStats,
   getIntoleranceLabel,
@@ -811,76 +813,98 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       });
     }
 
-    // ========== PÓS-PROCESSAMENTO: DECOMPOSIÇÃO DO PRODUTO IDENTIFICADO ==========
-    // Se o produto foi identificado, buscar ingredientes base no banco de decomposição
-    // Isso garante que produtos como "cerveja" sejam detectados como contendo glúten
+    // ========== PÓS-PROCESSAMENTO: DECOMPOSIÇÃO VIA GLOBAL SAFETY ENGINE ==========
+    // Usa a função centralizada validateFoodWithDecomposition para garantir consistência
+    // com todos os outros módulos do app (food-photo, fridge-photo, meal-generation)
     
     const productName = (analysis.produto_identificado || "").toLowerCase().trim();
-    if (productName && (!analysis.ingredientes_analisados || analysis.ingredientes_analisados.length === 0)) {
-      logStep("Trying to decompose product from database", { productName });
+    const brandName = (analysis.marca || "").toLowerCase().trim();
+    const combinedName = brandName ? `${brandName} ${productName}` : productName;
+    
+    // Verificar se precisamos decompor o produto identificado
+    if (combinedName && safetyDatabase) {
+      const needsDecomposition = isProcessedFood(combinedName) || isProcessedFood(productName);
       
-      try {
-        // Buscar decomposição no banco de dados
-        const { data: decompositionData, error: decompositionError } = await supabaseClient
-          .from("food_decomposition_mappings")
-          .select("food_name, base_ingredients")
-          .eq("is_active", true)
-          .or(`food_name.ilike.%${productName}%,food_name.ilike.%${productName.split(' ')[0]}%`);
+      if (needsDecomposition) {
+        logStep("Using Global Safety Engine for product decomposition", { 
+          productName, 
+          brandName,
+          combinedName 
+        });
         
-        if (!decompositionError && decompositionData && decompositionData.length > 0) {
-          const decomposition = decompositionData[0];
-          logStep("Found product decomposition in database", { 
-            product: decomposition.food_name, 
-            ingredients: decomposition.base_ingredients 
-          });
+        try {
+          const supabaseUrl = Deno.env.get("SUPABASE_URL");
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
           
-          // Adicionar ingredientes à análise
-          analysis.ingredientes_analisados = decomposition.base_ingredients.map((ing: string) => {
-            // Verificar se o ingrediente é problemático para o usuário
-            let status: "seguro" | "risco_potencial" | "contem" = "seguro";
-            let restricaoAfetada = "";
+          // Build user restrictions for validation
+          const decompRestrictions: UserRestrictions = {
+            intolerances: userIntolerances,
+            dietaryPreference: dietaryPreference,
+            excludedIngredients: excludedIngredients
+          };
+          
+          // Usar a função centralizada do globalSafetyEngine
+          const decompositionResult = await validateFoodWithDecomposition(
+            combinedName,
+            decompRestrictions,
+            safetyDatabase,
+            supabaseUrl,
+            supabaseKey,
+            userCountry || 'BR'
+          );
+          
+          if (decompositionResult.wasDecomposed && decompositionResult.decomposedIngredients) {
+            logStep("Product decomposed by Global Safety Engine", {
+              ingredients: decompositionResult.decomposedIngredients,
+              isSafe: decompositionResult.isSafe,
+              conflicts: decompositionResult.conflicts.length
+            });
             
-            const ingLower = ing.toLowerCase();
-            for (const intolerance of userIntolerances) {
-              const intoleranceKey = safetyDatabase 
-                ? (safetyDatabase.keyNormalization.get(intolerance.toLowerCase()) || intolerance.toLowerCase())
-                : intolerance.toLowerCase();
+            // Adicionar ingredientes decompostos à análise
+            analysis.ingredientes_analisados = decompositionResult.decomposedIngredients.map((ing: string) => {
+              // Verificar se há conflito para este ingrediente específico
+              const conflict = decompositionResult.conflicts.find(c => 
+                c.originalIngredient.toLowerCase() === ing.toLowerCase() ||
+                c.matchedIngredient.toLowerCase() === ing.toLowerCase()
+              );
               
-              const forbiddenIngredients: string[] = safetyDatabase 
-                ? (safetyDatabase.intoleranceMappings.get(intoleranceKey) || [])
-                : [];
+              const warning = decompositionResult.warnings.find(w =>
+                w.originalIngredient.toLowerCase() === ing.toLowerCase() ||
+                w.matchedIngredient.toLowerCase() === ing.toLowerCase()
+              );
               
-              if (forbiddenIngredients.some((forbidden: string) => ingLower.includes(forbidden) || forbidden.includes(ingLower))) {
+              let status: "seguro" | "risco_potencial" | "contem" = "seguro";
+              let restricaoAfetada = "";
+              
+              if (conflict) {
                 status = "contem";
-                restricaoAfetada = safetyDatabase 
-                  ? getIntoleranceLabel(intoleranceKey, safetyDatabase)
-                  : (INTOLERANCE_LABELS[intoleranceKey] || intolerance);
-                break;
+                restricaoAfetada = conflict.label;
+              } else if (warning) {
+                status = "risco_potencial";
+                restricaoAfetada = warning.label;
               }
+              
+              return {
+                nome: ing,
+                status,
+                fonte: "global_safety_engine",
+                restricao_afetada: restricaoAfetada || undefined
+              };
+            });
+            
+            // Atualizar veredicto baseado na validação centralizada
+            if (!decompositionResult.isSafe) {
+              analysis.veredicto = "contem";
+            } else if (decompositionResult.warnings.length > 0) {
+              analysis.veredicto = "risco_potencial";
             }
             
-            return {
-              nome: ing,
-              status,
-              fonte: "decomposition_database",
-              restricao_afetada: restricaoAfetada || undefined
-            };
-          });
-          
-          // Calcular veredicto baseado nos ingredientes
-          const hasContem = analysis.ingredientes_analisados.some((i: any) => i.status === "contem");
-          const hasRisco = analysis.ingredientes_analisados.some((i: any) => i.status === "risco_potencial");
-          analysis.veredicto = hasContem ? "contem" : (hasRisco ? "risco_potencial" : "seguro");
-          analysis.fonte_informacao = "decomposition_database";
-          analysis.confianca = "alta";
-          
-          logStep("Product decomposed and validated", { 
-            veredicto: analysis.veredicto, 
-            ingredientCount: analysis.ingredientes_analisados.length 
-          });
+            analysis.fonte_informacao = "global_safety_engine";
+            analysis.confianca = "alta";
+          }
+        } catch (decompError) {
+          logStep("Error in Global Safety Engine decomposition", { error: String(decompError) });
         }
-      } catch (decompError) {
-        logStep("Error decomposing product", { error: String(decompError) });
       }
     }
 

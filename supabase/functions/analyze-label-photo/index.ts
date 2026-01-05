@@ -606,10 +606,31 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       
       // NEW: Handle category validation errors
       if (analysis.erro === "categoria_invalida") {
+        const detectedCategory = analysis.categoria_detectada || "desconhecido";
+        
+        // Special case: food detected in label scanner - redirect to food photo module
+        if (detectedCategory === "alimento_natural") {
+          logStep("Food detected in label scanner - suggesting food module redirect", {
+            categoria: detectedCategory,
+            descricao: analysis.descricao_objeto
+          });
+          
+          return new Response(JSON.stringify({
+            success: false,
+            foodNotLabelError: true,
+            descricao_objeto: analysis.descricao_objeto || "alimento",
+            message: analysis.mensagem || "Detectamos um alimento, não um rótulo. Use o módulo 'Analisar Prato' para verificar calorias e segurança do seu prato."
+          }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+            status: 200,
+          });
+        }
+        
+        // Generic category error for other non-food-product categories
         return new Response(JSON.stringify({
           success: false,
           categoryError: true,
-          categoria_detectada: analysis.categoria_detectada || "desconhecido",
+          categoria_detectada: detectedCategory,
           descricao_objeto: analysis.descricao_objeto || "",
           message: analysis.mensagem || "Não foi possível identificar um produto alimentício na imagem."
         }), {

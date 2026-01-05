@@ -28,6 +28,26 @@ import {
   type ValidationResult as GSEValidationResult,
 } from "./globalSafetyEngine.ts";
 
+// ============= IMPORTS DO MOTOR DE DECISÃO NUTRICIONAL =============
+import {
+  MEAL_MACRO_TARGETS,
+  getMealMacroTargets,
+  getAllMealMacroTargets,
+  buildMealMacroTargetsForPrompt,
+  type MealMacroTarget,
+  type MealMacroTargetSet,
+} from "./nutritionalCalculations.ts";
+
+// Re-export para uso nos módulos de geração
+export {
+  MEAL_MACRO_TARGETS,
+  getMealMacroTargets,
+  getAllMealMacroTargets,
+  buildMealMacroTargetsForPrompt,
+  type MealMacroTarget,
+  type MealMacroTargetSet,
+};
+
 // ============= INTERFACES (Mantidas para compatibilidade) =============
 export interface IntoleranceMapping {
   ingredient: string;

@@ -17,6 +17,7 @@ import {
   calculateMealDistribution,
   buildNutritionalContextForPrompt,
   buildMealDistributionForPrompt,
+  buildMealMacroTargetsForPrompt,
   estimateTimeToGoal,
   validateTargetsHealth,
   type UserPhysicalData,
@@ -1242,6 +1243,21 @@ serve(async (req) => {
         // Gerar contexto nutricional para o prompt
         nutritionalContext = buildNutritionalContextForPrompt(nutritionalTargets);
         nutritionalContext += "\n" + buildMealDistributionForPrompt(nutritionalTargets, mealTypes);
+        
+        // ============= MOTOR DE DECISÃO NUTRICIONAL =============
+        // Injetar targets de macros por refeição baseado no objetivo/sexo/atividade
+        const goal = profile.goal || 'maintain';
+        const sex = profile.sex || 'male';
+        const activityLevel = profile.activity_level || 'moderate';
+        
+        const macroTargetsPrompt = buildMealMacroTargetsForPrompt(
+          goal,
+          sex,
+          activityLevel,
+          mealTypes
+        );
+        nutritionalContext += "\n" + macroTargetsPrompt;
+        logStep("Macro targets injected into prompt", { goal, sex, activityLevel });
         
         // Validar saúde dos targets
         const healthCheck = validateTargetsHealth(nutritionalTargets);

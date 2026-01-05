@@ -4049,9 +4049,9 @@ function getRegionalExamples(countryCode: string, language: string): {
       breakfast: `{
   "title": "Tapioca com queijo e café com leite",
   "foods": [
-    {"name": "Tapioca recheada com queijo branco", "name_en": "Tapioca with white cheese", "grams": 120},
+    {"name": "Tapioca recheada com queijo branco", "name_en": "Tapioca with cheese", "grams": 120},
     {"name": "1 xícara de café com leite", "name_en": "Coffee with milk", "grams": 200},
-    {"name": "1 fatia de mamão (sobremesa)", "name_en": "Papaya slice (dessert)", "grams": 100}
+    {"name": "1 fatia de mamão (sobremesa)", "name_en": "Papaya", "grams": 100}
   ],
   "instructions": [
     "Ingredientes: goma de tapioca (80g), queijo branco (40g).",
@@ -4060,25 +4060,29 @@ function getRegionalExamples(countryCode: string, language: string): {
   ]
 }`,
       snack: `{
-  "title": "Iogurte com granola e morangos",
-  "foods": [{"name": "Bowl de iogurte com granola e morangos", "name_en": "Yogurt bowl with granola and strawberries", "grams": 250}],
+  "title": "Mingau de aveia com banana",
+  "foods": [
+    {"name": "Mingau de aveia com canela", "name_en": "Oats", "grams": 40},
+    {"name": "Banana", "name_en": "Banana", "grams": 100}
+  ],
   "instructions": [
-    "Ingredientes: iogurte natural (170g), granola sem açúcar (30g), morangos (50g).",
-    "Monte em camadas no bowl.",
-    "Sirva gelado."
+    "Ingredientes: aveia em flocos (40g), leite (100ml), banana (100g), canela a gosto.",
+    "Cozinhe a aveia com o leite em fogo baixo por 5 min.",
+    "Sirva com a banana fatiada e canela."
   ]
 }`,
       lunch: `{
   "title": "Frango grelhado com arroz, feijão e salada",
   "foods": [
-    {"name": "Filé de frango grelhado ao limão", "name_en": "Grilled chicken breast with lemon", "grams": 150},
+    {"name": "Filé de frango grelhado ao limão", "name_en": "Chicken breast", "grams": 150},
     {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100},
     {"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80},
-    {"name": "Salada verde com azeite", "name_en": "Green salad with olive oil", "grams": 80},
-    {"name": "1 laranja média (sobremesa)", "name_en": "Medium orange (dessert)", "grams": 150},
-    {"name": "1 copo de água (opcional)", "name_en": "Glass of water (optional)", "grams": 200}
+    {"name": "Salada verde com azeite", "name_en": "Green salad", "grams": 80},
+    {"name": "1 laranja média (sobremesa)", "name_en": "Orange", "grams": 150},
+    {"name": "1 copo de água (opcional)", "name_en": "Water", "grams": 200}
   ],
   "instructions": [
+    "Ingredientes: frango (150g), arroz integral (100g), feijão (80g), alface (80g), laranja (150g).",
     "Tempere o frango com sal, alho e limão. Marine por 10 min.",
     "Grelhe por 5-6 min de cada lado.",
     "Monte: arroz, feijão, salada e frango."
@@ -4476,23 +4480,33 @@ ${countryBehavioralPrompt}
 📝 FOODS FORMAT (foods array) - ABSOLUTE RULE:
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-🚨🚨🚨 DUAL-NAME ARCHITECTURE (CRITICAL FOR DATABASE) 🚨🚨🚨
+🚨🚨🚨 DUAL-NAME ARCHITECTURE (CRITICAL FOR DATABASE LOOKUP) 🚨🚨🚨
 
 Every food item MUST have TWO name fields:
 • "name": Food name in USER'S LOCAL LANGUAGE (${regional.language}) - displayed to user
-• "name_en": Food name in ENGLISH - used for universal database lookup
+• "name_en": SIMPLIFIED ENGLISH ingredient name - used for universal database lookup (TACO, USDA, BAM)
+
+🚨 CRITICAL: name_en MUST BE SIMPLE INGREDIENT NAMES FOR DB LOOKUP! 🚨
+The name_en field is used to find nutritional data in verified databases.
+Use the SIMPLEST possible English ingredient name to maximize database matches.
 
 EXAMPLE:
-{"name": "Filé de frango grelhado", "name_en": "Grilled chicken breast", "grams": 150}
+{"name": "Filé de frango grelhado ao limão", "name_en": "Chicken breast", "grams": 150}
 {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100}
-{"name": "1 maçã média (sobremesa)", "name_en": "Medium apple (dessert)", "grams": 150}
+{"name": "2 colheres de aveia", "name_en": "Oats", "grams": 30}
+{"name": "Ovo cozido", "name_en": "Boiled egg", "grams": 50}
+{"name": "Banana", "name_en": "Banana", "grams": 100}
+{"name": "Purê de batata doce", "name_en": "Sweet potato", "grams": 150}
+{"name": "Brócolis refogado", "name_en": "Broccoli", "grams": 100}
 
-RULES FOR name_en:
-• Use SIMPLE, STANDARD English ingredient names
-• Avoid regional/brand-specific terms
-• Match common food database terminology (USDA style)
-• For composed dishes, use descriptive English: "Lentil soup with vegetables"
-• For local foods with no translation, use transliteration: "Tapioca" stays "Tapioca"
+RULES FOR name_en (DATABASE LOOKUP OPTIMIZATION):
+• Use SIMPLE, SINGLE-WORD or BASIC English ingredient names when possible
+• "2 colheres de aveia" → name_en: "Oats" (NOT "2 tablespoons of oats")
+• "Filé de frango grelhado" → name_en: "Chicken breast" (NOT "Grilled chicken breast with lemon")
+• "Purê de batata doce" → name_en: "Sweet potato" (the preparation doesn't change the base ingredient)
+• Match USDA/TACO database terminology for maximum lookup success
+• For composed dishes, use the MAIN ingredient: "Sopa de lentilha" → name_en: "Lentil soup"
+• Common foods: Oats, Egg, Chicken, Rice, Beans, Banana, Apple, Broccoli, etc.
 
 🚨🚨🚨 CRITICAL RULE: SINGLE DISHES vs COMPOSED MEALS 🚨🚨🚨
 
@@ -4522,12 +4536,18 @@ EXAMPLE for ${countryCode}:
 ${regionalExamples.lunch}
 
 ⚠️ SEPARATION RULES:
-• Rice/Beans = always separate (served on the side)
+🚨🚨🚨 CRITICAL: RICE AND BEANS MUST ALWAYS BE SEPARATE ITEMS! 🚨🚨🚨
+• Rice = 1 SEPARATE item (e.g., {"name": "Arroz integral", "name_en": "Brown rice", "grams": 100})
+• Beans = 1 SEPARATE item (e.g., {"name": "Feijão carioca", "name_en": "Pinto beans", "grams": 80})
+• ❌ NEVER COMBINE: {"name": "Arroz com feijão", "grams": 220} ← SERIOUS ERROR!
+• ✅ CORRECT: Two separate items, rice AND beans with individual portions
+
 • Dessert fruit = always separate
 • Beverage = always separate (last item)
 • Seasonings/condiments = NEVER separate (go INSIDE the dish name)
 
 ❌ NEVER DO (loose ingredients without context):
+• {"name": "Arroz com feijão", "grams": 220} → WRONG! Separate into rice AND beans!
 • {"name": "Tofu amassado", "grams": 50} → LOOSE! Where's the dish?
 • {"name": "Sal", "grams": 2} → SEASONING! Not an item!
 • {"name": "Azeite", "grams": 5} → SEASONING! Not an item!
@@ -4535,7 +4555,7 @@ ${regionalExamples.lunch}
 
 ORDER IN foods ARRAY:
 1. Main dish (consolidated OR protein of composed meal)
-2. Side dishes (rice, beans - if composed meal)
+2. Side dishes (rice SEPARATELY, beans SEPARATELY - if composed meal)
 3. Condiments (olive oil for finishing - ONLY if necessary)
 4. Dessert fruit
 5. Zero/optional beverage (lunch/dinner)
@@ -4592,8 +4612,18 @@ ${regionalExamples.supper}
 ❌ Lemon juice/seasonings as separate item
 ❌ Caloric juice for lunch/dinner
 ❌ Instructions with only 1 short phrase (minimum 2-3 steps!)
-❌ Title mentions ingredient NOT in foods
+❌ Title mentions ingredient NOT in foods ← 🚨 TITLE-INGREDIENT COHERENCE IS MANDATORY!
 ❌ Instructions mention ingredient NOT in foods
+❌ Combining rice and beans into "arroz com feijão" as single item ← ALWAYS SEPARATE!
+❌ Title says "pepino e tomate" but foods don't have cucumber or tomato
+
+🚨🚨🚨 TITLE-INGREDIENT COHERENCE (ABSOLUTE RULE) 🚨🚨🚨
+Every ingredient mentioned in the TITLE must appear in the FOODS array!
+• Title: "Frango com purê de batata doce e salada de pepino" 
+  → Foods MUST include: chicken, sweet potato puree, AND cucumber salad
+• If title mentions "oats/aveia" → Foods MUST include oats with name_en: "Oats"
+• If title mentions "papaya/mamão" → Foods MUST include papaya
+• NEVER use ingredient in title if it's not in foods list!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 📊 NUTRITIONAL TABLE:

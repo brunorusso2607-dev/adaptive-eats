@@ -745,11 +745,16 @@ function validateMealPlan(
       const CATEGORY_KEYWORDS: Record<string, string[]> = {
         'pao': ['pao', 'pão', 'torrada', 'baguete', 'bisnaguinha', 'croissant'],
         'arroz': ['arroz'],
-        'feijao': ['feijao', 'feijão'],
+        'feijao': ['feijao', 'feijão', 'lentilha', 'grao de bico', 'grão-de-bico', 'ervilha'],
         'proteina_frango': ['frango', 'peito de frango'],
         'proteina_carne': ['carne', 'bife', 'patinho', 'alcatra', 'file mignon'],
-        'proteina_peixe': ['peixe', 'tilapia', 'salmao', 'atum'],
-        'ovo': ['ovo', 'ovos', 'omelete'],
+        'proteina_peixe': ['peixe', 'tilapia', 'salmao', 'atum', 'sardinha'],
+        'ovo': ['ovo', 'ovos', 'omelete', 'clara'],
+        'iogurte': ['iogurte', 'yogurt', 'coalhada'],
+        'queijo': ['queijo', 'ricota', 'cottage', 'requeijao'],
+        'leguminosa': ['feijao', 'feijão', 'lentilha', 'grao de bico', 'grão-de-bico', 'ervilha', 'fava'],
+        'vegetal': ['salada', 'alface', 'tomate', 'pepino', 'brocolis', 'couve', 'espinafre', 'cenoura', 'abobrinha', 'legumes'],
+        'fruta': ['banana', 'maca', 'maçã', 'laranja', 'mamao', 'mamão', 'morango', 'melancia', 'melao', 'abacaxi', 'uva', 'pera', 'kiwi', 'manga'],
       };
       
       const categoryUsed = new Set<string>();
@@ -782,7 +787,164 @@ function validateMealPlan(
       }
       
       // Usar a lista deduplicada
-      const finalCleanedFoods = deduplicatedFoods;
+      let finalCleanedFoods = deduplicatedFoods;
+      
+      // ============= VALIDAÇÃO 6: ESTRUTURA OBRIGATÓRIA POR TIPO DE REFEIÇÃO =============
+      // Garantir que cada refeição tenha os componentes essenciais
+      const MEAL_STRUCTURE_REQUIREMENTS: Record<string, { 
+        required: string[];  // Categorias obrigatórias
+        optional?: string[]; // Categorias opcionais mas recomendadas
+        minComponents: number;
+      }> = {
+        breakfast: {
+          required: ['proteina'],  // Proteína obrigatória no café
+          optional: ['carbo', 'fruta', 'gordura_boa'],
+          minComponents: 3,
+        },
+        morning_snack: {
+          required: ['proteina'],  // Proteína leve obrigatória
+          optional: ['fruta'],
+          minComponents: 2,
+        },
+        lunch: {
+          required: ['proteina', 'leguminosa', 'vegetal'],  // Proteína + feijão + vegetal obrigatórios
+          optional: ['carbo'],
+          minComponents: 4,
+        },
+        afternoon_snack: {
+          required: ['proteina'],  // Proteína obrigatória
+          optional: ['carbo', 'fruta'],
+          minComponents: 2,
+        },
+        dinner: {
+          required: ['proteina', 'vegetal'],  // Proteína + vegetal obrigatórios
+          optional: ['carbo', 'leguminosa'],
+          minComponents: 3,
+        },
+        supper: {
+          required: ['proteina'],  // Proteína obrigatória para recuperação noturna
+          optional: ['gordura_boa'],
+          minComponents: 1,
+        },
+      };
+      
+      // Mapeamento de categorias para detecção
+      const STRUCTURE_CATEGORY_DETECTION: Record<string, string[]> = {
+        'proteina': ['frango', 'carne', 'peixe', 'ovo', 'ovos', 'omelete', 'clara', 'tofu', 'queijo', 'iogurte', 'ricota', 'cottage', 'atum', 'salmao', 'tilapia', 'sardinha', 'peito de peru', 'whey', 'presunto', 'peito de frango', 'bife', 'file', 'filé', 'camarao', 'camarão'],
+        'leguminosa': ['feijao', 'feijão', 'lentilha', 'grao de bico', 'grão-de-bico', 'ervilha', 'fava', 'soja', 'edamame'],
+        'vegetal': ['salada', 'alface', 'tomate', 'pepino', 'brocolis', 'brócolis', 'couve', 'espinafre', 'cenoura', 'abobrinha', 'legumes', 'rucula', 'rúcula', 'agriao', 'agrião', 'repolho', 'acelga', 'chicoria', 'berinjela', 'vagem', 'aspargo'],
+        'carbo': ['arroz', 'pao', 'pão', 'torrada', 'batata', 'mandioca', 'macarrao', 'massa', 'aveia', 'tapioca', 'cuscuz', 'quinoa', 'milho', 'polenta', 'inhame', 'cará'],
+        'fruta': ['banana', 'maca', 'maçã', 'laranja', 'mamao', 'mamão', 'morango', 'melancia', 'melao', 'melão', 'abacaxi', 'uva', 'pera', 'pêra', 'kiwi', 'manga', 'goiaba', 'abacate', 'ameixa', 'framboesa', 'mirtilo'],
+        'gordura_boa': ['azeite', 'castanha', 'amendoa', 'amêndoa', 'nozes', 'semente', 'chia', 'linhaca', 'linhaça', 'pasta de amendoim', 'manteiga de amendoim', 'abacate', 'coco'],
+      };
+      
+      // Ingredientes padrão para adicionar quando componente estiver faltando
+      const DEFAULT_STRUCTURE_FOODS: Record<string, { name: string; grams: number }[]> = {
+        'proteina': [
+          { name: 'Ovo cozido', grams: 50 },
+          { name: 'Iogurte natural', grams: 150 },
+          { name: 'Queijo branco', grams: 30 },
+        ],
+        'leguminosa': [
+          { name: 'Feijão carioca', grams: 80 },
+          { name: 'Lentilha cozida', grams: 80 },
+          { name: 'Grão-de-bico', grams: 80 },
+        ],
+        'vegetal': [
+          { name: 'Salada verde', grams: 60 },
+          { name: 'Legumes no vapor', grams: 80 },
+          { name: 'Tomate fatiado', grams: 50 },
+        ],
+        'carbo': [
+          { name: '2 colheres de arroz', grams: 100 },
+          { name: '1 fatia de pão integral', grams: 35 },
+        ],
+        'fruta': [
+          { name: 'Banana', grams: 100 },
+          { name: 'Maçã', grams: 120 },
+        ],
+        'gordura_boa': [
+          { name: '1 colher de azeite', grams: 10 },
+          { name: 'Castanhas', grams: 20 },
+        ],
+      };
+      
+      // Verificar e completar estrutura da refeição
+      const mealReq = MEAL_STRUCTURE_REQUIREMENTS[meal.meal_type];
+      if (mealReq) {
+        // Detectar categorias presentes
+        const presentCategories = new Set<string>();
+        for (const food of finalCleanedFoods) {
+          const foodNameLower = normalizeText(food.name);
+          for (const [category, keywords] of Object.entries(STRUCTURE_CATEGORY_DETECTION)) {
+            for (const kw of keywords) {
+              if (foodNameLower.includes(kw)) {
+                presentCategories.add(category);
+                break;
+              }
+            }
+          }
+        }
+        
+        // Verificar componentes obrigatórios faltantes
+        const missingRequired: string[] = [];
+        for (const required of mealReq.required) {
+          if (!presentCategories.has(required)) {
+            missingRequired.push(required);
+          }
+        }
+        
+        // Adicionar componentes faltantes
+        if (missingRequired.length > 0) {
+          logStep(`⚠️ ESTRUTURA INCOMPLETA em "${meal.label}"`, {
+            mealType: meal.meal_type,
+            required: mealReq.required,
+            present: Array.from(presentCategories),
+            missing: missingRequired,
+          });
+          
+          for (const missingCategory of missingRequired) {
+            const defaults = DEFAULT_STRUCTURE_FOODS[missingCategory];
+            if (defaults && defaults.length > 0) {
+              // Escolher um alimento aleatório do pool para variedade
+              const randomIndex = Math.floor(Math.random() * defaults.length);
+              const foodToAdd = defaults[randomIndex];
+              
+              // Verificar se o alimento é seguro para as restrições do usuário
+              const validation = validateFood(foodToAdd.name, {
+                intolerances: restrictions.intolerances,
+                dietaryPreference: restrictions.dietaryPreference,
+                excludedIngredients: restrictions.excludedIngredients,
+              }, dbMappings, dbSafeKeywords);
+              
+              if (validation.isValid) {
+                finalCleanedFoods.push(foodToAdd);
+                logStep(`✅ COMPONENTE ADICIONADO: "${foodToAdd.name}" (${missingCategory}) em "${meal.label}"`);
+              } else {
+                // Se o primeiro não for válido, tentar os outros
+                let added = false;
+                for (const alt of defaults) {
+                  if (alt.name === foodToAdd.name) continue;
+                  const altValidation = validateFood(alt.name, {
+                    intolerances: restrictions.intolerances,
+                    dietaryPreference: restrictions.dietaryPreference,
+                    excludedIngredients: restrictions.excludedIngredients,
+                  }, dbMappings, dbSafeKeywords);
+                  if (altValidation.isValid) {
+                    finalCleanedFoods.push(alt);
+                    logStep(`✅ COMPONENTE ALTERNATIVO ADICIONADO: "${alt.name}" (${missingCategory}) em "${meal.label}"`);
+                    added = true;
+                    break;
+                  }
+                }
+                if (!added) {
+                  logStep(`⚠️ NÃO FOI POSSÍVEL ADICIONAR ${missingCategory} - todas as opções violam restrições`);
+                }
+              }
+            }
+          }
+        }
+      }
       
       // ============= PÓS-PROCESSAMENTO: AGRUPAR INGREDIENTES SEPARADOS =============
       const foodsForGrouping: FoodItem[] = finalCleanedFoods.map(f => ({

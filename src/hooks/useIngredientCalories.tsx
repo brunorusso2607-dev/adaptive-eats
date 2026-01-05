@@ -1,6 +1,5 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useUserCountry, DEFAULT_COUNTRY } from './useUserCountry';
 
 interface IngredientWithCalories {
   item: string;
@@ -10,14 +9,6 @@ interface IngredientWithCalories {
   protein?: number;
   carbs?: number;
   fat?: number;
-}
-
-interface NutritionalFood {
-  name: string;
-  cal: number;
-  prot: number;
-  carb: number;
-  fat: number;
 }
 
 interface IngredientCaloriesResult {
@@ -42,60 +33,8 @@ function normalizeForLookup(text: string): string {
     .trim();
 }
 
-// ============================================
-// CATEGORY DETECTION - Beverage vs Solid Food
-// PROTEÇÃO: Alimentos sólidos NUNCA devem usar fallback de bebidas
-// ============================================
-const BEVERAGE_KEYWORDS = [
-  'cha', 'tea', 'cafe', 'coffee', 'suco', 'juice', 'agua', 'water',
-  'leite', 'milk', 'vitamina', 'smoothie', 'infusao', 'refrigerante',
-  'bebida', 'drink', 'cappuccino', 'latte', 'espresso'
-];
-
-// LOW_CALORIE_BEVERAGES: APENAS termos que EXCLUSIVAMENTE indicam bebidas
-// REMOVIDO: "verde", "preto" pois podem ser "folhas verdes", "feijão preto"
-const LOW_CALORIE_BEVERAGES = [
-  'cha de', 'cha ', // "chá de camomila" mas não "batata"
-  'tea ', 'cafe preto', 'cafe sem', 'coffee', 
-  'agua mineral', 'agua com', 'water',
-  'infusao', 'camomila', 'hortela', 'erva-doce', 'hibisco', 
-  'mate', 'boldo', 'cidreira', 'funcho'
-];
-
-// Alimentos sólidos - PROTEÇÃO contra falsos positivos de bebidas
-const SOLID_FOOD_KEYWORDS = [
-  'batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao',
-  'bolo', 'queijo', 'macarrao', 'biscoito', 'torta', 'pizza', 'hamburguer',
-  'salada', 'folha', 'legume', 'vegetal', 'brocoli', 'cenoura', 'abobrinha',
-  'tomate', 'alface', 'espinafre', 'couve', 'rucula', 'pure', 'mandioca',
-  'quinoa', 'tilapia', 'salmao', 'file', 'peito', 'sobrecoxa', 'pera', 'maca'
-];
-
-function isBeverageSearch(text: string): boolean {
-  const normalized = normalizeForLookup(text);
-  // Primeiro verificar se é alimento sólido - se for, NÃO é bebida
-  if (isSolidFoodSearch(normalized)) return false;
-  return BEVERAGE_KEYWORDS.some(kw => normalized.includes(kw));
-}
-
-function isLowCalorieBeverage(text: string): boolean {
-  const normalized = normalizeForLookup(text);
-  // PROTEÇÃO CRÍTICA: Se contém keyword de sólido, NUNCA é bebida de baixa caloria
-  if (isSolidFoodSearch(normalized)) return false;
-  return LOW_CALORIE_BEVERAGES.some(kw => normalized.includes(kw));
-}
-
-function isSolidFoodSearch(normalized: string): boolean {
-  return SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw));
-}
-
-function isSolidFoodMatch(text: string): boolean {
-  const normalized = normalizeForLookup(text);
-  return isSolidFoodSearch(normalized);
-}
-
 // Extract main food term from ingredient name
-function extractMainTerm(name: string): string[] {
+function extractMainTerm(name: string): string {
   const normalized = normalizeForLookup(name);
   
   // Remove common cooking modifiers
@@ -119,14 +58,7 @@ function extractMainTerm(name: string): string[] {
     .replace(/\s+/g, ' ')
     .trim();
   
-  const terms = [normalized, cleaned];
-  
-  // First significant word
-  const words = cleaned.split(' ').filter(w => w.length >= 3);
-  if (words[0]) terms.push(words[0]);
-  if (words[1]) terms.push(`${words[0]} ${words[1]}`);
-  
-  return [...new Set(terms)].filter(t => t.length >= 2);
+  return cleaned || normalized;
 }
 
 // Parse quantity string to grams
@@ -172,214 +104,177 @@ function parseQuantityToGrams(quantity: string, unit?: string): number {
   return numValue || 100;
 }
 
-// ============================================
-// SANITY CHECK: Low calorie beverages should have max ~10 kcal/100ml
-// ============================================
-const LOW_CAL_BEVERAGE_MAX_PER_100 = 10; // Max 10 kcal per 100ml for plain teas/coffee/water
-
-function applySanityCheckForBeverage(
-  foodName: string,
-  calories: number,
-  grams: number
-): number {
-  // If this is a low-calorie beverage search, enforce limits
-  if (isLowCalorieBeverage(foodName)) {
-    const caloriesPer100 = (calories / grams) * 100;
-    if (caloriesPer100 > LOW_CAL_BEVERAGE_MAX_PER_100) {
-      // Override with correct value for plain tea/coffee/water: ~1-2 kcal/100ml
-      const correctedCalories = Math.round((2 / 100) * grams);
-      console.log(`[SANITY-CHECK] Beverage "${foodName}" had ${caloriesPer100} kcal/100ml, corrected to 2 kcal/100ml`);
-      return correctedCalories;
-    }
-  }
-  return calories;
-}
-
-// Lookup food in the nutritional table with CATEGORY PROTECTION
-function lookupFood(
-  table: NutritionalFood[],
-  foodName: string,
-  grams: number
-): { matched: boolean; matchedName?: string; calories: number; protein: number; carbs: number; fat: number } {
-  if (!table || table.length === 0 || grams <= 0) {
-    return { matched: false, calories: 0, protein: 0, carbs: 0, fat: 0 };
-  }
-  
-  const searchTerms = extractMainTerm(foodName);
-  const isBeverage = isBeverageSearch(foodName);
-  const isLowCalBeverage = isLowCalorieBeverage(foodName);
-  
-  // Create normalized index
-  const normalizedTable = table.map(f => ({
-    ...f,
-    normalized: normalizeForLookup(f.name),
-  }));
-  
-  // Helper to validate category compatibility
-  const isCategoryCompatible = (matchedFood: { name: string; normalized: string; cal: number }): boolean => {
-    // If searching for beverage, reject solid food matches
-    if (isBeverage && isSolidFoodMatch(matchedFood.normalized)) {
-      return false;
-    }
-    // If searching for low-calorie beverage, reject high-calorie matches
-    if (isLowCalBeverage && matchedFood.cal > LOW_CAL_BEVERAGE_MAX_PER_100) {
-      // But allow if the match is also a beverage (could be sweetened version)
-      if (!isBeverageSearch(matchedFood.normalized)) {
-        return false;
-      }
-    }
-    return true;
-  };
-  
-  // Helper to build result with sanity check
-  const buildResult = (food: { name: string; cal: number; prot: number; carb: number; fat: number }) => {
-    const factor = grams / 100;
-    let calculatedCalories = Math.round(food.cal * factor);
-    
-    // Apply sanity check for low-calorie beverages
-    calculatedCalories = applySanityCheckForBeverage(foodName, calculatedCalories, grams);
-    
-    return {
-      matched: true,
-      matchedName: food.name,
-      calories: calculatedCalories,
-      protein: Math.round(food.prot * factor * 10) / 10,
-      carbs: Math.round(food.carb * factor * 10) / 10,
-      fat: Math.round(food.fat * factor * 10) / 10,
-    };
-  };
-  
-  // PHASE 1: Exact match (with category validation)
-  for (const term of searchTerms) {
-    const exactMatch = normalizedTable.find(f => 
-      f.normalized === term && isCategoryCompatible(f)
-    );
-    if (exactMatch) {
-      return buildResult(exactMatch);
-    }
-  }
-  
-  // PHASE 2: Safe keyword search - busca ingredientes que COMEÇAM com o termo principal
-  // Isso é mais seguro que match parcial pois "biscoito" → "biscoito, doce" mas não "cha" → "batata"
-  const mainWord = searchTerms[searchTerms.length - 1]; // Última palavra isolada
-  if (mainWord && mainWord.length >= 4) { // Mínimo 4 caracteres para evitar falsos positivos
-    const startsWithMatch = normalizedTable.find(f => 
-      f.normalized.startsWith(mainWord) && isCategoryCompatible(f)
-    );
-    if (startsWithMatch) {
-      return buildResult(startsWithMatch);
-    }
-  }
-  
-  // PHASE 3: Contained keyword search - se a palavra principal está contida no nome do alimento
-  // Ex: "arroz integral" encontra "Arroz, integral, cozido"
-  if (mainWord && mainWord.length >= 5) { // Mínimo 5 caracteres para match contido
-    const containsMatch = normalizedTable.find(f => 
-      f.normalized.includes(mainWord) && isCategoryCompatible(f)
-    );
-    if (containsMatch) {
-      return buildResult(containsMatch);
-    }
-  }
-  
-  // FALLBACK: For low-calorie beverages, return estimated value even without match
-  if (isLowCalBeverage) {
-    const estimatedCalories = Math.round((2 / 100) * grams); // 2 kcal per 100ml
-    console.log(`[FALLBACK] Low-cal beverage "${foodName}" using fallback: ${estimatedCalories} kcal`);
-    return {
-      matched: true, // Treat as matched with fallback
-      matchedName: `${foodName} (estimado)`,
-      calories: estimatedCalories,
-      protein: 0,
-      carbs: 0,
-      fat: 0,
-    };
-  }
-  
-  return { matched: false, calories: 0, protein: 0, carbs: 0, fat: 0 };
+// Cache para evitar buscas repetidas
+interface CacheEntry {
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  name: string;
 }
 
 export function useIngredientCalories() {
-  const [nutritionalTable, setNutritionalTable] = useState<NutritionalFood[]>([]);
   const [isLoading, setIsLoading] = useState(false);
-  const [isLoaded, setIsLoaded] = useState(false);
-  const { country } = useUserCountry();
+  const cacheRef = useRef<Map<string, CacheEntry | null>>(new Map());
 
-  // Load nutritional table once
-  const loadTable = useCallback(async () => {
-    if (isLoaded || isLoading) return;
+  // Buscar alimento no banco de dados
+  const searchFoodInDatabase = useCallback(async (searchTerm: string): Promise<CacheEntry | null> => {
+    const cacheKey = normalizeForLookup(searchTerm);
     
-    setIsLoading(true);
+    // Verificar cache
+    if (cacheRef.current.has(cacheKey)) {
+      return cacheRef.current.get(cacheKey) || null;
+    }
+
     try {
-      // Query foods table with verified sources, prioritizing country-specific
-      const { data, error } = await supabase
+      const mainTerm = extractMainTerm(searchTerm);
+      
+      // FASE 1: Busca exata no name_normalized
+      let { data } = await supabase
         .from('foods')
-        .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g')
+        .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, is_verified')
         .eq('is_verified', true)
-        .limit(500);
-      
-      if (error) throw error;
-      
-      if (data) {
-        const table: NutritionalFood[] = data.map(f => ({
-          name: f.name,
-          cal: f.calories_per_100g || 0,
-          prot: f.protein_per_100g || 0,
-          carb: f.carbs_per_100g || 0,
-          fat: f.fat_per_100g || 0,
-        }));
-        setNutritionalTable(table);
-        setIsLoaded(true);
+        .ilike('name_normalized', mainTerm)
+        .limit(1);
+
+      if (data && data.length > 0) {
+        const entry: CacheEntry = {
+          name: data[0].name,
+          calories_per_100g: data[0].calories_per_100g || 0,
+          protein_per_100g: data[0].protein_per_100g || 0,
+          carbs_per_100g: data[0].carbs_per_100g || 0,
+          fat_per_100g: data[0].fat_per_100g || 0,
+        };
+        cacheRef.current.set(cacheKey, entry);
+        return entry;
       }
+
+      // FASE 2: Busca por prefixo (começa com)
+      const prefixResult = await supabase
+        .from('foods')
+        .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, is_verified')
+        .eq('is_verified', true)
+        .ilike('name_normalized', `${mainTerm}%`)
+        .order('calories_per_100g', { ascending: false }) // Prioriza alimentos mais calóricos (evita bebidas)
+        .limit(1);
+
+      if (prefixResult.data && prefixResult.data.length > 0) {
+        const entry: CacheEntry = {
+          name: prefixResult.data[0].name,
+          calories_per_100g: prefixResult.data[0].calories_per_100g || 0,
+          protein_per_100g: prefixResult.data[0].protein_per_100g || 0,
+          carbs_per_100g: prefixResult.data[0].carbs_per_100g || 0,
+          fat_per_100g: prefixResult.data[0].fat_per_100g || 0,
+        };
+        cacheRef.current.set(cacheKey, entry);
+        return entry;
+      }
+
+      // FASE 3: Busca contém (para termos mais curtos)
+      if (mainTerm.length >= 4) {
+        const containsResult = await supabase
+          .from('foods')
+          .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, is_verified')
+          .eq('is_verified', true)
+          .ilike('name_normalized', `%${mainTerm}%`)
+          .order('calories_per_100g', { ascending: false })
+          .limit(1);
+
+        if (containsResult.data && containsResult.data.length > 0) {
+          const entry: CacheEntry = {
+            name: containsResult.data[0].name,
+            calories_per_100g: containsResult.data[0].calories_per_100g || 0,
+            protein_per_100g: containsResult.data[0].protein_per_100g || 0,
+            carbs_per_100g: containsResult.data[0].carbs_per_100g || 0,
+            fat_per_100g: containsResult.data[0].fat_per_100g || 0,
+          };
+          cacheRef.current.set(cacheKey, entry);
+          return entry;
+        }
+      }
+
+      // FASE 4: Tenta palavra-chave individual
+      const words = mainTerm.split(' ').filter(w => w.length >= 4);
+      for (const word of words) {
+        const wordResult = await supabase
+          .from('foods')
+          .select('name, calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, is_verified')
+          .eq('is_verified', true)
+          .ilike('name_normalized', `%${word}%`)
+          .order('calories_per_100g', { ascending: false })
+          .limit(1);
+
+        if (wordResult.data && wordResult.data.length > 0) {
+          const entry: CacheEntry = {
+            name: wordResult.data[0].name,
+            calories_per_100g: wordResult.data[0].calories_per_100g || 0,
+            protein_per_100g: wordResult.data[0].protein_per_100g || 0,
+            carbs_per_100g: wordResult.data[0].carbs_per_100g || 0,
+            fat_per_100g: wordResult.data[0].fat_per_100g || 0,
+          };
+          cacheRef.current.set(cacheKey, entry);
+          return entry;
+        }
+      }
+
+      // Não encontrado
+      cacheRef.current.set(cacheKey, null);
+      return null;
+
     } catch (err) {
-      console.error('Error loading nutritional table:', err);
+      console.error('Error searching food:', err);
+      return null;
+    }
+  }, []);
+
+  // Calculate calories for a list of ingredients
+  const calculateIngredientCalories = useCallback(async (
+    ingredients: IngredientWithCalories[]
+  ): Promise<IngredientCaloriesResult[]> => {
+    setIsLoading(true);
+    
+    try {
+      const results = await Promise.all(
+        ingredients.map(async (ing) => {
+          const grams = parseQuantityToGrams(ing.quantity, ing.unit);
+          const food = await searchFoodInDatabase(ing.item);
+          
+          if (food) {
+            const factor = grams / 100;
+            return {
+              item: ing.item,
+              quantity: grams,
+              calories: Math.round(food.calories_per_100g * factor),
+              protein: Math.round(food.protein_per_100g * factor * 10) / 10,
+              carbs: Math.round(food.carbs_per_100g * factor * 10) / 10,
+              fat: Math.round(food.fat_per_100g * factor * 10) / 10,
+              matched: true,
+              matchedName: food.name,
+            };
+          }
+          
+          return {
+            item: ing.item,
+            quantity: grams,
+            calories: 0,
+            protein: 0,
+            carbs: 0,
+            fat: 0,
+            matched: false,
+          };
+        })
+      );
+      
+      return results;
     } finally {
       setIsLoading(false);
     }
-  }, [isLoaded, isLoading]);
-
-  // Load on mount
-  useEffect(() => {
-    loadTable();
-  }, [loadTable]);
-
-  // Calculate calories for a list of ingredients
-  const calculateIngredientCalories = useCallback((
-    ingredients: IngredientWithCalories[]
-  ): IngredientCaloriesResult[] => {
-    if (!isLoaded || nutritionalTable.length === 0) {
-      return ingredients.map(ing => ({
-        item: ing.item,
-        quantity: parseQuantityToGrams(ing.quantity, ing.unit),
-        calories: 0,
-        protein: 0,
-        carbs: 0,
-        fat: 0,
-        matched: false,
-      }));
-    }
-    
-    return ingredients.map(ing => {
-      const grams = parseQuantityToGrams(ing.quantity, ing.unit);
-      const result = lookupFood(nutritionalTable, ing.item, grams);
-      
-      return {
-        item: ing.item,
-        quantity: grams,
-        calories: result.calories,
-        protein: result.protein,
-        carbs: result.carbs,
-        fat: result.fat,
-        matched: result.matched,
-        matchedName: result.matchedName,
-      };
-    });
-  }, [isLoaded, nutritionalTable]);
+  }, [searchFoodInDatabase]);
 
   return {
     calculateIngredientCalories,
     isLoading,
-    isLoaded,
-    tableSize: nutritionalTable.length,
+    isLoaded: true, // Sempre pronto para buscar
+    tableSize: 10000, // Aproximado
   };
 }

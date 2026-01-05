@@ -185,66 +185,96 @@ function calculateOptionCalories(foods: FoodItem[]): number {
   }, 0);
 }
 
-// ============= VALIDAÇÃO ESTRUTURAL: Coerência Título-Ingredientes =============
-// Lista EXPANDIDA de ingredientes-chave que devem aparecer no título e nos foods
+// ============= STRUCTURAL VALIDATION: Title-Ingredients Coherence =============
+// EXPANDED list of key ingredients that must appear in title and foods
 const TITLE_FOOD_KEYWORDS = [
-  // Proteínas
-  { titleKey: 'frango', foodKeys: ['frango', 'peito de frango', 'coxa'] },
-  { titleKey: 'carne', foodKeys: ['carne', 'bife', 'file', 'filé'] },
-  { titleKey: 'peixe', foodKeys: ['peixe', 'tilapia', 'atum', 'sardinha'] },
+  // Proteins
+  { titleKey: 'frango', foodKeys: ['frango', 'peito de frango', 'coxa', 'chicken'] },
+  { titleKey: 'chicken', foodKeys: ['chicken', 'frango', 'peito de frango'] },
+  { titleKey: 'carne', foodKeys: ['carne', 'bife', 'file', 'filé', 'beef'] },
+  { titleKey: 'beef', foodKeys: ['beef', 'carne', 'bife'] },
+  { titleKey: 'peixe', foodKeys: ['peixe', 'tilapia', 'atum', 'sardinha', 'fish'] },
+  { titleKey: 'fish', foodKeys: ['fish', 'peixe', 'tilapia', 'tuna', 'atum'] },
   { titleKey: 'salmao', foodKeys: ['salmao', 'salmão', 'salmon'] },
-  { titleKey: 'ovo', foodKeys: ['ovo', 'ovos', 'clara', 'mexidos'] },
+  { titleKey: 'salmon', foodKeys: ['salmon', 'salmao', 'salmão'] },
+  { titleKey: 'ovo', foodKeys: ['ovo', 'ovos', 'clara', 'mexidos', 'egg'] },
+  { titleKey: 'egg', foodKeys: ['egg', 'eggs', 'ovo', 'ovos'] },
   { titleKey: 'tofu', foodKeys: ['tofu'] },
   
-  // Carboidratos - PÃES E TORRADAS (crítico para café da manhã)
-  { titleKey: 'pao integral', foodKeys: ['pao integral', 'pão integral', 'fatia de pao', 'fatia de pão'] },
-  { titleKey: 'pao', foodKeys: ['pao', 'pão', 'fatia de pao', 'fatia de pão', 'pao frances', 'pão francês', 'bisnaguinha'] },
+  // Carbs - BREAD AND TOAST (critical for breakfast)
+  { titleKey: 'pao integral', foodKeys: ['pao integral', 'pão integral', 'fatia de pao', 'fatia de pão', 'whole wheat bread'] },
+  { titleKey: 'pao', foodKeys: ['pao', 'pão', 'fatia de pao', 'fatia de pão', 'pao frances', 'pão francês', 'bisnaguinha', 'bread'] },
+  { titleKey: 'bread', foodKeys: ['bread', 'pao', 'pão', 'toast', 'torrada'] },
   { titleKey: 'torrada', foodKeys: ['torrada', 'toast', 'pao torrado', 'pão torrado'] },
-  { titleKey: 'feijao', foodKeys: ['feijao', 'feijão'] },
-  { titleKey: 'arroz', foodKeys: ['arroz'] },
+  { titleKey: 'toast', foodKeys: ['toast', 'torrada', 'toasted bread'] },
+  { titleKey: 'feijao', foodKeys: ['feijao', 'feijão', 'beans'] },
+  { titleKey: 'beans', foodKeys: ['beans', 'feijao', 'feijão'] },
+  { titleKey: 'arroz', foodKeys: ['arroz', 'rice'] },
+  { titleKey: 'rice', foodKeys: ['rice', 'arroz'] },
   { titleKey: 'quinoa', foodKeys: ['quinoa', 'quinua'] },
-  { titleKey: 'grao de bico', foodKeys: ['grao de bico', 'grão de bico', 'grao-de-bico', 'grão-de-bico', 'homus', 'hummus', 'farinha de grao'] },
-  { titleKey: 'aveia', foodKeys: ['aveia', 'flocos de aveia'] },
+  { titleKey: 'grao de bico', foodKeys: ['grao de bico', 'grão de bico', 'grao-de-bico', 'grão-de-bico', 'homus', 'hummus', 'farinha de grao', 'chickpea'] },
+  { titleKey: 'chickpea', foodKeys: ['chickpea', 'grao de bico', 'grão de bico', 'hummus'] },
+  { titleKey: 'aveia', foodKeys: ['aveia', 'flocos de aveia', 'oats', 'oatmeal'] },
+  { titleKey: 'oats', foodKeys: ['oats', 'oatmeal', 'aveia'] },
   { titleKey: 'tapioca', foodKeys: ['tapioca', 'goma de tapioca'] },
-  { titleKey: 'batata', foodKeys: ['batata', 'batata doce', 'batata-doce'] },
+  { titleKey: 'batata', foodKeys: ['batata', 'batata doce', 'batata-doce', 'potato', 'sweet potato'] },
+  { titleKey: 'potato', foodKeys: ['potato', 'batata', 'sweet potato'] },
   
-  // Laticínios
-  { titleKey: 'queijo', foodKeys: ['queijo'] },
+  // Dairy
+  { titleKey: 'queijo', foodKeys: ['queijo', 'cheese'] },
+  { titleKey: 'cheese', foodKeys: ['cheese', 'queijo'] },
   { titleKey: 'iogurte', foodKeys: ['iogurte', 'yogurt'] },
-  { titleKey: 'leite', foodKeys: ['leite', 'leite de coco', 'leite de amendoas', 'leite de aveia'] },
+  { titleKey: 'yogurt', foodKeys: ['yogurt', 'iogurte'] },
+  { titleKey: 'leite', foodKeys: ['leite', 'leite de coco', 'leite de amendoas', 'leite de aveia', 'milk'] },
+  { titleKey: 'milk', foodKeys: ['milk', 'leite'] },
   
-  // Bebidas importantes
-  { titleKey: 'suco', foodKeys: ['suco', 'suco de', 'copo de suco'] },
-  { titleKey: 'cafe', foodKeys: ['cafe', 'café', 'cafezinho'] },
+  // Important beverages
+  { titleKey: 'suco', foodKeys: ['suco', 'suco de', 'copo de suco', 'juice'] },
+  { titleKey: 'juice', foodKeys: ['juice', 'suco'] },
+  { titleKey: 'cafe', foodKeys: ['cafe', 'café', 'cafezinho', 'coffee'] },
+  { titleKey: 'coffee', foodKeys: ['coffee', 'cafe', 'café'] },
   
-  // Preparações compostas
+  // Composite preparations
   { titleKey: 'crepioca', foodKeys: ['crepioca', 'tapioca', 'goma de tapioca', 'grao de bico', 'farinha de grao'] },
-  { titleKey: 'panqueca', foodKeys: ['panqueca', 'massa de panqueca', 'farinha', 'aveia'] },
-  { titleKey: 'omelete', foodKeys: ['omelete', 'ovo', 'ovos', 'clara'] },
+  { titleKey: 'panqueca', foodKeys: ['panqueca', 'massa de panqueca', 'farinha', 'aveia', 'pancake'] },
+  { titleKey: 'pancake', foodKeys: ['pancake', 'panqueca'] },
+  { titleKey: 'omelete', foodKeys: ['omelete', 'ovo', 'ovos', 'clara', 'omelet', 'omelette'] },
+  { titleKey: 'omelet', foodKeys: ['omelet', 'omelette', 'omelete', 'egg', 'eggs'] },
   { titleKey: 'wrap', foodKeys: ['wrap', 'tortilla', 'tortilha'] },
-  { titleKey: 'sanduiche', foodKeys: ['sanduiche', 'sanduíche', 'pao', 'pão'] },
+  { titleKey: 'sanduiche', foodKeys: ['sanduiche', 'sanduíche', 'pao', 'pão', 'sandwich'] },
+  { titleKey: 'sandwich', foodKeys: ['sandwich', 'sanduiche', 'bread'] },
   
-  // Sopas e preparações que PRECISAM do ingrediente principal
-  { titleKey: 'sopa', foodKeys: ['sopa', 'caldo', 'abobora', 'abóbora', 'legume', 'frango', 'carne', 'feijao', 'lentilha', 'ervilha'] },
-  { titleKey: 'creme', foodKeys: ['creme', 'abobora', 'abóbora', 'legume', 'milho', 'espinafre', 'mandioquinha'] },
-  { titleKey: 'pure', foodKeys: ['pure', 'purê', 'batata', 'mandioca', 'mandioquinha', 'abobora'] },
-  { titleKey: 'vitamina', foodKeys: ['vitamina', 'banana', 'morango', 'mamao', 'manga', 'leite', 'iogurte'] },
-  { titleKey: 'mingau', foodKeys: ['mingau', 'aveia', 'tapioca', 'fuba', 'maizena'] },
-  { titleKey: 'salada', foodKeys: ['salada', 'alface', 'rucula', 'tomate', 'pepino', 'folha', 'verdura', 'legume'] },
+  // Soups and preparations that NEED the main ingredient
+  { titleKey: 'sopa', foodKeys: ['sopa', 'caldo', 'abobora', 'abóbora', 'legume', 'frango', 'carne', 'feijao', 'lentilha', 'ervilha', 'soup'] },
+  { titleKey: 'soup', foodKeys: ['soup', 'sopa', 'broth'] },
+  { titleKey: 'creme', foodKeys: ['creme', 'abobora', 'abóbora', 'legume', 'milho', 'espinafre', 'mandioquinha', 'cream'] },
+  { titleKey: 'pure', foodKeys: ['pure', 'purê', 'batata', 'mandioca', 'mandioquinha', 'abobora', 'mash', 'puree'] },
+  { titleKey: 'vitamina', foodKeys: ['vitamina', 'banana', 'morango', 'mamao', 'manga', 'leite', 'iogurte', 'smoothie'] },
   { titleKey: 'smoothie', foodKeys: ['smoothie', 'vitamina', 'banana', 'morango', 'leite'] },
-  { titleKey: 'pudim', foodKeys: ['pudim', 'chia', 'leite', 'leite de coco'] },
+  { titleKey: 'mingau', foodKeys: ['mingau', 'aveia', 'tapioca', 'fuba', 'maizena', 'porridge'] },
+  { titleKey: 'porridge', foodKeys: ['porridge', 'mingau', 'oats'] },
+  { titleKey: 'salada', foodKeys: ['salada', 'alface', 'rucula', 'tomate', 'pepino', 'folha', 'verdura', 'legume', 'salad'] },
+  { titleKey: 'salad', foodKeys: ['salad', 'salada', 'lettuce', 'greens'] },
+  { titleKey: 'pudim', foodKeys: ['pudim', 'chia', 'leite', 'leite de coco', 'pudding'] },
+  { titleKey: 'pudding', foodKeys: ['pudding', 'pudim'] },
   
-  // Preparações com ingredientes específicos
-  { titleKey: 'abobora', foodKeys: ['abobora', 'abóbora'] },
-  { titleKey: 'gengibre', foodKeys: ['gengibre'] },
-  { titleKey: 'leite de coco', foodKeys: ['leite de coco', 'coco'] },
-  { titleKey: 'chia', foodKeys: ['chia', 'semente de chia'] },
+  // Preparations with specific ingredients
+  { titleKey: 'abobora', foodKeys: ['abobora', 'abóbora', 'pumpkin', 'squash'] },
+  { titleKey: 'pumpkin', foodKeys: ['pumpkin', 'squash', 'abobora', 'abóbora'] },
+  { titleKey: 'gengibre', foodKeys: ['gengibre', 'ginger'] },
+  { titleKey: 'ginger', foodKeys: ['ginger', 'gengibre'] },
+  { titleKey: 'leite de coco', foodKeys: ['leite de coco', 'coco', 'coconut milk'] },
+  { titleKey: 'coconut milk', foodKeys: ['coconut milk', 'leite de coco'] },
+  { titleKey: 'chia', foodKeys: ['chia', 'semente de chia', 'chia seed'] },
   
-  // Frutas importantes quando mencionadas no título
+  // Important fruits when mentioned in title
   { titleKey: 'banana', foodKeys: ['banana'] },
-  { titleKey: 'mamao', foodKeys: ['mamao', 'mamão', 'papaia'] },
-  { titleKey: 'laranja', foodKeys: ['laranja', 'suco de laranja'] },
-  { titleKey: 'morango', foodKeys: ['morango', 'morangos'] },
+  { titleKey: 'mamao', foodKeys: ['mamao', 'mamão', 'papaia', 'papaya'] },
+  { titleKey: 'papaya', foodKeys: ['papaya', 'mamao', 'mamão', 'papaia'] },
+  { titleKey: 'laranja', foodKeys: ['laranja', 'suco de laranja', 'orange'] },
+  { titleKey: 'orange', foodKeys: ['orange', 'laranja', 'orange juice'] },
+  { titleKey: 'morango', foodKeys: ['morango', 'morangos', 'strawberry', 'strawberries'] },
+  { titleKey: 'strawberry', foodKeys: ['strawberry', 'strawberries', 'morango'] },
 ];
 
 function validateTitleIngredientCoherence(
@@ -267,7 +297,7 @@ function validateTitleIngredientCoherence(
   if (missingIngredients.length > 0) {
     return { 
       isCoherent: false, 
-      issue: `Título menciona [${missingIngredients.join(', ')}] mas não estão nos ingredientes`,
+      issue: `Title mentions [${missingIngredients.join(', ')}] but they are not in ingredients`,
       missingIngredients,
     };
   }
@@ -275,34 +305,43 @@ function validateTitleIngredientCoherence(
   return { isCoherent: true, missingIngredients: [] };
 }
 
-// ============= GERAR TÍTULO BASEADO NOS INGREDIENTES REAIS =============
+// ============= GENERATE TITLE BASED ON ACTUAL INGREDIENTS =============
 function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
-  if (foods.length === 0) return 'Refeição';
+  if (foods.length === 0) return 'Meal';
   
-  // Encontrar ingredientes principais (excluindo bebidas e frutas)
+  // Find main ingredients (excluding beverages and fruits)
   const mainIngredients: string[] = [];
   const sideIngredients: string[] = [];
   
   for (const food of foods) {
     const normalized = normalizeText(food.name);
     
-    // Ignorar bebidas simples
-    if (normalized.includes('cha') || normalized.includes('cafe') || normalized.includes('agua')) {
+    // Ignore simple beverages
+    if (normalized.includes('cha') || normalized.includes('cafe') || normalized.includes('agua') ||
+        normalized.includes('tea') || normalized.includes('coffee') || normalized.includes('water')) {
       continue;
     }
     
-    // Classificar como principal ou acompanhamento
+    // Classify as main or side ingredient
     const isMainIngredient = 
       normalized.includes('frango') || normalized.includes('carne') || normalized.includes('peixe') ||
-      normalized.includes('tofu') || normalized.includes('ovo') || normalized.includes('omelete') ||
-      normalized.includes('hamburguer') || normalized.includes('salmao') || normalized.includes('atum') ||
-      normalized.includes('feijao') || normalized.includes('wrap') || normalized.includes('sanduiche') ||
-      normalized.includes('espaguete') || normalized.includes('macarrao') || normalized.includes('mingau') ||
-      normalized.includes('iogurte') || normalized.includes('tapioca') || normalized.includes('crepioca');
+      normalized.includes('chicken') || normalized.includes('beef') || normalized.includes('fish') ||
+      normalized.includes('tofu') || normalized.includes('ovo') || normalized.includes('egg') ||
+      normalized.includes('omelete') || normalized.includes('omelet') ||
+      normalized.includes('hamburguer') || normalized.includes('burger') ||
+      normalized.includes('salmao') || normalized.includes('salmon') ||
+      normalized.includes('atum') || normalized.includes('tuna') ||
+      normalized.includes('feijao') || normalized.includes('beans') ||
+      normalized.includes('wrap') || normalized.includes('sanduiche') || normalized.includes('sandwich') ||
+      normalized.includes('espaguete') || normalized.includes('spaghetti') ||
+      normalized.includes('macarrao') || normalized.includes('pasta') ||
+      normalized.includes('mingau') || normalized.includes('porridge') ||
+      normalized.includes('iogurte') || normalized.includes('yogurt') ||
+      normalized.includes('tapioca') || normalized.includes('crepioca');
     
-    // Extrair nome simplificado (primeira parte significativa)
+    // Extract simplified name (first significant part)
     const simpleName = food.name
-      .replace(/^\d+\s*(unidade[s]?|porcao|porcoes|colher[es]?\s*(de\s*sopa)?|fatia[s]?|copo[s]?|xicara[s]?)\s*(de\s*)?/gi, '')
+      .replace(/^\d+\s*(unidade[s]?|porcao|porcoes|colher[es]?\s*(de\s*sopa)?|fatia[s]?|copo[s]?|xicara[s]?|piece[s]?|serving[s]?|slice[s]?|cup[s]?)\s*(de\s*|of\s*)?/gi, '')
       .replace(/\s*\(\d+g\)\s*$/g, '')
       .replace(/^\s*(1\s+)?/g, '')
       .trim();
@@ -316,21 +355,21 @@ function generateTitleFromFoods(foods: FoodItem[], mealType: string): string {
     }
   }
   
-  // Construir título
+  // Build title
   if (mainIngredients.length > 0) {
-    const main = mainIngredients.slice(0, 2).join(' com ');
+    const main = mainIngredients.slice(0, 2).join(' with ');
     if (sideIngredients.length > 0) {
-      return `${main} e ${sideIngredients[0]}`;
+      return `${main} and ${sideIngredients[0]}`;
     }
     return main;
   }
   
-  // Fallback: usar primeiros 2 ingredientes
+  // Fallback: use first 2 ingredients
   if (sideIngredients.length > 0) {
-    return sideIngredients.slice(0, 2).join(' com ');
+    return sideIngredients.slice(0, 2).join(' with ');
   }
   
-  return foods[0]?.name?.substring(0, 50) || 'Refeição';
+  return foods[0]?.name?.substring(0, 50) || 'Meal';
 }
 
 // ============= STOP WORDS - Verbos e palavras comuns que NÃO são ingredientes =============
@@ -635,43 +674,53 @@ function validateMealPlan(
           violations.push({
             meal: meal.label,
             food: foodName,
-            reason: validation.reason || 'Restrição violada',
+            reason: validation.reason || 'Restriction violated',
             restriction: validation.restriction || 'unknown',
           });
         }
       }
       
-      // Validação 2: Coerência título-ingredientes - ADICIONA INGREDIENTES FALTANTES
+      // Validation 2: Title-ingredient coherence - ADDS MISSING INGREDIENTS OR FIXES TITLE
       const coherenceCheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
       let finalTitle = option.title;
       
       if (!coherenceCheck.isCoherent) {
-        logStep(`⚠️ INCOERÊNCIA TÍTULO-INGREDIENTES DETECTADA`, {
+        logStep(`⚠️ TITLE-INGREDIENT INCOHERENCE DETECTED`, {
           originalTitle: option.title,
           issue: coherenceCheck.issue,
           missingIngredients: coherenceCheck.missingIngredients,
           foods: cleanedFoods.map(f => f.name),
         });
         
-        // CORREÇÃO v2: Adicionar ingredientes faltantes aos foods com porções padrão
-        // REGRA: Não adicionar categoria que já existe (ex: não adicionar pão se já tem pão)
+        // CORRECTION v3: Add missing ingredients OR fix title
+        // RULE: Don't add category that already exists (e.g., don't add bread if already has bread)
         const defaultPortions: Record<string, { name: string; grams: number; category: string }> = {
-          'pao integral': { name: '1 fatia de pão integral', grams: 35, category: 'pao' },
-          'pao': { name: '1 pão francês', grams: 50, category: 'pao' },
-          'torrada': { name: '2 torradas integrais', grams: 30, category: 'pao' },
-          'suco': { name: '1 copo de suco natural', grams: 200, category: 'bebida' },
-          'cafe': { name: 'Café sem açúcar', grams: 100, category: 'bebida' },
-          'banana': { name: 'Banana', grams: 100, category: 'fruta' },
-          'mamao': { name: 'Mamão papaia', grams: 150, category: 'fruta' },
-          'laranja': { name: 'Suco de laranja natural', grams: 200, category: 'bebida' },
-          'morango': { name: 'Morangos', grams: 80, category: 'fruta' },
-          'queijo': { name: 'Queijo branco', grams: 30, category: 'queijo' },
-          'iogurte': { name: 'Iogurte natural', grams: 150, category: 'laticinio' },
-          'aveia': { name: '2 colheres de aveia', grams: 30, category: 'cereal' },
-          'chia': { name: '1 colher de chia', grams: 10, category: 'semente' },
+          'pao integral': { name: 'Whole wheat bread slice', grams: 35, category: 'bread' },
+          'pao': { name: 'French bread', grams: 50, category: 'bread' },
+          'bread': { name: 'Bread slice', grams: 35, category: 'bread' },
+          'torrada': { name: '2 whole wheat toasts', grams: 30, category: 'bread' },
+          'toast': { name: '2 toasts', grams: 30, category: 'bread' },
+          'suco': { name: 'Natural juice', grams: 200, category: 'beverage' },
+          'juice': { name: 'Natural juice', grams: 200, category: 'beverage' },
+          'cafe': { name: 'Coffee (no sugar)', grams: 100, category: 'beverage' },
+          'coffee': { name: 'Coffee', grams: 100, category: 'beverage' },
+          'banana': { name: 'Banana', grams: 100, category: 'fruit' },
+          'mamao': { name: 'Papaya', grams: 150, category: 'fruit' },
+          'papaya': { name: 'Papaya', grams: 150, category: 'fruit' },
+          'laranja': { name: 'Orange juice', grams: 200, category: 'beverage' },
+          'orange': { name: 'Orange', grams: 150, category: 'fruit' },
+          'morango': { name: 'Strawberries', grams: 80, category: 'fruit' },
+          'strawberry': { name: 'Strawberries', grams: 80, category: 'fruit' },
+          'queijo': { name: 'White cheese', grams: 30, category: 'cheese' },
+          'cheese': { name: 'Cheese', grams: 30, category: 'cheese' },
+          'iogurte': { name: 'Natural yogurt', grams: 150, category: 'dairy' },
+          'yogurt': { name: 'Natural yogurt', grams: 150, category: 'dairy' },
+          'aveia': { name: '2 tbsp oats', grams: 30, category: 'cereal' },
+          'oats': { name: '2 tbsp oats', grams: 30, category: 'cereal' },
+          'chia': { name: '1 tbsp chia seeds', grams: 10, category: 'seed' },
         };
         
-        // Detectar categorias já presentes nos foods
+        // Detect categories already present in foods
         const categoriesPresent = new Set<string>();
         for (const food of cleanedFoods) {
           const foodNameLower = normalizeText(food.name);
@@ -680,39 +729,44 @@ function validateMealPlan(
               categoriesPresent.add(data.category);
             }
           }
-          // Detectar categorias por keywords comuns
-          if (foodNameLower.includes('pao') || foodNameLower.includes('torrada') || foodNameLower.includes('baguete')) {
-            categoriesPresent.add('pao');
+          // Detect categories by common keywords
+          if (foodNameLower.includes('pao') || foodNameLower.includes('bread') || foodNameLower.includes('torrada') || foodNameLower.includes('toast') || foodNameLower.includes('baguete')) {
+            categoriesPresent.add('bread');
           }
-          if (foodNameLower.includes('cafe') || foodNameLower.includes('suco') || foodNameLower.includes('cha') || foodNameLower.includes('leite')) {
-            categoriesPresent.add('bebida');
+          if (foodNameLower.includes('cafe') || foodNameLower.includes('coffee') || foodNameLower.includes('suco') || foodNameLower.includes('juice') || foodNameLower.includes('cha') || foodNameLower.includes('tea') || foodNameLower.includes('leite') || foodNameLower.includes('milk')) {
+            categoriesPresent.add('beverage');
+          }
+          if (foodNameLower.includes('banana') || foodNameLower.includes('mamao') || foodNameLower.includes('papaya') || foodNameLower.includes('morango') || foodNameLower.includes('strawberry') || foodNameLower.includes('laranja') || foodNameLower.includes('orange') || foodNameLower.includes('maca') || foodNameLower.includes('apple')) {
+            categoriesPresent.add('fruit');
           }
         }
         
+        let ingredientsAdded = 0;
         for (const missing of coherenceCheck.missingIngredients) {
           const portion = defaultPortions[missing];
           if (portion) {
-            // NOVA REGRA: Não adicionar se categoria já existe
+            // NEW RULE: Don't add if category already exists
             if (categoriesPresent.has(portion.category)) {
-              logStep(`⚠️ CATEGORIA DUPLICADA EVITADA: "${missing}" (${portion.category}) - já existe na refeição`);
+              logStep(`⚠️ DUPLICATE CATEGORY AVOIDED: "${missing}" (${portion.category}) - already in meal`);
               continue;
             }
             cleanedFoods.push({ name: portion.name, grams: portion.grams });
-            categoriesPresent.add(portion.category); // Marcar como presente
-            logStep(`🔧 INGREDIENTE ADICIONADO: "${missing}" → "${portion.name}" (${portion.grams}g)`);
+            categoriesPresent.add(portion.category); // Mark as present
+            ingredientsAdded++;
+            logStep(`🔧 INGREDIENT ADDED: "${missing}" → "${portion.name}" (${portion.grams}g)`);
           } else {
-            // Se não temos porção padrão, corrigir o título removendo a menção
-            logStep(`⚠️ SEM PORÇÃO PADRÃO para "${missing}" - será removido do título`);
+            // If we don't have default portion, will fix title instead
+            logStep(`⚠️ NO DEFAULT PORTION for "${missing}" - will be removed from title`);
           }
         }
         
-        // Revalidar após adicionar ingredientes
+        // Revalidate after adding ingredients
         const recheck = validateTitleIngredientCoherence(option.title, cleanedFoods);
         if (!recheck.isCoherent) {
-          // Ainda incoerente: gerar título baseado nos ingredientes reais
+          // Still incoherent: generate title based on actual ingredients
           const correctedTitle = generateTitleFromFoods(cleanedFoods, meal.meal_type);
           finalTitle = correctedTitle;
-          logStep(`🔧 TÍTULO CORRIGIDO: "${option.title}" → "${correctedTitle}"`);
+          logStep(`🔧 TITLE CORRECTED: "${option.title}" → "${correctedTitle}"`);
         }
       }
       

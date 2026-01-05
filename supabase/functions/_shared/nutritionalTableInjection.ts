@@ -234,13 +234,20 @@ const GENERIC_WORDS_TO_IGNORE = [
 const BEVERAGE_KEYWORDS = [
   'cha', 'tea', 'te', 'cafe', 'coffee', 'agua', 'water', 
   'suco', 'juice', 'leite', 'milk', 'bebida', 'infusao',
-  'camomila', 'hortela', 'mate', 'refrigerante', 'soda'
+  'camomila', 'hortela', 'mate', 'refrigerante', 'soda', 'hibisco'
 ];
 
 // Categorias de alimentos sólidos para validação
 const SOLID_FOOD_KEYWORDS = [
   'batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe',
   'pao', 'massa', 'ovo', 'queijo', 'legume', 'vegetal', 'fruta'
+];
+
+// Termos que indicam cortes de carne (falsos positivos para "chá")
+// "chã de dentro" e "chã de fora" são cortes bovinos que normalizam para "cha"
+const MEAT_CUT_INDICATORS = [
+  'coxao', 'dentro', 'fora', 'boi', 'bovina', 'bovino', 
+  'polpa', 'alcatra', 'patinho', 'gordura', 'charque'
 ];
 
 /**
@@ -253,10 +260,50 @@ function isBeverageTerm(text: string): boolean {
 
 /**
  * Detecta se o alimento é um sólido (não bebida)
+ * Também detecta cortes de carne que podem fazer falso match com "chá"
  */
 function isSolidFood(text: string): boolean {
   const normalized = normalizeForLookup(text);
-  return SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw));
+  
+  // Verificar palavras-chave de sólidos
+  if (SOLID_FOOD_KEYWORDS.some(kw => normalized.includes(kw))) {
+    return true;
+  }
+  
+  // Detectar cortes de carne que contém "chã" (normaliza para "cha")
+  // Ex: "coxão mole (chã de dentro)" - isso é carne, não chá!
+  if (MEAT_CUT_INDICATORS.some(kw => normalized.includes(kw))) {
+    return true;
+  }
+  
+  return false;
+}
+
+/**
+ * Validação de sanidade: bebidas de baixa caloria não têm proteína alta
+ * Chá de camomila tem ~0g proteína, não 30g!
+ */
+function isNutritionallyCompatible(
+  searchTerm: string,
+  foodPer100g: { cal: number; prot: number }
+): boolean {
+  const isBeverageSearch = isBeverageTerm(searchTerm);
+  
+  // Bebidas simples (chá, café, água) não devem ter mais que 5g proteína/100ml
+  if (isBeverageSearch) {
+    // Se tem mais de 10g proteína por 100g, definitivamente não é chá/café/água
+    if (foodPer100g.prot > 10) {
+      return false;
+    }
+    // Chás e cafés puros têm no máximo ~10 kcal/100ml
+    const lowCalBeverages = ['cha', 'cafe', 'agua', 'infusao', 'camomila', 'hortela', 'hibisco', 'mate'];
+    const isLowCalBeverage = lowCalBeverages.some(kw => normalizeForLookup(searchTerm).includes(kw));
+    if (isLowCalBeverage && foodPer100g.cal > 20) {
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 /**
@@ -323,6 +370,7 @@ export interface LookupResult {
 /**
  * Busca um alimento na tabela nutricional em memória.
  * Retorna macros calculados para a gramagem especificada.
+ * Inclui validação de categoria E validação nutricional para evitar falsos positivos.
  */
 export function lookupFromNutritionalTable(
   table: NutritionalFood[],
@@ -342,55 +390,55 @@ export function lookupFromNutritionalTable(
     normalized: normalizeForLookup(f.name),
   }));
   
-  // FASE 1: Match exato
+  // Helper para validar match
+  const isValidMatch = (f: { name: string; normalized: string; cal: number; prot: number }) => {
+    // Verificar compatibilidade de categoria
+    if (isBeverageSearch && isSolidFood(f.name)) {
+      return false;
+    }
+    // Verificar compatibilidade nutricional
+    if (!isNutritionallyCompatible(foodName, { cal: f.cal, prot: f.prot })) {
+      return false;
+    }
+    return true;
+  };
+  
+  // Helper para construir resultado
+  const buildResult = (food: typeof normalizedTable[0], confidence: number): LookupResult => {
+    const factor = grams / 100;
+    return {
+      found: true,
+      macros: {
+        calories: Math.round(food.cal * factor),
+        protein: Math.round(food.prot * factor * 10) / 10,
+        carbs: Math.round(food.carb * factor * 10) / 10,
+        fat: Math.round(food.fat * factor * 10) / 10,
+      },
+      matchedName: food.name,
+      confidence,
+    };
+  };
+  
+  // FASE 1: Match exato (com validação)
   for (const term of searchTerms) {
-    const exactMatch = normalizedTable.find(f => f.normalized === term);
+    const exactMatch = normalizedTable.find(f => f.normalized === term && isValidMatch(f));
     if (exactMatch) {
-      const factor = grams / 100;
-      return {
-        found: true,
-        macros: {
-          calories: Math.round(exactMatch.cal * factor),
-          protein: Math.round(exactMatch.prot * factor * 10) / 10,
-          carbs: Math.round(exactMatch.carb * factor * 10) / 10,
-          fat: Math.round(exactMatch.fat * factor * 10) / 10,
-        },
-        matchedName: exactMatch.name,
-        confidence: 100,
-      };
+      return buildResult(exactMatch, 100);
     }
   }
   
-  // FASE 2: Match parcial (contém) com validação de categoria
+  // FASE 2: Match parcial (contém) com validação de categoria E nutricional
   for (const term of searchTerms) {
     if (term.length < 3) continue;
     
     const partialMatch = normalizedTable.find(f => {
       const matches = f.normalized.includes(term) || term.includes(f.normalized);
       if (!matches) return false;
-      
-      // Validar compatibilidade de categoria
-      // Se busca é bebida, resultado não pode ser sólido
-      if (isBeverageSearch && isSolidFood(f.name)) {
-        return false;
-      }
-      
-      return true;
+      return isValidMatch(f);
     });
     
     if (partialMatch) {
-      const factor = grams / 100;
-      return {
-        found: true,
-        macros: {
-          calories: Math.round(partialMatch.cal * factor),
-          protein: Math.round(partialMatch.prot * factor * 10) / 10,
-          carbs: Math.round(partialMatch.carb * factor * 10) / 10,
-          fat: Math.round(partialMatch.fat * factor * 10) / 10,
-        },
-        matchedName: partialMatch.name,
-        confidence: 90,
-      };
+      return buildResult(partialMatch, 90);
     }
   }
   
@@ -401,28 +449,35 @@ export function lookupFromNutritionalTable(
   
   for (const word of words) {
     const wordMatch = normalizedTable.find(f => {
-      // Verificar compatibilidade de categoria
-      if (isBeverageSearch && isSolidFood(f.name)) {
+      // Verificar validação completa
+      if (!isValidMatch(f)) {
         return false;
       }
-      
       return f.normalized.split(' ').some(fw => fw === word || fw.includes(word));
     });
     
     if (wordMatch) {
-      const factor = grams / 100;
-      return {
-        found: true,
-        macros: {
-          calories: Math.round(wordMatch.cal * factor),
-          protein: Math.round(wordMatch.prot * factor * 10) / 10,
-          carbs: Math.round(wordMatch.carb * factor * 10) / 10,
-          fat: Math.round(wordMatch.fat * factor * 10) / 10,
-        },
-        matchedName: wordMatch.name,
-        confidence: 80,
-      };
+      return buildResult(wordMatch, 80);
     }
+  }
+  
+  // FALLBACK para bebidas de baixa caloria: retornar valor padrão
+  const lowCalBeverages = ['cha', 'cafe', 'agua', 'infusao', 'camomila', 'hortela', 'hibisco', 'mate'];
+  const normalizedSearch = normalizeForLookup(foodName);
+  if (lowCalBeverages.some(kw => normalizedSearch.includes(kw))) {
+    const factor = grams / 100;
+    // Valor padrão para chás/cafés: 2 kcal/100ml
+    return {
+      found: true,
+      macros: {
+        calories: Math.round(2 * factor),
+        protein: 0,
+        carbs: 0,
+        fat: 0,
+      },
+      matchedName: `${foodName} (fallback)`,
+      confidence: 70,
+    };
   }
   
   return { found: false, confidence: 0 };

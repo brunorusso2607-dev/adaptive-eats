@@ -126,10 +126,14 @@ function extractBaseName(ingredientName: string): string[] {
 }
 
 // ============================================
-// PROTEÇÃO ANTI-FALSO MATCH (CATEGORIA)
+// PROTEÇÃO ANTI-FALSO MATCH (CATEGORIA + NUTRICIONAL)
 // ============================================
-const BEVERAGE_TERMS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante'];
+const BEVERAGE_TERMS = ['cha', 'cafe', 'suco', 'agua', 'leite', 'vitamina', 'smoothie', 'infusao', 'refrigerante', 'camomila', 'hortela', 'hibisco', 'mate'];
 const SOLID_FOOD_TERMS = ['batata', 'arroz', 'feijao', 'carne', 'frango', 'peixe', 'ovo', 'pao', 'bolo', 'queijo', 'macarrao'];
+
+// Termos que indicam cortes de carne (falsos positivos para "chá")
+// "chã de dentro" e "chã de fora" são cortes bovinos que normalizam para "cha"
+const MEAT_CUT_INDICATORS = ['coxao', 'dentro', 'fora', 'boi', 'bovina', 'bovino', 'polpa', 'alcatra', 'patinho', 'gordura', 'charque'];
 
 function isBeverageTerm(text: string): boolean {
   const normalized = normalizeText(text);
@@ -138,7 +142,38 @@ function isBeverageTerm(text: string): boolean {
 
 function isSolidFood(text: string): boolean {
   const normalized = normalizeText(text);
-  return SOLID_FOOD_TERMS.some(s => normalized.includes(s));
+  // Verificar palavras-chave de sólidos
+  if (SOLID_FOOD_TERMS.some(s => normalized.includes(s))) {
+    return true;
+  }
+  // Detectar cortes de carne que contém "chã" (normaliza para "cha")
+  if (MEAT_CUT_INDICATORS.some(kw => normalized.includes(kw))) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Validação nutricional: bebidas de baixa caloria não têm proteína alta
+ */
+function isNutritionallyCompatible(searchTerm: string, food: { calories_per_100g: number; protein_per_100g: number }): boolean {
+  const isBeverageSearch = isBeverageTerm(searchTerm);
+  
+  if (isBeverageSearch) {
+    // Se tem mais de 10g proteína por 100g, definitivamente não é chá/café/água
+    if (food.protein_per_100g > 10) {
+      return false;
+    }
+    // Chás e cafés puros têm no máximo ~10 kcal/100ml
+    const lowCalBeverages = ['cha', 'cafe', 'agua', 'infusao', 'camomila', 'hortela', 'hibisco', 'mate'];
+    const normalized = normalizeText(searchTerm);
+    const isLowCalBeverage = lowCalBeverages.some(kw => normalized.includes(kw));
+    if (isLowCalBeverage && food.calories_per_100g > 20) {
+      return false;
+    }
+  }
+  
+  return true;
 }
 
 /**
@@ -185,11 +220,17 @@ async function findFoodInDatabase(
         .limit(5);
       
       if (partialMatches && partialMatches.length > 0) {
-        // PROTEÇÃO: Filtrar matches com validação de categoria
+        // PROTEÇÃO: Filtrar matches com validação de categoria E nutricional
         const isBeverageSearch = isBeverageTerm(originalSearchTerm);
         const validMatches = partialMatches.filter((f: any) => {
+          // Rejeitar sólido quando busca é bebida
           if (isBeverageSearch && isSolidFood(f.name)) {
-            return false; // Rejeitar sólido quando busca é bebida
+            return false;
+          }
+          // Validação nutricional: bebidas não têm alta proteína/calorias
+          if (!isNutritionallyCompatible(originalSearchTerm, f)) {
+            logStep('Rejected by nutritional validation', { search: originalSearchTerm, matched: f.name, cal: f.calories_per_100g, prot: f.protein_per_100g });
+            return false;
           }
           return true;
         });
@@ -233,10 +274,15 @@ async function findFoodInDatabase(
       .limit(5);
     
     if (partialMatches && partialMatches.length > 0) {
-      // PROTEÇÃO: Filtrar matches com validação de categoria
+      // PROTEÇÃO: Filtrar matches com validação de categoria E nutricional
       const isBeverageSearch = isBeverageTerm(originalSearchTerm);
       const validMatches = partialMatches.filter((f: any) => {
         if (isBeverageSearch && isSolidFood(f.name)) {
+          return false;
+        }
+        // Validação nutricional
+        if (!isNutritionallyCompatible(originalSearchTerm, f)) {
+          logStep('Rejected by nutritional validation (global)', { search: originalSearchTerm, matched: f.name, cal: f.calories_per_100g, prot: f.protein_per_100g });
           return false;
         }
         return true;
@@ -472,24 +518,29 @@ async function batchFindFoodsInDatabase(
   for (const originalTerm of searchTerms) {
     const normalizedOriginal = normalizeText(originalTerm);
     
-    // Tentar match exato primeiro
-    let matched = allFoods.find((f: any) => f.name_normalized === normalizedOriginal);
+    // Tentar match exato primeiro (com validação nutricional)
+    let matched = allFoods.find((f: any) => 
+      f.name_normalized === normalizedOriginal &&
+      isNutritionallyCompatible(originalTerm, f)
+    );
     
     // Tentar match parcial - nome completo contido
     if (!matched) {
-      // Priorizar fontes do país E verificar compatibilidade de categoria
+      // Priorizar fontes do país E verificar compatibilidade de categoria E nutricional
       matched = allFoods.find((f: any) => 
         prioritySources.includes(f.source) && 
         (f.name_normalized.includes(normalizedOriginal) || normalizedOriginal.includes(f.name_normalized)) &&
-        isCategoryCompatible(originalTerm, f.name)
+        isCategoryCompatible(originalTerm, f.name) &&
+        isNutritionallyCompatible(originalTerm, f)
       );
     }
     
-    // Match parcial com qualquer fonte (mantendo validação de categoria)
+    // Match parcial com qualquer fonte (mantendo validação de categoria E nutricional)
     if (!matched) {
       matched = allFoods.find((f: any) => 
         (f.name_normalized.includes(normalizedOriginal) || normalizedOriginal.includes(f.name_normalized)) &&
-        isCategoryCompatible(originalTerm, f.name)
+        isCategoryCompatible(originalTerm, f.name) &&
+        isNutritionallyCompatible(originalTerm, f)
       );
     }
     
@@ -502,8 +553,11 @@ async function batchFindFoodsInDatabase(
       // Requer pelo menos 2 palavras significativas no match ou palavra principal > 4 caracteres
       if (words.length > 0) {
         matched = allFoods.find((f: any) => {
-          // Verificar compatibilidade de categoria ANTES de fazer match
+          // Verificar compatibilidade de categoria E nutricional ANTES de fazer match
           if (!isCategoryCompatible(originalTerm, f.name)) {
+            return false;
+          }
+          if (!isNutritionallyCompatible(originalTerm, f)) {
             return false;
           }
           

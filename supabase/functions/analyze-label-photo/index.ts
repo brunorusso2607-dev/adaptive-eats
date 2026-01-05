@@ -13,6 +13,7 @@ import {
 import {
   loadSafetyDatabase,
   normalizeUserIntolerances,
+  normalizeText,
   validateIngredient,
   validateIngredientList,
   validateFoodWithDecomposition,
@@ -997,14 +998,25 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
     // Verificar cada intolerância do usuário contra os ingredientes analisados
     for (const userIntolerance of userIntolerances) {
       // Normalizar a key usando o Global Safety Engine
-      const intoleranceKey = safetyDatabase 
-        ? (safetyDatabase.keyNormalization.get(userIntolerance.toLowerCase()) || userIntolerance.toLowerCase())
-        : userIntolerance.toLowerCase();
-      
-      // Obter ingredientes proibidos do banco de dados
-      const forbiddenIngredients: string[] = safetyDatabase 
-        ? (safetyDatabase.intoleranceMappings.get(intoleranceKey) || [])
+      // CORRIGIDO: keyNormalization retorna um ARRAY de keys, não uma string única
+      const normalizedKeys: string[] = safetyDatabase 
+        ? (safetyDatabase.keyNormalization.get(userIntolerance.toLowerCase()) || [userIntolerance.toLowerCase()])
         : [userIntolerance.toLowerCase()];
+      
+      // Obter TODOS os ingredientes proibidos de TODAS as keys expandidas
+      const forbiddenIngredients: string[] = [];
+      for (const key of normalizedKeys) {
+        const ingredients = safetyDatabase?.intoleranceMappings.get(key) || [];
+        forbiddenIngredients.push(...ingredients);
+      }
+      
+      // Se não encontrou nada, usar a própria key como fallback
+      if (forbiddenIngredients.length === 0) {
+        forbiddenIngredients.push(userIntolerance.toLowerCase());
+      }
+      
+      // Usar a primeira key para o label
+      const intoleranceKey = normalizedKeys[0];
       
       let found = false;
       let foundStatus: "seguro" | "risco_potencial" | "contem" = "seguro";
@@ -1032,16 +1044,18 @@ ${ingredientsToWatch.map(i => `• ${i}`).join("\n")}`;
       // Verificar em ingredientes_analisados (se não encontrou no nome do produto)
       if (!found && analysis.ingredientes_analisados) {
         for (const ing of analysis.ingredientes_analisados) {
-          const ingName = ing.nome?.toLowerCase() || "";
-          const ingMotivo = ing.motivo?.toLowerCase() || "";
-          const ingRestricao = ing.restricao_afetada?.toLowerCase() || "";
+          const ingName = normalizeText(ing.nome || "");
+          const ingMotivo = normalizeText(ing.motivo || "");
+          const ingRestricao = normalizeText(ing.restricao_afetada || "");
           
           // Verificar se este ingrediente corresponde à intolerância
-          const matchesIntolerance = forbiddenIngredients.some((forbidden: string) => 
-            ingName.includes(forbidden) || 
-            ingMotivo.includes(forbidden) ||
-            forbidden.includes(ingName)
-          ) || ingRestricao.includes(intoleranceKey);
+          // CORRIGIDO: Usar normalizeText para remover acentos e fazer matching consistente
+          const matchesIntolerance = forbiddenIngredients.some((forbidden: string) => {
+            const normalizedForbidden = normalizeText(forbidden);
+            return ingName.includes(normalizedForbidden) || 
+                   normalizedForbidden.includes(ingName) ||
+                   ingMotivo.includes(normalizedForbidden);
+          }) || normalizedKeys.some(key => ingRestricao.includes(normalizeText(key)));
           
           if (matchesIntolerance) {
             found = true;

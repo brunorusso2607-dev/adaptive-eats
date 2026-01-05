@@ -653,26 +653,51 @@ function validateMealPlan(
         });
         
         // CORREÇÃO v2: Adicionar ingredientes faltantes aos foods com porções padrão
+        // REGRA: Não adicionar categoria que já existe (ex: não adicionar pão se já tem pão)
+        const defaultPortions: Record<string, { name: string; grams: number; category: string }> = {
+          'pao integral': { name: '1 fatia de pão integral', grams: 35, category: 'pao' },
+          'pao': { name: '1 pão francês', grams: 50, category: 'pao' },
+          'torrada': { name: '2 torradas integrais', grams: 30, category: 'pao' },
+          'suco': { name: '1 copo de suco natural', grams: 200, category: 'bebida' },
+          'cafe': { name: 'Café sem açúcar', grams: 100, category: 'bebida' },
+          'banana': { name: 'Banana', grams: 100, category: 'fruta' },
+          'mamao': { name: 'Mamão papaia', grams: 150, category: 'fruta' },
+          'laranja': { name: 'Suco de laranja natural', grams: 200, category: 'bebida' },
+          'morango': { name: 'Morangos', grams: 80, category: 'fruta' },
+          'queijo': { name: 'Queijo branco', grams: 30, category: 'queijo' },
+          'iogurte': { name: 'Iogurte natural', grams: 150, category: 'laticinio' },
+          'aveia': { name: '2 colheres de aveia', grams: 30, category: 'cereal' },
+          'chia': { name: '1 colher de chia', grams: 10, category: 'semente' },
+        };
+        
+        // Detectar categorias já presentes nos foods
+        const categoriesPresent = new Set<string>();
+        for (const food of cleanedFoods) {
+          const foodNameLower = normalizeText(food.name);
+          for (const [key, data] of Object.entries(defaultPortions)) {
+            if (foodNameLower.includes(key) || foodNameLower.includes(data.category)) {
+              categoriesPresent.add(data.category);
+            }
+          }
+          // Detectar categorias por keywords comuns
+          if (foodNameLower.includes('pao') || foodNameLower.includes('torrada') || foodNameLower.includes('baguete')) {
+            categoriesPresent.add('pao');
+          }
+          if (foodNameLower.includes('cafe') || foodNameLower.includes('suco') || foodNameLower.includes('cha') || foodNameLower.includes('leite')) {
+            categoriesPresent.add('bebida');
+          }
+        }
+        
         for (const missing of coherenceCheck.missingIngredients) {
-          const defaultPortions: Record<string, { name: string; grams: number }> = {
-            'pao integral': { name: '1 fatia de pão integral', grams: 35 },
-            'pao': { name: '1 pão francês', grams: 50 },
-            'torrada': { name: '2 torradas integrais', grams: 30 },
-            'suco': { name: '1 copo de suco natural', grams: 200 },
-            'cafe': { name: 'Café sem açúcar', grams: 100 },
-            'banana': { name: 'Banana', grams: 100 },
-            'mamao': { name: 'Mamão papaia', grams: 150 },
-            'laranja': { name: 'Suco de laranja natural', grams: 200 },
-            'morango': { name: 'Morangos', grams: 80 },
-            'queijo': { name: 'Queijo branco', grams: 30 },
-            'iogurte': { name: 'Iogurte natural', grams: 150 },
-            'aveia': { name: '2 colheres de aveia', grams: 30 },
-            'chia': { name: '1 colher de chia', grams: 10 },
-          };
-          
           const portion = defaultPortions[missing];
           if (portion) {
-            cleanedFoods.push(portion);
+            // NOVA REGRA: Não adicionar se categoria já existe
+            if (categoriesPresent.has(portion.category)) {
+              logStep(`⚠️ CATEGORIA DUPLICADA EVITADA: "${missing}" (${portion.category}) - já existe na refeição`);
+              continue;
+            }
+            cleanedFoods.push({ name: portion.name, grams: portion.grams });
+            categoriesPresent.add(portion.category); // Marcar como presente
             logStep(`🔧 INGREDIENTE ADICIONADO: "${missing}" → "${portion.name}" (${portion.grams}g)`);
           } else {
             // Se não temos porção padrão, corrigir o título removendo a menção
@@ -715,8 +740,52 @@ function validateMealPlan(
         }
       }
       
+      // ============= VALIDAÇÃO 5: REMOVER DUPLICATAS DE CATEGORIA =============
+      // Ex: Se houver "pão integral" E "pão francês", manter apenas o primeiro
+      const CATEGORY_KEYWORDS: Record<string, string[]> = {
+        'pao': ['pao', 'pão', 'torrada', 'baguete', 'bisnaguinha', 'croissant'],
+        'arroz': ['arroz'],
+        'feijao': ['feijao', 'feijão'],
+        'proteina_frango': ['frango', 'peito de frango'],
+        'proteina_carne': ['carne', 'bife', 'patinho', 'alcatra', 'file mignon'],
+        'proteina_peixe': ['peixe', 'tilapia', 'salmao', 'atum'],
+        'ovo': ['ovo', 'ovos', 'omelete'],
+      };
+      
+      const categoryUsed = new Set<string>();
+      const deduplicatedFoods: FoodItem[] = [];
+      
+      for (const food of cleanedFoods) {
+        const foodNameLower = normalizeText(food.name);
+        let foodCategory: string | null = null;
+        
+        for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
+          for (const kw of keywords) {
+            if (foodNameLower.includes(kw)) {
+              foodCategory = category;
+              break;
+            }
+          }
+          if (foodCategory) break;
+        }
+        
+        // Se é uma categoria rastreada e já usada, remover duplicata
+        if (foodCategory && categoryUsed.has(foodCategory)) {
+          logStep(`🚫 DUPLICATA REMOVIDA: "${food.name}" - categoria "${foodCategory}" já presente`);
+          continue;
+        }
+        
+        if (foodCategory) {
+          categoryUsed.add(foodCategory);
+        }
+        deduplicatedFoods.push(food);
+      }
+      
+      // Usar a lista deduplicada
+      const finalCleanedFoods = deduplicatedFoods;
+      
       // ============= PÓS-PROCESSAMENTO: AGRUPAR INGREDIENTES SEPARADOS =============
-      const foodsForGrouping: FoodItem[] = cleanedFoods.map(f => ({
+      const foodsForGrouping: FoodItem[] = finalCleanedFoods.map(f => ({
         name: typeof f === 'string' ? f : f.name,
         grams: typeof f === 'object' && 'grams' in f ? f.grams : 100,
       }));
@@ -728,10 +797,10 @@ function validateMealPlan(
       
       if (wasGrouped) {
         logStep(`🔄 AGRUPAMENTO APLICADO em "${meal.label}"`, {
-          originalCount: cleanedFoods.length,
+          originalCount: finalCleanedFoods.length,
           groupedCount: groupedFoods.length,
           groupedTitle,
-          originalItems: cleanedFoods.map(f => typeof f === 'string' ? f : f.name),
+          originalItems: finalCleanedFoods.map(f => typeof f === 'string' ? f : f.name),
           groupedItems: groupedFoods.map(f => f.name),
         });
       }

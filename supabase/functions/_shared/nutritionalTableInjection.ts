@@ -419,7 +419,8 @@ export function lookupFromNutritionalTable(
     };
   };
   
-  // FASE 1: Match exato (com validação)
+  // FASE 1: Match exato (com validação) - ÚNICA FASE DE MATCH NO DB
+  // Match parcial foi REMOVIDO pois causava falsos positivos (chá → carne)
   for (const term of searchTerms) {
     const exactMatch = normalizedTable.find(f => f.normalized === term && isValidMatch(f));
     if (exactMatch) {
@@ -427,39 +428,9 @@ export function lookupFromNutritionalTable(
     }
   }
   
-  // FASE 2: Match parcial (contém) com validação de categoria E nutricional
-  for (const term of searchTerms) {
-    if (term.length < 3) continue;
-    
-    const partialMatch = normalizedTable.find(f => {
-      const matches = f.normalized.includes(term) || term.includes(f.normalized);
-      if (!matches) return false;
-      return isValidMatch(f);
-    });
-    
-    if (partialMatch) {
-      return buildResult(partialMatch, 90);
-    }
-  }
-  
-  // FASE 3: Match por palavra principal (MAIS RESTRITIVO - ignora palavras genéricas)
-  const words = searchTerms
-    .flatMap(t => t.split(' '))
-    .filter(w => w.length >= 4 && !GENERIC_WORDS_TO_IGNORE.includes(w));
-  
-  for (const word of words) {
-    const wordMatch = normalizedTable.find(f => {
-      // Verificar validação completa
-      if (!isValidMatch(f)) {
-        return false;
-      }
-      return f.normalized.split(' ').some(fw => fw === word || fw.includes(word));
-    });
-    
-    if (wordMatch) {
-      return buildResult(wordMatch, 80);
-    }
-  }
+  // FASE 2: REMOVIDA - Match parcial causava falsos positivos
+  // A IA já recebe a tabela nutricional injetada no prompt e sabe calcular corretamente
+  // Confiar na IA é mais seguro do que fazer match parcial arriscado
   
   // FALLBACK para bebidas de baixa caloria: retornar valor padrão
   const lowCalBeverages = ['cha', 'cafe', 'agua', 'infusao', 'camomila', 'hortela', 'hibisco', 'mate'];

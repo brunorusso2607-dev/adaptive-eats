@@ -70,7 +70,7 @@ const FALLBACK_OPTIONS: OnboardingOptionsMap = {
     { id: "33", category: "dietary_preferences", option_id: "vegan", label: "Vegana", description: "Não como nada de origem animal", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 3 },
     { id: "34", category: "dietary_preferences", option_id: "low_carb", label: "Low Carb", description: "Reduzo carboidratos", emoji: "🥩", icon_name: "beef", is_active: true, sort_order: 4 },
     { id: "35", category: "dietary_preferences", option_id: "pescatarian", label: "Pescetariana", description: "Como peixes e frutos do mar, sem carnes", emoji: "🐟", icon_name: "fish", is_active: true, sort_order: 5 },
-    { id: "36", category: "dietary_preferences", option_id: "ketogenic", label: "Cetogênica", description: "Baixo carboidrato, alta gordura", emoji: "🥑", icon_name: "flame", is_active: true, sort_order: 6 },
+    { id: "36", category: "dietary_preferences", option_id: "keto", label: "Cetogênica", description: "Baixo carboidrato, alta gordura", emoji: "🥑", icon_name: "flame", is_active: true, sort_order: 6 },
     { id: "37", category: "dietary_preferences", option_id: "flexitarian", label: "Flexitariana", description: "Vegetariana com carne ocasional", emoji: "🌱", icon_name: "leaf", is_active: true, sort_order: 7 },
   ],
   goals: [

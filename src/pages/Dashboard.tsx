@@ -148,6 +148,7 @@ export default function Dashboard() {
   const [hasMealPlan, setHasMealPlan] = useState(false);
   const [isRegeneratingPlan, setIsRegeneratingPlan] = useState(false);
   const [mealPlanKey, setMealPlanKey] = useState(0); // Key to force MealPlanSection remount
+  const [shouldAutoSelectPlan, setShouldAutoSelectPlan] = useState(false); // Auto-navigate to calendar after plan creation
   const [showWeightUpdateModal, setShowWeightUpdateModal] = useState(false);
   const [showWeightHistory, setShowWeightHistory] = useState(false);
   const [mobileActiveTab, setMobileActiveTab] = useState<MobileNavTab>("home");
@@ -799,6 +800,8 @@ export default function Dashboard() {
                   setHasMealPlan(false);
                   refetchPendingMeals();
                 }}
+                autoSelectLatestPlan={shouldAutoSelectPlan}
+                onAutoSelectComplete={() => setShouldAutoSelectPlan(false)}
               />
             </Suspense>
           ) : isSubscribed ? (
@@ -890,6 +893,7 @@ export default function Dashboard() {
                     setHasMealPlan(true);
                     setMealPlanKey(prev => prev + 1);
                     refetchPendingMeals();
+                    setShouldAutoSelectPlan(true); // Trigger auto-selection
                     setShowMealPlan(true);
                     setMobileActiveTab("meal-plan");
                   }}

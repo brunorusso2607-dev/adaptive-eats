@@ -8,6 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ChefHat, Mail, ArrowLeft, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { z } from "zod";
+import { HIDE_STRIPE_UI } from "@/config/bypassConfig";
 
 const emailSchema = z.string().email("Email inválido");
 
@@ -161,14 +162,16 @@ export default function Auth() {
               </Button>
             </form>
 
-            <div className="mt-6 pt-6 border-t border-border/50 text-center">
-              <p className="text-sm text-muted-foreground">
-                Ainda não tem uma conta?{" "}
-                <Link to="/#pricing" className="text-primary hover:underline font-medium">
-                  Assine agora
-                </Link>
-              </p>
-            </div>
+            {!HIDE_STRIPE_UI && (
+              <div className="mt-6 pt-6 border-t border-border/50 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Ainda não tem uma conta?{" "}
+                  <Link to="/#pricing" className="text-primary hover:underline font-medium">
+                    Assine agora
+                  </Link>
+                </p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </main>

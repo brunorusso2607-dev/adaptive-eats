@@ -15,6 +15,13 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CREATE-CHECKOUT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// Sanitize API key - remove any non-ASCII or whitespace characters
+function sanitizeApiKey(key: string | undefined): string {
+  if (!key) return "";
+  // Trim whitespace and remove any non-printable ASCII characters
+  return key.trim().replace(/[^\x20-\x7E]/g, "");
+}
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -23,10 +30,19 @@ serve(async (req) => {
   try {
     logStep("Function started");
 
-    const stripeSecretKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const rawStripeKey = Deno.env.get("STRIPE_SECRET_KEY");
+    const stripeSecretKey = sanitizeApiKey(rawStripeKey);
+    
     if (!stripeSecretKey) {
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
+
+    // Validate key format
+    if (!stripeSecretKey.startsWith("sk_test_") && !stripeSecretKey.startsWith("sk_live_")) {
+      throw new Error("Invalid STRIPE_SECRET_KEY format. Must start with sk_test_ or sk_live_");
+    }
+
+    logStep("Stripe key validated", { keyPrefix: stripeSecretKey.substring(0, 8) });
 
     const { returnUrl, plan = "premium", email } = await req.json();
     
@@ -38,6 +54,11 @@ serve(async (req) => {
 
     logStep("Plan selected", { plan, priceId, email });
 
+    // Create headers object
+    const stripeHeaders = new Headers();
+    stripeHeaders.set("Authorization", `Bearer ${stripeSecretKey}`);
+    stripeHeaders.set("Content-Type", "application/x-www-form-urlencoded");
+
     // Check if customer exists by email using fetch
     let customerId: string | undefined;
     
@@ -46,10 +67,7 @@ serve(async (req) => {
         `https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=1`,
         {
           method: "GET",
-          headers: {
-            "Authorization": `Bearer ${stripeSecretKey}`,
-            "Content-Type": "application/x-www-form-urlencoded",
-          },
+          headers: stripeHeaders,
         }
       );
       
@@ -81,10 +99,7 @@ serve(async (req) => {
     // Create checkout session using fetch
     const sessionResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${stripeSecretKey}`,
-        "Content-Type": "application/x-www-form-urlencoded",
-      },
+      headers: stripeHeaders,
       body: params.toString(),
     });
 

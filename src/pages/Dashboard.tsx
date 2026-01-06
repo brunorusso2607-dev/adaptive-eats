@@ -9,6 +9,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
+import { HIDE_STRIPE_UI } from "@/config/bypassConfig";
 
 // Lazy loaded components - carregados apenas quando necessários
 const RecipeResult = lazy(() => import("@/components/RecipeResult"));
@@ -971,14 +972,14 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between w-full py-1">
                   <div className="flex items-center gap-3">
                     <button 
-                      onClick={() => isSubscribed && setShowPlanSheet(true)}
+                      onClick={() => isSubscribed && !HIDE_STRIPE_UI && setShowPlanSheet(true)}
                       className="flex items-center gap-2 rounded-lg hover:bg-accent/50 transition-colors px-2 py-1 -ml-2"
-                      disabled={!isSubscribed}
+                      disabled={!isSubscribed || HIDE_STRIPE_UI}
                     >
                       <span className="text-sm font-normal text-muted-foreground tracking-wide">
                         Olá{user?.user_metadata?.first_name ? `, ${user.user_metadata.first_name}` : ""}
                       </span>
-                      {isSubscribed && (
+                      {isSubscribed && !HIDE_STRIPE_UI && (
                         <span className="badge-pro">
                           <Crown className="w-3 h-3" />
                           PRO
@@ -994,7 +995,7 @@ export default function Dashboard() {
                     />
                     <DesktopProfileDropdown
                       user={user}
-                      isSubscribed={isSubscribed}
+                      isSubscribed={isSubscribed && !HIDE_STRIPE_UI}
                       subscriptionStatus={subscription?.status}
                       onOpenProfile={() => setShowProfileSheet(true)}
                       onLogout={handleLogout}
@@ -1002,8 +1003,8 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                {/* Plan Details Sheet */}
-                {isSubscribed && activePlan && (
+                {/* Plan Details Sheet - Hidden in bypass mode */}
+                {isSubscribed && activePlan && !HIDE_STRIPE_UI && (
                   <PlanDetailsSheet
                     open={showPlanSheet}
                     onOpenChange={setShowPlanSheet}

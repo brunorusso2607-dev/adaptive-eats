@@ -1,4 +1,4 @@
-import { ChefHat, Loader2 } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 type LoadingVariant = "fullscreen" | "inline" | "compact";
@@ -26,9 +26,11 @@ export default function AppLoadingScreen({
       )}>
         <div className="flex flex-col items-center gap-3">
           <div className="relative">
-            <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
-              <ChefHat className="w-6 h-6 text-primary" />
-            </div>
+            <img 
+              src="/icons/icon-192x192.png" 
+              alt="ReceitAI" 
+              className="w-12 h-12 rounded-xl animate-pulse"
+            />
             <Loader2 className="w-14 h-14 text-primary/30 animate-spin absolute inset-0 -m-1" />
           </div>
         </div>
@@ -45,9 +47,11 @@ export default function AppLoadingScreen({
       )}>
         <div className="flex flex-col items-center gap-4 text-center animate-fade-in">
           <div className="relative">
-            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-              <ChefHat className="w-8 h-8 text-primary" />
-            </div>
+            <img 
+              src="/icons/icon-192x192.png" 
+              alt="ReceitAI" 
+              className="w-16 h-16 rounded-xl animate-pulse"
+            />
             <Loader2 className="w-20 h-20 text-primary/30 animate-spin absolute inset-0 -m-2" />
           </div>
           
@@ -68,11 +72,13 @@ export default function AppLoadingScreen({
       className
     )}>
       <div className="flex flex-col items-center gap-6 p-8 max-w-sm text-center animate-fade-in">
-        {/* Animated icon container */}
+        {/* Animated logo container */}
         <div className="relative">
-          <div className="w-24 h-24 rounded-full bg-primary/10 flex items-center justify-center animate-pulse">
-            <ChefHat className="w-12 h-12 text-primary" />
-          </div>
+          <img 
+            src="/icons/icon-192x192.png" 
+            alt="ReceitAI" 
+            className="w-24 h-24 rounded-2xl animate-pulse"
+          />
           {/* Spinning loader ring */}
           <div className="absolute inset-0 flex items-center justify-center">
             <Loader2 className="w-28 h-28 text-primary/30 animate-spin" />

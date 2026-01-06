@@ -168,52 +168,62 @@ export default function AdminIntoleranceMappings() {
     },
   });
 
-  // Fetch normalization table for deduplication
-  const { data: normalizationData } = useQuery({
-    queryKey: ["intolerance-key-normalization"],
+  // Fetch onboarding options as source of truth for intolerance/allergy/sensitivity keys
+  const { data: onboardingOptions } = useQuery({
+    queryKey: ["onboarding-options-restrictions"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("intolerance_key_normalization")
-        .select("*");
+        .from("onboarding_options")
+        .select("option_id, label, category")
+        .in("category", ["intolerances", "allergies", "sensitivities"])
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
 
       if (error) throw error;
       return data;
     },
   });
 
-  // Build canonical key mapping (database_key -> label)
-  const canonicalKeyMap = new Map<string, string>();
-  normalizationData?.forEach((item) => {
-    if (!canonicalKeyMap.has(item.database_key)) {
-      canonicalKeyMap.set(item.database_key, item.label);
-    }
-  });
+  // Build canonical key mapping (option_id -> label) from onboarding_options
+  const canonicalKeyMap = useMemo(() => {
+    const map = new Map<string, string>();
+    onboardingOptions?.forEach((item) => {
+      if (!map.has(item.option_id)) {
+        map.set(item.option_id, item.label);
+      }
+    });
+    return map;
+  }, [onboardingOptions]);
 
-  // Category definitions for grouping
-  const CATEGORY_KEYS = {
-    intolerances: ['gluten', 'lactose', 'fodmap', 'fructose', 'sorbitol', 'wheat'],
-    allergies: ['peanut', 'tree_nuts', 'seafood', 'fish', 'egg', 'soy', 'sesame'],
-    sensitivities: ['cafeina', 'caffeine', 'histamine', 'salicylate', 'nickel', 'sulfite', 'corn'],
-  };
-
-  // Get ALL intolerance keys from normalization table (not just ones with ingredients)
-  const allKeysFromNormalization = [...new Set(normalizationData?.map(n => n.database_key) || [])];
+  // Get keys grouped by category from onboarding_options
+  const intoleranceKeysList = useMemo(() => {
+    const keys = onboardingOptions?.filter(o => o.category === 'intolerances').map(o => o.option_id) || [];
+    return keys.sort((a, b) => {
+      const labelA = canonicalKeyMap.get(a) || getLabel(a);
+      const labelB = canonicalKeyMap.get(b) || getLabel(b);
+      return labelA.localeCompare(labelB, 'pt-BR');
+    });
+  }, [onboardingOptions, canonicalKeyMap]);
   
-  const sortByLabel = (a: string, b: string) => {
-    const labelA = canonicalKeyMap.get(a) || getLabel(a);
-    const labelB = canonicalKeyMap.get(b) || getLabel(b);
-    return labelA.localeCompare(labelB, 'pt-BR');
-  };
-
-  // Group keys by category - using ALL keys from normalization, not just ones with ingredients
-  const intoleranceKeysList = allKeysFromNormalization.filter(k => CATEGORY_KEYS.intolerances.includes(k)).sort(sortByLabel);
-  const allergyKeysList = allKeysFromNormalization.filter(k => CATEGORY_KEYS.allergies.includes(k)).sort(sortByLabel);
-  const sensitivityKeysList = allKeysFromNormalization.filter(k => CATEGORY_KEYS.sensitivities.includes(k)).sort(sortByLabel);
-  const otherKeysList = allKeysFromNormalization.filter(k => 
-    !CATEGORY_KEYS.intolerances.includes(k) && 
-    !CATEGORY_KEYS.allergies.includes(k) && 
-    !CATEGORY_KEYS.sensitivities.includes(k)
-  ).sort(sortByLabel);
+  const allergyKeysList = useMemo(() => {
+    const keys = onboardingOptions?.filter(o => o.category === 'allergies').map(o => o.option_id) || [];
+    return keys.sort((a, b) => {
+      const labelA = canonicalKeyMap.get(a) || getLabel(a);
+      const labelB = canonicalKeyMap.get(b) || getLabel(b);
+      return labelA.localeCompare(labelB, 'pt-BR');
+    });
+  }, [onboardingOptions, canonicalKeyMap]);
+  
+  const sensitivityKeysList = useMemo(() => {
+    const keys = onboardingOptions?.filter(o => o.category === 'sensitivities').map(o => o.option_id) || [];
+    return keys.sort((a, b) => {
+      const labelA = canonicalKeyMap.get(a) || getLabel(a);
+      const labelB = canonicalKeyMap.get(b) || getLabel(b);
+      return labelA.localeCompare(labelB, 'pt-BR');
+    });
+  }, [onboardingOptions, canonicalKeyMap]);
+  
+  const otherKeysList: string[] = [];
 
   // Filter by selected intolerance, language and search
   const allMappingsForIntolerance = mappings?.filter(m => 

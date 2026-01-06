@@ -1,11 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
-import { 
+import {
   CALORIE_TABLE, 
   normalizeForCalorieTable, 
   findCaloriesPerGram, 
   calculateFoodCalories 
 } from "../_shared/calorieTable.ts";
+import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import {
   getGlobalNutritionPrompt,
   getNutritionalSource,
@@ -1587,8 +1588,7 @@ serve(async (req) => {
         nutritionalTablePrompt,
       });
 
-      const GOOGLE_AI_API_KEY = Deno.env.get("GOOGLE_AI_API_KEY");
-      if (!GOOGLE_AI_API_KEY) throw new Error("GOOGLE_AI_API_KEY not configured");
+      const GOOGLE_AI_API_KEY = await getGeminiApiKey();
 
       // Usar sempre gemini-2.5-flash-lite diretamente via Google API
       const modelName = 'gemini-2.5-flash-lite';

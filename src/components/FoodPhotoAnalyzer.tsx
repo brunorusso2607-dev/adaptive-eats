@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { useCameraPermission } from "@/hooks/useCameraPermission";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Camera, Upload, Loader2, RotateCcw, Flame, Beef, Wheat, Droplets, AlertCircle, ScanBarcode, ShieldCheck, ShieldAlert, ShieldX, ShieldQuestion, AlertTriangle, Refrigerator, ArrowRight, Target, TrendingDown, TrendingUp, HelpCircle, Leaf, Package, Cat, User, FileText, ImageOff, Check, Pencil, UtensilsCrossed, Database, Sparkles } from "lucide-react";
@@ -177,6 +178,9 @@ export default function FoodPhotoAnalyzer({ initialMode = "food", hideModeTabs =
   
   // Register meal from photo sheet
   const [registerMealOpen, setRegisterMealOpen] = useState(false);
+  
+  // Request camera permission on mount
+  useCameraPermission(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);

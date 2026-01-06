@@ -15,11 +15,17 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[CREATE-CHECKOUT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
-// Sanitize API key - remove any non-ASCII or whitespace characters
+// Sanitize API key - remove any whitespace/non-ASCII characters that can break Stripe auth
 function sanitizeApiKey(key: string | undefined): string {
   if (!key) return "";
-  // Trim whitespace and remove any non-printable ASCII characters
-  return key.trim().replace(/[^\x20-\x7E]/g, "");
+  return key
+    .trim()
+    // Remove any kind of whitespace (spaces, newlines, tabs)
+    .replace(/\s+/g, "")
+    // Remove wrapping quotes if pasted with them
+    .replace(/["']/g, "")
+    // Remove any non-printable ASCII characters
+    .replace(/[^\x21-\x7E]/g, "");
 }
 
 serve(async (req) => {
@@ -42,7 +48,12 @@ serve(async (req) => {
       throw new Error("Invalid STRIPE_SECRET_KEY format. Must start with sk_test_ or sk_live_");
     }
 
-    logStep("Stripe key validated", { keyPrefix: stripeSecretKey.substring(0, 8) });
+    // Safe debugging (do not log full key)
+    logStep("Stripe key sanitized", {
+      length: stripeSecretKey.length,
+      prefix: stripeSecretKey.slice(0, 8),
+      suffix: stripeSecretKey.slice(-4),
+    });
 
     const { returnUrl, plan = "premium", email } = await req.json();
     

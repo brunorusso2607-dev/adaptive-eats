@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
+import { useCameraPermission } from "@/hooks/useCameraPermission";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Camera, Upload, Loader2, RotateCcw, AlertTriangle, Refrigerator, ChefHat, Clock, UtensilsCrossed, CheckCircle2, CircleAlert, CircleDashed, X, Bookmark, User, ChevronDown, ShieldCheck, ShieldAlert, Cat, Package, ImageOff, Lightbulb, SkipForward, Snowflake, DoorOpen } from "lucide-react";
@@ -81,6 +82,9 @@ export default function FridgeScanner() {
   const [savingRecipeIndex, setSavingRecipeIndex] = useState<number | null>(null);
   const [pendingSlot, setPendingSlot] = useState<FridgeSlot["id"] | null>(null);
   const [isTransitioning, setIsTransitioning] = useState(false);
+  
+  // Request camera permission on mount
+  useCameraPermission(true);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);

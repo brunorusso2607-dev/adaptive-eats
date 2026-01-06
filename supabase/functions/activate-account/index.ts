@@ -132,9 +132,30 @@ serve(async (req) => {
       }
     }
 
-    // Check if user already exists in Supabase
-    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
-    const existingUser = existingUsers?.users?.find(u => u.email?.toLowerCase() === email.toLowerCase());
+    // Check if user already exists in Supabase by searching with email filter
+    let existingUser = null;
+    let page = 1;
+    const perPage = 1000;
+    
+    // Paginate through users to find matching email
+    while (true) {
+      const { data: usersPage } = await supabaseAdmin.auth.admin.listUsers({
+        page,
+        perPage,
+      });
+      
+      if (!usersPage?.users || usersPage.users.length === 0) {
+        break;
+      }
+      
+      existingUser = usersPage.users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+      
+      if (existingUser || usersPage.users.length < perPage) {
+        break;
+      }
+      
+      page++;
+    }
     
     logStep("Existing user check", { exists: !!existingUser, userId: existingUser?.id });
 

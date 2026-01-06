@@ -14,7 +14,10 @@ interface FoodStats {
 }
 
 const SOURCE_CONFIG: Record<string, { country: string; flag: string; name: string }> = {
+  taco: { country: "Brasil", flag: "🇧🇷", name: "TACO" },
+  TACO: { country: "Brasil", flag: "🇧🇷", name: "TACO" },
   tbca: { country: "Brasil", flag: "🇧🇷", name: "TBCA" },
+  TBCA: { country: "Brasil", flag: "🇧🇷", name: "TBCA" },
   brasileira: { country: "Brasil", flag: "🇧🇷", name: "Manual/AI" },
   ciqual: { country: "França", flag: "🇫🇷", name: "CIQUAL" },
   francesa: { country: "França", flag: "🇫🇷", name: "Manual" },
@@ -152,12 +155,13 @@ export default function AdminFoods() {
   };
 
   const importFunctions = [
+    { id: "import-taco-foods", label: "TACO (Brasil)", flag: "🇧🇷" },
+    { id: "import-tbca-foods", label: "TBCA (Brasil)", flag: "🇧🇷" },
     { id: "import-ciqual-foods", label: "CIQUAL (França)", flag: "🇫🇷" },
     { id: "import-mccance-foods", label: "McCance (UK)", flag: "🇬🇧" },
     { id: "import-bls-foods", label: "BLS (Alemanha)", flag: "🇩🇪" },
     { id: "import-aesan-foods", label: "AESAN (Espanha)", flag: "🇪🇸" },
     { id: "import-crea-foods", label: "CREA (Itália)", flag: "🇮🇹" },
-    { id: "import-tbca-foods", label: "TBCA (Brasil)", flag: "🇧🇷" },
     { id: "import-bam-foods", label: "BAM (México)", flag: "🇲🇽" },
   ];
 

@@ -11,6 +11,12 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[ACTIVATE-ACCOUNT] ${step}`, details ? JSON.stringify(details) : "");
 };
 
+// ============================================================
+// BYPASS MODE: When true, allows login without Stripe verification
+// Set to false to re-enable payment verification
+// ============================================================
+const BYPASS_STRIPE_FOR_TESTING = true;
+
 // Detect country from IP using free API
 async function detectCountryFromIP(req: Request): Promise<string> {
   try {
@@ -177,9 +183,13 @@ serve(async (req) => {
       );
     }
 
-    // User doesn't exist - need valid subscription to create account
-    if (!hasValidSubscription) {
+    // User doesn't exist - need valid subscription to create account (unless bypass is enabled)
+    if (!hasValidSubscription && !BYPASS_STRIPE_FOR_TESTING) {
       throw new Error("Nenhum pagamento encontrado para este email. Por favor, faça sua assinatura primeiro.");
+    }
+    
+    if (BYPASS_STRIPE_FOR_TESTING) {
+      logStep("BYPASS MODE: Creating user without subscription verification");
     }
 
     logStep("Creating new user with valid subscription");

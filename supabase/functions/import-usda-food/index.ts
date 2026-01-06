@@ -39,11 +39,25 @@ const NUTRIENT_IDS = {
   SODIUM: [1093], // Sodium, Na
 };
 
-function extractNutrient(nutrients: USDAFood["foodNutrients"], ids: number[]): number {
+function extractNutrient(nutrients: any[], ids: number[]): number {
   for (const id of ids) {
-    const nutrient = nutrients.find(n => n.nutrientId === id);
-    if (nutrient && nutrient.value !== undefined) {
-      return nutrient.value;
+    // Try different structures - USDA API returns different formats for search vs detail
+    const nutrient = nutrients.find(n => {
+      // Format 1: nutrientId directly on object
+      if (n.nutrientId === id) return true;
+      // Format 2: nutrient.id nested
+      if (n.nutrient && n.nutrient.id === id) return true;
+      // Format 3: number as string
+      if (n.nutrientNumber === String(id)) return true;
+      return false;
+    });
+    
+    if (nutrient) {
+      // Value can be in different places
+      const value = nutrient.value ?? nutrient.amount ?? 0;
+      if (value !== undefined && value !== null) {
+        return Number(value);
+      }
     }
   }
   return 0;

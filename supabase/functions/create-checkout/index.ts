@@ -5,10 +5,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Price IDs from Stripe
-const PRICE_IDS = {
-  essencial: "price_1Sg9N6Ch4FnxqOQFbN0RhBzy",
-  premium: "price_1Sg9ODCh4FnxqOQFkKsIJZOX",
+// Lookup keys for plans (set these in Stripe when creating prices)
+const PLAN_LOOKUP_KEYS = {
+  essencial: "essencial_monthly",
+  premium: "premium_monthly",
 };
 
 const logStep = (step: string, details?: Record<string, unknown>) => {
@@ -20,11 +20,8 @@ function sanitizeApiKey(key: string | undefined): string {
   if (!key) return "";
   return key
     .trim()
-    // Remove any kind of whitespace (spaces, newlines, tabs)
     .replace(/\s+/g, "")
-    // Remove wrapping quotes if pasted with them
     .replace(/["']/g, "")
-    // Remove any non-printable ASCII characters
     .replace(/[^\x21-\x7E]/g, "");
 }
 
@@ -43,12 +40,10 @@ serve(async (req) => {
       throw new Error("STRIPE_SECRET_KEY not configured");
     }
 
-    // Validate key format
     if (!stripeSecretKey.startsWith("sk_test_") && !stripeSecretKey.startsWith("sk_live_")) {
       throw new Error("Invalid STRIPE_SECRET_KEY format. Must start with sk_test_ or sk_live_");
     }
 
-    // Safe debugging (do not log full key)
     logStep("Stripe key sanitized", {
       length: stripeSecretKey.length,
       prefix: stripeSecretKey.slice(0, 8),
@@ -57,29 +52,44 @@ serve(async (req) => {
 
     const { returnUrl, plan = "premium", email } = await req.json();
     
-    // Validate plan
-    const priceId = PRICE_IDS[plan as keyof typeof PRICE_IDS];
-    if (!priceId) {
+    const lookupKey = PLAN_LOOKUP_KEYS[plan as keyof typeof PLAN_LOOKUP_KEYS];
+    if (!lookupKey) {
       throw new Error(`Invalid plan: ${plan}`);
     }
 
-    logStep("Plan selected", { plan, priceId, email });
+    logStep("Plan selected", { plan, lookupKey, email });
 
-    // Create headers object
     const stripeHeaders = new Headers();
     stripeHeaders.set("Authorization", `Bearer ${stripeSecretKey}`);
     stripeHeaders.set("Content-Type", "application/x-www-form-urlencoded");
 
-    // Check if customer exists by email using fetch
+    // Fetch price by lookup_key
+    const pricesResponse = await fetch(
+      `https://api.stripe.com/v1/prices?lookup_keys[]=${encodeURIComponent(lookupKey)}&active=true&limit=1`,
+      { method: "GET", headers: stripeHeaders }
+    );
+
+    const pricesData = await pricesResponse.json();
+    
+    if (!pricesResponse.ok) {
+      console.error("Stripe prices API error:", pricesData);
+      throw new Error(pricesData.error?.message || "Failed to fetch prices");
+    }
+
+    if (!pricesData.data || pricesData.data.length === 0) {
+      throw new Error(`No active price found for lookup_key: ${lookupKey}. Please create a price in Stripe with this lookup_key.`);
+    }
+
+    const priceId = pricesData.data[0].id;
+    logStep("Price found", { priceId, lookupKey });
+
+    // Check if customer exists by email
     let customerId: string | undefined;
     
     if (email) {
       const customersResponse = await fetch(
         `https://api.stripe.com/v1/customers?email=${encodeURIComponent(email)}&limit=1`,
-        {
-          method: "GET",
-          headers: stripeHeaders,
-        }
+        { method: "GET", headers: stripeHeaders }
       );
       
       if (customersResponse.ok) {
@@ -107,7 +117,7 @@ serve(async (req) => {
       params.append("customer_email", email);
     }
 
-    // Create checkout session using fetch
+    // Create checkout session
     const sessionResponse = await fetch("https://api.stripe.com/v1/checkout/sessions", {
       method: "POST",
       headers: stripeHeaders,

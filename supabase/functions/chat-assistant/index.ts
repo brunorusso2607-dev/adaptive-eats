@@ -49,16 +49,36 @@ function getBMICategory(bmi: number): BMICategory {
   return "obese_3";
 }
 
-function getBMICategoryLabel(category: BMICategory): string {
-  const labels: Record<BMICategory, string> = {
-    underweight: "baixo peso",
-    normal: "peso normal",
-    overweight: "sobrepeso",
-    obese_1: "obesidade grau I",
-    obese_2: "obesidade grau II",
-    obese_3: "obesidade grau III",
+// BMI category labels - returns localized label based on user's locale
+function getBMICategoryLabel(category: BMICategory, locale: string = "pt-BR"): string {
+  const labels: Record<string, Record<BMICategory, string>> = {
+    "pt-BR": {
+      underweight: "baixo peso",
+      normal: "peso normal",
+      overweight: "sobrepeso",
+      obese_1: "obesidade grau I",
+      obese_2: "obesidade grau II",
+      obese_3: "obesidade grau III",
+    },
+    "en": {
+      underweight: "underweight",
+      normal: "normal weight",
+      overweight: "overweight",
+      obese_1: "obesity class I",
+      obese_2: "obesity class II",
+      obese_3: "obesity class III",
+    },
+    "es": {
+      underweight: "bajo peso",
+      normal: "peso normal",
+      overweight: "sobrepeso",
+      obese_1: "obesidad grado I",
+      obese_2: "obesidad grado II",
+      obese_3: "obesidad grado III",
+    }
   };
-  return labels[category];
+  const localeLabels = labels[locale] || labels["pt-BR"];
+  return localeLabels[category];
 }
 
 function getHealthyWeightRange(heightCm: number): { min: number; max: number } {
@@ -286,7 +306,9 @@ interface DashboardContext {
   strategy: { key: string; label: string; description: string } | null;
 }
 
-// ============= HELPDESK PROMPT - SIMPÁTICO E PROFISSIONAL =============
+// ============= HELPDESK PROMPT - FRIENDLY AND PROFESSIONAL =============
+// NOTE: The prompt content is in the user's language based on their country setting
+// The AI responds in the user's language, but all code/comments are in English
 const buildSystemPrompt = (
   userProfile: any,
   safetyDatabase: SafetyDatabase,
@@ -336,22 +358,54 @@ const buildSystemPrompt = (
   const intoleranceLabels = normalizedIntolerances.map(i => getIntoleranceLabel(i, safetyDatabase)).join(", ");
   const dietaryLabel = getDietaryLabel(dietaryPreference, safetyDatabase);
   
-  // Helper labels for display
-  const sexLabel = sex === "female" ? "Feminino" : sex === "male" ? "Masculino" : "Não informado";
-  const activityLabels: Record<string, string> = {
-    sedentary: "Sedentário",
-    light: "Leve (1-2x/semana)",
-    moderate: "Moderado (3-5x/semana)",
-    active: "Ativo (6-7x/semana)",
-    very_active: "Muito ativo (atleta)"
+  // Helper labels for display - localized based on user country
+  // These are user-facing labels that need to be in the user's language
+  const getSexLabel = (sex: string | null, country: string): string => {
+    if (country === "BR" || country === "PT") {
+      return sex === "female" ? "Feminino" : sex === "male" ? "Masculino" : "Não informado";
+    } else if (country === "ES" || country === "MX" || country === "AR") {
+      return sex === "female" ? "Femenino" : sex === "male" ? "Masculino" : "No informado";
+    } else {
+      return sex === "female" ? "Female" : sex === "male" ? "Male" : "Not specified";
+    }
   };
-  const activityLabel = activityLabels[activityLevel] || "Moderado";
+  const sexLabel = getSexLabel(sex, country);
+  
+  const getActivityLabels = (country: string): Record<string, string> => {
+    if (country === "BR" || country === "PT") {
+      return {
+        sedentary: "Sedentário",
+        light: "Leve (1-2x/semana)",
+        moderate: "Moderado (3-5x/semana)",
+        active: "Ativo (6-7x/semana)",
+        very_active: "Muito ativo (atleta)"
+      };
+    } else if (country === "ES" || country === "MX" || country === "AR") {
+      return {
+        sedentary: "Sedentario",
+        light: "Ligero (1-2x/semana)",
+        moderate: "Moderado (3-5x/semana)",
+        active: "Activo (6-7x/semana)",
+        very_active: "Muy activo (atleta)"
+      };
+    } else {
+      return {
+        sedentary: "Sedentary",
+        light: "Light (1-2x/week)",
+        moderate: "Moderate (3-5x/week)",
+        active: "Active (6-7x/week)",
+        very_active: "Very active (athlete)"
+      };
+    }
+  };
+  const activityLabels = getActivityLabels(country);
+  const activityLabel = activityLabels[activityLevel] || activityLabels["moderate"];
 
   // Language adaptation based on country
   const languageConfig = getLanguageConfig(country);
 
   // Page-specific help context
-  const pageHelp = pageContext ? getPageSpecificHelp(pageContext.path) : "";
+  const pageHelp = pageContext ? getPageSpecificHelp(pageContext.path, country) : "";
 
   return `# CHEF IA - SEU ASSISTENTE PESSOAL DO RECEITAI
 
@@ -462,14 +516,14 @@ ${weightGoal ? `**Peso Meta**: ${weightGoal} kg` : "**Peso Meta**: Não definida
 ${weightCurrent && weightGoal ? `**Diferença**: ${Math.abs(weightCurrent - weightGoal).toFixed(1)} kg para ${weightCurrent > weightGoal ? 'perder' : 'ganhar'}` : ""}
 
 ### Objetivo e Estratégia
-**Objetivo ATUAL no perfil**: ${getGoalLabel(goal)} (chave: "${goal}")
+**Objetivo ATUAL no perfil**: ${getGoalLabel(goal, country)} (chave: "${goal}")
 **Nível de Atividade**: ${activityLabel} (chave: "${activityLevel}")
 ${dashboardContext?.strategy ? `**Estratégia Nutricional**: ${dashboardContext.strategy.label}` : ""}
 
 ### Configurações
 ${kidsMode ? "**Modo Kids**: ✅ ATIVO (receitas adaptadas para crianças)" : "**Modo Kids**: Desativado"}
 **Dieta**: ${dietaryLabel}
-**Refeições Habilitadas**: ${getMealLabels(enabledMeals)}
+**Refeições Habilitadas**: ${getMealLabels(enabledMeals, country)}
 
 ### Restrições Alimentares
 **Intolerâncias/Alergias**: ${intoleranceLabels || "Nenhuma cadastrada"}
@@ -693,7 +747,7 @@ Quer que eu atualize isso pra você?
 **Exemplos de resposta correta:**
 
 Usuário: "Meu objetivo é engordar"
-Resposta: "Peraí! Você falou em 'engordar', mas seu objetivo cadastrado é '${getGoalLabel(goal)}'. Quer que eu atualize pra 'Ganhar peso'?
+Resposta: "Peraí! Você falou em 'engordar', mas seu objetivo cadastrado é '${getGoalLabel(goal, country)}'. Quer que eu atualize pra 'Ganhar peso'?
 [PERGUNTAR_ATUALIZACAO:objetivo:ganhar]"
 
 Usuário: "Tenho 28 anos"
@@ -813,47 +867,84 @@ const getLanguageConfig = (country: string): string => {
 };
 
 // ============= GOAL LABELS =============
-// Database now stores: "lose_weight" | "maintain" | "gain_weight"
-const getGoalLabel = (goal: string): string => {
-  const labels: Record<string, string> = {
-    "lose_weight": "Perder peso",
-    "maintain": "Manter peso",
-    "gain_weight": "Ganhar peso/massa",
-    // Legacy fallbacks
-    "emagrecer": "Perder peso",
-    "perder": "Perder peso",
-    "manter": "Manter peso",
-    "ganhar_peso": "Ganhar peso/massa",
-    "ganhar": "Ganhar peso/massa",
+// Database stores: "lose_weight" | "maintain" | "gain_weight"
+// Labels are returned in user's language based on country
+const getGoalLabel = (goal: string, country: string = "BR"): string => {
+  const labels: Record<string, Record<string, string>> = {
+    "pt-BR": {
+      "lose_weight": "Perder peso",
+      "maintain": "Manter peso",
+      "gain_weight": "Ganhar peso/massa",
+    },
+    "en": {
+      "lose_weight": "Lose weight",
+      "maintain": "Maintain weight",
+      "gain_weight": "Gain weight/muscle",
+    },
+    "es": {
+      "lose_weight": "Perder peso",
+      "maintain": "Mantener peso",
+      "gain_weight": "Ganar peso/masa",
+    }
   };
-  return labels[goal] || "Não definido";
+  
+  const locale = (country === "BR" || country === "PT") ? "pt-BR" 
+    : (country === "ES" || country === "MX" || country === "AR") ? "es" 
+    : "en";
+  
+  const localeLabels = labels[locale] || labels["pt-BR"];
+  return localeLabels[goal] || localeLabels["maintain"] || "Not defined";
 };
 
-// ============= MEAL LABELS (English keys with Portuguese display) =============
-const getMealLabels = (meals: string[]): string => {
-  const labels: Record<string, string> = {
-    // English keys (standard)
-    "breakfast": "Café da manhã",
-    "morning_snack": "Lanche da manhã",
-    "lunch": "Almoço",
-    "afternoon_snack": "Lanche da tarde",
-    "dinner": "Jantar",
-    "supper": "Ceia",
-    // Legacy Portuguese keys (backward compatibility)
-    "cafe_manha": "Café da manhã",
-    "lanche_manha": "Lanche da manhã",
-    "almoco": "Almoço",
-    "lanche_tarde": "Lanche da tarde",
-    "jantar": "Jantar",
-    "ceia": "Ceia"
+// ============= MEAL LABELS =============
+// English keys with localized display based on user's country
+const getMealLabels = (meals: string[], country: string = "BR"): string => {
+  const labelsByLocale: Record<string, Record<string, string>> = {
+    "pt-BR": {
+      "breakfast": "Café da manhã",
+      "morning_snack": "Lanche da manhã",
+      "lunch": "Almoço",
+      "afternoon_snack": "Lanche da tarde",
+      "dinner": "Jantar",
+      "supper": "Ceia",
+    },
+    "en": {
+      "breakfast": "Breakfast",
+      "morning_snack": "Morning snack",
+      "lunch": "Lunch",
+      "afternoon_snack": "Afternoon snack",
+      "dinner": "Dinner",
+      "supper": "Supper",
+    },
+    "es": {
+      "breakfast": "Desayuno",
+      "morning_snack": "Merienda de la mañana",
+      "lunch": "Almuerzo",
+      "afternoon_snack": "Merienda de la tarde",
+      "dinner": "Cena",
+      "supper": "Cena ligera",
+    }
   };
+  
+  const locale = (country === "BR" || country === "PT") ? "pt-BR" 
+    : (country === "ES" || country === "MX" || country === "AR") ? "es" 
+    : "en";
+  
+  const labels = labelsByLocale[locale] || labelsByLocale["pt-BR"];
   return meals.map(m => labels[m] || m).join(", ");
 };
 
 // ============= PAGE-SPECIFIC HELP =============
-const getPageSpecificHelp = (path: string): string => {
-  const helpMap: Record<string, string> = {
-    "/dashboard": `**Você está na HOME do app**
+// Returns page-specific help text in the user's language
+// Note: This function returns localized help content for the AI to use when responding
+const getPageSpecificHelp = (path: string, country: string = "BR"): string => {
+  // Helper to get localized content based on country
+  const isPortuguese = country === "BR" || country === "PT";
+  const isSpanish = country === "ES" || country === "MX" || country === "AR";
+  
+  const helpMap: Record<string, Record<string, string>> = {
+    "/dashboard": {
+      "pt": `**Você está na HOME do app**
 Aqui você vê:
 - Sua próxima refeição do plano
 - Resumo de calorias do dia
@@ -861,8 +952,25 @@ Aqui você vê:
 - Acesso rápido aos scanners
 
 Se o usuário perguntar algo genérico, pode sugerir explorar essas funcionalidades.`,
+      "en": `**You are on the app HOME**
+Here you can see:
+- Your next planned meal
+- Daily calorie summary
+- Water widget
+- Quick access to scanners
 
-    "/perfil": `**Você está no PERFIL**
+If the user asks something generic, you can suggest exploring these features.`,
+      "es": `**Estás en el INICIO de la app**
+Aquí puedes ver:
+- Tu próxima comida del plan
+- Resumen de calorías del día
+- Widget de agua
+- Acceso rápido a los escáneres
+
+Si el usuario pregunta algo genérico, puedes sugerir explorar estas funcionalidades.`
+    },
+    "/perfil": {
+      "pt": `**Você está no PERFIL**
 Aqui o usuário pode:
 - Atualizar dados pessoais
 - Mudar objetivo (perder/manter/ganhar peso)
@@ -870,24 +978,71 @@ Aqui o usuário pode:
 - Configurar horários das refeições
 
 Se houver dúvida sobre como algo afeta o plano, explique que mudanças no perfil são refletidas em novos planos gerados.`,
+      "en": `**You are on the PROFILE page**
+Here the user can:
+- Update personal data
+- Change goal (lose/maintain/gain weight)
+- Add or remove dietary restrictions
+- Configure meal times
 
-    "/settings": `**Você está nas CONFIGURAÇÕES**
+If there's any question about how something affects the plan, explain that profile changes are reflected in new generated plans.`,
+      "es": `**Estás en el PERFIL**
+Aquí el usuario puede:
+- Actualizar datos personales
+- Cambiar objetivo (perder/mantener/ganar peso)
+- Agregar o eliminar restricciones alimentarias
+- Configurar horarios de comidas
+
+Si hay dudas sobre cómo algo afecta el plan, explica que los cambios en el perfil se reflejan en nuevos planes generados.`
+    },
+    "/settings": {
+      "pt": `**Você está nas CONFIGURAÇÕES**
 Aqui o usuário pode:
 - Configurar notificações
 - Gerenciar lembretes de água e refeições
 - Ver informações da conta
 
 Ajude com qualquer configuração que ele precise ajustar.`,
+      "en": `**You are on the SETTINGS page**
+Here the user can:
+- Configure notifications
+- Manage water and meal reminders
+- View account information
 
-    "/historico": `**Você está no HISTÓRICO**
+Help with any settings they need to adjust.`,
+      "es": `**Estás en CONFIGURACIONES**
+Aquí el usuario puede:
+- Configurar notificaciones
+- Gestionar recordatorios de agua y comidas
+- Ver información de la cuenta
+
+Ayuda con cualquier configuración que necesite ajustar.`
+    },
+    "/historico": {
+      "pt": `**Você está no HISTÓRICO**
 Aqui o usuário vê:
 - Refeições consumidas anteriormente
 - Registro de consumo
 - Sintomas reportados
 
 Se perguntar sobre algo que comeu antes, você pode ajudar a encontrar no histórico.`,
+      "en": `**You are on the HISTORY page**
+Here the user sees:
+- Previously consumed meals
+- Consumption records
+- Reported symptoms
 
-    "/plano": `**Você está no PLANO ALIMENTAR**
+If they ask about something they ate before, you can help find it in the history.`,
+      "es": `**Estás en el HISTORIAL**
+Aquí el usuario ve:
+- Comidas consumidas anteriormente
+- Registro de consumo
+- Síntomas reportados
+
+Si pregunta sobre algo que comió antes, puedes ayudar a encontrarlo en el historial.`
+    },
+    "/plano": {
+      "pt": `**Você está no PLANO ALIMENTAR**
 Aqui o usuário pode:
 - Ver todas as refeições da semana
 - Trocar refeições por alternativas
@@ -895,36 +1050,101 @@ Aqui o usuário pode:
 - Ver detalhes nutricionais
 
 Ajude a navegar pelo calendário ou trocar refeições.`,
+      "en": `**You are on the MEAL PLAN page**
+Here the user can:
+- View all meals for the week
+- Swap meals for alternatives
+- Mark meals as favorites
+- View nutritional details
 
-    "/receitas": `**Você está em RECEITAS**
+Help navigate the calendar or swap meals.`,
+      "es": `**Estás en el PLAN ALIMENTARIO**
+Aquí el usuario puede:
+- Ver todas las comidas de la semana
+- Cambiar comidas por alternativas
+- Marcar comidas como favoritas
+- Ver detalles nutricionales
+
+Ayuda a navegar por el calendario o cambiar comidas.`
+    },
+    "/receitas": {
+      "pt": `**Você está em RECEITAS**
 Aqui o usuário pode:
 - Gerar novas receitas
 - Ver receitas favoritas
 - Buscar por categoria
 
 Ajude a encontrar ou criar receitas que respeitem as restrições.`,
+      "en": `**You are on RECIPES**
+Here the user can:
+- Generate new recipes
+- View favorite recipes
+- Search by category
 
-    "/agua": `**Você está no CONTROLE DE ÁGUA**
+Help find or create recipes that respect restrictions.`,
+      "es": `**Estás en RECETAS**
+Aquí el usuario puede:
+- Generar nuevas recetas
+- Ver recetas favoritas
+- Buscar por categoría
+
+Ayuda a encontrar o crear recetas que respeten las restricciones.`
+    },
+    "/agua": {
+      "pt": `**Você está no CONTROLE DE ÁGUA**
 Aqui o usuário pode:
 - Registrar copos de água
 - Ver histórico de hidratação
 - Configurar metas e lembretes
 
 Dê dicas sobre hidratação se perguntarem.`,
+      "en": `**You are on WATER TRACKING**
+Here the user can:
+- Log glasses of water
+- View hydration history
+- Configure goals and reminders
 
-    "/scanner": `**Você está no SCANNER**
+Give hydration tips if asked.`,
+      "es": `**Estás en CONTROL DE AGUA**
+Aquí el usuario puede:
+- Registrar vasos de agua
+- Ver historial de hidratación
+- Configurar metas y recordatorios
+
+Da consejos sobre hidratación si preguntan.`
+    },
+    "/scanner": {
+      "pt": `**Você está no SCANNER**
 Aqui o usuário pode:
 - Analisar fotos de pratos
 - Verificar rótulos de produtos
 - Escanear a geladeira
 
-Explique como tirar fotos melhores para análise se tiverem dificuldade.`
+Explique como tirar fotos melhores para análise se tiverem dificuldade.`,
+      "en": `**You are on SCANNER**
+Here the user can:
+- Analyze photos of dishes
+- Check product labels
+- Scan the fridge
+
+Explain how to take better photos for analysis if they have difficulty.`,
+      "es": `**Estás en el ESCÁNER**
+Aquí el usuario puede:
+- Analizar fotos de platos
+- Verificar etiquetas de productos
+- Escanear la nevera
+
+Explica cómo tomar mejores fotos para el análisis si tienen dificultad.`
+    }
   };
 
+  // Get locale based on country
+  const locale = isPortuguese ? "pt" : isSpanish ? "es" : "en";
+  
   // Check for partial matches
-  for (const [key, value] of Object.entries(helpMap)) {
+  for (const [key, localeMap] of Object.entries(helpMap)) {
     if (path.startsWith(key)) {
-      return value;
+      return (localeMap as Record<string, string>)[locale] || (localeMap as Record<string, string>)["en"] || "";
     }
   }
 
@@ -1790,81 +2010,93 @@ const analyzeImageIntelligently = async (
   const intoleranceLabels = normalizedIntolerances.map((i: string) => getIntoleranceLabel(i, safetyDatabase)).join(", ");
   const dietaryLabel = getDietaryLabel(dietaryPreference, safetyDatabase);
   
-  // Build restrictions context
+  // Build restrictions context - in English, output will be in user's language
   let restrictionsContext = "";
-  if (normalizedIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "comum") {
+  if (normalizedIntolerances.length > 0 || excludedIngredients.length > 0 || dietaryPreference !== "omnivore") {
     restrictionsContext = `
-RESTRIÇÕES ALIMENTARES DO USUÁRIO:
-${normalizedIntolerances.length > 0 ? `- Intolerâncias/Alergias: ${intoleranceLabels}` : ""}
-${excludedIngredients.length > 0 ? `- Ingredientes Excluídos: ${excludedIngredients.join(", ")}` : ""}
-${dietaryPreference !== "comum" ? `- Dieta: ${dietaryLabel}` : ""}
+USER DIETARY RESTRICTIONS:
+${normalizedIntolerances.length > 0 ? `- Intolerances/Allergies: ${intoleranceLabels}` : ""}
+${excludedIngredients.length > 0 ? `- Excluded Ingredients: ${excludedIngredients.join(", ")}` : ""}
+${dietaryPreference !== "omnivore" ? `- Diet: ${dietaryLabel}` : ""}
 `;
   }
 
-  const analysisPrompt = `Você é um especialista em análise de alimentos e segurança alimentar.
+  // Get user locale for output language
+  const getOutputLanguage = (country: string): string => {
+    if (country === "BR" || country === "PT") return "Portuguese";
+    if (country === "ES" || country === "MX" || country === "AR") return "Spanish";
+    if (country === "FR") return "French";
+    if (country === "DE") return "German";
+    if (country === "IT") return "Italian";
+    return "English";
+  };
+  const outputLanguage = getOutputLanguage(userCountry);
 
-ANALISE A IMAGEM E CLASSIFIQUE:
+  const analysisPrompt = `You are an expert in food analysis and food safety.
 
-1. **PRATO/REFEIÇÃO** → Analise os alimentos, calorias estimadas e segurança
-2. **RÓTULO/EMBALAGEM** → Analise os ingredientes visíveis e alertas
-3. **GELADEIRA/DESPENSA** → Liste os itens visíveis e sugira receitas
-4. **NÃO É COMIDA** → Informe gentilmente que a imagem não contém alimentos
+ANALYZE THE IMAGE AND CLASSIFY:
+
+1. **DISH/MEAL** → Analyze the foods, estimated calories, and safety
+2. **LABEL/PACKAGING** → Analyze visible ingredients and alerts
+3. **FRIDGE/PANTRY** → List visible items and suggest recipes
+4. **NOT FOOD** → Kindly inform that the image does not contain food
 
 ${restrictionsContext}
 
-## REGRAS CRÍTICAS DE ANÁLISE VISUAL:
+## CRITICAL VISUAL ANALYSIS RULES:
 
-### EVITAR FALSOS POSITIVOS:
-- **DISTINGA elementos do AMBIENTE (mesa, fundo, superfície) do CONTEÚDO REAL do alimento**
-- Reflexos, mesa branca, toalha ou outros objetos ao fundo NÃO são contaminação
-- Em bebidas gaseificadas, bolhas e espuma são NORMAIS - não alertar sobre isso
-- Foque APENAS no conteúdo interno real do alimento/bebida
+### AVOID FALSE POSITIVES:
+- **DISTINGUISH elements of the ENVIRONMENT (table, background, surface) from the ACTUAL CONTENT of the food**
+- Reflections, white table, tablecloth or other background objects are NOT contamination
+- In carbonated beverages, bubbles and foam are NORMAL - do not alert about this
+- Focus ONLY on the actual internal content of the food/beverage
 
-### CARACTERÍSTICAS NORMAIS (NÃO SÃO PROBLEMAS):
-- Refrigerantes: bolhas, espuma, gás carbonatado = NORMAL
-- Cerveja: espuma/colarinho = NORMAL  
-- Sucos: sedimentação, polpa = NORMAL
-- Café: crema, espuma = NORMAL
-- Comida: vapor, condensação no recipiente = NORMAL
+### NORMAL CHARACTERISTICS (NOT PROBLEMS):
+- Soft drinks: bubbles, foam, carbonation = NORMAL
+- Beer: foam/head = NORMAL  
+- Juices: sedimentation, pulp = NORMAL
+- Coffee: crema, foam = NORMAL
+- Food: steam, condensation on container = NORMAL
 
-### O QUE SERIA REALMENTE SUSPEITO:
-- Mofo visível no alimento
-- Coloração completamente alterada do produto original
-- Objetos estranhos claramente DENTRO do alimento
-- Embalagem estufada ou danificada
+### WHAT WOULD ACTUALLY BE SUSPICIOUS:
+- Visible mold on food
+- Completely altered coloring from original product
+- Foreign objects clearly INSIDE the food
+- Swollen or damaged packaging
 
-RESPONDA EM FORMATO ESTRUTURADO:
+RESPOND IN STRUCTURED FORMAT (output in ${outputLanguage}):
 
-**TIPO**: [prato|rotulo|geladeira|nao_comida]
+**TYPE**: [dish|label|fridge|not_food]
 
-SE FOR PRATO/BEBIDA:
-- **Identificação**: Nome do prato/bebida identificado
-- **Calorias Estimadas**: XX kcal (margem: ±20%)
-- **Macros Estimados**: Proteína: Xg | Carbs: Xg | Gordura: Xg
-- **Segurança para suas restrições**: ✅ Seguro / ⚠️ ALERTA (detalhe ingredientes problemáticos)
-- **Nota**: [apenas se houver ingredientes que conflitem com as restrições do usuário]
+IF DISH/BEVERAGE:
+- **Identification**: Name of identified dish/beverage
+- **Estimated Calories**: XX kcal (margin: ±20%)
+- **Estimated Macros**: Protein: Xg | Carbs: Xg | Fat: Xg
+- **Safety for your restrictions**: ✅ Safe / ⚠️ ALERT (detail problematic ingredients)
+- **Note**: [only if there are ingredients that conflict with user restrictions]
 
-SE FOR RÓTULO:
-- **Produto**: Nome do produto identificado
-- **Ingredientes Visíveis**: Lista dos ingredientes que consegue ler
-- **Segurança**: ✅ Seguro / ⚠️ ALERTA / ❓ Inconclusivo (precisa de mais fotos)
-- **Alertas**: [ingredientes problemáticos encontrados]
+IF LABEL:
+- **Product**: Name of identified product
+- **Visible Ingredients**: List of ingredients you can read
+- **Safety**: ✅ Safe / ⚠️ ALERT / ❓ Inconclusive (needs more photos)
+- **Alerts**: [problematic ingredients found]
 
-SE FOR GELADEIRA:
-- **Itens Identificados**: Lista dos alimentos visíveis
-- **Sugestão de Receita**: Uma ideia rápida com os ingredientes
-- **Itens com Alerta**: [se algum item for problemático]
+IF FRIDGE:
+- **Identified Items**: List of visible foods
+- **Recipe Suggestion**: A quick idea with the ingredients
+- **Items with Alert**: [if any item is problematic]
 
-SE NÃO FOR COMIDA:
-- **Detectado**: O que você vê na imagem
-- **Mensagem**: Explicação gentil
+IF NOT FOOD:
+- **Detected**: What you see in the image
+- **Message**: Gentle explanation
 
-IMPORTANTE:
-- Foque na SEGURANÇA ALIMENTAR baseada nas INTOLERÂNCIAS/ALERGIAS do usuário
-- NÃO invente problemas visuais que não existem
-- Mesa, fundo, superfície = AMBIENTE, não alimento
-- Seja direto e objetivo na resposta
-- Use emojis moderadamente (✅ ⚠️ 🍽️)`;
+IMPORTANT:
+- Focus on FOOD SAFETY based on user's INTOLERANCES/ALLERGIES
+- DO NOT invent visual problems that don't exist
+- Table, background, surface = ENVIRONMENT, not food
+- Be direct and objective in the response
+- Use emojis sparingly (✅ ⚠️ 🍽️)
+- OUTPUT MUST BE IN ${outputLanguage}`;
 
   try {
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -1880,7 +2112,7 @@ IMPORTANTE:
           { 
             role: "user", 
             content: [
-              { type: "text", text: "Analise esta imagem:" },
+              { type: "text", text: "Analyze this image:" },
               { 
                 type: "image_url", 
                 image_url: { url: imageBase64 } 

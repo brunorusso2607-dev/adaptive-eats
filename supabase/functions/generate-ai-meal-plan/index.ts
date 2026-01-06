@@ -1559,9 +1559,12 @@ serve(async (req) => {
     // Coletar receitas já geradas para evitar repetição entre dias
     const previousDaysMeals: string[] = [];
     
-    // Configuração de paralelismo
-    const BATCH_SIZE = 2; // Reduzir para 2 dias simultaneamente para evitar rate limit
-    const MAX_RETRIES = 3; // Aumentar retries para lidar com erros internos
+    // Configuração de paralelismo (throttle)
+    const BATCH_SIZE = 1; // 1 dia por vez para evitar 429 (rate limit)
+    const DAY_DELAY_MS = 1500;
+    const MAX_RETRIES = 3; // retries para lidar com erros internos
+
+    const googleApiKey = await getGeminiApiKey();
     
     // Função para gerar um único dia
     async function generateSingleDay(
@@ -1588,7 +1591,6 @@ serve(async (req) => {
         nutritionalTablePrompt,
       });
 
-      const GOOGLE_AI_API_KEY = await getGeminiApiKey();
 
       // Usar sempre gemini-2.5-flash-lite diretamente via Google API
       const modelName = 'gemini-2.5-flash-lite';
@@ -1600,7 +1602,7 @@ serve(async (req) => {
         try {
           // Google Gemini API direta
           const aiResponse = await fetch(
-            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${GOOGLE_AI_API_KEY}`,
+            `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${googleApiKey}`,
             {
               method: "POST",
               headers: { "Content-Type": "application/json" },
@@ -1701,39 +1703,30 @@ serve(async (req) => {
       throw new Error(`Failed to generate day ${dayIndex + 1} after retries`);
     }
     
-    // Processar em batches paralelos
+    // Processar em batches (throttled para evitar rate limit)
     const totalBatches = Math.ceil(daysCount / BATCH_SIZE);
-    logStep(`📦 Starting parallel generation`, { 
-      totalDays: daysCount, 
-      batchSize: BATCH_SIZE, 
-      totalBatches 
+    logStep(`📦 Starting throttled generation`, {
+      totalDays: daysCount,
+      batchSize: BATCH_SIZE,
+      totalBatches,
+      dayDelayMs: DAY_DELAY_MS,
     });
-    
+
     for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
       const batchStart = batchNum * BATCH_SIZE;
       const batchEnd = Math.min(batchStart + BATCH_SIZE, daysCount);
-      const batchDays = [];
-      
-      logStep(`🔄 Processing batch ${batchNum + 1}/${totalBatches}`, { 
-        days: `${batchStart + 1}-${batchEnd}` 
+
+      logStep(`🔄 Processing batch ${batchNum + 1}/${totalBatches}`, {
+        days: `${batchStart + 1}-${batchEnd}`,
       });
-      
-      // Criar array de promises para este batch
-      const batchPromises: Promise<{ dayIndex: number; plan: SimpleDayPlan | null; violations: any[] }>[] = [];
-      
+
       for (let dayIndex = batchStart; dayIndex < batchEnd; dayIndex++) {
         // Passar as receitas já geradas dos batches anteriores
-        batchPromises.push(generateSingleDay(dayIndex, [...previousDaysMeals]));
-      }
-      
-      // Executar batch em paralelo
-      const batchResults = await Promise.all(batchPromises);
-      
-      // Processar resultados do batch
-      for (const result of batchResults) {
+        const result = await generateSingleDay(dayIndex, [...previousDaysMeals]);
+
         if (result.plan) {
           generatedDays[result.dayIndex] = result.plan;
-          
+
           // Coletar receitas para próximos batches
           for (const meal of result.plan.meals) {
             for (const option of meal.options) {
@@ -1742,14 +1735,20 @@ serve(async (req) => {
               }
             }
           }
-          
+
           // Adicionar violações
           allViolations.push(...result.violations);
         }
+
+        const isLastInBatch = dayIndex === batchEnd - 1;
+        const isLastBatch = batchNum === totalBatches - 1;
+        if (!(isLastInBatch && isLastBatch)) {
+          await new Promise((r) => setTimeout(r, DAY_DELAY_MS));
+        }
       }
-      
-      logStep(`✅ Batch ${batchNum + 1} complete`, { 
-        recipesCollected: previousDaysMeals.length 
+
+      logStep(`✅ Batch ${batchNum + 1} complete`, {
+        recipesCollected: previousDaysMeals.length,
       });
     }
     

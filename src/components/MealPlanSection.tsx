@@ -62,6 +62,8 @@ type MealPlan = {
 type MealPlanSectionProps = {
   onBack?: () => void;
   onPlanDeleted?: () => void;
+  autoSelectLatestPlan?: boolean;
+  onAutoSelectComplete?: () => void;
 };
 
 // Helper to check if a date is in the same month
@@ -129,9 +131,10 @@ type UserProfile = {
   excluded_ingredients?: string[] | null;
 };
 
-export default function MealPlanSection({ onBack, onPlanDeleted }: MealPlanSectionProps) {
+export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLatestPlan, onAutoSelectComplete }: MealPlanSectionProps) {
   const [view, setView] = useState<"list" | "select-mode" | "create-ai" | "create-custom" | "calendar" | "recipe" | "shopping" | "edit">("list");
   const [isLoading, setIsLoading] = useState(true);
+  const [hasAutoSelected, setHasAutoSelected] = useState(false);
   const [mealPlans, setMealPlans] = useState<MealPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<MealPlan | null>(null);
   const [selectedMeal, setSelectedMeal] = useState<MealPlanItem | null>(null);
@@ -263,6 +266,18 @@ export default function MealPlanSection({ onBack, onPlanDeleted }: MealPlanSecti
     fetchMealPlans();
     fetchUserProfile();
   }, []);
+
+  // Auto-select latest plan when autoSelectLatestPlan prop is true
+  useEffect(() => {
+    if (autoSelectLatestPlan && !hasAutoSelected && !isLoading && mealPlans.length > 0) {
+      console.log("[MealPlanSection] Auto-selecting latest plan");
+      const latestPlan = mealPlans[0]; // Already sorted by created_at desc
+      setSelectedPlan(latestPlan);
+      setView("calendar");
+      setHasAutoSelected(true);
+      onAutoSelectComplete?.();
+    }
+  }, [autoSelectLatestPlan, hasAutoSelected, isLoading, mealPlans, onAutoSelectComplete]);
 
   const handleDeletePlan = async (planId: string) => {
     try {

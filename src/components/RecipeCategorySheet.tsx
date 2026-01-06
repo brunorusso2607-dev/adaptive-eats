@@ -10,7 +10,7 @@ import { cn } from "@/lib/utils";
 import { useFilteredRecipeCategories } from "@/hooks/useFilteredRecipeCategories";
 import { Badge } from "@/components/ui/badge";
 import IngredientTagInput from "@/components/IngredientTagInput";
-import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
+import AppLoadingScreen from "@/components/AppLoadingScreen";
 
 // Filtros opcionais (Etapa 1)
 const FILTERS = {
@@ -151,7 +151,7 @@ export default function RecipeCategorySheet({
   return (
     <>
       {/* Fullscreen loading overlay - shown outside Sheet */}
-      {isLoading && <RecipeLoadingScreen />}
+      {isLoading && <AppLoadingScreen message="Estamos criando a sua receita personalizada..." />}
       
       <Sheet open={open && !isLoading} onOpenChange={handleClose}>
         <SheetContent 

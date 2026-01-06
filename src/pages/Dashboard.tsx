@@ -31,7 +31,7 @@ import WeightProgressBar from "@/components/WeightProgressBar";
 import CalorieSpeedometer from "@/components/CalorieSpeedometer";
 import { useDailyConsumption } from "@/hooks/useDailyConsumption";
 import UserAccountMenu from "@/components/UserAccountMenu";
-import RecipeLoadingScreen from "@/components/RecipeLoadingScreen";
+import AppLoadingScreen from "@/components/AppLoadingScreen";
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 import type { PhotoMode } from "@/components/PhotoModeSelector";
 
@@ -57,11 +57,9 @@ import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { useAutoSkipNotifications } from "@/hooks/useAutoSkipNotifications";
 
-// Componente de fallback para Suspense
+// Componente de fallback unificado para Suspense
 const LazyFallback = () => (
-  <div className="flex justify-center py-8">
-    <Loader2 className="w-8 h-8 animate-spin text-primary" />
-  </div>
+  <AppLoadingScreen variant="compact" />
 );
 
 // Helper function to convert database goal to UI mode
@@ -779,10 +777,10 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen gradient-hero pb-20 md:pb-0">
       {/* Recipe Loading Screen - Fullscreen overlay */}
-      {isGeneratingRecipe && <RecipeLoadingScreen />}
+      {isGeneratingRecipe && <AppLoadingScreen message="Estamos criando a sua receita personalizada..." />}
       
       {/* Plan Regeneration Loading Screen - Fullscreen overlay */}
-      {isRegeneratingPlan && <RecipeLoadingScreen message="Gerando seu novo plano alimentar..." />}
+      {isRegeneratingPlan && <AppLoadingScreen message="Gerando seu novo plano alimentar..." />}
       
       {/* Main Content */}
       <main className="container mx-auto px-4 py-8 max-w-5xl">

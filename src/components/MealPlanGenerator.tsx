@@ -109,8 +109,8 @@ export default function MealPlanGenerator({ onClose, onPlanGenerated }: MealPlan
     setProgress(0);
 
     try {
-      // Generate in batches of 7 days max (API limitation)
-      const batchSize = 7;
+      // Generate in batches of 3 days max to avoid edge function timeout
+      const batchSize = 3;
       const totalBatches = Math.ceil(remainingDays / batchSize);
       let mealPlanId: string | null = null;
       let currentDayOffset = 0;

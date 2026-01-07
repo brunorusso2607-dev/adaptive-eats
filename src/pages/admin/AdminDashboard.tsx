@@ -84,11 +84,12 @@ const mainMenuItems: SubMenuItem[] = [
       { path: "/admin/system-users", label: "Administradores", icon: Shield },
     ],
   },
-  {
+{
   label: "Conteúdo",
     icon: Apple,
     subItems: [
       { path: "/admin/foods", label: "Base de Alimentos", icon: Apple },
+      { path: "/admin/meal-pool", label: "Pool de Refeições", icon: Database },
       { path: "/admin/intolerance-mappings", label: "Mapeamento Intolerâncias", icon: AlertTriangle },
       { path: "/admin/dietary-forbidden", label: "Proibidos por Dieta", icon: Leaf },
       { path: "/admin/food-decomposition", label: "Decomposição Alimentos", icon: Utensils },
@@ -103,7 +104,6 @@ const mainMenuItems: SubMenuItem[] = [
     icon: ChefHat,
     subItems: [
       { path: "/admin/ai-meal-plan-test", label: "Teste de Plano IA", icon: ChefHat },
-      { path: "/admin/meal-pool", label: "Pool de Refeições", icon: Database },
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/prompt-validation", label: "Validação do Prompt", icon: Shield },
     ],

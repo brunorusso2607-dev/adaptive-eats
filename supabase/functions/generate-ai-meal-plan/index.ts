@@ -79,6 +79,12 @@ interface SimpleMealOption {
   calories_kcal: number;
   calculated_calories?: number; // Calculado pelo script
   instructions?: string[]; // Passos de preparo
+  // Pool integration fields
+  fromPool?: boolean;
+  poolMealId?: string;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
 }
 
 interface SimpleMeal {
@@ -1509,6 +1515,149 @@ serve(async (req) => {
     const AI_MODEL = "gemini-2.5-flash-lite";
     logStep("Using hardcoded AI model", { model: AI_MODEL });
 
+    // ============= CARREGAR POOL DE REFEIÇÕES APROVADAS =============
+    logStep("Loading approved meal combinations from pool");
+    
+    interface MealCombinationFromPool {
+      id: string;
+      name: string;
+      meal_type: string;
+      components: any;
+      total_calories: number;
+      total_protein: number;
+      total_carbs: number;
+      total_fat: number;
+      instructions: any;
+      blocked_for_intolerances: string[] | null;
+      dietary_tags: string[] | null;
+      country_codes: string[];
+    }
+    
+    // Buscar refeições aprovadas compatíveis com o país do usuário
+    const { data: approvedMeals, error: poolError } = await supabaseClient
+      .from("meal_combinations")
+      .select("id, name, meal_type, components, total_calories, total_protein, total_carbs, total_fat, instructions, blocked_for_intolerances, dietary_tags, country_codes")
+      .eq("is_active", true)
+      .eq("approval_status", "approved")
+      .contains("country_codes", [userCountry]);
+    
+    if (poolError) {
+      logStep("⚠️ Error loading meal pool, will use AI fallback", { error: poolError.message });
+    }
+    
+    // Filtrar refeições por compatibilidade com restrições do usuário
+    const userIntolerances = restrictions.intolerances || [];
+    const userDietaryPref = restrictions.dietaryPreference;
+    const userExcluded = restrictions.excludedIngredients || [];
+    
+    const compatiblePoolMeals: MealCombinationFromPool[] = (approvedMeals || []).filter((meal: MealCombinationFromPool) => {
+      // Verificar intolerâncias bloqueadas
+      if (meal.blocked_for_intolerances && meal.blocked_for_intolerances.length > 0) {
+        const hasBlockedIntolerance = userIntolerances.some(
+          (intol: string) => meal.blocked_for_intolerances!.includes(intol)
+        );
+        if (hasBlockedIntolerance) return false;
+      }
+      
+      // Verificar preferência dietária
+      if (userDietaryPref && userDietaryPref !== 'omnivore' && meal.dietary_tags) {
+        // Para vegetarianos, a refeição precisa ter tag vegetarian
+        if (userDietaryPref === 'vegetarian' && !meal.dietary_tags.includes('vegetarian') && !meal.dietary_tags.includes('vegan')) {
+          return false;
+        }
+        // Para veganos, a refeição precisa ter tag vegan
+        if (userDietaryPref === 'vegan' && !meal.dietary_tags.includes('vegan')) {
+          return false;
+        }
+      }
+      
+      // Verificar ingredientes excluídos manualmente
+      if (userExcluded.length > 0 && Array.isArray(meal.components)) {
+        const mealIngredients = meal.components.map((c: any) => 
+          (c.name || c.item || '').toLowerCase()
+        );
+        const hasExcluded = userExcluded.some((excluded: string) =>
+          mealIngredients.some((ing: string) => ing.includes(excluded.toLowerCase()))
+        );
+        if (hasExcluded) return false;
+      }
+      
+      return true;
+    });
+    
+    // Organizar por tipo de refeição
+    const poolByMealType: Record<string, MealCombinationFromPool[]> = {};
+    for (const meal of compatiblePoolMeals) {
+      const mealType = meal.meal_type;
+      if (!poolByMealType[mealType]) {
+        poolByMealType[mealType] = [];
+      }
+      poolByMealType[mealType].push(meal);
+    }
+    
+    logStep("Approved meal pool loaded", { 
+      totalApproved: approvedMeals?.length || 0,
+      compatibleWithUser: compatiblePoolMeals.length,
+      byType: Object.fromEntries(Object.entries(poolByMealType).map(([k, v]) => [k, v.length]))
+    });
+    
+    // Função para buscar refeições do pool compatíveis com target de calorias
+    function getPoolMealsForType(
+      mealType: string, 
+      targetCalories: number, 
+      count: number,
+      usedMealIds: Set<string>
+    ): MealCombinationFromPool[] {
+      const available = (poolByMealType[mealType] || []).filter(m => !usedMealIds.has(m.id));
+      if (available.length === 0) return [];
+      
+      // Filtrar por faixa de calorias (±30% do target)
+      const minCal = targetCalories * 0.7;
+      const maxCal = targetCalories * 1.3;
+      
+      const inRange = available.filter(m => 
+        m.total_calories >= minCal && m.total_calories <= maxCal
+      );
+      
+      // Se não tiver suficientes na faixa, pegar os mais próximos
+      if (inRange.length < count) {
+        const sorted = available.sort((a, b) => 
+          Math.abs(a.total_calories - targetCalories) - Math.abs(b.total_calories - targetCalories)
+        );
+        return sorted.slice(0, count);
+      }
+      
+      // Selecionar aleatoriamente da faixa para variedade
+      const shuffled = inRange.sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    }
+    
+    // Converter refeição do pool para formato SimpleMealOption
+    function convertPoolMealToOption(poolMeal: MealCombinationFromPool): SimpleMealOption {
+      const foods = Array.isArray(poolMeal.components) 
+        ? poolMeal.components.map((c: any) => ({
+            name: c.name || c.item || '',
+            grams: c.grams || c.quantity_grams || 100,
+            calories: c.calories || 0,
+            protein: c.protein || 0,
+            carbs: c.carbs || 0,
+            fat: c.fat || 0,
+          }))
+        : [];
+      
+      return {
+        title: poolMeal.name,
+        foods,
+        instructions: Array.isArray(poolMeal.instructions) ? poolMeal.instructions : [],
+        calories_kcal: poolMeal.total_calories,
+        protein: poolMeal.total_protein,
+        carbs: poolMeal.total_carbs,
+        fat: poolMeal.total_fat,
+        fromPool: true,
+        poolMealId: poolMeal.id,
+      };
+    }
+
     // Build meals with target calories and regional labels
     // IMPORTANTE: Se o usuário passou dailyCalories explicitamente, devemos respeitar essa preferência
     // mesmo que tenhamos nutritionalTargets calculados do perfil
@@ -1556,8 +1705,8 @@ serve(async (req) => {
     const generatedDays: SimpleDayPlan[] = new Array(daysCount).fill(null);
     const allViolations: Array<{ day: number; meal: string; food: string; reason: string; restriction: string }> = [];
     
-    // Coletar receitas já geradas para evitar repetição entre dias
-    const previousDaysMeals: string[] = [];
+    // Rastrear IDs de refeições do pool já usadas (para evitar repetição)
+    const usedPoolMealIds = new Set<string>();
     
     // Configuração de paralelismo (agora paralelo dentro de cada batch)
     const BATCH_SIZE = 5; // 5 dias por batch = 4 batches para 20 dias (25% cada)
@@ -1565,14 +1714,84 @@ serve(async (req) => {
 
     const googleApiKey = await getGeminiApiKey();
     
-    // Função para gerar um único dia
+    // Função para gerar um único dia (com fallback para AI se pool insuficiente)
     async function generateSingleDay(
       dayIndex: number, 
       previousMeals: string[]
-    ): Promise<{ dayIndex: number; plan: SimpleDayPlan | null; violations: any[] }> {
+    ): Promise<{ dayIndex: number; plan: SimpleDayPlan | null; violations: any[]; fromPool: boolean }> {
       const dayName = regional.dayNames?.[dayIndex % 7] || `Day ${dayIndex + 1}`;
       
       logStep(`🚀 Starting day ${dayIndex + 1}`, { dayName, batchMode: true });
+      
+      // ============= TENTAR USAR POOL PRIMEIRO =============
+      // Verificar se temos refeições suficientes do pool para TODOS os tipos de refeição
+      const poolMealsForDay: SimpleMeal[] = [];
+      let canUsePoolForDay = true;
+      
+      for (const meal of meals) {
+        const poolOptions = getPoolMealsForType(
+          meal.type, 
+          meal.targetCalories, 
+          optionsPerMeal, 
+          usedPoolMealIds
+        );
+        
+        if (poolOptions.length >= optionsPerMeal) {
+          // Temos opções suficientes do pool
+          const options = poolOptions.map(convertPoolMealToOption);
+          
+          // Marcar como usadas
+          poolOptions.forEach(p => usedPoolMealIds.add(p.id));
+          
+          poolMealsForDay.push({
+            meal_type: meal.type,
+            label: meal.label,
+            target_calories: meal.targetCalories,
+            options,
+          });
+        } else {
+          // Não temos opções suficientes - marcar para usar AI
+          canUsePoolForDay = false;
+          logStep(`⚠️ Pool insufficient for ${meal.type}`, { 
+            available: poolOptions.length, 
+            needed: optionsPerMeal 
+          });
+          break;
+        }
+      }
+      
+      // Se conseguimos montar o dia inteiro com o pool
+      if (canUsePoolForDay && poolMealsForDay.length === meals.length) {
+        const totalCalories = poolMealsForDay.reduce((sum, meal) => {
+          const firstOption = meal.options[0];
+          return sum + (firstOption?.calories_kcal || 0);
+        }, 0);
+        
+        const dayPlan: SimpleDayPlan = {
+          day: dayIndex + 1,
+          day_name: dayName,
+          meals: poolMealsForDay,
+          total_calories: totalCalories,
+        };
+        
+        logStep(`✅ Day ${dayIndex + 1} from POOL`, { 
+          mealsCount: poolMealsForDay.length,
+          totalCalories,
+          usedPoolIds: poolMealsForDay.flatMap(m => m.options.map(o => o.poolMealId)).filter(Boolean)
+        });
+        
+        return {
+          dayIndex,
+          plan: dayPlan,
+          violations: [],
+          fromPool: true,
+        };
+      }
+      
+      // ============= FALLBACK: GERAR COM AI =============
+      logStep(`🤖 Using AI fallback for day ${dayIndex + 1}`);
+      
+      // Resetar pool meals usadas neste dia se não conseguiu usar pool
 
       const prompt = buildSimpleNutritionistPrompt({
         dailyCalories,
@@ -1684,7 +1903,8 @@ serve(async (req) => {
           return {
             dayIndex,
             plan: validationResult.validatedPlan,
-            violations: validationResult.violations.map(v => ({ day: dayIndex + 1, ...v }))
+            violations: validationResult.violations.map(v => ({ day: dayIndex + 1, ...v })),
+            fromPool: false,
           };
           
         } catch (parseError) {
@@ -1701,6 +1921,9 @@ serve(async (req) => {
       
       throw new Error(`Failed to generate day ${dayIndex + 1} after retries`);
     }
+    
+    // Coletar receitas já geradas para evitar repetição entre dias
+    const previousDaysMeals: string[] = [];
     
     // Processar em batches PARALELOS
     const totalBatches = Math.ceil(daysCount / BATCH_SIZE);
@@ -1748,10 +1971,16 @@ serve(async (req) => {
           allViolations.push(...result.violations);
         }
       }
+      
+      // Contabilizar origem (pool vs AI)
+      const fromPoolCount = batchResults.filter(r => r.fromPool).length;
+      const fromAiCount = batchResults.filter(r => !r.fromPool && r.plan).length;
 
       logStep(`✅ Batch ${batchNum + 1} complete`, {
         recipesCollected: previousDaysMeals.length,
         daysGenerated: batchResults.filter(r => r.plan).length,
+        fromPool: fromPoolCount,
+        fromAI: fromAiCount,
       });
 
       // Pequeno delay entre batches para evitar rate limit

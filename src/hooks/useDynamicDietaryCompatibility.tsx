@@ -1,26 +1,17 @@
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
 import { useUserProfileContext } from './useUserProfileContext';
 import { useSafetyLabels } from './useSafetyLabels';
+import { supabase } from '@/integrations/supabase/client';
 
 /**
  * ============================================
- * HOOK DE COMPATIBILIDADE DIETÉTICA - MODO REFLETOR
+ * HOOK DE COMPATIBILIDADE DIETÉTICA
  * ============================================
  * 
- * IMPORTANTE: Este hook NÃO faz validação própria.
- * Ele apenas:
- * 1. Verifica se o usuário tem restrições configuradas
- * 2. Fornece labels amigáveis para exibição
- * 3. REFLETE os resultados que vêm do backend (globalSafetyEngine)
+ * Este hook faz validação LOCAL de ingredientes contra as restrições do usuário,
+ * usando os mapeamentos do banco de dados (intolerance_mappings e dietary_forbidden_ingredients).
  * 
- * A validação real é feita EXCLUSIVAMENTE pelo globalSafetyEngine no backend.
- * Os módulos de análise (analyze-label-photo, analyze-food-photo, etc) 
- * retornam os alertas_personalizados já prontos para exibição.
- * 
- * Este hook existe para:
- * - Componentes que precisam saber SE o usuário tem restrições
- * - Exibir labels amigáveis das restrições do usuário
- * - Processar resultados que JÁ VIERAM do backend
+ * Para análises mais complexas (fotos, etc), o backend globalSafetyEngine é usado.
  */
 
 export interface BackendAlertResult {
@@ -42,9 +33,91 @@ export interface ConflictResult {
   isSafe: boolean;
 }
 
+// Cache global para mapeamentos
+let cachedIntoleranceMappings: Map<string, Set<string>> | null = null;
+let cachedDietaryForbidden: Map<string, Set<string>> | null = null;
+let cachedSafeKeywords: Map<string, Set<string>> | null = null;
+
 export function useDynamicDietaryCompatibility() {
   const profileContext = useUserProfileContext();
   const { getIntoleranceLabel, getDietaryLabel, isLoading: labelsLoading } = useSafetyLabels();
+  const [mappingsLoaded, setMappingsLoaded] = useState(!!cachedIntoleranceMappings);
+
+  // Carrega os mapeamentos do banco de dados
+  useEffect(() => {
+    if (cachedIntoleranceMappings && cachedDietaryForbidden && cachedSafeKeywords) {
+      setMappingsLoaded(true);
+      return;
+    }
+
+    const loadMappings = async () => {
+      try {
+        // Carregar mapeamentos de intolerância
+        const { data: intoleranceData } = await supabase
+          .from('intolerance_mappings')
+          .select('intolerance_key, ingredient')
+          .eq('language', 'pt');
+
+        const intoleranceMap = new Map<string, Set<string>>();
+        if (intoleranceData) {
+          for (const row of intoleranceData) {
+            const key = row.intolerance_key.toLowerCase();
+            if (!intoleranceMap.has(key)) {
+              intoleranceMap.set(key, new Set());
+            }
+            intoleranceMap.get(key)!.add(row.ingredient.toLowerCase());
+          }
+        }
+        cachedIntoleranceMappings = intoleranceMap;
+
+        // Carregar ingredientes proibidos por dieta
+        const { data: dietaryData } = await supabase
+          .from('dietary_forbidden_ingredients')
+          .select('dietary_key, ingredient')
+          .eq('language', 'pt');
+
+        const dietaryMap = new Map<string, Set<string>>();
+        if (dietaryData) {
+          for (const row of dietaryData) {
+            const key = row.dietary_key.toLowerCase();
+            if (!dietaryMap.has(key)) {
+              dietaryMap.set(key, new Set());
+            }
+            dietaryMap.get(key)!.add(row.ingredient.toLowerCase());
+          }
+        }
+        cachedDietaryForbidden = dietaryMap;
+
+        // Carregar safe keywords
+        const { data: safeData } = await supabase
+          .from('intolerance_safe_keywords')
+          .select('intolerance_key, keyword');
+
+        const safeMap = new Map<string, Set<string>>();
+        if (safeData) {
+          for (const row of safeData) {
+            const key = row.intolerance_key.toLowerCase();
+            if (!safeMap.has(key)) {
+              safeMap.set(key, new Set());
+            }
+            safeMap.get(key)!.add(row.keyword.toLowerCase());
+          }
+        }
+        cachedSafeKeywords = safeMap;
+
+        setMappingsLoaded(true);
+      } catch (error) {
+        console.error('[useDynamicDietaryCompatibility] Error loading mappings:', error);
+        // Initialize with empty maps to avoid null checks
+        cachedIntoleranceMappings = cachedIntoleranceMappings || new Map();
+        cachedDietaryForbidden = cachedDietaryForbidden || new Map();
+        cachedSafeKeywords = cachedSafeKeywords || new Map();
+        setMappingsLoaded(true);
+      }
+    };
+
+    loadMappings();
+  }, []);
 
   // Verifica se o usuário tem restrições configuradas
   const hasRestrictions = useMemo(() => {
@@ -98,8 +171,143 @@ export function useDynamicDietaryCompatibility() {
   }, [profileContext.intolerances, profileContext.dietary_preference, profileContext.excluded_ingredients, getIntoleranceLabel, getDietaryLabel]);
 
   /**
+   * Verifica se um ingrediente é seguro devido a safe keywords
+   */
+  const isSafeByKeyword = useCallback((ingredientName: string, intoleranceKey: string): boolean => {
+    if (!cachedSafeKeywords) return false;
+    const safeKeywords = cachedSafeKeywords.get(intoleranceKey.toLowerCase());
+    if (!safeKeywords) return false;
+    
+    const normalizedIngredient = ingredientName.toLowerCase();
+    for (const keyword of safeKeywords) {
+      if (normalizedIngredient.includes(keyword)) {
+        return true;
+      }
+    }
+    return false;
+  }, []);
+
+  /**
+   * Verifica se um ingrediente conflita com uma intolerância
+   */
+  const checkIngredientConflict = useCallback((
+    ingredientName: string, 
+    intoleranceKey: string
+  ): boolean => {
+    if (!cachedIntoleranceMappings) return false;
+    
+    // Primeiro verifica se é seguro por safe keyword
+    if (isSafeByKeyword(ingredientName, intoleranceKey)) {
+      return false;
+    }
+    
+    const forbiddenIngredients = cachedIntoleranceMappings.get(intoleranceKey.toLowerCase());
+    if (!forbiddenIngredients) return false;
+    
+    const normalizedIngredient = ingredientName.toLowerCase();
+    
+    // Verifica match exato ou parcial
+    for (const forbidden of forbiddenIngredients) {
+      if (normalizedIngredient.includes(forbidden) || forbidden.includes(normalizedIngredient)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }, [isSafeByKeyword]);
+
+  /**
+   * Verifica se um ingrediente conflita com uma preferência dietética
+   */
+  const checkDietaryConflict = useCallback((
+    ingredientName: string, 
+    dietaryKey: string
+  ): boolean => {
+    if (!cachedDietaryForbidden) return false;
+    
+    const forbiddenIngredients = cachedDietaryForbidden.get(dietaryKey.toLowerCase());
+    if (!forbiddenIngredients) return false;
+    
+    const normalizedIngredient = ingredientName.toLowerCase();
+    
+    for (const forbidden of forbiddenIngredients) {
+      if (normalizedIngredient.includes(forbidden) || forbidden.includes(normalizedIngredient)) {
+        return true;
+      }
+    }
+    
+    return false;
+  }, []);
+
+  /**
+   * Valida ingredientes de uma refeição contra as restrições do usuário
+   */
+  const getMealCompatibility = useCallback((
+    ingredients: unknown
+  ): 'good' | 'moderate' | 'incompatible' | 'unknown' => {
+    // Se não tem restrições ou mapeamentos não carregaram, retorna unknown
+    if (!hasRestrictions || !mappingsLoaded) return 'unknown';
+    if (!ingredients) return 'unknown';
+    
+    // Normaliza ingredientes para array de strings
+    let ingredientNames: string[] = [];
+    
+    if (Array.isArray(ingredients)) {
+      ingredientNames = ingredients.map(ing => {
+        if (typeof ing === 'string') return ing;
+        if (ing && typeof ing === 'object' && 'item' in ing) return (ing as {item: string}).item;
+        return '';
+      }).filter(Boolean);
+    }
+    
+    if (ingredientNames.length === 0) return 'unknown';
+    
+    const userIntolerances = (profileContext.intolerances || []).filter(i => i && i !== 'nenhuma');
+    const dietaryPref = profileContext.dietary_preference;
+    const excludedIngredients = profileContext.excluded_ingredients || [];
+    
+    let hasIncompatible = false;
+    let hasModerate = false;
+    
+    for (const ingredientName of ingredientNames) {
+      const normalizedIngredient = ingredientName.toLowerCase();
+      
+      // Verifica exclusões manuais
+      for (const excluded of excludedIngredients) {
+        if (normalizedIngredient.includes(excluded.toLowerCase())) {
+          hasIncompatible = true;
+          break;
+        }
+      }
+      
+      if (hasIncompatible) break;
+      
+      // Verifica intolerâncias
+      for (const intolerance of userIntolerances) {
+        if (checkIngredientConflict(ingredientName, intolerance)) {
+          hasIncompatible = true;
+          break;
+        }
+      }
+      
+      if (hasIncompatible) break;
+      
+      // Verifica preferência dietética
+      if (dietaryPref && dietaryPref !== 'omnivore' && dietaryPref !== 'comum') {
+        if (checkDietaryConflict(ingredientName, dietaryPref)) {
+          hasIncompatible = true;
+          break;
+        }
+      }
+    }
+    
+    if (hasIncompatible) return 'incompatible';
+    if (hasModerate) return 'moderate';
+    return 'good';
+  }, [hasRestrictions, mappingsLoaded, profileContext.intolerances, profileContext.dietary_preference, profileContext.excluded_ingredients, checkIngredientConflict, checkDietaryConflict]);
+
+  /**
    * Converte alertas do backend para o formato ConflictResult.
-   * Esta função REFLETE o que o backend já decidiu, não faz nova validação.
    */
   const processBackendAlerts = useCallback((backendAlerts: BackendAlertResult[]): ConflictResult => {
     if (!backendAlerts || backendAlerts.length === 0) {
@@ -110,7 +318,6 @@ export function useDynamicDietaryCompatibility() {
     
     for (const alert of backendAlerts) {
       if (alert.status === 'contem' || alert.status === 'risco_potencial') {
-        // Determinar o tipo baseado no contexto
         const isIntolerance = (profileContext.intolerances || []).some(i => 
           alert.restricao.toLowerCase().includes(i.toLowerCase()) ||
           getIntoleranceLabel(i).toLowerCase() === alert.restricao.toLowerCase()
@@ -138,18 +345,6 @@ export function useDynamicDietaryCompatibility() {
   }, [hasRestrictions, profileContext.intolerances, profileContext.dietary_preference, getIntoleranceLabel, getDietaryLabel]);
 
   /**
-   * DEPRECATED: Esta função existe apenas para compatibilidade.
-   * Novos componentes devem usar processBackendAlerts() com os dados do backend.
-   * 
-   * Para validação de receitas/refeições geradas, os módulos de geração
-   * já usam o globalSafetyEngine no backend.
-   */
-  const checkMealConflicts = useCallback((_ingredients: unknown): ConflictResult => {
-    console.warn('[useDynamicDietaryCompatibility] checkMealConflicts é DEPRECATED. Use processBackendAlerts() com dados do backend.');
-    return { hasConflict: false, conflicts: [], isSafe: false };
-  }, []);
-
-  /**
    * Classifica a compatibilidade baseado nos alertas do backend.
    */
   const getMealCompatibilityFromAlerts = useCallback((backendAlerts: BackendAlertResult[]): 'good' | 'moderate' | 'incompatible' | 'unknown' => {
@@ -167,26 +362,28 @@ export function useDynamicDietaryCompatibility() {
   }, [hasRestrictions]);
 
   /**
-   * DEPRECATED: Use getMealCompatibilityFromAlerts() com dados do backend.
+   * Verifica conflitos de uma refeição (mantido para compatibilidade)
    */
-  const getMealCompatibility = useCallback((_ingredients: unknown): 'good' | 'moderate' | 'incompatible' | 'unknown' => {
-    console.warn('[useDynamicDietaryCompatibility] getMealCompatibility é DEPRECATED. Use getMealCompatibilityFromAlerts() com dados do backend.');
-    return 'unknown';
-  }, []);
+  const checkMealConflicts = useCallback((ingredients: unknown): ConflictResult => {
+    const compatibility = getMealCompatibility(ingredients);
+    return {
+      hasConflict: compatibility === 'incompatible',
+      conflicts: [],
+      isSafe: compatibility === 'good'
+    };
+  }, [getMealCompatibility]);
 
   return {
-    // Funções novas (modo refletor)
+    // Funções principais
     getUserRestrictions,
+    getMealCompatibility,
     processBackendAlerts,
     getMealCompatibilityFromAlerts,
-    
-    // Funções deprecated (mantidas para compatibilidade)
     checkMealConflicts,
-    getMealCompatibility,
     
     // Estado
     hasRestrictions,
-    isLoading: profileContext.isLoading || labelsLoading,
+    isLoading: profileContext.isLoading || labelsLoading || !mappingsLoaded,
     hasProfile: hasRestrictions
   };
 }

@@ -1021,6 +1021,93 @@ export type Database = {
         }
         Relationships: []
       }
+      meal_combinations: {
+        Row: {
+          blocked_for_intolerances: string[] | null
+          components: Json
+          country_codes: string[]
+          created_at: string
+          description: string | null
+          dietary_tags: string[] | null
+          flexible_options: Json | null
+          generated_by: string | null
+          id: string
+          instructions: Json | null
+          is_active: boolean
+          language_code: string
+          last_used_at: string | null
+          macro_confidence: string | null
+          macro_source: string | null
+          meal_type: string
+          name: string
+          prep_time_minutes: number | null
+          source: string | null
+          total_calories: number
+          total_carbs: number
+          total_fat: number
+          total_fiber: number | null
+          total_protein: number
+          updated_at: string
+          usage_count: number | null
+        }
+        Insert: {
+          blocked_for_intolerances?: string[] | null
+          components?: Json
+          country_codes?: string[]
+          created_at?: string
+          description?: string | null
+          dietary_tags?: string[] | null
+          flexible_options?: Json | null
+          generated_by?: string | null
+          id?: string
+          instructions?: Json | null
+          is_active?: boolean
+          language_code?: string
+          last_used_at?: string | null
+          macro_confidence?: string | null
+          macro_source?: string | null
+          meal_type: string
+          name: string
+          prep_time_minutes?: number | null
+          source?: string | null
+          total_calories?: number
+          total_carbs?: number
+          total_fat?: number
+          total_fiber?: number | null
+          total_protein?: number
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Update: {
+          blocked_for_intolerances?: string[] | null
+          components?: Json
+          country_codes?: string[]
+          created_at?: string
+          description?: string | null
+          dietary_tags?: string[] | null
+          flexible_options?: Json | null
+          generated_by?: string | null
+          id?: string
+          instructions?: Json | null
+          is_active?: boolean
+          language_code?: string
+          last_used_at?: string | null
+          macro_confidence?: string | null
+          macro_source?: string | null
+          meal_type?: string
+          name?: string
+          prep_time_minutes?: number | null
+          source?: string | null
+          total_calories?: number
+          total_carbs?: number
+          total_fat?: number
+          total_fiber?: number | null
+          total_protein?: number
+          updated_at?: string
+          usage_count?: number | null
+        }
+        Relationships: []
+      }
       meal_consumption: {
         Row: {
           consumed_at: string

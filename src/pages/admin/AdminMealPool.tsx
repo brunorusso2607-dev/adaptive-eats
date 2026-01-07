@@ -122,6 +122,32 @@ export default function AdminMealPool() {
   const [genCountry, setGenCountry] = useState("BR");
   const [genMealType, setGenMealType] = useState("cafe_manha");
   const [genQuantity, setGenQuantity] = useState(5);
+  const [genIntoleranceFilter, setGenIntoleranceFilter] = useState<string>("none");
+
+  // Intolerance options for the filter
+  const INTOLERANCE_OPTIONS = [
+    { key: "none", label: "🌐 Sem filtro (geral)" },
+    { key: "gluten", label: "🌾 Sem Glúten" },
+    { key: "lactose", label: "🥛 Sem Lactose" },
+    { key: "milk", label: "🐄 Sem Leite" },
+    { key: "egg", label: "🥚 Sem Ovo" },
+    { key: "peanut", label: "🥜 Sem Amendoim" },
+    { key: "nuts", label: "🌰 Sem Nozes" },
+    { key: "tree_nuts", label: "🌰 Sem Oleaginosas" },
+    { key: "fish", label: "🐟 Sem Peixe" },
+    { key: "seafood", label: "🦐 Sem Frutos do Mar" },
+    { key: "shellfish", label: "🦞 Sem Mariscos" },
+    { key: "soy", label: "🫘 Sem Soja" },
+    { key: "fodmap", label: "🍎 Low FODMAP" },
+    { key: "celiac", label: "🌾 Celíacos" },
+    { key: "fructose", label: "🍯 Sem Frutose" },
+    { key: "histamine", label: "🧪 Baixa Histamina" },
+    { key: "sulfite", label: "🍷 Sem Sulfitos" },
+    { key: "nightshade", label: "🍅 Sem Solanáceas" },
+    { key: "corn", label: "🌽 Sem Milho" },
+    { key: "sesame", label: "🫘 Sem Gergelim" },
+    { key: "mustard", label: "🌿 Sem Mostarda" },
+  ];
 
   const fetchMeals = async () => {
     setIsLoading(true);
@@ -217,6 +243,7 @@ export default function AdminMealPool() {
           country_code: genCountry,
           meal_type: genMealType,
           quantity: genQuantity,
+          intolerance_filter: genIntoleranceFilter !== "none" ? genIntoleranceFilter : null,
         },
       });
 
@@ -454,6 +481,20 @@ export default function AdminMealPool() {
                   <SelectItem value="10">10</SelectItem>
                   <SelectItem value="15">15</SelectItem>
                   <SelectItem value="20">20</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Perfil de Intolerância</label>
+              <Select value={genIntoleranceFilter} onValueChange={setGenIntoleranceFilter}>
+                <SelectTrigger className="w-[200px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {INTOLERANCE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.key} value={opt.key}>{opt.label}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

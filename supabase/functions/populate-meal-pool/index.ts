@@ -417,9 +417,28 @@ serve(async (req) => {
             keys: parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.keys(parsed) : undefined,
           });
 
-          const candidate = Array.isArray((parsed as any)?.meals) ? (parsed as any).meals : parsed;
-
-          if (!Array.isArray(candidate)) {
+          // Handle multiple possible response formats:
+          // 1. {"meals": [...]} - standard format
+          // 2. [{"meals": [...]}] - wrapped in array
+          // 3. [...meals...] - direct array of meals
+          let candidate: unknown[];
+          
+          if (Array.isArray(parsed)) {
+            // Check if it's [{"meals": [...]}] format
+            if (parsed.length === 1 && Array.isArray((parsed[0] as any)?.meals)) {
+              candidate = (parsed[0] as any).meals;
+              logStep("Extracted meals from wrapped array format");
+            } else if (parsed.length > 0 && (parsed[0] as any)?.components) {
+              // Direct array of meals
+              candidate = parsed;
+              logStep("Using direct array of meals");
+            } else {
+              throw new Error("Unrecognized array format");
+            }
+          } else if (Array.isArray((parsed as any)?.meals)) {
+            candidate = (parsed as any).meals;
+            logStep("Extracted meals from object format");
+          } else {
             throw new Error("meals is not an array");
           }
 

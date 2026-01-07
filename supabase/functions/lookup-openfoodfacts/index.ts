@@ -36,6 +36,21 @@ interface DecompositionResult {
   raw_ingredients_text: string | null;
 }
 
+// Extrai o nome normalizado em inglês do ID do OpenFoodFacts
+// Ex: "en:water" -> "water", "en:barley-malt" -> "barley malt"
+function extractNormalizedIngredientFromId(id: string): string | null {
+  if (!id) return null;
+  
+  // Remove o prefixo de idioma (en:, fr:, pt:, etc.)
+  const withoutPrefix = id.replace(/^[a-z]{2}:/, "");
+  
+  // Converte hífens para espaços e normaliza
+  return withoutPrefix
+    .replace(/-/g, " ")
+    .toLowerCase()
+    .trim();
+}
+
 // Normaliza ingredientes removendo acentos e convertendo para minúsculas
 function normalizeIngredient(ingredient: string): string {
   return ingredient
@@ -46,7 +61,7 @@ function normalizeIngredient(ingredient: string): string {
     .trim();
 }
 
-// Extrai ingredientes limpos do texto bruto
+// Extrai ingredientes limpos do texto bruto (fallback)
 function parseIngredientsText(text: string): string[] {
   if (!text) return [];
   
@@ -223,19 +238,35 @@ serve(async (req) => {
       );
     }
     
-    // Extrai ingredientes
+    // Extrai ingredientes usando IDs normalizados em inglês
     let ingredients: string[] = [];
     
-    // Primeiro tenta usar a lista estruturada de ingredientes
+    // Primeiro tenta usar os IDs normalizados (en:water -> water)
     if (product.ingredients && product.ingredients.length > 0) {
       ingredients = product.ingredients
-        .map(i => normalizeIngredient(i.text))
+        .map(i => {
+          // Prioriza o ID normalizado em inglês
+          const fromId = extractNormalizedIngredientFromId(i.id);
+          if (fromId && fromId.length > 2) {
+            return fromId;
+          }
+          // Fallback para o texto normalizado
+          return normalizeIngredient(i.text);
+        })
         .filter(i => i.length > 2);
+      
+      logStep("Ingredientes extraídos de IDs", { 
+        sample: ingredients.slice(0, 5),
+        total: ingredients.length 
+      });
     }
     
-    // Se não tiver lista estruturada, faz parse do texto
+    // Se não tiver lista estruturada, faz parse do texto (último recurso)
     if (ingredients.length === 0 && product.ingredients_text) {
       ingredients = parseIngredientsText(product.ingredients_text);
+      logStep("Ingredientes extraídos do texto (fallback)", { 
+        total: ingredients.length 
+      });
     }
     
     const result: DecompositionResult = {
@@ -271,7 +302,8 @@ serve(async (req) => {
             .insert({
               food_name: result.product_name.toLowerCase(),
               base_ingredients: result.ingredients,
-              notes: `Importado do OpenFoodFacts. Marca: ${result.brand || 'N/A'}. País: ${result.country_code || 'N/A'}`,
+              language: "en", // Ingredientes sempre em inglês (normalizados do OpenFoodFacts)
+              notes: `Imported from OpenFoodFacts. Brand: ${result.brand || 'N/A'}. Country: ${result.country_code || 'N/A'}`,
               is_active: true,
             });
           

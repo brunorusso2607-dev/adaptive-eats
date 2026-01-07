@@ -323,6 +323,31 @@ const DEFAULT_PORTIONS: Record<string, { grams: number; label_pt: string; label_
   legume: { grams: 100, label_pt: "1 concha", label_en: "1 ladle" },
 };
 
+// ============= FILTRAR COMPONENTES POR INTOLERÂNCIA =============
+function filterComponentsByIntolerance(
+  components: Record<string, Array<{ name: string; name_en?: string; portion_grams?: number; portion_ml?: number; blocked_for: string[] }>>,
+  intoleranceFilter: string | null,
+): Record<string, Array<{ name: string; name_en?: string; portion_grams?: number; portion_ml?: number; blocked_for: string[] }>> {
+  if (!intoleranceFilter) {
+    return components;
+  }
+
+  const filtered: Record<string, Array<any>> = {};
+
+  for (const [category, items] of Object.entries(components)) {
+    const safeItems = items.filter(item => {
+      // Item é seguro se NÃO está bloqueado para a intolerância selecionada
+      return !item.blocked_for.includes(intoleranceFilter);
+    });
+    
+    if (safeItems.length > 0) {
+      filtered[category] = safeItems;
+    }
+  }
+
+  return filtered;
+}
+
 // ============= CONSTRUIR PROMPT ESTILO NUTRICIONISTA =============
 function buildMealPoolPrompt(
   regional: RegionalConfig,
@@ -333,6 +358,7 @@ function buildMealPoolPrompt(
   existingMealNames: string[],
   dietaryFilter?: string | null,
   strategyKey?: string | null,
+  intoleranceFilter?: string | null,
 ): string {
   const mealLabel = MEAL_TYPE_LABELS[countryCode]?.[mealType] || mealType;
   const language = regional.language || "pt-BR";
@@ -341,13 +367,30 @@ function buildMealPoolPrompt(
   // Pegar estrutura da refeição
   const structure = MEAL_STRUCTURES[mealType] || MEAL_STRUCTURES.almoco;
   
+  // Filtrar componentes se houver filtro de intolerância
+  const filteredComponents = filterComponentsByIntolerance(MEAL_COMPONENTS, intoleranceFilter ?? null);
+  
   // Montar lista de componentes disponíveis por categoria
-  const componentsByCategory = Object.entries(MEAL_COMPONENTS)
+  const componentsByCategory = Object.entries(filteredComponents)
     .map(([category, items]) => {
       const names = items.map(i => i.name).join(", ");
       return `${category.toUpperCase()}: ${names}`;
     })
     .join("\n");
+  
+  // Contexto de intolerância específica
+  let intoleranceContext = "";
+  if (intoleranceFilter) {
+    const forbiddenIngredients = INTOLERANCE_INGREDIENT_MAP[intoleranceFilter] || [];
+    intoleranceContext = `
+🚨 FILTRO DE INTOLERÂNCIA ATIVO: ${intoleranceFilter.toUpperCase()}
+⛔ INGREDIENTES PROIBIDOS (NUNCA usar):
+${forbiddenIngredients.map(i => `- ${i}`).join("\n")}
+
+✅ TODAS as refeições geradas DEVEM ser seguras para pessoas com intolerância a ${intoleranceFilter}.
+✅ Nenhuma refeição pode ter "${intoleranceFilter}" no array blocked_for_intolerances.
+✅ Use APENAS os componentes listados abaixo (já filtrados para serem seguros).`;
+  }
   
   // Contexto de estratégia nutricional
   let strategyContext = "";
@@ -370,7 +413,7 @@ ESTRATÉGIA NUTRICIONAL ATIVA: ${persona.label}
     ? `\n🚫 PRATOS JÁ EXISTENTES (NÃO REPETIR NOMES SIMILARES):\n${existingMealNames.slice(0, 50).join(", ")}`
     : "";
   
-  // Lista de intolerâncias com ingredientes
+  // Lista de intolerâncias com ingredientes (para marcação correta)
   const intoleranceList = Object.entries(INTOLERANCE_INGREDIENT_MAP)
     .map(([key, ingredients]) => `- ${key}: ${ingredients.slice(0, 5).join(", ")}...`)
     .join("\n");
@@ -383,6 +426,7 @@ ESTRATÉGIA NUTRICIONAL ATIVA: ${persona.label}
 [OUTPUT LANGUAGE: ${language}]
 
 🩺 VOCÊ É UM NUTRICIONISTA CLÍNICO MONTANDO COMBINAÇÕES ALIMENTARES PRÁTICAS
+${intoleranceContext}
 
 OBJETIVO: Gerar ${quantity} combinações de alimentos simples para "${mealLabel}" que uma pessoa comum vai REALMENTE seguir no dia a dia.
 
@@ -391,7 +435,7 @@ REGRA: ${structure.rules}
 TEMPO MÁXIMO DE PREPARO: ${structure.max_prep_time}
 FOCO NUTRICIONAL: Carboidrato ${structure.macro_focus.carb}, Proteína ${structure.macro_focus.protein}, Gordura ${structure.macro_focus.fat}
 
-🧱 COMPONENTES DISPONÍVEIS PARA COMBINAR:
+🧱 COMPONENTES DISPONÍVEIS PARA COMBINAR${intoleranceFilter ? ` (SEGUROS para ${intoleranceFilter})` : ""}:
 ${componentsByCategory}
 
 ✅ EXEMPLOS DE COMBINAÇÕES CORRETAS PARA ${mealLabel.toUpperCase()}:
@@ -425,7 +469,7 @@ CHAVES DE INTOLERÂNCIA VÁLIDAS: ${allIntoleranceKeys}
         {"type": "protein", "name": "Frango grelhado", "name_en": "Grilled chicken", "portion_grams": 120, "portion_label": "${isPortuguese ? "1 filé médio" : "1 medium fillet"}"}
       ],
       "dietary_tags": ["sem_lactose", "high_protein"],
-      "blocked_for_intolerances": ["gluten", "lactose"],
+      "blocked_for_intolerances": ${intoleranceFilter ? `[]` : `["gluten", "lactose"]`},
       "flexible_options": {"protein": ["frango", "peixe", "ovo"]},
       "instructions": ["Instrução 1", "Instrução 2"],
       "prep_time_minutes": 15
@@ -441,7 +485,7 @@ ${FORBIDDEN_COMBINATIONS.map(c => `- ${c.join(" + ")}`).join("\n")}
 VALIDAÇÃO:
 1. Cada refeição DEVE ter array "components" com 2-5 itens
 2. Cada componente DEVE ter: type, name, name_en, portion_grams (ou portion_ml), portion_label
-3. blocked_for_intolerances deve listar TODAS as intolerâncias afetadas pelos ingredientes
+3. blocked_for_intolerances deve listar TODAS as intolerâncias afetadas pelos ingredientes${intoleranceFilter ? ` (NÃO pode incluir "${intoleranceFilter}")` : ""}
 4. Retornar APENAS JSON válido, sem markdown, sem code blocks
 
 Gere ${quantity} combinações VARIADAS, SIMPLES e PRÁTICAS para "${mealLabel}" agora.`;
@@ -470,9 +514,10 @@ serve(async (req) => {
       quantity = 5,
       dietary_filter = null,
       strategy_key = null,
+      intolerance_filter = null,
     } = await req.json();
 
-    logStep("Starting meal pool generation", { country_code, meal_type, quantity, dietary_filter, strategy_key });
+    logStep("Starting meal pool generation", { country_code, meal_type, quantity, dietary_filter, strategy_key, intolerance_filter });
 
     // Validate meal_type
     const validMealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
@@ -512,6 +557,7 @@ serve(async (req) => {
       existingMealNames,
       dietary_filter,
       strategy_key,
+      intolerance_filter,
     );
 
     // Helper function to call AI with retry

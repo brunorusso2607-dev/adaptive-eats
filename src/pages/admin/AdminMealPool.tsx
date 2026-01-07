@@ -562,7 +562,6 @@ export default function AdminMealPool() {
                     <TableHead>Tipo</TableHead>
                     <TableHead>Calorias</TableHead>
                     <TableHead>Macros</TableHead>
-                    <TableHead>Fonte</TableHead>
                     <TableHead>Confiança</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
@@ -591,8 +590,13 @@ export default function AdminMealPool() {
                         </Badge>
                       </TableCell>
                       <TableCell>
-                        <span className="font-medium">{meal.total_calories}</span>
-                        <span className="text-muted-foreground text-xs"> kcal</span>
+                        <div>
+                          <span className="font-medium">{meal.total_calories}</span>
+                          <span className="text-muted-foreground text-xs"> kcal</span>
+                          <div className="text-xs text-muted-foreground uppercase">
+                            {meal.macro_source || 'tbca'}
+                          </div>
+                        </div>
                       </TableCell>
                       <TableCell>
                         <div className="text-xs space-y-0.5">
@@ -600,11 +604,6 @@ export default function AdminMealPool() {
                           <div>C: {Math.round(meal.total_carbs)}g</div>
                           <div>G: {Math.round(meal.total_fat)}g</div>
                         </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-xs uppercase">
-                          {meal.macro_source || 'tbca'}
-                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Badge 

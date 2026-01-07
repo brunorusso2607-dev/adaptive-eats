@@ -552,11 +552,15 @@ Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos.`;
         );
 
         const calibratedItem = calculatedItems[0];
-        const hasDbData = calibratedItem?.source === 'database' || calibratedItem?.source === 'database_global';
+        // PHASE 2: Accept canonical as valid source (highest priority)
+        const hasRealData = calibratedItem?.source === 'canonical' || 
+                           calibratedItem?.source === 'database' || 
+                           calibratedItem?.source === 'database_global';
 
-        if (hasDbData && calibratedItem.calories > 0) {
-          logStep("Suggestion calibrated from database", { 
+        if (hasRealData && calibratedItem.calories > 0) {
+          logStep("Suggestion calibrated", { 
             name: suggestion.name,
+            source: calibratedItem.source,
             original: { cal: suggestion.calories, p: suggestion.protein, c: suggestion.carbs, f: suggestion.fat },
             calibrated: { cal: calibratedItem.calories, p: calibratedItem.protein, c: calibratedItem.carbs, f: calibratedItem.fat }
           });
@@ -567,6 +571,8 @@ Retorne APENAS o array JSON com ${numberOfSubstitutes} substitutos.`;
             protein: Math.round(calibratedItem.protein * 10) / 10,
             carbs: Math.round(calibratedItem.carbs * 10) / 10,
             fat: Math.round(calibratedItem.fat * 10) / 10,
+            macro_source: calibratedItem.source,
+            canonical_id: calibratedItem.canonical_id || undefined,
           });
         } else {
           // Keep AI estimates if no database data

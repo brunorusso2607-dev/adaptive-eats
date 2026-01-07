@@ -10,6 +10,9 @@ import {
   type SafetyDatabase,
 } from "../_shared/globalSafetyEngine.ts";
 
+// PHASE 2: Import calculateRealMacrosForFoods for canonical lookup
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
@@ -40,6 +43,11 @@ serve(async (req) => {
     if (!GOOGLE_AI_API_KEY) {
       throw new Error('GOOGLE_AI_API_KEY not configured');
     }
+
+    // Initialize Supabase for canonical lookup
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     // Load safety database from globalSafetyEngine (with cache)
     const safetyDatabase: SafetyDatabase = await loadSafetyDatabase();
@@ -167,14 +175,71 @@ Retorne apenas o array JSON com os nomes dos ingredientes substitutos. Exemplo: 
       rejectedItems: rejectedSuggestions
     });
 
+    // ========== PHASE 2: ENRICH WITH CANONICAL MACROS ==========
+    // Lookup macros from canonical_ingredients for each suggestion
+    const enrichedSuggestions: Array<{
+      name: string;
+      calories_per_100g?: number;
+      protein_per_100g?: number;
+      carbs_per_100g?: number;
+      fat_per_100g?: number;
+      macro_source?: string;
+      canonical_id?: string;
+    }> = [];
+
+    if (validatedSuggestions.length > 0) {
+      try {
+        // Prepare foods for macro lookup (assume 100g for per-100g data)
+        const foodsForLookup = validatedSuggestions.map(name => ({
+          name,
+          grams: 100,
+          aiEstimate: { calories: 0, protein: 0, carbs: 0, fat: 0 }
+        }));
+
+        const macroResult = await calculateRealMacrosForFoods(supabase, foodsForLookup, 'BR');
+        
+        for (let i = 0; i < validatedSuggestions.length; i++) {
+          const suggestion = validatedSuggestions[i];
+          const macros = macroResult.items[i];
+          
+          if (macros && macros.source !== 'ai_estimate') {
+            enrichedSuggestions.push({
+              name: suggestion,
+              calories_per_100g: Math.round(macros.calories),
+              protein_per_100g: Math.round(macros.protein * 10) / 10,
+              carbs_per_100g: Math.round(macros.carbs * 10) / 10,
+              fat_per_100g: Math.round(macros.fat * 10) / 10,
+              macro_source: macros.source,
+              canonical_id: macros.canonical_id || undefined,
+            });
+          } else {
+            enrichedSuggestions.push({ name: suggestion });
+          }
+        }
+
+        logStep('Enriched with macros', {
+          total: enrichedSuggestions.length,
+          withMacros: enrichedSuggestions.filter(s => s.macro_source).length,
+          fromCanonical: enrichedSuggestions.filter(s => s.macro_source === 'canonical').length
+        });
+      } catch (enrichError) {
+        logStep('Error enriching with macros, returning names only', { error: String(enrichError) });
+        for (const suggestion of validatedSuggestions) {
+          enrichedSuggestions.push({ name: suggestion });
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ 
         suggestions: validatedSuggestions,
+        enrichedSuggestions,
         // Include metadata for debugging
         validationMetadata: {
           totalGenerated: rawSuggestions.length,
           totalValid: validatedSuggestions.length,
           rejected: rejectedSuggestions,
+          enrichedWithMacros: enrichedSuggestions.filter(s => s.macro_source).length,
         }
       }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }

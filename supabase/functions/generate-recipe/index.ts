@@ -469,6 +469,7 @@ ${baseSystemPrompt}`;
           // Aggregate totals
           let totalCalories = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0;
           
+          let canonicalMatches = 0;
           const enrichedIngredients = recipe.ingredients.map((ing: any, idx: number) => {
             const calc = calculatedItems[idx];
             if (calc) {
@@ -476,6 +477,11 @@ ${baseSystemPrompt}`;
               totalProtein += calc.protein;
               totalCarbs += calc.carbs;
               totalFat += calc.fat;
+              
+              // Track canonical matches for logging
+              if (calc.source === 'canonical') {
+                canonicalMatches++;
+              }
               
               return {
                 ...ing,
@@ -485,6 +491,8 @@ ${baseSystemPrompt}`;
                 calculated_fat: Math.round(calc.fat * 10) / 10,
                 macro_source: calc.source,
                 food_id: calc.food_id || null,
+                canonical_id: calc.canonical_id || null,
+                intolerance_flags: calc.intolerance_flags || null,
               };
             }
             return ing;
@@ -501,6 +509,7 @@ ${baseSystemPrompt}`;
             totalCalories: recipe.calories,
             fromDatabase: macroResult.fromDb,
             fromAI: macroResult.fromAi,
+            fromCanonical: canonicalMatches,
             matchRate: `${macroResult.matchRate}%`
           });
         } catch (macroError) {

@@ -15,6 +15,11 @@ import {
   type SafetyDatabase,
 } from "../_shared/globalSafetyEngine.ts";
 
+import {
+  CALORIE_TABLE,
+  normalizeForCalorieTable,
+} from "../_shared/calorieTable.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -489,27 +494,74 @@ serve(async (req) => {
               macroSource = foodMatch.source;
             }
           } else {
-            // Fallback: estimate based on component type
-            macroConfidence = "medium";
-            const estimates: Record<string, { cal: number; prot: number; carb: number; fat: number; fiber: number }> = {
-              protein: { cal: 150, prot: 25, carb: 0, fat: 5, fiber: 0 },
-              carb: { cal: 120, prot: 3, carb: 25, fat: 1, fiber: 2 },
-              vegetable: { cal: 25, prot: 2, carb: 5, fat: 0, fiber: 2 },
-              fruit: { cal: 60, prot: 1, carb: 15, fat: 0, fiber: 2 },
-              beverage: { cal: 5, prot: 0, carb: 1, fat: 0, fiber: 0 },
-              dairy: { cal: 80, prot: 5, carb: 8, fat: 3, fiber: 0 },
-              fat: { cal: 90, prot: 0, carb: 0, fat: 10, fiber: 0 },
-              grain: { cal: 100, prot: 3, carb: 20, fat: 1, fiber: 3 },
-              legume: { cal: 120, prot: 8, carb: 20, fat: 1, fiber: 6 },
-              fiber: { cal: 30, prot: 2, carb: 7, fat: 0, fiber: 5 },
-            };
-            const est = estimates[component.type] || estimates.carb;
-            const factor = portionGrams / 100;
-            totalCalories += Math.round(est.cal * factor);
-            totalProtein += Math.round(est.prot * factor * 10) / 10;
-            totalCarbs += Math.round(est.carb * factor * 10) / 10;
-            totalFat += Math.round(est.fat * factor * 10) / 10;
-            totalFiber += Math.round(est.fiber * factor * 10) / 10;
+            // FALLBACK 1: Try calorieTable (curated list with official values)
+            const normalizedName = normalizeForCalorieTable(component.name);
+            const normalizedNameEn = component.name_en ? normalizeForCalorieTable(component.name_en) : null;
+            
+            let calorieTableMatch: number | null = null;
+            
+            // Try exact match first
+            if (CALORIE_TABLE[normalizedName]) {
+              calorieTableMatch = CALORIE_TABLE[normalizedName];
+            } else if (normalizedNameEn && CALORIE_TABLE[normalizedNameEn]) {
+              calorieTableMatch = CALORIE_TABLE[normalizedNameEn];
+            } else {
+              // Try partial match
+              for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
+                if (normalizedName.includes(key) || key.includes(normalizedName)) {
+                  calorieTableMatch = kcalPer100g;
+                  break;
+                }
+              }
+            }
+            
+            if (calorieTableMatch !== null) {
+              // Found in calorieTable - use it
+              const factor = portionGrams / 100;
+              totalCalories += Math.round(calorieTableMatch * factor);
+              // Estimate macros based on component type with table calories
+              const macroRatios: Record<string, { prot: number; carb: number; fat: number; fiber: number }> = {
+                protein: { prot: 0.20, carb: 0.02, fat: 0.08, fiber: 0 },
+                carb: { prot: 0.03, carb: 0.25, fat: 0.01, fiber: 0.02 },
+                vegetable: { prot: 0.02, carb: 0.05, fat: 0.005, fiber: 0.025 },
+                fruit: { prot: 0.01, carb: 0.12, fat: 0.003, fiber: 0.02 },
+                beverage: { prot: 0.005, carb: 0.02, fat: 0.002, fiber: 0 },
+                dairy: { prot: 0.04, carb: 0.05, fat: 0.03, fiber: 0 },
+                fat: { prot: 0, carb: 0, fat: 0.99, fiber: 0 },
+                grain: { prot: 0.03, carb: 0.22, fat: 0.01, fiber: 0.03 },
+                legume: { prot: 0.08, carb: 0.18, fat: 0.01, fiber: 0.06 },
+                fiber: { prot: 0.03, carb: 0.12, fat: 0.02, fiber: 0.10 },
+              };
+              const ratios = macroRatios[component.type] || macroRatios.carb;
+              totalProtein += Math.round(portionGrams * ratios.prot * 10) / 10;
+              totalCarbs += Math.round(portionGrams * ratios.carb * 10) / 10;
+              totalFat += Math.round(portionGrams * ratios.fat * 10) / 10;
+              totalFiber += Math.round(portionGrams * ratios.fiber * 10) / 10;
+              foundCount++; // Count as found since we have official calorie data
+              macroSource = "calorie_table";
+            } else {
+              // FALLBACK 2: Estimate based on component type (last resort)
+              macroConfidence = "medium";
+              const estimates: Record<string, { cal: number; prot: number; carb: number; fat: number; fiber: number }> = {
+                protein: { cal: 150, prot: 25, carb: 0, fat: 5, fiber: 0 },
+                carb: { cal: 120, prot: 3, carb: 25, fat: 1, fiber: 2 },
+                vegetable: { cal: 25, prot: 2, carb: 5, fat: 0, fiber: 2 },
+                fruit: { cal: 60, prot: 1, carb: 15, fat: 0, fiber: 2 },
+                beverage: { cal: 5, prot: 0, carb: 1, fat: 0, fiber: 0 },
+                dairy: { cal: 80, prot: 5, carb: 8, fat: 3, fiber: 0 },
+                fat: { cal: 90, prot: 0, carb: 0, fat: 10, fiber: 0 },
+                grain: { cal: 100, prot: 3, carb: 20, fat: 1, fiber: 3 },
+                legume: { cal: 120, prot: 8, carb: 20, fat: 1, fiber: 6 },
+                fiber: { cal: 30, prot: 2, carb: 7, fat: 0, fiber: 5 },
+              };
+              const est = estimates[component.type] || estimates.carb;
+              const factor = portionGrams / 100;
+              totalCalories += Math.round(est.cal * factor);
+              totalProtein += Math.round(est.prot * factor * 10) / 10;
+              totalCarbs += Math.round(est.carb * factor * 10) / 10;
+              totalFat += Math.round(est.fat * factor * 10) / 10;
+              totalFiber += Math.round(est.fiber * factor * 10) / 10;
+            }
           }
         }
 

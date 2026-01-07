@@ -60,6 +60,36 @@ const FORBIDDEN_COMBINATIONS = [
   ["bread", "tortilla"],
 ];
 
+// ============= ALIMENTOS PROIBIDOS POR TIPO DE REFEIÇÃO =============
+const MEAL_TYPE_FORBIDDEN_FOODS: Record<string, string[]> = {
+  almoco: [
+    "omelete", "ovos mexidos", "pão", "tapioca", "panqueca", "crepe doce",
+    "cereal", "granola", "aveia com leite", "mingau", "torradas",
+    "omelette", "scrambled eggs", "bread", "toast", "pancake", "cereal", "oatmeal"
+  ],
+  jantar: [
+    "omelete", "ovos mexidos", "pão", "tapioca", "panqueca", "crepe doce",
+    "cereal", "granola", "aveia com leite", "mingau", "torradas",
+    "omelette", "scrambled eggs", "bread", "toast", "pancake", "cereal", "oatmeal"
+  ],
+  cafe_manha: [
+    "feijoada", "moqueca", "churrasco", "lasanha", "macarronada",
+    "steak", "feijoada", "moqueca", "barbecue", "lasagna"
+  ],
+  lanche_manha: [
+    "feijoada", "moqueca", "churrasco", "lasanha", "arroz com feijão",
+    "steak", "feijoada", "heavy meals"
+  ],
+  lanche_tarde: [
+    "feijoada", "moqueca", "churrasco", "lasanha", "arroz com feijão",
+    "steak", "feijoada", "heavy meals"
+  ],
+  ceia: [
+    "feijoada", "moqueca", "churrasco", "lasanha", "arroz com feijão",
+    "heavy meals", "fried foods", "frituras"
+  ],
+};
+
 // ============= MEAL TYPE MAPPING =============
 const MEAL_TYPE_LABELS: Record<string, Record<string, string>> = {
   BR: {
@@ -181,6 +211,14 @@ ESTILO DE PORÇÃO: ${persona.portionStyle}`;
     ? `\nFILTRO DIETÉTICO: Apenas refeições compatíveis com "${dietaryFilter}". Evitar TODOS os ingredientes proibidos para esta dieta.`
     : "";
   
+  // Alimentos proibidos para este tipo de refeição
+  const forbiddenForMealType = MEAL_TYPE_FORBIDDEN_FOODS[mealType] || [];
+  const mealTypeForbiddenContext = forbiddenForMealType.length > 0
+    ? `\n⛔ FORBIDDEN FOODS FOR "${mealLabel}" (NEVER USE):
+${forbiddenForMealType.map(f => `- ${f}`).join("\n")}
+These foods are culturally inappropriate for ${mealLabel}. Using them will result in INVALID meals.`
+    : "";
+  
   // Prompt principal
   return `[INTERNAL REASONING: English]
 [OUTPUT LANGUAGE: ${language}]
@@ -198,6 +236,7 @@ REGIONAL CONTEXT FOR ${countryCode}:
 ${structureExample}
 ${strategyContext}
 ${dietaryContext}
+${mealTypeForbiddenContext}
 
 COMPONENT TYPES (use these exact values):
 - protein: meats, fish, eggs, tofu, legumes as main protein

@@ -1559,9 +1559,8 @@ serve(async (req) => {
     // Coletar receitas já geradas para evitar repetição entre dias
     const previousDaysMeals: string[] = [];
     
-    // Configuração de paralelismo (throttle)
-    const BATCH_SIZE = 7; // 7 dias por vez (Gemini tem bom rate limit)
-    const DAY_DELAY_MS = 500; // Delay menor entre dias
+    // Configuração de paralelismo (agora paralelo dentro de cada batch)
+    const BATCH_SIZE = 5; // 5 dias por batch = 4 batches para 20 dias (25% cada)
     const MAX_RETRIES = 3; // retries para lidar com erros internos
 
     const googleApiKey = await getGeminiApiKey();
@@ -1703,27 +1702,36 @@ serve(async (req) => {
       throw new Error(`Failed to generate day ${dayIndex + 1} after retries`);
     }
     
-    // Processar em batches (throttled para evitar rate limit)
+    // Processar em batches PARALELOS
     const totalBatches = Math.ceil(daysCount / BATCH_SIZE);
-    logStep(`📦 Starting throttled generation`, {
+    logStep(`📦 Starting PARALLEL batch generation`, {
       totalDays: daysCount,
       batchSize: BATCH_SIZE,
       totalBatches,
-      dayDelayMs: DAY_DELAY_MS,
+      mode: 'parallel-within-batch',
     });
 
     for (let batchNum = 0; batchNum < totalBatches; batchNum++) {
       const batchStart = batchNum * BATCH_SIZE;
       const batchEnd = Math.min(batchStart + BATCH_SIZE, daysCount);
 
-      logStep(`🔄 Processing batch ${batchNum + 1}/${totalBatches}`, {
+      logStep(`🔄 Processing batch ${batchNum + 1}/${totalBatches} in PARALLEL`, {
         days: `${batchStart + 1}-${batchEnd}`,
+        parallelCalls: batchEnd - batchStart,
       });
 
+      // Gerar todos os dias do batch EM PARALELO
+      const batchPromises = [];
       for (let dayIndex = batchStart; dayIndex < batchEnd; dayIndex++) {
-        // Passar as receitas já geradas dos batches anteriores
-        const result = await generateSingleDay(dayIndex, [...previousDaysMeals]);
+        // Passar as receitas já geradas dos batches anteriores (não do batch atual)
+        batchPromises.push(generateSingleDay(dayIndex, [...previousDaysMeals]));
+      }
 
+      // Aguardar TODOS os dias do batch terminarem simultaneamente
+      const batchResults = await Promise.all(batchPromises);
+
+      // Processar resultados do batch
+      for (const result of batchResults) {
         if (result.plan) {
           generatedDays[result.dayIndex] = result.plan;
 
@@ -1739,17 +1747,17 @@ serve(async (req) => {
           // Adicionar violações
           allViolations.push(...result.violations);
         }
-
-        const isLastInBatch = dayIndex === batchEnd - 1;
-        const isLastBatch = batchNum === totalBatches - 1;
-        if (!(isLastInBatch && isLastBatch)) {
-          await new Promise((r) => setTimeout(r, DAY_DELAY_MS));
-        }
       }
 
       logStep(`✅ Batch ${batchNum + 1} complete`, {
         recipesCollected: previousDaysMeals.length,
+        daysGenerated: batchResults.filter(r => r.plan).length,
       });
+
+      // Pequeno delay entre batches para evitar rate limit
+      if (batchNum < totalBatches - 1) {
+        await new Promise((r) => setTimeout(r, 1000));
+      }
     }
     
     // Verificar se todos os dias foram gerados

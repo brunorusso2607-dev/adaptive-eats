@@ -2,7 +2,8 @@
 // CÁLCULO HÍBRIDO DE MACROS - TABELA REAL + FALLBACK IA
 // ============================================
 // Este módulo calcula os macros reais baseados na tabela foods,
-// com busca em cascata (memória → país → global → fallback → IA) e sanity checks.
+// com busca em cascata: canonical → memória → país → global → fallback → IA
+// CAMADA 0: canonical_ingredients (prioridade máxima, dados verificados)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { applySanityCheck, getCategoryFallback, detectFoodCategory } from "./sanityCheckLimits.ts";
@@ -12,6 +13,130 @@ import {
   batchLookupFromNutritionalTable,
   loadNutritionalTable,
 } from "./nutritionalTableInjection.ts";
+
+// ============================================
+// INTERFACE PARA CANONICAL INGREDIENTS
+// ============================================
+export interface CanonicalIngredient {
+  id: string;
+  name_en: string;
+  name_pt: string;
+  name_es: string | null;
+  category: string;
+  subcategory: string | null;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  fiber_per_100g: number | null;
+  default_portion_grams: number | null;
+  portion_label_en: string | null;
+  portion_label_pt: string | null;
+  intolerance_flags: string[];
+  dietary_flags: string[];
+  country_specific: string[] | null;
+}
+
+// Cache global para canonical ingredients (evita queries repetidas)
+let canonicalCache: Map<string, CanonicalIngredient> | null = null;
+let canonicalCacheTimestamp = 0;
+const CANONICAL_CACHE_TTL = 5 * 60 * 1000; // 5 minutos
+
+/**
+ * Carrega e cacheia todos os canonical ingredients
+ */
+async function loadCanonicalIngredients(supabase: any): Promise<Map<string, CanonicalIngredient>> {
+  const now = Date.now();
+  
+  // Retornar cache se ainda válido
+  if (canonicalCache && (now - canonicalCacheTimestamp) < CANONICAL_CACHE_TTL) {
+    return canonicalCache;
+  }
+  
+  const { data, error } = await supabase
+    .from('canonical_ingredients')
+    .select('*')
+    .eq('is_active', true);
+  
+  if (error || !data) {
+    console.log('[CANONICAL] Failed to load canonical ingredients:', error?.message);
+    return new Map();
+  }
+  
+  // Criar mapa com múltiplas chaves para busca rápida
+  const map = new Map<string, CanonicalIngredient>();
+  
+  for (const item of data) {
+    // Chave primária: ID
+    map.set(item.id.toLowerCase(), item);
+    
+    // Chave por nome em inglês (normalizado)
+    if (item.name_en) {
+      map.set(normalizeText(item.name_en), item);
+    }
+    
+    // Chave por nome em português (normalizado)
+    if (item.name_pt) {
+      map.set(normalizeText(item.name_pt), item);
+    }
+    
+    // Chave por nome em espanhol (normalizado)
+    if (item.name_es) {
+      map.set(normalizeText(item.name_es), item);
+    }
+  }
+  
+  canonicalCache = map;
+  canonicalCacheTimestamp = now;
+  
+  console.log(`[CANONICAL] Loaded ${data.length} canonical ingredients (${map.size} lookup keys)`);
+  
+  return map;
+}
+
+/**
+ * Busca um ingrediente na tabela canonical_ingredients
+ * Retorna dados nutricionais se encontrado
+ */
+function lookupCanonicalIngredient(
+  canonicalMap: Map<string, CanonicalIngredient>,
+  ingredientName: string,
+  grams: number
+): { found: boolean; macros?: { calories: number; protein: number; carbs: number; fat: number; fiber: number }; canonical?: CanonicalIngredient; matchedName?: string } {
+  const normalized = normalizeText(ingredientName);
+  
+  // Busca exata
+  let match = canonicalMap.get(normalized);
+  
+  // Se não encontrou, tentar com primeira palavra significativa
+  if (!match) {
+    const words = normalized.split(/\s+/).filter(w => w.length > 2);
+    for (const word of words) {
+      match = canonicalMap.get(word);
+      if (match) break;
+    }
+  }
+  
+  if (!match) {
+    return { found: false };
+  }
+  
+  // Calcular macros proporcionais
+  const factor = grams / 100;
+  
+  return {
+    found: true,
+    macros: {
+      calories: Math.round(match.calories_per_100g * factor),
+      protein: Math.round(match.protein_per_100g * factor * 10) / 10,
+      carbs: Math.round(match.carbs_per_100g * factor * 10) / 10,
+      fat: Math.round(match.fat_per_100g * factor * 10) / 10,
+      fiber: Math.round((match.fiber_per_100g || 0) * factor * 10) / 10,
+    },
+    canonical: match,
+    matchedName: match.name_pt || match.name_en,
+  };
+}
 
 export interface FoodItem {
   name: string;
@@ -31,11 +156,13 @@ export interface CalculatedFoodItem extends FoodItem {
   fat: number;
   fiber: number;
   // Metadados
-  source: 'database' | 'database_global' | 'category_fallback' | 'ai_estimate';
+  source: 'canonical' | 'database' | 'database_global' | 'category_fallback' | 'ai_estimate';
   confidence: number; // 0-100
   food_id?: string;
   matched_name?: string;
   sanity_adjusted?: boolean;
+  canonical_id?: string; // ID do ingrediente canônico se encontrado
+  intolerance_flags?: string[]; // Flags de intolerância do canonical
 }
 
 export interface MealMacros {
@@ -652,14 +779,15 @@ async function batchFindFoodsInDatabase(
 
 /**
  * Processa um array de ingredientes e calcula macros reais
- * VERSÃO HÍBRIDA: Batch (velocidade) → Individual (precisão) → AI (último recurso)
+ * VERSÃO HÍBRIDA: Canonical (prioridade) → Batch (velocidade) → Individual (precisão) → AI (último recurso)
  */
 export async function calculateRealMacrosForFoods(
   supabase: any,
   foods: FoodItem[],
   userCountry?: string
-): Promise<{ items: CalculatedFoodItem[]; matchRate: number; fromDb: number; fromAi: number }> {
+): Promise<{ items: CalculatedFoodItem[]; matchRate: number; fromDb: number; fromAi: number; fromCanonical: number }> {
   const calculatedItems: CalculatedFoodItem[] = [];
+  let fromCanonical = 0;
   let fromDatabase = 0;
   let fromAI = 0;
   
@@ -667,19 +795,53 @@ export async function calculateRealMacrosForFoods(
   const country = userCountry || 'BR';
   const prioritySources = COUNTRY_SOURCE_PRIORITY[country] || COUNTRY_SOURCE_PRIORITY['BR'];
   
-  // Extrair termos de busca de todos os alimentos
-  const allSearchTerms = foods.map(item => item.name);
+  // ========================================
+  // CAMADA 0: Busca em canonical_ingredients (PRIORIDADE MÁXIMA)
+  // ========================================
+  const canonicalMap = await loadCanonicalIngredients(supabase);
+  
+  const foundInCanonical: Map<string, { item: FoodItem; result: CalculatedFoodItem }> = new Map();
+  const notFoundInCanonical: FoodItem[] = [];
+  
+  for (const item of foods) {
+    const lookup = lookupCanonicalIngredient(canonicalMap, item.name, item.grams);
+    
+    if (lookup.found && lookup.macros && lookup.canonical) {
+      foundInCanonical.set(item.name, {
+        item,
+        result: {
+          name: item.name,
+          grams: item.grams,
+          ...lookup.macros,
+          source: 'canonical',
+          confidence: 100, // Dados verificados manualmente
+          canonical_id: lookup.canonical.id,
+          matched_name: lookup.matchedName,
+          intolerance_flags: lookup.canonical.intolerance_flags || [],
+        }
+      });
+      fromCanonical++;
+    } else {
+      notFoundInCanonical.push(item);
+    }
+  }
+  
+  logStep('Canonical phase complete', { 
+    found: fromCanonical, 
+    notFound: notFoundInCanonical.length 
+  });
   
   // ========================================
-  // FASE 1: Busca em batch (rápida, ~85% match)
+  // FASE 1: Busca em batch para não encontrados (rápida, ~85% match)
   // ========================================
+  const allSearchTerms = notFoundInCanonical.map(item => item.name);
   const batchResults = await batchFindFoodsInDatabase(supabase, allSearchTerms, prioritySources);
   
   // Separar encontrados e não encontrados
   const notFoundInBatch: FoodItem[] = [];
   const foundInBatch: Map<string, { item: FoodItem; macros: any }> = new Map();
   
-  for (const item of foods) {
+  for (const item of notFoundInCanonical) {
     const match = batchResults.get(item.name);
     if (match) {
       const macros = calculateMacrosForGrams(match.food, item.grams, match.source, item.name);
@@ -737,7 +899,14 @@ export async function calculateRealMacrosForFoods(
   // FASE 3: Montar resultado final na ordem original
   // ========================================
   for (const item of foods) {
-    // Primeiro, verificar se encontrou no batch
+    // PRIMEIRO: verificar se encontrou no canonical (PRIORIDADE MÁXIMA)
+    const canonicalMatch = foundInCanonical.get(item.name);
+    if (canonicalMatch) {
+      calculatedItems.push(canonicalMatch.result);
+      continue;
+    }
+    
+    // Segundo, verificar se encontrou no batch
     const batchMatch = foundInBatch.get(item.name);
     if (batchMatch) {
       calculatedItems.push({
@@ -749,7 +918,7 @@ export async function calculateRealMacrosForFoods(
       continue;
     }
     
-    // Segundo, verificar se encontrou na busca individual
+    // Terceiro, verificar se encontrou na busca individual
     const individualMatch = foundInIndividual.get(item.name);
     if (individualMatch) {
       calculatedItems.push({
@@ -761,7 +930,7 @@ export async function calculateRealMacrosForFoods(
       continue;
     }
     
-    // Terceiro, usar AI estimation como último recurso
+    // Quarto, usar AI estimation como último recurso
     const estimated = estimateMacrosFromAI(item);
     calculatedItems.push({
       name: item.name,
@@ -771,14 +940,17 @@ export async function calculateRealMacrosForFoods(
     fromAI++;
   }
   
-  const matchRate = foods.length > 0 ? Math.round((fromDatabase / foods.length) * 100) : 0;
+  const totalFromDb = fromCanonical + fromDatabase;
+  const matchRate = foods.length > 0 ? Math.round((totalFromDb / foods.length) * 100) : 0;
   
   logStep('Hybrid calculation complete', { 
     totalItems: foods.length,
+    fromCanonical,
     fromDb: fromDatabase, 
     fromAI: fromAI,
     matchRate: `${matchRate}%`,
     phases: {
+      canonical: fromCanonical,
       batch: foundInBatch.size,
       individual: foundInIndividual.size,
       fallback: fromAI
@@ -790,6 +962,7 @@ export async function calculateRealMacrosForFoods(
     matchRate,
     fromDb: fromDatabase,
     fromAi: fromAI,
+    fromCanonical,
   };
 }
 
@@ -892,11 +1065,12 @@ export async function processFullDayMacros(
 // CÁLCULO OTIMIZADO COM TABELA EM MEMÓRIA
 // ============================================
 // Este é o método preferido para uso no generate-ai-meal-plan.
-// Usa cascata: 1) Tabela em memória → 2) DB batch → 3) AI estimation
+// Usa cascata: 0) Canonical → 1) Tabela em memória → 2) DB batch → 3) AI estimation
 
 /**
  * Calcula macros para TODAS as refeições de um dia usando cascata otimizada:
- * 1. Primeiro tenta encontrar na tabela nutricional em memória (mais rápido)
+ * 0. PRIORIDADE: Busca em canonical_ingredients (dados verificados)
+ * 1. Segundo: Tabela nutricional em memória (rápido)
  * 2. Para não encontrados, faz UMA query batch ao DB
  * 3. Usa AI estimation apenas como último recurso
  */
@@ -906,8 +1080,8 @@ export async function calculateOptimizedMacrosForDay(
   nutritionalTable: NutritionalFood[],
   userCountry?: string
 ): Promise<{
-  results: Map<number, { items: CalculatedFoodItem[]; fromMemory: number; fromDb: number; fromAi: number }>;
-  stats: { totalFromMemory: number; totalFromDb: number; totalFromAi: number; matchRate: number };
+  results: Map<number, { items: CalculatedFoodItem[]; fromCanonical: number; fromMemory: number; fromDb: number; fromAi: number }>;
+  stats: { totalFromCanonical: number; totalFromMemory: number; totalFromDb: number; totalFromAi: number; matchRate: number };
 }> {
   const startTime = Date.now();
   logStep('Starting optimized macro calculation', { 
@@ -917,24 +1091,58 @@ export async function calculateOptimizedMacrosForDay(
   });
   
   // Agrupar por refeição para retorno organizado
-  const mealResults = new Map<number, { items: CalculatedFoodItem[]; fromMemory: number; fromDb: number; fromAi: number }>();
+  const mealResults = new Map<number, { items: CalculatedFoodItem[]; fromCanonical: number; fromMemory: number; fromDb: number; fromAi: number }>();
   
   // Inicializar resultados para cada refeição
   const mealIndices = [...new Set(allFoods.map(f => f.mealIndex))];
   for (const idx of mealIndices) {
-    mealResults.set(idx, { items: [], fromMemory: 0, fromDb: 0, fromAi: 0 });
+    mealResults.set(idx, { items: [], fromCanonical: 0, fromMemory: 0, fromDb: 0, fromAi: 0 });
   }
   
+  let totalFromCanonical = 0;
   let totalFromMemory = 0;
   let totalFromDb = 0;
   let totalFromAi = 0;
   
   // ========================================
-  // FASE 1: Busca na tabela em memória (MAIS RÁPIDO)
+  // CAMADA 0: Busca em canonical_ingredients (PRIORIDADE MÁXIMA)
+  // ========================================
+  const canonicalMap = await loadCanonicalIngredients(supabase);
+  const notFoundInCanonical: Array<{ mealIndex: number; food: FoodItem }> = [];
+  
+  for (const entry of allFoods) {
+    const lookup = lookupCanonicalIngredient(canonicalMap, entry.food.name, entry.food.grams);
+    
+    if (lookup.found && lookup.macros && lookup.canonical) {
+      const result = mealResults.get(entry.mealIndex)!;
+      result.items.push({
+        name: entry.food.name,
+        grams: entry.food.grams,
+        ...lookup.macros,
+        source: 'canonical',
+        confidence: 100,
+        canonical_id: lookup.canonical.id,
+        matched_name: lookup.matchedName,
+        intolerance_flags: lookup.canonical.intolerance_flags || [],
+      });
+      result.fromCanonical++;
+      totalFromCanonical++;
+    } else {
+      notFoundInCanonical.push(entry);
+    }
+  }
+  
+  logStep('Canonical lookup phase complete', { 
+    found: totalFromCanonical, 
+    notFound: notFoundInCanonical.length 
+  });
+
+  // ========================================
+  // FASE 1: Busca na tabela em memória (SEGUNDO MAIS RÁPIDO)
   // ========================================
   const notFoundInMemory: Array<{ mealIndex: number; food: FoodItem }> = [];
   
-  for (const entry of allFoods) {
+  for (const entry of notFoundInCanonical) {
     const lookup = lookupFromNutritionalTable(nutritionalTable, entry.food.name, entry.food.grams);
     
     if (lookup.found && lookup.macros) {
@@ -1020,13 +1228,14 @@ export async function calculateOptimizedMacrosForDay(
     }
   }
   
-  const total = totalFromMemory + totalFromDb + totalFromAi;
-  const matchRate = total > 0 ? Math.round(((totalFromMemory + totalFromDb) / total) * 100) : 0;
+  const total = totalFromCanonical + totalFromMemory + totalFromDb + totalFromAi;
+  const matchRate = total > 0 ? Math.round(((totalFromCanonical + totalFromMemory + totalFromDb) / total) * 100) : 0;
   const elapsed = Date.now() - startTime;
   
   logStep('Optimized calculation complete', { 
     elapsed: `${elapsed}ms`,
     totalItems: total,
+    fromCanonical: totalFromCanonical,
     fromMemory: totalFromMemory,
     fromDb: totalFromDb,
     fromAi: totalFromAi,
@@ -1036,6 +1245,7 @@ export async function calculateOptimizedMacrosForDay(
   return {
     results: mealResults,
     stats: {
+      totalFromCanonical,
       totalFromMemory,
       totalFromDb,
       totalFromAi,
@@ -1059,7 +1269,7 @@ export async function calculateOptimizedMacrosForMeals(
     items: CalculatedFoodItem[];
     totals: { calories: number; protein: number; carbs: number; fat: number };
   }>;
-  stats: { totalFromMemory: number; totalFromDb: number; totalFromAi: number; matchRate: number };
+  stats: { totalFromCanonical: number; totalFromMemory: number; totalFromDb: number; totalFromAi: number; matchRate: number };
 }> {
   // Flatten all foods with meal index
   const allFoods: Array<{ mealIndex: number; food: FoodItem }> = [];
@@ -1080,7 +1290,7 @@ export async function calculateOptimizedMacrosForMeals(
   
   // Reconstruct meals with macros
   const mealsWithMacros = meals.map((meal, idx) => {
-    const mealResult = results.get(idx) || { items: [], fromMemory: 0, fromDb: 0, fromAi: 0 };
+    const mealResult = results.get(idx) || { items: [], fromCanonical: 0, fromMemory: 0, fromDb: 0, fromAi: 0 };
     
     const totals = mealResult.items.reduce(
       (acc, item) => ({

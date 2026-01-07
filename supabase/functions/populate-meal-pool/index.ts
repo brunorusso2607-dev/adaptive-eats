@@ -316,90 +316,96 @@ serve(async (req) => {
       strategy_key,
     );
 
-    logStep("Calling Lovable AI Gateway...");
+    // Helper function to call AI with retry
+    const callAIWithRetry = async (maxRetries = 2): Promise<GeneratedMeal[]> => {
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        logStep(`Calling Lovable AI Gateway (attempt ${attempt}/${maxRetries})...`);
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: `Generate ${quantity} meals for ${meal_type} in ${country_code}. Return ONLY JSON, no markdown.` },
-        ],
-        temperature: 0.7,
-      }),
-    });
-
-    if (!aiResponse.ok) {
-      const errorText = await aiResponse.text();
-      logStep("AI Gateway error", { status: aiResponse.status, error: errorText });
-      
-      if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again in a few minutes." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${lovableApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: `Generate ${quantity} meals for ${meal_type} in ${country_code}. Return ONLY valid JSON, no markdown, no code blocks.` },
+            ],
+            temperature: 0.7,
+            max_tokens: 8000, // Ensure enough tokens for complete response
+          }),
         });
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          logStep("AI Gateway error", { status: aiResponse.status, error: errorText });
+          
+          if (aiResponse.status === 429) {
+            throw { status: 429, message: "Rate limit exceeded. Try again in a few minutes." };
+          }
+          if (aiResponse.status === 402) {
+            throw { status: 402, message: "Insufficient credits. Please add funds." };
+          }
+          throw new Error(`AI Gateway error: ${aiResponse.status}`);
+        }
+
+        const aiData = await aiResponse.json();
+        const aiContent = aiData.choices?.[0]?.message?.content || "";
+        const finishReason = aiData.choices?.[0]?.finish_reason;
+
+        logStep("AI response received", { length: aiContent.length, finishReason });
+
+        // Check if response was truncated
+        if (finishReason === "length" || aiContent.length < 1500) {
+          logStep("Response possibly truncated, retrying...", { finishReason, length: aiContent.length });
+          if (attempt < maxRetries) continue;
+        }
+
+        // Parse JSON (remove markdown if present)
+        let cleanJson = aiContent.trim();
+        if (cleanJson.startsWith("```")) {
+          cleanJson = cleanJson.replace(/```json?\n?/g, "").replace(/```$/g, "").trim();
+        }
+
+        try {
+          const parsed = JSON.parse(cleanJson);
+          
+          logStep("Parsed JSON structure", {
+            type: typeof parsed,
+            isArray: Array.isArray(parsed),
+            keys: parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.keys(parsed) : undefined,
+          });
+
+          const candidate = Array.isArray((parsed as any)?.meals) ? (parsed as any).meals : parsed;
+
+          if (!Array.isArray(candidate)) {
+            throw new Error("meals is not an array");
+          }
+
+          return candidate as GeneratedMeal[];
+        } catch (parseError) {
+          logStep("JSON parse error", { error: String(parseError), content: cleanJson.slice(0, 1000), attempt });
+          if (attempt < maxRetries) continue;
+          throw new Error("Failed to parse AI response after retries");
+        }
       }
-      if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Insufficient credits. Please add funds." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error(`AI Gateway error: ${aiResponse.status}`);
-    }
-
-    const aiData = await aiResponse.json();
-    const aiContent = aiData.choices?.[0]?.message?.content || "";
-
-    logStep("AI response received", { length: aiContent.length });
-
-    // Parse JSON (remove markdown if present)
-    let cleanJson = aiContent.trim();
-    if (cleanJson.startsWith("```")) {
-      cleanJson = cleanJson.replace(/```json?\n?/g, "").replace(/```$/g, "").trim();
-    }
-
-    const coerceMealComponents = (raw: unknown): MealComponent[] => {
-      if (Array.isArray(raw)) return raw as MealComponent[];
-      if (raw && typeof raw === "object") {
-        // Some AI responses return an object instead of an array; treat values as the list.
-        return Object.values(raw as Record<string, unknown>).filter((v) => v && typeof v === "object") as MealComponent[];
-      }
-      return [];
+      throw new Error("Failed after all retries");
     };
 
+    // Handle rate limit/payment errors separately
     let generatedMeals: GeneratedMeal[];
     try {
-      const parsed = JSON.parse(cleanJson);
-      
-      // Log the raw structure to debug issues
-      logStep("Parsed JSON structure", {
-        type: typeof parsed,
-        isArray: Array.isArray(parsed),
-        keys: parsed && typeof parsed === "object" && !Array.isArray(parsed) ? Object.keys(parsed) : undefined,
-        firstMealKeys: Array.isArray(parsed) && parsed[0] ? Object.keys(parsed[0]) : 
-                       parsed?.meals?.[0] ? Object.keys(parsed.meals[0]) : undefined,
-      });
-
-      const candidate = Array.isArray((parsed as any)?.meals) ? (parsed as any).meals : parsed;
-
-      if (!Array.isArray(candidate)) {
-        logStep("AI response shape invalid", {
-          type: typeof parsed,
-          keys: parsed && typeof parsed === "object" ? Object.keys(parsed) : undefined,
+      generatedMeals = await callAIWithRetry(2);
+    } catch (err: any) {
+      if (err.status === 429 || err.status === 402) {
+        return new Response(JSON.stringify({ error: err.message }), {
+          status: err.status,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
-        throw new Error("Failed to parse AI response: meals is not an array");
       }
-
-      generatedMeals = candidate as GeneratedMeal[];
-    } catch (parseError) {
-      logStep("JSON parse error", { error: String(parseError), content: cleanJson.slice(0, 1000) });
-      throw new Error("Failed to parse AI response");
+      throw err;
     }
 
     logStep("Meals generated by AI", { count: generatedMeals.length });
@@ -416,6 +422,15 @@ serve(async (req) => {
         allKeys: firstMeal ? Object.keys(firstMeal) : [],
       });
     }
+
+    // Helper to coerce components to array
+    const coerceMealComponents = (raw: unknown): MealComponent[] => {
+      if (Array.isArray(raw)) return raw as MealComponent[];
+      if (raw && typeof raw === "object") {
+        return Object.values(raw as Record<string, unknown>).filter((v) => v && typeof v === "object") as MealComponent[];
+      }
+      return [];
+    };
 
     // Normalize + filter out invalid meals (missing or invalid components)
     const validMeals: GeneratedMeal[] = [];

@@ -36,7 +36,8 @@ import {
   Activity,
   Globe,
   Utensils,
-  Leaf
+  Leaf,
+  Database
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -102,6 +103,7 @@ const mainMenuItems: SubMenuItem[] = [
     icon: ChefHat,
     subItems: [
       { path: "/admin/ai-meal-plan-test", label: "Teste de Plano IA", icon: ChefHat },
+      { path: "/admin/meal-pool", label: "Pool de Refeições", icon: Database },
       { path: "/admin/prompt-simulator", label: "Simulador de Prompts", icon: MessageSquare },
       { path: "/admin/prompt-validation", label: "Validação do Prompt", icon: Shield },
     ],

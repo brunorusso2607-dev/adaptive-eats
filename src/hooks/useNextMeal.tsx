@@ -23,8 +23,8 @@ export type NextMealData = {
   recipe_carbs: number;
   recipe_fat: number;
   recipe_prep_time: number;
-  recipe_ingredients: Ingredient[];
-  recipe_instructions: string[];
+  recipe_ingredients?: Ingredient[]; // Now optional - loaded on demand
+  recipe_instructions?: string[]; // Now optional - loaded on demand
   is_favorite: boolean;
   completed_at: string | null;
 };

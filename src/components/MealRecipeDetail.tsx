@@ -2,13 +2,14 @@ import { useState, useMemo, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp, AlertTriangle } from "lucide-react";
+import { ArrowLeft, Clock, Heart, Flame, Beef, Wheat, Users, CheckCircle, RefreshCw, ChevronDown, ChevronUp, AlertTriangle, Loader2 } from "lucide-react";
 import LegalDisclaimer from "./LegalDisclaimer";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import IngredientSearchSheet from "@/components/IngredientSearchSheet";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
+import { useMealDetails } from "@/hooks/useMealDetails";
 import { toast } from "sonner";
 import { useIntoleranceWarning } from "@/hooks/useIntoleranceWarning";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -86,16 +87,42 @@ function QuickTips({ instructions }: { instructions: string[] }) {
 export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: MealRecipeDetailProps) {
   const [substitutionOpen, setSubstitutionOpen] = useState(false);
   const [selectedIngredient, setSelectedIngredient] = useState<OriginalIngredient | null>(null);
-  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>(meal.recipe_ingredients);
+  const [localIngredients, setLocalIngredients] = useState<Ingredient[]>([]);
   const [localMacros, setLocalMacros] = useState({
     calories: meal.recipe_calories,
     protein: meal.recipe_protein,
     carbs: meal.recipe_carbs,
     fat: meal.recipe_fat,
   });
+  const [loadedInstructions, setLoadedInstructions] = useState<string[]>([]);
+  const [detailsLoaded, setDetailsLoaded] = useState(false);
+  
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const { checkFood, hasAnyRestriction, isLoading: isLoadingRestrictions } = useIntoleranceWarning();
   const { calculateIngredientCalories } = useIngredientCalories();
+  const { fetchMealDetails, isLoading: isLoadingDetails } = useMealDetails();
+
+  // Lazy-load ingredients if not provided
+  useEffect(() => {
+    if (detailsLoaded) return;
+    
+    // Se já tem ingredientes no meal, usar eles
+    if (meal.recipe_ingredients && meal.recipe_ingredients.length > 0) {
+      setLocalIngredients(meal.recipe_ingredients);
+      setLoadedInstructions(meal.recipe_instructions || []);
+      setDetailsLoaded(true);
+      return;
+    }
+    
+    // Senão, buscar sob demanda
+    fetchMealDetails(meal.id).then((details) => {
+      if (details) {
+        setLocalIngredients(details.recipe_ingredients || []);
+        setLoadedInstructions(details.recipe_instructions || []);
+      }
+      setDetailsLoaded(true);
+    });
+  }, [meal.id, meal.recipe_ingredients, meal.recipe_instructions, detailsLoaded, fetchMealDetails]);
 
   // Calculate individual calories for each ingredient (async)
   const [ingredientCalories, setIngredientCalories] = useState<Map<string, { calories: number; protein: number; carbs: number; fat: number; source: string }>>(new Map());
@@ -338,6 +365,13 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
               Toque para substituir
             </span>
           </h3>
+          {/* Loading state for lazy-loaded ingredients */}
+          {!detailsLoaded && isLoadingDetails ? (
+            <div className="flex items-center justify-center py-6">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
+              <span className="text-sm text-muted-foreground">Carregando ingredientes...</span>
+            </div>
+          ) : (
           <ul className="space-y-1">
             <TooltipProvider>
               {localIngredients.map((ingredient, index) => {
@@ -396,6 +430,7 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
               })}
             </TooltipProvider>
           </ul>
+          )}
           
           {/* Badge de segurança ou alerta */}
           <div className="mt-4 pt-3 border-t border-border/50">
@@ -413,8 +448,8 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite }: Mea
           </div>
 
           {/* Dicas de Preparo - Estilo Fridge Scanner */}
-          {meal.recipe_instructions && meal.recipe_instructions.length > 0 && meal.recipe_instructions[0] !== "" && (
-            <QuickTips instructions={meal.recipe_instructions} />
+          {loadedInstructions && loadedInstructions.length > 0 && loadedInstructions[0] !== "" && (
+            <QuickTips instructions={loadedInstructions} />
           )}
 
           {/* Legal Disclaimer */}

@@ -283,6 +283,69 @@ export default function NutritionalStrategiesTab() {
 
   return (
     <>
+      {/* Card informativo - Dados Físicos Coletados */}
+      <Card className="border-border/50 mb-6 bg-muted/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base">
+            <Scale className="w-5 h-5 text-muted-foreground" />
+            Dados Físicos Coletados no Onboarding
+          </CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Campos obrigatórios para cálculo da fórmula Mifflin-St Jeor (não editáveis)
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border/50">
+              <Scale className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Peso Atual</p>
+                <p className="text-sm font-medium">kg</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border/50">
+              <Target className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Peso Desejado</p>
+                <p className="text-sm font-medium">kg</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border/50">
+              <TrendingUp className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Altura</p>
+                <p className="text-sm font-medium">metros</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border/50">
+              <Sparkles className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Idade</p>
+                <p className="text-sm font-medium">anos</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border/50">
+              <Utensils className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Sexo Biológico</p>
+                <p className="text-sm font-medium">M / F</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 p-3 bg-background rounded-lg border border-border/50">
+              <Dumbbell className="w-4 h-4 text-primary" />
+              <div>
+                <p className="text-xs text-muted-foreground">Nível Atividade</p>
+                <p className="text-sm font-medium">5 níveis</p>
+              </div>
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-3 italic">
+            Estes dados são salvos no perfil do usuário e usados para calcular TMB, TDEE e macros personalizados.
+          </p>
+        </CardContent>
+      </Card>
+
+      {/* Card de Estratégias */}
       <Card className="border-border/50">
         <CardHeader className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>

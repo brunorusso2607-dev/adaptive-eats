@@ -48,6 +48,7 @@ import AdminSystemHealth from "./pages/admin/AdminSystemHealth";
 import AdminLanguages from "./pages/admin/AdminLanguages";
 import AdminFoodDecomposition from "./pages/admin/AdminFoodDecomposition";
 import AdminDietaryForbidden from "./pages/admin/AdminDietaryForbidden";
+import AdminMealPool from "./pages/admin/AdminMealPool";
 
 // QueryClient com configurações globais de timeout e retry
 const queryClient = new QueryClient({
@@ -138,6 +139,7 @@ function AppRoutes() {
           <Route path="languages" element={<AdminLanguages />} />
           <Route path="food-decomposition" element={<AdminFoodDecomposition />} />
           <Route path="dietary-forbidden" element={<AdminDietaryForbidden />} />
+          <Route path="meal-pool" element={<AdminMealPool />} />
         </Route>
         
         {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

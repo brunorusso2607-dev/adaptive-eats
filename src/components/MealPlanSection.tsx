@@ -185,7 +185,7 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // OPTIMIZED: Single query with join instead of N+1 queries
+      // OPTIMIZED: Single query with join, without heavy payload (ingredients/instructions)
       const { data: plansWithItemsData, error: plansError } = await supabase
         .from("meal_plans")
         .select(`
@@ -209,8 +209,6 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
             recipe_carbs,
             recipe_fat,
             recipe_prep_time,
-            recipe_ingredients,
-            recipe_instructions,
             is_favorite,
             completed_at
           )
@@ -250,8 +248,9 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
           source_plan_id: plan.source_plan_id,
           items: items.map((item: any) => ({
             ...item,
-            recipe_ingredients: item.recipe_ingredients as Ingredient[],
-            recipe_instructions: item.recipe_instructions as string[]
+            // ingredients/instructions loaded on demand via useMealDetails
+            recipe_ingredients: [] as Ingredient[],
+            recipe_instructions: [] as string[]
           }))
         };
       });

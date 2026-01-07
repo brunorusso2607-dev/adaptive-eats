@@ -17,6 +17,7 @@ import { useDietaryCompatibility } from "@/hooks/useDietaryCompatibility";
 import { IngredientResult, OriginalIngredient } from "@/hooks/useIngredientSubstitution";
 import { useMealIngredientUpdate } from "@/hooks/useMealIngredientUpdate";
 import { useMealConsumption } from "@/hooks/useMealConsumption";
+import { useMealDetails } from "@/hooks/useMealDetails";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -102,23 +103,61 @@ export default function MealDetailSheet({
   const [isSkipping, setIsSkipping] = useState(false);
   const [footerVisible, setFooterVisible] = useState(false);
   
+  // Lazy-load meal details (ingredients/instructions)
+  const { fetchMealDetails, invalidateCache, isLoading: isLoadingDetails } = useMealDetails();
+  const [loadedIngredients, setLoadedIngredients] = useState<Ingredient[]>([]);
+  const [loadedInstructions, setLoadedInstructions] = useState<string[]>([]);
+  const [detailsLoaded, setDetailsLoaded] = useState(false);
+  
   const { updateIngredients, calculateMacrosDiff } = useMealIngredientUpdate();
   const { saveConsumption } = useMealConsumption();
   const queryClient = useQueryClient();
 
-  // Parse ingredients from meal
-  const rawIngredients = (meal?.recipe_ingredients || []) as unknown as RawIngredient[];
-  const parsedIngredients: Ingredient[] = rawIngredients
-    .filter((i) => i && (typeof i.item === 'string' || typeof i.name === 'string'))
-    .map((i) => ({ 
-      item: i.item || i.name || '', 
-      quantity: i.quantity || '',
-      unit: i.unit || '',
-      calories: typeof i.calories === 'number' ? i.calories : undefined,
-      protein: typeof i.protein === 'number' ? i.protein : undefined,
-      carbs: typeof i.carbs === 'number' ? i.carbs : undefined,
-      fat: typeof i.fat === 'number' ? i.fat : undefined,
-    }));
+  // Load details when sheet opens
+  useEffect(() => {
+    if (open && meal?.id && !detailsLoaded) {
+      // Se já tem ingredientes no meal (caso venha completo), usar eles
+      if (meal.recipe_ingredients && meal.recipe_ingredients.length > 0) {
+        const rawIngredients = (meal.recipe_ingredients || []) as unknown as RawIngredient[];
+        const parsed = rawIngredients
+          .filter((i) => i && (typeof i.item === 'string' || typeof i.name === 'string'))
+          .map((i) => ({ 
+            item: i.item || i.name || '', 
+            quantity: i.quantity || '',
+            unit: i.unit || '',
+            calories: typeof i.calories === 'number' ? i.calories : undefined,
+            protein: typeof i.protein === 'number' ? i.protein : undefined,
+            carbs: typeof i.carbs === 'number' ? i.carbs : undefined,
+            fat: typeof i.fat === 'number' ? i.fat : undefined,
+          }));
+        setLoadedIngredients(parsed);
+        setLoadedInstructions((meal.recipe_instructions || []) as unknown as string[]);
+        setDetailsLoaded(true);
+        return;
+      }
+      
+      // Senão, buscar sob demanda
+      fetchMealDetails(meal.id).then((details) => {
+        if (details) {
+          const rawIngredients = (details.recipe_ingredients || []) as unknown as RawIngredient[];
+          const parsed = rawIngredients
+            .filter((i) => i && (typeof i.item === 'string' || typeof i.name === 'string'))
+            .map((i) => ({ 
+              item: i.item || i.name || '', 
+              quantity: i.quantity || '',
+              unit: i.unit || '',
+              calories: typeof i.calories === 'number' ? i.calories : undefined,
+              protein: typeof i.protein === 'number' ? i.protein : undefined,
+              carbs: typeof i.carbs === 'number' ? i.carbs : undefined,
+              fat: typeof i.fat === 'number' ? i.fat : undefined,
+            }));
+          setLoadedIngredients(parsed);
+          setLoadedInstructions(details.recipe_instructions || []);
+        }
+        setDetailsLoaded(true);
+      });
+    }
+  }, [open, meal?.id, detailsLoaded, meal?.recipe_ingredients, fetchMealDetails]);
 
   // Reset local state when meal changes
   useEffect(() => {
@@ -127,6 +166,9 @@ export default function MealDetailSheet({
       setLocalMacros({ calories: 0, protein: 0, carbs: 0, fat: 0 });
       setLocalRecipeName("");
       setLastSubstitution(null);
+      setDetailsLoaded(false);
+      setLoadedIngredients([]);
+      setLoadedInstructions([]);
     }
   }, [meal?.id]);
 
@@ -143,9 +185,9 @@ export default function MealDetailSheet({
 
   if (!meal) return null;
   
-  // Use local state if modified, otherwise use parsed
-  const ingredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
-  const instructions = (meal.recipe_instructions || []) as unknown as string[];
+  // Use local state if modified, otherwise use loaded ingredients
+  const ingredients = localIngredients.length > 0 ? localIngredients : loadedIngredients;
+  const instructions = loadedInstructions;
 
   // Current macros (original + any adjustments)
   const currentMacros = {
@@ -179,7 +221,7 @@ export default function MealDetailSheet({
     originalItem: string,
     originalNutrition: IngredientResult | null
   ) => {
-    const currentIngredients = localIngredients.length > 0 ? localIngredients : parsedIngredients;
+    const currentIngredients = localIngredients.length > 0 ? localIngredients : loadedIngredients;
     const originalIng = currentIngredients.find(ing => ing.item === originalItem);
     
     const updatedIngredients = currentIngredients.map((ing) =>
@@ -413,6 +455,15 @@ export default function MealDetailSheet({
                       </span>
                     )}
                   </h3>
+                  {/* Loading state for lazy-loaded ingredients */}
+                  {!detailsLoaded && isLoadingDetails ? (
+                    <div className="flex items-center justify-center py-6">
+                      <Loader2 className="w-5 h-5 animate-spin text-muted-foreground mr-2" />
+                      <span className="text-sm text-muted-foreground">Carregando ingredientes...</span>
+                    </div>
+                  ) : ingredients.length === 0 && detailsLoaded ? (
+                    <p className="text-sm text-muted-foreground py-4">Nenhum ingrediente disponível</p>
+                  ) : (
                   <ul className="space-y-1">
                     {ingredients.map((ingredient, index) => {
                       // Limpa valor de quantity (remove "g" se já vier incluído para evitar "gg")
@@ -453,6 +504,7 @@ export default function MealDetailSheet({
                       );
                     })}
                   </ul>
+                  )}
                   
                   {/* Badge de segurança */}
                   <div className="mt-4 pt-3 border-t border-border/50">

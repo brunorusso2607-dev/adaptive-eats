@@ -26,8 +26,8 @@ export type PendingMealData = {
   recipe_carbs: number;
   recipe_fat: number;
   recipe_prep_time: number;
-  recipe_ingredients: Ingredient[];
-  recipe_instructions: string[];
+  recipe_ingredients?: Ingredient[]; // Now optional - loaded on demand
+  recipe_instructions?: string[]; // Now optional - loaded on demand
   is_favorite: boolean;
   completed_at: string | null;
   // Calculated field for the actual date
@@ -364,10 +364,10 @@ export function usePendingMeals() {
       setIsPlanExpired(planExpired);
       setExpiredPlanEndDate(planExpired ? planEndDate : null);
 
-      // Buscar TODAS as refeições não completadas do plano
+      // Buscar TODAS as refeições não completadas do plano - OTIMIZADO: sem ingredientes/instruções
       const { data: meals, error: mealsError } = await supabase
         .from("meal_plan_items")
-        .select("*")
+        .select("id, meal_plan_id, day_of_week, week_number, meal_type, recipe_name, recipe_calories, recipe_protein, recipe_carbs, recipe_fat, recipe_prep_time, is_favorite, completed_at")
         .eq("meal_plan_id", activePlan.id)
         .is("completed_at", null)
         .order("day_of_week", { ascending: true });
@@ -499,11 +499,10 @@ export function usePendingMeals() {
       };
 
       // Converter para o formato esperado com data calculada
+      // recipe_ingredients e recipe_instructions são carregados sob demanda via useMealDetails
       const mealsWithDates: PendingMealData[] = meals.map(meal => ({
         ...meal,
-        recipe_ingredients: meal.recipe_ingredients as Ingredient[],
         actual_date: calculateActualDate(meal.day_of_week, meal.week_number),
-        recipe_instructions: meal.recipe_instructions as string[],
       }));
 
       // Primeiro, filtrar apenas refeições que são válidas desde a criação do plano

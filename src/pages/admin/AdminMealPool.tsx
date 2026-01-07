@@ -579,9 +579,17 @@ export default function AdminMealPool() {
                       <TableCell>
                         <div>
                           <p className="font-medium">{meal.name}</p>
-                          <p className="text-xs text-muted-foreground">
-                            {meal.components.length} componentes
-                          </p>
+                          <div className="text-xs text-muted-foreground mt-1 space-y-0.5">
+                            {meal.components.slice(0, 4).map((comp, idx) => (
+                              <div key={idx} className="flex items-start gap-1">
+                                <span className="text-primary/60">•</span>
+                                <span>{comp.name} ({comp.portion_label})</span>
+                              </div>
+                            ))}
+                            {meal.components.length > 4 && (
+                              <span className="text-primary/60 text-[10px]">+{meal.components.length - 4} mais</span>
+                            )}
+                          </div>
                         </div>
                       </TableCell>
                       <TableCell>

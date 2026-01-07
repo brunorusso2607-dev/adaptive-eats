@@ -1585,14 +1585,32 @@ serve(async (req) => {
       return true;
     });
     
-    // Organizar por tipo de refeição
+    // Mapear meal types PT -> EN para compatibilidade
+    const MEAL_TYPE_MAP: Record<string, string> = {
+      'cafe_manha': 'breakfast',
+      'cafe_da_manha': 'breakfast',
+      'lanche_manha': 'morning_snack',
+      'almoco': 'lunch',
+      'lanche_tarde': 'afternoon_snack',
+      'jantar': 'dinner',
+      'ceia': 'evening_snack',
+      // EN -> EN (já normalizados)
+      'breakfast': 'breakfast',
+      'morning_snack': 'morning_snack',
+      'lunch': 'lunch',
+      'afternoon_snack': 'afternoon_snack',
+      'dinner': 'dinner',
+      'evening_snack': 'evening_snack',
+    };
+    
+    // Organizar por tipo de refeição (normalizando chaves PT -> EN)
     const poolByMealType: Record<string, MealCombinationFromPool[]> = {};
     for (const meal of compatiblePoolMeals) {
-      const mealType = meal.meal_type;
-      if (!poolByMealType[mealType]) {
-        poolByMealType[mealType] = [];
+      const normalizedType = MEAL_TYPE_MAP[meal.meal_type] || meal.meal_type;
+      if (!poolByMealType[normalizedType]) {
+        poolByMealType[normalizedType] = [];
       }
-      poolByMealType[mealType].push(meal);
+      poolByMealType[normalizedType].push(meal);
     }
     
     logStep("Approved meal pool loaded", { 

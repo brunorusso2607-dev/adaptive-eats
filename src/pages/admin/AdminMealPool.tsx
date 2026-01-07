@@ -79,6 +79,7 @@ interface PoolStats {
 
 const MEAL_TYPE_LABELS: Record<string, string> = {
   cafe_manha: "☕ Café da Manhã",
+  lanche_manha: "🥐 Lanche da Manhã",
   almoco: "🍽️ Almoço",
   lanche_tarde: "🍎 Lanche da Tarde",
   jantar: "🌙 Jantar",

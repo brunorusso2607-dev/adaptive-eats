@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { 
   Loader2, 
   Database, 
@@ -108,6 +109,8 @@ export default function AdminMealPool() {
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
   const [selectedMeal, setSelectedMeal] = useState<MealCombination | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
   
   // Filters
   const [filterMealType, setFilterMealType] = useState<string>("all");
@@ -267,6 +270,48 @@ export default function AdminMealPool() {
       console.error("Error deleting meal:", error);
       toast.error("Erro ao excluir");
     }
+  };
+
+  const deleteSelectedMeals = async () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Tem certeza que deseja excluir ${selectedIds.size} refeição(ões)?`)) return;
+
+    setIsDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("meal_combinations")
+        .delete()
+        .in("id", Array.from(selectedIds));
+
+      if (error) throw error;
+
+      toast.success(`${selectedIds.size} refeição(ões) excluída(s)`);
+      setSelectedIds(new Set());
+      fetchMeals();
+    } catch (error) {
+      console.error("Error deleting meals:", error);
+      toast.error("Erro ao excluir refeições");
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === meals.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(meals.map(m => m.id)));
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
   };
 
   if (isLoading && meals.length === 0) {
@@ -474,11 +519,26 @@ export default function AdminMealPool() {
 
       {/* Meals Table */}
       <Card>
-        <CardHeader>
+        <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <Database className="w-4 h-4" />
             Refeições no Pool ({meals.length})
           </CardTitle>
+          {selectedIds.size > 0 && (
+            <Button 
+              variant="destructive" 
+              size="sm"
+              onClick={deleteSelectedMeals}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <Loader2 className="w-4 h-4 animate-spin mr-2" />
+              ) : (
+                <Trash2 className="w-4 h-4 mr-2" />
+              )}
+              Excluir {selectedIds.size}
+            </Button>
+          )}
         </CardHeader>
         <CardContent>
           {meals.length === 0 ? (
@@ -492,6 +552,12 @@ export default function AdminMealPool() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={meals.length > 0 && selectedIds.size === meals.length}
+                        onCheckedChange={toggleSelectAll}
+                      />
+                    </TableHead>
                     <TableHead>Refeição</TableHead>
                     <TableHead>Tipo</TableHead>
                     <TableHead>Calorias</TableHead>
@@ -505,6 +571,12 @@ export default function AdminMealPool() {
                 <TableBody>
                   {meals.map((meal) => (
                     <TableRow key={meal.id} className={!meal.is_active ? "opacity-50" : ""}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedIds.has(meal.id)}
+                          onCheckedChange={() => toggleSelect(meal.id)}
+                        />
+                      </TableCell>
                       <TableCell>
                         <div>
                           <p className="font-medium">{meal.name}</p>

@@ -1023,6 +1023,7 @@ export type Database = {
       }
       meal_combinations: {
         Row: {
+          approval_status: string
           blocked_for_intolerances: string[] | null
           components: Json
           country_codes: string[]
@@ -1051,6 +1052,7 @@ export type Database = {
           usage_count: number | null
         }
         Insert: {
+          approval_status?: string
           blocked_for_intolerances?: string[] | null
           components?: Json
           country_codes?: string[]
@@ -1079,6 +1081,7 @@ export type Database = {
           usage_count?: number | null
         }
         Update: {
+          approval_status?: string
           blocked_for_intolerances?: string[] | null
           components?: Json
           country_codes?: string[]

@@ -15,7 +15,10 @@ import {
   ChefHat,
   Globe,
   Flame,
-  Filter
+  Filter,
+  CheckCircle,
+  XCircle,
+  Clock
 } from "lucide-react";
 import { toast } from "sonner";
 import { Progress } from "@/components/ui/progress";
@@ -43,6 +46,8 @@ import {
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
+type ApprovalStatus = 'pending' | 'approved' | 'rejected';
+
 interface MealCombination {
   id: string;
   name: string;
@@ -65,6 +70,7 @@ interface MealCombination {
   dietary_tags: string[];
   blocked_for_intolerances: string[];
   is_active: boolean;
+  approval_status: ApprovalStatus;
   usage_count: number;
   created_at: string;
 }
@@ -112,11 +118,13 @@ export default function AdminMealPool() {
   const [selectedMeal, setSelectedMeal] = useState<MealCombination | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isApproving, setIsApproving] = useState(false);
   
   // Filters
   const [filterMealType, setFilterMealType] = useState<string>("all");
   const [filterCountry, setFilterCountry] = useState<string>("all");
   const [filterActive, setFilterActive] = useState<string>("all");
+  const [filterApproval, setFilterApproval] = useState<string>("all");
 
   // Generation params
   const [genCountry, setGenCountry] = useState("BR");
@@ -166,6 +174,9 @@ export default function AdminMealPool() {
       if (filterActive !== "all") {
         query = query.eq("is_active", filterActive === "active");
       }
+      if (filterApproval !== "all") {
+        query = query.eq("approval_status", filterApproval);
+      }
 
       const { data, error } = await query.limit(100);
       
@@ -188,6 +199,7 @@ export default function AdminMealPool() {
         dietary_tags: Array.isArray(item.dietary_tags) ? item.dietary_tags : [],
         blocked_for_intolerances: Array.isArray(item.blocked_for_intolerances) ? item.blocked_for_intolerances : [],
         is_active: item.is_active,
+        approval_status: (item.approval_status || 'pending') as ApprovalStatus,
         usage_count: item.usage_count || 0,
         created_at: item.created_at,
       }));
@@ -233,7 +245,7 @@ export default function AdminMealPool() {
 
   useEffect(() => {
     fetchMeals();
-  }, [filterMealType, filterCountry, filterActive]);
+  }, [filterMealType, filterCountry, filterActive, filterApproval]);
 
   const generateMeals = async () => {
     setIsGenerating(true);
@@ -323,6 +335,31 @@ export default function AdminMealPool() {
       setIsDeleting(false);
     }
   };
+
+  const updateApprovalStatus = async (ids: string[], status: ApprovalStatus) => {
+    setIsApproving(true);
+    try {
+      const { error } = await supabase
+        .from("meal_combinations")
+        .update({ approval_status: status })
+        .in("id", ids);
+
+      if (error) throw error;
+
+      const statusLabel = status === 'approved' ? 'aprovada(s)' : status === 'rejected' ? 'rejeitada(s)' : 'pendente(s)';
+      toast.success(`${ids.length} refeição(ões) ${statusLabel}`);
+      setSelectedIds(new Set());
+      fetchMeals();
+    } catch (error) {
+      console.error("Error updating approval:", error);
+      toast.error("Erro ao atualizar status");
+    } finally {
+      setIsApproving(false);
+    }
+  };
+
+  const approveSelected = () => updateApprovalStatus(Array.from(selectedIds), 'approved');
+  const rejectSelected = () => updateApprovalStatus(Array.from(selectedIds), 'rejected');
 
   const toggleSelectAll = () => {
     if (selectedIds.size === meals.length) {
@@ -555,6 +592,18 @@ export default function AdminMealPool() {
                 <SelectItem value="inactive">Inativas</SelectItem>
               </SelectContent>
             </Select>
+
+            <Select value={filterApproval} onValueChange={setFilterApproval}>
+              <SelectTrigger className="w-[160px]">
+                <SelectValue placeholder="Aprovação" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas</SelectItem>
+                <SelectItem value="pending">⏳ Pendentes</SelectItem>
+                <SelectItem value="approved">✅ Aprovadas</SelectItem>
+                <SelectItem value="rejected">❌ Rejeitadas</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
@@ -567,19 +616,44 @@ export default function AdminMealPool() {
             Refeições no Pool ({meals.length})
           </CardTitle>
           {selectedIds.size > 0 && (
-            <Button 
-              variant="destructive" 
-              size="sm"
-              onClick={deleteSelectedMeals}
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="w-4 h-4 animate-spin mr-2" />
-              ) : (
-                <Trash2 className="w-4 h-4 mr-2" />
-              )}
-              Excluir {selectedIds.size}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="default" 
+                size="sm"
+                onClick={approveSelected}
+                disabled={isApproving}
+                className="bg-green-600 hover:bg-green-700"
+              >
+                {isApproving ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <CheckCircle className="w-4 h-4 mr-2" />
+                )}
+                Aprovar {selectedIds.size}
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={rejectSelected}
+                disabled={isApproving}
+              >
+                <XCircle className="w-4 h-4 mr-2" />
+                Rejeitar {selectedIds.size}
+              </Button>
+              <Button 
+                variant="destructive" 
+                size="sm"
+                onClick={deleteSelectedMeals}
+                disabled={isDeleting}
+              >
+                {isDeleting ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : (
+                  <Trash2 className="w-4 h-4 mr-2" />
+                )}
+                Excluir {selectedIds.size}
+              </Button>
+            </div>
           )}
         </CardHeader>
         <CardContent>
@@ -605,6 +679,7 @@ export default function AdminMealPool() {
                     <TableHead>Calorias</TableHead>
                     <TableHead>Macros</TableHead>
                     <TableHead>Confiança</TableHead>
+                    <TableHead>Aprovação</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
@@ -662,6 +737,24 @@ export default function AdminMealPool() {
                         >
                           {meal.macro_confidence}
                         </Badge>
+                      </TableCell>
+                      <TableCell>
+                        {meal.approval_status === 'approved' ? (
+                          <Badge className="bg-green-500/10 text-green-600 border-green-500/20">
+                            <CheckCircle className="w-3 h-3 mr-1" />
+                            Aprovada
+                          </Badge>
+                        ) : meal.approval_status === 'rejected' ? (
+                          <Badge className="bg-red-500/10 text-red-600 border-red-500/20">
+                            <XCircle className="w-3 h-3 mr-1" />
+                            Rejeitada
+                          </Badge>
+                        ) : (
+                          <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+                            <Clock className="w-3 h-3 mr-1" />
+                            Pendente
+                          </Badge>
+                        )}
                       </TableCell>
                       <TableCell>
                         {meal.is_active ? (

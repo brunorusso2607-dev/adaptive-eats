@@ -1560,8 +1560,8 @@ serve(async (req) => {
     const previousDaysMeals: string[] = [];
     
     // Configuração de paralelismo (throttle)
-    const BATCH_SIZE = 1; // 1 dia por vez para evitar 429 (rate limit)
-    const DAY_DELAY_MS = 1500;
+    const BATCH_SIZE = 7; // 7 dias por vez (Gemini tem bom rate limit)
+    const DAY_DELAY_MS = 500; // Delay menor entre dias
     const MAX_RETRIES = 3; // retries para lidar com erros internos
 
     const googleApiKey = await getGeminiApiKey();

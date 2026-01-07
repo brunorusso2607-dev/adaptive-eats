@@ -1,1 +1,4 @@
 project_id = "zwtqygyenhkhmwktfrng"
+
+[functions.populate-meal-pool]
+verify_jwt = false

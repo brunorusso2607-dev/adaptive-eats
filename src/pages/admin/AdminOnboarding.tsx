@@ -847,8 +847,48 @@ export default function AdminOnboarding() {
           <NutritionalStrategiesTab />
         </TabsContent>
 
+        {/* Excluded Ingredients Tab - informational only */}
+        <TabsContent value="excluded_ingredients" className="mt-6">
+          <Card className="border-border/50 bg-muted/20">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Ban className="w-5 h-5 text-orange-500" />
+                Alimentos que não consome
+              </CardTitle>
+              <p className="text-sm text-muted-foreground">
+                Campo de texto livre onde o usuário adiciona ingredientes que não consome por preferência pessoal
+              </p>
+            </CardHeader>
+            <CardContent>
+              <div className="p-4 bg-background rounded-lg border border-border/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex-1 p-3 bg-muted/30 rounded-lg border border-dashed border-border">
+                    <p className="text-sm text-muted-foreground italic">
+                      Ex: carne de porco, fígado, frutos do mar...
+                    </p>
+                  </div>
+                  <div className="w-10 h-10 flex items-center justify-center rounded-lg bg-muted/50 border border-border">
+                    <Plus className="w-4 h-4 text-muted-foreground" />
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 space-y-2">
+                <p className="text-xs text-muted-foreground">
+                  <strong>Campo:</strong> <code className="bg-muted px-1 rounded">excluded_ingredients</code> (array de strings)
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  <strong>Tabela:</strong> <code className="bg-muted px-1 rounded">profiles</code>
+                </p>
+                <p className="text-xs text-muted-foreground italic">
+                  Este passo permite personalização livre — não possui opções pré-definidas para gerenciar.
+                </p>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
         {/* Other categories - use onboarding_options table */}
-        {categories?.filter(cat => cat.category_key !== "nutritional_strategies").map((cat) => {
+        {categories?.filter(cat => cat.category_key !== "nutritional_strategies" && cat.category_key !== "excluded_ingredients").map((cat) => {
           const IconComponent = LUCIDE_ICONS[cat.icon_name] || Target;
           const categoryOptions = options?.filter(o => o.category === cat.category_key) || [];
           

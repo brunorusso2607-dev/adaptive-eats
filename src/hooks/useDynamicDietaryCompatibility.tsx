@@ -43,8 +43,13 @@ export function useDynamicDietaryCompatibility() {
   const { getIntoleranceLabel, getDietaryLabel, isLoading: labelsLoading } = useSafetyLabels();
   const [mappingsLoaded, setMappingsLoaded] = useState(!!cachedIntoleranceMappings);
 
-  // Carrega os mapeamentos do banco de dados
+  // Get user restrictions for filtered queries
+  const userIntolerances = profileContext.intolerances?.filter(i => i && i !== 'nenhuma') || [];
+  const userDietaryPref = profileContext.dietary_preference;
+  
+  // Carrega os mapeamentos do banco de dados - OTIMIZADO: filtra por restrições do usuário
   useEffect(() => {
+    // Se já temos cache E o cache tem dados para as restrições do usuário, não recarrega
     if (cachedIntoleranceMappings && cachedDietaryForbidden && cachedSafeKeywords) {
       setMappingsLoaded(true);
       return;
@@ -52,15 +57,38 @@ export function useDynamicDietaryCompatibility() {
 
     const loadMappings = async () => {
       try {
-        // Carregar mapeamentos de intolerância
-        const { data: intoleranceData } = await supabase
-          .from('intolerance_mappings')
-          .select('intolerance_key, ingredient')
-          .eq('language', 'pt');
+        // OPTIMIZED: Load all 3 queries in parallel
+        const [intoleranceResult, dietaryResult, safeResult] = await Promise.all([
+          // Carregar mapeamentos de intolerância - FILTRADO por user intolerances
+          userIntolerances.length > 0
+            ? supabase
+                .from('intolerance_mappings')
+                .select('intolerance_key, ingredient')
+                .eq('language', 'pt')
+                .in('intolerance_key', userIntolerances)
+            : Promise.resolve({ data: [] }),
+          
+          // Carregar ingredientes proibidos por dieta - FILTRADO por user preference
+          userDietaryPref && userDietaryPref !== 'omnivore' && userDietaryPref !== 'comum'
+            ? supabase
+                .from('dietary_forbidden_ingredients')
+                .select('dietary_key, ingredient')
+                .eq('language', 'pt')
+                .eq('dietary_key', userDietaryPref)
+            : Promise.resolve({ data: [] }),
+          
+          // Carregar safe keywords - FILTRADO por user intolerances
+          userIntolerances.length > 0
+            ? supabase
+                .from('intolerance_safe_keywords')
+                .select('intolerance_key, keyword')
+                .in('intolerance_key', userIntolerances)
+            : Promise.resolve({ data: [] })
+        ]);
 
         const intoleranceMap = new Map<string, Set<string>>();
-        if (intoleranceData) {
-          for (const row of intoleranceData) {
+        if (intoleranceResult.data) {
+          for (const row of intoleranceResult.data) {
             const key = row.intolerance_key.toLowerCase();
             if (!intoleranceMap.has(key)) {
               intoleranceMap.set(key, new Set());
@@ -70,15 +98,9 @@ export function useDynamicDietaryCompatibility() {
         }
         cachedIntoleranceMappings = intoleranceMap;
 
-        // Carregar ingredientes proibidos por dieta
-        const { data: dietaryData } = await supabase
-          .from('dietary_forbidden_ingredients')
-          .select('dietary_key, ingredient')
-          .eq('language', 'pt');
-
         const dietaryMap = new Map<string, Set<string>>();
-        if (dietaryData) {
-          for (const row of dietaryData) {
+        if (dietaryResult.data) {
+          for (const row of dietaryResult.data) {
             const key = row.dietary_key.toLowerCase();
             if (!dietaryMap.has(key)) {
               dietaryMap.set(key, new Set());
@@ -88,14 +110,9 @@ export function useDynamicDietaryCompatibility() {
         }
         cachedDietaryForbidden = dietaryMap;
 
-        // Carregar safe keywords
-        const { data: safeData } = await supabase
-          .from('intolerance_safe_keywords')
-          .select('intolerance_key, keyword');
-
         const safeMap = new Map<string, Set<string>>();
-        if (safeData) {
-          for (const row of safeData) {
+        if (safeResult.data) {
+          for (const row of safeResult.data) {
             const key = row.intolerance_key.toLowerCase();
             if (!safeMap.has(key)) {
               safeMap.set(key, new Set());
@@ -117,7 +134,7 @@ export function useDynamicDietaryCompatibility() {
     };
 
     loadMappings();
-  }, []);
+  }, [userIntolerances.join(','), userDietaryPref]);
 
   // Verifica se o usuário tem restrições configuradas
   const hasRestrictions = useMemo(() => {

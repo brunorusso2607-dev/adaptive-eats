@@ -185,55 +185,76 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) return;
 
-      // Fetch meal plans
-      const { data: plans, error: plansError } = await (supabase as any)
+      // OPTIMIZED: Single query with join instead of N+1 queries
+      const { data: plansWithItemsData, error: plansError } = await supabase
         .from("meal_plans")
-        .select("*")
+        .select(`
+          id,
+          name,
+          start_date,
+          end_date,
+          is_active,
+          status,
+          completion_percentage,
+          unlocks_at,
+          source_plan_id,
+          meal_plan_items (
+            id,
+            day_of_week,
+            week_number,
+            meal_type,
+            recipe_name,
+            recipe_calories,
+            recipe_protein,
+            recipe_carbs,
+            recipe_fat,
+            recipe_prep_time,
+            recipe_ingredients,
+            recipe_instructions,
+            is_favorite,
+            completed_at
+          )
+        `)
         .eq("user_id", session.user.id)
         .order("created_at", { ascending: false });
 
       if (plansError) throw plansError;
 
-      // Fetch items for each plan
-      const plansWithItems: MealPlan[] = await Promise.all(
-        (plans || []).map(async (plan: any) => {
-          const { data: items, error: itemsError } = await (supabase as any)
-            .from("meal_plan_items")
-            .select("*")
-            .eq("meal_plan_id", plan.id)
-            .order("day_of_week", { ascending: true });
+      // Process plans with their items
+      const plansWithItems: MealPlan[] = (plansWithItemsData || []).map((plan: any) => {
+        const items = plan.meal_plan_items || [];
+        
+        // Sort items by day_of_week
+        items.sort((a: any, b: any) => a.day_of_week - b.day_of_week);
+        
+        // Calculate completion percentage
+        const totalItems = items.length;
+        const completedItems = items.filter((i: any) => i.completed_at).length;
+        const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
 
-          if (itemsError) throw itemsError;
+        // Determine status based on end_date and completion
+        let status = plan.status || 'active';
+        if (isPastMonth(plan.end_date)) {
+          status = completionPercentage === 100 ? 'completed' : 'expired';
+        }
 
-          // Calculate completion percentage
-          const totalItems = items?.length || 0;
-          const completedItems = items?.filter((i: any) => i.completed_at).length || 0;
-          const completionPercentage = totalItems > 0 ? Math.round((completedItems / totalItems) * 100) : 0;
-
-          // Determine status based on end_date and completion
-          let status = plan.status || 'active';
-          if (isPastMonth(plan.end_date)) {
-            status = completionPercentage === 100 ? 'completed' : 'expired';
-          }
-
-          return {
-            id: plan.id,
-            name: plan.name,
-            start_date: plan.start_date,
-            end_date: plan.end_date,
-            is_active: plan.is_active,
-            status,
-            completion_percentage: completionPercentage,
-            unlocks_at: plan.unlocks_at,
-            source_plan_id: plan.source_plan_id,
-            items: (items || []).map((item: any) => ({
-              ...item,
-              recipe_ingredients: item.recipe_ingredients as Ingredient[],
-              recipe_instructions: item.recipe_instructions as string[]
-            }))
-          };
-        })
-      );
+        return {
+          id: plan.id,
+          name: plan.name,
+          start_date: plan.start_date,
+          end_date: plan.end_date,
+          is_active: plan.is_active,
+          status,
+          completion_percentage: completionPercentage,
+          unlocks_at: plan.unlocks_at,
+          source_plan_id: plan.source_plan_id,
+          items: items.map((item: any) => ({
+            ...item,
+            recipe_ingredients: item.recipe_ingredients as Ingredient[],
+            recipe_instructions: item.recipe_instructions as string[]
+          }))
+        };
+      });
 
       setMealPlans(plansWithItems);
     } catch (error) {

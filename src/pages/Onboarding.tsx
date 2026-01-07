@@ -6,8 +6,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { 
-  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe, Dumbbell, TrendingDown, TrendingUp, Scale, Utensils, Sparkles, Info
+  ChefHat, ArrowRight, ArrowLeft, Check, Loader2, LogOut, X, Plus, Bell, BellOff, Globe, Dumbbell, TrendingDown, TrendingUp, Scale, Utensils, Sparkles, Info, Ruler, Calendar, User
 } from "lucide-react";
+import PhysicalDataInputs, { type PhysicalData } from "@/components/PhysicalDataInputs";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useOnboardingOptions, useRestrictionCategories, type OnboardingOption, type OnboardingOptionsMap } from "@/hooks/useOnboardingOptions";
@@ -27,6 +28,13 @@ type ProfileData = {
   excluded_ingredients: string[];
   goal: string;
   strategy_id: string | null;
+  // Physical data
+  weight_current: number | null;
+  weight_goal: number | null;
+  height: number | null;
+  age: number | null;
+  sex: string | null;
+  activity_level: string | null;
 };
 
 // Base steps - step 1 (country) may be skipped based on feature flag
@@ -38,7 +46,7 @@ const BASE_STEPS = [
   { id: 4, title: "Sensibilidades", description: "Você tem alguma sensibilidade?", skippable: false, categoryKey: "sensitivities" },
   { id: 5, title: "Preferência", description: "Qual sua preferência alimentar?", skippable: false },
   { id: 6, title: "Alimentos", description: "Tem algum alimento que você não consome?", skippable: false },
-  { id: 7, title: "Objetivo", description: "Qual sua estratégia nutricional?", skippable: false },
+  { id: 7, title: "Objetivo", description: "Defina sua estratégia e seus dados físicos", skippable: false },
   { id: 8, title: "Notificações", description: "Receba lembretes importantes", skippable: false },
 ];
 
@@ -53,6 +61,12 @@ export default function Onboarding() {
     excluded_ingredients: [],
     goal: "maintain",
     strategy_id: null,
+    weight_current: null,
+    weight_goal: null,
+    height: null,
+    age: null,
+    sex: null,
+    activity_level: null,
   });
   const [ingredientInput, setIngredientInput] = useState("");
 
@@ -157,6 +171,12 @@ export default function Onboarding() {
           excluded_ingredients: profile.excluded_ingredients,
           goal: profile.goal as any,
           strategy_id: profile.strategy_id,
+          weight_current: profile.weight_current,
+          weight_goal: profile.weight_goal,
+          height: profile.height,
+          age: profile.age,
+          sex: profile.sex,
+          activity_level: profile.activity_level,
           timezone: detectedTimezone,
           onboarding_completed: true,
         })
@@ -418,45 +438,83 @@ export default function Onboarding() {
           });
         };
 
+        const handlePhysicalDataChange = (physicalData: PhysicalData) => {
+          setProfile({
+            ...profile,
+            ...physicalData,
+          });
+        };
+
+        // Determine if we should show weight_goal based on strategy
+        const selectedStrategy = strategies.find(s => s.id === profile.strategy_id);
+        const showWeightGoal = selectedStrategy?.key === 'weight_loss' || selectedStrategy?.key === 'weight_gain';
+
         return (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground text-center mb-4">
-              Escolha a estratégia que melhor se adapta ao seu objetivo
-            </p>
-            {strategies.map((strategy) => {
-              const IconComponent = getStrategyIcon(strategy.key);
-              return (
-                <button
-                  key={strategy.id}
-                  onClick={() => handleStrategySelect(strategy)}
-                  className={cn(
-                    "w-full p-4 rounded-xl border text-left transition-all flex items-center gap-4",
-                    profile.strategy_id === strategy.id
-                      ? "border-primary bg-primary/5 ring-2 ring-primary/20"
-                      : "border-border/80 hover:border-primary/50 bg-card"
-                  )}
-                >
-                  <div className={cn(
-                    "w-10 h-10 flex items-center justify-center rounded-lg",
-                    profile.strategy_id === strategy.id ? "bg-primary/10" : "bg-muted/50"
-                  )}>
-                    <IconComponent className={cn(
-                      "w-5 h-5",
-                      profile.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground"
-                    )} />
-                  </div>
-                  <div className="flex-1">
-                    <span className="font-medium block">{strategy.label}</span>
-                    {strategy.description && (
-                      <span className="text-sm text-muted-foreground line-clamp-2">{strategy.description}</span>
-                    )}
-                  </div>
-                  {profile.strategy_id === strategy.id && (
-                    <Check className="w-5 h-5 text-primary shrink-0" />
-                  )}
-                </button>
-              );
-            })}
+          <div className="space-y-6 max-h-[60vh] overflow-y-auto pr-1">
+            {/* Strategy Selection */}
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground text-center">
+                Escolha sua estratégia nutricional
+              </p>
+              <div className="grid grid-cols-1 gap-2">
+                {strategies.map((strategy) => {
+                  const IconComponent = getStrategyIcon(strategy.key);
+                  return (
+                    <button
+                      key={strategy.id}
+                      onClick={() => handleStrategySelect(strategy)}
+                      className={cn(
+                        "w-full p-3 rounded-xl border text-left transition-all flex items-center gap-3",
+                        profile.strategy_id === strategy.id
+                          ? "border-primary bg-primary/5 ring-2 ring-primary/20"
+                          : "border-border/80 hover:border-primary/50 bg-card"
+                      )}
+                    >
+                      <div className={cn(
+                        "w-9 h-9 flex items-center justify-center rounded-lg shrink-0",
+                        profile.strategy_id === strategy.id ? "bg-primary/10" : "bg-muted/50"
+                      )}>
+                        <IconComponent className={cn(
+                          "w-4 h-4",
+                          profile.strategy_id === strategy.id ? "text-primary" : "text-muted-foreground"
+                        )} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-medium block text-sm">{strategy.label}</span>
+                        {strategy.description && (
+                          <span className="text-xs text-muted-foreground line-clamp-1">{strategy.description}</span>
+                        )}
+                      </div>
+                      {profile.strategy_id === strategy.id && (
+                        <Check className="w-4 h-4 text-primary shrink-0" />
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Physical Data - Only show after strategy is selected */}
+            {profile.strategy_id && (
+              <div className="space-y-3 pt-4 border-t border-border/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <User className="w-4 h-4 text-primary" />
+                  <p className="text-sm font-medium">Seus dados físicos</p>
+                </div>
+                <PhysicalDataInputs
+                  data={{
+                    weight_current: profile.weight_current,
+                    weight_goal: profile.weight_goal,
+                    height: profile.height,
+                    age: profile.age,
+                    sex: profile.sex,
+                    activity_level: profile.activity_level,
+                  }}
+                  onChange={handlePhysicalDataChange}
+                  showWeightGoal={showWeightGoal}
+                />
+              </div>
+            )}
           </div>
         );
 

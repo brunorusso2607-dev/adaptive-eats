@@ -355,6 +355,75 @@ export type Database = {
         }
         Relationships: []
       }
+      canonical_ingredients: {
+        Row: {
+          calories_per_100g: number | null
+          carbs_per_100g: number | null
+          category: string
+          country_specific: string[] | null
+          created_at: string | null
+          default_portion_grams: number | null
+          dietary_flags: string[] | null
+          fat_per_100g: number | null
+          fiber_per_100g: number | null
+          id: string
+          intolerance_flags: string[] | null
+          is_active: boolean | null
+          name_en: string
+          name_es: string | null
+          name_pt: string
+          portion_label_en: string | null
+          portion_label_pt: string | null
+          protein_per_100g: number | null
+          subcategory: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          calories_per_100g?: number | null
+          carbs_per_100g?: number | null
+          category: string
+          country_specific?: string[] | null
+          created_at?: string | null
+          default_portion_grams?: number | null
+          dietary_flags?: string[] | null
+          fat_per_100g?: number | null
+          fiber_per_100g?: number | null
+          id: string
+          intolerance_flags?: string[] | null
+          is_active?: boolean | null
+          name_en: string
+          name_es?: string | null
+          name_pt: string
+          portion_label_en?: string | null
+          portion_label_pt?: string | null
+          protein_per_100g?: number | null
+          subcategory?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          calories_per_100g?: number | null
+          carbs_per_100g?: number | null
+          category?: string
+          country_specific?: string[] | null
+          created_at?: string | null
+          default_portion_grams?: number | null
+          dietary_flags?: string[] | null
+          fat_per_100g?: number | null
+          fiber_per_100g?: number | null
+          id?: string
+          intolerance_flags?: string[] | null
+          is_active?: boolean | null
+          name_en?: string
+          name_es?: string | null
+          name_pt?: string
+          portion_label_en?: string | null
+          portion_label_pt?: string | null
+          protein_per_100g?: number | null
+          subcategory?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       chat_conversations: {
         Row: {
           created_at: string

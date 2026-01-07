@@ -34,6 +34,7 @@ interface MealComponent {
   type: string; // protein, carb, vegetable, fruit, beverage, fat, fiber, dairy, grain, legume
   name: string;
   name_en?: string;
+  canonical_id?: string; // ID do canonical_ingredients
   portion_grams?: number;
   portion_ml?: number;
   portion_label: string;
@@ -48,6 +49,24 @@ interface GeneratedMeal {
   flexible_options: Record<string, string[]>;
   instructions: string[];
   prep_time_minutes: number;
+}
+
+interface CanonicalIngredient {
+  id: string;
+  name_en: string;
+  name_pt: string;
+  category: string;
+  calories_per_100g: number;
+  protein_per_100g: number;
+  carbs_per_100g: number;
+  fat_per_100g: number;
+  fiber_per_100g: number;
+  default_portion_grams: number;
+  portion_label_en: string;
+  portion_label_pt: string;
+  intolerance_flags: string[];
+  dietary_flags: string[];
+  country_specific: string[] | null;
 }
 
 // ============= COMPONENTES SIMPLES ESTILO NUTRICIONISTA =============
@@ -723,7 +742,52 @@ serve(async (req) => {
       throw new Error("AI generated meals without valid components. Please try again.");
     }
 
-    // Calculate real macros from foods table (TBCA/TACO)
+    // Load canonical ingredients for lookup
+    const { data: canonicalIngredients } = await supabase
+      .from("canonical_ingredients")
+      .select("*")
+      .eq("is_active", true);
+    
+    const canonicalMap = new Map<string, CanonicalIngredient>();
+    const canonicalByNamePt = new Map<string, CanonicalIngredient>();
+    const canonicalByNameEn = new Map<string, CanonicalIngredient>();
+    
+    if (canonicalIngredients) {
+      for (const ing of canonicalIngredients) {
+        canonicalMap.set(ing.id, ing as CanonicalIngredient);
+        canonicalByNamePt.set(normalizeText(ing.name_pt), ing as CanonicalIngredient);
+        canonicalByNameEn.set(normalizeText(ing.name_en), ing as CanonicalIngredient);
+      }
+    }
+    
+    logStep("Canonical ingredients loaded", { count: canonicalMap.size });
+    
+    // Function to find canonical ingredient
+    const findCanonicalIngredient = (name: string, nameEn?: string): CanonicalIngredient | null => {
+      // Try exact match by normalized name
+      const normalizedPt = normalizeText(name);
+      if (canonicalByNamePt.has(normalizedPt)) {
+        return canonicalByNamePt.get(normalizedPt)!;
+      }
+      
+      if (nameEn) {
+        const normalizedEn = normalizeText(nameEn);
+        if (canonicalByNameEn.has(normalizedEn)) {
+          return canonicalByNameEn.get(normalizedEn)!;
+        }
+      }
+      
+      // Try partial match
+      for (const [key, ing] of canonicalByNamePt) {
+        if (normalizedPt.includes(key) || key.includes(normalizedPt)) {
+          return ing;
+        }
+      }
+      
+      return null;
+    };
+    
+    // Calculate real macros - prefer canonical_ingredients, then foods table
     const mealsWithMacros = await Promise.all(
       validMeals.map(async (meal) => {
         const components = coerceMealComponents((meal as any)?.components);
@@ -733,113 +797,108 @@ serve(async (req) => {
         let totalCarbs = 0;
         let totalFat = 0;
         let totalFiber = 0;
-        let macroSource = "tbca";
+        let macroSource = "canonical";
         let macroConfidence = "high";
         let foundCount = 0;
+        let allIntoleranceFlags: string[] = [];
 
+        // Enrich components with canonical IDs
+        const enrichedComponents: MealComponent[] = [];
+        
         for (const component of components) {
           const portionGrams = component.portion_grams || component.portion_ml || DEFAULT_PORTIONS[component.type]?.grams || 100;
           
-          // Search by name_en first (more accurate), then local name
-          const searchTerms = [component.name_en, component.name].filter(Boolean);
-          let foodMatch = null;
+          // Try to find in canonical_ingredients first
+          const canonical = findCanonicalIngredient(component.name, component.name_en);
           
-          for (const term of searchTerms) {
-            if (!term) continue;
-            const { data } = await supabase
-              .from("foods")
-              .select("calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, source")
-              .or(`name.ilike.%${term}%,name_normalized.ilike.%${normalizeText(term)}%`)
-              .limit(1)
-              .single();
-            
-            if (data) {
-              foodMatch = data;
-              break;
-            }
-          }
-
-          if (foodMatch) {
+          if (canonical) {
+            // Use canonical data
             const factor = portionGrams / 100;
-            totalCalories += Math.round(foodMatch.calories_per_100g * factor);
-            totalProtein += Math.round(foodMatch.protein_per_100g * factor * 10) / 10;
-            totalCarbs += Math.round(foodMatch.carbs_per_100g * factor * 10) / 10;
-            totalFat += Math.round(foodMatch.fat_per_100g * factor * 10) / 10;
-            totalFiber += Math.round((foodMatch.fiber_per_100g || 0) * factor * 10) / 10;
+            totalCalories += Math.round(canonical.calories_per_100g * factor);
+            totalProtein += Math.round(canonical.protein_per_100g * factor * 10) / 10;
+            totalCarbs += Math.round(canonical.carbs_per_100g * factor * 10) / 10;
+            totalFat += Math.round(canonical.fat_per_100g * factor * 10) / 10;
+            totalFiber += Math.round(canonical.fiber_per_100g * factor * 10) / 10;
             foundCount++;
             
-            if (foodMatch.source && !macroSource.includes(foodMatch.source)) {
-              macroSource = foodMatch.source;
+            // Collect intolerance flags
+            if (canonical.intolerance_flags?.length > 0) {
+              allIntoleranceFlags.push(...canonical.intolerance_flags);
             }
+            
+            // Enrich component with canonical_id
+            enrichedComponents.push({
+              ...component,
+              canonical_id: canonical.id,
+              name: regional.language.startsWith("pt") ? canonical.name_pt : canonical.name_en,
+              name_en: canonical.name_en,
+              portion_label: regional.language.startsWith("pt") ? canonical.portion_label_pt : canonical.portion_label_en,
+            });
           } else {
-            // FALLBACK 1: Try calorieTable (curated list with official values)
-            const normalizedName = normalizeForCalorieTable(component.name);
-            const normalizedNameEn = component.name_en ? normalizeForCalorieTable(component.name_en) : null;
+            // Fallback to foods table
+            const searchTerms = [component.name_en, component.name].filter(Boolean);
+            let foodMatch = null;
             
-            let calorieTableMatch: number | null = null;
-            
-            // Try exact match first
-            if (CALORIE_TABLE[normalizedName]) {
-              calorieTableMatch = CALORIE_TABLE[normalizedName];
-            } else if (normalizedNameEn && CALORIE_TABLE[normalizedNameEn]) {
-              calorieTableMatch = CALORIE_TABLE[normalizedNameEn];
+            for (const term of searchTerms) {
+              if (!term) continue;
+              const { data } = await supabase
+                .from("foods")
+                .select("calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, source")
+                .or(`name.ilike.%${term}%,name_normalized.ilike.%${normalizeText(term)}%`)
+                .limit(1)
+                .single();
+              
+              if (data) {
+                foodMatch = data;
+                break;
+              }
+            }
+
+            if (foodMatch) {
+              const factor = portionGrams / 100;
+              totalCalories += Math.round(foodMatch.calories_per_100g * factor);
+              totalProtein += Math.round(foodMatch.protein_per_100g * factor * 10) / 10;
+              totalCarbs += Math.round(foodMatch.carbs_per_100g * factor * 10) / 10;
+              totalFat += Math.round(foodMatch.fat_per_100g * factor * 10) / 10;
+              totalFiber += Math.round((foodMatch.fiber_per_100g || 0) * factor * 10) / 10;
+              foundCount++;
+              macroSource = foodMatch.source || "database";
             } else {
-              // Try partial match
-              for (const [key, kcalPer100g] of Object.entries(CALORIE_TABLE)) {
-                if (normalizedName.includes(key) || key.includes(normalizedName)) {
-                  calorieTableMatch = kcalPer100g;
-                  break;
-                }
+              // FALLBACK: calorieTable or estimate
+              const normalizedName = normalizeForCalorieTable(component.name);
+              let calorieTableMatch: number | null = CALORIE_TABLE[normalizedName] || null;
+              
+              if (calorieTableMatch !== null) {
+                const factor = portionGrams / 100;
+                totalCalories += Math.round(calorieTableMatch * factor);
+                macroSource = "calorie_table";
+                macroConfidence = "medium";
+              } else {
+                macroConfidence = "low";
+                const estimates: Record<string, { cal: number; prot: number; carb: number; fat: number; fiber: number }> = {
+                  protein: { cal: 150, prot: 25, carb: 0, fat: 5, fiber: 0 },
+                  carb: { cal: 120, prot: 3, carb: 25, fat: 1, fiber: 2 },
+                  vegetable: { cal: 25, prot: 2, carb: 5, fat: 0, fiber: 2 },
+                  fruit: { cal: 60, prot: 1, carb: 15, fat: 0, fiber: 2 },
+                  beverage: { cal: 5, prot: 0, carb: 1, fat: 0, fiber: 0 },
+                  dairy: { cal: 80, prot: 5, carb: 8, fat: 3, fiber: 0 },
+                  fat: { cal: 90, prot: 0, carb: 0, fat: 10, fiber: 0 },
+                  grain: { cal: 100, prot: 3, carb: 20, fat: 1, fiber: 3 },
+                  legume: { cal: 120, prot: 8, carb: 20, fat: 1, fiber: 6 },
+                  fiber: { cal: 30, prot: 2, carb: 7, fat: 0, fiber: 5 },
+                };
+                const est = estimates[component.type] || estimates.carb;
+                const factor = portionGrams / 100;
+                totalCalories += Math.round(est.cal * factor);
+                totalProtein += Math.round(est.prot * factor * 10) / 10;
+                totalCarbs += Math.round(est.carb * factor * 10) / 10;
+                totalFat += Math.round(est.fat * factor * 10) / 10;
+                totalFiber += Math.round(est.fiber * factor * 10) / 10;
               }
             }
             
-            if (calorieTableMatch !== null) {
-              // Found in calorieTable - use it
-              const factor = portionGrams / 100;
-              totalCalories += Math.round(calorieTableMatch * factor);
-              // Estimate macros based on component type with table calories
-              const macroRatios: Record<string, { prot: number; carb: number; fat: number; fiber: number }> = {
-                protein: { prot: 0.20, carb: 0.02, fat: 0.08, fiber: 0 },
-                carb: { prot: 0.03, carb: 0.25, fat: 0.01, fiber: 0.02 },
-                vegetable: { prot: 0.02, carb: 0.05, fat: 0.005, fiber: 0.025 },
-                fruit: { prot: 0.01, carb: 0.12, fat: 0.003, fiber: 0.02 },
-                beverage: { prot: 0.005, carb: 0.02, fat: 0.002, fiber: 0 },
-                dairy: { prot: 0.04, carb: 0.05, fat: 0.03, fiber: 0 },
-                fat: { prot: 0, carb: 0, fat: 0.99, fiber: 0 },
-                grain: { prot: 0.03, carb: 0.22, fat: 0.01, fiber: 0.03 },
-                legume: { prot: 0.08, carb: 0.18, fat: 0.01, fiber: 0.06 },
-                fiber: { prot: 0.03, carb: 0.12, fat: 0.02, fiber: 0.10 },
-              };
-              const ratios = macroRatios[component.type] || macroRatios.carb;
-              totalProtein += Math.round(portionGrams * ratios.prot * 10) / 10;
-              totalCarbs += Math.round(portionGrams * ratios.carb * 10) / 10;
-              totalFat += Math.round(portionGrams * ratios.fat * 10) / 10;
-              totalFiber += Math.round(portionGrams * ratios.fiber * 10) / 10;
-              foundCount++; // Count as found since we have official calorie data
-              macroSource = "calorie_table";
-            } else {
-              // FALLBACK 2: Estimate based on component type (last resort)
-              macroConfidence = "medium";
-              const estimates: Record<string, { cal: number; prot: number; carb: number; fat: number; fiber: number }> = {
-                protein: { cal: 150, prot: 25, carb: 0, fat: 5, fiber: 0 },
-                carb: { cal: 120, prot: 3, carb: 25, fat: 1, fiber: 2 },
-                vegetable: { cal: 25, prot: 2, carb: 5, fat: 0, fiber: 2 },
-                fruit: { cal: 60, prot: 1, carb: 15, fat: 0, fiber: 2 },
-                beverage: { cal: 5, prot: 0, carb: 1, fat: 0, fiber: 0 },
-                dairy: { cal: 80, prot: 5, carb: 8, fat: 3, fiber: 0 },
-                fat: { cal: 90, prot: 0, carb: 0, fat: 10, fiber: 0 },
-                grain: { cal: 100, prot: 3, carb: 20, fat: 1, fiber: 3 },
-                legume: { cal: 120, prot: 8, carb: 20, fat: 1, fiber: 6 },
-                fiber: { cal: 30, prot: 2, carb: 7, fat: 0, fiber: 5 },
-              };
-              const est = estimates[component.type] || estimates.carb;
-              const factor = portionGrams / 100;
-              totalCalories += Math.round(est.cal * factor);
-              totalProtein += Math.round(est.prot * factor * 10) / 10;
-              totalCarbs += Math.round(est.carb * factor * 10) / 10;
-              totalFat += Math.round(est.fat * factor * 10) / 10;
-              totalFiber += Math.round(est.fiber * factor * 10) / 10;
-            }
+            // Keep original component if no canonical match
+            enrichedComponents.push(component);
           }
         }
 
@@ -850,11 +909,31 @@ serve(async (req) => {
           macroConfidence = "medium";
         }
 
+        // Deduplicate intolerance flags
+        const uniqueIntoleranceFlags = [...new Set(allIntoleranceFlags)];
+        
+        // Merge AI-detected intolerances with canonical ones
+        const mergedIntolerances = [...new Set([
+          ...(meal.blocked_for_intolerances || []),
+          ...uniqueIntoleranceFlags
+        ])];
+        
+        // AUTO-APPROVAL LOGIC
+        // Approve automatically if:
+        // 1. High confidence macros (canonical or database source)
+        // 2. Calories within reasonable range (150-900 kcal)
+        // 3. All components have canonical_id OR found in foods table
+        const shouldAutoApprove = 
+          macroConfidence === "high" && 
+          totalCalories >= 150 && 
+          totalCalories <= 900 &&
+          foundCount >= components.length * 0.7; // At least 70% of components found
+
         return {
           name: meal.name,
           description: meal.description,
           meal_type,
-          components,
+          components: enrichedComponents,
           total_calories: totalCalories,
           total_protein: totalProtein,
           total_carbs: totalCarbs,
@@ -865,11 +944,12 @@ serve(async (req) => {
           country_codes: [country_code],
           language_code: regional.language.split("-")[0],
           dietary_tags: meal.dietary_tags || [],
-          blocked_for_intolerances: meal.blocked_for_intolerances || [],
+          blocked_for_intolerances: mergedIntolerances,
           flexible_options: meal.flexible_options || {},
           instructions: meal.instructions || [],
           prep_time_minutes: meal.prep_time_minutes || 15,
           is_active: true,
+          approval_status: shouldAutoApprove ? "approved" : "pending",
           source: "ai_generated",
           generated_by: "populate-meal-pool",
         };

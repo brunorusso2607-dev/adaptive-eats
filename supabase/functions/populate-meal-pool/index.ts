@@ -1,5 +1,19 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+
+// ============= IMPORTS DOS MÓDULOS COMPARTILHADOS =============
+import {
+  REGIONAL_CONFIGS,
+  getRegionalConfig,
+  getStrategyPersona,
+  normalizeText,
+  type RegionalConfig,
+} from "../_shared/mealGenerationConfig.ts";
+
+import {
+  loadSafetyDatabase,
+  type SafetyDatabase,
+} from "../_shared/globalSafetyEngine.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,78 +24,11 @@ const logStep = (step: string, details?: Record<string, unknown>) => {
   console.log(`[MEAL-POOL] ${step}`, details ? JSON.stringify(details) : "");
 };
 
-// Configurações regionais de templates de refeições
-const REGIONAL_TEMPLATES: Record<string, Record<string, string[]>> = {
-  BR: {
-    cafe_manha: [
-      "Proteína (ovos, queijo, iogurte) + Carboidrato (pão, tapioca, aveia) + Bebida (café, leite, suco) + Fruta",
-      "Vitamina de frutas + Sanduíche natural",
-      "Tapioca recheada + Café + Fruta",
-      "Mingau de aveia + Frutas picadas",
-    ],
-    almoco: [
-      "Proteína (frango, carne, peixe) + Arroz + Feijão + Salada + Legume",
-      "Proteína grelhada + Arroz integral + Legumes refogados",
-      "Prato único (estrogonofe, picadinho) + Arroz + Salada",
-    ],
-    lanche_tarde: [
-      "Fruta + Castanhas ou Iogurte",
-      "Sanduíche natural + Suco",
-      "Vitamina de frutas",
-      "Tapioca + Café",
-    ],
-    jantar: [
-      "Proteína leve + Salada completa + Carboidrato moderado",
-      "Sopa de legumes com proteína",
-      "Omelete + Salada + Pão integral",
-    ],
-    ceia: [
-      "Chá + Fruta leve",
-      "Iogurte natural",
-      "Leite morno + Biscoito integral",
-    ],
-  },
-  US: {
-    cafe_manha: [
-      "Eggs + Toast + Orange juice + Fruit",
-      "Oatmeal + Berries + Coffee",
-      "Pancakes + Bacon + Milk",
-    ],
-    almoco: [
-      "Protein + Salad + Whole grain",
-      "Sandwich + Soup + Fruit",
-      "Bowl (rice, protein, vegetables)",
-    ],
-    lanche_tarde: [
-      "Yogurt + Granola",
-      "Fruit + Nuts",
-      "Cheese + Crackers",
-    ],
-    jantar: [
-      "Protein + Vegetables + Starch",
-      "Pasta + Salad",
-      "Grilled meat + Rice + Vegetables",
-    ],
-    ceia: [
-      "Herbal tea + Light snack",
-      "Warm milk",
-    ],
-  },
-};
-
-// Regras de combinações proibidas
-const FORBIDDEN_COMBINATIONS = [
-  ["arroz", "macarrão"],
-  ["pão", "tapioca"],
-  ["feijão", "lentilha"],
-  ["café", "chá"], // na mesma refeição
-  ["rice", "pasta"],
-  ["bread", "tortilla"],
-];
-
+// ============= TIPOS =============
 interface MealComponent {
-  type: string; // protein, carb, vegetable, fruit, beverage, fat, fiber
+  type: string; // protein, carb, vegetable, fruit, beverage, fat, fiber, dairy, grain, legume
   name: string;
+  name_en?: string;
   portion_grams?: number;
   portion_ml?: number;
   portion_label: string;
@@ -98,6 +45,215 @@ interface GeneratedMeal {
   prep_time_minutes: number;
 }
 
+// ============= REGRAS DE COMBINAÇÕES PROIBIDAS =============
+const FORBIDDEN_COMBINATIONS = [
+  ["arroz", "macarrão"],
+  ["pão", "tapioca"],
+  ["feijão", "lentilha"],
+  ["café", "chá"],
+  ["rice", "pasta"],
+  ["bread", "tortilla"],
+];
+
+// ============= MEAL TYPE MAPPING =============
+const MEAL_TYPE_LABELS: Record<string, Record<string, string>> = {
+  BR: {
+    cafe_manha: "Café da manhã",
+    lanche_manha: "Lanche da manhã",
+    almoco: "Almoço",
+    lanche_tarde: "Lanche da tarde",
+    jantar: "Jantar",
+    ceia: "Ceia",
+  },
+  US: {
+    cafe_manha: "Breakfast",
+    lanche_manha: "Morning Snack",
+    almoco: "Lunch",
+    lanche_tarde: "Afternoon Snack",
+    jantar: "Dinner",
+    ceia: "Late Night Snack",
+  },
+  PT: {
+    cafe_manha: "Pequeno-almoço",
+    lanche_manha: "Lanche da Manhã",
+    almoco: "Almoço",
+    lanche_tarde: "Lanche da Tarde",
+    jantar: "Jantar",
+    ceia: "Ceia",
+  },
+  MX: {
+    cafe_manha: "Desayuno",
+    lanche_manha: "Colación Matutina",
+    almoco: "Comida",
+    lanche_tarde: "Colación Vespertina",
+    jantar: "Cena",
+    ceia: "Cena Ligera",
+  },
+  ES: {
+    cafe_manha: "Desayuno",
+    lanche_manha: "Media Mañana",
+    almoco: "Almuerzo",
+    lanche_tarde: "Merienda",
+    jantar: "Cena",
+    ceia: "Cena Tardía",
+  },
+};
+
+// ============= PORÇÕES PADRÃO POR TIPO DE COMPONENTE =============
+const DEFAULT_PORTIONS: Record<string, { grams: number; label_pt: string; label_en: string }> = {
+  protein: { grams: 120, label_pt: "1 porção média", label_en: "1 medium portion" },
+  carb: { grams: 100, label_pt: "1 porção", label_en: "1 portion" },
+  vegetable: { grams: 80, label_pt: "1 xícara", label_en: "1 cup" },
+  fruit: { grams: 120, label_pt: "1 unidade média", label_en: "1 medium piece" },
+  beverage: { grams: 200, label_pt: "1 xícara", label_en: "1 cup" },
+  dairy: { grams: 150, label_pt: "1 porção", label_en: "1 portion" },
+  fat: { grams: 15, label_pt: "1 colher de sopa", label_en: "1 tablespoon" },
+  fiber: { grams: 30, label_pt: "2 colheres de sopa", label_en: "2 tablespoons" },
+  grain: { grams: 80, label_pt: "1/2 xícara", label_en: "1/2 cup" },
+  legume: { grams: 100, label_pt: "1 concha", label_en: "1 ladle" },
+};
+
+// ============= CONSTRUIR PROMPT COM BASE NO REGIONAL CONFIG =============
+function buildMealPoolPrompt(
+  regional: RegionalConfig,
+  countryCode: string,
+  mealType: string,
+  quantity: number,
+  safetyDb: SafetyDatabase,
+  dietaryFilter?: string | null,
+  strategyKey?: string | null,
+): string {
+  const mealLabel = MEAL_TYPE_LABELS[countryCode]?.[mealType] || mealType;
+  const language = regional.language || "pt-BR";
+  const isPortuguese = language.startsWith("pt");
+  const isSpanish = language.startsWith("es");
+  
+  // Pegar estrutura de refeições do regional config
+  const mealStructure = regional.mealStructure;
+  
+  // Exemplos de estrutura
+  let structureExample = "";
+  if (mealStructure) {
+    if (mealType === "almoco" || mealType === "jantar") {
+      structureExample = `
+ESTRUTURA TÍPICA: ${mealStructure.lunchDinner.structure}
+COMPONENTES: ${mealStructure.lunchDinner.components.join(", ")}
+EXEMPLO: ${mealStructure.lunchDinner.example}
+PRATOS ÚNICOS PERMITIDOS: ${mealStructure.consolidatedDishes.join(", ")}`;
+    } else if (mealType === "cafe_manha") {
+      structureExample = `
+ESTRUTURA TÍPICA: ${mealStructure.breakfast.structure}
+EXEMPLOS: 
+${mealStructure.breakfast.examples.map((e, i) => `  ${i + 1}. ${e}`).join("\n")}`;
+    } else if (mealType.includes("lanche")) {
+      structureExample = `
+EXEMPLOS DE LANCHES:
+${mealStructure.snacks.examples.map((e, i) => `  ${i + 1}. ${e}`).join("\n")}`;
+    } else if (mealType === "ceia") {
+      structureExample = `
+CEIA DEVE SER LEVE: Opte por chás, frutas leves, iogurte ou lanches pequenos.`;
+    }
+  }
+  
+  // Contexto de estratégia nutricional
+  let strategyContext = "";
+  if (strategyKey) {
+    const persona = getStrategyPersona(strategyKey);
+    strategyContext = `
+ESTRATÉGIA NUTRICIONAL: ${persona.label}
+FILOSOFIA: ${persona.philosophy}
+ESTILO: ${persona.foodStyle}
+ALIMENTOS RECOMENDADOS: ${persona.recommendedFoods.slice(0, 8).join(", ")}
+EVITAR: ${persona.avoidFoods.slice(0, 5).join(", ")}
+ESTILO DE PORÇÃO: ${persona.portionStyle}`;
+  }
+  
+  // Listar intolerâncias conhecidas do banco
+  const allIntoleranceKeys = safetyDb.allIntoleranceKeys.slice(0, 20).join(", ");
+  
+  // Filtro dietético
+  const dietaryContext = dietaryFilter 
+    ? `\nFILTRO DIETÉTICO: Apenas refeições compatíveis com "${dietaryFilter}". Evitar TODOS os ingredientes proibidos para esta dieta.`
+    : "";
+  
+  // Prompt principal
+  return `[INTERNAL REASONING: English]
+[OUTPUT LANGUAGE: ${language}]
+
+You are a clinical nutritionist with 20 years of experience specializing in ${countryCode} cuisine.
+
+TASK: Generate ${quantity} unique meal combinations for "${mealLabel}" (${mealType}) targeting the ${countryCode} market.
+
+REGIONAL CONTEXT FOR ${countryCode}:
+- Language: ${regional.languageName}
+- Measurement: ${regional.measurementSystem}
+- Typical meals: ${regional.typicalMeals || "Standard regional cuisine"}
+- Cultural notes: ${regional.culturalNotes || "Local ingredients preferred"}
+- Portion units: ${regional.domesticUnits || "unit, tablespoon, cup, slice"}
+${structureExample}
+${strategyContext}
+${dietaryContext}
+
+COMPONENT TYPES (use these exact values):
+- protein: meats, fish, eggs, tofu, legumes as main protein
+- carb: rice, bread, pasta, potatoes, grains
+- vegetable: salads, cooked vegetables, greens
+- fruit: fresh fruits, dried fruits
+- beverage: coffee, tea, juice, milk, water
+- dairy: yogurt, cheese, milk-based
+- fat: oils, butter, nuts, seeds
+- fiber: oats, chia, flax, bran
+- grain: quinoa, couscous, bulgur
+- legume: beans, lentils, chickpeas
+
+FORBIDDEN COMBINATIONS (never together):
+${FORBIDDEN_COMBINATIONS.map(c => `- ${c.join(" + ")}`).join("\n")}
+
+PORTION RULES:
+- Proteins: 100-150g per meal
+- Carbs: 80-120g per meal
+- Vegetables: 60-100g per meal
+- Fruits: 100-150g per piece
+- Beverages: 150-250ml per serving
+- Include portion_label in local language (${isPortuguese ? "Portuguese" : isSpanish ? "Spanish" : "English"})
+
+KNOWN INTOLERANCES (for blocked_for_intolerances field):
+${allIntoleranceKeys}
+
+For each meal, identify which intolerances would block it based on ingredients used.
+
+RETURN a JSON array with exactly ${quantity} objects:
+{
+  "meals": [
+    {
+      "name": "Descriptive meal name in ${language}",
+      "description": "Brief description in ${language}",
+      "components": [
+        {"type": "protein", "name": "Chicken breast grilled", "name_en": "Grilled chicken breast", "portion_grams": 150, "portion_label": "${isPortuguese ? "1 filé médio" : "1 medium fillet"}"},
+        {"type": "carb", "name": "Arroz integral", "name_en": "Brown rice", "portion_grams": 100, "portion_label": "${isPortuguese ? "4 colheres de sopa" : "4 tablespoons"}"},
+        {"type": "vegetable", "name": "Salada verde", "name_en": "Green salad", "portion_grams": 80, "portion_label": "${isPortuguese ? "1 prato de sobremesa" : "1 small plate"}"},
+        {"type": "fruit", "name": "Laranja", "name_en": "Orange", "portion_grams": 150, "portion_label": "${isPortuguese ? "1 unidade média" : "1 medium piece"}"}
+      ],
+      "dietary_tags": ["sem_lactose", "high_protein"],
+      "blocked_for_intolerances": ["gluten", "lactose"],
+      "flexible_options": {"fruit": ["laranja", "maçã", "banana"]},
+      "instructions": ["Season chicken with salt and lemon", "Grill for 6 min each side", "Serve with rice and salad"],
+      "prep_time_minutes": 20
+    }
+  ]
+}
+
+IMPORTANT:
+1. Each component MUST have name_en (English name) for database lookup
+2. Meals must be culturally appropriate for ${countryCode}
+3. Use realistic portions based on component type
+4. Instructions should be brief (3-5 steps)
+5. Return ONLY valid JSON, no markdown
+
+Generate ${quantity} varied, realistic meals now.`;
+}
+
+// ============= MAIN HANDLER =============
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -109,7 +265,7 @@ serve(async (req) => {
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
     if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY não configurada");
+      throw new Error("LOVABLE_API_KEY not configured");
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
@@ -118,79 +274,41 @@ serve(async (req) => {
       country_code = "BR", 
       meal_type, 
       quantity = 5,
-      dietary_filter = null // ex: "vegetariano", "sem_gluten"
+      dietary_filter = null,
+      strategy_key = null,
     } = await req.json();
 
-    logStep("Iniciando geração de pool", { country_code, meal_type, quantity, dietary_filter });
+    logStep("Starting meal pool generation", { country_code, meal_type, quantity, dietary_filter, strategy_key });
 
-    // Validar meal_type
-    const validMealTypes = ["cafe_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
+    // Validate meal_type
+    const validMealTypes = ["cafe_manha", "lanche_manha", "almoco", "lanche_tarde", "jantar", "ceia"];
     if (!validMealTypes.includes(meal_type)) {
-      throw new Error(`meal_type inválido. Use: ${validMealTypes.join(", ")}`);
+      throw new Error(`Invalid meal_type. Use: ${validMealTypes.join(", ")}`);
     }
 
-    // Buscar templates regionais
-    const templates = REGIONAL_TEMPLATES[country_code]?.[meal_type] || REGIONAL_TEMPLATES["BR"][meal_type];
+    // Get regional config from shared module
+    const regional = getRegionalConfig(country_code);
+    logStep("Regional config loaded", { language: regional.language, country: country_code });
 
-    // Buscar intolerâncias do banco para referência
-    const { data: intoleranceMappings } = await supabase
-      .from("intolerance_mappings")
-      .select("intolerance_key, ingredient")
-      .limit(500);
-
-    // Agrupar ingredientes por intolerância
-    const intoleranceIngredients: Record<string, string[]> = {};
-    intoleranceMappings?.forEach((m: { intolerance_key: string; ingredient: string }) => {
-      if (!intoleranceIngredients[m.intolerance_key]) {
-        intoleranceIngredients[m.intolerance_key] = [];
-      }
-      intoleranceIngredients[m.intolerance_key].push(m.ingredient);
+    // Load safety database for intolerance detection
+    const safetyDb = await loadSafetyDatabase(supabaseUrl, supabaseServiceKey);
+    logStep("Safety database loaded", { 
+      intoleranceKeys: safetyDb.allIntoleranceKeys.length,
+      dietaryKeys: safetyDb.allDietaryKeys.length,
     });
 
-    // Prompt estruturado para Gemini
-    const systemPrompt = `Você é um nutricionista especializado em criar combinações de refeições saudáveis e regionais.
+    // Build prompt using shared config
+    const systemPrompt = buildMealPoolPrompt(
+      regional,
+      country_code,
+      meal_type,
+      quantity,
+      safetyDb,
+      dietary_filter,
+      strategy_key,
+    );
 
-TAREFA: Gerar ${quantity} combinações de ${meal_type.replace("_", " ")} para ${country_code === "BR" ? "Brasil" : country_code}.
-
-TEMPLATES DE REFERÊNCIA (siga a estrutura):
-${templates.map((t, i) => `${i + 1}. ${t}`).join("\n")}
-
-REGRAS OBRIGATÓRIAS:
-1. Cada refeição deve ter componentes claramente separados por tipo
-2. Porções devem ser realistas (ex: 1 ovo = 50g, 1 fatia pão = 30g, 1 xícara café = 200ml)
-3. NUNCA combine: ${FORBIDDEN_COMBINATIONS.map(c => c.join(" + ")).join("; ")}
-4. Identifique quais intolerâncias bloqueiam cada refeição
-5. Sugira opções flexíveis para variedade (ex: a fruta pode ser banana, maçã ou pera)
-
-${dietary_filter ? `FILTRO DIETÉTICO: Apenas refeições compatíveis com "${dietary_filter}"` : ""}
-
-RETORNE um JSON array com exatamente ${quantity} objetos no formato:
-{
-  "meals": [
-    {
-      "name": "Nome descritivo da refeição",
-      "description": "Breve descrição",
-      "components": [
-        {"type": "protein", "name": "Ovos mexidos", "portion_grams": 100, "portion_label": "2 ovos médios"},
-        {"type": "carb", "name": "Pão integral", "portion_grams": 60, "portion_label": "2 fatias"},
-        {"type": "beverage", "name": "Café preto", "portion_ml": 200, "portion_label": "1 xícara"},
-        {"type": "fruit", "name": "Banana", "portion_grams": 120, "portion_label": "1 unidade média"}
-      ],
-      "dietary_tags": ["sem_lactose"],
-      "blocked_for_intolerances": ["gluten"],
-      "flexible_options": {"fruit": ["banana", "maçã", "pera"]},
-      "instructions": ["Mexer os ovos em fogo baixo", "Torrar o pão"],
-      "prep_time_minutes": 10
-    }
-  ]
-}
-
-TIPOS DE COMPONENTES VÁLIDOS: protein, carb, vegetable, fruit, beverage, fat, fiber, dairy, grain, legume
-
-INTOLERÂNCIAS CONHECIDAS (para preencher blocked_for_intolerances):
-${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
-
-    logStep("Chamando Lovable AI...");
+    logStep("Calling Lovable AI Gateway...");
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -202,7 +320,7 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Gere ${quantity} refeições de ${meal_type} para ${country_code}. Retorne APENAS o JSON, sem markdown.` },
+          { role: "user", content: `Generate ${quantity} meals for ${meal_type} in ${country_code}. Return ONLY JSON, no markdown.` },
         ],
         temperature: 0.7,
       }),
@@ -210,16 +328,16 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      logStep("Erro na API AI", { status: aiResponse.status, error: errorText });
+      logStep("AI Gateway error", { status: aiResponse.status, error: errorText });
       
       if (aiResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Rate limit excedido. Tente novamente em alguns minutos." }), {
+        return new Response(JSON.stringify({ error: "Rate limit exceeded. Try again in a few minutes." }), {
           status: 429,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
       if (aiResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos insuficientes. Adicione fundos à sua conta." }), {
+        return new Response(JSON.stringify({ error: "Insufficient credits. Please add funds." }), {
           status: 402,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
@@ -230,9 +348,9 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
     const aiData = await aiResponse.json();
     const aiContent = aiData.choices?.[0]?.message?.content || "";
 
-    logStep("Resposta AI recebida", { length: aiContent.length });
+    logStep("AI response received", { length: aiContent.length });
 
-    // Parse do JSON (remover markdown se houver)
+    // Parse JSON (remove markdown if present)
     let cleanJson = aiContent.trim();
     if (cleanJson.startsWith("```")) {
       cleanJson = cleanJson.replace(/```json?\n?/g, "").replace(/```$/g, "").trim();
@@ -243,13 +361,13 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
       const parsed = JSON.parse(cleanJson);
       generatedMeals = parsed.meals || parsed;
     } catch (parseError) {
-      logStep("Erro ao parsear JSON da AI", { error: String(parseError), content: cleanJson.slice(0, 500) });
-      throw new Error("Falha ao parsear resposta da AI");
+      logStep("JSON parse error", { error: String(parseError), content: cleanJson.slice(0, 500) });
+      throw new Error("Failed to parse AI response");
     }
 
-    logStep("Refeições geradas pela AI", { count: generatedMeals.length });
+    logStep("Meals generated by AI", { count: generatedMeals.length });
 
-    // Calcular macros reais consultando a tabela foods (TBCA/TACO)
+    // Calculate real macros from foods table (TBCA/TACO)
     const mealsWithMacros = await Promise.all(
       generatedMeals.map(async (meal) => {
         let totalCalories = 0;
@@ -262,15 +380,26 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
         let foundCount = 0;
 
         for (const component of meal.components) {
-          const portionGrams = component.portion_grams || component.portion_ml || 100;
-
-          // Buscar na tabela foods
-          const { data: foodMatch } = await supabase
-            .from("foods")
-            .select("calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, source")
-            .or(`name.ilike.%${component.name}%,name_normalized.ilike.%${component.name.toLowerCase()}%`)
-            .limit(1)
-            .single();
+          const portionGrams = component.portion_grams || component.portion_ml || DEFAULT_PORTIONS[component.type]?.grams || 100;
+          
+          // Search by name_en first (more accurate), then local name
+          const searchTerms = [component.name_en, component.name].filter(Boolean);
+          let foodMatch = null;
+          
+          for (const term of searchTerms) {
+            if (!term) continue;
+            const { data } = await supabase
+              .from("foods")
+              .select("calories_per_100g, protein_per_100g, carbs_per_100g, fat_per_100g, fiber_per_100g, source")
+              .or(`name.ilike.%${term}%,name_normalized.ilike.%${normalizeText(term)}%`)
+              .limit(1)
+              .single();
+            
+            if (data) {
+              foodMatch = data;
+              break;
+            }
+          }
 
           if (foodMatch) {
             const factor = portionGrams / 100;
@@ -285,19 +414,19 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
               macroSource = foodMatch.source;
             }
           } else {
-            // Fallback: estimativa baseada no tipo
+            // Fallback: estimate based on component type
             macroConfidence = "medium";
-            const estimates: Record<string, { cal: number; prot: number; carb: number; fat: number }> = {
-              protein: { cal: 150, prot: 25, carb: 0, fat: 5 },
-              carb: { cal: 120, prot: 3, carb: 25, fat: 1 },
-              vegetable: { cal: 25, prot: 2, carb: 5, fat: 0 },
-              fruit: { cal: 60, prot: 1, carb: 15, fat: 0 },
-              beverage: { cal: 5, prot: 0, carb: 1, fat: 0 },
-              dairy: { cal: 80, prot: 5, carb: 8, fat: 3 },
-              fat: { cal: 90, prot: 0, carb: 0, fat: 10 },
-              grain: { cal: 100, prot: 3, carb: 20, fat: 1 },
-              legume: { cal: 120, prot: 8, carb: 20, fat: 1 },
-              fiber: { cal: 30, prot: 2, carb: 7, fat: 0 },
+            const estimates: Record<string, { cal: number; prot: number; carb: number; fat: number; fiber: number }> = {
+              protein: { cal: 150, prot: 25, carb: 0, fat: 5, fiber: 0 },
+              carb: { cal: 120, prot: 3, carb: 25, fat: 1, fiber: 2 },
+              vegetable: { cal: 25, prot: 2, carb: 5, fat: 0, fiber: 2 },
+              fruit: { cal: 60, prot: 1, carb: 15, fat: 0, fiber: 2 },
+              beverage: { cal: 5, prot: 0, carb: 1, fat: 0, fiber: 0 },
+              dairy: { cal: 80, prot: 5, carb: 8, fat: 3, fiber: 0 },
+              fat: { cal: 90, prot: 0, carb: 0, fat: 10, fiber: 0 },
+              grain: { cal: 100, prot: 3, carb: 20, fat: 1, fiber: 3 },
+              legume: { cal: 120, prot: 8, carb: 20, fat: 1, fiber: 6 },
+              fiber: { cal: 30, prot: 2, carb: 7, fat: 0, fiber: 5 },
             };
             const est = estimates[component.type] || estimates.carb;
             const factor = portionGrams / 100;
@@ -305,6 +434,7 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
             totalProtein += Math.round(est.prot * factor * 10) / 10;
             totalCarbs += Math.round(est.carb * factor * 10) / 10;
             totalFat += Math.round(est.fat * factor * 10) / 10;
+            totalFiber += Math.round(est.fiber * factor * 10) / 10;
           }
         }
 
@@ -328,7 +458,7 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
           macro_source: macroSource,
           macro_confidence: macroConfidence,
           country_codes: [country_code],
-          language_code: country_code === "BR" ? "pt" : "en",
+          language_code: regional.language.split("-")[0],
           dietary_tags: meal.dietary_tags || [],
           blocked_for_intolerances: meal.blocked_for_intolerances || [],
           flexible_options: meal.flexible_options || {},
@@ -341,7 +471,7 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
       })
     );
 
-    logStep("Macros calculados", { 
+    logStep("Macros calculated", { 
       meals: mealsWithMacros.map(m => ({ 
         name: m.name, 
         calories: m.total_calories,
@@ -349,12 +479,12 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
       })) 
     });
 
-    // Inserir no banco (upsert para evitar duplicatas)
+    // Insert into database (upsert to avoid duplicates)
     const inserted: string[] = [];
     const skipped: string[] = [];
 
     for (const meal of mealsWithMacros) {
-      // Verificar se já existe
+      // Check if already exists
       const { data: existing } = await supabase
         .from("meal_combinations")
         .select("id")
@@ -373,21 +503,21 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
         .insert(meal);
 
       if (insertError) {
-        logStep("Erro ao inserir", { meal: meal.name, error: insertError.message });
+        logStep("Insert error", { meal: meal.name, error: insertError.message });
         skipped.push(meal.name);
       } else {
         inserted.push(meal.name);
       }
     }
 
-    logStep("Inserção concluída", { inserted: inserted.length, skipped: skipped.length });
+    logStep("Insertion complete", { inserted: inserted.length, skipped: skipped.length });
 
-    // Log de uso
+    // Log AI usage
     await supabase.from("ai_usage_logs").insert({
       function_name: "populate-meal-pool",
       model_used: "google/gemini-2.5-flash",
       items_generated: inserted.length,
-      metadata: { country_code, meal_type, quantity, dietary_filter },
+      metadata: { country_code, meal_type, quantity, dietary_filter, strategy_key },
     });
 
     return new Response(
@@ -402,15 +532,16 @@ ${Object.keys(intoleranceIngredients).slice(0, 20).join(", ")}`;
           protein: m.total_protein,
           carbs: m.total_carbs,
           fat: m.total_fat,
+          fiber: m.total_fiber,
           confidence: m.macro_confidence,
         })),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
-    logStep("Erro fatal", { error: String(error) });
+    logStep("Fatal error", { error: String(error) });
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }

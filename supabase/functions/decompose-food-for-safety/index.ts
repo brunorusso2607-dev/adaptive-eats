@@ -10,6 +10,9 @@ import {
   type SafetyDatabase,
 } from "../_shared/globalSafetyEngine.ts";
 
+// PHASE 3: Import calculateRealMacrosForFoods for canonical lookup
+import { calculateRealMacrosForFoods } from "../_shared/calculateRealMacros.ts";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -44,6 +47,11 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
+
+    // Initialize Supabase for canonical lookup
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     console.log(`[decompose-food] Analisando: "${foodName}"`);
     console.log(`[decompose-food] Intolerâncias do usuário: ${userIntolerances.join(", ") || "nenhuma"}`);
@@ -169,11 +177,61 @@ Responda APENAS com um JSON no formato:
       matchedIngredient: w.matchedIngredient,
     }));
 
+    // ========== PHASE 3: ENRICH INGREDIENTS WITH CANONICAL MACROS ==========
+    // Lookup macros for each ingredient from canonical_ingredients
+    let enrichedIngredients: Array<{
+      name: string;
+      calories_per_100g?: number;
+      protein_per_100g?: number;
+      carbs_per_100g?: number;
+      fat_per_100g?: number;
+      macro_source?: string;
+      canonical_id?: string;
+      intolerance_flags?: string[];
+    }> = [];
+
+    try {
+      // Prepare ingredients for macro lookup (100g each)
+      const foodsForLookup = ingredients.map((name: string) => ({
+        name,
+        grams: 100,
+        aiEstimate: { calories: 0, protein: 0, carbs: 0, fat: 0 }
+      }));
+
+      const macroResult = await calculateRealMacrosForFoods(supabase, foodsForLookup, 'BR');
+      
+      for (let i = 0; i < ingredients.length; i++) {
+        const ingredient = ingredients[i];
+        const macros = macroResult.items[i];
+        
+        if (macros && macros.source !== 'ai_estimate' && macros.calories > 0) {
+          enrichedIngredients.push({
+            name: ingredient,
+            calories_per_100g: Math.round(macros.calories),
+            protein_per_100g: Math.round(macros.protein * 10) / 10,
+            carbs_per_100g: Math.round(macros.carbs * 10) / 10,
+            fat_per_100g: Math.round(macros.fat * 10) / 10,
+            macro_source: macros.source,
+            canonical_id: macros.canonical_id || undefined,
+            intolerance_flags: macros.intolerance_flags || undefined,
+          });
+        } else {
+          enrichedIngredients.push({ name: ingredient });
+        }
+      }
+
+      console.log(`[decompose-food] Enriched ${enrichedIngredients.filter(i => i.macro_source).length}/${ingredients.length} ingredients with macros`);
+    } catch (enrichError) {
+      console.log(`[decompose-food] Error enriching ingredients, returning names only:`, enrichError);
+      enrichedIngredients = ingredients.map((name: string) => ({ name }));
+    }
+
     return new Response(
       JSON.stringify({
         success: true,
         foodName,
         ingredients,
+        enrichedIngredients,
         isProcessedFood: decomposition.isProcessedFood || false,
         confidence: decomposition.confidence || "medium",
         hasConflict: !validationResult.isSafe,
@@ -187,6 +245,8 @@ Responda APENAS com um JSON no formato:
           excludedIngredients,
           totalConflicts: conflicts.length,
           totalWarnings: warnings.length,
+          enrichedWithMacros: enrichedIngredients.filter(i => i.macro_source).length,
+          fromCanonical: enrichedIngredients.filter(i => i.macro_source === 'canonical').length,
         }
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }

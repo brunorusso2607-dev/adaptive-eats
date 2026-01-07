@@ -943,8 +943,10 @@ This protects user trust - better to ask for correction than guess wrong.
     }
 
     // ========== HYBRID MACRO CALCULATION: Use real data from foods table ==========
+    // PHASE 3: Now includes canonical_ingredients as Layer 0 priority
     let macrosFromDatabase = 0;
     let macrosFromAI = 0;
+    let macrosFromCanonical = 0;
     const detalhesRecalculo: Array<{ item: string; original: number; recalculado: number; source: string }> = [];
     
     if (analysis.alimentos && Array.isArray(analysis.alimentos)) {
@@ -971,7 +973,7 @@ This protects user trust - better to ask for correction than guess wrong.
           };
         });
         
-        // Calculate real macros from database
+        // Calculate real macros from database (now with canonical as Layer 0)
         const macroResult = await calculateRealMacrosForFoods(supabaseClient, foodsForCalculation);
         const calculatedItems = macroResult.items;
         
@@ -988,12 +990,23 @@ This protects user trust - better to ask for correction than guess wrong.
               gorduras: Math.round(calc.fat * 10) / 10,
             };
             
-            // Map source to display format
+            // PHASE 3: Track canonical as highest priority source
+            // 'canonical' = verified canonical_ingredients table
             // 'database' and 'database_global' = official tables (TACO/USDA)
             // 'category_fallback' and 'ai_estimate' = AI estimation
+            const isFromCanonical = calc.source === 'canonical';
             const isFromDatabase = calc.source === 'database' || calc.source === 'database_global';
-            analysis.alimentos[i].calculo_fonte = isFromDatabase ? 'tabela_foods' : 'estimativa_ia';
+            
+            analysis.alimentos[i].calculo_fonte = isFromCanonical ? 'canonical' : (isFromDatabase ? 'tabela_foods' : 'estimativa_ia');
             analysis.alimentos[i].gramas_usadas = calc.grams;
+            
+            // Add canonical-specific metadata
+            if (calc.canonical_id) {
+              analysis.alimentos[i].canonical_id = calc.canonical_id;
+            }
+            if (calc.intolerance_flags && calc.intolerance_flags.length > 0) {
+              analysis.alimentos[i].intolerance_flags = calc.intolerance_flags;
+            }
             if (calc.food_id) {
               analysis.alimentos[i].food_id = calc.food_id;
             }
@@ -1001,7 +1014,15 @@ This protects user trust - better to ask for correction than guess wrong.
               analysis.alimentos[i].alimento_encontrado = calc.matched_name;
             }
             
-            if (isFromDatabase) {
+            if (isFromCanonical) {
+              macrosFromCanonical++;
+              detalhesRecalculo.push({
+                item: analysis.alimentos[i].item,
+                original: originalCalorias,
+                recalculado: calc.calories,
+                source: 'canonical'
+              });
+            } else if (isFromDatabase) {
               macrosFromDatabase++;
               detalhesRecalculo.push({
                 item: analysis.alimentos[i].item,
@@ -1039,8 +1060,10 @@ This protects user trust - better to ask for correction than guess wrong.
         analysis.macro_match_rate = macroResult.matchRate;
         analysis.macros_from_database = macrosFromDatabase;
         analysis.macros_from_ai = macrosFromAI;
+        analysis.macros_from_canonical = macrosFromCanonical;
         
-        logStep("✅ Real macros calculated from database", { 
+        logStep("✅ Real macros calculated", { 
+          fromCanonical: macrosFromCanonical,
           fromDatabase: macrosFromDatabase,
           fromAI: macrosFromAI,
           matchRate: `${macroResult.matchRate}%`,

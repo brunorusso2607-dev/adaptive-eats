@@ -57,35 +57,53 @@ export function ScannerDemo() {
   const [isScanning, setIsScanning] = useState(false);
   const [showResults, setShowResults] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
+  const [isVisible, setIsVisible] = useState(false);
 
   const scenario = DEMO_SCENARIOS[currentScenario];
 
+  // Only run animation when visible in viewport
   useEffect(() => {
+    if (!isVisible) return;
+    
+    let isMounted = true;
+    
     const runDemo = async () => {
+      if (!isMounted) return;
       setIsScanning(true);
       setShowResults(false);
       setScanProgress(0);
 
-      // Simulate scanning progress
-      for (let i = 0; i <= 100; i += 5) {
-        await new Promise((r) => setTimeout(r, 50));
+      // Simulate scanning progress with fewer updates
+      for (let i = 0; i <= 100; i += 10) {
+        if (!isMounted) return;
+        await new Promise((r) => setTimeout(r, 80));
         setScanProgress(i);
       }
 
+      if (!isMounted) return;
       await new Promise((r) => setTimeout(r, 300));
       setIsScanning(false);
       setShowResults(true);
 
       // Wait and move to next scenario
-      await new Promise((r) => setTimeout(r, 5000));
-      setCurrentScenario((prev) => (prev + 1) % DEMO_SCENARIOS.length);
+      await new Promise((r) => setTimeout(r, 6000));
+      if (isMounted) {
+        setCurrentScenario((prev) => (prev + 1) % DEMO_SCENARIOS.length);
+      }
     };
 
     runDemo();
-  }, [currentScenario]);
+    
+    return () => { isMounted = false; };
+  }, [currentScenario, isVisible]);
 
   return (
-    <div className="relative max-w-md mx-auto">
+    <motion.div 
+      className="relative max-w-md mx-auto"
+      onViewportEnter={() => setIsVisible(true)}
+      onViewportLeave={() => setIsVisible(false)}
+      viewport={{ margin: "-100px" }}
+    >
       {/* Phone Frame */}
       <div className="relative bg-foreground rounded-[3rem] p-3 shadow-2xl">
         <div className="absolute top-6 left-1/2 -translate-x-1/2 w-24 h-6 bg-foreground rounded-full z-10" />
@@ -260,42 +278,27 @@ export function ScannerDemo() {
         </div>
       </div>
 
-      {/* Floating Stats */}
-      <motion.div
-        initial={{ opacity: 0, x: 20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 1 }}
-        className="absolute -right-4 top-1/4 bg-card shadow-lg rounded-xl p-3 border border-border"
-      >
+      {/* Floating Stats - Static, no infinite animations */}
+      <div className="absolute -right-4 top-1/4 bg-card shadow-lg rounded-xl p-3 border border-border">
         <div className="text-center">
           <p className="text-2xl font-bold text-primary">95%</p>
           <p className="text-[10px] text-muted-foreground">Precisão</p>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, x: -20 }}
-        animate={{ opacity: 1, x: 0 }}
-        transition={{ delay: 1.2 }}
-        className="absolute -left-4 top-1/2 bg-card shadow-lg rounded-xl p-3 border border-border"
-      >
+      <div className="absolute -left-4 top-1/2 bg-card shadow-lg rounded-xl p-3 border border-border">
         <div className="text-center">
           <p className="text-2xl font-bold text-foreground">18</p>
           <p className="text-[10px] text-muted-foreground">Intolerâncias</p>
         </div>
-      </motion.div>
+      </div>
 
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 1.4 }}
-        className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card shadow-lg rounded-xl px-4 py-2 border border-border"
-      >
+      <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-card shadow-lg rounded-xl px-4 py-2 border border-border">
         <div className="flex items-center gap-2">
           <Shield className="w-4 h-4 text-primary" />
           <p className="text-xs font-medium text-foreground">Veto Layer Determinístico</p>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </motion.div>
   );
 }

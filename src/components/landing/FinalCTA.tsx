@@ -25,24 +25,9 @@ export const FinalCTA = forwardRef<HTMLElement, FinalCTAProps>(({ onCtaClick }, 
           className="text-center space-y-8"
         >
           <div className="flex justify-center gap-4 mb-6">
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 2, delay: 0 }}
-            >
-              <Shield className="w-12 h-12 text-white/80" />
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 2, delay: 0.3 }}
-            >
-              <Heart className="w-12 h-12 text-white/80" />
-            </motion.div>
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 2, delay: 0.6 }}
-            >
-              <Utensils className="w-12 h-12 text-white/80" />
-            </motion.div>
+            <Shield className="w-12 h-12 text-white/80" />
+            <Heart className="w-12 h-12 text-white/80" />
+            <Utensils className="w-12 h-12 text-white/80" />
           </div>
 
           <h2 className="font-display text-3xl md:text-5xl font-bold text-white leading-tight">

@@ -173,14 +173,10 @@ validateIngredient(ingredient, userProfile) {
               </pre>
             </div>
 
-            {/* Floating Badge */}
-            <motion.div
-              animate={{ y: [0, -10, 0] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              className="absolute -top-4 -right-4 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold shadow-lg"
-            >
+            {/* Floating Badge - Static */}
+            <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold shadow-lg">
               Código Real
-            </motion.div>
+            </div>
           </motion.div>
         </div>
 

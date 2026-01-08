@@ -1,5 +1,4 @@
 import { forwardRef } from "react";
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { ArrowRight, Shield, Heart, Utensils } from "lucide-react";
 
@@ -9,7 +8,7 @@ interface FinalCTAProps {
 
 export const FinalCTA = forwardRef<HTMLElement, FinalCTAProps>(({ onCtaClick }, ref) => {
   return (
-    <section className="py-24 px-6 gradient-primary relative overflow-hidden">
+    <section ref={ref} className="py-24 px-6 gradient-primary relative overflow-hidden">
       {/* Background Pattern */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute top-10 left-10 w-32 h-32 border border-white rounded-full" />
@@ -18,12 +17,7 @@ export const FinalCTA = forwardRef<HTMLElement, FinalCTAProps>(({ onCtaClick }, 
       </div>
 
       <div className="container mx-auto max-w-4xl relative z-10">
-        <motion.div
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center space-y-8"
-        >
+        <div className="text-center space-y-8">
           <div className="flex justify-center gap-4 mb-6">
             <Shield className="w-12 h-12 text-white/80" />
             <Heart className="w-12 h-12 text-white/80" />
@@ -74,7 +68,7 @@ export const FinalCTA = forwardRef<HTMLElement, FinalCTAProps>(({ onCtaClick }, 
               18 intolerâncias cobertas
             </div>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );

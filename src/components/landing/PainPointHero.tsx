@@ -1,4 +1,3 @@
-import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ArrowRight, ShieldCheck, AlertTriangle } from "lucide-react";
@@ -14,12 +13,7 @@ export function PainPointHero({ onCtaClick }: PainPointHeroProps) {
       <div className="container mx-auto max-w-7xl">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Left: Copy */}
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6 }}
-            className="space-y-8"
-          >
+          <div className="space-y-8">
             <Badge variant="secondary" className="px-4 py-2 rounded-full text-sm font-medium">
               <ShieldCheck className="w-4 h-4 mr-2" />
               95% de precisão na detecção
@@ -29,12 +23,7 @@ export function PainPointHero({ onCtaClick }: PainPointHeroProps) {
               Chega de{" "}
               <span className="relative">
                 <span className="text-destructive">medo</span>
-                <motion.span
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{ delay: 0.5, duration: 0.5 }}
-                  className="absolute bottom-2 left-0 h-1 bg-destructive/30"
-                />
+                <span className="absolute bottom-2 left-0 h-1 w-full bg-destructive/30" />
               </span>{" "}
               de comer fora de casa
             </h1>
@@ -68,25 +57,20 @@ export function PainPointHero({ onCtaClick }: PainPointHeroProps) {
 
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-primary" />
                 50.000+ ingredientes mapeados
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-primary animate-pulse" />
+                <div className="w-2 h-2 rounded-full bg-primary" />
                 18 intolerâncias cobertas
               </div>
             </div>
-          </motion.div>
+          </div>
 
           {/* Right: Interactive Demo */}
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            animate={{ opacity: 1, x: 0 }}
-            transition={{ duration: 0.6, delay: 0.2 }}
-            className="hidden lg:block"
-          >
+          <div className="hidden lg:block">
             <ScannerDemo />
-          </motion.div>
+          </div>
         </div>
       </div>
     </section>

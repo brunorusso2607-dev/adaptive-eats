@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { Database, Shield, Eye, Scan, CheckCircle2, Server } from "lucide-react";
+import { forwardRef } from "react";
+import { Database, Shield, Eye, Server } from "lucide-react";
 
 const techFeatures = [
   {
@@ -51,17 +51,13 @@ const vetoLayerSteps = [
   },
 ];
 
-export function TechProofSection() {
+export const TechProofSection = forwardRef<HTMLElement>((_, ref) => {
   return (
-    <section className="py-24 px-6 bg-foreground text-background">
+    <section ref={ref} className="py-24 px-6 bg-foreground text-background">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <span className="text-primary font-medium text-sm uppercase tracking-wider">
               Tecnologia Exclusiva
             </span>
@@ -73,35 +69,27 @@ export function TechProofSection() {
               <span className="text-primary font-semibold">Muralha de Segurança</span>{" "}
               que cruza dados visuais com milhares de ingredientes reais.
             </p>
-          </motion.div>
+          </div>
         </div>
 
         {/* Stats Grid */}
         <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 mb-20">
-          {techFeatures.map((feature, index) => (
-            <motion.div
+          {techFeatures.map((feature) => (
+            <div
               key={feature.label}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.1 }}
               className="bg-background/5 backdrop-blur-sm rounded-2xl p-6 border border-background/10"
             >
               <feature.icon className="w-8 h-8 text-primary mb-4" />
               <p className="text-4xl font-bold text-primary">{feature.stat}</p>
               <p className="text-background font-semibold mt-1">{feature.label}</p>
               <p className="text-background/60 text-sm mt-2">{feature.description}</p>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* Veto Layer Explanation */}
         <div className="grid lg:grid-cols-2 gap-12 items-center">
-          <motion.div
-            initial={{ opacity: 0, x: -30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <h3 className="font-display text-2xl md:text-3xl font-bold mb-6">
               O "Veto Layer" Explicado
             </h3>
@@ -113,15 +101,8 @@ export function TechProofSection() {
             </p>
 
             <div className="space-y-4">
-              {vetoLayerSteps.map((item, index) => (
-                <motion.div
-                  key={item.step}
-                  initial={{ opacity: 0, x: -20 }}
-                  whileInView={{ opacity: 1, x: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.15 }}
-                  className="flex gap-4"
-                >
+              {vetoLayerSteps.map((item) => (
+                <div key={item.step} className="flex gap-4">
                   <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center flex-shrink-0 text-sm font-bold text-primary-foreground">
                     {item.step}
                   </div>
@@ -129,17 +110,12 @@ export function TechProofSection() {
                     <p className="font-semibold text-background">{item.title}</p>
                     <p className="text-background/60 text-sm">{item.description}</p>
                   </div>
-                </motion.div>
+                </div>
               ))}
             </div>
-          </motion.div>
+          </div>
 
-          <motion.div
-            initial={{ opacity: 0, x: 30 }}
-            whileInView={{ opacity: 1, x: 0 }}
-            viewport={{ once: true }}
-            className="relative"
-          >
+          <div className="relative">
             {/* Code Block Visual */}
             <div className="bg-black/50 rounded-2xl p-6 font-mono text-sm overflow-hidden">
               <div className="flex gap-2 mb-4">
@@ -173,20 +149,15 @@ validateIngredient(ingredient, userProfile) {
               </pre>
             </div>
 
-            {/* Floating Badge - Static */}
+            {/* Floating Badge */}
             <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold shadow-lg">
               Código Real
             </div>
-          </motion.div>
+          </div>
         </div>
 
         {/* Trust Badges */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-20 text-center"
-        >
+        <div className="mt-20 text-center">
           <p className="text-background/50 text-sm mb-6">Bases de dados integradas</p>
           <div className="flex flex-wrap justify-center gap-8 opacity-60">
             {["ANVISA", "FDA", "OpenFoodFacts", "TACO", "USDA"].map((badge) => (
@@ -195,8 +166,10 @@ validateIngredient(ingredient, userProfile) {
               </span>
             ))}
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
-}
+});
+
+TechProofSection.displayName = "TechProofSection";

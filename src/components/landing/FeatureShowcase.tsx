@@ -1,5 +1,5 @@
-import { motion } from "framer-motion";
-import { Camera, ScanLine, Refrigerator, Sparkles, Shield, Check } from "lucide-react";
+import { forwardRef, useState } from "react";
+import { Camera, ScanLine, Refrigerator, Shield, Check } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 
 const features = [
@@ -41,17 +41,15 @@ const features = [
   },
 ];
 
-export function FeatureShowcase() {
+export const FeatureShowcase = forwardRef<HTMLElement>((_, ref) => {
+  const [isVisible, setIsVisible] = useState(false);
+
   return (
-    <section className="py-24 px-6 gradient-soft">
+    <section ref={ref} className="py-24 px-6 gradient-soft">
       <div className="container mx-auto max-w-6xl">
         {/* Header */}
         <div className="text-center mb-16">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-          >
+          <div>
             <span className="text-primary font-medium text-sm uppercase tracking-wider">
               Três Super-Poderes
             </span>
@@ -62,19 +60,13 @@ export function FeatureShowcase() {
               Cada funcionalidade foi projetada para um cenário real de quem vive
               com intolerâncias alimentares
             </p>
-          </motion.div>
+          </div>
         </div>
 
         {/* Features Grid */}
         <div className="grid md:grid-cols-3 gap-8">
-          {features.map((feature, index) => (
-            <motion.div
-              key={feature.title}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: index * 0.15 }}
-            >
+          {features.map((feature) => (
+            <div key={feature.title}>
               <Card className="h-full glass-card card-hover border-0 overflow-hidden group">
                 <CardContent className="p-8 space-y-6">
                   {/* Icon & Tag */}
@@ -113,17 +105,12 @@ export function FeatureShowcase() {
                   </ul>
                 </CardContent>
               </Card>
-            </motion.div>
+            </div>
           ))}
         </div>
 
         {/* Bottom CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="mt-16 text-center"
-        >
+        <div className="mt-16 text-center">
           <div className="inline-flex items-center gap-3 bg-primary/5 border border-primary/20 rounded-full px-6 py-3">
             <Shield className="w-5 h-5 text-primary" />
             <span className="text-sm font-medium text-foreground">
@@ -131,8 +118,10 @@ export function FeatureShowcase() {
               <span className="text-primary">Veto Layer</span> — sua camada extra de segurança
             </span>
           </div>
-        </motion.div>
+        </div>
       </div>
     </section>
   );
-}
+});
+
+FeatureShowcase.displayName = "FeatureShowcase";

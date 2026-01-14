@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.57.2";
+import { getGeminiApiKey } from "../_shared/getGeminiKey.ts";
 import {
   loadSafetyDatabase,
   validateIngredient,
@@ -2365,31 +2366,72 @@ serve(async (req) => {
       }
     }
 
-    // Call AI API
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY not configured");
+    // Call Gemini API directly
+    const GEMINI_API_KEY = await getGeminiApiKey();
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY not configured");
     }
 
-    logStep("Calling AI API", { messagesCount: aiMessages.length });
+    logStep("Calling Gemini API", { messagesCount: aiMessages.length });
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    // Convert messages to Gemini format
+    const geminiContents = [];
+    for (const msg of aiMessages) {
+      if (msg.role === "system") {
+        // Gemini doesn't have system role, prepend to first user message
+        continue;
+      }
+      
+      let parts = [];
+      if (typeof msg.content === "string") {
+        parts.push({ text: msg.content });
+      } else if (Array.isArray(msg.content)) {
+        for (const part of msg.content) {
+          if (part.type === "text") {
+            parts.push({ text: part.text });
+          } else if (part.type === "image_url") {
+            const imageData = part.image_url.url.split(",")[1];
+            parts.push({
+              inlineData: {
+                mimeType: "image/jpeg",
+                data: imageData
+              }
+            });
+          }
+        }
+      }
+      
+      geminiContents.push({
+        role: msg.role === "assistant" ? "model" : "user",
+        parts
+      });
+    }
+    
+    // Prepend system prompt to first user message
+    if (geminiContents.length > 0 && geminiContents[0].role === "user") {
+      const systemMsg = aiMessages.find(m => m.role === "system");
+      if (systemMsg) {
+        geminiContents[0].parts.unshift({ text: systemMsg.content });
+      }
+    }
+
+    const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-lite",
-        messages: aiMessages,
-        max_tokens: 2000,
-        temperature: 0.7,
+        contents: geminiContents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: 2000,
+        },
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      logStep("AI API error", { status: aiResponse.status, error: errorText });
+      logStep("Gemini API error", { status: aiResponse.status, error: errorText });
       
       if (aiResponse.status === 429) {
         return new Response(
@@ -2401,11 +2443,11 @@ serve(async (req) => {
         );
       }
       
-      throw new Error(`AI API error: ${aiResponse.status}`);
+      throw new Error(`Gemini API error: ${aiResponse.status} - ${errorText}`);
     }
 
     const aiData = await aiResponse.json();
-    let assistantMessage = aiData.choices?.[0]?.message?.content || "Desculpe, não consegui processar sua mensagem.";
+    let assistantMessage = aiData.candidates?.[0]?.content?.parts?.[0]?.text || "Desculpe, não consegui processar sua mensagem.";
 
     // Process profile updates from AI response (if any)
     let addedRestriction: string | null = null;

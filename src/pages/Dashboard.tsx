@@ -9,7 +9,7 @@ import { NotificationBell } from "@/components/NotificationBell";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import type { User as SupabaseUser } from "@supabase/supabase-js";
-import { HIDE_STRIPE_UI } from "@/config/bypassConfig";
+import { BYPASS_PAYMENTS_FOR_TESTING, HIDE_STRIPE_UI } from "@/config/bypassConfig";
 
 // Lazy loaded components - carregados apenas quando necessários
 const RecipeResult = lazy(() => import("@/components/RecipeResult"));
@@ -168,7 +168,7 @@ export default function Dashboard() {
   
   
   // Admin check
-  const { isAdmin } = useAdmin();
+  const { isAdmin, isLoading: isAdminLoading } = useAdmin();
   
   // Timezone sync - detecta e atualiza timezone automaticamente a cada acesso
   const { timezone } = useUserTimezone();
@@ -210,6 +210,13 @@ export default function Dashboard() {
       setShowSymptomModal(true);
     }
   };
+
+  // Re-check onboarding once admin role is resolved (prevents false redirects to onboarding)
+  useEffect(() => {
+    if (!user?.id) return;
+    if (isAdminLoading) return;
+    checkOnboarding(user.id);
+  }, [user?.id, isAdminLoading, isAdmin]);
   
   // PWA install state
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -223,8 +230,31 @@ export default function Dashboard() {
       .maybeSingle();
     
     if (data && !data.onboarding_completed) {
-      navigate("/onboarding");
-    } else {
+      // If admin status is still loading, don't redirect yet.
+      // We'll re-run this check when isAdminLoading changes.
+      if (isAdminLoading) {
+        return;
+      }
+
+      if (!isAdmin) {
+        navigate("/onboarding");
+        return;
+      }
+
+      // Admins can bypass onboarding for system access during setup/testing
+      setOnboardingCompleted(true);
+      setUserContext("individual");
+      setKidsMode(data?.kids_mode || false);
+      setUserGoal(data?.goal || "maintain");
+      setUserProfile({
+        intolerances: data?.intolerances,
+        excluded_ingredients: data?.excluded_ingredients,
+        dietary_preference: data?.dietary_preference,
+      });
+      return;
+    }
+
+    {
       setOnboardingCompleted(true);
       setUserContext("individual"); // App is individual by default
       setKidsMode(data?.kids_mode || false);
@@ -520,7 +550,12 @@ export default function Dashboard() {
 
   const checkSubscription = async () => {
     try {
-      const { data, error } = await supabase.functions.invoke("check-subscription");
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+
+      const { data, error } = await supabase.functions.invoke("check-subscription", {
+        headers: accessToken ? { Authorization: `Bearer ${accessToken}` } : undefined,
+      });
       
       if (error) {
         console.error("Error checking subscription:", error);
@@ -727,7 +762,7 @@ export default function Dashboard() {
     );
   }
 
-  const isSubscribed = subscription?.subscribed;
+  const isSubscribed = isAdmin || BYPASS_PAYMENTS_FOR_TESTING || subscription?.subscribed;
   const activePlan = subscription?.plan as "essencial" | "premium" | null;
 
   // Handle mobile tab navigation

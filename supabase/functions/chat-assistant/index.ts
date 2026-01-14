@@ -2406,14 +2406,17 @@ serve(async (req) => {
         parts
       });
     }
-    
-    // Prepend system prompt to first user message
-    if (geminiContents.length > 0 && geminiContents[0].role === "user") {
-      const systemMsg = aiMessages.find(m => m.role === "system");
-      if (systemMsg) {
-        geminiContents[0].parts.unshift({ text: systemMsg.content });
-      }
-    }
+
+    const systemMsg = aiMessages.find(m => m.role === "system");
+    const systemInstruction = systemMsg
+      ? {
+          parts: [
+            {
+              text: typeof systemMsg.content === "string" ? systemMsg.content : JSON.stringify(systemMsg.content),
+            },
+          ],
+        }
+      : undefined;
 
     const aiResponse = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
@@ -2421,6 +2424,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
+        ...(systemInstruction ? { systemInstruction } : {}),
         contents: geminiContents,
         generationConfig: {
           temperature: 0.7,

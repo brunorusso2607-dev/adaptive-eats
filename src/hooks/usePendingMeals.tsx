@@ -58,11 +58,14 @@ function getMergedTimeRanges(profileTimes: CustomMealTimes | null): MealTimeRang
   for (const [mealType, customTime] of Object.entries(profileTimes)) {
     if (typeof customTime !== 'string') continue;
     if (globalRanges[mealType]) {
-      const [hours] = customTime.split(":").map(Number);
+      const [hStr, mStr] = customTime.split(":");
+      const hours = Number(hStr);
+      const minutes = Number(mStr);
+      const start = (Number.isNaN(hours) || Number.isNaN(minutes)) ? globalRanges[mealType].start : hours + minutes / 60;
       const duration = globalRanges[mealType].end - globalRanges[mealType].start;
       merged[mealType] = {
-        start: hours,
-        end: hours + duration
+        start,
+        end: start + duration
       };
     }
   }
@@ -124,7 +127,8 @@ const DAY_LABELS: Record<number, string> = {
 };
 
 function getCurrentMealType(): string {
-  const hour = new Date().getHours();
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
   const timeRanges = getMealTimeRangesSync();
   const mealOrder = getMealOrderSync();
   

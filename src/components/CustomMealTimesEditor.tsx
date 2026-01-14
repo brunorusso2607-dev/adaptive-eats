@@ -12,6 +12,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { Json } from "@/integrations/supabase/types";
+import { formatMealTime } from "@/lib/mealTimeConfig";
 
 // Gera opções de horário com intervalos de 15 minutos
 const generateTimeOptions = () => {
@@ -81,7 +82,7 @@ export function CustomMealTimesEditor({
       if (typeof customValue === 'string') {
         newTimes[setting.meal_type] = customValue;
       } else {
-        newTimes[setting.meal_type] = `${setting.start_hour.toString().padStart(2, '0')}:00`;
+        newTimes[setting.meal_type] = formatMealTime(setting.start_hour);
       }
     });
     

@@ -15,7 +15,7 @@ export default function AdminMealTimes() {
 
   const formatHour = (hour: number) => {
     const h = Math.floor(hour);
-    const m = (hour % 1) * 60;
+    const m = Math.round((hour % 1) * 60);
     return `${h.toString().padStart(2, "0")}:${m.toString().padStart(2, "0")}`;
   };
 
@@ -130,7 +130,7 @@ export default function AdminMealTimes() {
                         type="number"
                         min={0}
                         max={24}
-                        step={0.5}
+                        step={0.25}
                         className="w-20"
                         value={editForm.start_hour ?? setting.start_hour}
                         onChange={(e) => setEditForm({ ...editForm, start_hour: parseFloat(e.target.value) })}

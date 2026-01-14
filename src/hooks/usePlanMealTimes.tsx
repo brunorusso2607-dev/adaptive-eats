@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useMealTimeSettings, MealTimeSetting, MEAL_DELAY_TOLERANCE_HOURS } from "./useMealTimeSettings";
+import { formatMealTime } from "@/lib/mealTimeConfig";
 
 export type MealTimeConfig = {
   meal_type: string;
@@ -122,8 +123,11 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
 
   // Converter string de hora "HH:MM" para número de hora
   const parseTimeToHour = useCallback((timeStr: string): number => {
-    const [hours] = timeStr.split(":").map(Number);
-    return hours;
+    const [hStr, mStr] = timeStr.split(":");
+    const hours = Number(hStr);
+    const minutes = Number(mStr);
+    if (Number.isNaN(hours) || Number.isNaN(minutes)) return 0;
+    return hours + minutes / 60;
   }, []);
 
   // Fonte de dados efetiva: plano > perfil > global
@@ -202,7 +206,7 @@ export function usePlanMealTimes(options: UsePlanMealTimesOptions = {}) {
 
   // Formatar hora para exibição
   const formatHour = useCallback((hour: number): string => {
-    return `${hour.toString().padStart(2, '0')}:00`;
+    return formatMealTime(hour);
   }, []);
 
   // Obter hora formatada para um tipo de refeição

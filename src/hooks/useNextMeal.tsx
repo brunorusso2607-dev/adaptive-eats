@@ -45,11 +45,14 @@ function parseCustomTimeToRange(
   customTime: string, 
   globalRange: { start: number; end: number }
 ): { start: number; end: number } {
-  const [hours] = customTime.split(":").map(Number);
+  const [hStr, mStr] = customTime.split(":");
+  const hours = Number(hStr);
+  const minutes = Number(mStr);
+  const start = (Number.isNaN(hours) || Number.isNaN(minutes)) ? globalRange.start : hours + minutes / 60;
   const duration = globalRange.end - globalRange.start;
   return {
-    start: hours,
-    end: hours + duration
+    start,
+    end: start + duration
   };
 }
 
@@ -73,7 +76,8 @@ function getMergedTimeRanges(customTimes: CustomMealTimes | null): MealTimeRange
 }
 
 function getCurrentMealType(customTimes?: CustomMealTimes | null): string {
-  const hour = new Date().getHours();
+  const now = new Date();
+  const hour = now.getHours() + now.getMinutes() / 60;
   const timeRanges = getMergedTimeRanges(customTimes || null);
   const mealOrder = getMealOrderSync();
   

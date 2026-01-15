@@ -805,11 +805,6 @@ export function validateIngredientList(
   restrictions: UserRestrictions,
   database: SafetyDatabase
 ): SafetyCheckResult {
-  // 🔬 SIMULAÇÃO DE ERRO PARA TESTE (remover após teste)
-  if (ingredients.length > 0 && ingredients[0].includes("TEST_SIMULATED_ERROR")) {
-    throw new Error("SIMULATED_VALIDATION_ERROR: Testando bypass de segurança");
-  }
-
   const conflicts: ConflictDetail[] = [];
   const warnings: ConflictDetail[] = [];
   const safeReasons: string[] = [];

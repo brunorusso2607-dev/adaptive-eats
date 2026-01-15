@@ -256,7 +256,7 @@ async function validateIngredientWithGSE(
     return { isValid: result.isValid, reason: result.reason };
   } catch (error) {
     console.error("[recipePool] GSE validation error:", error);
-    return { isValid: true }; // Em caso de erro, permite (fallback seguro para disponibilidade)
+    return { isValid: false, reason: "Safety validation unavailable" };
   }
 }
 

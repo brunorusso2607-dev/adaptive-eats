@@ -1,0 +1,76 @@
+# ═══════════════════════════════════════════════════════════════════════
+# GITHUB ACTIONS - Sincronização Automática de Ingredientes
+# ═══════════════════════════════════════════════════════════════════════
+# Dispara automaticamente quando meal-ingredients-db.ts é modificado
+# ═══════════════════════════════════════════════════════════════════════
+
+name: 🔄 Sync Ingredients to Database
+
+on:
+  push:
+    branches:
+      - main
+      - master
+      - develop
+    paths:
+      - 'supabase/functions/_shared/meal-ingredients-db.ts'
+  
+  # Permite execução manual via GitHub UI
+  workflow_dispatch:
+
+jobs:
+  sync-ingredients:
+    name: Sincronizar Ingredientes
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: 📥 Checkout código
+        uses: actions/checkout@v4
+      
+      - name: 📦 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: 🔧 Instalar dependências
+        run: npm ci
+      
+      - name: 🔄 Sincronizar ingredientes
+        run: npm run sync:ingredients
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+      
+      - name: ✅ Sucesso
+        if: success()
+        run: |
+          echo "✅ Ingredientes sincronizados com sucesso!"
+          echo "📊 Verifique o log acima para detalhes"
+      
+      - name: ❌ Falha
+        if: failure()
+        run: |
+          echo "❌ Erro ao sincronizar ingredientes"
+          echo "🔍 Verifique os logs acima para mais informações"
+          exit 1
+
+  # Job opcional: Notificar no Slack/Discord
+  notify:
+    name: Notificar Resultado
+    runs-on: ubuntu-latest
+    needs: sync-ingredients
+    if: always()
+    
+    steps:
+      - name: 📢 Notificar sucesso
+        if: needs.sync-ingredients.result == 'success'
+        run: |
+          echo "✅ Sincronização concluída com sucesso!"
+          # Adicione aqui webhook do Slack/Discord se desejar
+      
+      - name: 📢 Notificar falha
+        if: needs.sync-ingredients.result == 'failure'
+        run: |
+          echo "❌ Sincronização falhou!"
+          # Adicione aqui webhook do Slack/Discord se desejar

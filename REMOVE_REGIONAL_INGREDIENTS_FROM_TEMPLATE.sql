@@ -1,0 +1,83 @@
+-- ============================================
+-- REMOVER INGREDIENTES REGIONAIS DO TEMPLATE
+-- ============================================
+-- Este script documenta quais ingredientes regionais devem ser removidos
+-- do arquivo universal-ingredients-db.ts
+
+-- INGREDIENTES A REMOVER (muito regionais por estado):
+-- 
+-- FRUTAS:
+-- - cupuacu (Norte - Pará/Amazonas)
+-- - pitanga (Sul/Sudeste específico)
+-- - bananada (regional)
+-- - caju_fruta (pode manter - é nacional)
+-- - caja (Nordeste específico)
+-- - jabuticaba (pode manter - é nacional)
+--
+-- PROTEÍNAS:
+-- - carne_sol (Nordeste)
+-- - charque (Sul específico)
+-- - linguica_calabresa (regional)
+-- - linguica_toscana (pode manter - é mais nacional)
+-- - pacoca_carne (Nordeste)
+-- - buchada (Nordeste)
+-- - sarapatel (Nordeste)
+--
+-- VEGETAIS:
+-- - maxixe (Nordeste)
+-- - ora_pro_nobis (Minas Gerais)
+-- - taioba (Minas Gerais)
+-- - caruru (Bahia/Norte)
+-- - jambu (Pará/Norte)
+--
+-- BEBIDAS:
+-- - cajuina (Piauí)
+-- - guarana_natural (pode manter - é nacional)
+-- - mate_gelado (pode manter - Sul/Sudeste comum)
+--
+-- OUTROS:
+-- - rapadura (Nordeste)
+-- - melado_cana (pode manter - é nacional)
+
+-- ============================================
+-- INGREDIENTES A MANTER (brasileiros comuns):
+-- ============================================
+-- - Pão de queijo
+-- - Requeijão
+-- - Queijo minas, coalho
+-- - Tapioca
+-- - Cuscuz
+-- - Açaí (nacional agora)
+-- - Farofa
+-- - Beiju
+-- - Goiabada (BR + PT)
+-- - Caju fruta (nacional)
+-- - Jabuticaba (nacional)
+-- - Linguiça toscana (mais nacional que calabresa)
+-- - Guaraná natural (nacional)
+-- - Mate gelado (Sul/Sudeste comum)
+-- - Melado de cana (nacional)
+
+-- ============================================
+-- AÇÃO NECESSÁRIA NO CÓDIGO:
+-- ============================================
+-- Editar: supabase/functions/_shared/universal-ingredients-db.ts
+-- 
+-- REMOVER os seguintes blocos completos:
+-- 1. cupuacu (linhas ~3045-3062)
+-- 2. pitanga (linhas ~3121-3138)
+-- 3. bananada (linhas ~3159-3176)
+-- 4. caja (linhas ~3083-3100)
+-- 5. carne_sol (linhas ~3179-3196)
+-- 6. charque (linhas ~3198-3215)
+-- 7. linguica_calabresa (linhas ~3217-3234)
+-- 8. pacoca_carne (linhas ~3255-3272)
+-- 9. buchada (linhas ~3274-3291)
+-- 10. sarapatel (linhas ~3293-3310)
+-- 11. maxixe (linhas ~3313-3330)
+-- 12. ora_pro_nobis (linhas ~3332-3349)
+-- 13. taioba (linhas ~3351-3368)
+-- 14. caruru (linhas ~3370-3387)
+-- 15. jambu (linhas ~3389-3406)
+-- 16. cajuina (linhas ~3428-3445)
+-- 17. rapadura (linhas ~3467-3484)

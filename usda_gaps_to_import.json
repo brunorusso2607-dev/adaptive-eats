@@ -1,0 +1,62 @@
+[
+  {
+    "en": "protein powder",
+    "pt": "whey protein",
+    "category": "supplements"
+  },
+  {
+    "en": "bagel",
+    "pt": "bagel",
+    "category": "grains"
+  },
+  {
+    "en": "couscous",
+    "pt": "cuscuz marroquino",
+    "category": "grains"
+  },
+  {
+    "en": "sunflower seeds",
+    "pt": "sementes de girassol",
+    "category": "seeds"
+  },
+  {
+    "en": "pumpkin seeds",
+    "pt": "sementes de abóbora",
+    "category": "seeds"
+  },
+  {
+    "en": "hemp seeds",
+    "pt": "sementes de cânhamo",
+    "category": "seeds"
+  },
+  {
+    "en": "almond milk",
+    "pt": "leite de amêndoa",
+    "category": "dairy_alternative"
+  },
+  {
+    "en": "soy milk",
+    "pt": "leite de soja",
+    "category": "dairy_alternative"
+  },
+  {
+    "en": "oat milk",
+    "pt": "leite de aveia",
+    "category": "dairy_alternative"
+  },
+  {
+    "en": "ketchup",
+    "pt": "ketchup",
+    "category": "condiments"
+  },
+  {
+    "en": "soy sauce",
+    "pt": "molho de soja",
+    "category": "condiments"
+  },
+  {
+    "en": "maple syrup",
+    "pt": "xarope de bordo",
+    "category": "condiments"
+  }
+]

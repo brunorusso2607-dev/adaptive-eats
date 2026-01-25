@@ -1,0 +1,201 @@
+// ═══════════════════════════════════════════════════════════════════════
+// ADAPTIVE EATS - DATABASE DE INGREDIENTES (100+ ESPECÍFICOS)
+// Todos os ingredientes com macros TACO/TBCA
+// ═══════════════════════════════════════════════════════════════════════
+
+export interface Ingredient {
+  kcal: number;
+  prot: number;
+  carbs: number;
+  fat: number;
+  fiber: number;
+  portion: number;
+  unit?: 'ml' | 'g'; // Unidade de medida (ml para líquidos, g para sólidos). Default: 'g'
+  contains: string[];
+  display_name: string;
+  display_name_en: string;
+  never_use_alone?: boolean; // Ingrediente NUNCA deve ser oferecido isolado
+  must_combine_with?: string[]; // Tipos de componentes que DEVEM acompanhar (ex: ['protein', 'vegetable'])
+  ingredient_category?: 'seasoning' | 'fat_condiment' | 'sweetener' | 'garnish' | 'main'; // Categoria do ingrediente
+  carb_category?: 'neutral_base' | 'accepted_whole' | 'restrictive_whole'; // Categoria de carboidrato para estratégia de integrais
+}
+
+export const INGREDIENTS: Record<string, Ingredient> = {
+  // PROTEÍNAS - AVES
+  frango_peito_grelhado: { kcal: 159, prot: 32, carbs: 0, fat: 3.2, fiber: 0, portion: 120, contains: [], display_name: "Peito de frango grelhado", display_name_en: "Grilled chicken breast" },
+  frango_coxa_assada: { kcal: 185, prot: 26, carbs: 0, fat: 8.5, fiber: 0, portion: 120, contains: [], display_name: "Coxa de frango assada", display_name_en: "Baked chicken thigh" },
+  frango_desfiado: { kcal: 159, prot: 32, carbs: 0, fat: 3.2, fiber: 0, portion: 100, contains: [], display_name: "Frango desfiado", display_name_en: "Shredded chicken" },
+  
+  // PROTEÍNAS - CARNES BOVINAS
+  bife_alcatra_grelhado: { kcal: 163, prot: 26, carbs: 0, fat: 6, fiber: 0, portion: 120, contains: [], display_name: "Bife de alcatra grelhado", display_name_en: "Grilled sirloin steak" },
+  bife_patinho_grelhado: { kcal: 140, prot: 28, carbs: 0, fat: 3, fiber: 0, portion: 120, contains: [], display_name: "Bife de patinho grelhado", display_name_en: "Grilled round steak" },
+  bife_alcatra_acebolado: { kcal: 170, prot: 25, carbs: 2, fat: 7, fiber: 0.5, portion: 120, contains: [], display_name: "Bife de alcatra acebolado", display_name_en: "Sirloin steak with onions" },
+  carne_moida_refogada: { kcal: 215, prot: 21, carbs: 2, fat: 14, fiber: 0.5, portion: 100, contains: [], display_name: "Carne moída refogada", display_name_en: "Sautéed ground beef" },
+  file_mignon_grelhado: { kcal: 155, prot: 28, carbs: 0, fat: 4.5, fiber: 0, portion: 120, contains: [], display_name: "Filé mignon grelhado", display_name_en: "Grilled filet mignon" },
+  
+  // PROTEÍNAS - PEIXES
+  tilapia_grelhada: { kcal: 96, prot: 20, carbs: 0, fat: 1.7, fiber: 0, portion: 150, contains: [], display_name: "Tilápia grelhada", display_name_en: "Grilled tilapia" },
+  salmao_grelhado: { kcal: 208, prot: 25, carbs: 0, fat: 11, fiber: 0, portion: 120, contains: [], display_name: "Salmão grelhado", display_name_en: "Grilled salmon" },
+  pescada_grelhada: { kcal: 85, prot: 18, carbs: 0, fat: 1.2, fiber: 0, portion: 150, contains: [], display_name: "Pescada grelhada", display_name_en: "Grilled hake" },
+  merluza_assada: { kcal: 90, prot: 19, carbs: 0, fat: 1.5, fiber: 0, portion: 150, contains: [], display_name: "Merluza assada", display_name_en: "Baked hake" },
+  
+  // PROTEÍNAS - OVOS
+  ovo_mexido: { kcal: 143, prot: 13, carbs: 0.7, fat: 9.5, fiber: 0, portion: 100, contains: ["ovo"], display_name: "Ovo mexido", display_name_en: "Scrambled eggs" },
+  ovo_cozido: { kcal: 155, prot: 13, carbs: 1.1, fat: 11, fiber: 0, portion: 100, contains: ["ovo"], display_name: "Ovo cozido", display_name_en: "Boiled eggs" },
+  omelete_simples: { kcal: 154, prot: 13, carbs: 1.5, fat: 10, fiber: 0, portion: 100, contains: ["ovo"], display_name: "Omelete simples", display_name_en: "Plain omelet" },
+  
+  // PROTEÍNAS - EMBUTIDOS
+  peito_peru_fatiado: { kcal: 104, prot: 22, carbs: 1, fat: 1.5, fiber: 0, portion: 50, contains: [], display_name: "Peito de peru fatiado", display_name_en: "Sliced turkey breast" },
+  presunto_magro: { kcal: 145, prot: 19, carbs: 2, fat: 7, fiber: 0, portion: 30, contains: [], display_name: "Presunto magro", display_name_en: "Lean ham" },
+  
+  // PROTEÍNAS - CARNES ESPECIAIS
+  picanha_grelhada: { kcal: 210, prot: 26, carbs: 0, fat: 11, fiber: 0, portion: 120, contains: [], display_name: "Picanha grelhada", display_name_en: "Grilled picanha" },
+  costela_assada: { kcal: 290, prot: 24, carbs: 0, fat: 21, fiber: 0, portion: 120, contains: [], display_name: "Costela assada", display_name_en: "Roasted ribs" },
+  carne_panela: { kcal: 180, prot: 24, carbs: 3, fat: 8, fiber: 0.5, portion: 120, contains: [], display_name: "Carne de panela", display_name_en: "Pot roast" },
+  figado_bovino: { kcal: 135, prot: 20, carbs: 5, fat: 3.5, fiber: 0, portion: 100, contains: [], display_name: "Fígado bovino", display_name_en: "Beef liver" },
+  frango_passarinho: { kcal: 200, prot: 25, carbs: 0, fat: 11, fiber: 0, portion: 120, contains: [], display_name: "Frango à passarinho", display_name_en: "Fried chicken pieces" },
+  sobrecoxa_assada: { kcal: 190, prot: 24, carbs: 0, fat: 10, fiber: 0, portion: 120, contains: [], display_name: "Sobrecoxa assada", display_name_en: "Baked chicken drumstick" },
+  
+  // PROTEÍNAS - PEIXES E FRUTOS DO MAR
+  atum_lata: { kcal: 116, prot: 26, carbs: 0, fat: 0.8, fiber: 0, portion: 100, contains: [], display_name: "Atum em lata", display_name_en: "Canned tuna" },
+  sardinha_lata: { kcal: 208, prot: 25, carbs: 0, fat: 11, fiber: 0, portion: 100, contains: [], display_name: "Sardinha em lata", display_name_en: "Canned sardines" },
+  bacalhau_cozido: { kcal: 135, prot: 29, carbs: 0, fat: 1.5, fiber: 0, portion: 120, contains: [], display_name: "Bacalhau cozido", display_name_en: "Boiled cod" },
+  camarao_grelhado: { kcal: 99, prot: 21, carbs: 0, fat: 1.5, fiber: 0, portion: 100, contains: ["crustaceos"], display_name: "Camarão grelhado", display_name_en: "Grilled shrimp" },
+  
+  // PROTEÍNAS - VEGETAIS
+  lentilha_cozida: { kcal: 93, prot: 6.3, carbs: 16, fat: 0.4, fiber: 5.2, portion: 100, contains: [], display_name: "Lentilha cozida", display_name_en: "Boiled lentils" },
+  
+  // CARBOIDRATOS - ARROZ
+  arroz_branco: { kcal: 128, prot: 2.5, carbs: 28, fat: 0.2, fiber: 0.5, portion: 100, contains: [], display_name: "Arroz branco", display_name_en: "White rice", carb_category: 'neutral_base' },
+  arroz_integral: { kcal: 123, prot: 2.6, carbs: 25.8, fat: 1, fiber: 2.7, portion: 100, contains: [], display_name: "Arroz integral", display_name_en: "Brown rice", carb_category: 'restrictive_whole' },
+  arroz_parboilizado: { kcal: 123, prot: 2.5, carbs: 26.2, fat: 0.3, fiber: 1.4, portion: 100, contains: [], display_name: "Arroz parboilizado", display_name_en: "Parboiled rice", carb_category: 'accepted_whole' },
+  
+  // CARBOIDRATOS - BATATAS
+  batata_doce_cozida: { kcal: 77, prot: 0.6, carbs: 18.4, fat: 0.1, fiber: 2.2, portion: 150, contains: [], display_name: "Batata doce cozida", display_name_en: "Boiled sweet potato", carb_category: 'accepted_whole' },
+  batata_doce_assada: { kcal: 90, prot: 2, carbs: 20.7, fat: 0.2, fiber: 3, portion: 150, contains: [], display_name: "Batata doce assada", display_name_en: "Baked sweet potato", carb_category: 'accepted_whole' },
+  batata_inglesa_cozida: { kcal: 52, prot: 1.2, carbs: 11.9, fat: 0.1, fiber: 1.3, portion: 150, contains: [], display_name: "Batata inglesa cozida", display_name_en: "Boiled potato", carb_category: 'neutral_base' },
+  batata_inglesa_assada: { kcal: 93, prot: 2.5, carbs: 21.2, fat: 0.1, fiber: 1.8, portion: 150, contains: [], display_name: "Batata inglesa assada", display_name_en: "Baked potato", carb_category: 'neutral_base' },
+  pure_batata: { kcal: 83, prot: 1.8, carbs: 17.5, fat: 0.9, fiber: 1.5, portion: 150, contains: ["lactose"], display_name: "Purê de batata", display_name_en: "Mashed potato", carb_category: 'neutral_base' },
+  mandioca_cozida: { kcal: 125, prot: 0.6, carbs: 30.1, fat: 0.3, fiber: 1.6, portion: 150, contains: [], display_name: "Mandioca cozida", display_name_en: "Boiled cassava", carb_category: 'neutral_base' },
+  
+  // CARBOIDRATOS - PÃES
+  pao_integral: { kcal: 253, prot: 9.4, carbs: 49, fat: 3.4, fiber: 6.9, portion: 50, contains: ["gluten"], display_name: "Pão integral", display_name_en: "Whole wheat bread", carb_category: 'accepted_whole' },
+  pao_frances: { kcal: 300, prot: 8, carbs: 58, fat: 3.6, fiber: 2.3, portion: 50, contains: ["gluten"], display_name: "Pão francês", display_name_en: "French bread", carb_category: 'neutral_base' },
+  pao_forma_integral: { kcal: 240, prot: 10, carbs: 45, fat: 3, fiber: 7, portion: 50, contains: ["gluten"], display_name: "Pão de forma integral", display_name_en: "Whole wheat sandwich bread", carb_category: 'restrictive_whole' },
+  
+  // CARBOIDRATOS - OUTROS
+  tapioca: { kcal: 357, prot: 0.6, carbs: 88.7, fat: 0.2, fiber: 0.9, portion: 50, contains: [], display_name: "Tapioca", display_name_en: "Tapioca", carb_category: 'neutral_base' },
+  aveia: { kcal: 394, prot: 13.9, carbs: 66.6, fat: 8.5, fiber: 9.1, portion: 30, contains: [], display_name: "Aveia", display_name_en: "Oats", carb_category: 'accepted_whole' },
+  granola: { kcal: 471, prot: 12, carbs: 64, fat: 18, fiber: 7, portion: 30, contains: [], display_name: "Granola", display_name_en: "Granola", carb_category: 'accepted_whole' },
+  cuscuz_milho: { kcal: 112, prot: 2.3, carbs: 25, fat: 0.2, fiber: 1.5, portion: 100, contains: [], display_name: "Cuscuz de milho", display_name_en: "Corn couscous", carb_category: 'accepted_whole' },
+  macarrao_integral: { kcal: 124, prot: 5, carbs: 26, fat: 0.5, fiber: 3.5, portion: 100, contains: ["gluten"], display_name: "Macarrão integral", display_name_en: "Whole wheat pasta", carb_category: 'restrictive_whole' },
+  macarrao_comum: { kcal: 131, prot: 4.5, carbs: 28, fat: 0.4, fiber: 1.2, portion: 100, contains: ["gluten"], display_name: "Macarrão", display_name_en: "Pasta", carb_category: 'neutral_base' },
+  farofa: { kcal: 365, prot: 1.5, carbs: 82, fat: 1.5, fiber: 3, portion: 50, contains: [], display_name: "Farofa", display_name_en: "Toasted cassava flour", carb_category: 'neutral_base' },
+  polenta: { kcal: 70, prot: 1.6, carbs: 15.5, fat: 0.2, fiber: 1, portion: 150, contains: [], display_name: "Polenta", display_name_en: "Polenta", carb_category: 'neutral_base' },
+  nhoque: { kcal: 148, prot: 3.5, carbs: 32, fat: 0.5, fiber: 1.5, portion: 150, contains: ["gluten"], display_name: "Nhoque", display_name_en: "Gnocchi", carb_category: 'neutral_base' },
+  
+  // LEGUMINOSAS
+  feijao: { kcal: 76, prot: 4.8, carbs: 13.6, fat: 0.5, fiber: 8.5, portion: 100, contains: [], display_name: "Feijão", display_name_en: "Beans" },
+  
+  // VEGETAIS - FOLHAS
+  alface_americana: { kcal: 15, prot: 1.4, carbs: 2.9, fat: 0.2, fiber: 2.1, portion: 50, contains: [], display_name: "Alface americana", display_name_en: "Iceberg lettuce", never_use_alone: true, must_combine_with: ['vegetable'], ingredient_category: 'garnish' },
+  alface_crespa: { kcal: 15, prot: 1.4, carbs: 2.9, fat: 0.2, fiber: 2.1, portion: 50, contains: [], display_name: "Alface crespa", display_name_en: "Curly lettuce", never_use_alone: true, must_combine_with: ['vegetable'], ingredient_category: 'garnish' },
+  rucula: { kcal: 25, prot: 2.6, carbs: 3.7, fat: 0.7, fiber: 1.6, portion: 40, contains: [], display_name: "Rúcula", display_name_en: "Arugula" },
+  agriao: { kcal: 11, prot: 2.3, carbs: 1.3, fat: 0.1, fiber: 0.5, portion: 40, contains: [], display_name: "Agrião", display_name_en: "Watercress" },
+  espinafre_refogado: { kcal: 35, prot: 3.5, carbs: 4, fat: 1.5, fiber: 2.5, portion: 80, contains: [], display_name: "Espinafre refogado", display_name_en: "Sautéed spinach" },
+  couve_refogada: { kcal: 45, prot: 2.5, carbs: 5.5, fat: 2, fiber: 3.8, portion: 80, contains: [], display_name: "Couve refogada", display_name_en: "Sautéed kale" },
+  
+  // VEGETAIS - LEGUMES COZIDOS
+  brocolis_cozido: { kcal: 34, prot: 2.8, carbs: 6.6, fat: 0.4, fiber: 2.6, portion: 80, contains: [], display_name: "Brócolis cozido", display_name_en: "Boiled broccoli" },
+  couve_flor_cozida: { kcal: 25, prot: 2, carbs: 5, fat: 0.3, fiber: 2.5, portion: 80, contains: [], display_name: "Couve-flor cozida", display_name_en: "Boiled cauliflower" },
+  cenoura_cozida: { kcal: 41, prot: 0.9, carbs: 9.6, fat: 0.2, fiber: 2.8, portion: 50, contains: [], display_name: "Cenoura cozida", display_name_en: "Boiled carrot" },
+  abobrinha_refogada: { kcal: 20, prot: 1.2, carbs: 4.3, fat: 0.2, fiber: 1.1, portion: 80, contains: [], display_name: "Abobrinha refogada", display_name_en: "Sautéed zucchini" },
+  vagem_cozida: { kcal: 31, prot: 1.8, carbs: 7, fat: 0.1, fiber: 2.7, portion: 80, contains: [], display_name: "Vagem cozida", display_name_en: "Boiled green beans" },
+  abobora_cozida: { kcal: 26, prot: 1, carbs: 6.5, fat: 0.1, fiber: 1.1, portion: 100, contains: [], display_name: "Abóbora cozida", display_name_en: "Boiled pumpkin" },
+  chuchu_cozido: { kcal: 19, prot: 0.8, carbs: 4.5, fat: 0.1, fiber: 1.3, portion: 100, contains: [], display_name: "Chuchu cozido", display_name_en: "Boiled chayote" },
+  quiabo_refogado: { kcal: 33, prot: 1.9, carbs: 7.5, fat: 0.2, fiber: 3.2, portion: 80, contains: [], display_name: "Quiabo refogado", display_name_en: "Sautéed okra" },
+  berinjela_refogada: { kcal: 24, prot: 1, carbs: 5.7, fat: 0.2, fiber: 2.5, portion: 80, contains: [], display_name: "Berinjela refogada", display_name_en: "Sautéed eggplant" },
+  beterraba_cozida: { kcal: 49, prot: 1.9, carbs: 11.1, fat: 0.2, fiber: 2.5, portion: 80, contains: [], display_name: "Beterraba cozida", display_name_en: "Boiled beet" },
+  maxixe_refogado: { kcal: 18, prot: 0.7, carbs: 4.2, fat: 0.1, fiber: 1.5, portion: 80, contains: [], display_name: "Maxixe refogado", display_name_en: "Sautéed gherkin" },
+  jilo_refogado: { kcal: 27, prot: 1.4, carbs: 6, fat: 0.2, fiber: 2.8, portion: 80, contains: [], display_name: "Jiló refogado", display_name_en: "Sautéed scarlet eggplant" },
+  repolho_refogado: { kcal: 22, prot: 1.1, carbs: 5.1, fat: 0.1, fiber: 2.3, portion: 80, contains: [], display_name: "Repolho refogado", display_name_en: "Sautéed cabbage" },
+  acelga_refogada: { kcal: 19, prot: 1.8, carbs: 3.7, fat: 0.2, fiber: 1.6, portion: 80, contains: [], display_name: "Acelga refogada", display_name_en: "Sautéed chard" },
+  
+  // VEGETAIS - SALADA CRUA
+  tomate: { kcal: 18, prot: 0.9, carbs: 3.9, fat: 0.2, fiber: 1.2, portion: 80, contains: [], display_name: "Tomate", display_name_en: "Tomato", never_use_alone: true, must_combine_with: ['vegetable'], ingredient_category: 'garnish' },
+  pepino: { kcal: 15, prot: 0.7, carbs: 3.6, fat: 0.1, fiber: 0.5, portion: 80, contains: [], display_name: "Pepino", display_name_en: "Cucumber", never_use_alone: true, must_combine_with: ['vegetable'], ingredient_category: 'garnish' },
+  pimentao_verde: { kcal: 20, prot: 0.9, carbs: 4.6, fat: 0.2, fiber: 1.7, portion: 50, contains: [], display_name: "Pimentão verde", display_name_en: "Green bell pepper" },
+  pimentao_vermelho: { kcal: 31, prot: 1, carbs: 7.2, fat: 0.3, fiber: 2.1, portion: 50, contains: [], display_name: "Pimentão vermelho", display_name_en: "Red bell pepper" },
+  pimentao_amarelo: { kcal: 27, prot: 1, carbs: 6.3, fat: 0.2, fiber: 1.7, portion: 50, contains: [], display_name: "Pimentão amarelo", display_name_en: "Yellow bell pepper" },
+  cenoura_ralada: { kcal: 41, prot: 0.9, carbs: 9.6, fat: 0.2, fiber: 2.8, portion: 50, contains: [], display_name: "Cenoura ralada", display_name_en: "Grated carrot", never_use_alone: true, must_combine_with: ['vegetable'], ingredient_category: 'garnish' },
+  
+  // VEGETAIS - TEMPEROS/AROMÁTICOS
+  cebola_refogada: { kcal: 40, prot: 1.1, carbs: 9.3, fat: 0.1, fiber: 1.7, portion: 30, contains: [], display_name: "Cebola refogada", display_name_en: "Sautéed onion", never_use_alone: true, must_combine_with: ['protein', 'carb'], ingredient_category: 'seasoning' },
+  alho_refogado: { kcal: 149, prot: 6.4, carbs: 33.1, fat: 0.5, fiber: 2.1, portion: 5, contains: [], display_name: "Alho refogado", display_name_en: "Sautéed garlic", never_use_alone: true, must_combine_with: ['protein', 'carb'], ingredient_category: 'seasoning' },
+  cheiro_verde: { kcal: 36, prot: 3, carbs: 6.3, fat: 0.8, fiber: 3.3, portion: 10, contains: [], display_name: "Cheiro verde", display_name_en: "Parsley and scallions", never_use_alone: true, must_combine_with: ['protein', 'carb'], ingredient_category: 'seasoning' },
+  
+  // FRUTAS
+  banana_prata: { kcal: 89, prot: 1.1, carbs: 22.8, fat: 0.3, fiber: 2.6, portion: 100, contains: [], display_name: "Banana prata", display_name_en: "Silver banana" },
+  maca_vermelha: { kcal: 52, prot: 0.3, carbs: 13.8, fat: 0.2, fiber: 2.4, portion: 130, contains: [], display_name: "Maçã vermelha", display_name_en: "Red apple" },
+  morango: { kcal: 32, prot: 0.7, carbs: 7.7, fat: 0.3, fiber: 2, portion: 100, contains: [], display_name: "Morango", display_name_en: "Strawberry" },
+  mamao_papaia: { kcal: 43, prot: 0.5, carbs: 11.3, fat: 0.1, fiber: 1.7, portion: 150, contains: [], display_name: "Mamão papaia", display_name_en: "Papaya" },
+  manga: { kcal: 60, prot: 0.8, carbs: 15, fat: 0.4, fiber: 1.6, portion: 150, contains: [], display_name: "Manga", display_name_en: "Mango" },
+  pera: { kcal: 57, prot: 0.4, carbs: 15.2, fat: 0.1, fiber: 3.1, portion: 150, contains: [], display_name: "Pêra", display_name_en: "Pear" },
+  laranja: { kcal: 47, prot: 0.9, carbs: 11.7, fat: 0.1, fiber: 2.4, portion: 180, contains: [], display_name: "Laranja", display_name_en: "Orange" },
+  melancia: { kcal: 30, prot: 0.6, carbs: 7.6, fat: 0.2, fiber: 0.4, portion: 200, contains: [], display_name: "Melancia", display_name_en: "Watermelon" },
+  melao: { kcal: 29, prot: 0.7, carbs: 7.5, fat: 0.1, fiber: 0.3, portion: 200, contains: [], display_name: "Melão", display_name_en: "Melon" },
+  abacaxi: { kcal: 48, prot: 0.5, carbs: 12.3, fat: 0.1, fiber: 1, portion: 150, contains: [], display_name: "Abacaxi", display_name_en: "Pineapple" },
+  goiaba: { kcal: 54, prot: 1.1, carbs: 14.3, fat: 0.4, fiber: 6.2, portion: 150, contains: [], display_name: "Goiaba", display_name_en: "Guava" },
+  uva: { kcal: 69, prot: 0.7, carbs: 18.1, fat: 0.2, fiber: 0.9, portion: 100, contains: [], display_name: "Uva", display_name_en: "Grapes" },
+  kiwi: { kcal: 61, prot: 1.1, carbs: 14.7, fat: 0.5, fiber: 3, portion: 100, contains: [], display_name: "Kiwi", display_name_en: "Kiwi" },
+  tangerina: { kcal: 53, prot: 0.8, carbs: 13.3, fat: 0.3, fiber: 1.8, portion: 130, contains: [], display_name: "Tangerina", display_name_en: "Tangerine" },
+  abacate: { kcal: 160, prot: 2, carbs: 8.5, fat: 14.7, fiber: 6.7, portion: 100, contains: [], display_name: "Abacate", display_name_en: "Avocado" },
+  acai_polpa: { kcal: 58, prot: 0.8, carbs: 6.2, fat: 3.9, fiber: 2.6, portion: 100, contains: [], display_name: "Açaí", display_name_en: "Açaí" },
+  
+  // LATICÍNIOS
+  iogurte_natural: { kcal: 61, prot: 3.5, carbs: 4.7, fat: 3.3, fiber: 0, portion: 150, unit: 'ml', contains: ["lactose"], display_name: "Iogurte natural", display_name_en: "Plain yogurt" },
+  iogurte_grego: { kcal: 97, prot: 9, carbs: 3.6, fat: 5, fiber: 0, portion: 150, unit: 'ml', contains: ["lactose"], display_name: "Iogurte grego", display_name_en: "Greek yogurt" },
+  iogurte_desnatado: { kcal: 43, prot: 4.3, carbs: 6, fat: 0.2, fiber: 0, portion: 150, unit: 'ml', contains: ["lactose"], display_name: "Iogurte desnatado", display_name_en: "Low-fat yogurt" },
+  iogurte_frutas: { kcal: 90, prot: 3, carbs: 16, fat: 1.5, fiber: 0.5, portion: 150, unit: 'ml', contains: ["lactose"], display_name: "Iogurte com frutas", display_name_en: "Fruit yogurt" },
+  queijo_minas: { kcal: 264, prot: 17.4, carbs: 3.1, fat: 20.8, fiber: 0, portion: 30, contains: ["lactose"], display_name: "Queijo minas", display_name_en: "Minas cheese" },
+  queijo_cottage: { kcal: 98, prot: 11.1, carbs: 3.4, fat: 4.3, fiber: 0, portion: 50, contains: ["lactose"], display_name: "Queijo cottage", display_name_en: "Cottage cheese" },
+  queijo_prato: { kcal: 360, prot: 25.8, carbs: 1.2, fat: 28.5, fiber: 0, portion: 30, contains: ["lactose"], display_name: "Queijo prato", display_name_en: "Prato cheese" },
+  queijo_mussarela: { kcal: 280, prot: 18.1, carbs: 3.1, fat: 22.4, fiber: 0, portion: 30, contains: ["lactose"], display_name: "Queijo mussarela", display_name_en: "Mozzarella cheese" },
+  ricota: { kcal: 138, prot: 11.3, carbs: 3.4, fat: 9, fiber: 0, portion: 50, contains: ["lactose"], display_name: "Ricota", display_name_en: "Ricotta" },
+  requeijao_light: { kcal: 180, prot: 10, carbs: 4, fat: 14, fiber: 0, portion: 30, contains: ["lactose"], display_name: "Requeijão light", display_name_en: "Light cream cheese" },
+  leite_desnatado: { kcal: 35, prot: 3.4, carbs: 4.9, fat: 0.2, fiber: 0, portion: 200, unit: 'ml', contains: ["lactose"], display_name: "Leite desnatado", display_name_en: "Skim milk" },
+  leite_semidesnatado: { kcal: 49, prot: 3.3, carbs: 4.8, fat: 1.9, fiber: 0, portion: 200, unit: 'ml', contains: ["lactose"], display_name: "Leite semidesnatado", display_name_en: "Semi-skimmed milk" },
+  leite_integral: { kcal: 61, prot: 3.2, carbs: 4.6, fat: 3.5, fiber: 0, portion: 200, unit: 'ml', contains: ["lactose"], display_name: "Leite integral", display_name_en: "Whole milk" },
+  
+  // BEBIDAS
+  cafe_com_leite: { kcal: 35, prot: 1.8, carbs: 2.7, fat: 2, fiber: 0, portion: 200, unit: 'ml', contains: ["lactose"], display_name: "Café com leite", display_name_en: "Coffee with milk" },
+  cafe_preto: { kcal: 2, prot: 0.1, carbs: 0, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Café preto", display_name_en: "Black coffee" },
+  cha_verde: { kcal: 1, prot: 0, carbs: 0, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Chá verde", display_name_en: "Green tea" },
+  cha_camomila: { kcal: 1, prot: 0, carbs: 0.2, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Chá de camomila", display_name_en: "Chamomile tea" },
+  cha_preto: { kcal: 1, prot: 0, carbs: 0.3, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Chá preto", display_name_en: "Black tea" },
+  cha_erva_doce: { kcal: 2, prot: 0, carbs: 0.5, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Chá de erva-doce", display_name_en: "Fennel tea" },
+  suco_laranja_natural: { kcal: 45, prot: 0.7, carbs: 10.4, fat: 0.2, fiber: 0.2, portion: 200, unit: 'ml', contains: [], display_name: "Suco de laranja natural", display_name_en: "Fresh orange juice" },
+  suco_limao: { kcal: 22, prot: 0.4, carbs: 7, fat: 0.2, fiber: 0.4, portion: 200, unit: 'ml', contains: [], display_name: "Suco de limão", display_name_en: "Lemon juice" },
+  agua_coco: { kcal: 19, prot: 0.7, carbs: 3.7, fat: 0.2, fiber: 1.1, portion: 200, unit: 'ml', contains: [], display_name: "Água de coco", display_name_en: "Coconut water" },
+  vitamina_banana: { kcal: 128, prot: 4.5, carbs: 26.7, fat: 1.2, fiber: 2.6, portion: 250, unit: 'ml', contains: ["lactose"], display_name: "Vitamina de banana", display_name_en: "Banana smoothie" },
+  cha_hibisco: { kcal: 1, prot: 0, carbs: 0.2, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Chá de hibisco", display_name_en: "Hibiscus tea" },
+  cha_melissa: { kcal: 1, prot: 0, carbs: 0.2, fat: 0, fiber: 0, portion: 200, unit: 'ml', contains: [], display_name: "Chá de melissa", display_name_en: "Lemon balm tea" },
+  
+  // GORDURAS
+  azeite_oliva: { kcal: 884, prot: 0, carbs: 0, fat: 100, fiber: 0, portion: 10, contains: [], display_name: "Azeite de oliva", display_name_en: "Olive oil", never_use_alone: true, must_combine_with: ['vegetable', 'protein'], ingredient_category: 'fat_condiment' },
+  azeite_extra_virgem: { kcal: 884, prot: 0, carbs: 0, fat: 100, fiber: 0, portion: 10, contains: [], display_name: "Azeite extra virgem", display_name_en: "Extra virgin olive oil", never_use_alone: true, must_combine_with: ['vegetable', 'protein'], ingredient_category: 'fat_condiment' },
+  castanha_para: { kcal: 656, prot: 14.3, carbs: 12.3, fat: 63.5, fiber: 7.5, portion: 20, contains: [], display_name: "Castanha do Pará", display_name_en: "Brazil nuts" },
+  castanha_caju: { kcal: 553, prot: 18.2, carbs: 30.2, fat: 43.8, fiber: 3.3, portion: 20, contains: [], display_name: "Castanha de caju", display_name_en: "Cashew nuts" },
+  amendoim: { kcal: 544, prot: 27.2, carbs: 20.3, fat: 43.9, fiber: 8, portion: 20, contains: [], display_name: "Amendoim", display_name_en: "Peanuts" },
+  nozes: { kcal: 654, prot: 15.2, carbs: 13.7, fat: 65.2, fiber: 6.7, portion: 20, contains: [], display_name: "Nozes", display_name_en: "Walnuts" },
+  
+  // SEMENTES E OUTROS
+  chia: { kcal: 486, prot: 16.5, carbs: 42.1, fat: 30.7, fiber: 34.4, portion: 10, contains: [], display_name: "Chia", display_name_en: "Chia seeds" },
+  linhaca: { kcal: 495, prot: 14.1, carbs: 28.9, fat: 42.2, fiber: 33.5, portion: 10, contains: [], display_name: "Linhaça", display_name_en: "Flaxseed" },
+  gergelim: { kcal: 573, prot: 17.7, carbs: 23.4, fat: 49.7, fiber: 11.8, portion: 10, contains: [], display_name: "Gergelim", display_name_en: "Sesame seeds" },
+  mel: { kcal: 304, prot: 0.3, carbs: 82.4, fat: 0, fiber: 0.2, portion: 20, contains: [], display_name: "Mel", display_name_en: "Honey", never_use_alone: true, must_combine_with: ['dairy', 'grain'], ingredient_category: 'sweetener' },
+  coco_ralado: { kcal: 354, prot: 3.3, carbs: 15.2, fat: 33.5, fiber: 9, portion: 20, contains: [], display_name: "Coco ralado", display_name_en: "Shredded coconut" },
+  molho_tomate: { kcal: 29, prot: 1.2, carbs: 6.7, fat: 0.2, fiber: 1.5, portion: 50, contains: [], display_name: "Molho de tomate", display_name_en: "Tomato sauce" },
+  shoyu: { kcal: 53, prot: 5.6, carbs: 4.9, fat: 0.1, fiber: 0.8, portion: 15, contains: [], display_name: "Shoyu", display_name_en: "Soy sauce" },
+  vinagre: { kcal: 19, prot: 0, carbs: 0.9, fat: 0, fiber: 0, portion: 15, contains: [], display_name: "Vinagre", display_name_en: "Vinegar" },
+};

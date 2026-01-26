@@ -73,17 +73,26 @@ export default function MealNameDialog({
   };
 
   const handleConfirm = () => {
+    console.log("[MealNameDialog] handleConfirm called:", {
+      mealName: mealName.trim(),
+      hasPendingMeal,
+      pendingMeal,
+      showReplaceChoice,
+    });
+    
     if (!mealName.trim()) {
       return;
     }
     
     // Se há refeição pendente, mostrar escolha de substituição
     if (hasPendingMeal && pendingMeal && !showReplaceChoice) {
+      console.log("[MealNameDialog] Showing replace choice screen");
       setShowReplaceChoice(true);
       return;
     }
     
     // Se não há refeição pendente, salvar diretamente
+    console.log("[MealNameDialog] No pending meal, saving directly");
     onConfirm(mealName.trim(), false);
   };
 

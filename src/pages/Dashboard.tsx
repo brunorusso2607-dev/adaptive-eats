@@ -55,6 +55,7 @@ import { useFeatureFlag } from "@/hooks/useFeatureFlags";
 import { PushPermissionPrompt } from "@/components/PushPermissionPrompt";
 import { useUserTimezone } from "@/hooks/useUserTimezone";
 import { useAutoSkipNotifications } from "@/hooks/useAutoSkipNotifications";
+import { useAppVisibility } from "@/hooks/useAppVisibility";
 
 // Componente de fallback unificado para Suspense
 const LazyFallback = () => (
@@ -189,6 +190,19 @@ export default function Dashboard() {
   
   // Auto-skip notifications hook - shows toast when meals are auto-marked as lost
   useAutoSkipNotifications();
+  
+  // Auto-refresh when app becomes visible (user returns to tab/PWA)
+  useAppVisibility({
+    onVisible: useCallback(() => {
+      console.log('[Dashboard] App visible - refreshing data');
+      refetchUserProfile();
+      refetchPendingMeals();
+      refetchDailyConsumption();
+      gamification.refresh?.();
+    }, [refetchPendingMeals, refetchDailyConsumption]),
+    debounceMs: 10000, // Minimum 10 seconds between refreshes
+    minHiddenMs: 5000, // App must be hidden for 5+ seconds
+  });
   
   // Symptom feedback hook
   const symptomFeedback = usePendingSymptomFeedback();

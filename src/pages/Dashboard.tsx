@@ -678,7 +678,7 @@ export default function Dashboard() {
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('[Dashboard] Setting up profile polling (every 5 seconds)');
+    console.log('[Dashboard] Setting up profile polling (every 30 seconds)');
     
     // Store last known profile state to detect changes
     let lastProfileState: string | null = null;
@@ -708,8 +708,8 @@ export default function Dashboard() {
       }
     };
     
-    // Poll every 5 seconds
-    const interval = setInterval(pollProfile, 5000);
+    // Poll every 30 seconds (optimized for performance)
+    const interval = setInterval(pollProfile, 30000);
     
     // Initial poll
     pollProfile();

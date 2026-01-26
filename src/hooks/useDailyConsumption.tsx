@@ -68,8 +68,8 @@ export function useDailyConsumption() {
   useEffect(() => {
     fetchDailyConsumption();
 
-    // Atualizar a cada minuto
-    const interval = setInterval(fetchDailyConsumption, 60000);
+    // Atualizar a cada 2 minutos (otimizado para performance)
+    const interval = setInterval(fetchDailyConsumption, 120000);
     return () => clearInterval(interval);
   }, [fetchDailyConsumption]);
 

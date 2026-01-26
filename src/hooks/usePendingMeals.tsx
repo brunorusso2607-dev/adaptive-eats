@@ -568,8 +568,8 @@ export function usePendingMeals() {
   useEffect(() => {
     fetchPendingMeals();
     
-    // Atualizar a cada minuto
-    const interval = setInterval(fetchPendingMeals, 60000);
+    // Atualizar a cada 2 minutos (otimizado para performance)
+    const interval = setInterval(fetchPendingMeals, 120000);
     return () => clearInterval(interval);
   }, [fetchPendingMeals]);
 

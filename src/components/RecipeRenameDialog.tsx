@@ -160,10 +160,10 @@ export default function RecipeRenameDialog({
                 variant="ghost"
                 size="sm"
                 onClick={handleUseSuggestion}
-                className="text-xs text-primary h-auto p-1"
+                className="text-xs text-primary h-auto p-1 max-w-full overflow-hidden"
               >
-                <Sparkles className="w-3 h-3 mr-1" />
-                Usar sugestão: "{suggestedName}"
+                <Sparkles className="w-3 h-3 mr-1 shrink-0" />
+                <span className="truncate">Usar sugestão: "{suggestedName}"</span>
               </Button>
             )}
           </div>

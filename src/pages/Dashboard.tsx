@@ -674,34 +674,49 @@ export default function Dashboard() {
     return () => authSub.unsubscribe();
   }, [navigate]);
 
-  // Listen for profile changes in real-time (e.g., when chat-assistant updates profile)
+  // Poll for profile changes periodically (fallback since Realtime may not be enabled)
   useEffect(() => {
     if (!user?.id) return;
 
-    console.log('[Dashboard] Setting up profile realtime listener');
+    console.log('[Dashboard] Setting up profile polling (every 5 seconds)');
     
-    const channel = supabase
-      .channel('profile-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: 'UPDATE',
-          schema: 'public',
-          table: 'profiles',
-          filter: `id=eq.${user.id}`,
-        },
-        (payload) => {
-          console.log('[Dashboard] Profile updated via realtime:', payload);
-          // Refetch profile data when it changes
+    // Store last known profile state to detect changes
+    let lastProfileState: string | null = null;
+    
+    const pollProfile = async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("intolerances, excluded_ingredients, dietary_preference, updated_at")
+        .eq("id", user.id)
+        .maybeSingle();
+      
+      if (data) {
+        const currentState = JSON.stringify({
+          intolerances: data.intolerances,
+          excluded_ingredients: data.excluded_ingredients,
+          dietary_preference: data.dietary_preference,
+        });
+        
+        // If state changed, refetch full profile
+        if (lastProfileState && lastProfileState !== currentState) {
+          console.log('[Dashboard] Profile changed detected via polling');
           refetchUserProfile();
           toast.info('Perfil atualizado!');
         }
-      )
-      .subscribe();
+        
+        lastProfileState = currentState;
+      }
+    };
+    
+    // Poll every 5 seconds
+    const interval = setInterval(pollProfile, 5000);
+    
+    // Initial poll
+    pollProfile();
 
     return () => {
-      console.log('[Dashboard] Cleaning up profile realtime listener');
-      supabase.removeChannel(channel);
+      console.log('[Dashboard] Cleaning up profile polling');
+      clearInterval(interval);
     };
   }, [user?.id]);
 

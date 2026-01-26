@@ -144,6 +144,28 @@ export default function IngredientSearchSheet({
     }
   }, [open, originalIngredient?.item]);
 
+  // Criar objeto de nutrição do ingrediente original para cálculo correto da diferença
+  const getOriginalNutrition = (): IngredientResult | null => {
+    if (!originalIngredient) return null;
+    
+    // Se temos os macros do ingrediente original, calcular per 100g
+    const grams = originalIngredient.grams || 100;
+    
+    // Se não temos macros, retornar null (vai adicionar em vez de calcular diferença)
+    if (!originalIngredient.calories && !originalIngredient.protein) {
+      return null;
+    }
+    
+    return {
+      id: 'original',
+      name: originalIngredient.item,
+      calories_per_100g: Math.round(((originalIngredient.calories || 0) / grams) * 100),
+      protein_per_100g: Math.round(((originalIngredient.protein || 0) / grams) * 100 * 10) / 10,
+      carbs_per_100g: Math.round(((originalIngredient.carbs || 0) / grams) * 100 * 10) / 10,
+      fat_per_100g: Math.round(((originalIngredient.fat || 0) / grams) * 100 * 10) / 10,
+    };
+  };
+
   const handleSelectFood = (food: SelectedFoodItem) => {
     if (!originalIngredient) return;
 
@@ -158,7 +180,7 @@ export default function IngredientSearchSheet({
       category: food.food.category || undefined,
     };
     
-    onSubstitute(ingredientResult, originalIngredient.item, null);
+    onSubstitute(ingredientResult, originalIngredient.item, getOriginalNutrition());
     onOpenChange(false);
   };
 
@@ -195,7 +217,7 @@ export default function IngredientSearchSheet({
     
     console.log('[IngredientSearchSheet] Calling onSubstitute with:', newIngredient);
     
-    onSubstitute(newIngredient, originalIngredient.item, null);
+    onSubstitute(newIngredient, originalIngredient.item, getOriginalNutrition());
     onOpenChange(false);
   };
 
@@ -211,7 +233,7 @@ export default function IngredientSearchSheet({
       fat_per_100g: food.fat_per_100g,
     };
     
-    onSubstitute(ingredientResult, originalIngredient.item, null);
+    onSubstitute(ingredientResult, originalIngredient.item, getOriginalNutrition());
     setShowManualModal(false);
     onOpenChange(false);
   };

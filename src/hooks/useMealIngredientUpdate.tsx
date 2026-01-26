@@ -152,23 +152,37 @@ export function useMealIngredientUpdate() {
     const grams = parseQuantityToGrams(quantity, unit);
     const factor = grams / 100;
 
+    console.log('[useMealIngredientUpdate] calculateMacrosDiff:', {
+      originalNutrition,
+      newNutrition,
+      quantity,
+      unit,
+      grams,
+      factor,
+    });
+
     if (!originalNutrition) {
-      // If no original data, just add the new ingredient's contribution
+      // Se não temos dados do ingrediente original, não podemos calcular diferença
+      // Retornar 0 para não alterar os macros totais incorretamente
+      console.log('[useMealIngredientUpdate] No original nutrition - returning zero diff');
       return {
-        recipe_calories: newNutrition.calories_per_100g * factor,
-        recipe_protein: newNutrition.protein_per_100g * factor,
-        recipe_carbs: newNutrition.carbs_per_100g * factor,
-        recipe_fat: newNutrition.fat_per_100g * factor,
+        recipe_calories: 0,
+        recipe_protein: 0,
+        recipe_carbs: 0,
+        recipe_fat: 0,
       };
     }
 
     // Calculate the difference
-    return {
+    const diff = {
       recipe_calories: (newNutrition.calories_per_100g - originalNutrition.calories_per_100g) * factor,
       recipe_protein: (newNutrition.protein_per_100g - originalNutrition.protein_per_100g) * factor,
       recipe_carbs: (newNutrition.carbs_per_100g - originalNutrition.carbs_per_100g) * factor,
       recipe_fat: (newNutrition.fat_per_100g - originalNutrition.fat_per_100g) * factor,
     };
+    
+    console.log('[useMealIngredientUpdate] Calculated diff:', diff);
+    return diff;
   }, []);
 
   return { updateIngredients, calculateMacrosDiff, parseQuantityToGrams };

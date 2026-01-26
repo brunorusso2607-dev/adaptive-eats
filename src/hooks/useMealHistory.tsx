@@ -140,8 +140,9 @@ export function useMealHistory(filters: MealHistoryFilters) {
         }
 
         const recipeInfo = (meal as any).meal_plan_items;
-        let recipeName = recipeInfo?.recipe_name || 
-          meal.custom_meal_name ||
+        // Prioridade: custom_meal_name (o que usuário digitou) > recipe_name (do plano) > consumption_items > fallback
+        let recipeName = meal.custom_meal_name || 
+          recipeInfo?.recipe_name ||
           (meal.consumption_items && meal.consumption_items.length > 0 
             ? meal.consumption_items.map((i: any) => i.food_name).join(", ")
             : "Refeição");

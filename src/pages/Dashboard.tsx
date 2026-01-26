@@ -299,6 +299,8 @@ export default function Dashboard() {
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     if (!currentUser) return;
     
+    console.log('[Dashboard] Refetching user profile...');
+    
     const { data } = await supabase
       .from("profiles")
       .select("intolerances, excluded_ingredients, dietary_preference, goal, weight_current, weight_goal, height, age, sex, activity_level, strategy_id")
@@ -306,11 +308,17 @@ export default function Dashboard() {
       .maybeSingle();
     
     if (data) {
-      // Atualizar userProfile para validação de ingredientes
-      setUserProfile({
+      console.log('[Dashboard] Profile data fetched:', {
         intolerances: data.intolerances,
         excluded_ingredients: data.excluded_ingredients,
         dietary_preference: data.dietary_preference,
+      });
+      
+      // Atualizar userProfile para validação de ingredientes
+      setUserProfile({
+        intolerances: data.intolerances || [],
+        excluded_ingredients: data.excluded_ingredients || [],
+        dietary_preference: data.dietary_preference || "omnivore",
       });
       
       // Atualizar userGoal

@@ -746,31 +746,18 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
         )}
 
         {/* Horários Personalizados - Template para novos planos (Colapsável) */}
-        <Accordion type="single" collapsible className="w-full">
-          <AccordionItem value="meal-times" className="border rounded-lg px-4">
-            <AccordionTrigger className="hover:no-underline py-3">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-primary" />
-                <span className="font-semibold text-sm">Horários das Refeições</span>
-                <Badge variant="secondary" className="text-xs ml-1">
-                  {profile.enabled_meals?.length || 6} ativas
-                </Badge>
-              </div>
-            </AccordionTrigger>
-            <AccordionContent>
-              <p className="text-xs text-muted-foreground mb-3">
-                Defina seus horários preferidos. Eles serão usados como padrão ao criar novos planos alimentares.
-              </p>
-              <CustomMealTimesEditor
-                customTimes={profile.default_meal_times}
-                enabledMeals={profile.enabled_meals}
-                onSave={handleSaveDefaultMealTimes}
-                compact
-                showEnableToggle
-              />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Defina seus horários preferidos. Eles serão usados como padrão ao criar novos planos alimentares.
+          </p>
+          <CustomMealTimesEditor
+            customTimes={profile.default_meal_times}
+            enabledMeals={profile.enabled_meals}
+            onSave={handleSaveDefaultMealTimes}
+            compact
+            showEnableToggle
+          />
+        </div>
 
         {/* Termos e Avisos Legais */}
         <div className="space-y-3 pt-4 border-t border-border/50">

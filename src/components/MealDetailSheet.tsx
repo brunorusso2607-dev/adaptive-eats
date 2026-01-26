@@ -323,9 +323,12 @@ export default function MealDetailSheet({
         newIngredient: newIngredient.name,
       });
       
+      // Garantir que o sheet de substituição está fechado antes de abrir o dialog de renomear
+      setSubstitutionOpen(false);
+      
       setTimeout(() => {
         setRenameDialogOpen(true);
-      }, 300);
+      }, 400);
     }
   };
 

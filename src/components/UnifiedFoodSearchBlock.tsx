@@ -541,9 +541,9 @@ export default function UnifiedFoodSearchBlock({
 
                   {/* Expanded section with portion selection - compact */}
                   {isSelected && (
-                    <div className="px-3 pb-2 border-t bg-muted/30 space-y-2">
-                      {/* Portion input + Add button inline */}
-                      <div className="flex items-center gap-2">
+                    <div className="px-3 pb-3 border-t bg-muted/30 space-y-2">
+                      {/* Portion input */}
+                      <div className="flex items-center gap-2 pt-2">
                         <span className="text-xs text-muted-foreground">Quantidade</span>
                         <Input
                           type="number"
@@ -553,15 +553,16 @@ export default function UnifiedFoodSearchBlock({
                           min={1}
                         />
                         <span className="text-xs text-muted-foreground">{food.serving_unit || 'g'}</span>
-                        <Button
-                          size="sm"
-                          onClick={handleConfirmAddition}
-                          className="h-8 px-3 ml-auto"
-                        >
-                          <Check className="w-3.5 h-3.5 mr-1" />
-                          {confirmButtonLabel}
-                        </Button>
                       </div>
+                      {/* Confirm button - full width for mobile */}
+                      <Button
+                        size="sm"
+                        onClick={handleConfirmAddition}
+                        className="w-full h-9"
+                      >
+                        <Check className="w-4 h-4 mr-2" />
+                        {confirmButtonLabel}
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -670,7 +671,7 @@ export default function UnifiedFoodSearchBlock({
                       
                       {/* Expanded portion selector for AI suggestion */}
                       {isSelected && (
-                        <div className="mt-3 pt-3 border-t border-border/50">
+                        <div className="mt-3 pt-3 border-t border-border/50 space-y-2">
                           <div className="flex items-center gap-2">
                             <span className="text-xs text-muted-foreground">Quantidade</span>
                             <Input
@@ -681,15 +682,15 @@ export default function UnifiedFoodSearchBlock({
                               min="1"
                             />
                             <span className="text-xs text-muted-foreground">g</span>
-                            <Button
-                              size="sm"
-                              onClick={() => handleAddAISuggestion(suggestion)}
-                              className="h-8 px-3 ml-auto"
-                            >
-                              <Check className="w-3.5 h-3.5 mr-1" />
-                              {confirmButtonLabel}
-                            </Button>
                           </div>
+                          <Button
+                            size="sm"
+                            onClick={() => handleAddAISuggestion(suggestion)}
+                            className="w-full h-9"
+                          >
+                            <Check className="w-4 h-4 mr-2" />
+                            {confirmButtonLabel}
+                          </Button>
                         </div>
                       )}
                     </div>

@@ -666,6 +666,37 @@ export default function Dashboard() {
     return () => authSub.unsubscribe();
   }, [navigate]);
 
+  // Listen for profile changes in real-time (e.g., when chat-assistant updates profile)
+  useEffect(() => {
+    if (!user?.id) return;
+
+    console.log('[Dashboard] Setting up profile realtime listener');
+    
+    const channel = supabase
+      .channel('profile-changes')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'profiles',
+          filter: `id=eq.${user.id}`,
+        },
+        (payload) => {
+          console.log('[Dashboard] Profile updated via realtime:', payload);
+          // Refetch profile data when it changes
+          refetchUserProfile();
+          toast.info('Perfil atualizado!');
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Dashboard] Cleaning up profile realtime listener');
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id]);
+
   // Sync URL tab parameter with mobileActiveTab state
   useEffect(() => {
     const tabParam = searchParams.get("tab");

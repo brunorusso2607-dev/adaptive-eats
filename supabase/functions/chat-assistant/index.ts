@@ -2181,6 +2181,7 @@ IMPORTANT:
 };
 
 // ============= MAIN HANDLER =============
+// Deploy test - auto deploy via GitHub Actions
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

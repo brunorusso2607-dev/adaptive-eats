@@ -1,0 +1,54 @@
+name: Deploy Supabase Functions
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'supabase/functions/**'
+      - '.github/workflows/deploy-functions.yml'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Setup Supabase CLI
+        uses: supabase/setup-cli@v1
+
+      - name: Deploy Functions
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+          SUPABASE_PROJECT_ID: ${{ secrets.SUPABASE_PROJECT_ID }}
+        run: |
+          for d in supabase/functions/*; do
+            if [ -d "$d" ]; then
+              fn=$(basename "$d")
+              if [ "$fn" != "_shared" ]; then
+                supabase functions deploy "$fn" --project-ref "$SUPABASE_PROJECT_ID" --no-verify-jwt
+              fi
+            fi
+          done
+
+      - name: Notify Success
+        if: success()
+        run: |
+          echo "✅ Deploy concluído com sucesso!"
+          echo "Funções deployadas:"
+          echo "- analyze-food-photo"
+          echo "- analyze-label-photo"
+          echo "- analyze-fridge-photo"
+          echo "- generate-recipe"
+          echo "- regenerate-meal"
+          echo "- chat-assistant"
+          echo "- generate-ai-meal-plan"
+
+      - name: Notify Failure
+        if: failure()
+        run: |
+          echo "❌ Deploy falhou! Verifique os logs acima."

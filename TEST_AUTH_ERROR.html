@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Teste Auth Error</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial; padding: 40px; max-width: 600px; margin: 0 auto; }
+        button { padding: 15px 30px; background: #10b981; color: white; border: none; font-size: 16px; cursor: pointer; margin: 10px 0; border-radius: 5px; }
+        button:hover { background: #059669; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 12px; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .info { background: #dbeafe; color: #1e40af; }
+        input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ccc; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Teste de Erro de Autenticação</h1>
+    
+    <input type="email" id="email" placeholder="Digite um email" value="testvsve@gmail.com">
+    <button onclick="testAuth()">Testar Autenticação</button>
+    <div id="resultado"></div>
+
+    <script>
+        const SUPABASE_URL = 'https://onzdkpqtzfxzcdyxczkn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemRrcHF0emZ4emNkeXhjemtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMjMxMDYsImV4cCI6MjA1MTU5OTEwNn0.3gNOcdNzgIm5gLVDtneF-8NN3Q1NL7AexhEvMl-hQvY';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function testAuth() {
+            const resultado = document.getElementById('resultado');
+            const email = document.getElementById('email').value;
+            
+            resultado.className = 'result info';
+            resultado.textContent = '⏳ Testando autenticação...';
+            
+            try {
+                console.log('[TEST] Calling activate-account with email:', email);
+                
+                const { data, error } = await supabase.functions.invoke("activate-account", {
+                    body: { email },
+                });
+                
+                console.log('[TEST] Response:', { data, error });
+                
+                if (error) {
+                    console.log('[TEST] Supabase error:', error.message);
+                    throw new Error(error.message);
+                }
+                
+                if (data?.error) {
+                    console.log('[TEST] Data error:', data.error);
+                    throw new Error(data.error);
+                }
+                
+                resultado.className = 'result success';
+                resultado.textContent = '✅ Sucesso!\n\n' + JSON.stringify(data, null, 2);
+                
+            } catch (error) {
+                const errorMessage = error instanceof Error ? error.message : "Erro ao fazer login";
+                console.log('[TEST] Caught error:', errorMessage);
+                console.log('[TEST] Error type:', typeof error, error);
+                
+                resultado.className = 'result error';
+                
+                // Testar detecção de erros
+                if (errorMessage.includes("Nenhum pagamento encontrado") || 
+                    errorMessage.includes("pagamento") || 
+                    errorMessage.includes("assinatura")) {
+                    resultado.textContent = '✅ ERRO DETECTADO CORRETAMENTE!\n\n' +
+                        'Tipo: Sem pagamento/assinatura\n' +
+                        'Mensagem original: ' + errorMessage + '\n\n' +
+                        'Ação: Redirecionar para /#pricing';
+                } else if (errorMessage.includes("assinatura ativa") || 
+                           errorMessage.includes("subscription") ||
+                           errorMessage.includes("vencido") ||
+                           errorMessage.includes("expirado")) {
+                    resultado.textContent = '✅ ERRO DETECTADO CORRETAMENTE!\n\n' +
+                        'Tipo: Assinatura vencida\n' +
+                        'Mensagem original: ' + errorMessage + '\n\n' +
+                        'Ação: Redirecionar para /#pricing';
+                } else if (errorMessage.includes("não possui uma conta") || 
+                           errorMessage.includes("não encontrado")) {
+                    resultado.textContent = '✅ ERRO DETECTADO CORRETAMENTE!\n\n' +
+                        'Tipo: Conta não encontrada\n' +
+                        'Mensagem original: ' + errorMessage + '\n\n' +
+                        'Ação: Redirecionar para /#pricing';
+                } else {
+                    resultado.textContent = '❌ ERRO NÃO DETECTADO!\n\n' +
+                        'Mensagem: ' + errorMessage + '\n\n' +
+                        'Tipo de erro: ' + typeof error + '\n\n' +
+                        'Objeto completo:\n' + JSON.stringify(error, null, 2);
+                }
+            }
+        }
+    </script>
+</body>
+</html>

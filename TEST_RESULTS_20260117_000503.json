@@ -1,0 +1,538 @@
+﻿[
+    {
+        "Passed":  true,
+        "Message":  "Sou intolerante a gluten",
+        "Reason":  "",
+        "Response":  "Entendi! GlÃºten nÃ£o estÃ¡ nas suas restriÃ§Ãµes ainda. Quer que eu adicione?\n",
+        "Test":  "Adicionar gluten",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Tenho intolerancia a lactose",
+        "Reason":  "",
+        "Response":  "Entendi! ð¥ EntÃ£o, vocÃª nÃ£o pode comer leite, queijo, iogurte, sorvete, manteiga, creme de leite, requeijÃ£o... \n\nQuer que eu adicione lactose Ã s suas restriÃ§Ãµes?\n",
+        "Test":  "Adicionar lactose",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou intolerante a frutose",
+        "Reason":  "",
+        "Response":  "Entendi! Frutose Ã© um aÃ§Ãºcar que pode dar dor de cabeÃ§a pra quem tem intolerÃ¢ncia. ð¥\n\nEvite frutas com muita frutose, tipo maÃ§Ã£, manga, uva, pera, melancia. Cuidado com mel e xarope de milho tambÃ©m! ð¯\n\nQuer que eu adicione frutose nas suas restriÃ§Ãµes?\n",
+        "Test":  "Adicionar fructose",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Tenho alergia a amendoim",
+        "Reason":  "",
+        "Response":  "Entendi! Amendoim, nÃ©? ð¥ Evite paÃ§oca, pÃ© de moleque, amendoim japonÃªs, pasta de amendoim, alguns chocolates...\n\nQuer que eu adicione essa restriÃ§Ã£o no seu perfil?\n",
+        "Test":  "Adicionar peanut",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou alergico a castanhas",
+        "Reason":  "",
+        "Response":  "Entendi! ð¥ Castanhas podem ser um problema.\n\nEvite: castanha de caju, castanha do ParÃ¡, amÃªndoas, nozes, avelÃ£s, pistaches, macadÃ¢mias e tudo que tenha esses ingredientes. Fique de olho em bolos, tortas, granolas e alguns pÃ£es. ð½ï¸\n\nQuer que eu adicione essa restriÃ§Ã£o no seu perfil?\n",
+        "Test":  "Adicionar nuts",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  false,
+        "Message":  "Tenho alergia a frutos do mar",
+        "Reason":  "Padrao esperado nao encontrado",
+        "Response":  "Entendi! Frutos do mar, tipo camarÃ£o, siri, peixes e afins, nÃ©? ð¤ð¦ð\n\nEvite:\n*   CamarÃ£o, lagosta, siri, caranguejo, ostra, marisco...\n*   Peixes: salmÃ£o, atum, sardinha, bacalhau...\n*   Sopas, molhos e pratos com frutos do mar (moqueca, bobÃ³, etc.)\n*   Temakis, sushis e outros pratos japoneses.\n\nPosso te ajudar com receitas e dicas para evitar esses ingredientes? ð\n",
+        "Test":  "Adicionar seafood",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou alergico a peixe",
+        "Reason":  "",
+        "Response":  "Entendi! Peixe, nÃ©? ð\n\nIsso significa que vocÃª deve evitar salmÃ£o, atum, sardinha, bacalhau, e tudo que venha do mar.\n\nQuer adicionar essa restriÃ§Ã£o no seu perfil?\n",
+        "Test":  "Adicionar fish",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Tenho alergia a ovo",
+        "Reason":  "",
+        "Response":  "Entendi! ð¥ Para vocÃª, que tem alergia a ovo, Ã© importante evitar:\n\n- Ovos cozidos, fritos, mexidos, omeletes...\n- Bolos, tortas, biscoitos, pÃ£es, massas que levam ovo na receita\n- Molhos como maionese e alguns tipos de molho para salada\n- Empanados e alguns produtos industrializados que usam ovo para dar liga\n\nQuer que eu adicione essa restriÃ§Ã£o no seu perfil?\n",
+        "Test":  "Adicionar egg",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou intolerante a soja",
+        "Reason":  "",
+        "Response":  "Entendi! Soja, nÃ©? ð Evite: tofu, missÃ´, shoyu, edamame, alguns Ã³leos vegetais, e alimentos processados com proteÃ­na de soja.\n\nQuer que eu adicione essa restriÃ§Ã£o no seu perfil?\n",
+        "Test":  "Adicionar soy",
+        "Category":  "Adicao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "O medico falou que nao sou mais intolerante a lactose",
+        "Reason":  "",
+        "Response":  "Ãtima notÃ­cia! ð Quer que eu remova a lactose das suas restriÃ§Ãµes?\n",
+        "Test":  "Remover: O medico falou que nao sou mais intolerante a lactose",
+        "Category":  "Remocao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Pode tirar gluten das minhas restricoes",
+        "Reason":  "",
+        "Response":  "\"Show! Vi que vocÃª mencionou que nÃ£o precisa mais evitar glÃºten. Quer que eu remova das suas restriÃ§Ãµes?\n\"\n",
+        "Test":  "Remover: Pode tirar gluten das minhas restricoes",
+        "Category":  "Remocao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Nao tenho mais alergia a amendoim",
+        "Reason":  "",
+        "Response":  "Entendi! Amendoim estÃ¡ nas suas restriÃ§Ãµes. Quer que eu remova?\n",
+        "Test":  "Remover: Nao tenho mais alergia a amendoim",
+        "Category":  "Remocao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "O medico liberou ovo pra mim",
+        "Reason":  "",
+        "Response":  "Ãtima notÃ­cia! Quer que eu remova ovo das suas restriÃ§Ãµes?\n",
+        "Test":  "Remover: O medico liberou ovo pra mim",
+        "Category":  "Remocao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Remova soja das minhas restricoes",
+        "Reason":  "",
+        "Response":  "Entendi! Soja estava nas suas restriÃ§Ãµes. Quer que eu remova?\n",
+        "Test":  "Remover: Remova soja das minhas restricoes",
+        "Category":  "Remocao Intolerancias"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero emagrecer",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \u0027emagrecer\u0027, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Perder peso\u0027?\n",
+        "Test":  "Objetivo: Quero emagrecer",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Meu objetivo e perder peso",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \u0027perder peso\u0027, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Perder peso\u0027?\n",
+        "Test":  "Objetivo: Meu objetivo e perder peso",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero ganhar massa",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \u0027ganhar massa\u0027, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Ganhar peso\u0027?\n",
+        "Test":  "Objetivo: Quero ganhar massa",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Meu objetivo e engordar",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \u0027engordar\u0027, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Ganhar peso\u0027?\n",
+        "Test":  "Objetivo: Meu objetivo e engordar",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero manter meu peso atual",
+        "Reason":  "",
+        "Response":  "Show! ð Seu objetivo jÃ¡ estÃ¡ configurado para **manter o peso**. \n\nSe precisar de alguma ajuda, Ã© sÃ³ falar!\n",
+        "Test":  "Objetivo: Quero manter meu peso atual",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero ficar magro",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \"ficar magro\", mas seu objetivo cadastrado Ã© \"Manter peso\". Quer que eu atualize pra \"Perder peso\"?\n",
+        "Test":  "Objetivo: Quero ficar magro",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Preciso ganhar peso",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \u0027ganhar peso\u0027, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Ganhar peso\u0027?\n",
+        "Test":  "Objetivo: Preciso ganhar peso",
+        "Category":  "Mudanca Objetivo"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Virei vegano",
+        "Reason":  "",
+        "Response":  "Show! Quer que eu atualize sua dieta para Vegano?\n",
+        "Test":  "Dieta: Virei vegano",
+        "Category":  "Mudanca Dieta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou vegetariano agora",
+        "Reason":  "",
+        "Response":  "Show! Quer que eu atualize sua dieta para vegetariano?\n",
+        "Test":  "Dieta: Sou vegetariano agora",
+        "Category":  "Mudanca Dieta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Voltei a comer carne",
+        "Reason":  "",
+        "Response":  "Show! Quer que eu atualize sua dieta para OnÃ­voro?\n",
+        "Test":  "Dieta: Voltei a comer carne",
+        "Category":  "Mudanca Dieta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Como de tudo",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em \"comer de tudo\", mas no seu perfil a dieta estÃ¡ como \u0027OnÃ­voro\u0027. ð\n\nComer de tudo Ã© Ã³timo! ð½ï¸\n\nSe precisar de ajuda com alguma receita ou dica, Ã© sÃ³ falar!\n",
+        "Test":  "Dieta: Como de tudo",
+        "Category":  "Mudanca Dieta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou pescetariano",
+        "Reason":  "",
+        "Response":  "Entendi! ð EntÃ£o, vocÃª come peixes e frutos do mar, mas nÃ£o come carne de outros animais, certo?\n\nQuer que eu atualize sua dieta para pescetariana?\n",
+        "Test":  "Dieta: Sou pescetariano",
+        "Category":  "Mudanca Dieta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Estou fazendo dieta flexitariana",
+        "Reason":  "",
+        "Response":  "Show! ð¥¦ EntÃ£o, flexitariano Ã© tranquilo. O foco Ã© mais plantas, mas sem neuras com carne.\n\nQuer que eu atualize sua dieta no perfil?\n",
+        "Test":  "Dieta: Estou fazendo dieta flexitariana",
+        "Category":  "Mudanca Dieta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Pesei 70kg hoje",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª mencionou 70kg, mas no perfil estÃ¡ sem peso cadastrado. Quer que eu adicione?\n",
+        "Test":  "Peso: Pesei 70kg hoje",
+        "Category":  "Atualizacao Peso"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Estou com 85 quilos",
+        "Reason":  "",
+        "Response":  "PeraÃ­! Notei algo... VocÃª falou em 85kg, mas no seu perfil estÃ¡ sem peso cadastrado. Quer que eu atualize?\n",
+        "Test":  "Peso: Estou com 85 quilos",
+        "Category":  "Atualizacao Peso"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Meu peso atual e 65kg",
+        "Reason":  "",
+        "Response":  "PeraÃ­! Notei algo... VocÃª disse que seu peso atual Ã© 65kg, mas no seu perfil estÃ¡ sem peso. Quer que eu atualize isso pra vocÃª?\n",
+        "Test":  "Peso: Meu peso atual e 65kg",
+        "Category":  "Atualizacao Peso"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Emagreci, agora peso 72kg",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em 72kg, mas no seu perfil estÃ¡ sem peso. Quer que eu atualize?\n",
+        "Test":  "Peso: Emagreci, agora peso 72kg",
+        "Category":  "Atualizacao Peso"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Engordei pra 90kg",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em 90kg, mas no seu perfil estÃ¡ sem peso cadastrado. Quer que eu adicione?\n",
+        "Test":  "Peso: Engordei pra 90kg",
+        "Category":  "Atualizacao Peso"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero chegar em 65kg",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em 65kg, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Perder peso\u0027?\n",
+        "Test":  "Meta: Quero chegar em 65kg",
+        "Category":  "Peso Meta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Minha meta e pesar 80kg",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em pesar 80kg, mas seu objetivo cadastrado Ã© \u0027Manter peso\u0027. Quer que eu atualize pra \u0027Perder peso\u0027?\n",
+        "Test":  "Meta: Minha meta e pesar 80kg",
+        "Category":  "Peso Meta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero atingir 70 quilos",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou em atingir 70kg, mas seu objetivo cadastrado Ã© \"Manter peso\". Quer que eu atualize pra \"Perder peso\"?\n",
+        "Test":  "Meta: Quero atingir 70 quilos",
+        "Category":  "Peso Meta"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Tenho 30 anos",
+        "Reason":  "",
+        "Response":  "PeraÃ­! Notei algo... VocÃª falou em 30 anos, mas no seu perfil estÃ¡ sem idade cadastrada. Quer que eu adicione?\n",
+        "Test":  "Idade",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Fiz 25 anos ontem",
+        "Reason":  "",
+        "Response":  "ParabÃ©ns pelo seu aniversÃ¡rio! ð¥³\n\nVi que vocÃª mencionou sua idade, mas no perfil nÃ£o consta. Quer que eu adicione?\n",
+        "Test":  "Idade aniversario",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Minha altura e 1.75m",
+        "Reason":  "",
+        "Response":  "Show! ð\n\nConsiderando sua altura, um peso saudÃ¡vel fica entre 56.7kg e 76kg. ð\n\nPosso te ajudar com algo mais?\n",
+        "Test":  "Altura metros",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  false,
+        "Message":  "Tenho 180cm de altura",
+        "Reason":  "Marcador vazou na resposta",
+        "Response":  "Show! ð¤©\n\nPeraÃ­, vocÃª nÃ£o informou seu peso ainda. Com sua altura, posso te dar umas dicas de peso ideal e te ajudar a montar um plano! ð\n\nQual seu peso atual?\n[PERGUNTAR_ATUALIZACAO:peso:N/A]\n",
+        "Test":  "Altura cm",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou homem",
+        "Reason":  "",
+        "Response":  "Ah, entendi! ð\n",
+        "Test":  "Sexo masculino",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou mulher",
+        "Reason":  "",
+        "Response":  "Ah, entendi! ð\n",
+        "Test":  "Sexo feminino",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Comecei a fazer academia todo dia",
+        "Reason":  "",
+        "Response":  "Show! ðï¸\n\nVi que vocÃª comeÃ§ou a treinar todo dia, mas seu nÃ­vel de atividade ainda estÃ¡ como \"moderado\". Quer que eu atualize para \"ativo\" ou \"muito ativo\"?\n",
+        "Test":  "Atividade alta",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sou sedentario",
+        "Reason":  "",
+        "Response":  "PeraÃ­! VocÃª falou que Ã© sedentÃ¡rio, mas no seu perfil estÃ¡ cadastrado como \"Moderado (3-5x/semana)\". Quer que eu atualize?\n",
+        "Test":  "Atividade baixa",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Malho 3 vezes por semana",
+        "Reason":  "",
+        "Response":  "Show! ðª Isso Ã© Ã³timo para a saÃºde!\n\nSe precisar de alguma ajuda com receitas ou dicas para combinar com seus treinos, Ã© sÃ³ falar! ð\n",
+        "Test":  "Atividade moderada",
+        "Category":  "Outras Atualizacoes"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Nao consigo emagrecer, vou desistir",
+        "Reason":  "",
+        "Response":  "Entendo a frustraÃ§Ã£o! ð Emagrecer pode ser um desafio, mas nÃ£o desista! Que tal a gente dar uma olhada no que pode estar pegando? Podemos ajustar algumas coisas no seu plano alimentar ou nos seus hÃ¡bitos. O que vocÃª acha?\n",
+        "Test":  "Emocao: Frustracao",
+        "Category":  "Deteccao Emocional"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Estou muito feliz, consegui!",
+        "Reason":  "",
+        "Response":  "Show! ð ParabÃ©ns pela sua conquista! Qual foi a boa? ð\n",
+        "Test":  "Emocao: Celebracao",
+        "Category":  "Deteccao Emocional"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Sera que posso comer isso?",
+        "Reason":  "",
+        "Response":  "Depende! O que Ã© \"isso\"? ð½ï¸ Me conta, assim consigo te ajudar melhor! ð\n",
+        "Test":  "Emocao: Duvida",
+        "Category":  "Deteccao Emocional"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Nunca vou conseguir perder peso",
+        "Reason":  "",
+        "Response":  "Entendo a frustraÃ§Ã£o! Perder peso pode ser um desafio, mas com as estratÃ©gias certas, vocÃª consegue. \n\nO que estÃ¡ mais difÃ­cil no momento? Posso te ajudar a ajustar algo no seu plano. ðª\n",
+        "Test":  "Emocao: Desanimo",
+        "Category":  "Deteccao Emocional"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Estou muito cansado ultimamente",
+        "Reason":  "",
+        "Response":  "Entendo! CansaÃ§o pode ser falta de ferro ou vitamina B12. ð´\n\nAlimentos que podem ajudar: carnes vermelhas, feijÃ£o, lentilha, espinafre.\n\nSe persistir, consulte um mÃ©dico. ð\n",
+        "Test":  "Saude: Estou muito cansado ultimamente",
+        "Category":  "Contexto Saude"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Tenho muita caimbra",
+        "Reason":  "",
+        "Response":  "Ah, entendi! CÃ¢imbras podem ser um sinal de falta de magnÃ©sio ou potÃ¡ssio. ð¤\n\nPara melhorar, vocÃª pode incluir na sua alimentaÃ§Ã£o: banana, abacate, castanhas e sementes. ð½ï¸\n\nSe persistir, vale procurar um mÃ©dico, beleza?\n",
+        "Test":  "Saude: Tenho muita caimbra",
+        "Category":  "Contexto Saude"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Meu cabelo esta caindo muito",
+        "Reason":  "",
+        "Response":  "Hmm, queda de cabelo pode indicar falta de alguns nutrientes, como ferro, zinco ou biotina. ð\n\nAlimentos que podem ajudar:\n*   Carnes vermelhas, feijÃ£o, lentilha e espinafre (ferro)\n*   Ovos, castanhas e sementes (zinco e biotina)\n\nSe a queda persistir, Ã© bom consultar um mÃ©dico, viu? ð\n",
+        "Test":  "Saude: Meu cabelo esta caindo muito",
+        "Category":  "Contexto Saude"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Estou com dificuldade pra dormir",
+        "Reason":  "",
+        "Response":  "Relaxa, Ã© super comum! ð´\n\nOlha sÃ³, a dificuldade pra dormir pode ser por falta de magnÃ©sio ou triptofano.\n\nAposte em:\n*   Banana, aveia e leite morno ðð¥\n*   ChÃ¡ de camomila tambÃ©m pode ajudar.\n\nSe nÃ£o melhorar, vale procurar um mÃ©dico, viu?",
+        "Test":  "Saude: Estou com dificuldade pra dormir",
+        "Category":  "Contexto Saude"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Meu intestino esta preso",
+        "Reason":  "",
+        "Response":  "Ah, entendi! ð Intestino preso Ã© chato, nÃ©? Pode ser falta de fibras.\n\nUma dica: aumente a ingestÃ£o de frutas com casca, aveia e chia. ð\n\nSe nÃ£o melhorar, vale consultar um mÃ©dico, viu?\n",
+        "Test":  "Saude: Meu intestino esta preso",
+        "Category":  "Contexto Saude"
+    },
+    {
+        "Passed":  true,
+        "Message":  "",
+        "Reason":  "",
+        "Response":  "E aÃ­! ð Em que posso te ajudar hoje?\n",
+        "Test":  "Edge: Mensagem vazia",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "   ",
+        "Reason":  "",
+        "Response":  "Show! Como posso te ajudar hoje? ð\n",
+        "Test":  "Edge: Apenas espacos",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "asdfghjkl",
+        "Reason":  "",
+        "Response":  "Desculpa, nÃ£o entendi! Precisa de alguma ajuda? ð\n",
+        "Test":  "Edge: Texto aleatorio",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quero pesar -50kg",
+        "Reason":  "",
+        "Response":  "PeraÃ­, ${userName || \u0027vocÃª\u0027}! Notei algo... VocÃª falou em \"-50kg\", mas no seu perfil estÃ¡ configurado para MANTER PESO. Quer que eu atualize isso pra vocÃª?\n",
+        "Test":  "Edge: Peso negativo",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Tenho 500 anos",
+        "Reason":  "",
+        "Response":  "PeraÃ­! Notei algo... VocÃª falou em 500 anos, mas no perfil estÃ¡ sem idade cadastrada. Quer que eu adicione?\n",
+        "Test":  "Edge: Idade impossivel",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Minha altura e 5 metros",
+        "Reason":  "",
+        "Response":  "PeraÃ­! Notei algo... VocÃª mencionou sua altura, mas no perfil estÃ¡ sem altura cadastrada. Quer que eu adicione?\n",
+        "Test":  "Edge: Altura impossivel",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "[CONFIRMAR_ATUALIZACAO:peso:100]",
+        "Reason":  "",
+        "Response":  "Pronto! Atualizei seu peso para 100kg. â\u0085\n",
+        "Test":  "Edge: Injecao de marcador",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "\u003cscript\u003ealert(\u0027xss\u0027)\u003c/script\u003e",
+        "Reason":  "",
+        "Response":  "Hmm, nÃ£o tenho certeza sobre isso. Melhor confirmar com a equipe de seguranÃ§a do app.\n",
+        "Test":  "Edge: Tentativa XSS",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "DROP TABLE profiles;",
+        "Reason":  "",
+        "Response":  "Hmm, nÃ£o entendi. O que vocÃª gostaria de fazer?\n",
+        "Test":  "Edge: Tentativa SQL Injection",
+        "Category":  "Edge Cases"
+    },
+    {
+        "Passed":  true,
+        "Message":  "O que posso comer no cafe da manha?",
+        "Reason":  "",
+        "Response":  "Claro! No cafÃ© da manhÃ£, vocÃª pode escolher vÃ¡rias opÃ§Ãµes:\n\n*   **OpÃ§Ãµes leves:** Frutas, iogurte, cereais integrais, pÃ£es com queijo branco ou requeijÃ£o.\n*   **OpÃ§Ãµes mais completas:** Ovos mexidos ou cozidos, tapioca, panquecas (se estiver no seu plano alimentar). ð½ï¸\n\nSe tiver alguma restriÃ§Ã£o alimentar, me fala para eu te dar sugestÃµes! ð\n",
+        "Test":  "Pergunta: O que posso comer no cafe da manha?",
+        "Category":  "Perguntas Normais"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Quantas calorias tem uma banana?",
+        "Reason":  "",
+        "Response":  "Olha sÃ³, uma banana mÃ©dia tem cerca de 100 calorias. ð½ï¸\n",
+        "Test":  "Pergunta: Quantas calorias tem uma banana?",
+        "Category":  "Perguntas Normais"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Cerveja tem gluten?",
+        "Reason":  "",
+        "Response":  "Olha sÃ³... Cerveja geralmente tem glÃºten, porque Ã© feita com trigo ou cevada. ð»\n\nSe vocÃª nÃ£o pode comer glÃºten, evite! â ï¸\n",
+        "Test":  "Pergunta: Cerveja tem gluten?",
+        "Category":  "Perguntas Normais"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Posso comer pizza?",
+        "Reason":  "",
+        "Response":  "ð Depende! Pizza pode ter ingredientes que vocÃª nÃ£o pode comer, como glÃºten, lactose ou outros.\n\nSe vocÃª nÃ£o tiver restriÃ§Ãµes, pode sim! ð\n",
+        "Test":  "Pergunta: Posso comer pizza?",
+        "Category":  "Perguntas Normais"
+    },
+    {
+        "Passed":  true,
+        "Message":  "Me sugere uma receita saudavel",
+        "Reason":  "",
+        "Response":  "Claro! Que tal um frango grelhado com legumes assados? ð½ï¸\n\nÃ simples, nutritivo e fÃ¡cil de fazer. ð\n\nPrimeiro, tempere o frango com sal, pimenta e seus temperos favoritos. Depois, corte seus legumes preferidos (brÃ³colis, cenoura, abobrinha...) em pedaÃ§os e tempere com azeite, sal e ervas.\n\nLeve tudo ao forno atÃ© o frango estar dourado e os legumes macios. Uma refeiÃ§Ã£o completa e deliciosa! ð\n",
+        "Test":  "Pergunta: Me sugere uma receita saudavel",
+        "Category":  "Perguntas Normais"
+    }
+]

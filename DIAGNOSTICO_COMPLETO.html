@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Diagnóstico Completo</title>
+    <style>
+        body { font-family: Arial; padding: 40px; max-width: 800px; margin: 0 auto; }
+        button { padding: 12px 20px; background: #10b981; color: white; border: none; font-size: 14px; cursor: pointer; margin: 5px; border-radius: 5px; }
+        button:hover { background: #059669; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 12px; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .info { background: #dbeafe; color: #1e40af; }
+        h2 { margin-top: 30px; border-bottom: 1px solid #ccc; padding-bottom: 10px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Diagnóstico Completo do Sistema</h1>
+    
+    <h2>1. Verificar Admin</h2>
+    <button onclick="checkAdmin()">Verificar Admin (brunorusso212@gmail.com)</button>
+    <div id="admin-result"></div>
+
+    <h2>2. Gerar Magic Link para Admin</h2>
+    <button onclick="generateLink()">Gerar Magic Link</button>
+    <div id="link-result"></div>
+
+    <h2>3. Testar Inserção na Tabela Profiles</h2>
+    <button onclick="testTrigger()">Testar Inserção</button>
+    <div id="trigger-result"></div>
+
+    <h2>4. Testar Criação de Novo Usuário</h2>
+    <input type="email" id="newEmail" value="teste.novo.usuario@gmail.com" style="padding: 10px; width: 300px;">
+    <button onclick="createUser()">Criar Usuário</button>
+    <div id="create-result"></div>
+
+    <h2>5. Login Direto do Admin</h2>
+    <button onclick="loginAdmin()">Fazer Login como Admin</button>
+    <div id="login-result"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const SUPABASE_URL = 'https://onzdkpqtzfxzcdyxczkn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemRrcHF0emZ4emNkeXhjemtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMjMxMDYsImV4cCI6MjA1MTU5OTEwNn0.3gNOcdNzgIm5gLVDtneF-8NN3Q1NL7AexhEvMl-hQvY';
+        
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+        async function checkAdmin() {
+            const result = document.getElementById('admin-result');
+            result.className = 'result info';
+            result.textContent = '⏳ Verificando admin...';
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/test-create-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'brunorusso212@gmail.com', action: 'check_admin' })
+                });
+                
+                const data = await response.json();
+                result.className = data.userExists ? 'result success' : 'result error';
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = 'Erro: ' + error.message;
+            }
+        }
+
+        async function generateLink() {
+            const result = document.getElementById('link-result');
+            result.className = 'result info';
+            result.textContent = '⏳ Gerando magic link...';
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/test-create-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'brunorusso212@gmail.com', action: 'generate_link' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success && data.tokenHash) {
+                    result.className = 'result success';
+                    result.textContent = '✅ Magic link gerado!\n\n' + JSON.stringify(data, null, 2) + '\n\nClique em "Fazer Login como Admin" para usar o token.';
+                    window.adminTokenHash = data.tokenHash;
+                } else {
+                    result.className = 'result error';
+                    result.textContent = JSON.stringify(data, null, 2);
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = 'Erro: ' + error.message;
+            }
+        }
+
+        async function testTrigger() {
+            const result = document.getElementById('trigger-result');
+            result.className = 'result info';
+            result.textContent = '⏳ Testando inserção...';
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/test-create-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ action: 'fix_trigger' })
+                });
+                
+                const data = await response.json();
+                result.className = data.success ? 'result success' : 'result error';
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = 'Erro: ' + error.message;
+            }
+        }
+
+        async function createUser() {
+            const email = document.getElementById('newEmail').value;
+            const result = document.getElementById('create-result');
+            result.className = 'result info';
+            result.textContent = '⏳ Criando usuário...';
+            
+            try {
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/test-create-user`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                
+                const data = await response.json();
+                result.className = data.success ? 'result success' : 'result error';
+                result.textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = 'Erro: ' + error.message;
+            }
+        }
+
+        async function loginAdmin() {
+            const result = document.getElementById('login-result');
+            
+            if (!window.adminTokenHash) {
+                result.className = 'result error';
+                result.textContent = 'Primeiro clique em "Gerar Magic Link" para obter o token.';
+                return;
+            }
+            
+            result.className = 'result info';
+            result.textContent = '⏳ Fazendo login...';
+            
+            try {
+                const { data, error } = await supabase.auth.verifyOtp({
+                    token_hash: window.adminTokenHash,
+                    type: 'magiclink',
+                });
+                
+                if (error) {
+                    result.className = 'result error';
+                    result.textContent = 'Erro no login: ' + error.message;
+                } else {
+                    result.className = 'result success';
+                    result.textContent = '✅ LOGIN REALIZADO COM SUCESSO!\n\n' + JSON.stringify(data, null, 2) + '\n\nVocê pode fechar esta página e acessar o dashboard.';
+                    
+                    // Redirect to dashboard after 2 seconds
+                    setTimeout(() => {
+                        window.location.href = 'http://localhost:8081/admin';
+                    }, 2000);
+                }
+            } catch (error) {
+                result.className = 'result error';
+                result.textContent = 'Erro: ' + error.message;
+            }
+        }
+
+        // Auto-run diagnostics on load
+        window.onload = async function() {
+            await checkAdmin();
+        };
+    </script>
+</body>
+</html>

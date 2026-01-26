@@ -1,0 +1,10 @@
+project_id = "onzdkpqtzfxzcdyxczkn"
+
+[functions.generate-ai-meal-plan]
+verify_jwt = false
+
+[functions.populate-meal-pool]
+verify_jwt = false
+
+[functions.import-usda-bulk]
+verify_jwt = false

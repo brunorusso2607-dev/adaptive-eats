@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login Admin Direto</title>
+    <style>
+        body { font-family: Arial; padding: 40px; max-width: 600px; margin: 0 auto; }
+        button { width: 100%; padding: 15px; background: #10b981; color: white; border: none; font-size: 16px; cursor: pointer; margin: 10px 0; border-radius: 5px; }
+        button:hover { background: #059669; }
+        .result { margin-top: 20px; padding: 15px; border-radius: 5px; white-space: pre-wrap; font-family: monospace; font-size: 12px; }
+        .success { background: #d1fae5; color: #065f46; }
+        .error { background: #fee2e2; color: #991b1b; }
+        .info { background: #dbeafe; color: #1e40af; }
+    </style>
+</head>
+<body>
+    <h1>🔑 Login Admin Direto</h1>
+    <p>Teste o login do admin após as correções</p>
+    
+    <button onclick="loginAdmin()">🚀 Fazer Login como Admin</button>
+    <div id="resultado"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        console.log('Script carregado');
+        
+        const SUPABASE_URL = 'https://onzdkpqtzfxzcdyxczkn.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9uemRrcHF0emZ4emNkeXhjemtuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzYwMjMxMDYsImV4cCI6MjA1MTU5OTEwNn0.3gNOcdNzgIm5gLVDtneF-8NN3Q1NL7AexhEvMl-hQvY';
+        
+        let supabase;
+        
+        // Wait for Supabase to load
+        window.addEventListener('load', function() {
+            console.log('Window loaded');
+            if (window.supabase) {
+                console.log('Supabase disponível');
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('Supabase client criado');
+            } else {
+                console.error('Supabase não carregou!');
+                document.getElementById('resultado').className = 'result error';
+                document.getElementById('resultado').textContent = '❌ Erro: Biblioteca Supabase não carregou. Recarregue a página.';
+            }
+        });
+
+        async function loginAdmin() {
+            console.log('loginAdmin chamado');
+            const resultado = document.getElementById('resultado');
+            
+            if (!supabase) {
+                resultado.className = 'result error';
+                resultado.textContent = '❌ Erro: Supabase não inicializado. Recarregue a página.';
+                return;
+            }
+            
+            resultado.className = 'result info';
+            resultado.textContent = '⏳ Chamando activate-account...';
+            console.log('Iniciando chamada activate-account');
+            
+            try {
+                // Call activate-account function
+                const response = await fetch(`${SUPABASE_URL}/functions/v1/activate-account`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email: 'brunorusso212@gmail.com' })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    resultado.className = 'result error';
+                    resultado.textContent = '❌ Erro: ' + data.error;
+                    return;
+                }
+                
+                if (!data.tokenHash) {
+                    resultado.className = 'result error';
+                    resultado.textContent = '❌ Erro: Token não retornado\n\n' + JSON.stringify(data, null, 2);
+                    return;
+                }
+                
+                resultado.className = 'result info';
+                resultado.textContent = '⏳ Token recebido, fazendo login...\n\n' + JSON.stringify(data, null, 2);
+                
+                // Verify OTP with token
+                const { data: authData, error: authError } = await supabase.auth.verifyOtp({
+                    token_hash: data.tokenHash,
+                    type: data.type || 'magiclink',
+                });
+                
+                if (authError) {
+                    resultado.className = 'result error';
+                    resultado.textContent = '❌ Erro no login: ' + authError.message;
+                    return;
+                }
+                
+                resultado.className = 'result success';
+                resultado.textContent = '✅ LOGIN REALIZADO COM SUCESSO!\n\n' + 
+                    'Admin: ' + (data.isAdmin ? 'SIM' : 'NÃO') + '\n' +
+                    'User ID: ' + authData.user.id + '\n' +
+                    'Email: ' + authData.user.email + '\n\n' +
+                    'Redirecionando para ' + (data.isAdmin ? '/admin' : '/dashboard') + '...';
+                
+                // Redirect after 2 seconds
+                setTimeout(() => {
+                    window.location.href = 'http://localhost:8081' + (data.isAdmin ? '/admin' : '/dashboard');
+                }, 2000);
+                
+            } catch (error) {
+                resultado.className = 'result error';
+                resultado.textContent = '❌ Erro: ' + error.message;
+            }
+        }
+    </script>
+</body>
+</html>

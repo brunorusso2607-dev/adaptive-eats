@@ -213,27 +213,17 @@ export default function FreeFormMealLogger({
     setShowMealNameDialog(true);
   };
 
-  const handleMealNameConfirm = async (mealName: string) => {
-    console.log("[FreeFormMealLogger] handleMealNameConfirm:", mealName, "hasPendingMeal:", hasPendingMeal);
+  const handleMealNameConfirm = async (mealName: string, shouldReplace: boolean) => {
+    console.log("[FreeFormMealLogger] handleMealNameConfirm:", mealName, "shouldReplace:", shouldReplace, "hasPendingMeal:", hasPendingMeal);
     setCustomMealName(mealName);
     setShowMealNameDialog(false);
     
-    // Se NÃO há refeição pendente, salvar diretamente sem abrir MealRegistrationFlow
-    if (!hasPendingMeal) {
-      console.log("[FreeFormMealLogger] No pending meal, saving directly");
-      await saveDirectly(mealName);
-      return;
-    }
-    
-    // Se há refeição pendente, abrir MealRegistrationFlow para perguntar substituição
-    console.log("[FreeFormMealLogger] Has pending meal, opening MealRegistrationFlow");
-    setTimeout(() => {
-      setShowRegistrationFlow(true);
-    }, 0);
+    // Salvar a refeição
+    await saveDirectly(mealName, shouldReplace);
   };
 
   // Salvar diretamente sem abrir MealRegistrationFlow
-  const saveDirectly = async (mealName: string) => {
+  const saveDirectly = async (mealName: string, shouldReplace: boolean = false) => {
     setIsSavingDirectly(true);
     
     try {
@@ -252,14 +242,29 @@ export default function FreeFormMealLogger({
         mealType,
         mealName,
         calories: totals.calories,
+        shouldReplace,
+        pendingMealId: pendingMeal?.id,
       });
+
+      // Se shouldReplace=true e há refeição pendente, marcar como completada (substituída)
+      if (shouldReplace && pendingMeal) {
+        console.log("[FreeFormMealLogger] Marking pending meal as replaced:", pendingMeal.id);
+        const { error: updateError } = await supabase
+          .from("meal_plan_items")
+          .update({ completed_at: new Date().toISOString() })
+          .eq("id", pendingMeal.id);
+        
+        if (updateError) {
+          console.error("[FreeFormMealLogger] Error marking meal as replaced:", updateError);
+        }
+      }
 
       // Create meal consumption record
       const { data: consumption, error: consumptionError } = await supabase
         .from("meal_consumption")
         .insert({
           user_id: user.id,
-          meal_plan_item_id: null,
+          meal_plan_item_id: shouldReplace && pendingMeal ? pendingMeal.id : null,
           followed_plan: false,
           total_calories: Math.round(totals.calories || 0),
           total_protein: Math.round((totals.protein || 0) * 10) / 10,
@@ -412,7 +417,7 @@ export default function FreeFormMealLogger({
             {/* Search area */}
             <UnifiedFoodSearchBlock
               onSelectFood={handleSelectFood}
-              scrollHeight="h-[calc(100vh-380px)]"
+              scrollHeight={selectedFoods.length > 0 ? "max-h-[200px]" : "h-[calc(100vh-380px)]"}
               confirmButtonLabel="Adicionar"
               hasSelectedFoods={selectedFoods.length > 0}
               inputRef={searchInputRef}
@@ -553,6 +558,8 @@ export default function FreeFormMealLogger({
         foodNames={selectedFoods.map(f => f.name)}
         onConfirm={handleMealNameConfirm}
         onBack={handleMealNameBack}
+        pendingMeal={pendingMeal}
+        hasPendingMeal={hasPendingMeal}
       />
 
     </>

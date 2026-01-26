@@ -539,7 +539,7 @@ export default function MealRecipeDetail({ meal, onBack, onToggleFavorite, onMea
                       )}
                     </span>
                     
-                    <RefreshCw className="w-4 h-4 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
+                    <RefreshCw className="w-4 h-4 text-muted-foreground shrink-0" />
                   </li>
                 );
               })}

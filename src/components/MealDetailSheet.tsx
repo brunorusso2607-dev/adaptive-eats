@@ -572,7 +572,7 @@ export default function MealDetailSheet({
                         {!isPastMeal && (
                           <button
                             onClick={(e) => handleOpenSubstitution(ingredient, e)}
-                            className="opacity-0 group-hover:opacity-100 w-7 h-7 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all active:scale-95"
+                            className="w-7 h-7 rounded-full bg-muted/50 hover:bg-muted flex items-center justify-center transition-all active:scale-95"
                             aria-label={`Substituir ${ingredient.item}`}
                           >
                             <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />

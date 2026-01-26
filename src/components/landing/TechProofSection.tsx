@@ -117,14 +117,14 @@ export const TechProofSection = forwardRef<HTMLElement>((_, ref) => {
 
           <div className="relative">
             {/* Code Block Visual */}
-            <div className="bg-black/50 rounded-2xl p-6 font-mono text-sm overflow-hidden">
+            <div className="bg-[#1a1a2e] rounded-2xl p-6 font-mono text-sm overflow-hidden border border-white/10">
               <div className="flex gap-2 mb-4">
-                <div className="w-3 h-3 rounded-full bg-destructive" />
-                <div className="w-3 h-3 rounded-full bg-warning" />
-                <div className="w-3 h-3 rounded-full bg-primary" />
+                <div className="w-3 h-3 rounded-full bg-red-500" />
+                <div className="w-3 h-3 rounded-full bg-yellow-500" />
+                <div className="w-3 h-3 rounded-full bg-green-500" />
               </div>
-              <pre className="text-background/80 overflow-x-auto">
-                <code>{`// globalSafetyEngine.ts
+              <pre className="text-gray-300 overflow-x-auto whitespace-pre-wrap text-xs md:text-sm leading-relaxed">
+                <code className="block">{`// globalSafetyEngine.ts
 validateIngredient(ingredient, userProfile) {
   // 1. Normalize ingredient name
   const normalized = normalize(ingredient);
@@ -150,7 +150,7 @@ validateIngredient(ingredient, userProfile) {
             </div>
 
             {/* Floating Badge */}
-            <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold shadow-lg">
+            <div className="absolute -top-4 -right-4 bg-primary text-primary-foreground px-4 py-2 rounded-full text-sm font-bold shadow-lg z-10">
               Código Real
             </div>
           </div>

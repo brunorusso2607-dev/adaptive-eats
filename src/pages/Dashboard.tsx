@@ -664,11 +664,23 @@ export default function Dashboard() {
         "scan": "scan",
         "camera": "scan",
         "history": "history",
+        "historico": "history",
         "profile": "profile",
+        "perfil": "profile",
       };
       const mappedTab = tabMap[tabParam];
       if (mappedTab) {
         setMobileActiveTab(mappedTab);
+        // Ativar views correspondentes
+        if (mappedTab === "meal-plan") {
+          setShowMealPlan(true);
+        }
+        if (mappedTab === "profile") {
+          setShowProfileSheet(true);
+        }
+        if (mappedTab === "scan") {
+          setShowFoodAnalyzer(true);
+        }
       }
     }
   }, [searchParams]);
@@ -777,6 +789,24 @@ export default function Dashboard() {
     setPendingCameraMode(null);
     setCapturedImageBase64(null);
     setShowFoodAnalyzer(false);
+    
+    // Atualizar URL com o parâmetro tab (sem recarregar a página)
+    const tabUrlMap: Record<MobileNavTab, string | null> = {
+      "home": null, // home não precisa de parâmetro
+      "meal-plan": "plano",
+      "history": "historico",
+      "profile": "perfil",
+      "scan": "scan",
+    };
+    
+    const urlTab = tabUrlMap[tab];
+    if (urlTab) {
+      searchParams.set("tab", urlTab);
+    } else {
+      searchParams.delete("tab");
+    }
+    // Usar replace para não poluir o histórico do navegador
+    navigate(`/dashboard?${searchParams.toString()}`, { replace: true });
     
     if (tab === "meal-plan") {
       setShowMealPlan(true);

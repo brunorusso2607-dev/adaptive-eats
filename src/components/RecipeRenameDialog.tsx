@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -67,13 +67,27 @@ export default function RecipeRenameDialog({
   const [recipeName, setRecipeName] = useState("");
   const [suggestedName, setSuggestedName] = useState("");
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Track if we've initialized for this open session
+  const hasInitializedRef = useRef(false);
+  const prevOpenRef = useRef(false);
 
-  // Generate suggestion when dialog opens
+  // Generate suggestion ONLY when dialog opens (not on every prop change)
   useEffect(() => {
-    if (open) {
+    // Detect transition from closed to open
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    
+    if (justOpened) {
       const suggestion = generateSuggestedName(currentName, originalIngredient, newIngredient);
       setSuggestedName(suggestion);
       setRecipeName(suggestion);
+      hasInitializedRef.current = true;
+    }
+    
+    // Reset flag when dialog closes
+    if (!open) {
+      hasInitializedRef.current = false;
     }
   }, [open, currentName, originalIngredient, newIngredient]);
 

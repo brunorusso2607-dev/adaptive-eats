@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   Dialog,
   DialogContent,
@@ -39,14 +39,26 @@ export default function MealNameDialog({
   const [mealName, setMealName] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReplaceChoice, setShowReplaceChoice] = useState(false);
+  
+  // Track previous open state to detect transitions
+  const prevOpenRef = useRef(false);
 
-  // Generate suggested name when dialog opens and reset state
+  // Generate suggested name ONLY when dialog opens (not on every prop change)
   useEffect(() => {
-    if (open && foodNames.length > 0) {
+    // Detect transition from closed to open
+    const justOpened = open && !prevOpenRef.current;
+    prevOpenRef.current = open;
+    
+    if (justOpened && foodNames.length > 0) {
       // Generate a simple name based on foods
       const generatedName = generateMealName(foodNames);
       setMealName(generatedName);
       setShowReplaceChoice(false); // Reset replace choice when dialog opens
+    }
+    
+    // Reset state when dialog closes
+    if (!open) {
+      setShowReplaceChoice(false);
     }
   }, [open, foodNames]);
 

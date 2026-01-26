@@ -63,6 +63,7 @@ export interface UnifiedFoodSearchBlockProps {
   initialQuery?: string; // Pre-fill search input with this value
   searchByCategory?: boolean; // Buscar por categoria ao invés de nome
   originalCalories?: number; // Calorias do ingrediente original (para filtrar por range)
+  hideInput?: boolean; // Hide the search input (when parent already has one)
 }
 
 // ===== SOURCE BADGE =====
@@ -100,7 +101,8 @@ export default function UnifiedFoodSearchBlock({
   inputRef,
   initialQuery = "",
   searchByCategory = false,
-  originalCalories = 0
+  originalCalories = 0,
+  hideInput = false
 }: UnifiedFoodSearchBlockProps) {
   const [searchQuery, setSearchQuery] = useState(initialQuery);
   const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([]);
@@ -434,18 +436,20 @@ export default function UnifiedFoodSearchBlock({
   return (
     <>
       <div className={cn("space-y-3", className)}>
-        {/* Search input - compact */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            ref={inputRef}
-            placeholder={searchPlaceholder.placeholder}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10"
-            autoFocus={autoFocus}
-          />
-        </div>
+        {/* Search input - compact (hidden when parent provides input) */}
+        {!hideInput && (
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              ref={inputRef}
+              placeholder={searchPlaceholder.placeholder}
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 h-10"
+              autoFocus={autoFocus}
+            />
+          </div>
+        )}
 
         {/* Results area - always full height */}
         <div className={cn("overflow-y-auto", scrollHeight)}>

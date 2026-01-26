@@ -300,6 +300,7 @@ export default function IngredientSearchSheet({
                   initialQuery={searchQuery}
                   searchByCategory={false}
                   originalCalories={originalCaloriesPer100g}
+                  hideInput={true}
                 />
               </div>
             ) : (

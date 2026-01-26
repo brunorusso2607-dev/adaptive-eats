@@ -266,13 +266,13 @@ export default function IngredientSearchSheet({
           </div>
 
           {/* Conteúdo principal */}
-          <div className="flex-1 min-h-0 overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-y-auto">
             {showManualSearch ? (
               // Modo de busca manual
-              <div className="px-6 pb-6 h-full">
+              <div className="px-6 pb-6 h-full overflow-y-auto">
                 <UnifiedFoodSearchBlock
                   onSelectFood={handleSelectFood}
-                  scrollHeight="h-full"
+                  scrollHeight="h-[calc(100%-60px)]"
                   autoFocus={false}
                   confirmButtonLabel="Confirmar Substituição"
                   initialQuery={searchQuery}

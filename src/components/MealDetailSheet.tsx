@@ -680,14 +680,22 @@ export default function MealDetailSheet({
       />
 
       {/* Recipe Rename Dialog - sempre montado para evitar desmontagem durante digitação */}
-      <RecipeRenameDialog
-        open={renameDialogOpen && !!lastSubstitution}
-        onOpenChange={setRenameDialogOpen}
-        currentName={localRecipeName || meal.recipe_name}
-        originalIngredient={lastSubstitution?.originalIngredient || ""}
-        newIngredient={lastSubstitution?.newIngredient || ""}
-        onConfirm={handleRenameRecipe}
-      />
+      {lastSubstitution && (
+        <RecipeRenameDialog
+          open={renameDialogOpen}
+          onOpenChange={(open) => {
+            setRenameDialogOpen(open);
+            if (!open) {
+              // Limpar lastSubstitution apenas quando o dialog fechar
+              setLastSubstitution(null);
+            }
+          }}
+          currentName={localRecipeName || meal.recipe_name}
+          originalIngredient={lastSubstitution.originalIngredient}
+          newIngredient={lastSubstitution.newIngredient}
+          onConfirm={handleRenameRecipe}
+        />
+      )}
 
       {/* Confirm Dialog */}
       <MealConfirmDialog

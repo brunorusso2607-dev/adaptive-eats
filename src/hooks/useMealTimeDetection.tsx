@@ -65,7 +65,10 @@ export function useMealTimeDetection() {
 
   // Buscar refeição pendente do plano ativo para o meal type detectado
   const fetchPendingMealForType = useCallback(async (mealType: string) => {
+    console.log("[useMealTimeDetection] fetchPendingMealForType called with:", mealType);
+    
     if (mealType === "extra") {
+      console.log("[useMealTimeDetection] mealType is 'extra', skipping pending meal search");
       setPendingMeal(null);
       setIsLoadingPending(false);
       return;
@@ -103,6 +106,17 @@ export function useMealTimeDetection() {
       const diffDays = Math.floor((todayDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
       const weekNumber = Math.floor(diffDays / 7) + 1;
       const dayOfPlan = diffDays % 7;
+
+      console.log("[useMealTimeDetection] Searching for pending meal:", {
+        mealType,
+        planId: activePlan.id,
+        startDate: activePlan.start_date,
+        todayDate: todayDate.toISOString(),
+        diffDays,
+        dayOfPlan,
+        weekNumber,
+        timezone,
+      });
 
       // Buscar refeição pendente daquele tipo para hoje
       const { data: pendingMealData, error: mealError } = await supabase

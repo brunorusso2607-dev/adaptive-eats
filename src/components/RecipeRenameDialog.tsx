@@ -113,7 +113,7 @@ export default function RecipeRenameDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md mx-auto">
+      <DialogContent className="max-w-md mx-auto overflow-hidden">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
@@ -145,7 +145,7 @@ export default function RecipeRenameDialog({
           </div>
 
           {/* Editable name input */}
-          <div className="space-y-2 overflow-hidden">
+          <div className="space-y-2">
             <Label htmlFor="recipe-name">Novo nome</Label>
             <Input
               id="recipe-name"
@@ -155,18 +155,16 @@ export default function RecipeRenameDialog({
               autoFocus
             />
             {recipeName !== suggestedName && (
-              <div className="overflow-hidden">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={handleUseSuggestion}
-                  className="text-xs text-primary h-auto p-1 w-full justify-start"
-                >
-                  <Sparkles className="w-3 h-3 mr-1 shrink-0" />
-                  <span className="truncate">Usar sugestão: "{suggestedName}"</span>
-                </Button>
-              </div>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleUseSuggestion}
+                className="text-xs text-primary h-auto p-1 max-w-full text-left"
+              >
+                <Sparkles className="w-3 h-3 mr-1 shrink-0" />
+                <span className="truncate block max-w-[calc(100%-20px)]">Usar sugestão: "{suggestedName}"</span>
+              </Button>
             )}
           </div>
         </div>

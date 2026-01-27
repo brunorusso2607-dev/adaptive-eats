@@ -195,6 +195,7 @@ export default function Dashboard() {
   useAutoSkipNotifications();
   
   // Auto-refresh when app becomes visible (user returns to tab/PWA)
+  // Otimizado: só refetch se usuário ficou ausente por tempo significativo
   useAppVisibility({
     onVisible: useCallback(() => {
       console.log('[Dashboard] App visible - refreshing data');
@@ -203,8 +204,8 @@ export default function Dashboard() {
       refetchDailyConsumption();
       gamification.refresh?.();
     }, [refetchPendingMeals, refetchDailyConsumption]),
-    debounceMs: 10000, // Minimum 10 seconds between refreshes
-    minHiddenMs: 5000, // App must be hidden for 5+ seconds
+    debounceMs: 30000, // Minimum 30 seconds between refreshes (otimizado)
+    minHiddenMs: 10000, // App must be hidden for 10+ seconds (otimizado)
   });
   
   // Symptom feedback hook

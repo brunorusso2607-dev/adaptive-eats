@@ -151,7 +151,7 @@ export default function RecipeCategorySheet({
   return (
     <>
       {/* Fullscreen loading overlay - shown outside Sheet */}
-      {isLoading && <AppLoadingScreen message="Estamos criando a sua receita personalizada..." />}
+      {isLoading && <AppLoadingScreen message="Estamos criando a sua refeição personalizada..." />}
       
       <Sheet open={open && !isLoading} onOpenChange={handleClose}>
         <SheetContent 
@@ -448,7 +448,7 @@ export default function RecipeCategorySheet({
               ) : (
                 <Sparkles className="w-5 h-5 mr-2" />
               )}
-              Gerar Receita
+              Gerar Refeição
             </Button>
           </SafeAreaFooter>
         )}

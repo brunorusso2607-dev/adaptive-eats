@@ -117,10 +117,10 @@ export default function RecipeRenameDialog({
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="w-5 h-5 text-primary" />
-            Atualizar Nome da Receita?
+            Atualizar Nome da Refeição?
           </DialogTitle>
           <DialogDescription>
-            Você substituiu um ingrediente. Deseja atualizar o nome da receita?
+            Você substituiu um ingrediente. Deseja atualizar o nome da refeição?
           </DialogDescription>
         </DialogHeader>
 
@@ -151,7 +151,7 @@ export default function RecipeRenameDialog({
               id="recipe-name"
               value={recipeName}
               onChange={(e) => setRecipeName(e.target.value)}
-              placeholder="Digite o novo nome da receita"
+              placeholder="Digite o novo nome da refeição"
               autoFocus
             />
             {recipeName !== suggestedName && (

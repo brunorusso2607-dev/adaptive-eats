@@ -93,22 +93,22 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
       await logUserAction(
         asFavorite ? "recipe_favorited" : "recipe_saved",
         asFavorite 
-          ? `Receita "${recipe.name}" adicionada aos favoritos`
-          : `Receita "${recipe.name}" salva no histórico`,
+          ? `Refeição "${recipe.name}" adicionada aos favoritos`
+          : `Refeição "${recipe.name}" salva no histórico`,
         null,
         { recipe_name: recipe.name, calories: recipe.calories }
       );
 
       if (asFavorite) {
         setIsFavorited(true);
-        toast.success("Receita adicionada aos favoritos!");
+        toast.success("Refeição adicionada aos favoritos!");
       } else {
         setIsSaved(true);
-        toast.success("Receita salva no histórico!");
+        toast.success("Refeição salva no histórico!");
       }
     } catch (error) {
       console.error("Error saving recipe:", error);
-      toast.error("Erro ao salvar receita");
+      toast.error("Erro ao salvar refeição");
     } finally {
       setIsSaving(false);
       setIsFavoriting(false);
@@ -129,15 +129,15 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
           {isKidsMode ? (
             <>
               <Sparkles className="w-5 h-5 text-yellow-500 stroke-[1.5]" />
-              Receita Divertida!
+              Refeição Divertida!
             </>
           ) : isWeightLossMode ? (
             <>
               <Flame className="w-5 h-5 text-orange-500 stroke-[1.5]" />
-              Receita Saudável
+              Refeição Saudável
             </>
           ) : (
-            "Receita Gerada"
+            "Refeição Gerada"
           )}
         </h2>
         {isKidsMode && (
@@ -343,7 +343,7 @@ export default function RecipeResult({ recipe, onBack, onGenerateAnother, isGene
           {isKidsMode && (
             <div className="text-center p-4 bg-gradient-to-r from-pink-100 to-yellow-100 dark:from-pink-950/50 dark:to-yellow-950/50 rounded-xl">
               <p className="text-lg font-bold text-foreground">🎉 Parabéns, chefinho!</p>
-              <p className="text-sm text-muted-foreground">Você está pronto para fazer uma receita deliciosa!</p>
+              <p className="text-sm text-muted-foreground">Você está pronto para fazer uma refeição deliciosa!</p>
             </div>
           )}
         </CardContent>

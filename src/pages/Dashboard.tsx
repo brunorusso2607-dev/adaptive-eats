@@ -96,13 +96,13 @@ const plans = {
     name: "Essencial",
     price: "19,90",
     icon: Star,
-    features: ["5 receitas por dia", "Calorias por receita", "Respeito às intolerâncias"],
+    features: ["5 refeições por dia", "Calorias por refeição", "Respeito às intolerâncias"],
   },
   premium: {
     name: "Premium",
     price: "29,90",
     icon: Crown,
-    features: ["Receitas ilimitadas", "Rotina semanal automática", "Modo Kids", "Macros detalhados"],
+    features: ["Refeições ilimitadas", "Rotina semanal automática", "Modo Kids", "Macros detalhados"],
   },
 };
 
@@ -445,7 +445,7 @@ export default function Dashboard() {
         // Check for safety block (should_retry flag)
         if (data.safety_blocked && data.should_retry && attempt < maxRetries) {
           console.log(`[Recipe Safety] Attempt ${attempt}/${maxRetries} blocked, retrying...`, data.conflicts);
-          toast.info(`Receita insegura detectada, gerando alternativa... (${attempt}/${maxRetries})`);
+          toast.info(`Refeição insegura detectada, gerando alternativa... (${attempt}/${maxRetries})`);
           continue; // Try again
         }
         
@@ -463,7 +463,7 @@ export default function Dashboard() {
         // Log user action
         await logUserAction(
           "recipe_generated",
-          `Receita gerada: "${data.recipe.name}"${categoryContext ? ` (${categoryContext.category}/${categoryContext.subcategory})` : type === "com_ingredientes" ? " (com ingredientes)" : " (automática)"}`,
+          `Refeição gerada: "${data.recipe.name}"${categoryContext ? ` (${categoryContext.category}/${categoryContext.subcategory})` : type === "com_ingredientes" ? " (com ingredientes)" : " (automática)"}`,
           null,
           { 
             recipe_name: data.recipe.name, 
@@ -490,7 +490,7 @@ export default function Dashboard() {
         // If this is the last attempt, show error
         if (attempt >= maxRetries) {
           console.error("Error generating recipe after all retries:", error);
-          toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
+          toast.error(error instanceof Error ? error.message : "Erro ao gerar refeição. Tente novamente.");
         }
       }
     }
@@ -530,7 +530,7 @@ export default function Dashboard() {
         // Check for safety block (should_retry flag)
         if (data.safety_blocked && data.should_retry && attempt < maxRetries) {
           console.log(`[Recipe Safety] Attempt ${attempt}/${maxRetries} blocked, retrying...`, data.conflicts);
-          toast.info(`Receita insegura detectada, gerando alternativa... (${attempt}/${maxRetries})`);
+          toast.info(`Refeição insegura detectada, gerando alternativa... (${attempt}/${maxRetries})`);
           continue; // Try again
         }
         
@@ -561,7 +561,7 @@ export default function Dashboard() {
         // If this is the last attempt, show error
         if (attempt >= maxRetries) {
           console.error("Error generating recipe after all retries:", error);
-          toast.error(error instanceof Error ? error.message : "Erro ao gerar receita. Tente novamente.");
+          toast.error(error instanceof Error ? error.message : "Erro ao gerar refeição. Tente novamente.");
         }
       }
     }
@@ -913,7 +913,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen gradient-hero pb-20 md:pb-0">
       {/* Recipe Loading Screen - Fullscreen overlay */}
-      {isGeneratingRecipe && <AppLoadingScreen message="Estamos criando a sua receita personalizada..." />}
+      {isGeneratingRecipe && <AppLoadingScreen message="Estamos criando a sua refeição personalizada..." />}
       
       {/* Plan Regeneration Loading Screen - Fullscreen overlay */}
       {isRegeneratingPlan && <AppLoadingScreen message="Gerando seu novo plano alimentar..." />}

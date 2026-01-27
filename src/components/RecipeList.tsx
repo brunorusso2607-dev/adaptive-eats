@@ -104,7 +104,7 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
       setHistoryRecipes(data || []);
     } catch (error) {
       console.error("Error fetching recipes:", error);
-      toast.error("Erro ao carregar receitas");
+      toast.error("Erro ao carregar refeições");
     } finally {
       setIsLoadingHistory(false);
     }
@@ -140,10 +140,10 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
       if (error) throw error;
 
       setHistoryRecipes(prev => prev.filter(r => r.id !== recipeId));
-      toast.success("Receita deletada com sucesso");
+      toast.success("Refeição deletada com sucesso");
     } catch (error) {
       console.error("Error deleting recipe:", error);
-      toast.error("Erro ao deletar receita");
+      toast.error("Erro ao deletar refeição");
     }
   };
 
@@ -201,7 +201,7 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
           <ArrowLeft className="w-5 h-5" />
         </Button>
         <h2 className="font-display text-xl font-bold text-foreground flex-1">
-          {type === "history" ? "Histórico de Receitas" : "Receitas Favoritas"}
+          {type === "history" ? "Histórico de Refeições" : "Refeições Favoritas"}
         </h2>
       </div>
 
@@ -218,10 +218,10 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
                 <Heart className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="font-display font-bold text-foreground mb-2">
-                Nenhuma receita favorita
+                Nenhuma refeição favorita
               </h3>
               <p className="text-sm text-muted-foreground">
-                Adicione receitas aos favoritos para vê-las aqui
+                Adicione refeições aos favoritos para vê-las aqui
               </p>
             </CardContent>
           </Card>
@@ -291,7 +291,7 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
                           </AlertDialogTrigger>
                           <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                             <AlertDialogHeader>
-                              <AlertDialogTitle>Deletar receita?</AlertDialogTitle>
+                              <AlertDialogTitle>Deletar refeição?</AlertDialogTitle>
                               <AlertDialogDescription>
                                 Tem certeza que deseja deletar "{favorite.name}"? Esta ação não pode ser desfeita.
                               </AlertDialogDescription>
@@ -324,10 +324,10 @@ export default function RecipeList({ type, onBack, onSelectRecipe }: RecipeListP
                 <ChefHat className="w-8 h-8 text-muted-foreground" />
               </div>
               <h3 className="font-display font-bold text-foreground mb-2">
-                Nenhuma receita salva
+                Nenhuma refeição salva
               </h3>
               <p className="text-sm text-muted-foreground">
-                Gere e salve receitas para vê-las aqui
+                Gere e salve refeições para vê-las aqui
               </p>
             </CardContent>
           </Card>

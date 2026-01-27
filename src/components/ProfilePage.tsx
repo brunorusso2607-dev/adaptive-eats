@@ -575,8 +575,8 @@ export default function ProfilePage({ user, subscription, onLogout, onBack, onPr
             <Heart className="w-5 h-5 text-rose-500" />
           </div>
           <div className="text-left flex-1">
-            <p className="font-semibold text-sm text-foreground">Receitas Favoritas</p>
-            <p className="text-xs text-muted-foreground">Suas receitas salvas</p>
+            <p className="font-semibold text-sm text-foreground">Refeições Favoritas</p>
+            <p className="text-xs text-muted-foreground">Suas refeições salvas</p>
           </div>
           <ArrowLeft className="w-4 h-4 text-muted-foreground rotate-180" />
         </button>

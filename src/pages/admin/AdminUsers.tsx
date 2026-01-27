@@ -27,7 +27,8 @@ import {
   CreditCard,
   Clock,
   FileText,
-  UserCog
+  UserCog,
+  UserPlus
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -118,6 +119,15 @@ export default function AdminUsers() {
   const [isEditing, setIsEditing] = useState(false);
   const [editForm, setEditForm] = useState<Partial<UserProfile>>({});
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Create user state
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    email: "",
+    password: "",
+    full_name: "",
+  });
+  const [isCreating, setIsCreating] = useState(false);
   
   // Subscription state
   const [subscription, setSubscription] = useState<UserSubscription | null>(null);
@@ -473,6 +483,37 @@ export default function AdminUsers() {
     }
   };
 
+  const handleCreateUser = async () => {
+    if (!createForm.email || !createForm.password) {
+      toast.error("Email e senha são obrigatórios");
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        body: {
+          email: createForm.email,
+          password: createForm.password,
+          full_name: createForm.full_name,
+        },
+      });
+
+      if (error) throw error;
+      if (data.error) throw new Error(data.error);
+
+      toast.success("Usuário criado com sucesso!");
+      setIsCreateOpen(false);
+      setCreateForm({ email: "", password: "", full_name: "" });
+      fetchUsers();
+    } catch (error) {
+      console.error("Error creating user:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao criar usuário");
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   const filteredLogs = activityLogs.filter((log) => {
     if (logFilter === "all") return true;
     return log.log_source === logFilter;
@@ -488,17 +529,23 @@ export default function AdminUsers() {
           </p>
         </div>
 
-        <div className="relative max-w-xs">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por email..."
-            value={searchTerm}
-            onChange={(e) => {
-              setSearchTerm(e.target.value);
-              setCurrentPage(0);
-            }}
-            className="pl-9"
-          />
+        <div className="flex items-center gap-3">
+          <div className="relative max-w-xs">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por email..."
+              value={searchTerm}
+              onChange={(e) => {
+                setSearchTerm(e.target.value);
+                setCurrentPage(0);
+              }}
+              className="pl-9"
+            />
+          </div>
+          <Button onClick={() => setIsCreateOpen(true)}>
+            <UserPlus className="w-4 h-4 mr-2" />
+            Novo Usuário
+          </Button>
         </div>
       </div>
 
@@ -1043,6 +1090,80 @@ export default function AdminUsers() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Create User Dialog */}
+      <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Cadastrar Novo Usuário</DialogTitle>
+            <DialogDescription>
+              Crie uma nova conta de usuário manualmente
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-email">Email *</Label>
+              <Input
+                id="create-email"
+                type="email"
+                placeholder="usuario@exemplo.com"
+                value={createForm.email}
+                onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-password">Senha *</Label>
+              <Input
+                id="create-password"
+                type="password"
+                placeholder="Mínimo 6 caracteres"
+                value={createForm.password}
+                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="create-name">Nome Completo (opcional)</Label>
+              <Input
+                id="create-name"
+                type="text"
+                placeholder="Nome do usuário"
+                value={createForm.full_name}
+                onChange={(e) => setCreateForm({ ...createForm, full_name: e.target.value })}
+              />
+            </div>
+
+            <div className="flex gap-2 pt-4 border-t">
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setIsCreateOpen(false);
+                  setCreateForm({ email: "", password: "", full_name: "" });
+                }} 
+                className="flex-1"
+                disabled={isCreating}
+              >
+                <X className="w-4 h-4 mr-2" />
+                Cancelar
+              </Button>
+              <Button 
+                onClick={handleCreateUser} 
+                disabled={isCreating || !createForm.email || !createForm.password} 
+                className="flex-1"
+              >
+                {isCreating ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <UserPlus className="w-4 h-4 mr-2" />
+                )}
+                Criar Usuário
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

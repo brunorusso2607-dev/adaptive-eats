@@ -1333,26 +1333,6 @@ export default function Dashboard() {
                     </Card>
                   )}
 
-                  {/* Favoritas - Escondido no mobile */}
-                  <Card 
-                    className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group hidden md:block"
-                    onClick={() => setShowList("favorites")}
-                  >
-                    <CardContent className="p-5 text-center space-y-3">
-                      <div className="w-12 h-12 mx-auto bg-rose-500/20 rounded-xl flex items-center justify-center group-hover:scale-105 transition-transform">
-                        <Heart className="w-6 h-6 text-rose-500" />
-                      </div>
-                      <div>
-                        <h3 className="font-display font-bold text-foreground">
-                          Favoritas
-                        </h3>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Suas receitas salvas
-                        </p>
-                      </div>
-                    </CardContent>
-                  </Card>
-
                   {/* Modo Kids - Versão compacta no mobile */}
                   {isSubscribed && activePlan === "premium" && isKidsModeEnabled && (
                     <div className="md:hidden col-span-2">
@@ -1426,6 +1406,28 @@ export default function Dashboard() {
                   )}
 
                 </div>
+
+                {/* Favoritas - Full width, sempre visível */}
+                <Card 
+                  className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
+                  onClick={() => setShowList("favorites")}
+                >
+                  <CardContent className="p-5">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-xl bg-rose-500/20 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform">
+                        <Heart className="w-6 h-6 text-rose-500" />
+                      </div>
+                      <div className="flex-1">
+                        <h3 className="text-base font-semibold text-foreground tracking-wide">
+                          Favoritas
+                        </h3>
+                        <p className="text-sm text-muted-foreground">
+                          Suas receitas salvas
+                        </p>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Compact Health Circles - Water & Weight at bottom */}
                 <CompactHealthCircles

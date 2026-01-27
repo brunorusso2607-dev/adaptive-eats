@@ -60,10 +60,21 @@ serve(async (req) => {
       );
     }
 
+    // Check if user already exists
+    const { data: existingUsers } = await supabaseAdmin.auth.admin.listUsers();
+    const userExists = existingUsers?.users?.some(u => u.email?.toLowerCase() === email.toLowerCase());
+    
+    if (userExists) {
+      return new Response(
+        JSON.stringify({ error: "Este email já está cadastrado no sistema" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Create user using Admin API (without password - will use magic link)
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      email_confirm: false, // User needs to confirm via magic link
+      email_confirm: true, // Auto-confirm so user can login immediately via magic link
       user_metadata: {
         full_name: full_name || "",
       },
@@ -71,30 +82,36 @@ serve(async (req) => {
 
     if (createError) {
       console.error("Error creating user:", createError);
+      
+      // Handle specific errors
+      if (createError.message?.includes("already registered")) {
+        return new Response(
+          JSON.stringify({ error: "Este email já está cadastrado no sistema" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
       return new Response(
         JSON.stringify({ error: createError.message }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Send magic link to user
-    const { error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
-      type: 'magiclink',
-      email: email,
-    });
-
-    if (magicLinkError) {
-      console.error("Error sending magic link:", magicLinkError);
-      // Don't fail the whole operation if magic link fails
-      // User can still request a new one later
+    if (!newUser?.user) {
+      return new Response(
+        JSON.stringify({ error: "Falha ao criar usuário - resposta inválida" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
-    // Profile is created automatically by trigger
+    // Profile is created automatically by trigger - wait a bit for it
+    await new Promise(resolve => setTimeout(resolve, 500));
+    
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("*")
       .eq("id", newUser.user.id)
-      .single();
+      .maybeSingle();
 
     console.log(`User created successfully: ${email} (ID: ${newUser.user.id})`);
 

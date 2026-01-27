@@ -29,7 +29,7 @@ async function detectCountryFromIP(req: Request): Promise<string> {
 
     // Fallback: use free IP geolocation API
     const response = await fetch("https://ipapi.co/json/", {
-      headers: { "User-Agent": "ReceitAI/1.0" }
+      headers: { "User-Agent": "IntoleraI/1.0" }
     });
     
     if (response.ok) {

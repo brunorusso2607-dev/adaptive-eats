@@ -100,7 +100,7 @@ interface Message {
   attachments?: { name: string; preview?: string; type: 'image' | 'file' }[];
 }
 
-export default function ReceitAIAssistant() {
+export default function IntoleraIAssistant() {
   const location = useLocation();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");

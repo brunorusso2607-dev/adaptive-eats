@@ -596,7 +596,7 @@ serve(async (req) => {
         pushPayload,
         vapidPublicKey,
         vapidPrivateKey,
-        "mailto:contato@receitai.com"
+        "mailto:contato@intolerai.com"
       );
 
       if (result.success) {

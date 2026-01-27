@@ -1,5 +1,5 @@
 // ============================================
-// RECEITAI - CONFIGURAÇÃO CENTRALIZADA DE RECEITAS
+// INTOLERAI - CONFIGURAÇÃO CENTRALIZADA DE RECEITAS
 // ============================================
 // Este arquivo é a RAIZ ÚNICA para todos os geradores de receitas.
 // Qualquer alteração aqui afeta: generate-recipe, generate-meal-plan, regenerate-meal

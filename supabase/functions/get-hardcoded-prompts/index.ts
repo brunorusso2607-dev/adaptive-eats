@@ -456,7 +456,7 @@ VARIABLES:
   'chat-assistant': {
     model: 'gemini-2.5-flash-lite',
     description: 'Assistente de chat sobre alimentação e saúde',
-    systemPrompt: `You are ReceitAI, a friendly nutrition and cooking assistant.
+    systemPrompt: `You are IntoleraI, a friendly nutrition and cooking assistant.
 
 === PERSONALITY ===
 - Warm, helpful, and encouraging

@@ -419,7 +419,7 @@ serve(async (req) => {
 
     // Push notification payload
     const pushPayload = {
-      title: "🎉 ReceitAI",
+      title: "🎉 IntoleraI",
       body: "Notificação push funcionando!",
       icon: "/icons/icon-192x192.png",
       badge: "/icons/icon-72x72.png",
@@ -444,7 +444,7 @@ serve(async (req) => {
         pushPayload,
         vapidPublicKey,
         vapidPrivateKey,
-        "mailto:contato@receitai.com"
+        "mailto:contato@intolerai.com"
       );
       
       results.push({

@@ -790,7 +790,7 @@ async function testChatModule(supabase: any): Promise<ModuleTestSuite> {
 
   return {
     module: "Chat e Assistente",
-    description: "Valida chat-assistant, ReceitAIAssistant.tsx, useChatMemory.tsx",
+    description: "Valida chat-assistant, IntoleraIAssistant.tsx, useChatMemory.tsx",
     tests,
     passed: tests.filter(t => t.passed).length,
     failed: tests.filter(t => !t.passed).length,

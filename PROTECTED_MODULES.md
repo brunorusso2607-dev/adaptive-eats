@@ -1,4 +1,4 @@
-# ReceitAI - Módulos Protegidos
+# IntoleraI - Módulos Protegidos
 
 ## ⚠️ ATENÇÃO: Este arquivo lista módulos CRÍTICOS que NÃO devem ser alterados sem:
 1. Motivo explícito do usuário

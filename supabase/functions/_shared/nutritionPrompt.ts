@@ -1,7 +1,7 @@
 /**
  * GLOBAL NUTRITIONAL PROMPT - CLINICAL LEVEL
  * 
- * This file centralizes nutritional rules for all ReceitAI AI functions.
+ * This file centralizes nutritional rules for all IntoleraI AI functions.
  * Should be used in: generate-ai-meal-plan, generate-recipe, analyze-food-photo, suggest-food-ai
  */
 

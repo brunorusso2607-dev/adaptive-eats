@@ -419,18 +419,18 @@ export default function AdminUsers() {
     if (!userToDelete) return;
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userToDelete.id);
+      const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        body: { userId: userToDelete.id },
+      });
 
       if (error) throw error;
+      if (data.error) throw new Error(data.error);
 
       toast.success("Usuário removido com sucesso");
       fetchUsers();
     } catch (error) {
       console.error("Error deleting user:", error);
-      toast.error("Erro ao remover usuário");
+      toast.error(error instanceof Error ? error.message : "Erro ao remover usuário");
     } finally {
       setIsDeleteOpen(false);
       setUserToDelete(null);

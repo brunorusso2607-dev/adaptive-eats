@@ -175,8 +175,9 @@ export default function Dashboard() {
   // Timezone sync - detecta e atualiza timezone automaticamente a cada acesso
   const { timezone } = useUserTimezone();
   
-  // Feature flag for Kids Mode
+  // Feature flags
   const { isEnabled: isKidsModeEnabled } = useFeatureFlag("kids_mode");
+  const { isEnabled: isSurpriseMeEnabled } = useFeatureFlag("surprise_me_recipe");
   
   // Pending meals hook for badge
   const { pendingMeals, hasMealPlan: hasActiveMealPlan, refetch: refetchPendingMeals, getMealStatusForMeal } = usePendingMeals();
@@ -1233,52 +1234,54 @@ export default function Dashboard() {
                   />
                 </Suspense>
 
-                {/* 5. Gerar Receita - Ferramenta secundária */}
-                <Card className="bg-card border border-border shadow-sm overflow-visible">
-                  <CardContent className="p-5 space-y-4 overflow-visible">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <UtensilsCrossed className="w-5 h-5 text-primary" strokeWidth={1.5} />
+                {/* 5. Gerar Receita - Ferramenta secundária (Feature Flag) */}
+                {isSurpriseMeEnabled && (
+                  <Card className="bg-card border border-border shadow-sm overflow-visible">
+                    <CardContent className="p-5 space-y-4 overflow-visible">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <UtensilsCrossed className="w-5 h-5 text-primary" strokeWidth={1.5} />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold text-foreground tracking-wide">
+                            Gerar Receita
+                          </h3>
+                          <p className="text-sm text-muted-foreground">
+                            Com ingredientes ou automática
+                          </p>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <h3 className="text-base font-semibold text-foreground tracking-wide">
-                          Gerar Receita
-                        </h3>
-                        <p className="text-sm text-muted-foreground">
-                          Com ingredientes ou automática
-                        </p>
-                      </div>
-                    </div>
-                    
-                    {/* CTA Button - Primary orange, only saturated element */}
-                    <Button
-                      className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
-                      onClick={() => setShowCategorySheet(true)}
-                      disabled={isGeneratingRecipe}
-                    >
-                      {isGeneratingRecipe ? (
-                        <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                      ) : (
-                        <Zap className="w-4 h-4 mr-2" strokeWidth={1.5} />
-                      )}
-                      Surpreenda-me!
-                    </Button>
-                    
-                    {/* Category Sheet */}
-                    <Suspense fallback={null}>
-                      <RecipeCategorySheet
-                        open={showCategorySheet}
-                        onOpenChange={setShowCategorySheet}
-                        onSelectCategory={handleCategorySelect}
-                        onGenerateWithIngredients={(ingredientsList) => {
-                          generateRecipeWithIngredients(ingredientsList);
-                        }}
-                        isLoading={isGeneratingRecipe}
-                        userProfile={userProfile}
-                      />
-                    </Suspense>
-                  </CardContent>
-                </Card>
+                      
+                      {/* CTA Button - Primary orange, only saturated element */}
+                      <Button
+                        className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
+                        onClick={() => setShowCategorySheet(true)}
+                        disabled={isGeneratingRecipe}
+                      >
+                        {isGeneratingRecipe ? (
+                          <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                        ) : (
+                          <Zap className="w-4 h-4 mr-2" strokeWidth={1.5} />
+                        )}
+                        Surpreenda-me!
+                      </Button>
+                      
+                      {/* Category Sheet */}
+                      <Suspense fallback={null}>
+                        <RecipeCategorySheet
+                          open={showCategorySheet}
+                          onOpenChange={setShowCategorySheet}
+                          onSelectCategory={handleCategorySelect}
+                          onGenerateWithIngredients={(ingredientsList) => {
+                            generateRecipeWithIngredients(ingredientsList);
+                          }}
+                          isLoading={isGeneratingRecipe}
+                          userProfile={userProfile}
+                        />
+                      </Suspense>
+                    </CardContent>
+                  </Card>
+                )}
 
                 {/* Grid de Opções */}
                 <div className="grid grid-cols-2 gap-4">

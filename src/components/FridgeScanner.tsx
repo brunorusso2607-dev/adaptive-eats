@@ -378,13 +378,13 @@ export default function FridgeScanner() {
 
       if (error) throw error;
 
-      toast.success("Receita salva no seu histórico!", {
-        description: "Acesse seus Favoritos para ver todas as receitas salvas.",
+      toast.success("Refeição salva no seu histórico!", {
+        description: "Acesse seus Favoritos para ver todas as refeições salvas.",
         duration: 4000,
       });
     } catch (error) {
       console.error("Error saving recipe:", error);
-      toast.error("Erro ao salvar receita");
+      toast.error("Erro ao salvar refeição");
     } finally {
       setSavingRecipeIndex(null);
     }

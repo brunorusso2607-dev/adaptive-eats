@@ -1432,7 +1432,7 @@ export default function Dashboard() {
                           Favoritas
                         </h3>
                         <p className="text-sm text-muted-foreground">
-                          Suas receitas salvas
+                          Suas refeições salvas
                         </p>
                       </div>
                     </div>

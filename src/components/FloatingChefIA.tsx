@@ -49,9 +49,9 @@ const PAGE_CONTEXT_MAP: Record<string, { name: string; description: string; quic
     quickActions: ["Como gerar um novo plano?", "Posso trocar uma refeição?", "O que é o Surpreenda-me?"]
   },
   "/receitas": {
-    name: "Receitas",
-    description: "Biblioteca de receitas salvas e favoritas",
-    quickActions: ["Sugira uma receita rápida", "Receitas para meu perfil", "Como adicionar favoritos?"]
+    name: "Refeições",
+    description: "Biblioteca de refeições salvas e favoritas",
+    quickActions: ["Sugira uma refeição rápida", "Refeições para meu perfil", "Como adicionar favoritos?"]
   },
   "/agua": {
     name: "Controle de Água",

@@ -24,10 +24,24 @@ export function usePushSubscription() {
   useEffect(() => {
     const fetchVapidKey = async () => {
       try {
+        console.log("[Push] Fetching VAPID key...");
         const { data, error } = await supabase.functions.invoke("get-vapid-key");
-        if (error) throw error;
+        
+        if (error) {
+          console.error("[Push] Edge function error:", error);
+          throw error;
+        }
+        
+        if (data?.error) {
+          console.error("[Push] VAPID key error:", data.error);
+          return;
+        }
+        
         if (data?.publicKey) {
+          console.log("[Push] VAPID key loaded successfully");
           setVapidKey(data.publicKey);
+        } else {
+          console.error("[Push] No publicKey in response:", data);
         }
       } catch (err) {
         console.error("[Push] Failed to fetch VAPID key:", err);
@@ -73,8 +87,14 @@ export function usePushSubscription() {
   }, [isSupported]);
 
   const subscribe = useCallback(async (): Promise<boolean> => {
-    if (!isSupported || !vapidKey) {
-      toast.error("Notificações push não suportadas neste dispositivo");
+    if (!isSupported) {
+      toast.error("Notificações push não suportadas neste navegador");
+      return false;
+    }
+    
+    if (!vapidKey) {
+      console.error("[Push] VAPID key not available");
+      toast.error("Erro de configuração do servidor. Tente recarregar a página.");
       return false;
     }
 
@@ -176,5 +196,6 @@ export function usePushSubscription() {
     permission,
     subscribe,
     unsubscribe,
+    vapidKeyLoaded: !!vapidKey,
   };
 }

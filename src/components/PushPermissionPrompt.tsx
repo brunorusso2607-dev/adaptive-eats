@@ -7,7 +7,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 const PUSH_PROMPT_DISMISSED_KEY = "push_prompt_dismissed";
 
-function PushDebugInfo() {
+function PushDebugInfo({ vapidKeyLoaded }: { vapidKeyLoaded?: boolean }) {
   const [debugInfo, setDebugInfo] = useState<Record<string, boolean | string>>({});
 
   useEffect(() => {
@@ -19,9 +19,10 @@ function PushDebugInfo() {
       "display-mode": window.matchMedia('(display-mode: standalone)').matches,
       "permission": "Notification" in window ? Notification.permission : "N/A",
       "userAgent iOS": /iPhone|iPad|iPod/.test(navigator.userAgent),
+      "vapidKey": vapidKeyLoaded ?? false,
     };
     setDebugInfo(info);
-  }, []);
+  }, [vapidKeyLoaded]);
 
   return (
     <div className="mt-2 p-2 bg-muted/50 rounded text-xs font-mono space-y-1">
@@ -41,7 +42,7 @@ function PushDebugInfo() {
 export function PushPermissionPrompt() {
   const [isVisible, setIsVisible] = useState(false);
   const [showDebug, setShowDebug] = useState(false);
-  const { isSupported, isSubscribed, isLoading, permission, subscribe } = usePushSubscription();
+  const { isSupported, isSubscribed, isLoading, permission, subscribe, vapidKeyLoaded } = usePushSubscription();
 
   useEffect(() => {
     // Don't show if:
@@ -108,7 +109,7 @@ export function PushPermissionPrompt() {
                   </Button>
                 </CollapsibleTrigger>
                 <CollapsibleContent>
-                  <PushDebugInfo />
+                  <PushDebugInfo vapidKeyLoaded={vapidKeyLoaded} />
                 </CollapsibleContent>
               </Collapsible>
             </div>
@@ -167,7 +168,7 @@ export function PushPermissionPrompt() {
             </div>
             <Collapsible open={showDebug} onOpenChange={setShowDebug}>
               <CollapsibleContent>
-                <PushDebugInfo />
+                <PushDebugInfo vapidKeyLoaded={vapidKeyLoaded} />
               </CollapsibleContent>
             </Collapsible>
           </div>

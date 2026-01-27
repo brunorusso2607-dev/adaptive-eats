@@ -158,13 +158,11 @@ export default function RecipeRenameDialog({
               <button
                 type="button"
                 onClick={handleUseSuggestion}
-                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 p-1"
-                style={{ maxWidth: '100%', overflow: 'hidden' }}
+                className="flex items-center gap-1 text-xs text-primary hover:text-primary/80 p-1 transition-colors"
+                title={suggestedName}
               >
                 <Sparkles className="w-3 h-3 flex-shrink-0" />
-                <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                  Usar sugestão: "{suggestedName}"
-                </span>
+                <span>Usar sugestão</span>
               </button>
             )}
           </div>

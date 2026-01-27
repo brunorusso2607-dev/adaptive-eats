@@ -12,6 +12,8 @@ serve(async (req) => {
   }
 
   try {
+    console.log("[admin-create-user] Starting...");
+    
     const supabaseAdmin = createClient(
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "",
@@ -24,9 +26,20 @@ serve(async (req) => {
     );
 
     // Verify admin permission
-    const authHeader = req.headers.get("Authorization")!;
+    const authHeader = req.headers.get("Authorization");
+    console.log("[admin-create-user] Auth header present:", !!authHeader);
+    
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: "Authorization header missing" }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
     const token = authHeader.replace("Bearer ", "");
     const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+    
+    console.log("[admin-create-user] User found:", !!user, "Error:", userError?.message);
 
     if (userError || !user) {
       return new Response(
@@ -36,12 +49,14 @@ serve(async (req) => {
     }
 
     // Check if user is admin
-    const { data: adminRole } = await supabaseAdmin
+    const { data: adminRole, error: roleError } = await supabaseAdmin
       .from("user_roles")
       .select("role")
       .eq("user_id", user.id)
       .eq("role", "admin")
       .maybeSingle();
+
+    console.log("[admin-create-user] Admin role check:", !!adminRole, "Error:", roleError?.message);
 
     if (!adminRole) {
       return new Response(

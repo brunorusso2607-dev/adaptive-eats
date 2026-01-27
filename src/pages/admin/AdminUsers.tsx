@@ -418,7 +418,19 @@ export default function AdminUsers() {
     if (!userToDelete) return;
 
     try {
+      // Get current session for auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      if (!accessToken) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("admin-delete-user", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: { userId: userToDelete.id },
       });
 
@@ -490,7 +502,19 @@ export default function AdminUsers() {
 
     setIsCreating(true);
     try {
+      // Get current session for auth token
+      const { data: sessionData } = await supabase.auth.getSession();
+      const accessToken = sessionData.session?.access_token;
+      
+      if (!accessToken) {
+        toast.error("Sessão expirada. Faça login novamente.");
+        return;
+      }
+
       const { data, error } = await supabase.functions.invoke("admin-create-user", {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+        },
         body: {
           email: createForm.email,
           full_name: createForm.full_name,
@@ -500,7 +524,7 @@ export default function AdminUsers() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast.success("Usuário criado! Um magic link foi enviado para o email.");
+      toast.success("Usuário criado com sucesso!");
       setIsCreateOpen(false);
       setCreateForm({ email: "", full_name: "" });
       fetchUsers();

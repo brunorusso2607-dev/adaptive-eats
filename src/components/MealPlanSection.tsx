@@ -1,5 +1,4 @@
 import { useState, useEffect, useMemo } from "react";
-import { useSwipeToClose } from "@/hooks/use-swipe-to-close";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Calendar, Plus, Loader2, Trash2, Eye, ArrowLeft, ShoppingCart, CheckCircle2, Clock, Settings2, Copy, Lock } from "lucide-react";
@@ -143,33 +142,26 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [duplicatingPlan, setDuplicatingPlan] = useState<MealPlan | null>(null);
-  
+
   // Feature flag para mostrar/esconder opção "Montar Meu Plano"
   const { isEnabled: isManualPlanBuilderEnabled } = useFeatureFlag("manual_meal_plan_builder");
-  
+
   // Estado elevado para preservar dia selecionado ao navegar calendar <-> recipe
   const [calendarSelectedWeek, setCalendarSelectedWeek] = useState<number | null>(null);
   const [calendarSelectedDayIndex, setCalendarSelectedDayIndex] = useState<number | null>(null);
-
-  // Swipe to close with visual feedback
-  const { handlers: swipeHandlers, style: swipeStyle, isDragging } = useSwipeToClose({
-    onClose: () => onBack?.(),
-    direction: "right",
-    threshold: 100,
-  });
 
   // Check if user can create a new plan
   const canCreateNewPlan = useMemo(() => {
     const hasPlanThisMonth = hasAnyPlanThisMonth(mealPlans);
     const nearMonthEnd = isNearMonthEnd();
     const hasNextMonthPlan = hasPlanForNextMonth(mealPlans);
-    
+
     // Se estamos perto do fim do mês (5 dias ou menos)
     if (nearMonthEnd) {
       // Pode criar para o próximo mês se NÃO existe plano para ele
       return !hasNextMonthPlan;
     }
-    
+
     // Fora do período de fim de mês, só pode criar se NÃO tem nenhum plano este mês
     return !hasPlanThisMonth;
   }, [mealPlans]);
@@ -227,10 +219,10 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
       // Process plans with their items
       const plansWithItems: MealPlan[] = (plansWithItemsData || []).map((plan: any) => {
         const items = plan.meal_plan_items || [];
-        
+
         // Sort items by day_of_week
         items.sort((a: any, b: any) => a.day_of_week - b.day_of_week);
-        
+
         // Calculate completion percentage
         const totalItems = items.length;
         const completedItems = items.filter((i: any) => i.completed_at).length;
@@ -458,14 +450,14 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
               .order("created_at", { ascending: false })
               .limit(1)
               .single();
-            
+
             if (latestPlan) {
               // Fetch plan items
               const { data: items } = await supabase
                 .from("meal_plan_items")
                 .select("*")
                 .eq("meal_plan_id", latestPlan.id);
-              
+
               const fullPlan: MealPlan = {
                 ...latestPlan,
                 items: (items || []).map(item => ({
@@ -474,7 +466,7 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
                   recipe_instructions: item.recipe_instructions as unknown as string[]
                 })) as MealPlanItem[]
               };
-              
+
               setSelectedPlan(fullPlan);
               setView("calendar");
               fetchMealPlans(); // Update the list in background
@@ -488,7 +480,6 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
       />
     );
   }
-
 
   if (view === "create-custom") {
     return (
@@ -504,7 +495,7 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
 
   // Renderiza o calendário (usa MealDetailSheet como popup)
   const showCalendar = view === "calendar" && selectedPlan;
-  
+
   if (showCalendar) {
     const handleMealUpdated = (updatedMeal: MealPlanItem) => {
       // Update the meal in the selected plan
@@ -512,7 +503,7 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
         if (!prev) return prev;
         return {
           ...prev,
-          items: prev.items.map(item => 
+          items: prev.items.map(item =>
             item.id === updatedMeal.id ? updatedMeal : item
           )
         };
@@ -522,7 +513,7 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
         if (plan.id !== selectedPlan.id) return plan;
         return {
           ...plan,
-          items: plan.items.map(item => 
+          items: plan.items.map(item =>
             item.id === updatedMeal.id ? updatedMeal : item
           )
         };
@@ -552,7 +543,7 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
           onSelectedWeekChange={setCalendarSelectedWeek}
           onSelectedDayIndexChange={setCalendarSelectedDayIndex}
         />
-        
+
         {/* MealDetailSheet - mesmo componente do Dashboard que funciona */}
         {selectedMeal && (
           <MealDetailSheet
@@ -620,13 +611,8 @@ export default function MealPlanSection({ onBack, onPlanDeleted, autoSelectLates
   }
 
   return (
-    <div 
-      {...swipeHandlers} 
-      style={swipeStyle} 
-      className={cn(
-        "space-y-4 sm:space-y-6 animate-fade-in min-h-[calc(100vh-140px)]",
-        isDragging && "select-none"
-      )}
+    <div
+      className="space-y-4 sm:space-y-6 animate-fade-in min-h-[calc(100vh-140px)]"
     >
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">

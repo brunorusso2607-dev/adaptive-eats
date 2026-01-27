@@ -25,6 +25,10 @@ const WeightHistoryChart = lazy(() => import("@/components/WeightHistoryChart"))
 const RecipeCategorySheet = lazy(() => import("@/components/RecipeCategorySheet"));
 const FreeFormMealLogger = lazy(() => import("@/components/FreeFormMealLogger"));
 
+// Lazy loaded home components - otimização de performance
+const HealthCard = lazy(() => import("@/components/HealthCard").then(m => ({ default: m.HealthCard })));
+const PendingMealsList = lazy(() => import("@/components/PendingMealsList"));
+
 // Imports síncronos - componentes essenciais para o primeiro render
 import { calculateMacros } from "@/components/WeightGoalSetup";
 import WeightProgressBar from "@/components/WeightProgressBar";
@@ -35,7 +39,6 @@ import AppLoadingScreen from "@/components/AppLoadingScreen";
 import MobileBottomNav, { type MobileNavTab } from "@/components/MobileBottomNav";
 import type { PhotoMode } from "@/components/PhotoModeSelector";
 
-import PendingMealsList from "@/components/PendingMealsList";
 import WeightUpdateModal from "@/components/WeightUpdateModal";
 import { Beef, Wheat, TrendingUp } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -48,7 +51,6 @@ import PlanDetailsSheet from "@/components/PlanDetailsSheet";
 import { WaterTracker } from "@/components/WaterTracker";
 import { CompactHealthCircles } from "@/components/CompactHealthCircles";
 import { SafetyStatusBadge } from "@/components/SafetyStatusBadge";
-import { HealthCard } from "@/components/HealthCard";
 import { SymptomFeedbackModal } from "@/components/SymptomFeedbackModal";
 import { usePendingSymptomFeedback } from "@/hooks/usePendingSymptomFeedback";
 import { useFeatureFlag } from "@/hooks/useFeatureFlags";
@@ -1174,18 +1176,22 @@ export default function Dashboard() {
                   onUpdate={refetchUserProfile}
                 />
 
-                {/* 2. Card de Saúde Unificado */}
-                <HealthCard 
-                  pendingCount={symptomFeedback.pendingCount}
-                  onOpenFeedback={handleOpenFeedback}
-                />
+                {/* 2. Card de Saúde Unificado - Lazy loaded */}
+                <Suspense fallback={<LazyFallback />}>
+                  <HealthCard 
+                    pendingCount={symptomFeedback.pendingCount}
+                    onOpenFeedback={handleOpenFeedback}
+                  />
+                </Suspense>
 
-                {/* 3. Próxima Refeição */}
-                <PendingMealsList 
-                  onStreakRefresh={gamification.refresh} 
-                  onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
-                  userProfile={userProfile} 
-                />
+                {/* 3. Próxima Refeição - Lazy loaded */}
+                <Suspense fallback={<LazyFallback />}>
+                  <PendingMealsList 
+                    onStreakRefresh={gamification.refresh} 
+                    onNavigateToMealPlan={() => handleMobileTabChange("meal-plan")}
+                    userProfile={userProfile} 
+                  />
+                </Suspense>
 
                 {/* 4. Registro Livre de Refeição - Para quem não segue plano */}
                 <Card className="bg-card border border-border shadow-sm">

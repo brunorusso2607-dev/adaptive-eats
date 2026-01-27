@@ -1407,7 +1407,17 @@ export default function Dashboard() {
 
                 </div>
 
-                {/* Favoritas - Full width, sempre visível */}
+                {/* Compact Health Circles - Water & Weight at bottom */}
+                <CompactHealthCircles
+                  userGoal={userGoal}
+                  weightData={weightData}
+                  dailyConsumption={dailyConsumption}
+                  onOpenWeightSetup={() => setShowWeightLossSetup(true)}
+                  onOpenWeightUpdate={() => setShowWeightUpdateModal(true)}
+                  onOpenWeightHistory={() => setShowWeightHistory(true)}
+                />
+
+                {/* Favoritas - Full width, sempre visível, abaixo de Peso e Água */}
                 <Card 
                   className="glass-card border-border/50 hover:border-primary/30 transition-all cursor-pointer group"
                   onClick={() => setShowList("favorites")}
@@ -1428,16 +1438,6 @@ export default function Dashboard() {
                     </div>
                   </CardContent>
                 </Card>
-
-                {/* Compact Health Circles - Water & Weight at bottom */}
-                <CompactHealthCircles
-                  userGoal={userGoal}
-                  weightData={weightData}
-                  dailyConsumption={dailyConsumption}
-                  onOpenWeightSetup={() => setShowWeightLossSetup(true)}
-                  onOpenWeightUpdate={() => setShowWeightUpdateModal(true)}
-                  onOpenWeightHistory={() => setShowWeightHistory(true)}
-                />
 
               </div>
             </>

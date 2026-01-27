@@ -24,6 +24,7 @@ type Step = "email" | "install";
 export default function Activate() {
   const [searchParams] = useSearchParams();
   const sessionId = searchParams.get("session_id");
+  const fromOnboarding = searchParams.get("from") === "onboarding";
   const { trackEvent } = useTrackingPixels();
   
   const [isLoading, setIsLoading] = useState(false);
@@ -35,6 +36,18 @@ export default function Activate() {
   const [isIOS, setIsIOS] = useState(false);
   const [isAndroid, setIsAndroid] = useState(false);
   const [isIOSNotSafari, setIsIOSNotSafari] = useState(false);
+
+  // Check if user is already logged in (coming from onboarding)
+  useEffect(() => {
+    const checkSession = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        // User is logged in, go directly to install step
+        setStep("install");
+      }
+    };
+    checkSession();
+  }, []);
 
   // Detect platform and browser
   useEffect(() => {
@@ -159,7 +172,21 @@ export default function Activate() {
     }
   };
 
-  const handleSkipInstall = () => {
+  const handleSkipInstall = async () => {
+    // Check if user already completed onboarding
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("onboarding_completed")
+        .eq("id", session.user.id)
+        .maybeSingle();
+      
+      if (profile?.onboarding_completed) {
+        window.location.href = "/dashboard";
+        return;
+      }
+    }
     window.location.href = "/onboarding";
   };
 
@@ -328,7 +355,7 @@ export default function Activate() {
               onClick={handleSkipInstall}
               className="w-full h-12"
             >
-              Continuar para configurar perfil
+              Ir para o Dashboard
               <ArrowRight className="w-4 h-4 ml-2" />
             </Button>
           </CardContent>

@@ -178,7 +178,8 @@ export default function Onboarding() {
       if (error) throw error;
 
       toast.success("Perfil configurado com sucesso!");
-      navigate("/dashboard");
+      // Redirecionar para página de instalação do app (com instruções iOS/Android)
+      navigate("/ativar");
     } catch (error) {
       console.error("Error saving profile:", error);
       toast.error("Erro ao salvar perfil. Tente novamente.");
@@ -474,7 +475,7 @@ export default function Onboarding() {
           </div>
         );
 
-      case 6:
+      case 5:
         // Helper to complete onboarding from this step
         const handleCompleteFromNotifications = async () => {
           localStorage.setItem(PUSH_PROMPT_DISMISSED_KEY, "true");
@@ -662,19 +663,18 @@ export default function Onboarding() {
           >
             {isLoading && <Loader2 className="w-4 h-4 animate-spin mr-2" />}
             {(() => {
-              // Dynamic button text for restriction steps
+              // Dynamic button text based on step
               const getOriginalStep = () => showCountrySelection ? currentStep : currentStep + 1;
               const origStep = getOriginalStep();
               
-              // Check if we're on a restriction category step (2, 3, 4)
-              if (origStep >= 2 && origStep <= 4) {
-                const categoryKey = origStep === 2 ? "intolerances" : origStep === 3 ? "allergies" : "sensitivities";
-                const categoryOptions = options?.[categoryKey as keyof typeof options] || [];
-                const hasSelectedInCategory = profile.intolerances.some(
-                  id => categoryOptions.some((opt: OnboardingOption) => opt.option_id === id && opt.option_id !== 'none')
+              // Step 2: Intolerâncias - única categoria de restrição
+              if (origStep === 2) {
+                const intoleranceOptions = options?.intolerances || [];
+                const hasSelectedIntolerances = profile.intolerances.some(
+                  id => intoleranceOptions.some((opt: OnboardingOption) => opt.option_id === id && opt.option_id !== 'none')
                 );
                 
-                if (hasSelectedInCategory) {
+                if (hasSelectedIntolerances) {
                   return (
                     <>
                       Próximo
@@ -683,19 +683,13 @@ export default function Onboarding() {
                   );
                 }
                 
-                // No selection - show "Não tenho nenhuma [categoria]"
-                const categoryLabels: Record<string, string> = {
-                  intolerances: "Não tenho nenhuma intolerância",
-                  allergies: "Não tenho nenhuma alergia",
-                  sensitivities: "Não tenho nenhuma sensibilidade",
-                };
-                return categoryLabels[categoryKey];
+                return "Não tenho nenhuma intolerância";
               }
               
-              // Check if we're on the excluded ingredients step (step 4) - make it skippable
-              if (origStep === 4) {
+              // Step 3: Alimentos excluídos - pode pular
+              if (origStep === 3) {
                 if (profile.excluded_ingredients.length === 0) {
-                  return "Pular esta etapa";
+                  return "Pular";
                 }
                 return (
                   <>
@@ -705,6 +699,17 @@ export default function Onboarding() {
                 );
               }
               
+              // Step 4: Objetivo - sempre "Continuar"
+              if (origStep === 4) {
+                return (
+                  <>
+                    Continuar
+                    <ArrowRight className="w-4 h-4 ml-2" />
+                  </>
+                );
+              }
+              
+              // Default: Próximo (para step 1 - país)
               return (
                 <>
                   Próximo

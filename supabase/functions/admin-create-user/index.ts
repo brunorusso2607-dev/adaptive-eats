@@ -51,20 +51,19 @@ serve(async (req) => {
     }
 
     // Get request body
-    const { email, password, full_name } = await req.json();
+    const { email, full_name } = await req.json();
 
-    if (!email || !password) {
+    if (!email) {
       return new Response(
-        JSON.stringify({ error: "Email and password are required" }),
+        JSON.stringify({ error: "Email is required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    // Create user using Admin API
+    // Create user using Admin API (without password - will use magic link)
     const { data: newUser, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
-      password,
-      email_confirm: true, // Auto-confirm email
+      email_confirm: false, // User needs to confirm via magic link
       user_metadata: {
         full_name: full_name || "",
       },
@@ -78,7 +77,19 @@ serve(async (req) => {
       );
     }
 
-    // Profile is created automatically by trigger, but we can verify it
+    // Send magic link to user
+    const { error: magicLinkError } = await supabaseAdmin.auth.admin.generateLink({
+      type: 'magiclink',
+      email: email,
+    });
+
+    if (magicLinkError) {
+      console.error("Error sending magic link:", magicLinkError);
+      // Don't fail the whole operation if magic link fails
+      // User can still request a new one later
+    }
+
+    // Profile is created automatically by trigger
     const { data: profile } = await supabaseAdmin
       .from("profiles")
       .select("*")
@@ -92,7 +103,7 @@ serve(async (req) => {
         success: true, 
         user: newUser.user,
         profile: profile,
-        message: "Usuário criado com sucesso" 
+        message: "Usuário criado e magic link enviado por email" 
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

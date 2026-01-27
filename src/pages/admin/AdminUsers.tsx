@@ -124,7 +124,6 @@ export default function AdminUsers() {
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [createForm, setCreateForm] = useState({
     email: "",
-    password: "",
     full_name: "",
   });
   const [isCreating, setIsCreating] = useState(false);
@@ -484,8 +483,8 @@ export default function AdminUsers() {
   };
 
   const handleCreateUser = async () => {
-    if (!createForm.email || !createForm.password) {
-      toast.error("Email e senha são obrigatórios");
+    if (!createForm.email) {
+      toast.error("Email é obrigatório");
       return;
     }
 
@@ -494,7 +493,6 @@ export default function AdminUsers() {
       const { data, error } = await supabase.functions.invoke("admin-create-user", {
         body: {
           email: createForm.email,
-          password: createForm.password,
           full_name: createForm.full_name,
         },
       });
@@ -502,9 +500,9 @@ export default function AdminUsers() {
       if (error) throw error;
       if (data.error) throw new Error(data.error);
 
-      toast.success("Usuário criado com sucesso!");
+      toast.success("Usuário criado! Um magic link foi enviado para o email.");
       setIsCreateOpen(false);
-      setCreateForm({ email: "", password: "", full_name: "" });
+      setCreateForm({ email: "", full_name: "" });
       fetchUsers();
     } catch (error) {
       console.error("Error creating user:", error);
@@ -1114,17 +1112,6 @@ export default function AdminUsers() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="create-password">Senha *</Label>
-              <Input
-                id="create-password"
-                type="password"
-                placeholder="Mínimo 6 caracteres"
-                value={createForm.password}
-                onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="create-name">Nome Completo (opcional)</Label>
               <Input
                 id="create-name"
@@ -1140,7 +1127,7 @@ export default function AdminUsers() {
                 variant="outline" 
                 onClick={() => {
                   setIsCreateOpen(false);
-                  setCreateForm({ email: "", password: "", full_name: "" });
+                  setCreateForm({ email: "", full_name: "" });
                 }} 
                 className="flex-1"
                 disabled={isCreating}
@@ -1150,7 +1137,7 @@ export default function AdminUsers() {
               </Button>
               <Button 
                 onClick={handleCreateUser} 
-                disabled={isCreating || !createForm.email || !createForm.password} 
+                disabled={isCreating || !createForm.email} 
                 className="flex-1"
               >
                 {isCreating ? (

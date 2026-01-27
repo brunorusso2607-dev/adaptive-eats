@@ -1160,13 +1160,15 @@ serve(async (req) => {
   }
 
   try {
+    logStep("[DEBUG] Function started");
     const googleAIApiKey = await getGeminiApiKey();
-    logStep("Gemini API key fetched from database");
+    logStep("[DEBUG] Gemini API key fetched", { hasKey: !!googleAIApiKey, keyLength: googleAIApiKey?.length });
 
     const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
     const supabaseAnonKey = Deno.env.get('SUPABASE_ANON_KEY')!;
     
     const authHeader = req.headers.get('Authorization');
+    logStep("[DEBUG] Auth header check", { hasAuth: !!authHeader });
     if (!authHeader) {
       throw new Error('Authorization header required');
     }
@@ -1176,6 +1178,7 @@ serve(async (req) => {
     });
 
     const { data: { user }, error: userError } = await supabase.auth.getUser();
+    logStep("[DEBUG] User auth result", { hasUser: !!user, error: userError?.message });
     if (userError || !user) {
       throw new Error('User not authenticated');
     }
@@ -1222,7 +1225,15 @@ serve(async (req) => {
       normalizedIntolerances
     });
 
-    const { imageBase64, additionalImages, areas } = await req.json();
+    const body = await req.json();
+    logStep("[DEBUG] Request body parsed", { 
+      hasImageBase64: !!body.imageBase64, 
+      imageSize: body.imageBase64?.length,
+      additionalImagesCount: body.additionalImages?.length || 0,
+      areas: body.areas
+    });
+    
+    const { imageBase64, additionalImages, areas } = body;
     
     if (!imageBase64) {
       throw new Error('Image data required');
@@ -1460,6 +1471,12 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
   "dica": "A quick tip about the ingredients"
 }`;
 
+    logStep("[DEBUG] Calling Gemini API", { 
+      model: 'gemini-2.5-flash-lite',
+      imageSize: base64Data.length,
+      additionalImagesCount: additionalBase64.length
+    });
+    
     const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${googleAIApiKey}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1478,16 +1495,27 @@ FOR VALID FRIDGE/PANTRY IMAGES, respond with:
       })
     });
 
+    logStep("[DEBUG] Gemini API response status", { status: response.status, ok: response.ok });
+    
     if (!response.ok) {
       const errorText = await response.text();
-      logStep('Gemini API error', { status: response.status, error: errorText });
+      logStep('[DEBUG] Gemini API error details', { status: response.status, error: errorText });
       throw new Error(`AI API error: ${response.status}`);
     }
 
     const aiResponse = await response.json();
-    logStep('AI response received');
+    logStep('[DEBUG] AI response received', { 
+      hasCandidates: !!aiResponse.candidates,
+      candidatesCount: aiResponse.candidates?.length
+    });
 
     const textContent = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text;
+    logStep('[DEBUG] Text content extracted', { 
+      hasText: !!textContent,
+      textLength: textContent?.length,
+      preview: textContent?.slice(0, 200)
+    });
+    
     if (!textContent) {
       throw new Error('No response from AI');
     }

@@ -20,7 +20,7 @@ const features = [
     title: "A Auditoria de Rótulos",
     tagline: "Verificar Rótulo",
     description:
-      "Integrado ao OpenFoodFacts e bases ANVISA/FDA, o ReceitAI é o único que audita rótulos em tempo real, garantindo que o 'Sem Glúten' da embalagem seja verdade na sua mesa.",
+      "Integrado ao OpenFoodFacts e bases ANVISA/FDA, o IntoleraI é o único que audita rótulos em tempo real, garantindo que o 'Sem Glúten' da embalagem seja verdade na sua mesa.",
     highlights: [
       "Leitura de tabela nutricional",
       "Verificação de selos regulatórios",

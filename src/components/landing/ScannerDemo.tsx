@@ -111,7 +111,7 @@ export function ScannerDemo() {
         <div className="relative bg-background rounded-[2.5rem] overflow-hidden aspect-[9/16]">
           {/* Status Bar */}
           <div className="absolute top-0 left-0 right-0 h-12 bg-background/80 backdrop-blur-sm z-20 flex items-center justify-center">
-            <span className="text-xs font-medium text-muted-foreground">ReceitAI Scanner</span>
+            <span className="text-xs font-medium text-muted-foreground">IntoleraI Scanner</span>
           </div>
 
           {/* Food Image */}

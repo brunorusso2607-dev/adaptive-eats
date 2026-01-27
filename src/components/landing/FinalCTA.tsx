@@ -33,7 +33,7 @@ export const FinalCTA = forwardRef<HTMLElement, FinalCTAProps>(({ onCtaClick }, 
           </h2>
 
           <p className="text-white/80 text-lg md:text-xl max-w-2xl mx-auto">
-            Chega de ansiedade antes de cada refeição. Com o ReceitAI, você come
+            Chega de ansiedade antes de cada refeição. Com o IntoleraI, você come
             com confiança — sabendo exatamente o que está no seu prato.
           </p>
 

@@ -154,7 +154,7 @@ export default function Activate() {
         trackEvent("Purchase", {
           value: 0, // Actual value comes from Stripe webhook if needed
           currency: "BRL",
-          content_name: "ReceitAI Subscription",
+          content_name: "IntoleraI Subscription",
           content_type: "subscription",
         });
         trackEvent("CompleteRegistration");
@@ -375,7 +375,7 @@ export default function Activate() {
           <div>
             <CardTitle className="font-display text-2xl">Parabéns pela compra! 🎉</CardTitle>
             <CardDescription className="mt-2">
-              Digite seu email para ativar sua conta e começar a usar o ReceitAI
+              Digite seu email para ativar sua conta e começar a usar o IntoleraI
             </CardDescription>
           </div>
         </CardHeader>

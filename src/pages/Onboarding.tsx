@@ -598,7 +598,7 @@ export default function Onboarding() {
           <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center">
             <ChefHat className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="text-lg font-semibold text-foreground tracking-tight">ReceitAI</span>
+          <span className="text-lg font-semibold text-foreground tracking-tight">IntoleraI</span>
         </div>
         <Button 
           variant="ghost" 

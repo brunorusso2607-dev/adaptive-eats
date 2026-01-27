@@ -150,7 +150,7 @@ export default function Index() {
             <div className="w-10 h-10 gradient-primary rounded-xl flex items-center justify-center">
               <ChefHat className="w-5 h-5 text-primary-foreground" />
             </div>
-            <span className="font-display text-xl font-semibold text-foreground">ReceitAI</span>
+            <span className="font-display text-xl font-semibold text-foreground">IntoleraI</span>
           </div>
           <nav className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Funcionalidades</a>
@@ -198,7 +198,7 @@ export default function Index() {
               Quem Vive com Intolerância Entende
             </h2>
             <p className="text-muted-foreground text-lg">
-              Veja como o ReceitAI mudou a vida de quem sofria com as mesmas dores que você
+              Veja como o IntoleraI mudou a vida de quem sofria com as mesmas dores que você
             </p>
           </div>
           
@@ -387,7 +387,7 @@ export default function Index() {
               <div className="w-8 h-8 gradient-primary rounded-lg flex items-center justify-center">
                 <ChefHat className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-display text-lg font-semibold text-foreground">ReceitAI</span>
+              <span className="font-display text-lg font-semibold text-foreground">IntoleraI</span>
             </div>
             
             <nav className="flex items-center gap-6 text-sm text-muted-foreground">
@@ -397,13 +397,13 @@ export default function Index() {
               <Link to="/terms-of-use" className="hover:text-foreground transition-colors">
                 Termos de Uso
               </Link>
-              <a href="mailto:contato@receitai.com" className="hover:text-foreground transition-colors">
+              <a href="mailto:contato@intolerai.com" className="hover:text-foreground transition-colors">
                 Contato
               </a>
             </nav>
             
             <p className="text-sm text-muted-foreground">
-              © 2025 ReceitAI. Todos os direitos reservados.
+              © 2025 IntoleraI. Todos os direitos reservados.
             </p>
           </div>
         </div>

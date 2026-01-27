@@ -118,7 +118,7 @@ export default function Auth() {
               <ChefHat className="w-7 h-7 text-primary-foreground" />
             </div>
             <div className="space-y-2">
-              <CardTitle className="text-xl font-semibold tracking-tight">Bem-vindo ao ReceitAI</CardTitle>
+              <CardTitle className="text-xl font-semibold tracking-tight">Bem-vindo ao IntoleraI</CardTitle>
               <CardDescription className="text-sm text-muted-foreground">
                 Digite seu email para acessar sua conta
               </CardDescription>

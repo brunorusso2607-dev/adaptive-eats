@@ -1,7 +1,7 @@
 {
-  "name": "ReceitAI - Receitas com IA",
+  "name": "ReceitAI - Refeições com IA",
   "short_name": "ReceitAI",
-  "description": "Gere receitas personalizadas com inteligência artificial baseadas nos ingredientes que você tem em casa",
+  "description": "Gere refeições personalizadas com inteligência artificial baseadas nos ingredientes que você tem em casa",
   "version": "1.0.1",
   "theme_color": "#16a34a",
   "background_color": "#fafaf9",

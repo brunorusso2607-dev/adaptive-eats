@@ -328,7 +328,7 @@ export default function Settings() {
               <CardTitle className="text-base">Sua Região</CardTitle>
             </div>
             <CardDescription>
-              Define quais alimentos e receitas serão sugeridos para você
+              Define quais alimentos e refeições serão sugeridos para você
             </CardDescription>
           </CardHeader>
           <CardContent>

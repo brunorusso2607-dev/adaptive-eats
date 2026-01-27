@@ -40,7 +40,7 @@ export default function TermsOfUse() {
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">2. Descrição do Serviço</h2>
             <p className="text-muted-foreground leading-relaxed">
-              Este aplicativo oferece ferramentas de planejamento alimentar, geração de receitas e acompanhamento nutricional utilizando inteligência artificial. As informações fornecidas são de caráter informativo e educacional.
+              Este aplicativo oferece ferramentas de planejamento alimentar, geração de refeições e acompanhamento nutricional utilizando inteligência artificial. As informações fornecidas são de caráter informativo e educacional.
             </p>
           </section>
 
@@ -60,7 +60,7 @@ export default function TermsOfUse() {
           <section className="space-y-3">
             <h2 className="text-xl font-semibold">4. Informações Nutricionais</h2>
             <p className="text-muted-foreground leading-relaxed">
-              As informações nutricionais, receitas e planos alimentares gerados por inteligência artificial são estimativas e têm caráter meramente informativo. <strong>Não substituem</strong> a orientação de profissionais de saúde qualificados como médicos, nutricionistas ou nutrólogos.
+              As informações nutricionais, refeições e planos alimentares gerados por inteligência artificial são estimativas e têm caráter meramente informativo. <strong>Não substituem</strong> a orientação de profissionais de saúde qualificados como médicos, nutricionistas ou nutrólogos.
             </p>
           </section>
 

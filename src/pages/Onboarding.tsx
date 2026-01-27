@@ -225,7 +225,7 @@ export default function Onboarding() {
             <div className="text-center py-2">
               <Globe className="w-12 h-12 mx-auto mb-3 text-primary" />
               <p className="text-sm text-muted-foreground">
-                Isso nos ajuda a sugerir alimentos e receitas populares na sua região.
+                Isso nos ajuda a sugerir alimentos e refeições populares na sua região.
               </p>
             </div>
             {isLoadingCountries ? (

@@ -39,7 +39,7 @@ export default function PrivacyPolicy() {
               <li><strong>Dados de cadastro:</strong> nome, e-mail e senha</li>
               <li><strong>Dados de perfil:</strong> idade, sexo, peso, altura e objetivos de saúde</li>
               <li><strong>Preferências alimentares:</strong> restrições, alergias e intolerâncias</li>
-              <li><strong>Dados de uso:</strong> receitas geradas, planos alimentares e histórico de consumo</li>
+              <li><strong>Dados de uso:</strong> refeições geradas, planos alimentares e histórico de consumo</li>
             </ul>
           </section>
 
@@ -49,7 +49,7 @@ export default function PrivacyPolicy() {
               Utilizamos seus dados para:
             </p>
             <ul className="list-disc list-inside text-muted-foreground space-y-1">
-              <li>Personalizar receitas e planos alimentares</li>
+              <li>Personalizar refeições e planos alimentares</li>
               <li>Calcular necessidades nutricionais</li>
               <li>Acompanhar seu progresso e metas</li>
               <li>Melhorar nossos serviços e algoritmos</li>
